@@ -790,12 +790,12 @@ function buildFlowHTML(parsed){
     return lookup;
   });
 
-  html += `<p class="hint">TAP ANY BOX TO TICK IT OFF — TICKING THE LAST COLUMN LOGS THIS AS COOKED TODAY</p>`;
+  html += `<p class="hint">TAP ANY BOX TO TICK IT OFF — TICKING A STEP ALSO TICKS WHAT FED INTO IT — TICKING THE LAST COLUMN LOGS THIS AS COOKED TODAY</p>`;
   html += `<div class="tablewrap"><table><tbody>`;
   for(let r=0; r<R; r++){
     html += `<tr>`;
     const row = rows[r];
-    html += `<td class="ing-cell">${row.qty?`<span class="qty">${escapeHtml(row.qty)}</span>`:''}${escapeHtml(row.rest)}</td>`;
+    html += `<td class="ing-cell" data-row-start="${r}" data-row-span="1">${row.qty?`<span class="qty">${escapeHtml(row.qty)}</span>`:''}${escapeHtml(row.rest)}</td>`;
     for(let c=0; c<columns.length; c++){
       const box = startLookup[c][r];
       if(box === undefined || box === null) continue;
@@ -804,7 +804,7 @@ function buildFlowHTML(parsed){
       } else {
         const bg = hexToRgba(box.color, box.passthrough ? 0.05 : 0.10);
         const style = `background:${bg}; border-left:${box.passthrough?'3px dashed':'3px solid'} ${box.color}; color:${box.color};`;
-        html += `<td class="box-cell${box.passthrough?' passthrough':''}" data-col="${c}" rowspan="${box.rowSpan}" style="${style}">${escapeHtml(box.label)}</td>`;
+        html += `<td class="box-cell${box.passthrough?' passthrough':''}" data-col="${c}" data-row-start="${box.rowStart}" data-row-span="${box.rowSpan}" rowspan="${box.rowSpan}" style="${style}">${escapeHtml(box.label)}</td>`;
       }
     }
     html += `</tr>`;
@@ -818,14 +818,40 @@ function buildFlowHTML(parsed){
   return { html, colCount: columns.length };
 }
 
+/* Ticking a box means everything that fed into it must already be done —
+   so ticking it also ticks every earlier-or-same-column cell whose row
+   range it covers, all the way back to the raw ingredients. Because a
+   box's row range is always exactly the union of its inputs' ranges
+   (merges only ever combine adjacent ranges, never split them), a single
+   overlap check against every other cell is enough to catch the whole
+   lineage in one pass — no need to walk the graph stage by stage.
+   Un-ticking only affects the one cell clicked, not its ancestors. */
 function mountFlow(container, parsed, opts){
   opts = opts || {};
   const {html, colCount} = buildFlowHTML(parsed);
   container.innerHTML = html;
   if(colCount === 0) return;
-  container.querySelectorAll('.ing-cell, .box-cell').forEach(cell=>{
+
+  const cells = Array.from(container.querySelectorAll('.ing-cell, .box-cell'));
+  const colOf = cell => cell.classList.contains('ing-cell') ? -1 : parseInt(cell.dataset.col, 10);
+
+  cells.forEach(cell=>{
     cell.addEventListener('click', ()=>{
-      cell.classList.toggle('done');
+      const turningOn = !cell.classList.contains('done');
+      if(turningOn){
+        const clickedCol = colOf(cell);
+        const rStart = parseInt(cell.dataset.rowStart, 10);
+        const rEnd = rStart + parseInt(cell.dataset.rowSpan, 10);
+        cells.forEach(other=>{
+          if(colOf(other) > clickedCol) return;
+          const oStart = parseInt(other.dataset.rowStart, 10);
+          const oEnd = oStart + parseInt(other.dataset.rowSpan, 10);
+          if(oStart < rEnd && oEnd > rStart) other.classList.add('done');
+        });
+      } else {
+        cell.classList.remove('done');
+      }
+      if(opts.onToggle) opts.onToggle();
       const finalCells = container.querySelectorAll(`.box-cell[data-col="${colCount-1}"]`);
       if(finalCells.length && Array.from(finalCells).every(c=>c.classList.contains('done'))){
         if(opts.onComplete) opts.onComplete();
