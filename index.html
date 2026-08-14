@@ -324,6 +324,17 @@
   }
   .ing-cell.done{ position:sticky; }
   ul.notes{ margin:18px 2px 0; padding-left:18px; color:var(--ink-soft); font-size:13.5px; line-height:1.7; }
+  .swap-suggestions{
+    margin:18px 2px 0; padding:12px 14px; background:var(--plum-wash);
+    border:1px solid var(--line); border-radius:var(--r);
+  }
+  .swap-suggestions-title{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.06em;
+    color:var(--plum); margin-bottom:6px;
+  }
+  ul.swap-list{ margin:0; padding-left:18px; }
+  .swap-for{ color:var(--ink-faint); }
+  .swap-note{ color:var(--ink-mute); font-style:italic; }
   .errors{
     background:rgba(140,58,52,.07); border:1px solid rgba(140,58,52,.28);
     color:var(--danger); padding:12px 14px; border-radius:var(--r);
@@ -407,6 +418,33 @@
     width:22px; height:22px; border-radius:50%; border:1px solid var(--plum);
     display:flex; align-items:center; justify-content:center; font-size:14px; flex:none;
   }
+
+  /* Meal groups — a visual tie between recipes on the same day meant to be
+     cooked concurrently, distinct from just being assigned to the same
+     day (see the 14 Aug scoping note: grouping only, no timeline view). */
+  .group-tie{
+    flex:none; width:3px; align-self:stretch; border-radius:2px;
+    background:var(--sage); margin-right:2px;
+  }
+  .group-badge{
+    display:flex; align-items:center; gap:8px; padding:6px 10px;
+    background:rgba(124,148,115,.10); border:1px solid rgba(124,148,115,.35); border-radius:var(--r);
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.03em; color:var(--sage);
+  }
+  .group-badge .group-tie{ background:var(--sage); width:3px; height:14px; margin:0; }
+  .group-ungroup{
+    margin-left:auto; background:none; border:none; cursor:pointer;
+    color:var(--ink-faint); font-family:'IBM Plex Mono', monospace; font-size:9.5px; letter-spacing:.05em;
+  }
+  .group-ungroup:hover{ color:var(--danger); }
+  .group-pick-row{ cursor:pointer; padding:6px 8px; border-radius:var(--r); }
+  .group-pick-row:hover{ background:var(--plum-wash); }
+  .group-pick-check{
+    flex:none; width:20px; height:20px; border-radius:4px; border:1px solid var(--line-faint);
+    display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--paper);
+  }
+  .group-pick-check.checked{ background:var(--plum); border-color:var(--plum); }
+  .group-pick-controls{ display:flex; gap:10px; margin-top:4px; }
   .day-choose.day-add-more{ font-size:10.5px; align-self:flex-start; margin-top:2px; }
   .day-choose.day-add-more .circle{ width:18px; height:18px; font-size:12px; }
   .day-away{ font-size:14px; font-style:italic; color:var(--ink-faint); }
@@ -559,6 +597,14 @@
   }
   .hstat-weekday-table td:last-child{ color:var(--ink); }
   .hstat-weekday-empty{ color:var(--ink-faint); font-style:italic; }
+  .hstat-pie-note{ font-size:11.5px; color:var(--ink-mute); line-height:1.4; margin-top:4px; }
+  .hstat-pie-wrap{ display:flex; align-items:center; gap:14px; margin-top:10px; }
+  .hstat-pie-wrap svg{ flex:none; }
+  .hstat-legend{ display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .hstat-legend-row{ display:flex; align-items:center; gap:6px; font-size:12px; }
+  .hstat-legend-swatch{ width:9px; height:9px; border-radius:2px; flex:none; }
+  .hstat-legend-label{ color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hstat-legend-value{ color:var(--ink-faint); font-family:'IBM Plex Mono', monospace; font-size:10.5px; margin-left:auto; padding-left:8px; }
 
   /* ============================= MODAL ============================= */
   .modal-overlay{
@@ -634,6 +680,16 @@
   }
   .btn.small-danger:hover{ border-color:var(--danger); color:var(--danger); }
 
+  .swap-form{
+    padding:16px; border:1px solid var(--line); border-radius:var(--r); background:var(--card);
+    max-width:760px; margin:0 30px;
+  }
+  .swaps-list{ display:flex; flex-direction:column; gap:8px; max-width:760px; margin:22px 30px 40px; }
+  .swap-row-detail{ font-size:12.5px; color:var(--ink-mute); margin-top:3px; }
+  .swap-row-ratio{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--ink-faint);
+  }
+
   .toast{
     position:fixed; bottom:26px; left:50%; transform:translateX(-50%) translateY(16px);
     background:var(--ink); color:var(--paper); padding:12px 20px; border-radius:var(--r);
@@ -674,6 +730,35 @@
     .history-calendar{ overflow:visible; padding:18px; }
     .history-day{ min-height:56px; padding:5px; }
     .history-day-info{ font-size:10px; -webkit-line-clamp:1; }
+
+    .swap-form{ margin:0 18px; max-width:none; }
+    .swaps-list{ margin:22px 18px 40px; max-width:none; }
+  }
+
+  /* ============================= PRINT / A4 ============================= */
+  /* Deliberately the "leave capture as-is, handle sizing at print time"
+     route (see 14 Aug handover discussion) rather than redesigning the
+     flow table / shopping list for a portrait page — this just hides
+     everything that isn't the current view's content and lets the
+     browser's own print engine (plus "fit to page" / A4 in the print
+     dialog) do the rest. Only the Viewer and Shopping List are meaningful
+     to print; everything else falls back to whatever's on screen if
+     someone prints from elsewhere, which is an acceptable edge case. */
+  @media print{
+    body{ overflow:visible !important; }
+    .sidebar, .navlink, .btn, .backlink, .toggle-switch,
+    .keep-awake-status, #keepAwakeVideo,
+    .filter-head, .assign-banner,
+    .shop-head-right, #shopWeekSelect{ display:none !important; }
+    .app{ display:block !important; height:auto !important; overflow:visible !important; }
+    .view{ display:none !important; }
+    .view.active{ display:block !important; }
+    .viewer-body, .tablewrap, .shop-wrap, .shop-body{
+      overflow:visible !important; width:auto !important; height:auto !important;
+    }
+    .tablewrap table{ page-break-inside:auto; }
+    .tablewrap tr, .shop-item, .shop-category{ page-break-inside:avoid; }
+    @page{ size:A4; margin:14mm; }
   }
 </style>
 </head>
@@ -686,6 +771,7 @@
     <button class="navlink" data-view="shortlist" id="navShortlist">SHORTLIST</button>
     <button class="navlink" data-view="shopping" id="navShopping">SHOPPING</button>
     <button class="navlink" data-view="history">HISTORY</button>
+    <button class="navlink" data-view="swaps">SWAPS</button>
 
     <div class="side-rule"></div>
     <div class="side-block">
@@ -743,6 +829,7 @@
         <button class="btn" id="shortlistBtn">+ SHORTLIST</button>
         <button class="btn" id="editRecipeBtn">EDIT</button>
         <button class="btn" id="exportPngBtn">EXPORT PNG</button>
+        <button class="btn" id="printBtn">PRINT / A4 PDF</button>
         <button class="btn danger" id="deleteBtn">DELETE</button>
       </div>
       <div id="keepAwakeStatus" class="keep-awake-status" style="display:none;"></div>
@@ -799,6 +886,7 @@
           <div class="shop-head-right">
             <select class="sort" id="shopWeekSelect" aria-label="Select week"></select>
             <button class="btn" id="shopExportBtn">EXPORT PNG</button>
+            <button class="btn" id="shopPrintBtn">PRINT / A4 PDF</button>
           </div>
         </div>
         <div id="shopBody" class="shop-body"></div>
@@ -825,6 +913,34 @@
         </aside>
       </div>
     </section>
+
+    <!-- ================= SWAPS ================= -->
+    <section id="view-swaps" class="view">
+      <div class="filter-head">
+        <div>
+          <h1>Swaps</h1>
+          <p class="subtle" style="margin:4px 0 0;">Your own ingredient substitutions —
+            built up over time, not pre-populated. Each carries a scaling ratio, so
+            "110g brown rice syrup" can show as "82.5g maple syrup" automatically.
+            Matched against a recipe's ingredients on its Viewer page — a fuzzy match,
+            checked after prep words are stripped, so it catches "2 cloves garlic,
+            minced" as well as plain "garlic."</p>
+        </div>
+      </div>
+      <div class="swap-form">
+        <div class="field-row">
+          <label><span>ORIGINAL INGREDIENT</span><input type="text" id="swap-original" placeholder="e.g. brown rice syrup"></label>
+          <label><span>REPLACEMENT</span><input type="text" id="swap-replacement" placeholder="e.g. maple syrup"></label>
+        </div>
+        <div class="field-row">
+          <label><span>RATIO (ORIGINAL × THIS = REPLACEMENT)</span><input type="number" id="swap-ratio" placeholder="e.g. 0.75" min="0" step="0.01"></label>
+          <label><span>NOTES (OPTIONAL)</span><input type="text" id="swap-notes" placeholder="e.g. slightly sweeter, reduce other sugar"></label>
+        </div>
+        <button class="btn primary" id="swapAddBtn">ADD SWAP</button>
+        <p class="field-error" id="swapError" style="display:none;"></p>
+      </div>
+      <div id="swapsList" class="swaps-list"></div>
+    </section>
   </main>
 </div>
 
@@ -835,7 +951,7 @@
     <p class="subtle" id="modalSubtitle">Paste the syntax from your recipe-conversion chat, check the preview, then fill in anything missing.</p>
 
     <label class="field-label" for="importInput">RECIPE SYNTAX</label>
-    <textarea id="importInput" spellcheck="false" placeholder="TITLE: ...&#10;SOURCE: ...&#10;IMAGE: ...&#10;TIME: ...&#10;TAGS: course=Main, protein=Veg&#10;&#10;GROUP handle:&#10;...&#10;&#10;STAGE:&#10;MERGE ... -> ...: ..."></textarea>
+    <textarea id="importInput" spellcheck="false" placeholder="TITLE: ...&#10;SOURCE: ...&#10;IMAGE: ...&#10;TIME: ...&#10;TAGS: course=Main, Veg&#10;&#10;GROUP handle:&#10;...&#10;&#10;STAGE:&#10;MERGE ... -> ...: ..."></textarea>
     <button class="btn primary" id="parseBtn">PARSE &amp; PREVIEW</button>
 
     <div class="add-form" id="addForm" style="display:none;">
@@ -852,9 +968,6 @@
       <div class="field-row">
         <label><span>COURSE</span>
           <select id="f-course"><option value="">—</option></select>
-        </label>
-        <label><span>PROTEIN</span>
-          <select id="f-protein"><option value="">—</option></select>
         </label>
       </div>
       <div class="field-row">
@@ -921,7 +1034,7 @@ function hexToRgba(hex, a){
 }
 
 function parseTags(tagsRaw){
-  const tags = {course:'', protein:'', keywords:[]};
+  const tags = {course:'', keywords:[]};
   if(!tagsRaw) return tags;
   tagsRaw.split(',').forEach(part=>{
     const idx = part.indexOf('=');
@@ -934,10 +1047,10 @@ function parseTags(tagsRaw){
     const v = part.slice(idx+1).trim();
     if(!v) return;
     if(k==='course') tags.course = v;
-    else if(k==='protein') tags.protein = v;
-    // Any other key (including old "occasion=" syntax from before this was
-    // removed) falls through as a plain keyword — its value still matters
-    // even though occasion itself no longer exists as a separate concept.
+    // Any other key (including old "occasion=" and "protein=" syntax from
+    // before those were removed as separate fields) falls through as a
+    // plain keyword — its value still matters even though neither exists
+    // as its own field any more.
     else tags.keywords.push(v);
   });
   return tags;
@@ -1093,6 +1206,29 @@ function buildFlowHTML(parsed){
 
   if(notes && notes.length){
     html += `<ul class="notes">` + notes.map(n=>`<li>${escapeHtml(n)}</li>`).join('') + `</ul>`;
+  }
+
+  /* Personal Swaps list cross-referenced against this recipe's ingredients.
+     Deliberately a separate block from NOTES, not woven into the flow
+     table itself (per the 14 Aug decision) — these are the cook's own
+     substitutions, not something the recipe's author said, so they're
+     visually distinct from anything in the syntax's own NOTES section.
+     Sits in the Viewer only; doesn't touch the syntax or PNG/print output
+     structurally beyond appearing where NOTES would. */
+  const swapMatches = findSwapMatchesForRecipe(groups, loadSwaps());
+  if(swapMatches.length){
+    html += `<div class="swap-suggestions">
+      <div class="swap-suggestions-title">⇄ SUBSTITUTION RECOMMENDATIONS</div>
+      <ul class="notes swap-list">` +
+      swapMatches.map(({ingredientLine, swap, scaledText})=>{
+        const arrow = scaledText
+          ? `${escapeHtml(swap.original)} → ${escapeHtml(scaledText)}`
+          : `${escapeHtml(swap.original)} → ${escapeHtml(swap.replacement)}`;
+        const noteBit = swap.notes ? ` <span class="swap-note">(${escapeHtml(swap.notes)})</span>` : '';
+        return `<li><span class="swap-for">For "${escapeHtml(ingredientLine)}":</span> ${arrow}${noteBit}</li>`;
+      }).join('') +
+      `</ul>
+    </div>`;
   }
 
   return { html, colCount: columns.length };
@@ -1290,7 +1426,14 @@ const STARTER_KEYWORDS = [
   'Weeknight','Sunday','Guests',
   'Christmas','Boxing Day','Easter','Bonfire Night','Halloween',
   "Valentine's",'Thanksgiving','Birthday','BBQ','Picnic','Party',
-  'Potluck','Date Night'
+  'Potluck','Date Night','Batch',
+  /* Formerly the single-value PROTEIN dropdown (Chicken/Beef/Fish/Veg/
+     Pulses), removed for the same reason Occasion was: a recipe often
+     genuinely needs more than one at once (a chicken-and-chorizo pasta
+     bake is both Chicken and Pasta), which a single-value field can't
+     represent. Widened at the same time to cover non-protein meal bases,
+     since that was the actual point of opening it up. */
+  'Chicken','Beef','Fish','Veg','Pulses','Pasta','Rice','Orzo','Risotto'
 ];
 function seedKeywordVocabIfEmpty(){
   if(loadKeywordVocab().length > 0) return;
@@ -1314,6 +1457,29 @@ function migrateOccasionToKeywords(){
       if(!r.tags.keywords.includes(occ)) r.tags.keywords.push(occ);
     }
     delete r.tags.occasion;
+    changed = true;
+  });
+  if(changed){
+    saveRecipesList(recipes);
+    mergeKeywordVocab(recipes.flatMap(r=>(r.tags && r.tags.keywords) || []));
+  }
+}
+/* One-time cleanup for recipes saved before PROTEIN was removed as its own
+   single-value field. Same shape as the Occasion migration above: fold
+   any existing tags.protein value into tags.keywords, then drop the field
+   entirely, so "Chicken" still matches once PROTEIN stops being read
+   anywhere. Runs on every load but only ever writes once. */
+function migrateProteinToKeywords(){
+  const recipes = loadRecipes();
+  let changed = false;
+  recipes.forEach(r=>{
+    if(!r.tags || !('protein' in r.tags)) return;
+    const p = r.tags.protein;
+    if(p){
+      if(!Array.isArray(r.tags.keywords)) r.tags.keywords = [];
+      if(!r.tags.keywords.includes(p)) r.tags.keywords.push(p);
+    }
+    delete r.tags.protein;
     changed = true;
   });
   if(changed){
@@ -1360,6 +1526,59 @@ function removePlanRecipeAt(dateStr, index){
   ids.splice(index, 1);
   if(ids.length) p[dateStr] = {recipeIds: ids}; else delete p[dateStr];
   return savePlan(p);
+}
+
+/* ------------------------------- Meal groups -------------------------------
+   Planner-derived, per the 14 Aug decision: a group is just "some of the
+   recipes already assigned to this day," not a separate object you build
+   up independently of the Planner. Deliberately scoped to grouping only —
+   the pre-planning timeline view and active cook mode described in the
+   handover are explicitly later phases, not part of this.
+
+   Stored by recipe id rather than array position, since positions can
+   shift as recipes are added/removed from a day (removePlanRecipeAt splices
+   by index) — an id-based group survives that; an index-based one wouldn't.
+   Scoped per dateIso so the same recipe grouped on two different days (or
+   assigned twice the same day) doesn't create cross-day ambiguity. */
+const GROUPS_KEY = 'kitchen_groups_v1';
+function loadGroups(){
+  try{ const raw = localStorage.getItem(GROUPS_KEY); return raw ? JSON.parse(raw) : []; }
+  catch(e){ return []; }
+}
+function saveGroups(list){
+  try{ localStorage.setItem(GROUPS_KEY, JSON.stringify(list)); return true; }
+  catch(e){ alert("Couldn't save — the browser's storage may be full."); return false; }
+}
+function groupsForDate(dateIso){
+  return loadGroups().filter(g=>g.dateIso===dateIso);
+}
+/* Which group (if any) a given recipe id is currently in on a given day —
+   a recipe can only be in one group per day, so creating a new group that
+   includes an already-grouped recipe pulls it out of its old group first. */
+function groupContaining(dateIso, recipeId){
+  return groupsForDate(dateIso).find(g=> g.recipeIds.includes(recipeId)) || null;
+}
+function createGroup(dateIso, recipeIds, name){
+  if(!recipeIds || recipeIds.length < 2) return false; // grouping only means something for 2+
+  const groups = loadGroups().filter(g=>
+    !(g.dateIso===dateIso && g.recipeIds.some(id=>recipeIds.includes(id)))
+  ); // ungroup anything already grouped that's being re-grouped
+  groups.push({ id: uid(), dateIso, recipeIds: [...recipeIds], name: name || '' });
+  return saveGroups(groups);
+}
+function deleteGroup(groupId){
+  return saveGroups(loadGroups().filter(g=>g.id!==groupId));
+}
+/* Called when a recipe is removed from a day entirely (removeOne/clear) —
+   a group missing one of its members no longer makes sense as a group.
+   Simplest correct behaviour: dissolve it rather than leave a dangling
+   reference to a recipe that's no longer on that day. */
+function dissolveGroupsContainingOnDate(dateIso, recipeId){
+  const groups = loadGroups().filter(g=> !(g.dateIso===dateIso && g.recipeIds.includes(recipeId)));
+  saveGroups(groups);
+}
+function clearGroupsForDate(dateIso){
+  saveGroups(loadGroups().filter(g=>g.dateIso!==dateIso));
 }
 
 function loadShortlist(){
@@ -1444,7 +1663,7 @@ function searchText(r){
   const p = parseRecipe(r.syntax||'');
   const bits = [
     r.title, r.source,
-    r.tags && r.tags.course, r.tags && r.tags.protein,
+    r.tags && r.tags.course,
     ...((r.tags && r.tags.keywords) || []),
     ...p.setup, ...p.notes,
     ...p.groups.flatMap(g=>g.items),
@@ -1481,7 +1700,6 @@ function filterRecipes(recipes, q){
   const out = recipes.filter(r=>{
     const t = r.tags || {};
     if(q.course && q.course.length && !q.course.includes(t.course)) return false;
-    if(q.protein && q.protein.length && !q.protein.includes(t.protein)) return false;
     if(q.source && r.source !== q.source) return false;
     if(q.savedView && SAVED_VIEWS[q.savedView] && !SAVED_VIEWS[q.savedView].test(r)) return false;
     if(terms.length || text){
@@ -1498,8 +1716,10 @@ function filterRecipes(recipes, q){
 
 /* Master tag lists: sensible defaults, plus anything already in the library. */
 const DEFAULT_TAGS = {
-  course:   ['Breakfast','Main','Side','Dessert','Bread','Baking','Snack'],
-  protein:  ['Chicken','Beef','Fish','Veg','Pulses']
+  course:   ['Breakfast','Main','Side','Dessert','Bread','Baking','Snack']
+  /* protein used to live here as its own vocab list — removed along with
+     the field itself; Chicken/Beef/Fish/Veg/Pulses/Pasta/Rice/Orzo/
+     Risotto now live in STARTER_KEYWORDS instead. */
 };
 /* Display order for grouping multiple recipes assigned to one Planner day —
    breakfast first, then meal components, then bread, then standalone
@@ -1704,7 +1924,7 @@ function seedIfEmpty(){
       time: '35 min',
       servings: 4,
       favourite: false,
-      tags: {course:'Main', protein:'Veg', keywords:[]},
+      tags: {course:'Main', keywords:['Veg']},
       syntax: greekPotatoHashSyntax,
       history: [],
       dateAdded: todayStr()
@@ -1717,7 +1937,7 @@ function seedIfEmpty(){
       time: '20 min',
       servings: null,
       favourite: false,
-      tags: {course:'Main', protein:'Chicken', keywords:[]},
+      tags: {course:'Main', keywords:['Chicken']},
       syntax: honeyGarlicChickenSyntax,
       history: [],
       dateAdded: todayStr()
@@ -1730,7 +1950,7 @@ function seedIfEmpty(){
       time: '',
       servings: null,
       favourite: false,
-      tags: {course:'Side', protein:'', keywords:[]},
+      tags: {course:'Side', keywords:[]},
       syntax: viralParmesanPotatoesSyntax,
       history: [],
       dateAdded: todayStr()
@@ -1744,7 +1964,7 @@ function seedIfEmpty(){
 const state = {
   view: 'recipes',
   text: '',
-  course: [], protein: [],
+  course: [],
   keywords: [],
   source: '',                  // exact-match Source filter (dropdown, not a chip row — see findings doc)
   savedView: null,
@@ -1758,16 +1978,18 @@ const state = {
   editingRecipeId: null,       // recipe id currently open in the Add/Edit modal, if editing rather than adding
   historyMonth: null,          // {year, month(0-indexed)} the History calendar is currently showing
   historySelectedDate: null,   // ISO date string currently selected in the History calendar, if any
-  keepAwake: false             // whether the "keep screen awake" toggle is currently on (session-only, global — not tied to a specific recipe)
+  keepAwake: false,            // whether the "keep screen awake" toggle is currently on (session-only, global — not tied to a specific recipe)
+  groupingDate: null,          // ISO date string currently in "pick recipes to group" mode on the Planner, if any
+  groupingSelection: []        // recipe ids currently ticked while groupingDate is active
 };
 
 function anyFilterActive(){
   return !!(state.text || state.keywords.length || state.savedView || state.source ||
-            state.course.length || state.protein.length);
+            state.course.length);
 }
 function clearAllFilters(){
   state.text=''; state.keywords=[]; state.savedView=null;
-  state.course=[]; state.protein=[]; state.source='';
+  state.course=[]; state.source='';
   state.addingKeyword=false;
   document.getElementById('searchInput').value='';
   renderHome();
@@ -1801,6 +2023,7 @@ function showView(name){
   if(name === 'planner') renderPlanner();
   if(name === 'shopping') renderShopping();
   if(name === 'history') renderHistory();
+  if(name === 'swaps') renderSwaps();
 }
 document.querySelectorAll('.navlink[data-view]').forEach(btn=>{
   /* Shortlist lives inside the Planner screen (per the mockup), not a screen of its own. */
@@ -1822,9 +2045,12 @@ function updateSidebarCounts(){
    ===================================================================== */
 function renderFilterRows(recipes){
   const rows = document.getElementById('filterRows');
+  /* PROTEIN used to be its own chip row here — removed along with the
+     field itself. Chicken/Beef/Fish/Veg/Pulses/Pasta/Rice/Orzo/Risotto
+     now live as ordinary keywords, filterable via the KEYWORD row below
+     like any other keyword, and can be combined (Chicken + Pasta). */
   const cats = [
-    {key:'course',   label:'COURSE'},
-    {key:'protein',  label:'PROTEIN'}
+    {key:'course',   label:'COURSE'}
   ];
 
   let html = cats.map(cat=>{
@@ -1838,10 +2064,9 @@ function renderFilterRows(recipes){
     </div>`;
   }).join('');
 
-  /* A dropdown rather than a chip row — course/protein have a handful of
-     values each; the number of distinct sources can grow far larger (see
-     the findings doc), and a flat chip row doesn't scale the same way a
-     select does. */
+  /* A dropdown rather than a chip row — course has a handful of values;
+     the number of distinct sources can grow far larger (see the findings
+     doc), and a flat chip row doesn't scale the same way a select does. */
   const srcCounts = sourceCounts(recipes);
   const sortedSources = Array.from(srcCounts.keys()).sort((a,b)=>a.localeCompare(b));
   const sourceOptions = sortedSources.map(s=>
@@ -1867,11 +2092,12 @@ function renderFilterRows(recipes){
 
   const vocab = fullKeywordVocab(recipes).filter(k=>!state.keywords.includes(k));
 
-  /* Course/protein show every option as a tappable chip; keywords
-     historically only showed chips for ones already applied, which makes
-     the starter keywords invisible unless you already know to type
-     them. Show a capped set of not-yet-applied ones as one-tap "ghost"
-     suggestions too — the datalist below still covers anything beyond
+  /* Course shows every option as a tappable chip; keywords historically
+     only showed chips for ones already applied, which makes the starter
+     keywords (including the former protein/meal-base values) invisible
+     unless you already know to type them. Show a capped set of
+     not-yet-applied ones as one-tap "ghost" suggestions too — the
+     datalist below still covers anything beyond
      this cap, so nothing becomes unreachable, just less front-and-center. */
   const SUGGESTED_KEYWORD_LIMIT = 12;
   const suggestedChips = vocab.slice(0, SUGGESTED_KEYWORD_LIMIT).map(k=>
@@ -1970,7 +2196,7 @@ function renderFilterRows(recipes){
 
 function tagLine(r){
   const t = r.tags || {};
-  const bits = [t.course, t.protein].filter(Boolean);
+  const bits = [t.course].filter(Boolean);
   ((t.keywords)||[]).forEach(k=>{ if(bits.length < 3) bits.push(k); });
   return bits.join(' · ').toUpperCase();
 }
@@ -2032,7 +2258,6 @@ function renderHome(){
     text: state.text,
     keywords: state.keywords,
     course: state.course,
-    protein: state.protein,
     source: state.source,
     savedView: state.savedView,
     sort: state.sort
@@ -2378,6 +2603,12 @@ document.getElementById('exportPngBtn').addEventListener('click', ()=>{
   );
 });
 
+/* Print / "save as PDF" route — the browser's own print engine, sized to
+   A4 via the @media print rules above, rather than a second capture
+   pipeline. window.print() only ever prints what's currently visible and
+   .active, which is already true of whichever view is open. */
+document.getElementById('printBtn').addEventListener('click', ()=> window.print());
+
 /* =====================================================================
    PLANNER + SHORTLIST
    ===================================================================== */
@@ -2441,6 +2672,10 @@ function renderPlannerDays(){
           courseSortIndex(b.recipe && b.recipe.tags && b.recipe.tags.course)
         );
 
+        const dayGroups = groupsForDate(iso);
+        const isGroupingThisDay = state.groupingDate === iso;
+        const groupingSel = state.groupingSelection || [];
+
         const rows = items.map(({idx, recipe})=>{
           if(!recipe){
             return `<div class="day-recipe-row">
@@ -2450,7 +2685,19 @@ function renderPlannerDays(){
           }
           const course = (recipe.tags && recipe.tags.course) || '';
           const tone = course === 'Dessert' ? ' dessert' : ((course === 'Bread' || course === 'Baking') ? ' bread' : '');
+          const group = groupContaining(iso, recipe.id);
+
+          if(isGroupingThisDay){
+            const checked = groupingSel.includes(recipe.id);
+            return `<div class="day-recipe-row group-pick-row" data-recipe-id="${escapeHtml(recipe.id)}" data-action="toggleGroupPick">
+              <span class="group-pick-check${checked?' checked':''}">${checked?'✓':''}</span>
+              <span class="day-recipe-title" style="cursor:default;">${escapeHtml(recipe.title||'Untitled')}</span>
+              ${course ? `<span class="day-recipe-course${tone}">${escapeHtml(course.toUpperCase())}</span>` : ''}
+            </div>`;
+          }
+
           return `<div class="day-recipe-row">
+            ${group ? `<span class="group-tie" title="Cooking together as a group"></span>` : ''}
             <button class="day-recipe-title" data-action="view" data-idx="${idx}">${escapeHtml(recipe.title||'Untitled')}</button>
             ${course ? `<span class="day-recipe-course${tone}">${escapeHtml(course.toUpperCase())}</span>` : ''}
             <span class="day-recipe-time">${escapeHtml((recipe.time||'').toUpperCase())}</span>
@@ -2458,14 +2705,33 @@ function renderPlannerDays(){
           </div>`;
         }).join('');
 
-        inner = `<div class="day-main">${rows}
-          <button class="day-choose day-add-more" data-action="choose"><span class="circle">+</span>ADD ANOTHER</button>
+        const groupBadges = !isGroupingThisDay && dayGroups.length
+          ? dayGroups.map(g=>{
+              const names = g.recipeIds.map(id=>{ const r = recipes.find(x=>x.id===id); return r ? r.title : 'Recipe removed'; });
+              return `<div class="group-badge">
+                <span class="group-tie"></span>GROUPED: ${escapeHtml(names.join(' + '))}
+                <button class="group-ungroup" data-action="ungroup" data-group-id="${escapeHtml(g.id)}">UNGROUP</button>
+              </div>`;
+            }).join('')
+          : '';
+
+        const groupControls = isGroupingThisDay
+          ? `<div class="group-pick-controls">
+              <button class="btn small-danger" data-action="toggleGroupMode">CANCEL</button>
+              <button class="btn primary" data-action="confirmGroup" style="padding:8px 14px; font-size:11.5px;">GROUP SELECTED</button>
+            </div>`
+          : (ids.length >= 2
+              ? `<button class="day-choose day-add-more" data-action="toggleGroupMode"><span class="circle">⇄</span>GROUP SOME TOGETHER</button>`
+              : '');
+
+        inner = `<div class="day-main">${groupBadges}${rows}
+          ${isGroupingThisDay ? groupControls : `<button class="day-choose day-add-more" data-action="choose"><span class="circle">+</span>ADD ANOTHER</button>${groupControls}`}
         </div>`;
       } else {
         inner = `<div class="day-main"><button class="day-choose" data-action="choose"><span class="circle">+</span>CHOOSE A RECIPE</button></div>`;
       }
 
-      html += `<div class="day-row${isToday?' today':''}${state.selectedShortlistId?' assignable':''}" data-date="${iso}">
+      html += `<div class="day-row${isToday?' today':''}${(state.selectedShortlistId && state.groupingDate!==iso)?' assignable':''}" data-date="${iso}">
         <div class="day-num">${formatDayLabel(d)}${isToday?'<span class="today-tag">TODAY</span>':''}</div>
         ${inner}
       </div>`;
@@ -2542,7 +2808,7 @@ function initPlannerListeners(){
     if(!row) return;
     const date = row.dataset.date;
 
-    if(state.selectedShortlistId){
+    if(state.selectedShortlistId && state.groupingDate !== date){
       const item = loadShortlist().find(i=>i.id === state.selectedShortlistId);
       if(item && item.recipeId){
         addPlanRecipe(date, item.recipeId);
@@ -2566,13 +2832,45 @@ function initPlannerListeners(){
       showView('recipes');
       renderHome();
     } else if(action === 'removeOne'){
+      const ids = planRecipeIds(loadPlan()[date]);
+      const removedId = ids[parseInt(actionEl.dataset.idx, 10)];
       removePlanRecipeAt(date, parseInt(actionEl.dataset.idx, 10));
+      if(removedId) dissolveGroupsContainingOnDate(date, removedId);
       renderPlanner();
       updateSidebarCounts();
     } else if(action === 'clear'){
       clearPlanDay(date);
+      clearGroupsForDate(date);
       renderPlanner();
       updateSidebarCounts();
+    } else if(action === 'toggleGroupMode'){
+      state.groupingDate = (state.groupingDate === date) ? null : date;
+      state.groupingSelection = [];
+      renderPlanner();
+    } else if(action === 'toggleGroupPick'){
+      const id = actionEl.closest('[data-recipe-id]').dataset.recipeId;
+      const sel = state.groupingSelection || [];
+      const i = sel.indexOf(id);
+      if(i === -1) sel.push(id); else sel.splice(i,1);
+      state.groupingSelection = sel;
+      renderPlanner();
+    } else if(action === 'confirmGroup'){
+      const sel = state.groupingSelection || [];
+      if(sel.length < 2){
+        showToast('Pick at least 2 recipes to group them');
+      } else {
+        createGroup(date, sel);
+        state.groupingDate = null;
+        state.groupingSelection = [];
+        renderPlanner();
+        showToast('Grouped — cooking these together');
+      }
+    } else if(action === 'ungroup'){
+      const groupId = actionEl.dataset.groupId;
+      if(confirm('Ungroup these recipes? They\'ll stay assigned to the day, just no longer tied together.')){
+        deleteGroup(groupId);
+        renderPlanner();
+      }
     }
   });
 
@@ -2613,6 +2911,21 @@ function initPlannerListeners(){
    SHOPPING LIST
    ===================================================================== */
 const SHOPPING_CHECKED_KEY = 'kitchen_shopping_checked_v1';
+const SWAPS_KEY = 'kitchen_swaps_v1';
+/* User-curated ingredient substitutions — personally built and maintained,
+   distinct from any author-suggested swap that might one day live in a
+   recipe's own structured NOTES. Each entry: { id, original, replacement,
+   ratio, notes }. `original`/`replacement` are stored as typed; matching
+   against ingredient lines normalises both sides at match time rather
+   than at save time, so the list stays readable in Manage/Swaps UI. */
+function loadSwaps(){
+  try{ const raw = localStorage.getItem(SWAPS_KEY); return raw ? JSON.parse(raw) : []; }
+  catch(e){ return []; }
+}
+function saveSwaps(list){
+  try{ localStorage.setItem(SWAPS_KEY, JSON.stringify(list)); return true; }
+  catch(e){ alert("Couldn't save — your browser's storage might be full."); return false; }
+}
 function loadShoppingChecked(){
   try{ const raw = localStorage.getItem(SHOPPING_CHECKED_KEY); return raw ? JSON.parse(raw) : {}; }
   catch(e){ return {}; }
@@ -2731,6 +3044,59 @@ function categorizeIngredient(rawName){
     if(cat.keywords.some(k=> new RegExp('\\b'+k+'(?:e?s)?\\b','i').test(stripped))) return cat.name;
   }
   return 'Other';
+}
+
+/* ------------------------------- Swaps matching -------------------------------
+   Deliberately fuzzy, per the "something fuzzier" decision (14 Aug): a swap's
+   `original` just needs to appear as a substring of the stripped ingredient
+   line, not match it exactly. Reuses stripPrepWordsForCategorizing so
+   "2 cloves garlic, minced" still matches a swap on "garlic" the same way
+   the shopping-list categorizer already treats prep words as noise. This
+   is intentionally looser than the shopping list's own matching (which
+   needs a name+unit match to total two lines) — a swap suggestion is just
+   a nudge to consider, not a data-integrity concern, so a false positive
+   here is low-cost and a missed one is the worse failure mode.
+
+   Multiple swaps can match the same ingredient line (e.g. both a
+   "brown rice syrup -> maple syrup" and a "sugar -> honey" swap present) —
+   all matches are returned, not just the first, so nothing gets silently
+   hidden by another entry happening to match first. */
+function findSwapMatchesForIngredient(rawName, swaps){
+  const stripped = stripPrepWordsForCategorizing(rawName).toLowerCase();
+  return swaps.filter(s=>{
+    const needle = String(s.original||'').trim().toLowerCase();
+    return needle && stripped.includes(needle);
+  });
+}
+
+/* Scans every ingredient line across all of a recipe's GROUPs and returns
+   one entry per (ingredient line, matching swap) pair, with a scaled
+   replacement quantity where the line's amount is parseable. Quantities
+   that aren't a plain "number unit" (e.g. "a generous drizzle of syrup")
+   fall back to showing just the swap itself, no scaled figure — matches
+   the "show the scaled quantity when it's parseable, just show the swap
+   name otherwise" decision from the handover. */
+function findSwapMatchesForRecipe(groups, swaps){
+  if(!swaps || !swaps.length) return [];
+  const results = [];
+  (groups||[]).forEach(g=>{
+    (g.items||[]).forEach(line=>{
+      const {qty, rest} = splitQty(line);
+      const matches = findSwapMatchesForIngredient(rest, swaps);
+      matches.forEach(swap=>{
+        const parsed = qty ? parseIngredientAmount(qty) : null;
+        const scaled = parsed ? (parsed.amount * (Number(swap.ratio) || 1)) : null;
+        results.push({
+          ingredientLine: line,
+          swap,
+          scaledText: scaled !== null
+            ? `${formatAmount(scaled)}${parsed.unit ? ' '+parsed.unit : ''} ${swap.replacement}`
+            : null
+        });
+      });
+    });
+  });
+  return results;
 }
 
 /* ------------------------------- Aggregation -------------------------------
@@ -2875,6 +3241,8 @@ function initShoppingListeners(){
   });
 }
 
+document.getElementById('shopPrintBtn').addEventListener('click', ()=> window.print());
+
 /* =====================================================================
    HISTORY — a calendar view over the history[] already tracked on each
    recipe. No new data model: every "cooked" date already lives on the
@@ -2964,7 +3332,31 @@ function computeHistoryStats(recipes){
     if(!topSource || count>topSource.count) topSource = {source, count};
   });
 
-  return { totalMeals, mealsThisMonth, mostCooked, byWeekday, streak, neverCooked, recipesCount:recipes.length, topSource };
+  /* Meal-base mix — Chicken/Beef/Fish/Veg/Pulses/Pasta/Rice/Orzo/Risotto
+     used to be a single-value PROTEIN field; now they're just ordinary
+     keywords, so a recipe can carry more than one (a chicken pasta bake
+     counts toward both Chicken and Pasta). That means these two counts
+     don't sum to recipesCount/totalMeals the way a single-value field
+     would have — expected, not a bug, given a recipe can be double-counted.
+     Two related but distinct views, per the 3 Aug findings:
+       - savedMix: composition of the *library* (what's been saved),
+         regardless of whether it's ever been cooked.
+       - cookedMix: composition of what's actually been *cooked*, read
+         from history[] rather than the recipe list itself. */
+  const MEAL_BASE_KEYWORDS = ['Chicken','Beef','Fish','Veg','Pulses','Pasta','Rice','Orzo','Risotto'];
+  const savedMix = MEAL_BASE_KEYWORDS.map(kw=>({
+    label: kw,
+    count: recipes.filter(r=> ((r.tags && r.tags.keywords) || []).includes(kw)).length
+  })).filter(x=>x.count>0);
+  const cookedMix = MEAL_BASE_KEYWORDS.map(kw=>({
+    label: kw,
+    count: entries.filter(({recipeId})=>{
+      const r = recipeById.get(recipeId);
+      return r && ((r.tags && r.tags.keywords) || []).includes(kw);
+    }).length
+  })).filter(x=>x.count>0);
+
+  return { totalMeals, mealsThisMonth, mostCooked, byWeekday, streak, neverCooked, recipesCount:recipes.length, topSource, savedMix, cookedMix };
 }
 
 function renderHistory(){
@@ -3032,6 +3424,55 @@ function renderHistoryDayDetail(){
   });
 }
 
+/* A muted palette derived from the app's existing colour variables,
+   rather than introducing bright chart-ish colours that would clash with
+   the paper/ink aesthetic. Cycles if there are more slices than colours
+   (unlikely at 9 meal-base keywords max, but harmless if it happens). */
+const PIE_COLOURS = ['#5B2A4A','#7C9473','#B08A2E','#7A3D65','#8C3A34','#6E665A','#A79E8D','#C9BFA6','#D8CFB8'];
+
+/* Simple inline SVG pie chart — no charting library, per the "simple
+   charts" decision. Returns an SVG + legend as one HTML string. Empty
+   input renders nothing (caller decides whether to show a placeholder). */
+function renderPieChart(data, opts){
+  opts = opts || {};
+  const total = data.reduce((s,d)=>s+d.count, 0);
+  if(!total) return `<p class="hstat-weekday-empty">Nothing to show yet.</p>`;
+
+  const r = 60, cx = 70, cy = 70;
+  let angle = -90; // start at 12 o'clock
+  const slices = data.map((d, i)=>{
+    const frac = d.count / total;
+    const startAngle = angle;
+    const endAngle = angle + frac * 360;
+    angle = endAngle;
+    const large = (endAngle - startAngle) > 180 ? 1 : 0;
+    const toXY = a => {
+      const rad = (a * Math.PI) / 180;
+      return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+    };
+    const [x1,y1] = toXY(startAngle);
+    const [x2,y2] = toXY(endAngle);
+    const colour = PIE_COLOURS[i % PIE_COLOURS.length];
+    /* A single slice covering the whole circle can't be drawn as an arc
+       path (start === end), so draw a full circle instead. */
+    const path = frac >= 0.999
+      ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${colour}"></circle>`
+      : `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2} Z" fill="${colour}"></path>`;
+    return { path, colour, label: d.label, count: d.count, pct: Math.round(frac*100) };
+  });
+
+  const legend = slices.map(s=>
+    `<div class="hstat-legend-row"><span class="hstat-legend-swatch" style="background:${s.colour}"></span>` +
+    `<span class="hstat-legend-label">${escapeHtml(s.label)}</span>` +
+    `<span class="hstat-legend-value">${s.count}${opts.showPct ? ` · ${s.pct}%` : ''}</span></div>`
+  ).join('');
+
+  return `<div class="hstat-pie-wrap">
+    <svg width="140" height="140" viewBox="0 0 140 140" role="img" aria-label="${escapeHtml(opts.ariaLabel||'Chart')}">${slices.map(s=>s.path).join('')}</svg>
+    <div class="hstat-legend">${legend}</div>
+  </div>`;
+}
+
 function renderHistoryStats(){
   const stats = computeHistoryStats(loadRecipes());
   const rows = [
@@ -3051,6 +3492,12 @@ function renderHistoryStats(){
     ${rows.map(([label,value])=>`<div class="hstat-row"><span class="hstat-label">${label}</span><span class="hstat-value">${escapeHtml(value)}</span></div>`).join('')}
     <div class="side-label" style="margin-top:20px;">MOST COOKED BY DAY OF WEEK</div>
     <table class="hstat-weekday-table">${weekdayRows}</table>
+    <div class="side-label" style="margin-top:20px;">RECIPE MIX BY MEAL BASE</div>
+    <div class="hstat-pie-note">What's saved in the library — a recipe can count toward more than one (e.g. a chicken pasta bake is both).</div>
+    ${renderPieChart(stats.savedMix, {ariaLabel:'Recipe mix by meal base', showPct:true})}
+    <div class="side-label" style="margin-top:20px;">COOKED BY MEAL BASE</div>
+    <div class="hstat-pie-note">What's actually been cooked, from history — often a different picture from what's saved.</div>
+    ${renderPieChart(stats.cookedMix, {ariaLabel:'Recipes cooked by meal base', showPct:true})}
   `;
 }
 
@@ -3151,7 +3598,7 @@ document.getElementById('generateSampleHistoryBtn').addEventListener('click', ge
    ===================================================================== */
 function fillTagSelects(){
   const recipes = loadRecipes();
-  [['f-course','course'],['f-protein','protein']].forEach(([id,kind])=>{
+  [['f-course','course']].forEach(([id,kind])=>{
     const sel = document.getElementById(id);
     const current = sel.value;
     sel.innerHTML = '<option value="">—</option>' +
@@ -3270,7 +3717,7 @@ function openEditModal(recipeId){
   document.getElementById('f-image').value = recipe.imageUrl || '';
 
   const tags = recipe.tags || {};
-  [['f-course', tags.course], ['f-protein', tags.protein]]
+  [['f-course', tags.course]]
     .forEach(([id, val])=>{
       const sel = document.getElementById(id);
       if(val && !Array.from(sel.options).some(o=>o.value === val)){
@@ -3482,6 +3929,112 @@ document.getElementById('keywordsModalOverlay').addEventListener('click', e=>{
   if(e.target.id === 'keywordsModalOverlay') closeKeywordsModal();
 });
 
+/* ------------------------------- Swaps ------------------------------- */
+function renderSwaps(){
+  const swaps = loadSwaps();
+  const list = document.getElementById('swapsList');
+
+  if(!swaps.length){
+    list.innerHTML = `<p class="empty">No swaps yet — add your first one above.</p>`;
+    return;
+  }
+
+  const sorted = [...swaps].sort((a,b)=> (a.original||'').localeCompare(b.original||''));
+  list.innerHTML = sorted.map(s=>{
+    const ratioText = (s.ratio===null || s.ratio===undefined || s.ratio==='') ? '' : `1 : ${s.ratio}`;
+    return `<div class="source-row">
+      <div>
+        <div class="source-row-name">${escapeHtml(s.original)} → ${escapeHtml(s.replacement)}</div>
+        <div class="swap-row-detail">
+          ${ratioText ? `<span class="swap-row-ratio">${escapeHtml(ratioText)}</span>` : ''}
+          ${s.notes ? ` ${escapeHtml(s.notes)}` : ''}
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; flex:none;">
+        <button class="btn small-danger" data-edit-swap="${escapeHtml(s.id)}">EDIT</button>
+        <button class="btn small-danger" data-delete-swap="${escapeHtml(s.id)}">DELETE</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-delete-swap]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.dataset.deleteSwap;
+      const swap = swaps.find(s=>s.id===id);
+      if(!swap) return;
+      if(!confirm(`Delete the swap "${swap.original} → ${swap.replacement}"? This can't be undone.`)) return;
+      saveSwaps(swaps.filter(s=>s.id!==id));
+      showToast('Deleted swap');
+      renderSwaps();
+    });
+  });
+
+  list.querySelectorAll('[data-edit-swap]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.dataset.editSwap;
+      const swap = swaps.find(s=>s.id===id);
+      if(!swap) return;
+      document.getElementById('swap-original').value = swap.original || '';
+      document.getElementById('swap-replacement').value = swap.replacement || '';
+      document.getElementById('swap-ratio').value = (swap.ratio===null || swap.ratio===undefined) ? '' : swap.ratio;
+      document.getElementById('swap-notes').value = swap.notes || '';
+      document.getElementById('swapAddBtn').textContent = 'SAVE CHANGES';
+      document.getElementById('swapAddBtn').dataset.editingId = id;
+      document.getElementById('swap-original').focus();
+    });
+  });
+}
+
+function clearSwapForm(){
+  document.getElementById('swap-original').value = '';
+  document.getElementById('swap-replacement').value = '';
+  document.getElementById('swap-ratio').value = '';
+  document.getElementById('swap-notes').value = '';
+  document.getElementById('swapAddBtn').textContent = 'ADD SWAP';
+  delete document.getElementById('swapAddBtn').dataset.editingId;
+  document.getElementById('swapError').style.display = 'none';
+}
+
+document.getElementById('swapAddBtn').addEventListener('click', ()=>{
+  const original = document.getElementById('swap-original').value.trim();
+  const replacement = document.getElementById('swap-replacement').value.trim();
+  const ratioRaw = document.getElementById('swap-ratio').value.trim();
+  const notes = document.getElementById('swap-notes').value.trim();
+  const errorEl = document.getElementById('swapError');
+
+  if(!original || !replacement){
+    errorEl.textContent = 'Both the original ingredient and its replacement are needed.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  errorEl.style.display = 'none';
+
+  const ratio = ratioRaw ? Number(ratioRaw) : 1;
+  if(ratioRaw && (isNaN(ratio) || ratio < 0)){
+    errorEl.textContent = 'Ratio needs to be a positive number (e.g. 0.75), or leave it blank for a plain 1:1 swap.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const swaps = loadSwaps();
+  const editingId = document.getElementById('swapAddBtn').dataset.editingId;
+  if(editingId){
+    const swap = swaps.find(s=>s.id===editingId);
+    if(swap){
+      swap.original = original; swap.replacement = replacement;
+      swap.ratio = ratio; swap.notes = notes || '';
+    }
+    saveSwaps(swaps);
+    showToast('Swap updated');
+  } else {
+    swaps.push({ id: uid(), original, replacement, ratio, notes: notes || '' });
+    saveSwaps(swaps);
+    showToast('Swap added');
+  }
+  clearSwapForm();
+  renderSwaps();
+});
+
 document.addEventListener('keydown', e=>{
   if(e.key !== 'Escape') return;
   if(document.getElementById('keywordsModalOverlay').classList.contains('open')){ closeKeywordsModal(); return; }
@@ -3506,7 +4059,7 @@ document.getElementById('parseBtn').addEventListener('click', ()=>{
   document.getElementById('f-image').value = parsed.imageUrl || '';
 
   /* A tag from the syntax that isn't in the master list yet still needs selecting. */
-  [['f-course', parsed.tags.course], ['f-protein', parsed.tags.protein]]
+  [['f-course', parsed.tags.course]]
     .forEach(([id, val])=>{
       const sel = document.getElementById(id);
       if(val && !Array.from(sel.options).some(o=>o.value === val)){
@@ -3568,7 +4121,6 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     servings: servingsRaw ? parseInt(servingsRaw, 10) : null,
     tags: {
       course: document.getElementById('f-course').value,
-      protein: document.getElementById('f-protein').value,
       keywords
     },
     syntax: withUpdatedTitleLine(text, finalTitle)
@@ -3619,7 +4171,9 @@ function exportAllData(){
     plan: loadPlan(),
     shortlist: loadShortlist(),
     keywordVocab: loadKeywordVocab(),
-    shoppingChecked: loadShoppingChecked()
+    shoppingChecked: loadShoppingChecked(),
+    swaps: loadSwaps(),
+    groups: loadGroups()
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -3655,6 +4209,8 @@ function importAllData(file){
       try{ localStorage.setItem(KEYWORDS_KEY, JSON.stringify(data.keywordVocab)); }catch(e){}
     }
     saveShoppingChecked(data.shoppingChecked || {});
+    saveSwaps(Array.isArray(data.swaps) ? data.swaps : []);
+    saveGroups(Array.isArray(data.groups) ? data.groups : []);
 
     state.selectedRecipeId = null;
     state.editingRecipeId = null;
@@ -3683,6 +4239,8 @@ document.getElementById('importFileInput').addEventListener('change', e=>{
 seedIfEmpty();
 seedKeywordVocabIfEmpty();
 migrateOccasionToKeywords();
+migrateProteinToKeywords();
+mergeKeywordVocab(['Batch','Chicken','Beef','Fish','Veg','Pulses','Pasta','Rice','Orzo','Risotto']); // backfill for installs seeded before these existed
 initHomeListeners();
 initPlannerListeners();
 initShoppingListeners();
