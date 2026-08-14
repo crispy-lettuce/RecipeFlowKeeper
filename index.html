@@ -257,6 +257,29 @@
   .btn.danger:hover{ border-color:var(--danger); color:var(--danger); }
   .btn.on{ border-color:var(--gold); color:var(--gold); background:rgba(176,138,46,.08); }
 
+  .toggle-switch{
+    display:flex; align-items:center; gap:8px; cursor:pointer; flex:none;
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.06em; color:var(--ink-soft);
+  }
+  .toggle-switch input{ position:absolute; opacity:0; width:0; height:0; }
+  .toggle-track{
+    position:relative; width:36px; height:21px; border-radius:11px; flex:none;
+    background:var(--well); border:1px solid var(--line-faint); transition:background .15s ease, border-color .15s ease;
+  }
+  .toggle-thumb{
+    position:absolute; top:2px; left:2px; width:15px; height:15px; border-radius:50%;
+    background:#fff; transition:transform .15s ease; box-shadow:0 1px 2px rgba(43,39,34,.25);
+  }
+  .toggle-switch input:checked + .toggle-track{ background:var(--plum); border-color:var(--plum); }
+  .toggle-switch input:checked + .toggle-track .toggle-thumb{ transform:translateX(15px); }
+  .toggle-switch input:focus-visible + .toggle-track{ outline:2px solid var(--plum); outline-offset:2px; }
+
+  .keep-awake-status{
+    padding:7px 30px; background:var(--plum-wash); border-bottom:1px solid var(--line);
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.03em; color:var(--plum);
+  }
+  .keep-awake-status.warn{ background:rgba(140,58,52,.09); color:var(--danger); }
+
   /* ============================= FLOW TABLE ============================= */
   .recipe-title{ font-size:26px; font-weight:300; margin-bottom:14px; }
   ol.setup{ list-style:none; margin-bottom:16px; display:flex; flex-direction:column; gap:6px; counter-reset:step; }
@@ -711,12 +734,28 @@
       <div class="viewer-head">
         <button class="backlink" id="backToRecipes">← ALL RECIPES</button>
         <div class="viewer-meta" id="viewerMeta"></div>
+        <label class="toggle-switch" title="Keep the screen from timing out while cooking">
+          <input type="checkbox" id="keepAwakeToggle">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-label">KEEP AWAKE</span>
+        </label>
         <button class="btn" id="favouriteBtn">☆ FAVOURITE</button>
         <button class="btn" id="shortlistBtn">+ SHORTLIST</button>
         <button class="btn" id="editRecipeBtn">EDIT</button>
         <button class="btn" id="exportPngBtn">EXPORT PNG</button>
         <button class="btn danger" id="deleteBtn">DELETE</button>
       </div>
+      <div id="keepAwakeStatus" class="keep-awake-status" style="display:none;"></div>
+      <!-- Wake-lock fallback: a silent, near-invisible 2x2px 1-second loop.
+           The real Screen Wake Lock API is blocked on file:// pages (secure
+           contexts only), which is how this app normally runs — this video
+           trick is what actually keeps the screen on in that case. Kept at
+           a tiny non-zero opacity rather than display:none/opacity:0, since
+           some browsers pause fully-hidden media as an optimisation. -->
+      <video id="keepAwakeVideo" loop muted playsinline
+             style="position:fixed; bottom:0; right:0; width:1px; height:1px; opacity:0.01; pointer-events:none;">
+        <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMRbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAA+gAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAjt0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAA+gAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAIAAAACAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAPoAAAAAAABAAAAAAGzbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAQABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABXm1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAR5zdGJsAAAAunN0c2QAAAAAAAAAAQAAAKphdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAIAAgBIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAAMGF2Y0MBQsAK/+EAGGdCwArZH4iIwEQAAAMABAAAAwAIPEiZIAEABWjLg8sgAAAAEHBhc3AAAAABAAAAAQAAABRidHJ0AAAAAAAAFDAAABQwAAAAGHN0dHMAAAAAAAAAAQAAAAEAAEAAAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAABAAAAAQAAABRzdHN6AAAAAAAAAoYAAAABAAAAFHN0Y28AAAAAAAAAAQAAA0EAAABidWR0YQAAAFptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjYwLjE2LjEwMAAAAAhmcmVlAAACjm1kYXQAAAJwBgX//2zcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBILjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5odG1sIC0gb3B0aW9uczogY2FiYWM9MCByZWY9MyBkZWJsb2NrPTE6MDowIGFuYWx5c2U9MHgxOjB4MTExIG1lPWhleCBzdWJtZT03IHBzeT0xIHBzeV9yZD0xLjAwOjAuMDAgbWl4ZWRfcmVmPTEgbWVfcmFuZ2U9MTYgY2hyb21hX21lPTEgdHJlbGxpcz0xIDh4OGRjdD0wIGNxbT0wIGRlYWR6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PS0yIHRocmVhZHM9MSBsb29rYWhlYWRfdGhyZWFkcz0xIHNsaWNlZF90aHJlYWRzPTAgbnI9MCBkZWNpbWF0ZT0xIGludGVybGFjZWQ9MCBibHVyYXlfY29tcGF0PTAgY29uc3RyYWluZWRfaW50cmE9MCBiZnJhbWVzPTAgd2VpZ2h0cD0wIGtleWludD0yNTAga2V5aW50X21pbj0xIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAADmWIhAV///8PRQABQt+A" type="video/mp4">
+      </video>
       <div class="viewer-body"><div id="flowMount"></div></div>
     </section>
 
@@ -1718,7 +1757,8 @@ const state = {
   shoppingWeekIndex: 0,        // which week-bucket the Shopping List is currently showing
   editingRecipeId: null,       // recipe id currently open in the Add/Edit modal, if editing rather than adding
   historyMonth: null,          // {year, month(0-indexed)} the History calendar is currently showing
-  historySelectedDate: null    // ISO date string currently selected in the History calendar, if any
+  historySelectedDate: null,   // ISO date string currently selected in the History calendar, if any
+  keepAwake: false             // whether the "keep screen awake" toggle is currently on (session-only, global — not tied to a specific recipe)
 };
 
 function anyFilterActive(){
@@ -2117,6 +2157,9 @@ function renderViewer(){
   const backLabels = { planner: '← PLANNER', history: '← HISTORY' };
   document.getElementById('backToRecipes').textContent = backLabels[state.viewerReturnTo] || '← ALL RECIPES';
 
+  document.getElementById('keepAwakeToggle').checked = state.keepAwake;
+  updateKeepAwakeStatus();
+
   const n = useCount(recipe);
   const used = lastUsed(recipe);
   const bits = [recipe.source, recipe.time];
@@ -2159,6 +2202,137 @@ function backFromViewer(){
   if(state.viewerReturnTo === 'recipes') renderHome();
 }
 document.getElementById('backToRecipes').addEventListener('click', backFromViewer);
+
+/* =====================================================================
+   KEEP AWAKE — global, session-only (not persisted; resets to off on a
+   fresh load, so it never silently drains the battery days later without
+   being consciously turned on again).
+
+   Tries the real Screen Wake Lock API — it'll be used automatically for
+   free if this app is ever served over HTTPS/localhost. It's blocked on
+   file:// pages (secure-context only), which is how this app normally
+   runs, so the fallback is what actually does the work in practice: a
+   silent, near-invisible looping video, the same trick libraries like
+   NoSleep.js use.
+
+   IMPORTANT ordering constraint, confirmed against a real device: Android
+   Chrome requires video.play() to be called *synchronously*, directly
+   inside the tap that triggers it — nothing awaited beforehand. Once any
+   await happens first (even one that settles almost immediately, like the
+   doomed wakeLock.request() on file://), the browser no longer considers
+   the call to be "within" the original user gesture and silently rejects
+   it. So the video is always kicked off first, unconditionally, before
+   anything else is even attempted — if the native API then also succeeds
+   a moment later, the video is simply paused again since it isn't needed. */
+let wakeLockSentinel = null;
+let usingWakeVideoFallback = false;
+let keepAwakeEnabledAt = null;
+let keepAwakeStatusInterval = null;
+
+/* Live, plain-English status readout, visible right on screen — the point
+   is to make it possible to diagnose this on a real tablet by just reading
+   what it says, with no devtools or console access needed. Runs on an
+   interval while the toggle is on specifically so it can catch the video
+   silently stopping partway through, not just its state at the moment the
+   toggle was flipped. */
+function updateKeepAwakeStatus(){
+  const el = document.getElementById('keepAwakeStatus');
+  if(!state.keepAwake){
+    el.style.display = 'none';
+    el.classList.remove('warn');
+    el.textContent = '';
+    return;
+  }
+  const elapsedSec = keepAwakeEnabledAt ? Math.round((Date.now() - keepAwakeEnabledAt) / 1000) : 0;
+  const elapsedStr = `${Math.floor(elapsedSec/60)}m ${elapsedSec%60}s`;
+  const video = document.getElementById('keepAwakeVideo');
+
+  let text, isWarning = false;
+  if(wakeLockSentinel){
+    text = `KEEP AWAKE ON — using the browser's native screen lock · running ${elapsedStr}`;
+  } else if(usingWakeVideoFallback){
+    const stillPlaying = !video.paused;
+    text = `KEEP AWAKE ON — using fallback method · video still playing: ${stillPlaying ? 'YES' : 'NO, IT STOPPED'} · running ${elapsedStr}`;
+    isWarning = !stillPlaying;
+  } else {
+    text = `KEEP AWAKE — unexpected state, neither method looks active · running ${elapsedStr}`;
+    isWarning = true;
+  }
+  el.style.display = 'block';
+  el.classList.toggle('warn', isWarning);
+  el.textContent = text;
+}
+
+function enableKeepAwake(){
+  const video = document.getElementById('keepAwakeVideo');
+  const videoPlayAttempt = video.play().catch(()=>{});
+
+  return (async ()=>{
+    try{
+      wakeLockSentinel = await navigator.wakeLock.request('screen');
+      wakeLockSentinel.addEventListener('release', ()=>{ wakeLockSentinel = null; });
+      video.pause(); // native worked — don't need the video running too
+      usingWakeVideoFallback = false;
+      return true;
+    }catch(e){
+      /* Expected on file:// — fall back to whatever the video did. It
+         flips .paused to false as soon as playback is accepted, well
+         before its own promise necessarily settles, so judge success
+         from .paused after a brief grace period rather than waiting on
+         a promise that can stall far longer than needed (videoPlayAttempt
+         still has .catch() attached above, so an eventual rejection is
+         handled quietly in the background either way). */
+      await new Promise(res => setTimeout(res, 150));
+      if(!video.paused){
+        usingWakeVideoFallback = true;
+        return true;
+      }
+      return false;
+    }
+  })();
+}
+function disableKeepAwake(){
+  if(wakeLockSentinel){ wakeLockSentinel.release().catch(()=>{}); wakeLockSentinel = null; }
+  document.getElementById('keepAwakeVideo').pause();
+  usingWakeVideoFallback = false;
+}
+/* Only the native lock needs reacquiring after the page is hidden and
+   shown again — it's explicitly released by the browser while hidden.
+   The video fallback doesn't stop on its own, so there's nothing to redo
+   there — which is just as well, since this fires from a visibility
+   event, not a tap, and a fresh video.play() call here wouldn't be
+   allowed anyway. */
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && state.keepAwake && !usingWakeVideoFallback && !wakeLockSentinel){
+    navigator.wakeLock.request('screen').then(lock=>{
+      wakeLockSentinel = lock;
+      lock.addEventListener('release', ()=>{ wakeLockSentinel = null; });
+    }).catch(()=>{});
+  }
+});
+document.getElementById('keepAwakeToggle').addEventListener('change', async e=>{
+  const toggle = e.target;
+  if(toggle.checked){
+    const ok = await enableKeepAwake();
+    if(!ok){
+      toggle.checked = false;
+      state.keepAwake = false;
+      showToast("Couldn't keep the screen awake on this device");
+      return;
+    }
+    state.keepAwake = true;
+    keepAwakeEnabledAt = Date.now();
+    updateKeepAwakeStatus();
+    clearInterval(keepAwakeStatusInterval);
+    keepAwakeStatusInterval = setInterval(updateKeepAwakeStatus, 2000);
+  } else {
+    disableKeepAwake();
+    state.keepAwake = false;
+    keepAwakeEnabledAt = null;
+    clearInterval(keepAwakeStatusInterval);
+    updateKeepAwakeStatus();
+  }
+});
 
 document.getElementById('favouriteBtn').addEventListener('click', ()=>{
   const recipes = loadRecipes();
