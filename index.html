@@ -785,6 +785,27 @@
   }
   .btn.small-danger:hover{ border-color:var(--danger); color:var(--danger); }
 
+  /* ---- Settings ---- */
+  .settings-body{ padding:0 30px 40px; overflow-y:auto; display:flex; flex-direction:column; gap:34px; max-width:820px; }
+  .settings-block .side-label{ margin-bottom:6px; }
+  .settings-block .subtle{ margin-bottom:14px; }
+  /* The lists here sit in a scrolling page, not a fixed-height modal, so they
+     grow with their contents instead of scrolling inside themselves. */
+  .settings-block .sources-list{ max-height:none; overflow:visible; }
+  .alias-form{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  .alias-form input{ flex:1; min-width:150px; }
+  .alias-arrow{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--ink-faint); flex:none;
+  }
+  .alias-pair{ font-size:14.5px; color:var(--ink); }
+  .alias-pair .alias-arrow{ margin:0 8px; }
+  .alias-group-label{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.1em;
+    color:var(--ink-mute); margin:14px 0 2px;
+  }
+  .alias-group-label:first-child{ margin-top:0; }
+
   .swap-form{
     padding:16px; border:1px solid var(--line); border-radius:var(--r); background:var(--card);
     max-width:760px; margin:0 30px;
@@ -947,6 +968,7 @@
     <button class="navlink" data-view="shopping" id="navShopping">SHOPPING</button>
     <button class="navlink" data-view="history">HISTORY</button>
     <button class="navlink" data-view="swaps">SWAPS</button>
+    <button class="navlink" data-view="settings">SETTINGS</button>
 
     <div class="side-rule"></div>
     <div class="side-block">
@@ -966,8 +988,6 @@
     <div class="data-actions">
       <button class="data-link" id="exportDataBtn">EXPORT DATA</button>
       <button class="data-link" id="importDataBtn">IMPORT DATA</button>
-      <button class="data-link" id="manageSourcesBtn">MANAGE SOURCES</button>
-      <button class="data-link" id="manageKeywordsBtn">MANAGE KEYWORDS</button>
       <button class="data-link" id="signOutBtn">SIGN OUT</button>
       <input type="file" id="importFileInput" accept="application/json" style="display:none;">
     </div>
@@ -1143,6 +1163,60 @@
       </div>
       <div id="swapsList" class="swaps-list"></div>
     </section>
+
+    <!-- ================= SETTINGS ================= -->
+    <section id="view-settings" class="view">
+      <div class="filter-head">
+        <div>
+          <h1>Settings</h1>
+          <p class="subtle" style="margin:4px 0 0;">How the app behaves, and the
+            words it treats as the same thing.</p>
+        </div>
+      </div>
+      <div class="settings-body">
+        <div class="settings-block">
+          <div class="side-label">WEEK STARTS ON</div>
+          <p class="subtle">Your planner and shopping list group days into weeks that
+            start on this day. Friday suits a Friday shop.</p>
+          <select class="sort" id="setWeekStart" aria-label="Day the week starts on"></select>
+        </div>
+
+        <div class="settings-block">
+          <div class="side-label">WORD MATCHES</div>
+          <p class="subtle">Things you've told the app are the same. Ingredient matches
+            get added together on the shopping list; source matches stop you being asked
+            about a spelling you've already settled.</p>
+          <div class="alias-form">
+            <input type="text" id="alias-from" placeholder="e.g. spring onion">
+            <span class="alias-arrow">means</span>
+            <input type="text" id="alias-to" placeholder="e.g. spring onions">
+            <select class="sort" id="alias-kind" aria-label="Kind of match">
+              <option value="ingredient">INGREDIENT</option>
+              <option value="source">SOURCE</option>
+            </select>
+            <button class="btn" id="aliasAddBtn">ADD</button>
+          </div>
+          <p class="field-error" id="aliasError" style="display:none;"></p>
+          <div id="aliasesList" class="sources-list"></div>
+        </div>
+
+        <div class="settings-block">
+          <div class="side-label">SOURCES</div>
+          <p class="subtle">Every distinct source currently in use. If two entries are
+            really the same place, merge one into the other — every recipe using it gets
+            renamed. This can't be undone. (Merging renames the recipes you already have;
+            a word match above only stops you being asked again.)</p>
+          <div id="sourcesList" class="sources-list"></div>
+        </div>
+
+        <div class="settings-block">
+          <div class="side-label">KEYWORDS</div>
+          <p class="subtle">Every keyword you can tag a recipe with. Merge duplicates,
+            or delete one to remove it from every recipe carrying it.</p>
+          <div id="keywordsList" class="sources-list"></div>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -1198,30 +1272,6 @@
       <button class="btn primary" id="saveBtn">SAVE RECIPE</button>
       <p class="field-error" id="saveError" style="display:none;"></p>
     </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="sourcesModalOverlay">
-  <div class="modal-panel" role="dialog" aria-modal="true" aria-label="Manage sources">
-    <button class="modal-close" id="closeSourcesModal" aria-label="Close">×</button>
-    <h1>Manage sources</h1>
-    <p class="subtle">Every distinct source currently in use. If two entries
-      are really the same place, merge one into the other — every recipe
-      using it gets renamed. This can't be undone.</p>
-    <div id="sourcesList" class="sources-list"></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="keywordsModalOverlay">
-  <div class="modal-panel" role="dialog" aria-modal="true" aria-label="Manage keywords">
-    <button class="modal-close" id="closeKeywordsModal" aria-label="Close">×</button>
-    <h1>Manage keywords</h1>
-    <p class="subtle">Every keyword in the list, including ones seeded by
-      default that no recipe has used yet (0). Merge two that turned out
-      to be the same idea, or delete one you don't want suggested again —
-      deleting also removes it from any recipe currently tagged with it.
-      Both can't be undone.</p>
-    <div id="keywordsList" class="sources-list"></div>
   </div>
 </div>
 
@@ -2700,6 +2750,7 @@ function showView(name){
   if(name === 'shopping') renderShopping();
   if(name === 'history') renderHistory();
   if(name === 'swaps') renderSwaps();
+  if(name === 'settings') renderSettings();
 }
 document.querySelectorAll('.navlink[data-view]').forEach(btn=>{
   /* Shortlist lives inside the Planner screen (per the mockup), not a screen of its own. */
@@ -4591,23 +4642,6 @@ function renderSourcesList(){
     });
   });
 }
-function openSourcesModal(){
-  renderSourcesList();
-  const overlay = document.getElementById('sourcesModalOverlay');
-  overlay.classList.add('open');
-  overlay.scrollTop = 0;
-  document.body.style.overflow = 'hidden';
-}
-function closeSourcesModal(){
-  document.getElementById('sourcesModalOverlay').classList.remove('open');
-  document.body.style.overflow = '';
-}
-document.getElementById('manageSourcesBtn').addEventListener('click', openSourcesModal);
-document.getElementById('closeSourcesModal').addEventListener('click', closeSourcesModal);
-document.getElementById('sourcesModalOverlay').addEventListener('click', e=>{
-  if(e.target.id === 'sourcesModalOverlay') closeSourcesModal();
-});
-
 /* ------------------------------- Manage Keywords ------------------------------- */
 function keywordCounts(recipes){
   const counts = new Map();
@@ -4698,21 +4732,114 @@ function renderKeywordsList(){
     });
   });
 }
-function openKeywordsModal(){
+/* =====================================================================
+   SETTINGS
+   Sources and keywords used to be two separate sidebar modals. They live
+   here now alongside the week-start setting and the word matches, because
+   all four are the same kind of thing: how the app treats your library
+   rather than what's in it.
+   ===================================================================== */
+function renderSettings(){
+  const sel = document.getElementById('setWeekStart');
+  sel.innerHTML = WEEKDAY_NAMES.map((name, i)=>
+    `<option value="${i}"${i === weekStartDay() ? ' selected' : ''}>${name}</option>`
+  ).join('');
+  renderAliasesList();
+  renderSourcesList();
   renderKeywordsList();
-  const overlay = document.getElementById('keywordsModalOverlay');
-  overlay.classList.add('open');
-  overlay.scrollTop = 0;
-  document.body.style.overflow = 'hidden';
 }
-function closeKeywordsModal(){
-  document.getElementById('keywordsModalOverlay').classList.remove('open');
-  document.body.style.overflow = '';
+
+document.getElementById('setWeekStart').addEventListener('change', e=>{
+  const n = parseInt(e.target.value, 10);
+  if(isNaN(n)) return;
+  setSetting('weekStartDay', n);
+  showToast(`Weeks now start on ${WEEKDAY_NAMES[n]}`);
+  updateSidebarCounts();
+});
+
+/* ------------------------------- Word matches ------------------------------- */
+/* An alias is just two strings and a kind, so there's nothing to "rename" —
+   editing one means deleting it and adding it back, which is what the ADD
+   form is for. FORGET on a kept-separate pair makes the app ask about it
+   again next time it sees both names. */
+function renderAliasesList(){
+  const list = document.getElementById('aliasesList');
+  const all = loadAliases();
+  const matches = all.filter(a=> a.kind === 'ingredient' || a.kind === 'source');
+  const distinct = all.filter(a=> a.kind === 'ingredient_distinct' || a.kind === 'source_distinct');
+
+  if(!matches.length && !distinct.length){
+    list.innerHTML = `<p class="empty">No word matches yet. The shopping list will
+      ask when it spots two names that look like the same ingredient.</p>`;
+    return;
+  }
+
+  const rowsFor = (kind, label)=>{
+    const rows = matches.filter(a=>a.kind===kind)
+      .sort((a,b)=> a.alias.localeCompare(b.alias));
+    if(!rows.length) return '';
+    return `<div class="alias-group-label">${label}</div>` + rows.map(a=>`
+      <div class="source-row">
+        <div class="alias-pair">${escapeHtml(a.alias)}<span class="alias-arrow">means</span>${escapeHtml(a.canonical)}</div>
+        <button class="btn small-danger" data-forget="${a.id}">FORGET</button>
+      </div>`).join('');
+  };
+
+  let html = rowsFor('ingredient', 'INGREDIENTS') + rowsFor('source', 'SOURCES');
+
+  if(distinct.length){
+    html += `<div class="alias-group-label">KEPT SEPARATE — THE APP WON'T ASK AGAIN</div>` +
+      distinct.sort((a,b)=>a.alias.localeCompare(b.alias)).map(a=>{
+        const pair = a.alias.split(' || ');
+        return `<div class="source-row">
+          <div class="alias-pair">${escapeHtml(pair[0]||'')}<span class="alias-arrow">is not</span>${escapeHtml(pair[1]||'')}</div>
+          <button class="btn small-danger" data-forget="${a.id}">ASK AGAIN</button>
+        </div>`;
+      }).join('');
+  }
+
+  list.innerHTML = html;
+
+  list.querySelectorAll('[data-forget]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const entry = loadAliases().find(a=>a.id === btn.dataset.forget);
+      if(!entry) return;
+      if(!confirm('Forget this match? The app may ask about these two again.')) return;
+      removeAlias(entry.id);
+      showToast('Forgotten');
+      renderAliasesList();
+      if(state.view === 'shopping') renderShopping();
+    });
+  });
 }
-document.getElementById('manageKeywordsBtn').addEventListener('click', openKeywordsModal);
-document.getElementById('closeKeywordsModal').addEventListener('click', closeKeywordsModal);
-document.getElementById('keywordsModalOverlay').addEventListener('click', e=>{
-  if(e.target.id === 'keywordsModalOverlay') closeKeywordsModal();
+
+document.getElementById('aliasAddBtn').addEventListener('click', ()=>{
+  const fromEl = document.getElementById('alias-from');
+  const toEl = document.getElementById('alias-to');
+  const errorEl = document.getElementById('aliasError');
+  const kind = document.getElementById('alias-kind').value;
+  /* Ingredient aliases are looked up against the shopping list's normalised
+     name, so they have to be stored in that same form or they'd never match. */
+  const norm = v => kind === 'ingredient' ? normalizeIngredientName(v) : v.trim();
+  const from = norm(fromEl.value);
+  const to = norm(toEl.value);
+
+  errorEl.style.display = 'none';
+  if(!from || !to){
+    errorEl.textContent = 'Fill in both words.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if(from === to){
+    errorEl.textContent = "Those are the same word — nothing to match.";
+    errorEl.style.display = 'block';
+    return;
+  }
+  addAlias(kind, from, to);
+  fromEl.value = ''; toEl.value = '';
+  showToast(`"${from}" now means "${to}"`);
+  renderAliasesList();
+  if(state.view === 'shopping') renderShopping();
 });
 
 /* ------------------------------- Swaps ------------------------------- */
@@ -4823,8 +4950,6 @@ document.getElementById('swapAddBtn').addEventListener('click', ()=>{
 
 document.addEventListener('keydown', e=>{
   if(e.key !== 'Escape') return;
-  if(document.getElementById('keywordsModalOverlay').classList.contains('open')){ closeKeywordsModal(); return; }
-  if(document.getElementById('sourcesModalOverlay').classList.contains('open')){ closeSourcesModal(); return; }
   if(document.getElementById('addModalOverlay').classList.contains('open')){ closeAddModal(); return; }
   if(state.view === 'viewer'){ backFromViewer(); return; }
   if(state.pickingForDate){ state.pickingForDate = null; renderHome(); return; }
@@ -4994,7 +5119,7 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
 function exportAllData(){
   const payload = {
     app: 'Kitchen',
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     recipes: loadRecipes(),
     plan: loadPlan(),
@@ -5002,7 +5127,9 @@ function exportAllData(){
     keywordVocab: loadKeywordVocab(),
     shoppingChecked: loadShoppingChecked(),
     swaps: loadSwaps(),
-    groups: loadGroups()
+    groups: loadGroups(),
+    settings: loadSettings(),
+    aliases: loadAliases()
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -5041,6 +5168,10 @@ function importAllData(file){
     saveShoppingChecked(data.shoppingChecked || {});
     saveSwaps(Array.isArray(data.swaps) ? data.swaps : []);
     saveGroups(Array.isArray(data.groups) ? data.groups : []);
+    /* Both absent from version 1 backups — restoring one of those keeps
+       whatever's already set rather than wiping it. */
+    if(data.settings) saveSettings({ ...loadSettings(), ...data.settings });
+    if(Array.isArray(data.aliases)) saveAliases(data.aliases);
 
     state.selectedRecipeId = null;
     state.editingRecipeId = null;
