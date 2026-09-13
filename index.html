@@ -2698,7 +2698,7 @@ function sourceCounts(recipes){
   });
   return counts;
 }
-function normalizeSourceForMatch(s){
+function normalizeTermForMatch(s){
   return String(s||'').toLowerCase().replace(/'s\b/g,'').replace(/[^\w\s]/g,' ').replace(/\s+/g,' ').trim();
 }
 /* Suggests a likely-existing match for a newly-typed source using
@@ -2709,19 +2709,19 @@ function normalizeSourceForMatch(s){
    and can flag things that turn out not to be the same source — it's
    only ever offered as a dismissible suggestion, never an automatic
    merge, for exactly that reason. */
-function findSimilarSource(newSource, countsBySource){
-  const norm = normalizeSourceForMatch(newSource);
+function findSimilarTerm(newTerm, countsByTerm){
+  const norm = normalizeTermForMatch(newTerm);
   if(!norm) return null;
   let best = null, bestCount = -1;
-  countsBySource.forEach((count, existing)=>{
-    if(existing === newSource) return;
-    const en = normalizeSourceForMatch(existing);
+  countsByTerm.forEach((count, existing)=>{
+    if(existing === newTerm) return;
+    const en = normalizeTermForMatch(existing);
     if(!en) return;
     if(en === norm || en.includes(norm) || norm.includes(en)){
       if(count > bestCount){ best = existing; bestCount = count; }
     }
   });
-  return best ? {source: best, count: bestCount} : null;
+  return best ? {term: best, count: bestCount} : null;
 }
 
 /* =====================================================================
@@ -2743,6 +2743,7 @@ const state = {
   shoppingWeekIndex: 0,        // which week-bucket the Shopping List is currently showing
   shoppingBothWeeks: false,    // showing this week and next as one combined list
   shoppingHideChecked: false,  // hide items already ticked off, for shopping with
+  aliasPrompting: false,       // guards the ingredient-match prompt against re-entering its own re-render
   editingRecipeId: null,       // recipe id currently open in the Add/Edit modal, if editing rather than adding
   historyMonth: null,          // {year, month(0-indexed)} the History calendar is currently showing
   historySelectedDate: null,   // ISO date string currently selected in the History calendar, if any
@@ -4012,8 +4013,12 @@ function parseIngredientAmount(qtyStr){
   const amount = parseFraction(m[1]);
   return amount === null ? null : { amount, unit: normalizeUnit(m[2]) };
 }
+/* What two ingredient lines have to agree on to be totalled together.
+   Prep words are noise here: "2 cloves garlic" and "1 clove garlic, minced"
+   are one entry on a shopping list, however differently the two recipes
+   wrote them. */
 function normalizeIngredientName(rest){
-  return String(rest||'').trim().toLowerCase().replace(/\s+/g,' ');
+  return stripPrepWords(rest, AGGREGATION_PREP_WORDS).replace(/\s+/g,' ').trim();
 }
 /* Reverses a decimal back to the kind of fraction these recipes are
    written in (0.75 -> "3/4"), since that's the notation the ingredient
@@ -4055,14 +4060,22 @@ const PREP_WORDS = [
   'softened','beaten','whisked','drained','rinsed','deseeded','stoned',
   'finely','roughly','thinly','thickly','freshly','fresh','fine','coarse'
 ];
-function stripPrepWordsForCategorizing(name){
+function stripPrepWords(name, words){
   let s = ' ' + String(name||'').toLowerCase() + ' ';
   s = s.replace(/\([^)]*\)/g, ' ');                                  // "(approx. 525 g)", "(skinless and boneless)"
   s = s.replace(/\b(cut|sliced|chopped|diced)\s+into\s+[^,]*/g, ' '); // "sliced into thin strips"
-  PREP_WORDS.forEach(w=>{ s = s.replace(new RegExp('\\b'+w+'\\b','g'), ' '); });
+  words.forEach(w=>{ s = s.replace(new RegExp('\\b'+w+'\\b','g'), ' '); });
   s = s.replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
   return s || String(name||'').toLowerCase(); // don't return empty if we stripped everything
 }
+function stripPrepWordsForCategorizing(name){
+  return stripPrepWords(name, PREP_WORDS);
+}
+/* Totalling is stricter than categorising about one word: "ground coriander"
+   is seed and "coriander" is leaf, and adding them together would put a
+   wrong number on the shopping list. Categorising can afford to be loose —
+   both belong under Produce either way. */
+const AGGREGATION_PREP_WORDS = PREP_WORDS.filter(w=> w !== 'ground');
 const SHOPPING_CATEGORIES = [
   { name:'Spices & Seasoning', keywords:['salt','pepper','oregano','cumin','paprika','cinnamon','chilli flakes','chili flakes','cayenne','turmeric','nutmeg','dried thyme','dried rosemary','dried basil','bay leaf','seasoning','garam masala','chilli powder','chili powder','spice'] },
   { name:'Dairy & Eggs', keywords:['cheese','parmesan','feta','cheddar','mozzarella','butter','milk','cream','yogurt','yoghurt','egg'] },
@@ -4164,7 +4177,7 @@ function buildShoppingList(weekDays){
   lineItems.forEach(({recipeTitle, raw})=>{
     const {qty, rest} = splitQty(raw);
     const parsedQty = parseIngredientAmount(qty);
-    const normName = normalizeIngredientName(rest);
+    const normName = applyIngredientAlias(normalizeIngredientName(rest));
     /* Key on the base unit, not the written one — otherwise kg and g are
        two different shelves for the same ingredient. */
     const based = parsedQty ? toBaseUnit(parsedQty.amount, parsedQty.unit) : null;
@@ -4205,7 +4218,39 @@ function buildShoppingList(weekDays){
     .filter(name => byCategory[name] && byCategory[name].length)
     .map(name => ({ name, items: byCategory[name].sort((a,b)=>a.name.localeCompare(b.name)) }));
 
-  return { categories, totalItems: items.length, recipeCount: recipeTitles.size };
+  return {
+    categories, totalItems: items.length, recipeCount: recipeTitles.size,
+    suggestions: findIngredientMatchSuggestions(items)
+  };
+}
+
+/* Names on this list that look like they might be the same ingredient.
+   buildShoppingList only ever *reports* these — it runs on every planner
+   change via updateSidebarCounts, so it must stay free of side effects and
+   must never put a dialog in front of anyone. renderShopping does the
+   asking. */
+function findIngredientMatchSuggestions(items){
+  const counts = new Map();
+  items.forEach(it=>{
+    const name = it.key.split('|')[0];
+    if(name) counts.set(name, (counts.get(name) || 0) + it.count);
+  });
+
+  const seen = new Set();
+  const out = [];
+  counts.forEach((count, name)=>{
+    const match = findSimilarTerm(name, counts);
+    if(!match) return;
+    const pair = pairKeyFor(name, match.term);
+    if(seen.has(pair)) return;
+    seen.add(pair);
+    if(isPairDistinct('ingredient', name, match.term)) return;
+    /* Fold the rarer spelling into the commoner one, so the name that
+       survives is the one the library already mostly uses. */
+    const [from, to] = count <= match.count ? [name, match.term] : [match.term, name];
+    out.push({ from, to });
+  });
+  return out;
 }
 
 /* ------------------------------- Rendering ------------------------------- */
@@ -4239,7 +4284,7 @@ function renderShopping(){
     : (buckets[state.shoppingWeekIndex] || []);
   const weekStartIso = weekStartIsoOf(weekDays);
   const keyPrefix = both ? 'both|' : '';
-  const { categories: allCategories, totalItems, recipeCount } = buildShoppingList(weekDays);
+  const { categories: allCategories, totalItems, recipeCount, suggestions } = buildShoppingList(weekDays);
   const checkedForWeek = loadShoppingChecked()[weekStartIso] || {};
 
   /* Hiding ticked items can empty a category out; drop the heading too
@@ -4311,6 +4356,41 @@ function renderShopping(){
       ${rows}
     </div>`;
   }).join('');
+
+  /* Asked last, with the list already on screen behind the dialog, so the
+     question has visible context. Any answer changes the totals, so the
+     list is rebuilt once afterwards rather than per answer. */
+  if(promptIngredientMatches(suggestions)) renderShopping();
+}
+
+/* At most three questions per visit — enough to tidy up a list over a few
+   weeks, few enough that opening the Shopping List never turns into an
+   interrogation. Both answers are remembered: "yes" as a match, "no" as a
+   pair to stop asking about. */
+const MAX_MATCH_PROMPTS = 3;
+function promptIngredientMatches(suggestions){
+  if(!suggestions || !suggestions.length) return false;
+  if(state.aliasPrompting) return false; // re-entrancy: renderShopping calls this, and this calls renderShopping
+  state.aliasPrompting = true;
+  let changed = false;
+  try{
+    suggestions.slice(0, MAX_MATCH_PROMPTS).forEach(({from, to})=>{
+      if(isPairDistinct('ingredient', from, to)) return; // settled by an earlier answer in this same run
+      const same = confirm(
+        `Are these the same ingredient?\n\n` +
+        `    ${from}\n    ${to}\n\n` +
+        `OK to add them together on the shopping list from now on, ` +
+        `Cancel to keep them as two separate items.`
+      );
+      if(same) addAlias('ingredient', from, to);
+      else addAlias('ingredient_distinct', pairKeyFor(from, to), '');
+      changed = true;
+    });
+  } finally {
+    state.aliasPrompting = false;
+  }
+  if(changed) renderAliasesList();
+  return changed;
 }
 
 /* ------------------------------- One-time listeners ------------------------------- */
@@ -4875,8 +4955,12 @@ function renderSourcesList(){
       const recipes2 = loadRecipes();
       recipes2.forEach(r=>{ if(r.source === from) r.source = to; });
       if(!saveRecipesList(recipes2)) return;
+      /* Record the decision, so typing the old spelling on the next recipe
+         quietly lands on the merged one instead of recreating the split. */
+      addAlias('source', from, to);
       showToast(`Merged "${from}" into "${to}"`);
       renderSourcesList();
+      renderAliasesList();
       if(state.view === 'recipes') renderHome();
     });
   });
@@ -5310,17 +5394,29 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     ? (loadRecipes().find(r=>r.id === state.editingRecipeId) || {}).source
     : null;
   if(source !== priorSource){
-    const match = findSimilarSource(source, sourceCounts(loadRecipes()));
-    if(match){
-      const useExisting = confirm(
-        `This looks similar to an existing source: "${match.source}" ` +
-        `(used on ${match.count} recipe${match.count===1?'':'s'}).\n\n` +
-        `Use "${match.source}" instead of "${source}"?\n\n` +
-        `OK to use the existing source, Cancel to keep your own spelling.`
-      );
-      if(useExisting){
-        source = match.source;
-        document.getElementById('f-source').value = source;
+    /* A spelling already settled once just gets used — no second prompt. */
+    const known = applySourceAlias(source);
+    if(known !== source){
+      source = known;
+      document.getElementById('f-source').value = source;
+    } else {
+      const match = findSimilarTerm(source, sourceCounts(loadRecipes()));
+      if(match && !isPairDistinct('source', source, match.term)){
+        const useExisting = confirm(
+          `This looks similar to an existing source: "${match.term}" ` +
+          `(used on ${match.count} recipe${match.count===1?'':'s'}).\n\n` +
+          `Use "${match.term}" instead of "${source}"?\n\n` +
+          `OK to use the existing source, Cancel to keep your own spelling.`
+        );
+        if(useExisting){
+          addAlias('source', source, match.term);
+          source = match.term;
+          document.getElementById('f-source').value = source;
+        } else {
+          /* Remembering the "no" is the half that was missing: without it
+             the same pair got asked about on every single save. */
+          addAlias('source_distinct', pairKeyFor(source, match.term), '');
+        }
       }
     }
   }
