@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <style>
   :root{
     --paper:#F5F1E6;
@@ -883,9 +884,60 @@
     .tablewrap tr, .shop-item, .shop-category{ page-break-inside:avoid; }
     @page{ size:A4; margin:14mm; }
   }
+
+  /* ---- Sign-in gate ---- */
+  #loginGate{
+    position:fixed; inset:0; z-index:9000;
+    background:var(--shell);
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  #loginGate[hidden]{ display:none; }
+  .login-card{
+    background:var(--card); border:1px solid var(--line);
+    border-radius:var(--r); padding:32px; width:100%; max-width:360px;
+  }
+  .login-card h1{
+    font-family:'IBM Plex Mono', monospace; font-size:18px; font-weight:500;
+    letter-spacing:.08em; text-transform:uppercase; margin-bottom:6px;
+  }
+  .login-card p{ color:var(--ink-soft); font-size:13px; margin-bottom:22px; }
+  .login-card label{
+    display:block; font-family:'IBM Plex Mono', monospace; font-size:10px;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--ink-mute); margin-bottom:5px;
+  }
+  .login-card input{
+    width:100%; padding:9px 10px; margin-bottom:16px;
+    background:var(--paper); border:1px solid var(--line); border-radius:var(--r);
+    color:var(--ink); font-size:14px;
+  }
+  .login-card input:focus{ outline:none; border-color:var(--plum); }
+  .login-card button{
+    width:100%; padding:10px; border:none; border-radius:var(--r);
+    background:var(--plum); color:#fff; cursor:pointer;
+    font-family:'IBM Plex Mono', monospace; font-size:11px;
+    letter-spacing:.1em; text-transform:uppercase;
+  }
+  .login-card button:hover{ background:var(--plum-lift); }
+  .login-card button[disabled]{ opacity:.55; cursor:default; }
+  .login-error{
+    color:var(--danger); font-size:12.5px; margin-bottom:14px; min-height:0;
+  }
+  .login-error[hidden]{ display:none; }
 </style>
 </head>
 <body>
+<div id="loginGate" hidden>
+  <form class="login-card" id="loginForm">
+    <h1>Kitchen</h1>
+    <p>Sign in to load your recipes.</p>
+    <div class="login-error" id="loginError" hidden></div>
+    <label for="loginEmail">Email</label>
+    <input type="email" id="loginEmail" autocomplete="username" required>
+    <label for="loginPassword">Password</label>
+    <input type="password" id="loginPassword" autocomplete="current-password" required>
+    <button type="submit" id="loginSubmit">Sign in</button>
+  </form>
+</div>
 <div class="app">
   <nav class="sidebar">
     <div class="brand">Kitchen</div>
@@ -916,7 +968,7 @@
       <button class="data-link" id="importDataBtn">IMPORT DATA</button>
       <button class="data-link" id="manageSourcesBtn">MANAGE SOURCES</button>
       <button class="data-link" id="manageKeywordsBtn">MANAGE KEYWORDS</button>
-      <button class="data-link" id="generateSampleHistoryBtn">GENERATE SAMPLE HISTORY</button>
+      <button class="data-link" id="signOutBtn">SIGN OUT</button>
       <input type="file" id="importFileInput" accept="application/json" style="display:none;">
     </div>
   </nav>
@@ -1975,32 +2027,191 @@ function exportNodeAsPng(node, filename, opts){
   });
 }
 
-/* ============================= STORAGE ============================= */
-const RECIPES_KEY = 'kitchen_recipes_v1';
-const KEYWORDS_KEY = 'kitchen_keywords_v1';
-const PLAN_KEY = 'kitchen_plan_v1';
-const SHORTLIST_KEY = 'kitchen_shortlist_v1';
+/* ============================= STORAGE =============================
+   The whole library is held in memory for the life of the session: it's
+   hydrated once at sign-in, every read below is synchronous off that
+   cache, and every write updates the cache immediately and queues a
+   background push to Supabase. Deliberately not an offline-sync engine —
+   offline use isn't a requirement, so there's no second copy on the
+   device to reconcile and no source of truth to drift from.
 
-function loadRecipes(){
-  try{ const raw = localStorage.getItem(RECIPES_KEY); return raw ? JSON.parse(raw) : []; }
-  catch(e){ console.error('Could not read saved recipes', e); return []; }
+   Every load/save signature is unchanged from the localStorage version
+   this replaced, so the render and UI code above and below still calls
+   them synchronously and doesn't know the backend exists. */
+const SUPABASE_URL = 'https://mhkayefzrtceesgizkjs.supabase.co';
+/* Publishable key — meant to be public, and safe in this repo. Every table
+   is guarded by row-level security keyed to the signed-in user's household,
+   so this key on its own grants nothing. */
+const SUPABASE_KEY = 'sb_publishable_fH3SOU5nVJE6nsXIlffidg_mVKayaEH';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true }
+});
+
+let HOUSEHOLD_ID = null;
+const cache = {
+  recipes: [], keywords: [], plan: {}, shortlist: [],
+  groups: [], swaps: [], shoppingChecked: {}
+};
+
+/* Writes are queued rather than fired off in parallel, so two edits made in
+   quick succession can't land out of order. A push that fails is surfaced
+   once — the cache would otherwise quietly disagree with the server. */
+let writeQueue = Promise.resolve();
+function queueWrite(label, fn){
+  writeQueue = writeQueue.then(fn).catch(err=>{
+    console.error('Sync failed:', label, err);
+    showToast(`Couldn't save ${label} — check your connection`);
+  });
+  return true;
 }
+
+/* Replace-the-whole-list push, mirroring what the old localStorage writes
+   did: whatever list the caller hands over becomes the truth. Rows present
+   are upserted; rows the caller dropped are deleted. Fine at this library's
+   scale — worth revisiting only if the row counts grow by an order or two. */
+async function pushList(table, rows){
+  if(rows.length){
+    const { error } = await sb.from(table).upsert(rows);
+    if(error) throw error;
+  }
+  let q = sb.from(table).delete().eq('household_id', HOUSEHOLD_ID);
+  if(rows.length) q = q.not('id', 'in', `(${rows.map(r=>r.id).join(',')})`);
+  const { error } = await q;
+  if(error) throw error;
+}
+
+function recipeToRow(r){
+  return {
+    id: r.id,
+    household_id: HOUSEHOLD_ID,
+    title: r.title,
+    source: r.source,
+    source_url: r.sourceUrl || null,
+    image_url: r.imageUrl || null,
+    time_text: r.time || '',
+    servings: (r.servings === undefined || r.servings === '') ? null : r.servings,
+    favourite: !!r.favourite,
+    equipment: r.equipment || '',
+    tags: r.tags || {course:null, keywords:[]},
+    syntax: r.syntax,
+    date_added: r.dateAdded || todayStr(),
+    updated_at: new Date().toISOString()
+  };
+}
+function rowToRecipe(row, historyById){
+  return {
+    id: row.id,
+    title: row.title,
+    source: row.source,
+    sourceUrl: row.source_url,
+    imageUrl: row.image_url,
+    time: row.time_text,
+    servings: row.servings,
+    favourite: row.favourite,
+    equipment: row.equipment || '',
+    tags: row.tags || {course:null, keywords:[]},
+    syntax: row.syntax,
+    history: historyById[row.id] || [],
+    dateAdded: row.date_added
+  };
+}
+
+/* Pulls everything down in one round of parallel queries at sign-in.
+   `history` is stitched back onto each recipe from recipe_logs so the
+   in-memory recipe object keeps the exact shape the rest of the app
+   already expects. */
+async function hydrate(){
+  const { data: memberships, error: mErr } = await sb
+    .from('household_members').select('household_id').limit(1);
+  if(mErr) throw mErr;
+  if(!memberships.length) throw new Error("This account isn't linked to a household yet.");
+  HOUSEHOLD_ID = memberships[0].household_id;
+
+  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked] = await Promise.all([
+    sb.from('recipes').select('*'),
+    sb.from('recipe_logs').select('recipe_id, cooked_on').not('recipe_id','is',null),
+    sb.from('keywords').select('name').order('sort_order'),
+    sb.from('planner_days').select('*'),
+    sb.from('shortlist_items').select('*').order('date_added', {ascending:false}),
+    sb.from('meal_groups').select('*'),
+    sb.from('ingredient_swaps').select('*'),
+    sb.from('shopping_checked').select('week_start, item_key')
+  ]);
+  for(const res of [recipes, logs, keywords, planner, shortlist, groups, swaps, checked]){
+    if(res.error) throw res.error;
+  }
+
+  const historyById = {};
+  logs.data.forEach(l=>{
+    (historyById[l.recipe_id] = historyById[l.recipe_id] || []).push(l.cooked_on);
+  });
+  Object.values(historyById).forEach(dates=>dates.sort());
+
+  cache.recipes = recipes.data.map(row=>rowToRecipe(row, historyById));
+  cache.keywords = keywords.data.map(k=>k.name);
+  cache.plan = {};
+  planner.data.forEach(row=>{
+    cache.plan[row.plan_date] = row.is_blank ? {blank:true} : {recipeIds: row.recipe_ids || []};
+  });
+  cache.shortlist = shortlist.data.map(row=>({
+    id: row.id, text: row.text || '', dateAdded: row.date_added, recipeId: row.recipe_id
+  }));
+  cache.groups = groups.data.map(row=>({
+    id: row.id, dateIso: row.date_iso, recipeIds: row.recipe_ids || [], name: row.name || ''
+  }));
+  cache.swaps = swaps.data.map(row=>({
+    id: row.id, original: row.original, replacement: row.replacement,
+    ratio: row.ratio || '', notes: row.notes || ''
+  }));
+  cache.shoppingChecked = {};
+  checked.data.forEach(row=>{
+    (cache.shoppingChecked[row.week_start] = cache.shoppingChecked[row.week_start] || {})[row.item_key] = true;
+  });
+}
+
+function loadRecipes(){ return cache.recipes; }
 function saveRecipesList(list){
-  try{ localStorage.setItem(RECIPES_KEY, JSON.stringify(list)); return true; }
-  catch(e){
-    console.error('Could not save recipes', e);
-    alert("Couldn't save — the browser's storage is full. Delete a recipe or two and try again.");
-    return false;
+  cache.recipes = list;
+  return queueWrite('recipes', ()=> pushList('recipes', list.map(recipeToRow)));
+}
+/* Only used by a restore-from-backup, where the incoming recipes carry their
+   own history. Normal cooking logs go through logRecipeUsed, one row at a
+   time, rather than rewriting every log on every save. */
+async function replaceAllRecipeLogs(list){
+  const del = await sb.from('recipe_logs').delete().eq('household_id', HOUSEHOLD_ID).not('recipe_id','is',null);
+  if(del.error) throw del.error;
+  const rows = list.flatMap(r=>(r.history||[]).map(d=>({
+    household_id: HOUSEHOLD_ID, recipe_id: r.id, cooked_on: d
+  })));
+  if(rows.length){
+    const { error } = await sb.from('recipe_logs').insert(rows);
+    if(error) throw error;
   }
 }
-function loadKeywordVocab(){
-  try{ const raw = localStorage.getItem(KEYWORDS_KEY); return raw ? JSON.parse(raw) : []; }
-  catch(e){ return []; }
+function loadKeywordVocab(){ return cache.keywords; }
+async function pushKeywords(list){
+  if(list.length){
+    const rows = list.map((name, i)=>({ household_id: HOUSEHOLD_ID, name, sort_order: i }));
+    const { error } = await sb.from('keywords').upsert(rows, { onConflict: 'household_id,name' });
+    if(error) throw error;
+  }
+  let q = sb.from('keywords').delete().eq('household_id', HOUSEHOLD_ID);
+  if(list.length){
+    q = q.not('name', 'in', `(${list.map(n=>`"${String(n).replace(/"/g,'""')}"`).join(',')})`);
+  }
+  const { error } = await q;
+  if(error) throw error;
+}
+function saveKeywordVocab(list){
+  cache.keywords = list;
+  return queueWrite('keywords', ()=> pushKeywords(list));
 }
 function mergeKeywordVocab(newKeywords){
   const existing = new Set(loadKeywordVocab());
+  const before = existing.size;
   (newKeywords||[]).forEach(k=>{ if(k) existing.add(k); });
-  try{ localStorage.setItem(KEYWORDS_KEY, JSON.stringify(Array.from(existing))); }catch(e){}
+  if(existing.size === before) return;
+  saveKeywordVocab(Array.from(existing));
 }
 /* Every keyword worth suggesting: the persisted vocab plus anything a
    recipe is currently tagged with (covers the rare case where a keyword
@@ -2013,8 +2224,7 @@ function fullKeywordVocab(recipes){
   ]));
 }
 function removeKeywordFromVocab(keyword){
-  const remaining = loadKeywordVocab().filter(k=>k!==keyword);
-  try{ localStorage.setItem(KEYWORDS_KEY, JSON.stringify(remaining)); }catch(e){}
+  saveKeywordVocab(loadKeywordVocab().filter(k=>k!==keyword));
 }
 /* Occasion used to be its own small dropdown (Weeknight/Sunday/Guests),
    kept separate from keywords on the theory that it described a different
@@ -2024,79 +2234,28 @@ function removeKeywordFromVocab(keyword){
    both "Weeknight" and "Guests" at once, which a single-value field never
    allowed. Seeded once, on first run, so they're visible from day one
    rather than waiting for anyone to type each one in by hand first. */
-/* Order matters here, not just for its own sake: only the first
-   SUGGESTED_KEYWORD_LIMIT (12) entries in vocab order surface as
-   one-tap "ghost" chips on Home — everything past that is datalist-only,
-   effectively invisible unless you already know to type it. Meal-base
-   words (former PROTEIN values, now plain keywords) are what people
-   filter by most often day to day, so they lead the list; rhythm/event
-   keywords like Christmas or Weeknight follow after. */
-const STARTER_KEYWORDS = [
-  'Chicken','Beef','Fish','Veg','Pulses','Pasta','Rice','Orzo','Risotto',
-  'Weeknight','Sunday','Guests',
-  'Christmas','Boxing Day','Easter','Bonfire Night','Halloween',
-  "Valentine's",'Thanksgiving','Birthday','BBQ','Picnic','Party',
-  'Potluck','Date Night','Batch'
-];
-function seedKeywordVocabIfEmpty(){
-  if(loadKeywordVocab().length > 0) return;
-  mergeKeywordVocab(STARTER_KEYWORDS);
-}
-/* One-time cleanup for recipes saved before Occasion was removed. Anything
-   still carrying a tags.occasion value gets that value folded into
-   tags.keywords (so "Weeknight roasts" tagged that way keep matching the
-   Saved Views that used to read occasion directly, now rebased onto
-   keywords) before the field itself is dropped. Runs on every load but
-   only ever writes once — after the first pass every recipe's occasion
-   key is gone, so there's nothing left to migrate and it's a no-op. */
-function migrateOccasionToKeywords(){
-  const recipes = loadRecipes();
-  let changed = false;
-  recipes.forEach(r=>{
-    if(!r.tags || !('occasion' in r.tags)) return;
-    const occ = r.tags.occasion;
-    if(occ){
-      if(!Array.isArray(r.tags.keywords)) r.tags.keywords = [];
-      if(!r.tags.keywords.includes(occ)) r.tags.keywords.push(occ);
-    }
-    delete r.tags.occasion;
-    changed = true;
-  });
-  if(changed){
-    saveRecipesList(recipes);
-    mergeKeywordVocab(recipes.flatMap(r=>(r.tags && r.tags.keywords) || []));
+
+function loadPlan(){ return cache.plan; }
+async function pushPlan(p){
+  const rows = Object.entries(p).map(([date, entry])=>({
+    household_id: HOUSEHOLD_ID,
+    plan_date: date,
+    is_blank: !!entry.blank,
+    recipe_ids: planRecipeIds(entry),
+    updated_at: new Date().toISOString()
+  }));
+  if(rows.length){
+    const { error } = await sb.from('planner_days').upsert(rows, { onConflict: 'household_id,plan_date' });
+    if(error) throw error;
   }
-}
-/* One-time cleanup for recipes saved before PROTEIN was removed as its own
-   single-value field. Same shape as the Occasion migration above: fold
-   any existing tags.protein value into tags.keywords, then drop the field
-   entirely, so "Chicken" still matches once PROTEIN stops being read
-   anywhere. Runs on every load but only ever writes once. */
-function migrateProteinToKeywords(){
-  const recipes = loadRecipes();
-  let changed = false;
-  recipes.forEach(r=>{
-    if(!r.tags || !('protein' in r.tags)) return;
-    const p = r.tags.protein;
-    if(p){
-      if(!Array.isArray(r.tags.keywords)) r.tags.keywords = [];
-      if(!r.tags.keywords.includes(p)) r.tags.keywords.push(p);
-    }
-    delete r.tags.protein;
-    changed = true;
-  });
-  if(changed){
-    saveRecipesList(recipes);
-    mergeKeywordVocab(recipes.flatMap(r=>(r.tags && r.tags.keywords) || []));
-  }
-}
-function loadPlan(){
-  try{ const raw = localStorage.getItem(PLAN_KEY); return raw ? JSON.parse(raw) : {}; }
-  catch(e){ return {}; }
+  let q = sb.from('planner_days').delete().eq('household_id', HOUSEHOLD_ID);
+  if(rows.length) q = q.not('plan_date', 'in', `(${rows.map(r=>r.plan_date).join(',')})`);
+  const { error } = await q;
+  if(error) throw error;
 }
 function savePlan(p){
-  try{ localStorage.setItem(PLAN_KEY, JSON.stringify(p)); return true; }
-  catch(e){ alert("Couldn't save the plan — the browser's storage may be full."); return false; }
+  cache.plan = p;
+  return queueWrite('the plan', ()=> pushPlan(p));
 }
 /* A day can hold more than one recipe now (a main, a side, and a dessert;
    or a main plus an unrelated batch of biscuits) — see the findings doc.
@@ -2143,14 +2302,13 @@ function removePlanRecipeAt(dateStr, index){
    by index) — an id-based group survives that; an index-based one wouldn't.
    Scoped per dateIso so the same recipe grouped on two different days (or
    assigned twice the same day) doesn't create cross-day ambiguity. */
-const GROUPS_KEY = 'kitchen_groups_v1';
-function loadGroups(){
-  try{ const raw = localStorage.getItem(GROUPS_KEY); return raw ? JSON.parse(raw) : []; }
-  catch(e){ return []; }
-}
+function loadGroups(){ return cache.groups; }
 function saveGroups(list){
-  try{ localStorage.setItem(GROUPS_KEY, JSON.stringify(list)); return true; }
-  catch(e){ alert("Couldn't save — the browser's storage may be full."); return false; }
+  cache.groups = list;
+  return queueWrite('meal groups', ()=> pushList('meal_groups', list.map(g=>({
+    id: g.id, household_id: HOUSEHOLD_ID, date_iso: g.dateIso,
+    recipe_ids: g.recipeIds || [], name: g.name || ''
+  }))));
 }
 function groupsForDate(dateIso){
   return loadGroups().filter(g=>g.dateIso===dateIso);
@@ -2184,13 +2342,13 @@ function clearGroupsForDate(dateIso){
   saveGroups(loadGroups().filter(g=>g.dateIso!==dateIso));
 }
 
-function loadShortlist(){
-  try{ const raw = localStorage.getItem(SHORTLIST_KEY); return raw ? JSON.parse(raw) : []; }
-  catch(e){ return []; }
-}
+function loadShortlist(){ return cache.shortlist; }
 function saveShortlist(list){
-  try{ localStorage.setItem(SHORTLIST_KEY, JSON.stringify(list)); return true; }
-  catch(e){ alert("Couldn't save the shortlist — the browser's storage may be full."); return false; }
+  cache.shortlist = list;
+  return queueWrite('the shortlist', ()=> pushList('shortlist_items', list.map(i=>({
+    id: i.id, household_id: HOUSEHOLD_ID, text: i.text || '',
+    recipe_id: i.recipeId || null, date_added: i.dateAdded || todayStr()
+  }))));
 }
 function addShortlistNote(text){
   const list = loadShortlist();
@@ -2323,7 +2481,7 @@ const DEFAULT_TAGS = {
   course:   ['Breakfast','Main','Side','Dessert','Bread','Baking','Snack']
   /* protein used to live here as its own vocab list — removed along with
      the field itself; Chicken/Beef/Fish/Veg/Pulses/Pasta/Rice/Orzo/
-     Risotto now live in STARTER_KEYWORDS instead. */
+     Risotto are ordinary keywords now. */
 };
 /* Display order for grouping multiple recipes assigned to one Planner day —
    breakfast first, then meal components, then bread, then standalone
@@ -2379,270 +2537,6 @@ function findSimilarSource(newSource, countsBySource){
     }
   });
   return best ? {source: best, count: bestCount} : null;
-}
-
-/* ============================= SEED ============================= */
-function seedIfEmpty(){
-  if(loadRecipes().length > 0) return;
-
-  const greekPotatoHashSyntax = [
-'TITLE: Greek Potato Hash',
-"SOURCE: Nicky's Kitchen Sanctuary",
-'TIME: 35 min',
-'TAGS: course=Main, protein=Veg',
-'',
-'GROUP potatoes:',
-'500g potatoes, chopped into chunks',
-'',
-'GROUP oil:',
-'3 tbsp olive oil',
-'',
-'GROUP aromatics:',
-'1/2 a red onion, peeled and thinly sliced',
-'2 cloves garlic, peeled and crushed/grated',
-'1 tsp dried oregano',
-'1/4 tsp salt',
-'1/4 tsp ground black pepper',
-'',
-'GROUP topping:',
-'150g feta cheese, crumbled',
-'zest of 1 lemon',
-'small handful flat-leaf parsley, roughly chopped',
-'',
-'STAGE:',
-'MERGE potatoes -> potatoes: Boil until tender — a knife should slide in easily [10-13 min]',
-'',
-'STAGE:',
-"MERGE potatoes -> potatoes: Drain, rest in colander to steam off excess moisture [1 min]",
-'',
-'STAGE:',
-'MERGE potatoes, oil -> hash: Fry in hot oil, crushing slightly with a fork, turning until browned [6-8 min]',
-'',
-'STAGE:',
-"MERGE hash, aromatics -> hash: Add, cook more, stirring often so it doesn't stick [3-4 min]",
-'',
-'STAGE:',
-'MERGE hash, topping -> hash: Off heat — crumble feta, lemon zest and parsley over the top, serve',
-'',
-'NOTES:',
-'Oil can spit when the potatoes go in — add them carefully.',
-'Make-ahead: boil the potatoes up to a day in advance, cool, cover, and refrigerate.',
-'Makes 4 small side-dish portions.'
-  ].join('\n');
-
-  const honeyGarlicChickenSyntax = [
-'TITLE: Honey Garlic Chicken',
-"SOURCE: Nicky's Kitchen Sanctuary",
-'IMAGE: https://www.kitchensanctuary.com/wp-content/uploads/2019/11/Honey-Garlic-Chicken-wide-FS-79.jpg',
-'TIME: 20 min',
-'TAGS: course=Main, protein=Chicken',
-'',
-'GROUP chicken:',
-'8 chicken thighs (skinless and boneless)',
-'2 tbsp cornflour (cornstarch)',
-'1/2 tsp salt',
-'1/2 tsp pepper',
-'',
-'GROUP oil:',
-'2 tbsp vegetable oil',
-'',
-'GROUP aromatics:',
-'1 tbsp unsalted butter',
-'4 cloves minced garlic',
-'',
-'GROUP sauce:',
-'110 g (1/3 cup) honey',
-'80 ml (1/3 cup) chicken stock',
-'1 tbsp rice vinegar',
-'1 tbsp light soy sauce',
-'',
-'GROUP garnish:',
-'1 tbsp finely chopped fresh parsley',
-'1/2 tsp chilli flakes',
-'',
-'GROUP rice:',
-'boiled rice, to serve',
-'',
-'STAGE:',
-'MERGE chicken -> coated: toss in cornflour, salt & pepper until fully coated',
-'',
-'STAGE:',
-'MERGE coated, oil -> fried: fry in hot oil over high heat, first side until golden, flip, cook until done [6-7 min]',
-'',
-'STAGE:',
-"MERGE fried, aromatics -> garlicky: melt butter, add garlic, stir; turn heat down to medium so the garlic doesn't burn [until fragrant]",
-'MERGE sauce -> mixed_sauce: stir honey, stock, rice vinegar & soy sauce together in a bowl',
-'',
-'STAGE:',
-'MERGE garlicky, mixed_sauce -> saucy: add sauce to pan, turn heat up, boil then simmer until reduced & sticky, chicken cooked through (no longer pink in the middle) [4-5 min]',
-'',
-'STAGE:',
-'MERGE saucy, garnish -> topped: sprinkle over parsley and chilli flakes',
-'',
-'STAGE:',
-'MERGE topped, rice -> plated: serve over boiled rice',
-'',
-'NOTES:',
-'Chicken breast can be used instead — slice into thick strips or flatten with a rolling pin so it cooks through evenly.',
-'For gluten-free: use tamari instead of soy sauce, gluten-free stock, and check your rice vinegar brand.',
-'Leftovers/freezing: cook, cool quickly, cover and refrigerate or freeze; reheat covered in foil at 180°C/350°F for 12-15 min until piping hot.',
-'Swaps: rice vinegar → apple cider or white wine vinegar + 1/4 tsp sugar; light soy sauce → 3/4 tbsp dark soy sauce; vegetable oil → any neutral high-heat oil (rapeseed, sunflower, ghee).',
-'Nutrition figures are per serving and exclude the rice.'
-  ].join('\n');
-
-  const viralParmesanPotatoesSyntax = [
-'TITLE: Viral Parmesan Potatoes',
-'SOURCE: Poppy Cooks',
-'IMAGE: https://www.poppycooks.com/wp-content/uploads/2024/07/IMG_3404.jpeg',
-'TAGS: course=Side',
-'',
-'GROUP potatoes:',
-'500g baby potatoes',
-'',
-'GROUP coating:',
-'2 handfuls grated parmesan',
-'2 garlic cloves, grated',
-'1 heaped tsp dried oregano',
-'Salt, pepper and oil',
-'',
-'STAGE:',
-'MERGE potatoes -> boiled: boil in cold salted water until tender and falling off a knife, then drain and cover with a tea towel to steam dry',
-'MERGE coating -> oil_mix: mix together in a baking tray, spread out evenly',
-'',
-'STAGE:',
-'MERGE boiled, oil_mix -> assembled: cut potatoes in half lengthways, place cut-side down into the oil/parmesan mixture',
-'',
-'STAGE:',
-"MERGE assembled -> roasted: roast 30–40 min at 180°C/350°F until golden, crispy and delicious — check at 20 min and drain off excess oil from the tray if there's too much",
-'',
-'NOTES:',
-'Serve with creamy tomato chicken breast, or with steak and peppercorn sauce.'
-  ].join('\n');
-
-  /* Seeded specifically to demonstrate the timeline strip (14 Aug): the
-     dry mix and the creamed butter/sugar are genuinely independent until
-     the "fold together" step, which the flow table's left-to-right
-     column order alone doesn't make obvious — the timeline surfaces the
-     ~4 minutes the dry mix sits ready and waiting for the wet mix to
-     catch up. Bracket timing on the MERGE lines is what the timeline
-     strip reads to compute this. */
-  const chocolateChipCookiesSyntax = [
-'TITLE: Chocolate Chip Cookies',
-'SOURCE: Personal recipe',
-'TIME: 35 min',
-'SERVINGS: 18',
-'TAGS: course=Baking, Batch',
-'',
-'STEPS:',
-'Preheat oven to 180°C. Line two baking trays with parchment.',
-'',
-'GROUP flour:',
-'250g plain flour',
-'',
-'GROUP raising:',
-'1 tsp baking powder',
-'',
-'GROUP salt:',
-'1/2 tsp salt',
-'',
-'GROUP butter:',
-'200g butter, softened',
-'',
-'GROUP sugar:',
-'150g soft brown sugar',
-'',
-'GROUP egg:',
-'2 large eggs',
-'',
-'GROUP vanilla:',
-'1 tsp vanilla extract',
-'',
-'GROUP choc:',
-'200g chocolate chips',
-'',
-'STAGE:',
-'MERGE flour, raising, salt -> dry: Whisk together [3 min]',
-'MERGE butter, sugar -> creamed: Cream until pale and fluffy [5 min]',
-'',
-'STAGE:',
-'MERGE creamed, egg, vanilla -> wet: Beat in eggs and vanilla, one at a time [2 min]',
-'',
-'STAGE:',
-'MERGE dry, wet -> batter: Fold dry into wet until just combined — don\'t overmix [2-4 min]',
-'',
-'STAGE:',
-'MERGE batter, choc -> dough: Fold in chocolate chips',
-'',
-'STAGE:',
-'MERGE dough -> baked: Spoon onto trays, bake [12-14 min]',
-'',
-'NOTES:',
-'The dry mix and the creamed butter/sugar can happen in either order, or at the same time if you have a second bowl free — neither depends on the other until the fold-together step.',
-'',
-'TIPS:',
-'Slightly underbaking (cookies still look a touch soft in the centre when they come out) gives a chewier texture once cooled.'
-  ].join('\n');
-
-  saveRecipesList([
-    {
-      id: uid(),
-      title: 'Greek Potato Hash',
-      source: "Nicky's Kitchen Sanctuary",
-      imageUrl: null,
-      time: '35 min',
-      servings: 4,
-      favourite: false,
-      tags: {course:'Main', keywords:['Veg']},
-      syntax: greekPotatoHashSyntax,
-      history: [],
-      dateAdded: todayStr()
-    },
-    {
-      id: uid(),
-      title: 'Honey Garlic Chicken',
-      source: "Nicky's Kitchen Sanctuary",
-      imageUrl: 'https://www.kitchensanctuary.com/wp-content/uploads/2019/11/Honey-Garlic-Chicken-wide-FS-79.jpg',
-      time: '20 min',
-      servings: null,
-      favourite: false,
-      tags: {course:'Main', keywords:['Chicken']},
-      syntax: honeyGarlicChickenSyntax,
-      history: [],
-      dateAdded: todayStr()
-    },
-    {
-      id: uid(),
-      title: 'Viral Parmesan Potatoes',
-      source: 'Poppy Cooks',
-      imageUrl: 'https://www.poppycooks.com/wp-content/uploads/2024/07/IMG_3404.jpeg',
-      time: '',
-      servings: null,
-      favourite: false,
-      tags: {course:'Side', keywords:[]},
-      syntax: viralParmesanPotatoesSyntax,
-      history: [],
-      dateAdded: todayStr()
-    },
-    {
-      id: uid(),
-      title: 'Chocolate Chip Cookies',
-      source: 'Personal recipe',
-      imageUrl: null,
-      time: '35 min',
-      servings: 18,
-      favourite: false,
-      /* Seeded specifically to demonstrate the timeline strip (14 Aug):
-         dry ingredients and wet ingredients are genuinely independent
-         until the fold-together step, which the flow table's left-to-
-         right column order alone doesn't make obvious — the timeline
-         shows the dry mix sitting ready from ~3 min to ~7 min while the
-         wet mix (creaming, then eggs) catches up. */
-      tags: {course:'Baking', keywords:['Batch']},
-      syntax: chocolateChipCookiesSyntax,
-      history: [],
-      dateAdded: todayStr()
-    }
-  ]);
 }
 
 /* =====================================================================
@@ -3221,6 +3115,10 @@ function renderViewer(){
   });
 }
 
+/* Cooking history lives in recipe_logs, one row per time a recipe was made,
+   rather than as an array on the recipe — the food diary (ad-hoc entries,
+   meal types) builds on the same rows. The in-memory recipe keeps its
+   `history` array so everything that reads it stays as it was. */
 function logRecipeUsed(id){
   const recipes = loadRecipes();
   const idx = recipes.findIndex(r=>r.id === id);
@@ -3228,7 +3126,12 @@ function logRecipeUsed(id){
   const today = todayStr();
   if(recipes[idx].history.includes(today)) return;
   recipes[idx].history.push(today);
-  if(!saveRecipesList(recipes)) return;
+  queueWrite('the cooking log', async ()=>{
+    const { error } = await sb.from('recipe_logs').insert({
+      household_id: HOUSEHOLD_ID, recipe_id: id, cooked_on: today
+    });
+    if(error) throw error;
+  });
   showToast(`Logged "${recipes[idx].title}" as cooked today`);
   renderViewer();
 }
@@ -3745,29 +3648,36 @@ function initPlannerListeners(){
 /* =====================================================================
    SHOPPING LIST
    ===================================================================== */
-const SHOPPING_CHECKED_KEY = 'kitchen_shopping_checked_v1';
-const SWAPS_KEY = 'kitchen_swaps_v1';
 /* User-curated ingredient substitutions — personally built and maintained,
    distinct from any author-suggested swap that might one day live in a
    recipe's own structured NOTES. Each entry: { id, original, replacement,
    ratio, notes }. `original`/`replacement` are stored as typed; matching
    against ingredient lines normalises both sides at match time rather
    than at save time, so the list stays readable in Manage/Swaps UI. */
-function loadSwaps(){
-  try{ const raw = localStorage.getItem(SWAPS_KEY); return raw ? JSON.parse(raw) : []; }
-  catch(e){ return []; }
-}
+function loadSwaps(){ return cache.swaps; }
 function saveSwaps(list){
-  try{ localStorage.setItem(SWAPS_KEY, JSON.stringify(list)); return true; }
-  catch(e){ alert("Couldn't save — your browser's storage might be full."); return false; }
+  cache.swaps = list;
+  return queueWrite('swaps', ()=> pushList('ingredient_swaps', list.map(s=>({
+    id: s.id, household_id: HOUSEHOLD_ID, original: s.original,
+    replacement: s.replacement, ratio: s.ratio || null, notes: s.notes || null
+  }))));
 }
-function loadShoppingChecked(){
-  try{ const raw = localStorage.getItem(SHOPPING_CHECKED_KEY); return raw ? JSON.parse(raw) : {}; }
-  catch(e){ return {}; }
-}
+function loadShoppingChecked(){ return cache.shoppingChecked; }
 function saveShoppingChecked(all){
-  try{ localStorage.setItem(SHOPPING_CHECKED_KEY, JSON.stringify(all)); return true; }
-  catch(e){ return false; }
+  cache.shoppingChecked = all;
+  return queueWrite('ticked items', async ()=>{
+    const del = await sb.from('shopping_checked').delete().eq('household_id', HOUSEHOLD_ID);
+    if(del.error) throw del.error;
+    const rows = Object.entries(all).flatMap(([weekStart, items])=>
+      Object.keys(items || {}).map(itemKey=>({
+        household_id: HOUSEHOLD_ID, week_start: weekStart, item_key: itemKey
+      }))
+    );
+    if(rows.length){
+      const { error } = await sb.from('shopping_checked').insert(rows);
+      if(error) throw error;
+    }
+  });
 }
 /* Checked-off items are keyed by the ISO date of the Sunday that starts
    their week, not by "this week"/"next week" — those labels shift meaning
@@ -4366,67 +4276,6 @@ function initHistoryListeners(){
   });
 }
 
-/* Testing/preview utility, not a normal-use feature — generates random but
-   plausible cooking history for whatever recipes are actually loaded, so
-   the History calendar and stats have something to look at. Each recipe
-   gets a "favourite weekday" bias rather than pure randomness, so the
-   day-of-week stat actually shows variety instead of looking flat, and one
-   recipe is guaranteed a 3-day run ending today so the streak stat isn't
-   always zero. Overwrites existing history — it's a preview tool, not
-   meant to coexist with real tracked data. */
-function generateSampleHistory(){
-  const recipes = loadRecipes();
-  if(!recipes.length){
-    alert('No recipes loaded yet — add a recipe first, then generate sample history for it.');
-    return;
-  }
-  const proceed = confirm(
-    `This replaces the cooking history on all ${recipes.length} loaded recipe${recipes.length===1?'':'s'} ` +
-    `with random sample dates, so the History calendar and stats have something to show.\n\n` +
-    `This overwrites real cooked history if you have any — use EXPORT DATA first if you want to keep it, ` +
-    `then IMPORT DATA to restore it afterwards.\n\nContinue?`
-  );
-  if(!proceed) return;
-
-  const today = new Date(); today.setHours(0,0,0,0);
-  const WINDOW_DAYS = 90;
-
-  recipes.forEach((r, idx)=>{
-    const favWeekday = idx % 7;
-    const timesCooked = 2 + Math.floor(Math.random()*7); // 2–8 times each
-    const dates = new Set();
-    let attempts = 0;
-    while(dates.size < timesCooked && attempts < 300){
-      attempts++;
-      let d = new Date(today);
-      d.setDate(d.getDate() - Math.floor(Math.random()*WINDOW_DAYS));
-      // About half the time, nudge to the nearest earlier day matching this
-      // recipe's "favourite" weekday, so some days-of-week end up dominated
-      // by particular recipes rather than everything looking uniform.
-      if(Math.random() < 0.6 && d.getDay() !== favWeekday){
-        for(let shift=1; shift<=7; shift++){
-          const candidate = new Date(d); candidate.setDate(candidate.getDate()-shift);
-          if(candidate.getDay() === favWeekday){ d = candidate; break; }
-        }
-      }
-      if(d <= today) dates.add(isoLocal(d));
-    }
-    r.history = Array.from(dates).sort();
-  });
-
-  // Guarantee a visible current streak on one recipe (today, yesterday, day before).
-  const streakDates = new Set(recipes[0].history);
-  for(let i=0; i<3; i++){
-    const d = new Date(today); d.setDate(d.getDate()-i);
-    streakDates.add(isoLocal(d));
-  }
-  recipes[0].history = Array.from(streakDates).sort();
-
-  if(!saveRecipesList(recipes)) return;
-  showToast('Generated sample history — showing it in History now');
-  showView('history');
-}
-document.getElementById('generateSampleHistoryBtn').addEventListener('click', generateSampleHistory);
 
 /* =====================================================================
    ADD RECIPE
@@ -5036,13 +4885,10 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
 });
 
 /* =====================================================================
-   EXPORT / IMPORT — a JSON backup of everything on this tablet.
-   This is the app's data-portability layer, not a performance mechanism:
-   the live app still runs on localStorage exactly as before either way.
-   It exists so the recipes, plan, and shortlist survive a cleared browser,
-   a factory-reset tablet, or a move to a new one — the same "master copy
-   lives outside the running app" idea the project file itself already
-   follows via Google Drive, just extended to the data.
+   EXPORT / IMPORT — a JSON backup of the whole library.
+   A hand-held copy you can keep wherever you like, separate from the
+   scheduled database backup that runs server-side. Import restores into
+   Supabase, so it replaces the library on every device, not just this one.
    ===================================================================== */
 function exportAllData(){
   const payload = {
@@ -5082,13 +4928,14 @@ function importAllData(file){
       return;
     }
     const n = data.recipes.length;
-    if(!confirm(`Import ${n} recipe${n===1?'':'s'}? This replaces everything currently saved on this tablet — your existing recipes, plan, and shortlist will be gone. This can't be undone.`)) return;
+    if(!confirm(`Import ${n} recipe${n===1?'':'s'}? This replaces everything currently in your library — your existing recipes, plan, and shortlist will be gone, on every device. This can't be undone.`)) return;
 
     saveRecipesList(data.recipes);
+    queueWrite('cooking history', ()=> replaceAllRecipeLogs(data.recipes));
     savePlan(data.plan || {});
     saveShortlist(data.shortlist || []);
     if(Array.isArray(data.keywordVocab)){
-      try{ localStorage.setItem(KEYWORDS_KEY, JSON.stringify(data.keywordVocab)); }catch(e){}
+      saveKeywordVocab(data.keywordVocab);
     }
     saveShoppingChecked(data.shoppingChecked || {});
     saveSwaps(Array.isArray(data.swaps) ? data.swaps : []);
@@ -5117,43 +4964,78 @@ document.getElementById('importFileInput').addEventListener('change', e=>{
   e.target.value = ''; // so re-selecting the same filename later still fires 'change'
 });
 
-/* One-time reorder for installs whose keyword vocab was already saved
-   before meal-base words were moved to the front of STARTER_KEYWORDS.
-   mergeKeywordVocab only ever appends new entries via a Set — it can't
-   retroactively reorder ones that already exist, so an install that had
-   its vocab seeded under the old order would otherwise keep the old
-   order forever despite this file now listing meal-base words first.
-   Moves the known meal-base words to the front, keeping everything
-   else (including any custom keywords you've typed in since) in its
-   existing relative order behind them. Runs on every load but is a
-   no-op once the order already matches, so it doesn't undo a manual
-   reorder via Manage Keywords (if that ever exists) on every refresh —
-   though today nothing else reorders it, so in practice this always
-   settles into the same state. */
-function reorderMealBaseKeywordsFirst(){
-  const MEAL_BASE = ['Chicken','Beef','Fish','Veg','Pulses','Pasta','Rice','Orzo','Risotto'];
-  const current = loadKeywordVocab();
-  const present = MEAL_BASE.filter(k=>current.includes(k));
-  const rest = current.filter(k=>!MEAL_BASE.includes(k));
-  const reordered = [...present, ...rest];
-  if(JSON.stringify(reordered) !== JSON.stringify(current)){
-    try{ localStorage.setItem(KEYWORDS_KEY, JSON.stringify(reordered)); }catch(e){}
-  }
-}
+/* ============================= INIT =============================
+   Listeners are wired up immediately — they only touch the DOM. Anything
+   that reads the library waits for startApp(), which runs once the
+   session is known and the library has been pulled down.
 
-/* ============================= INIT ============================= */
-seedIfEmpty();
-seedKeywordVocabIfEmpty();
-migrateOccasionToKeywords();
-migrateProteinToKeywords();
-mergeKeywordVocab(['Batch','Chicken','Beef','Fish','Veg','Pulses','Pasta','Rice','Orzo','Risotto']); // backfill for installs seeded before these existed
-reorderMealBaseKeywordsFirst();
+   The old seed/migrate calls that used to run here are gone: they existed
+   to bootstrap and patch up a browser's own localStorage copy, and the
+   library now arrives already correct from Supabase. Re-running them would
+   write demo recipes into the real shared household. */
 initHomeListeners();
 initPlannerListeners();
 initShoppingListeners();
 initHistoryListeners();
-updateSidebarCounts();
-renderHome();
+
+const loginGate = document.getElementById('loginGate');
+const loginForm = document.getElementById('loginForm');
+const loginError = document.getElementById('loginError');
+const loginSubmit = document.getElementById('loginSubmit');
+
+function showLoginGate(message){
+  loginGate.hidden = false;
+  loginError.hidden = !message;
+  loginError.textContent = message || '';
+  loginSubmit.disabled = false;
+  loginSubmit.textContent = 'Sign in';
+}
+
+async function startApp(){
+  try{
+    await hydrate();
+  }catch(err){
+    console.error('Could not load your library', err);
+    await sb.auth.signOut();
+    showLoginGate("Couldn't load your library — " + (err.message || 'please try again.'));
+    return;
+  }
+  loginGate.hidden = true;
+  updateSidebarCounts();
+  renderHome();
+}
+
+loginForm.addEventListener('submit', async e=>{
+  e.preventDefault();
+  loginSubmit.disabled = true;
+  loginSubmit.textContent = 'Signing in…';
+  loginError.hidden = true;
+  const { error } = await sb.auth.signInWithPassword({
+    email: document.getElementById('loginEmail').value.trim(),
+    password: document.getElementById('loginPassword').value
+  });
+  if(error){
+    showLoginGate(error.message);
+    return;
+  }
+  document.getElementById('loginPassword').value = '';
+});
+
+document.getElementById('signOutBtn').addEventListener('click', async ()=>{
+  await sb.auth.signOut();
+  location.reload(); // simplest way to drop every trace of the old session's data from memory
+});
+
+sb.auth.onAuthStateChange((event)=>{
+  if(event === 'SIGNED_IN') startApp();
+  if(event === 'SIGNED_OUT') showLoginGate();
+});
+
+(async function boot(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(session) startApp();
+  else showLoginGate();
+})();
 </script>
 </body>
 </html>
