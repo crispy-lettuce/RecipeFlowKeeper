@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --paper:#F5F1E6;
@@ -2043,9 +2043,14 @@ const SUPABASE_URL = 'https://mhkayefzrtceesgizkjs.supabase.co';
    is guarded by row-level security keyed to the signed-in user's household,
    so this key on its own grants nothing. */
 const SUPABASE_KEY = 'sb_publishable_fH3SOU5nVJE6nsXIlffidg_mVKayaEH';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true }
-});
+/* The client library comes from a CDN, so it can be missing on a flaky
+   connection. Without this check the first call would throw here and take
+   the whole script with it, leaving a blank screen and no explanation. */
+const sb = (typeof supabase !== 'undefined' && supabase.createClient)
+  ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true }
+    })
+  : null;
 
 let HOUSEHOLD_ID = null;
 const cache = {
@@ -5026,12 +5031,19 @@ document.getElementById('signOutBtn').addEventListener('click', async ()=>{
   location.reload(); // simplest way to drop every trace of the old session's data from memory
 });
 
-sb.auth.onAuthStateChange((event)=>{
-  if(event === 'SIGNED_IN') startApp();
-  if(event === 'SIGNED_OUT') showLoginGate();
-});
+if(sb){
+  sb.auth.onAuthStateChange((event)=>{
+    if(event === 'SIGNED_IN') startApp();
+    if(event === 'SIGNED_OUT') showLoginGate();
+  });
+}
 
 (async function boot(){
+  if(!sb){
+    showLoginGate("Couldn't reach the network to start up. Check your connection and reload.");
+    loginSubmit.disabled = true;
+    return;
+  }
   const { data: { session } } = await sb.auth.getSession();
   if(session) startApp();
   else showLoginGate();
