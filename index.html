@@ -241,7 +241,10 @@
   }
   .backlink:hover{ color:var(--plum-lift); }
   .viewer-meta{
-    flex:1; min-width:0;
+    /* A real basis, not 0: with flex-wrap on, a zero-basis meta line gets
+       crushed into a one-word-wide column when the head is full of buttons
+       instead of wrapping onto a row of its own. */
+    flex:1 1 260px; min-width:200px;
     font-family:'IBM Plex Mono', monospace; font-size:10.5px;
     letter-spacing:.08em; color:var(--ink-faint);
   }
