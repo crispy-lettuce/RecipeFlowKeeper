@@ -903,7 +903,8 @@
     .sidebar, .navlink, .btn, .backlink, .toggle-switch,
     .keep-awake-status, #keepAwakeVideo,
     .filter-head, .assign-banner,
-    .shop-head-right, #shopWeekSelect{ display:none !important; }
+    .shop-head-right, #shopWeekSelect,
+    #shopHideCheckedBtn, #shopClearBtn{ display:none !important; }
     .app{ display:block !important; height:auto !important; overflow:visible !important; }
     .view{ display:none !important; }
     .view.active{ display:block !important; }
@@ -1117,6 +1118,8 @@
           </div>
           <div class="shop-head-right">
             <select class="sort" id="shopWeekSelect" aria-label="Select week"></select>
+            <button class="btn" id="shopHideCheckedBtn" aria-pressed="false">HIDE TICKED</button>
+            <button class="btn" id="shopClearBtn">CLEAR TICKS</button>
             <button class="btn" id="shopExportBtn">EXPORT PNG</button>
             <button class="btn" id="shopPrintBtn">PRINT / A4 PDF</button>
           </div>
@@ -2738,6 +2741,8 @@ const state = {
   selectedShortlistId: null,   // shortlist item currently picked, awaiting a day tap in the Planner
   pickingForDate: null,        // date string Home is currently picking a recipe for, if any
   shoppingWeekIndex: 0,        // which week-bucket the Shopping List is currently showing
+  shoppingBothWeeks: false,    // showing this week and next as one combined list
+  shoppingHideChecked: false,  // hide items already ticked off, for shopping with
   editingRecipeId: null,       // recipe id currently open in the Add/Edit modal, if editing rather than adding
   historyMonth: null,          // {year, month(0-indexed)} the History calendar is currently showing
   historySelectedDate: null,   // ISO date string currently selected in the History calendar, if any
@@ -3971,9 +3976,30 @@ function parseFraction(s){
   return isNaN(n) ? null : n;
 }
 function normalizeUnit(u){
-  const map = {teaspoon:'tsp', teaspoons:'tsp', tablespoon:'tbsp', tablespoons:'tbsp', cups:'cup'};
+  const map = {
+    teaspoon:'tsp', teaspoons:'tsp', tablespoon:'tbsp', tablespoons:'tbsp', cups:'cup',
+    gram:'g', grams:'g', gramme:'g', grammes:'g',
+    kilogram:'kg', kilograms:'kg', kilo:'kg', kilos:'kg', kgs:'kg',
+    millilitre:'ml', millilitres:'ml', milliliter:'ml', milliliters:'ml',
+    litre:'l', litres:'l', liter:'l', liters:'l', ltr:'l'
+  };
   const lu = (u||'').toLowerCase();
   return map[lu] || lu;
+}
+/* One base unit per system, so "500 g flour" and "1 kg flour" total instead
+   of sitting on the shelf as two separate lines. Metric only, and
+   deliberately: mixing grams with ounces would mean picking a system to
+   show the total in, and the library is metric throughout. */
+const UNIT_BASES = { kg: {unit:'g', factor:1000}, l: {unit:'ml', factor:1000} };
+function toBaseUnit(amount, unit){
+  const base = UNIT_BASES[unit];
+  return base ? { amount: amount * base.factor, unit: base.unit } : { amount, unit };
+}
+/* And back out again for display: grams up to a kilo stay grams. */
+function formatShoppingQty(amount, unit){
+  if(unit === 'g' && amount >= 1000) return `${formatAmount(amount/1000)} kg`;
+  if(unit === 'ml' && amount >= 1000) return `${formatAmount(amount/1000)} L`;
+  return `${formatAmount(amount)}${unit ? ' '+unit : ''}`;
 }
 /* Turns splitQty's raw quantity string ("500g", "3 tbsp", "1/2 tsp", "4")
    into {amount, unit}. Returns null when it doesn't reduce to a clean
@@ -4139,13 +4165,19 @@ function buildShoppingList(weekDays){
     const {qty, rest} = splitQty(raw);
     const parsedQty = parseIngredientAmount(qty);
     const normName = normalizeIngredientName(rest);
-    const unit = parsedQty ? parsedQty.unit : '';
+    /* Key on the base unit, not the written one — otherwise kg and g are
+       two different shelves for the same ingredient. */
+    const based = parsedQty ? toBaseUnit(parsedQty.amount, parsedQty.unit) : null;
+    const unit = based ? based.unit : '';
     const key = normName + '|' + unit;
     if(!combined.has(key)){
       combined.set(key, {
         key, name: rest.trim(),
-        unit, amount: parsedQty ? parsedQty.amount : 0,
-        hasQty: !!parsedQty, count: 1,
+        unit, amount: based ? based.amount : 0,
+        hasQty: !!based, count: 1,
+        /* Lines with no readable quantity at all, counted separately so a
+           total can say "and one more of these" rather than swallowing it. */
+        unqtyCount: based ? 0 : 1,
         recipes: new Set([recipeTitle]),
         category: categorizeIngredient(normName)
       });
@@ -4153,7 +4185,15 @@ function buildShoppingList(weekDays){
       const e = combined.get(key);
       e.count += 1;
       e.recipes.add(recipeTitle);
-      if(parsedQty) e.amount += parsedQty.amount;
+      if(based){
+        e.amount += based.amount;
+        /* Not first-wins: a quantity anywhere in the group is a quantity to
+           show. Before this, "garlic" followed by "2 garlic" displayed as
+           "×2" and quietly dropped the 2. */
+        e.hasQty = true;
+      } else {
+        e.unqtyCount += 1;
+      }
     }
   });
 
@@ -4169,31 +4209,65 @@ function buildShoppingList(weekDays){
 }
 
 /* ------------------------------- Rendering ------------------------------- */
+/* The tick keys belonging to one mode: combined lines are prefixed, single
+   week lines are not, and neither should be able to clear the other. */
+function ticksInMode(checkedForWeek, keyPrefix){
+  return Object.keys(checkedForWeek || {}).filter(k=>
+    keyPrefix ? k.startsWith(keyPrefix) : !k.startsWith('both|'));
+}
+
 function renderShopping(){
   const buckets = groupDaysByWeek(dayList());
   if(state.shoppingWeekIndex >= buckets.length) state.shoppingWeekIndex = 0;
 
   const weekLabels = buckets.map((bucketDays, i)=> weekBucketLabel(i, bucketDays));
+  const canCombine = buckets.length >= 2;
+  if(state.shoppingBothWeeks && !canCombine) state.shoppingBothWeeks = false;
+  const both = state.shoppingBothWeeks;
+
   const sel = document.getElementById('shopWeekSelect');
   sel.innerHTML = weekLabels.map((label, i)=>
-    `<option value="${i}"${i===state.shoppingWeekIndex?' selected':''}>${label}</option>`
-  ).join('');
+    `<option value="${i}"${(!both && i===state.shoppingWeekIndex)?' selected':''}>${label}</option>`
+  ).join('') + (canCombine ? `<option value="both"${both?' selected':''}>BOTH WEEKS</option>` : '');
 
-  const weekDays = buckets[state.shoppingWeekIndex] || [];
+  /* Combined mode shops two weeks as one trip. Its ticks are stored under
+     their own key prefix rather than shared with the single-week lists: a
+     combined line is a different quantity drawn from two weeks, so ticking
+     it off can't honestly mean the this-week line is bought too. */
+  const weekDays = both
+    ? [].concat(buckets[0] || [], buckets[1] || [])
+    : (buckets[state.shoppingWeekIndex] || []);
   const weekStartIso = weekStartIsoOf(weekDays);
-  const { categories, totalItems, recipeCount } = buildShoppingList(weekDays);
+  const keyPrefix = both ? 'both|' : '';
+  const { categories: allCategories, totalItems, recipeCount } = buildShoppingList(weekDays);
   const checkedForWeek = loadShoppingChecked()[weekStartIso] || {};
+
+  /* Hiding ticked items can empty a category out; drop the heading too
+     rather than leaving a title with nothing under it. */
+  const categories = state.shoppingHideChecked
+    ? allCategories
+        .map(cat=>({ name: cat.name, items: cat.items.filter(it=> !checkedForWeek[keyPrefix + it.key]) }))
+        .filter(cat=> cat.items.length)
+    : allCategories;
+
+  const hideBtn = document.getElementById('shopHideCheckedBtn');
+  hideBtn.textContent = state.shoppingHideChecked ? 'SHOW TICKED' : 'HIDE TICKED';
+  hideBtn.setAttribute('aria-pressed', String(state.shoppingHideChecked));
+  /* Combined and single-week ticks live in the same week bucket, separated
+     only by the key prefix — so count (and later clear) just this mode's. */
+  document.getElementById('shopClearBtn').disabled = !ticksInMode(checkedForWeek, keyPrefix).length;
 
   /* The week label goes in here too (not just the dropdown) so the
      exported PNG — which hides the interactive dropdown — still states
      which week it's for. */
-  const weekLabel = weekLabels[state.shoppingWeekIndex] || '';
+  const weekLabel = both ? 'THIS WEEK + NEXT WEEK' : (weekLabels[state.shoppingWeekIndex] || '');
   document.getElementById('shopMeta').textContent = totalItems
     ? `${weekLabel} · ${totalItems} item${totalItems===1?'':'s'} · ${recipeCount} recipe${recipeCount===1?'':'s'}`
     : weekLabel;
 
   const body = document.getElementById('shopBody');
   body.dataset.weekStart = weekStartIso;
+  body.dataset.keyPrefix = keyPrefix;
 
   if(!totalItems){
     body.innerHTML = `<div class="grid-empty">
@@ -4204,14 +4278,27 @@ function renderShopping(){
     return;
   }
 
+  if(!categories.length){
+    body.innerHTML = `<div class="grid-empty">
+      <p>Everything on this list is ticked off.</p>
+      <button class="btn" id="shopShowTicked">SHOW TICKED</button>
+    </div>`;
+    document.getElementById('shopShowTicked').addEventListener('click', ()=>{
+      state.shoppingHideChecked = false;
+      renderShopping();
+    });
+    return;
+  }
+
   body.innerHTML = categories.map(cat=>{
     const rows = cat.items.map(it=>{
-      const isChecked = !!checkedForWeek[it.key];
+      const storedKey = keyPrefix + it.key;
+      const isChecked = !!checkedForWeek[storedKey];
       const qtyText = it.hasQty
-        ? `${formatAmount(it.amount)}${it.unit ? ' '+it.unit : ''}`
+        ? formatShoppingQty(it.amount, it.unit) + (it.unqtyCount ? ` + ${it.unqtyCount} more` : '')
         : (it.count > 1 ? `×${it.count}` : '');
       const recipeList = escapeHtml(Array.from(it.recipes).join(', '));
-      return `<label class="shop-item${isChecked?' checked':''}" data-key="${escapeHtml(it.key)}">
+      return `<label class="shop-item${isChecked?' checked':''}" data-key="${escapeHtml(storedKey)}">
         <input type="checkbox" ${isChecked?'checked':''}>
         <span class="shop-item-main">
           <span class="shop-item-name">${qtyText?`<span class="qty">${escapeHtml(qtyText)}</span>`:''}${escapeHtml(it.name)}</span>
@@ -4229,7 +4316,30 @@ function renderShopping(){
 /* ------------------------------- One-time listeners ------------------------------- */
 function initShoppingListeners(){
   document.getElementById('shopWeekSelect').addEventListener('change', e=>{
-    state.shoppingWeekIndex = parseInt(e.target.value, 10) || 0;
+    if(e.target.value === 'both'){
+      state.shoppingBothWeeks = true;
+    } else {
+      state.shoppingBothWeeks = false;
+      state.shoppingWeekIndex = parseInt(e.target.value, 10) || 0;
+    }
+    renderShopping();
+  });
+
+  document.getElementById('shopHideCheckedBtn').addEventListener('click', ()=>{
+    state.shoppingHideChecked = !state.shoppingHideChecked;
+    renderShopping();
+  });
+
+  document.getElementById('shopClearBtn').addEventListener('click', ()=>{
+    const body = document.getElementById('shopBody');
+    const weekStart = body.dataset.weekStart;
+    const all = loadShoppingChecked();
+    const keys = ticksInMode(all[weekStart], body.dataset.keyPrefix);
+    if(!keys.length) return;
+    if(!confirm(`Untick all ${keys.length} item${keys.length===1?'':'s'} on this list?`)) return;
+    keys.forEach(k=> delete all[weekStart][k]);
+    if(!Object.keys(all[weekStart]).length) delete all[weekStart];
+    saveShoppingChecked(all);
     renderShopping();
   });
 
@@ -4241,7 +4351,9 @@ function initShoppingListeners(){
   });
 
   document.getElementById('shopExportBtn').addEventListener('click', ()=>{
-    const labelBit = state.shoppingWeekIndex===0 ? 'this-week' : state.shoppingWeekIndex===1 ? 'next-week' : 'week';
+    const labelBit = state.shoppingBothWeeks ? 'both-weeks'
+      : state.shoppingWeekIndex===0 ? 'this-week'
+      : state.shoppingWeekIndex===1 ? 'next-week' : 'week';
     exportNodeAsPng(
       document.querySelector('.shop-wrap'),
       `shopping-list-${labelBit}`,
