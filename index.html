@@ -1124,9 +1124,7 @@
             <button class="backlink" id="historyNextMonth" aria-label="Next month">→</button>
             <button class="btn" id="historyTodayBtn">TODAY</button>
           </div>
-          <div class="history-weekday-labels">
-            <span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span>
-          </div>
+          <div class="history-weekday-labels" id="historyWeekdayLabels"></div>
           <div id="historyGrid" class="history-grid"></div>
         </div>
         <aside class="shortlist-panel">
@@ -4147,8 +4145,17 @@ document.getElementById('shopPrintBtn').addEventListener('click', ()=> window.pr
    ===================================================================== */
 const WEEKDAY_NAMES = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
 
+/* getDay() numbers in the order the week is shown, e.g. [5,6,0,1,2,3,4]
+   for a Friday start. Never reorder WEEKDAY_NAMES itself — it is indexed
+   by getDay() in several places. */
+function weekdaysInDisplayOrder(){
+  return Array.from({length:7}, (_, i)=> (weekStartDay() + i) % 7);
+}
+
 function historyMonthGrid(year, month){
-  const firstWeekday = new Date(year, month, 1).getDay();
+  /* How many leading cells belong to the previous month: the distance from
+     the configured week start to the weekday the 1st falls on. */
+  const firstWeekday = (new Date(year, month, 1).getDay() - weekStartDay() + 7) % 7;
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const cells = [];
   for(let i=0; i<firstWeekday; i++){
@@ -4196,7 +4203,10 @@ function computeHistoryStats(recipes){
     const wd = new Date(dateIso+'T00:00:00').getDay();
     weekdayCounts[wd].set(recipeId, (weekdayCounts[wd].get(recipeId)||0) + 1);
   });
-  const byWeekday = WEEKDAY_NAMES.map((name, wd)=>{
+  /* Read the counts out in display order. WEEKDAY_NAMES and weekdayCounts
+     both stay getDay()-indexed — only the order we walk them changes, so
+     "most cooked on a Tuesday" keeps meaning Tuesday. */
+  const byWeekday = weekdaysInDisplayOrder().map(wd=>{
     let best = null;
     weekdayCounts[wd].forEach((count, recipeId)=>{
       if(!best || count>best.count){
@@ -4204,7 +4214,7 @@ function computeHistoryStats(recipes){
         best = { title: r ? r.title : 'Recipe removed', count };
       }
     });
-    return { name, best };
+    return { name: WEEKDAY_NAMES[wd], best };
   });
 
   /* A streak counts back from today if today's already cooked, or from
@@ -4275,6 +4285,9 @@ function renderHistoryCalendar(){
 
   document.getElementById('historyMonthLabel').textContent =
     new Date(year, month, 1).toLocaleDateString(undefined, {month:'long', year:'numeric'});
+
+  document.getElementById('historyWeekdayLabels').innerHTML =
+    weekdaysInDisplayOrder().map(wd=>`<span>${WEEKDAY_NAMES[wd]}</span>`).join('');
 
   document.getElementById('historyGrid').innerHTML = cells.map(({date, inMonth})=>{
     const iso = isoLocal(date);
