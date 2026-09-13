@@ -479,6 +479,15 @@
     flex:none; width:60px; text-align:right;
     font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.03em; color:var(--ink-mute);
   }
+  .day-recipe-serves{
+    flex:none; background:none; border:1px solid transparent; border-radius:20px; cursor:pointer;
+    padding:2px 8px; font-family:'IBM Plex Mono', monospace; font-size:10.5px;
+    letter-spacing:.04em; color:var(--ink-faint);
+  }
+  .day-recipe-serves:hover{ border-color:var(--line); color:var(--plum); }
+  /* Lit up only when this day asks for a different number than the recipe
+     is written for — otherwise it's just quiet information. */
+  .day-recipe-serves.on{ border-color:var(--plum); color:var(--plum); }
   .day-recipe-remove{
     flex:none; background:none; border:none; cursor:pointer; color:var(--ink-faint);
     font-size:14px; line-height:1; padding:2px;
@@ -2219,7 +2228,9 @@ async function hydrate(){
   cache.keywords = keywords.data.map(k=>k.name);
   cache.plan = {};
   planner.data.forEach(row=>{
-    cache.plan[row.plan_date] = row.is_blank ? {blank:true} : {recipeIds: row.recipe_ids || []};
+    cache.plan[row.plan_date] = row.is_blank
+      ? {blank:true}
+      : {recipeIds: row.recipe_ids || [], servings: row.servings || []};
   });
   cache.shortlist = shortlist.data.map(row=>({
     id: row.id, text: row.text || '', dateAdded: row.date_added, recipeId: row.recipe_id
@@ -2379,6 +2390,7 @@ async function pushPlan(p){
     plan_date: date,
     is_blank: !!entry.blank,
     recipe_ids: planRecipeIds(entry),
+    servings: planServings(entry),
     updated_at: new Date().toISOString()
   }));
   if(rows.length){
@@ -2405,13 +2417,44 @@ function planRecipeIds(entry){
   if(entry.recipeId) return [entry.recipeId];
   return [];
 }
+/* How many people each entry on the day is for, positionally alongside
+   recipeIds. 0 means "whatever the recipe itself says" — kept as 0 rather
+   than null because the column is a NOT NULL smallint[], and because an
+   older tab that still writes only recipe_ids then reads back as a day
+   with no overrides rather than a day of nulls. Always padded to the same
+   length as the ids, so index n always addresses the same entry in both. */
+function planServings(entry){
+  const ids = planRecipeIds(entry);
+  const raw = (entry && Array.isArray(entry.servings)) ? entry.servings : [];
+  return ids.map((_, i)=> parseInt(raw[i], 10) || 0);
+}
+/* The two arrays read as one list of entries. planRecipeIds stays as it was
+   so the call sites that only want ids are untouched. */
+function planEntries(entry){
+  const servings = planServings(entry);
+  return planRecipeIds(entry).map((recipeId, i)=> ({ recipeId, servings: servings[i] }));
+}
 function setPlanBlank(dateStr){ const p = loadPlan(); p[dateStr] = {blank:true}; return savePlan(p); }
 function clearPlanDay(dateStr){ const p = loadPlan(); delete p[dateStr]; return savePlan(p); }
 function addPlanRecipe(dateStr, recipeId){
   const p = loadPlan();
   const ids = planRecipeIds(p[dateStr]);
+  const servings = planServings(p[dateStr]);
   ids.push(recipeId);
-  p[dateStr] = {recipeIds: ids};
+  servings.push(0); // as written, until someone says otherwise
+  p[dateStr] = {recipeIds: ids, servings};
+  return savePlan(p);
+}
+/* 0 clears the override and falls back to the recipe's own servings. */
+function setPlanServingsAt(dateStr, index, people){
+  const p = loadPlan();
+  const entry = p[dateStr];
+  if(!entry) return true;
+  const ids = planRecipeIds(entry);
+  if(index < 0 || index >= ids.length) return true;
+  const servings = planServings(entry);
+  servings[index] = parseInt(people, 10) || 0;
+  p[dateStr] = {recipeIds: ids, servings};
   return savePlan(p);
 }
 /* Removes by list position, not by id — if the same recipe is assigned
@@ -2422,8 +2465,10 @@ function removePlanRecipeAt(dateStr, index){
   const entry = p[dateStr];
   if(!entry) return true;
   const ids = planRecipeIds(entry);
+  const servings = planServings(entry);
   ids.splice(index, 1);
-  if(ids.length) p[dateStr] = {recipeIds: ids}; else delete p[dateStr];
+  servings.splice(index, 1); // in lockstep, or every later entry's servings shift up one
+  if(ids.length) p[dateStr] = {recipeIds: ids, servings}; else delete p[dateStr];
   return savePlan(p);
 }
 
@@ -3576,7 +3621,8 @@ function renderPlannerDays(){
            the recipe already carries. The original array position (idx)
            travels with each row regardless of sort order, since that's
            what removal and "view" need to target the right entry. */
-        const items = ids.map((id, idx)=>({ idx, recipe: recipes.find(r=>r.id===id) }));
+        const entryServings = planServings(entry);
+        const items = ids.map((id, idx)=>({ idx, serves: entryServings[idx], recipe: recipes.find(r=>r.id===id) }));
         items.sort((a,b)=>
           courseSortIndex(a.recipe && a.recipe.tags && a.recipe.tags.course) -
           courseSortIndex(b.recipe && b.recipe.tags && b.recipe.tags.course)
@@ -3586,7 +3632,7 @@ function renderPlannerDays(){
         const isGroupingThisDay = state.groupingDate === iso;
         const groupingSel = state.groupingSelection || [];
 
-        const rows = items.map(({idx, recipe})=>{
+        const rows = items.map(({idx, serves, recipe})=>{
           if(!recipe){
             return `<div class="day-recipe-row">
               <span class="day-away">Recipe removed</span>
@@ -3611,6 +3657,7 @@ function renderPlannerDays(){
             <button class="day-recipe-title" data-action="view" data-idx="${idx}">${escapeHtml(recipe.title||'Untitled')}</button>
             ${course ? `<span class="day-recipe-course${tone}">${escapeHtml(course.toUpperCase())}</span>` : ''}
             <span class="day-recipe-time">${escapeHtml((recipe.time||'').toUpperCase())}</span>
+            ${servesPill(recipe, serves, idx)}
             <button class="day-recipe-remove" data-action="removeOne" data-idx="${idx}" aria-label="Remove from this day">×</button>
           </div>`;
         }).join('');
@@ -3712,13 +3759,28 @@ function renderShortlistPanel(){
 }
 
 /* ------------------------------- One-time listeners ------------------------------- */
+/* The per-day headcount. A recipe with no servings of its own has nothing
+   to scale from, so it gets no control rather than a broken one. */
+function servesPill(recipe, serves, idx){
+  const base = parseInt(recipe.servings, 10) || 0;
+  if(!base) return '';
+  const target = serves || base;
+  const overridden = !!serves && serves !== base;
+  return `<button class="day-recipe-serves${overridden?' on':''}" data-action="setServes" data-idx="${idx}"
+    title="Cooking for ${target}${overridden ? ` — written for ${base}` : ''}. Tap to change.">SERVES ${target}</button>`;
+}
+
 function initPlannerListeners(){
   document.getElementById('dayList').addEventListener('click', e=>{
     const row = e.target.closest('.day-row');
     if(!row) return;
     const date = row.dataset.date;
 
-    if(state.selectedShortlistId && state.groupingDate !== date){
+    /* Tapping anywhere on a day assigns the selected shortlist item — except
+       on the headcount button, which would otherwise never be reachable
+       while something is selected. */
+    if(state.selectedShortlistId && state.groupingDate !== date
+       && !e.target.closest('[data-action="setServes"]')){
       const item = loadShortlist().find(i=>i.id === state.selectedShortlistId);
       if(item && item.recipeId){
         addPlanRecipe(date, item.recipeId);
@@ -3737,6 +3799,32 @@ function initPlannerListeners(){
       const ids = planRecipeIds(loadPlan()[date]);
       const id = ids[parseInt(actionEl.dataset.idx, 10)];
       if(id) openRecipe(id, 'planner');
+    } else if(action === 'setServes'){
+      /* prompt() rather than an inline input: #dayList re-renders wholesale
+         on every planner change, so an inline field would need focus and
+         caret restoration to survive — a lot of machinery for a number
+         typed a few times a week. */
+      const idx = parseInt(actionEl.dataset.idx, 10);
+      const ent = planEntries(loadPlan()[date])[idx];
+      if(!ent) return;
+      const recipe = loadRecipes().find(r=>r.id === ent.recipeId);
+      const base = recipe ? (parseInt(recipe.servings, 10) || 0) : 0;
+      if(!base) return;
+      const answer = prompt(
+        `How many people is ${recipe.title || 'this'} for on this day?\n\n` +
+        `The recipe is written for ${base}. Leave blank to cook it as written.`,
+        ent.servings || base
+      );
+      if(answer === null) return;
+      const trimmed = String(answer).trim();
+      const people = trimmed === '' ? 0 : parseInt(trimmed, 10);
+      if(trimmed !== '' && (!people || people < 1)){
+        showToast('Enter how many people, e.g. 6');
+        return;
+      }
+      setPlanServingsAt(date, idx, people === base ? 0 : people);
+      renderPlanner();
+      updateSidebarCounts();
     } else if(action === 'choose'){
       state.pickingForDate = date;
       showView('recipes');
@@ -4031,11 +4119,16 @@ function buildShoppingList(weekDays){
 
   weekDays.forEach(d=>{
     const entry = plan[isoLocal(d)];
-    planRecipeIds(entry).forEach(id=>{
-      const recipe = recipes.find(r=>r.id === id);
+    planEntries(entry).forEach(({recipeId, servings})=>{
+      const recipe = recipes.find(r=>r.id === recipeId);
       if(!recipe) return; // orphaned reference — nothing to shop for, skip quietly
       recipeTitles.add(recipe.title);
-      parseRecipe(recipe.syntax).groups.forEach(g=>{
+      /* Shop for the number of people the day actually asks for. Scaled from
+         the recipe's own untouched syntax every build, so there's no drift. */
+      const base = parseInt(recipe.servings, 10) || 0;
+      const multiplier = (base && servings && servings !== base) ? servings / base : 1;
+      const syntax = multiplier !== 1 ? scaleRecipeSyntax(recipe.syntax, multiplier) : recipe.syntax;
+      parseRecipe(syntax).groups.forEach(g=>{
         g.items.forEach(item=> lineItems.push({ recipeTitle: recipe.title, raw: item }));
       });
     });
