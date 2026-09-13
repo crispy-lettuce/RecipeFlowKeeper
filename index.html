@@ -262,7 +262,7 @@
   }
   .scale-btn:hover{ border-color:var(--plum); color:var(--plum); }
   .scale-btn.active{ background:var(--plum); border-color:var(--plum); color:#fff; }
-  #viewerScaleCustom{
+  #viewerServesCustom{
     width:80px; padding:6px 8px; border:1px solid var(--line); border-radius:var(--r);
     background:var(--card); font-family:'Newsreader', Georgia, serif; font-size:13px;
   }
@@ -757,7 +757,7 @@
   .scale-hint{
     font-size:12.5px; color:var(--ink-mute); font-style:italic; flex-basis:100%; margin-top:4px;
   }
-  #f-scale-custom{
+  #f-scale-servings{
     padding:8px 10px; border:1px solid var(--line); border-radius:var(--r);
     background:var(--card); font-family:'Newsreader', Georgia, serif; font-size:14px;
   }
@@ -1028,13 +1028,14 @@
         <button class="btn danger" id="deleteBtn">DELETE</button>
       </div>
       <div class="viewer-scale-row">
-        <span class="scale-label">SCALE</span>
-        <button class="scale-btn" data-viewer-scale="0.5">×0.5</button>
-        <button class="scale-btn" data-viewer-scale="1">×1</button>
-        <button class="scale-btn" data-viewer-scale="2">×2</button>
-        <button class="scale-btn" data-viewer-scale="3">×3</button>
-        <input type="number" id="viewerScaleCustom" placeholder="custom ×" min="0.1" step="0.1">
-        <button class="scale-btn" id="viewerScaleCustomBtn">GO</button>
+        <span class="scale-label">COOK FOR</span>
+        <button class="scale-btn" data-viewer-serves="2">2</button>
+        <button class="scale-btn" data-viewer-serves="4">4</button>
+        <button class="scale-btn" data-viewer-serves="6">6</button>
+        <button class="scale-btn" data-viewer-serves="8">8</button>
+        <input type="number" id="viewerServesCustom" placeholder="people" min="1" step="1">
+        <button class="scale-btn" id="viewerServesCustomBtn">GO</button>
+        <button class="scale-btn" id="viewerServesResetBtn">RESET</button>
         <span class="scale-note">Adjusts this view only — nothing is saved. Resets next time you open this recipe.</span>
       </div>
       <div id="viewerEquipmentWarning" class="equipment-warning" style="display:none;"></div>
@@ -1236,20 +1237,17 @@
       </div>
       <div class="field-row">
         <label><span>TIME</span><input type="text" id="f-time" placeholder="e.g. 35 min"></label>
-        <label><span>SERVINGS</span><input type="number" id="f-servings" placeholder="e.g. 4" min="1" step="1"></label>
+        <label><span>SERVINGS <span class="required">*</span></span><input type="number" id="f-servings" placeholder="e.g. 4" min="1" step="1"></label>
         <label><span>IMAGE URL</span><input type="text" id="f-image" placeholder="optional"></label>
       </div>
       <div class="field-row">
         <label><span>EQUIPMENT (SIZE-SPECIFIC)</span><input type="text" id="f-equipment" placeholder="e.g. 20cm springform tin — leave blank if none"></label>
       </div>
       <div class="scale-row">
-        <span class="scale-label">SCALE THIS RECIPE</span>
-        <button type="button" class="btn small-danger" data-scale="0.5">×0.5</button>
-        <button type="button" class="btn small-danger" data-scale="2">×2</button>
-        <button type="button" class="btn small-danger" data-scale="3">×3</button>
-        <input type="number" id="f-scale-custom" placeholder="custom ×" min="0.1" step="0.1" style="width:90px;">
-        <button type="button" class="btn small-danger" id="f-scale-custom-btn">APPLY</button>
-        <span class="scale-hint">Rewrites ingredient amounts and servings below, permanently, once saved — review before saving.</span>
+        <span class="scale-label">SCALE TO SERVE</span>
+        <input type="number" id="f-scale-servings" placeholder="e.g. 6" min="1" step="1" style="width:90px;">
+        <button type="button" class="btn small-danger" id="f-scale-apply">APPLY</button>
+        <span class="scale-hint">Works out the scale from the SERVINGS this recipe already makes, then rewrites ingredient amounts and servings below, permanently, once saved — review before saving.</span>
       </div>
       <div class="equipment-warning" id="equipmentWarning" style="display:none;"></div>
       <div class="field-row">
@@ -1674,7 +1672,15 @@ function scaleRecipeSyntax(syntaxText, multiplier){
   const scaledLines = lines.map(line=>{
     const trimmed = line.trim();
     if(/^GROUP\s+\w+\s*:\s*$/i.test(trimmed)){ inGroup = true; return line; }
-    if(trimmed === '' || /^(STEPS|STAGE|NOTES|VARIATIONS|STORING|FREEZING|TIPS)\s*:?\s*$/i.test(trimmed) || /^MERGE\b/i.test(trimmed)){
+    /* Any header line ends the group — including the keyed ones that carry a
+       value (TITLE:, SERVINGS: and friends). They only ever appear above the
+       first GROUP today, so this is belt and braces, but after P1 this runs
+       on every shopping-list build and a stray "TIME: 1 hr" below a group
+       would otherwise be read as an ingredient and scaled. */
+    if(trimmed === ''
+       || /^(STEPS|STAGE|NOTES|VARIATIONS|STORING|FREEZING|TIPS)\s*:?\s*$/i.test(trimmed)
+       || /^(TITLE|SOURCE|IMAGE|TIME|SERVINGS|EQUIPMENT|TAGS)\s*:/i.test(trimmed)
+       || /^MERGE\b/i.test(trimmed)){
       inGroup = false;
       return line;
     }
@@ -2695,7 +2701,7 @@ const state = {
   groupingSelection: [],       // recipe ids currently ticked while groupingDate is active
   selectedGroupId: null,       // the meal-group id currently open in the Group Viewer, if any
   groupViewerReturnTo: null,   // where "← PLANNER" in the Group Viewer should navigate back to
-  viewerScale: 1               // ad-hoc scaling multiplier for the currently open Viewer recipe —
+  viewerServes: null           // ad-hoc target headcount for the currently open Viewer recipe, null = the recipe's own —
                                 // deliberately session-only per the 14 Aug decision: resets to 1 every
                                 // time a recipe is opened, never saved to the recipe itself. Permanent
                                 // scaling (Add/Edit form) is a completely separate mechanism that writes
@@ -3094,7 +3100,7 @@ document.querySelectorAll('.saved-view').forEach(btn=>{
 function openRecipe(id, returnTo){
   state.selectedRecipeId = id;
   state.viewerReturnTo = returnTo || 'recipes';
-  state.viewerScale = 1; // ad-hoc scaling always starts fresh — never remembered between visits
+  state.viewerServes = null; // ad-hoc scaling always starts fresh — never remembered between visits
   showView('viewer');
   renderViewer();
 }
@@ -3203,10 +3209,15 @@ function renderViewer(){
 
   const n = useCount(recipe);
   const used = lastUsed(recipe);
-  const scale = state.viewerScale || 1;
-  const displayedServings = recipe.servings ? Math.max(1, Math.round(recipe.servings * scale)) : null;
+  /* Scaling is expressed as "cook for N people", so the multiplier is
+     derived rather than chosen: target ÷ what the recipe already makes.
+     Without a SERVINGS on the recipe there's nothing to derive it from,
+     and the control row hides itself below. */
+  const baseServings = parseInt(recipe.servings, 10) || null;
+  const targetServings = (baseServings && state.viewerServes) ? state.viewerServes : baseServings;
+  const scale = (baseServings && targetServings) ? targetServings / baseServings : 1;
   const bits = [recipe.source, recipe.time];
-  if(displayedServings) bits.push(`SERVES ${displayedServings}${scale!==1 ? ` (×${scale})` : ''}`);
+  if(targetServings) bits.push(`SERVES ${targetServings}${scale!==1 ? ` (SCALED FROM ${baseServings})` : ''}`);
   bits.push(n ? `COOKED ${n}×` : 'NEVER COOKED');
   if(used) bits.push('LAST ' + formatDate(used));
   meta.textContent = bits.filter(Boolean).join('  ·  ').toUpperCase();
@@ -3223,19 +3234,22 @@ function renderViewer(){
 
   /* Ad-hoc scaling: the recipe's OWN syntax on disk is never touched here —
      scaleRecipeSyntax runs fresh against recipe.syntax every render, purely
-     for display. state.viewerScale resets to 1 on every openRecipe() call,
-     so there's nothing to clean up if the person navigates away without
-     resetting it themselves. */
+     for display. state.viewerServes resets to null on every openRecipe()
+     call, so there's nothing to clean up if the person navigates away
+     without resetting it themselves. */
   const scaledSyntax = scale !== 1 ? scaleRecipeSyntax(recipe.syntax, scale) : recipe.syntax;
   const parsedForView = parseRecipe(scaledSyntax);
 
-  document.querySelectorAll('.viewer-scale-row .scale-btn[data-viewer-scale]').forEach(btn=>{
-    btn.classList.toggle('active', parseFloat(btn.dataset.viewerScale) === scale);
+  /* Nothing to scale against on a recipe with no servings, so don't offer it. */
+  document.querySelector('.viewer-scale-row').style.display = baseServings ? '' : 'none';
+  document.querySelectorAll('.viewer-scale-row .scale-btn[data-viewer-serves]').forEach(btn=>{
+    btn.classList.toggle('active', parseInt(btn.dataset.viewerServes, 10) === targetServings);
   });
+  document.getElementById('viewerServesResetBtn').classList.toggle('active', scale === 1);
 
   const warningEl = document.getElementById('viewerEquipmentWarning');
   if(scale !== 1 && parsedForView.equipment){
-    warningEl.textContent = `⚠ Scaled ×${scale} for this view — this recipe specifies ${parsedForView.equipment}, sized for the original quantities. You'll need to work out the right size yourself.`;
+    warningEl.textContent = `⚠ Scaled to serve ${targetServings} for this view — this recipe specifies ${parsedForView.equipment}, sized for ${baseServings}. You'll need to work out the right size yourself.`;
     warningEl.style.display = 'block';
   } else {
     warningEl.style.display = 'none';
@@ -3276,23 +3290,30 @@ function backFromViewer(){
 }
 document.getElementById('backToRecipes').addEventListener('click', backFromViewer);
 
-/* Ad-hoc scaling controls — set state.viewerScale and re-render. Nothing
-   is written to the recipe; renderViewer applies the scale fresh on every
-   call by re-running scaleRecipeSyntax against the recipe's own untouched
-   syntax, so there's no accumulated drift from scaling repeatedly. */
-document.querySelectorAll('.viewer-scale-row .scale-btn[data-viewer-scale]').forEach(btn=>{
+/* Ad-hoc scaling controls — set state.viewerServes and re-render. Nothing
+   is written to the recipe; renderViewer works the multiplier out fresh on
+   every call and re-runs scaleRecipeSyntax against the recipe's own
+   untouched syntax, so there's no accumulated drift from scaling
+   repeatedly — asking for 8 after asking for 6 scales from the original,
+   not from the 6. */
+document.querySelectorAll('.viewer-scale-row .scale-btn[data-viewer-serves]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    state.viewerScale = parseFloat(btn.dataset.viewerScale);
+    state.viewerServes = parseInt(btn.dataset.viewerServes, 10);
     renderViewer();
   });
 });
-document.getElementById('viewerScaleCustomBtn').addEventListener('click', ()=>{
-  const val = parseFloat(document.getElementById('viewerScaleCustom').value);
+document.getElementById('viewerServesCustomBtn').addEventListener('click', ()=>{
+  const val = parseInt(document.getElementById('viewerServesCustom').value, 10);
   if(!val || isNaN(val) || val <= 0){
-    showToast('Enter a valid scale, e.g. 0.5 or 2');
+    showToast('Enter how many people you\'re cooking for, e.g. 6');
     return;
   }
-  state.viewerScale = val;
+  state.viewerServes = val;
+  renderViewer();
+});
+document.getElementById('viewerServesResetBtn').addEventListener('click', ()=>{
+  state.viewerServes = null;
+  document.getElementById('viewerServesCustom').value = '';
   renderViewer();
 });
 
@@ -5006,17 +5027,30 @@ document.getElementById('parseBtn').addEventListener('click', parseAndPreview);
    changed before ever saving. Nothing is written to the actual recipe
    until SAVE is pressed — scaling here only touches the form's working
    text, same as typing an edit into any other field would. */
-function applyScaleToForm(multiplier){
+function applyScaleToForm(targetServings){
   const textEl = document.getElementById('importInput');
   const current = textEl.value;
   if(!current.trim()){
     showToast('Parse a recipe first, then scale it');
     return;
   }
-  if(!multiplier || isNaN(multiplier) || multiplier <= 0){
-    showToast('Enter a valid scale, e.g. 0.5 or 2');
+  if(!targetServings || isNaN(targetServings) || targetServings <= 0){
+    showToast("Enter how many people you're cooking for, e.g. 6");
     return;
   }
+  /* The multiplier comes from the text being scaled, not from the SERVINGS
+     field — the field is only populated by a PARSE, so it can be stale or
+     empty while the textarea already says otherwise. */
+  const base = parseInt(parseRecipe(current).servings, 10);
+  if(!base || base <= 0){
+    showToast('Add a SERVINGS line before scaling — there\'s nothing to scale from without it');
+    return;
+  }
+  if(targetServings === base){
+    showToast(`Already written to serve ${base}`);
+    return;
+  }
+  const multiplier = targetServings / base;
   textEl.value = scaleRecipeSyntax(current, multiplier);
   parseAndPreview();
   const equipment = document.getElementById('f-equipment').value.trim();
@@ -5027,20 +5061,16 @@ function applyScaleToForm(multiplier){
      re-scale. Persistent, not transient, per the 14 Aug decision that
      ingredients scale but equipment doesn't and that needs to be obvious,
      not just briefly mentioned. */
-  if(multiplier !== 1 && equipment){
-    warningEl.textContent = `⚠ Scaled ×${multiplier} — this recipe specifies ${equipment}, sized for the original quantities. Ingredients and servings have been scaled; you'll need to work out the right size yourself.`;
+  if(equipment){
+    warningEl.textContent = `⚠ Scaled from ${base} to ${targetServings} — this recipe specifies ${equipment}, sized for the original quantities. Ingredients and servings have been scaled; you'll need to work out the right size yourself.`;
     warningEl.style.display = 'block';
   } else {
     warningEl.style.display = 'none';
   }
-  showToast(`Scaled ×${multiplier} — review the preview, then save`);
+  showToast(`Scaled to serve ${targetServings} — review the preview, then save`);
 }
-document.querySelectorAll('[data-scale]').forEach(btn=>{
-  btn.addEventListener('click', ()=> applyScaleToForm(parseFloat(btn.dataset.scale)));
-});
-document.getElementById('f-scale-custom-btn').addEventListener('click', ()=>{
-  const val = parseFloat(document.getElementById('f-scale-custom').value);
-  applyScaleToForm(val);
+document.getElementById('f-scale-apply').addEventListener('click', ()=>{
+  applyScaleToForm(parseInt(document.getElementById('f-scale-servings').value, 10));
 });
 
 document.getElementById('saveBtn').addEventListener('click', ()=>{
@@ -5053,6 +5083,17 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     errorEl.textContent = 'Add a source before saving — where did this recipe come from?';
     errorEl.style.display = 'block';
     document.getElementById('f-source').focus();
+    return;
+  }
+  /* Servings are what scaling, the planner and the shopping list all work
+     from, so a recipe without them is half-useless the moment it's saved.
+     Deliberately not enforced in importAllData — a restore has to bring
+     back exactly what was backed up, including anything older than this. */
+  const servingsCheck = parseInt(document.getElementById('f-servings').value, 10);
+  if(!servingsCheck || servingsCheck < 1){
+    errorEl.textContent = 'Add the servings before saving — scaling and the shopping list both work from them.';
+    errorEl.style.display = 'block';
+    document.getElementById('f-servings').focus();
     return;
   }
   errorEl.style.display = 'none';
