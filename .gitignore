@@ -1,0 +1,4 @@
+# This repo is public and serves the app via GitHub Pages — recipe, planner and
+# diary data must never be committed here. Backups live in the private repo.
+*.sql
+kitchen-backup-*.json
