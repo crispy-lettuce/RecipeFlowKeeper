@@ -536,6 +536,12 @@
   .stacked-recipe:last-child{ margin-bottom:0; }
   .stacked-recipe-head{ display:flex; align-items:center; gap:9px; margin-bottom:10px; }
   .stacked-recipe-head h3{ font-size:18px; font-weight:600; margin:0; color:var(--ink); }
+  .stacked-recipe-serves{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px;
+    letter-spacing:.04em; color:var(--ink-mute); flex:none;
+  }
+  .stacked-recipe-actions{ display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
+  .stacked-recipe-actions .btn{ padding:6px 10px; font-size:10px; }
   .stacked-recipe .recipe-swatch{ width:10px; height:10px; border-radius:2px; flex:none; }
   .day-choose.day-add-more{ font-size:10.5px; align-self:flex-start; margin-top:2px; }
   .day-choose.day-add-more .circle{ width:18px; height:18px; font-size:12px; }
@@ -1027,6 +1033,16 @@
     </div>
   </nav>
   <button class="sidebar-peek-btn" id="sidebarPeekBtn" aria-label="Show or hide the menu">☰</button>
+  <!-- Wake-lock fallback: a silent, near-invisible 2x2px 1-second loop.
+       The real Screen Wake Lock API is blocked on file:// pages (secure
+       contexts only), which is how this app normally runs — this video
+       trick is what actually keeps the screen on in that case. Kept at
+       a tiny non-zero opacity rather than display:none/opacity:0, since
+       some browsers pause fully-hidden media as an optimisation. -->
+  <video id="keepAwakeVideo" loop muted playsinline
+         style="position:fixed; bottom:0; right:0; width:1px; height:1px; opacity:0.01; pointer-events:none;">
+    <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMRbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAA+gAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAjt0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAA+gAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAIAAAACAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAPoAAAAAAABAAAAAAGzbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAQABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABXm1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAR5zdGJsAAAAunN0c2QAAAAAAAAAAQAAAKphdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAIAAgBIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAAMGF2Y0MBQsAK/+EAGGdCwArZH4iIwEQAAAMABAAAAwAIPEiZIAEABWjLg8sgAAAAEHBhc3AAAAABAAAAAQAAABRidHJ0AAAAAAAAFDAAABQwAAAAGHN0dHMAAAAAAAAAAQAAAAEAAEAAAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAABAAAAAQAAABRzdHN6AAAAAAAAAoYAAAABAAAAFHN0Y28AAAAAAAAAAQAAA0EAAABidWR0YQAAAFptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjYwLjE2LjEwMAAAAAhmcmVlAAACjm1kYXQAAAJwBgX//2zcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBILjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5odG1sIC0gb3B0aW9uczogY2FiYWM9MCByZWY9MyBkZWJsb2NrPTE6MDowIGFuYWx5c2U9MHgxOjB4MTExIG1lPWhleCBzdWJtZT03IHBzeT0xIHBzeV9yZD0xLjAwOjAuMDAgbWl4ZWRfcmVmPTEgbWVfcmFuZ2U9MTYgY2hyb21hX21lPTEgdHJlbGxpcz0xIDh4OGRjdD0wIGNxbT0wIGRlYWR6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PS0yIHRocmVhZHM9MSBsb29rYWhlYWRfdGhyZWFkcz0xIHNsaWNlZF90aHJlYWRzPTAgbnI9MCBkZWNpbWF0ZT0xIGludGVybGFjZWQ9MCBibHVyYXlfY29tcGF0PTAgY29uc3RyYWluZWRfaW50cmE9MCBiZnJhbWVzPTAgd2VpZ2h0cD0wIGtleWludD0yNTAga2V5aW50X21pbj0xIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAADmWIhAV///8PRQABQt+A" type="video/mp4">
+  </video>
 
   <main class="stage">
     <!-- ================= HOME / SEARCH ================= -->
@@ -1051,7 +1067,7 @@
         <button class="backlink" id="backToRecipes">← ALL RECIPES</button>
         <div class="viewer-meta" id="viewerMeta"></div>
         <label class="toggle-switch" title="Keep the screen from timing out while cooking">
-          <input type="checkbox" id="keepAwakeToggle">
+          <input type="checkbox" class="keep-awake-toggle">
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
           <span class="toggle-label">KEEP AWAKE</span>
         </label>
@@ -1075,17 +1091,7 @@
         <span class="scale-note">Adjusts this view only — nothing is saved. Resets next time you open this recipe.</span>
       </div>
       <div id="viewerEquipmentWarning" class="equipment-warning" style="display:none;"></div>
-      <div id="keepAwakeStatus" class="keep-awake-status" style="display:none;"></div>
-      <!-- Wake-lock fallback: a silent, near-invisible 2x2px 1-second loop.
-           The real Screen Wake Lock API is blocked on file:// pages (secure
-           contexts only), which is how this app normally runs — this video
-           trick is what actually keeps the screen on in that case. Kept at
-           a tiny non-zero opacity rather than display:none/opacity:0, since
-           some browsers pause fully-hidden media as an optimisation. -->
-      <video id="keepAwakeVideo" loop muted playsinline
-             style="position:fixed; bottom:0; right:0; width:1px; height:1px; opacity:0.01; pointer-events:none;">
-        <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMRbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAA+gAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAjt0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAA+gAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAIAAAACAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAPoAAAAAAABAAAAAAGzbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAQABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABXm1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAR5zdGJsAAAAunN0c2QAAAAAAAAAAQAAAKphdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAIAAgBIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAAMGF2Y0MBQsAK/+EAGGdCwArZH4iIwEQAAAMABAAAAwAIPEiZIAEABWjLg8sgAAAAEHBhc3AAAAABAAAAAQAAABRidHJ0AAAAAAAAFDAAABQwAAAAGHN0dHMAAAAAAAAAAQAAAAEAAEAAAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAABAAAAAQAAABRzdHN6AAAAAAAAAoYAAAABAAAAFHN0Y28AAAAAAAAAAQAAA0EAAABidWR0YQAAAFptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjYwLjE2LjEwMAAAAAhmcmVlAAACjm1kYXQAAAJwBgX//2zcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBILjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5odG1sIC0gb3B0aW9uczogY2FiYWM9MCByZWY9MyBkZWJsb2NrPTE6MDowIGFuYWx5c2U9MHgxOjB4MTExIG1lPWhleCBzdWJtZT03IHBzeT0xIHBzeV9yZD0xLjAwOjAuMDAgbWl4ZWRfcmVmPTEgbWVfcmFuZ2U9MTYgY2hyb21hX21lPTEgdHJlbGxpcz0xIDh4OGRjdD0wIGNxbT0wIGRlYWR6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PS0yIHRocmVhZHM9MSBsb29rYWhlYWRfdGhyZWFkcz0xIHNsaWNlZF90aHJlYWRzPTAgbnI9MCBkZWNpbWF0ZT0xIGludGVybGFjZWQ9MCBibHVyYXlfY29tcGF0PTAgY29uc3RyYWluZWRfaW50cmE9MCBiZnJhbWVzPTAgd2VpZ2h0cD0wIGtleWludD0yNTAga2V5aW50X21pbj0xIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAADmWIhAV///8PRQABQt+A" type="video/mp4">
-      </video>
+      <div class="keep-awake-status" style="display:none;"></div>
       <div class="viewer-body"><div id="flowMount"></div></div>
     </section>
 
@@ -1094,14 +1100,21 @@
       <div class="viewer-head">
         <button class="backlink" id="backFromGroupViewer">← PLANNER</button>
         <div class="viewer-meta" id="groupViewerMeta"></div>
+        <label class="toggle-switch" title="Keep the screen from timing out while cooking">
+          <input type="checkbox" class="keep-awake-toggle">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-label">KEEP AWAKE</span>
+        </label>
+        <button class="btn" id="groupResetTicksBtn">RESET TICKS</button>
+        <button class="btn" id="groupExportPngBtn">EXPORT PNG</button>
+        <button class="btn" id="groupPrintBtn">PRINT / A4 PDF</button>
         <button class="btn small-danger" id="groupUngroupBtn">UNGROUP</button>
       </div>
-      <!-- No "keep awake" toggle here yet — the existing implementation is
-           wired to specific single-recipe element ids (keepAwakeVideo etc.)
-           rather than parameterised to a target screen. Duplicating it as-is
-           risks two copies drifting apart; properly sharing it is a real
-           small refactor, not a one-line add, so it's left as a follow-up
-           rather than half-done here. -->
+      <!-- Keep Awake is the same one machine as the Recipe Viewer's: one
+           video at .app level, and every .keep-awake-toggle / .keep-awake-status
+           on the page kept in step by the shared handler. No per-screen copy
+           to drift. -->
+      <div class="keep-awake-status" style="display:none;"></div>
       <div class="viewer-body"><div id="groupFlowMount"></div></div>
     </section>
 
@@ -2841,7 +2854,13 @@ function showView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const el = document.getElementById('view-'+name);
   if(el) el.classList.add('active');
-  const activeNav = name==='viewer' ? state.viewerReturnTo : name;
+  /* Neither Viewer has a nav entry of its own, so both keep the highlight
+     on wherever you came from — and a recipe opened out of a group points
+     at the group's own origin rather than at nothing. */
+  const activeNav = name==='viewer'
+    ? (state.viewerReturnTo === 'group-viewer' ? (state.groupViewerReturnTo || 'planner') : state.viewerReturnTo)
+    : name==='group-viewer' ? (state.groupViewerReturnTo || 'planner')
+    : name;
   document.querySelectorAll('.navlink[data-view]').forEach(b=>{
     b.classList.toggle('active', b.dataset.view === activeNav);
   });
@@ -3218,6 +3237,17 @@ function openGroup(groupId, returnTo){
   renderGroupViewer();
 }
 
+/* The headcount each recipe on a given day is planned for. Returns a
+   lookup rather than a map of one, since a day can hold the same recipe
+   twice — the first entry's figure is the sensible one to show. */
+function plannedServingsLookup(dateIso){
+  const entries = planEntries(loadPlan()[dateIso]);
+  return recipeId => {
+    const hit = entries.find(e=> e.recipeId === recipeId);
+    return hit ? hit.servings : 0;
+  };
+}
+
 function renderGroupViewer(){
   const group = loadGroups().find(g=>g.id === state.selectedGroupId);
   const mount = document.getElementById('groupFlowMount');
@@ -3229,10 +3259,19 @@ function renderGroupViewer(){
   if(!group){ showView('planner'); renderPlanner(); return; }
 
   const allRecipes = loadRecipes();
+  /* Scaled to the same headcount the shopping list bought for, so the
+     amounts on screen and the amounts in the trolley agree. */
+  const targetFor = plannedServingsLookup(group.dateIso);
   const recipesWithParsed = group.recipeIds
     .map(id => allRecipes.find(r=>r.id===id))
     .filter(Boolean) // a recipe deleted since the group was made — see the note below
-    .map(recipe => ({ recipe, parsed: parseRecipe(recipe.syntax||'') }));
+    .map(recipe => {
+      const base = parseInt(recipe.servings, 10) || 0;
+      const target = targetFor(recipe.id) || base;
+      const multiplier = (base && target && target !== base) ? target / base : 1;
+      const syntax = multiplier !== 1 ? scaleRecipeSyntax(recipe.syntax||'', multiplier) : (recipe.syntax||'');
+      return { recipe, serves: target, parsed: parseRecipe(syntax) };
+    });
 
   if(recipesWithParsed.length < 2){
     /* A group that's lost enough recipes to no longer be a group (down
@@ -3258,12 +3297,18 @@ function renderGroupViewer(){
      which is exactly why each recipe needs its own div rather than all
      sharing groupFlowMount directly — a single shared container would
      have each recipe's mountFlow call erase the one before it. */
-  const shellHtml = recipesWithParsed.map(({recipe}, i)=>{
+  const shellHtml = recipesWithParsed.map(({recipe, serves}, i)=>{
     const colour = PALETTE[i % PALETTE.length];
     return `<div class="stacked-recipe" data-recipe-id="${escapeHtml(recipe.id)}">
       <div class="stacked-recipe-head">
         <span class="recipe-swatch" style="background:${colour};"></span>
         <h3>${escapeHtml(recipe.title)}</h3>
+        ${serves ? `<span class="stacked-recipe-serves">SERVES ${serves}</span>` : ''}
+        <span class="stacked-recipe-actions">
+          <button class="btn" data-group-action="favourite">${recipe.favourite ? '★ FAVOURITE' : '☆ FAVOURITE'}</button>
+          <button class="btn" data-group-action="edit">EDIT</button>
+          <button class="btn" data-group-action="open">OPEN →</button>
+        </span>
       </div>
       <div class="stacked-recipe-flow" id="groupFlow-${escapeHtml(recipe.id)}"></div>
     </div>`;
@@ -3275,6 +3320,10 @@ function renderGroupViewer(){
     const sub = document.getElementById(`groupFlow-${recipe.id}`);
     if(!sub) return;
     mountFlow(sub, parsed, {
+      /* The same tick key as the single Viewer: it's the same recipe and
+         the same flow, so ticking here and opening it on its own keeps
+         your place either way. */
+      tickKey: recipe.id,
       onComplete: ()=> logRecipeUsed(recipe.id)
       // showTimeline deliberately omitted — the group's own combined
       // timeline strip above already covers this recipe's steps; a
@@ -3288,6 +3337,57 @@ function renderGroupViewer(){
 document.getElementById('backFromGroupViewer').addEventListener('click', ()=>{
   showView(state.groupViewerReturnTo || 'planner');
   if(state.groupViewerReturnTo === 'planner' || !state.groupViewerReturnTo) renderPlanner();
+});
+
+/* Per-recipe actions on the stacked cards. Delegated, because the cards are
+   rebuilt on every render. Shortlisting is deliberately absent — a recipe
+   already on the plan has nothing to shortlist — and there is no group-level
+   scale row, since the recipes have no single base to scale from; OPEN →
+   covers both by handing you the recipe on its own. */
+document.getElementById('groupFlowMount').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-group-action]');
+  if(!btn) return;
+  const card = btn.closest('.stacked-recipe');
+  if(!card) return;
+  const id = card.dataset.recipeId;
+  const action = btn.dataset.groupAction;
+
+  if(action === 'open'){
+    openRecipe(id, 'group-viewer');
+  } else if(action === 'edit'){
+    state.viewerReturnTo = 'group-viewer';
+    openEditModal(id);
+  } else if(action === 'favourite'){
+    const recipes = loadRecipes();
+    const idx = recipes.findIndex(r=>r.id === id);
+    if(idx === -1) return;
+    recipes[idx].favourite = !recipes[idx].favourite;
+    if(!saveRecipesList(recipes)) return;
+    renderGroupViewer();
+  }
+});
+
+document.getElementById('groupResetTicksBtn').addEventListener('click', ()=>{
+  /* In place, like the single Viewer's — the point is to start again
+     without losing your place on screen. */
+  const group = loadGroups().find(g=>g.id === state.selectedGroupId);
+  (group ? group.recipeIds : []).forEach(clearViewerTicks);
+  document.querySelectorAll('#groupFlowMount .done').forEach(c=> c.classList.remove('done'));
+  showToast('Ticks cleared');
+});
+
+document.getElementById('groupPrintBtn').addEventListener('click', ()=> window.print());
+
+document.getElementById('groupExportPngBtn').addEventListener('click', ()=>{
+  const group = loadGroups().find(g=>g.id === state.selectedGroupId);
+  const names = (group ? group.recipeIds : [])
+    .map(id=>{ const r = loadRecipes().find(x=>x.id===id); return r ? r.title : ''; })
+    .filter(Boolean).join('-');
+  exportNodeAsPng(
+    document.querySelector('#view-group-viewer .viewer-body'),
+    (names || 'meal-group').toLowerCase().replace(/[^a-z0-9]+/g,'-'),
+    { scrollFixSelectors: ['#view-group-viewer .viewer-body', '.tablewrap'], dropStickySelectors: ['.ing-cell'] }
+  );
 });
 
 document.getElementById('groupUngroupBtn').addEventListener('click', ()=>{
@@ -3310,8 +3410,7 @@ function renderViewer(){
   const backLabels = { planner: '← PLANNER', history: '← HISTORY' };
   document.getElementById('backToRecipes').textContent = backLabels[state.viewerReturnTo] || '← ALL RECIPES';
 
-  document.getElementById('keepAwakeToggle').checked = state.keepAwake;
-  updateKeepAwakeStatus();
+  updateKeepAwakeStatus(); // also re-syncs every toggle on the page
 
   const n = useCount(recipe);
   const used = lastUsed(recipe);
@@ -3392,8 +3491,9 @@ function logRecipeUsed(id){
 function backFromViewer(){
   showView(state.viewerReturnTo);
   // showView already re-renders planner/shopping/history internally;
-  // 'recipes' is the one origin it doesn't auto-render.
+  // 'recipes' and 'group-viewer' are the origins it doesn't auto-render.
   if(state.viewerReturnTo === 'recipes') renderHome();
+  if(state.viewerReturnTo === 'group-viewer') renderGroupViewer();
 }
 document.getElementById('backToRecipes').addEventListener('click', backFromViewer);
 
@@ -3456,12 +3556,18 @@ let keepAwakeStatusInterval = null;
    interval while the toggle is on specifically so it can catch the video
    silently stopping partway through, not just its state at the moment the
    toggle was flipped. */
+/* The Recipe Viewer and the Group Viewer each have a status line and a
+   toggle, but there is only one wake lock and one video — so every copy on
+   the page is written at once and kept in step. */
 function updateKeepAwakeStatus(){
-  const el = document.getElementById('keepAwakeStatus');
+  const els = Array.from(document.querySelectorAll('.keep-awake-status'));
+  document.querySelectorAll('.keep-awake-toggle').forEach(t=>{ t.checked = state.keepAwake; });
   if(!state.keepAwake){
-    el.style.display = 'none';
-    el.classList.remove('warn');
-    el.textContent = '';
+    els.forEach(el=>{
+      el.style.display = 'none';
+      el.classList.remove('warn');
+      el.textContent = '';
+    });
     return;
   }
   const elapsedSec = keepAwakeEnabledAt ? Math.round((Date.now() - keepAwakeEnabledAt) / 1000) : 0;
@@ -3479,9 +3585,11 @@ function updateKeepAwakeStatus(){
     text = `KEEP AWAKE — unexpected state, neither method looks active · running ${elapsedStr}`;
     isWarning = true;
   }
-  el.style.display = 'block';
-  el.classList.toggle('warn', isWarning);
-  el.textContent = text;
+  els.forEach(el=>{
+    el.style.display = 'block';
+    el.classList.toggle('warn', isWarning);
+    el.textContent = text;
+  });
 }
 
 function enableKeepAwake(){
@@ -3531,9 +3639,13 @@ document.addEventListener('visibilitychange', ()=>{
     }).catch(()=>{});
   }
 });
-document.getElementById('keepAwakeToggle').addEventListener('change', async e=>{
+document.querySelectorAll('.keep-awake-toggle').forEach(toggleEl=>{
+toggleEl.addEventListener('change', async e=>{
   const toggle = e.target;
   if(toggle.checked){
+    /* enableKeepAwake() must be reached synchronously from the tap —
+       Android Chrome refuses video.play() otherwise — so nothing is looked
+       up or awaited before this line. */
     const ok = await enableKeepAwake();
     if(!ok){
       toggle.checked = false;
@@ -3553,6 +3665,7 @@ document.getElementById('keepAwakeToggle').addEventListener('change', async e=>{
     clearInterval(keepAwakeStatusInterval);
     updateKeepAwakeStatus();
   }
+});
 });
 
 document.getElementById('favouriteBtn').addEventListener('click', ()=>{
