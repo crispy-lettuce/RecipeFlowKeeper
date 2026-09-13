@@ -831,7 +831,9 @@
     font-size:13px; opacity:0; pointer-events:none; transition:all .25s ease; z-index:200;
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
-  @media (prefers-reduced-motion: reduce){ .toast{ transition:none; } }
+  @media (prefers-reduced-motion: reduce){
+    .toast, .sidebar, .sidebar-peek-btn{ transition:none; }
+  }
 
   /* Auto-collapses the sidebar specifically while the Recipe Viewer is
      open, on screens too narrow to comfortably show both the sidebar and
@@ -849,8 +851,29 @@
      List don't have the same "just let me see this properly" pressure
      the handover named. */
   @media (min-width: 861px) and (max-width: 1180px){
-    .app.viewer-open .sidebar{ display:none; }
+    /* Width, not display:none — the sidebar slides out of the way rather
+       than vanishing, and can slide back without leaving the recipe. */
+    .app.viewer-open .sidebar{
+      width:0; padding-left:0; padding-right:0;
+      border-right-width:0; overflow:hidden;
+    }
+    .app.viewer-open.sidebar-peek .sidebar{ width:214px; border-right-width:1px; }
+    .app.viewer-open .sidebar-peek-btn{ display:flex; }
   }
+  .sidebar{ transition:width .22s ease, border-right-width .22s ease; }
+  /* The tab that brings it back. Hidden everywhere except a collapsed
+     sidebar on a mid-width screen, by the rule above. */
+  .sidebar-peek-btn{
+    display:none; position:fixed; left:0; top:50%; transform:translateY(-50%); z-index:60;
+    align-items:center; justify-content:center;
+    width:18px; height:64px; padding:0;
+    border:1px solid var(--line); border-left:none;
+    border-radius:0 var(--r) var(--r) 0;
+    background:var(--card); color:var(--ink-mute); cursor:pointer;
+    font-family:'IBM Plex Mono', monospace; font-size:11px; line-height:1;
+  }
+  .sidebar-peek-btn:hover{ color:var(--plum); border-color:var(--plum); }
+  .app.sidebar-peek .sidebar-peek-btn{ left:214px; }
 
   @media (max-width: 860px){
     body{ overflow:auto; }
@@ -904,7 +927,8 @@
     .keep-awake-status, #keepAwakeVideo,
     .filter-head, .assign-banner,
     .shop-head-right, #shopWeekSelect,
-    #shopHideCheckedBtn, #shopClearBtn{ display:none !important; }
+    #shopHideCheckedBtn, #shopClearBtn,
+    .sidebar-peek-btn{ display:none !important; }
     .app{ display:block !important; height:auto !important; overflow:visible !important; }
     .view{ display:none !important; }
     .view.active{ display:block !important; }
@@ -1002,6 +1026,7 @@
       <input type="file" id="importFileInput" accept="application/json" style="display:none;">
     </div>
   </nav>
+  <button class="sidebar-peek-btn" id="sidebarPeekBtn" aria-label="Show or hide the menu">☰</button>
 
   <main class="stage">
     <!-- ================= HOME / SEARCH ================= -->
@@ -1033,6 +1058,7 @@
         <button class="btn" id="favouriteBtn">☆ FAVOURITE</button>
         <button class="btn" id="shortlistBtn">+ SHORTLIST</button>
         <button class="btn" id="editRecipeBtn">EDIT</button>
+        <button class="btn" id="resetTicksBtn">RESET TICKS</button>
         <button class="btn" id="exportPngBtn">EXPORT PNG</button>
         <button class="btn" id="printBtn">PRINT / A4 PDF</button>
         <button class="btn danger" id="deleteBtn">DELETE</button>
@@ -1945,6 +1971,13 @@ function buildFlowHTML(parsed){
    overlap check against every other cell is enough to catch the whole
    lineage in one pass — no need to walk the graph stage by stage.
    Un-ticking only affects the one cell clicked, not its ancestors. */
+/* Session-only, so a plain object on state rather than anything stored. */
+function viewerTickSet(key){
+  if(!state.viewerTicks[key]) state.viewerTicks[key] = new Set();
+  return state.viewerTicks[key];
+}
+function clearViewerTicks(key){ delete state.viewerTicks[key]; }
+
 function mountFlow(container, parsed, opts){
   opts = opts || {};
   const {html, colCount} = buildFlowHTML(parsed);
@@ -1971,6 +2004,17 @@ function mountFlow(container, parsed, opts){
   const cells = Array.from(container.querySelectorAll('.ing-cell, .box-cell'));
   const colOf = cell => cell.classList.contains('ing-cell') ? -1 : parseInt(cell.dataset.col, 10);
 
+  /* Ticks are addressed by where a cell sits in the flow, not by its text.
+     Geometry only moves when the recipe's *structure* does, so scaling to
+     a different number of people — which rewrites quantities and nothing
+     else — leaves every tick exactly where it was. That is the whole
+     point: you shouldn't lose your place halfway through cooking because
+     you doubled the recipe. Session-only, deliberately; a tick means
+     "done just now", not something to find still set tomorrow. */
+  const cellKey = cell => colOf(cell) + ':' + cell.dataset.rowStart + ':' + cell.dataset.rowSpan;
+  const ticks = opts.tickKey ? viewerTickSet(opts.tickKey) : null;
+  if(ticks) cells.forEach(cell=>{ if(ticks.has(cellKey(cell))) cell.classList.add('done'); });
+
   cells.forEach(cell=>{
     cell.addEventListener('click', ()=>{
       const turningOn = !cell.classList.contains('done');
@@ -1986,6 +2030,11 @@ function mountFlow(container, parsed, opts){
         });
       } else {
         cell.classList.remove('done');
+      }
+      /* Recorded before onToggle, which is free to re-render. */
+      if(ticks){
+        ticks.clear();
+        cells.forEach(c=>{ if(c.classList.contains('done')) ticks.add(cellKey(c)); });
       }
       if(opts.onToggle) opts.onToggle();
       const finalCells = container.querySelectorAll(`.box-cell[data-col="${colCount-1}"]`);
@@ -2744,6 +2793,7 @@ const state = {
   shoppingBothWeeks: false,    // showing this week and next as one combined list
   shoppingHideChecked: false,  // hide items already ticked off, for shopping with
   aliasPrompting: false,       // guards the ingredient-match prompt against re-entering its own re-render
+  viewerTicks: {},             // recipeId -> Set of ticked flow cells, session-only and cleared on reload
   editingRecipeId: null,       // recipe id currently open in the Add/Edit modal, if editing rather than adding
   historyMonth: null,          // {year, month(0-indexed)} the History calendar is currently showing
   historySelectedDate: null,   // ISO date string currently selected in the History calendar, if any
@@ -2799,7 +2849,9 @@ function showView(name){
      auto-collapses on mid-width screens for both the single-recipe
      Viewer and the Group Viewer — see the CSS comment for why those two
      screens specifically need the room. */
-  document.querySelector('.app').classList.toggle('viewer-open', name === 'viewer' || name === 'group-viewer');
+  const app = document.querySelector('.app');
+  app.classList.toggle('viewer-open', name === 'viewer' || name === 'group-viewer');
+  app.classList.remove('sidebar-peek'); // a peek lasts as long as the recipe you opened it over
   window.scrollTo(0,0);
   if(name === 'planner') renderPlanner();
   if(name === 'shopping') renderShopping();
@@ -2807,6 +2859,9 @@ function showView(name){
   if(name === 'swaps') renderSwaps();
   if(name === 'settings') renderSettings();
 }
+document.getElementById('sidebarPeekBtn').addEventListener('click', ()=>{
+  document.querySelector('.app').classList.toggle('sidebar-peek');
+});
 document.querySelectorAll('.navlink[data-view]').forEach(btn=>{
   /* Shortlist lives inside the Planner screen (per the mockup), not a screen of its own. */
   const target = btn.dataset.view === 'shortlist' ? 'planner' : btn.dataset.view;
@@ -3307,6 +3362,7 @@ function renderViewer(){
   }
 
   mountFlow(mount, parsedForView, {
+    tickKey: recipe.id,
     onComplete: ()=> logRecipeUsed(recipe.id),
     showTimeline: true
   });
@@ -4909,6 +4965,14 @@ document.getElementById('openAddBtn').addEventListener('click', openAddModal);
 document.getElementById('editRecipeBtn').addEventListener('click', ()=>{
   if(state.selectedRecipeId) openEditModal(state.selectedRecipeId);
 });
+/* Unticks in place rather than re-rendering — "start again without
+   navigating away" means the recipe stays exactly where it is on screen,
+   scroll position and all. */
+document.getElementById('resetTicksBtn').addEventListener('click', ()=>{
+  if(state.selectedRecipeId) clearViewerTicks(state.selectedRecipeId);
+  document.querySelectorAll('#flowMount .done').forEach(c=> c.classList.remove('done'));
+  showToast('Ticks cleared');
+});
 document.getElementById('closeAddModal').addEventListener('click', closeAddModal);
 document.getElementById('addModalOverlay').addEventListener('click', e=>{
   if(e.target.id === 'addModalOverlay') closeAddModal();
@@ -5448,6 +5512,10 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     // about the recipe's details, not a new entry replacing its record.
     recipes[idx] = { ...recipes[idx], ...fields };
     if(!saveRecipesList(recipes)) return;
+    /* An edit can move the groups and stages around, and a tick is a
+       position in that layout — so what was ticked no longer means
+       anything reliable. Start the recipe clean. */
+    clearViewerTicks(state.editingRecipeId);
     const editedId = state.editingRecipeId;
     const returnTo = state.viewerReturnTo;
     closeAddModal();
