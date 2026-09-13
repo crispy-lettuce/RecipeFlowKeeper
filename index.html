@@ -2053,9 +2053,14 @@ const sb = (typeof supabase !== 'undefined' && supabase.createClient)
   : null;
 
 let HOUSEHOLD_ID = null;
+/* Friday, matching the household_settings column default — a Friday shop wants
+   its week to break on a Friday. 0 = Sunday, as per Date.getDay(). */
+const DEFAULT_WEEK_START_DAY = 5;
 const cache = {
   recipes: [], keywords: [], plan: {}, shortlist: [],
-  groups: [], swaps: [], shoppingChecked: {}
+  groups: [], swaps: [], shoppingChecked: {},
+  settings: { weekStartDay: DEFAULT_WEEK_START_DAY, darkMode: 'system' },
+  aliases: []
 };
 
 /* Writes are queued rather than fired off in parallel, so two edits made in
@@ -2132,7 +2137,7 @@ async function hydrate(){
   if(!memberships.length) throw new Error("This account isn't linked to a household yet.");
   HOUSEHOLD_ID = memberships[0].household_id;
 
-  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked] = await Promise.all([
+  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases] = await Promise.all([
     sb.from('recipes').select('*'),
     sb.from('recipe_logs').select('recipe_id, cooked_on').not('recipe_id','is',null),
     sb.from('keywords').select('name').order('sort_order'),
@@ -2140,9 +2145,13 @@ async function hydrate(){
     sb.from('shortlist_items').select('*').order('date_added', {ascending:false}),
     sb.from('meal_groups').select('*'),
     sb.from('ingredient_swaps').select('*'),
-    sb.from('shopping_checked').select('week_start, item_key')
+    sb.from('shopping_checked').select('week_start, item_key'),
+    /* maybeSingle, not single: a household with no settings row yet must come
+       back as null rather than throwing, since any throw in here signs you out. */
+    sb.from('household_settings').select('*').maybeSingle(),
+    sb.from('aliases').select('*')
   ]);
-  for(const res of [recipes, logs, keywords, planner, shortlist, groups, swaps, checked]){
+  for(const res of [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases]){
     if(res.error) throw res.error;
   }
 
@@ -2172,7 +2181,76 @@ async function hydrate(){
   checked.data.forEach(row=>{
     (cache.shoppingChecked[row.week_start] = cache.shoppingChecked[row.week_start] || {})[row.item_key] = true;
   });
+  cache.settings = {
+    weekStartDay: settings.data ? settings.data.week_start_day : DEFAULT_WEEK_START_DAY,
+    darkMode: (settings.data && settings.data.dark_mode) || 'system'
+  };
+  cache.aliases = aliases.data.map(row=>({
+    id: row.id, kind: row.kind, alias: row.alias, canonical: row.canonical || ''
+  }));
+  rebuildAliasMaps();
 }
+
+/* ---- Household settings ----
+   One row per household, so this can't use pushList (which keys on a UUID id).
+   Same shape as pushKeywords: a bespoke upsert on the real primary key. */
+function loadSettings(){ return cache.settings; }
+function saveSettings(next){
+  cache.settings = next;
+  return queueWrite('your settings', async ()=>{
+    const { error } = await sb.from('household_settings').upsert({
+      household_id: HOUSEHOLD_ID,
+      week_start_day: next.weekStartDay,
+      /* Round-tripped rather than exposed: dark mode is a later phase, and
+         writing the column back unchanged keeps this upsert from clobbering it. */
+      dark_mode: next.darkMode || 'system',
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'household_id' });
+    if(error) throw error;
+  });
+}
+function setSetting(key, value){
+  return saveSettings({ ...loadSettings(), [key]: value });
+}
+
+/* ---- Aliases ----
+   Two strings the household has declared equivalent (kind 'source'/'ingredient'),
+   or declared *not* equivalent (kind '..._distinct', where `alias` holds a sorted
+   pair key and `canonical` is empty). The distinct kinds are what stop the app
+   asking about the same pair forever.
+
+   Lookups happen per ingredient line while building a shopping list, so the
+   list is indexed into Maps on every write rather than scanned each time. */
+let aliasMaps = { source: new Map(), ingredient: new Map(), distinct: new Set() };
+function rebuildAliasMaps(){
+  const maps = { source: new Map(), ingredient: new Map(), distinct: new Set() };
+  cache.aliases.forEach(a=>{
+    if(a.kind === 'source' || a.kind === 'ingredient') maps[a.kind].set(a.alias, a.canonical);
+    else if(a.kind === 'source_distinct' || a.kind === 'ingredient_distinct') maps.distinct.add(a.kind + '|' + a.alias);
+  });
+  aliasMaps = maps;
+}
+function loadAliases(){ return cache.aliases; }
+function saveAliases(list){
+  cache.aliases = list;
+  rebuildAliasMaps();
+  return queueWrite('word matches', ()=> pushList('aliases', list.map(a=>({
+    id: a.id, household_id: HOUSEHOLD_ID,
+    kind: a.kind, alias: a.alias, canonical: a.canonical || ''
+  }))));
+}
+function addAlias(kind, alias, canonical){
+  const list = loadAliases().filter(a=> !(a.kind === kind && a.alias === alias));
+  list.push({ id: uid(), kind, alias, canonical: canonical || '' });
+  return saveAliases(list);
+}
+function removeAlias(id){ return saveAliases(loadAliases().filter(a=>a.id !== id)); }
+/* A pair key is order-independent, so "is this pair settled?" gives the same
+   answer whichever of the two names the shopping list happens to see first. */
+function pairKeyFor(a, b){ return [a, b].sort().join(' || '); }
+function isPairDistinct(kind, a, b){ return aliasMaps.distinct.has(kind + '_distinct|' + pairKeyFor(a, b)); }
+function applyIngredientAlias(name){ return aliasMaps.ingredient.get(name) || name; }
+function applySourceAlias(name){ return aliasMaps.source.get(name) || name; }
 
 function loadRecipes(){ return cache.recipes; }
 function saveRecipesList(list){
@@ -3362,12 +3440,33 @@ function dayList(){
 function formatDayLabel(d){
   return d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase() + ' ' + d.getDate();
 }
-/* Groups days into Sunday-start calendar weeks, in order — bucket 0 is
-   always "this week" (today onward), bucket 1 "next week", and so on. */
+/* Which day a week starts on is a household setting (Settings screen), because
+   a shop done every Friday wants its weeks to break on Fridays. Everything that
+   needs a week boundary goes through startOfWeek so the Planner, Shopping List
+   and History can't drift apart. */
+function weekStartDay(){
+  const n = cache.settings && cache.settings.weekStartDay;
+  return (typeof n === 'number') ? n : DEFAULT_WEEK_START_DAY;
+}
+function startOfWeek(d){
+  const ws = new Date(d);
+  ws.setHours(0,0,0,0);
+  ws.setDate(d.getDate() - ((d.getDay() - weekStartDay() + 7) % 7));
+  return ws;
+}
+/* The label for a week bucket. Bucket 0 is always "this week" (today onward),
+   bucket 1 "next week"; with a mid-week start day a 14-day window can reach a
+   third bucket, which gets dated rather than named. */
+function weekBucketLabel(i, bucketDays){
+  return i === 0 ? 'THIS WEEK'
+       : i === 1 ? 'NEXT WEEK'
+       : ('WEEK OF ' + formatDayLabel(bucketDays[0]));
+}
+/* Groups days into calendar weeks, in order, starting on the configured day. */
 function groupDaysByWeek(days){
   const buckets = []; const idx = {};
   days.forEach(d=>{
-    const ws = new Date(d); ws.setDate(d.getDate() - d.getDay());
+    const ws = startOfWeek(d);
     const key = isoLocal(ws);
     if(!(key in idx)){ idx[key] = buckets.length; buckets.push([]); }
     buckets[idx[key]].push(d);
@@ -3388,7 +3487,7 @@ function renderPlannerDays(){
 
   let html = '';
   buckets.forEach((bucketDays, i)=>{
-    const label = i===0 ? 'THIS WEEK' : i===1 ? 'NEXT WEEK' : ('WEEK OF ' + formatDayLabel(bucketDays[0]));
+    const label = weekBucketLabel(i, bucketDays);
     html += `<div class="week-label">${label}</div>`;
     bucketDays.forEach(d=>{
       const iso = isoLocal(d);
@@ -3684,10 +3783,11 @@ function saveShoppingChecked(all){
     }
   });
 }
-/* Checked-off items are keyed by the ISO date of the Sunday that starts
-   their week, not by "this week"/"next week" — those labels shift meaning
-   daily as the rolling window advances, but a given calendar week's key
-   never changes, so progress made mid-week doesn't get scrambled. */
+/* Checked-off items are keyed by the ISO date of the day that starts their
+   week, not by "this week"/"next week" — those labels shift meaning daily as
+   the rolling window advances, but a given calendar week's key never changes,
+   so progress made mid-week doesn't get scrambled. Changing the week-start
+   setting does re-key them, which is why ticks were cleared when it moved. */
 function toggleShoppingChecked(weekStartIso, itemKey){
   const all = loadShoppingChecked();
   if(!all[weekStartIso]) all[weekStartIso] = {};
@@ -3697,9 +3797,7 @@ function toggleShoppingChecked(weekStartIso, itemKey){
 }
 function weekStartIsoOf(days){
   if(!days.length) return todayStr();
-  const ws = new Date(days[0]);
-  ws.setDate(days[0].getDate() - days[0].getDay());
-  return isoLocal(ws);
+  return isoLocal(startOfWeek(days[0]));
 }
 
 /* ------------------------------- Amount parsing ------------------------------- */
@@ -3912,9 +4010,7 @@ function renderShopping(){
   const buckets = groupDaysByWeek(dayList());
   if(state.shoppingWeekIndex >= buckets.length) state.shoppingWeekIndex = 0;
 
-  const weekLabels = buckets.map((bucketDays, i)=>
-    i===0 ? 'THIS WEEK' : i===1 ? 'NEXT WEEK' : ('WEEK OF ' + formatDayLabel(bucketDays[0]))
-  );
+  const weekLabels = buckets.map((bucketDays, i)=> weekBucketLabel(i, bucketDays));
   const sel = document.getElementById('shopWeekSelect');
   sel.innerHTML = weekLabels.map((label, i)=>
     `<option value="${i}"${i===state.shoppingWeekIndex?' selected':''}>${label}</option>`
