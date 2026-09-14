@@ -18,6 +18,7 @@ Single HTML file, no build step, no framework. Data lives in Supabase.
 
 | If you want to… | Read |
 | --- | --- |
+| Know what to do next, and in what order | [`docs/NEXT-SESSION.md`](docs/NEXT-SESSION.md) |
 | Find your way around all the documentation | [`docs/DOCUMENT-INDEX.md`](docs/DOCUMENT-INDEX.md) |
 | Know what's built, verified, and outstanding | [`docs/HANDOVER.md`](docs/HANDOVER.md) |
 | Understand how the app and its recipe format work | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |

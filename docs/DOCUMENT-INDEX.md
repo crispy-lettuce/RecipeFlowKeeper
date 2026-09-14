@@ -14,7 +14,8 @@ GitHub at the time of writing.
 3. **`docs/HANDOVER.md`** — what's built, what isn't, and what was found to be wrongly recorded.
 4. **`docs/INFRASTRUCTURE.md`** — repos, Supabase, credentials policy.
 
-Then pick up work from **`docs/NEXT-SESSION.md`**.
+Then pick up work from **`docs/NEXT-SESSION.md`**, which sets out the order things should
+happen in. As of 14 Sep 2026 the project is at **step 1 of 5: ingesting the reprocessed recipes**.
 
 ---
 
@@ -79,12 +80,16 @@ The riskiest step is signing out and back in.
 
 ---
 
-### `docs/NEXT-SESSION.md` — how to start the next piece of work
-**What:** A prompt to paste into a new conversation, plus five ready-made starting points —
-ingesting reprocessed recipes, the browser test pass, building image re-hosting, going live, or
-planning Phase 3.
+### `docs/NEXT-SESSION.md` — the order of work, and how to start
+**What:** **The definitive sequence for what happens next**, with the reasoning behind the three
+places where order genuinely matters. Plus a complete, ready-to-paste prompt for the next session
+and alternative starting points if you want to work out of sequence.
 
-**Use it when:** starting a new session. Paste the prompt, then the starting point you want.
+**Use it when:** starting a new session, or whenever you're unsure what should happen next.
+Currently at **step 1: ingest the reprocessed recipes**.
+
+**Contains one warning worth not missing:** the test plan's export/import step rewrites
+everything, so that export must be taken *after* recipe ingestion, never before.
 
 ---
 

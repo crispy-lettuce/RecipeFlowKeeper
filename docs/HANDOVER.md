@@ -137,6 +137,9 @@ part of why it's the right home for this.
 
 ## 3. Immediate next task: ingesting the reprocessed recipes
 
+*This is step 1 of five. `docs/NEXT-SESSION.md` sets out the full order and why it matters —
+in particular why the browser test pass is better done after this, not before.*
+
 The library is being reprocessed against the revised conversion instructions, landing at
 roughly 33 recipes. Older recipes that aren't carried forward can be dropped — confirmed.
 
