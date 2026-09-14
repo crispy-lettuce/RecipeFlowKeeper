@@ -2,6 +2,10 @@
 
 Copy the block below into a new chat. It's written to stand on its own.
 
+For repo URLs, the Supabase project/org, and where secrets actually live, see
+`docs/INFRASTRUCTURE.md` — that document assumes no prior context at all, including no
+Claude Code session.
+
 ---
 
 ## The prompt

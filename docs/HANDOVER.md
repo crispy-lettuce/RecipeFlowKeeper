@@ -7,6 +7,9 @@ out not to be, which is what prompted this audit.
 
 Work lives on branch `claude/recipe-app-supabase-0z139o` in both repos.
 
+Repo URLs, the Supabase project/org, connection details and the secrets policy all live in
+`docs/INFRASTRUCTURE.md` — read that first if you're picking this up without prior context.
+
 ---
 
 ## 1. Where things stand, against the Build Brief's own codes
@@ -80,7 +83,7 @@ hasn't caught up yet.
 
 | Item | Status |
 | --- | --- |
-| Hosting (GitHub Pages) | **Not deployed.** `main` still holds the pre-Supabase app; the branch is ~17 commits ahead and unmerged. Nothing is live. |
+| Hosting (GitHub Pages) | **Correction (14 Sep, this pass) — likely live, not "nothing deployed" as previously stated here.** The repo's own settings report Pages as configured (`has_pages: true`), and the default branch is `main` — which still holds the pre-Supabase, localStorage-only app. The Claude Code sandbox has no route to `github.io` to confirm the page's actual content, so **check `https://crispy-lettuce.github.io/RecipeFlowKeeper/` in a browser** before assuming either way. If it's live, anyone with the URL can reach the old app (though not your Supabase data — that's a separate login). See `docs/INFRASTRUCTURE.md` for the full repo/Pages picture. |
 | Backend (Supabase) | **Done.** 13 tables, RLS enabled with policies on every one. |
 | Household id on every table from day one | **Done, verified.** |
 | Backup to a separate private repo | **Done and genuinely working.** See §5. |
