@@ -1418,6 +1418,25 @@ function extractStepDuration(rawLabel){
   if(/^(?:until|till)\b/.test(bracket)){
     return { label: before, duration: { min:null, max:null, openEnded:true } };
   }
+  /* Exact matches, not prefixes — unlike until/till above, these are whole
+     words the conversion instructions ask for verbatim, so there's no
+     "cook to done"-style phrase to accidentally widen into. A genuinely
+     zero-length step (plating, a final stir, a garnish) is a real timing
+     fact, distinct from a step whose length just wasn't recorded — see
+     the "instantaneous" comment on computeTimeline below, which this
+     completes: a truly instant step gets duration 0, not the default
+     filler. */
+  if(bracket === 'instant'){
+    return { label: before, duration: { min:0, max:0, openEnded:false, instant:true } };
+  }
+  /* An overnight (or similarly long, unattended) step is a real timing
+     decision too, but plotting 8-12 hours literally would dwarf every
+     other step on a shared same-session cooking timeline and make it
+     useless — so this rides the same DEFAULT_STEP_MINUTES filler as
+     open-ended below, badged distinctly rather than measured. */
+  if(bracket === 'overnight'){
+    return { label: before, duration: { min:null, max:null, openEnded:true, overnight:true } };
+  }
   const range = bracket.match(/^~?\s*(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*(min|mins|minutes?|m|hrs?|hours?|h)?$/);
   if(range){
     const unit = (range[3]||'').toLowerCase();
@@ -1455,13 +1474,21 @@ function formatMinutesForDisplay(n){
 }
 function formatDuration(d){
   if(!d) return '';
+  if(d.instant) return 'instant';
+  if(d.overnight) return 'overnight';
   if(d.openEnded) return 'until done';
   if(d.min === d.max) return formatMinutesForDisplay(d.min);
   return `${formatMinutesForDisplay(d.min)}–${formatMinutesForDisplay(d.max)}`;
 }
 function durationBadge(d){
   if(!d) return '';
-  const text = d.openEnded ? '~ UNTIL DONE' : formatDuration(d).toUpperCase();
+  const text = d.instant ? 'INSTANT'
+    : d.overnight ? 'OVERNIGHT'
+    : d.openEnded ? '~ UNTIL DONE'
+    : formatDuration(d).toUpperCase();
+  // overnight carries openEnded too, so it already gets the same faded,
+  // approximate styling as "until done" — instant stays plain: it's a
+  // precise fact, not a fuzzy one.
   return `<span class="step-duration${d.openEnded?' open-ended':''}">${escapeHtml(text)}</span>`;
 }
 
