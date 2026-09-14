@@ -25,9 +25,10 @@ Both scripts use whichever Chromium Playwright installs. Set
 
 ## What it can and can't tell you
 
-It covers the parts that are pure app logic: week bucketing, scaling,
-shopping-list totals and unit merging, tick behaviour, the planner's
-per-day servings, and that every screen renders without throwing.
+**97 checks.** It covers the parts that are pure app logic: week bucketing, scaling,
+shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
+`SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, and that every screen
+renders without throwing.
 
 It cannot tell you anything about **Supabase itself** — `stub.js` answers every
 query from a fixed object and records writes to `window.__WRITES__` rather than

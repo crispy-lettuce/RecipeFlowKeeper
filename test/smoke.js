@@ -212,6 +212,27 @@ const path = require('path');
   const savedAnyway = await page.evaluate(() => (window.__WRITES__ || []).some(w => w.table === 'recipes'));
   check('nothing written when blocked', !savedAnyway);
 
+  // A reprocessed recipe carries its own origin through the parse.
+  await page.fill('#importInput', 'TITLE: URL Test\nSOURCE: Somewhere\nSOURCE_URL: https://example.com/a-recipe\nSERVINGS: 4\n\nGROUP a:\n1 onion\n\nSTAGE:\nMERGE a -> done: Cook [5 min]');
+  await page.click('#parseBtn');
+  await page.waitForTimeout(300);
+  check('SOURCE_URL reaches the form', (await page.inputValue('#f-source-url')) === 'https://example.com/a-recipe',
+        await page.inputValue('#f-source-url'));
+  const urlParse = await page.evaluate(() => ({
+    canonical: parseRecipe('SOURCE_URL: https://a.example').sourceUrl,
+    alias: parseRecipe('URL: https://b.example').sourceUrl,
+    sourceUntouched: parseRecipe('SOURCE: Nicky\'s Kitchen Sanctuary').source
+  }));
+  check('both spellings parse', urlParse.canonical === 'https://a.example' && urlParse.alias === 'https://b.example',
+        JSON.stringify(urlParse));
+  check('and plain SOURCE is unaffected', urlParse.sourceUntouched === "Nicky's Kitchen Sanctuary", urlParse.sourceUntouched);
+
+  // A URL line below a GROUP must not be scaled as if it were an ingredient.
+  const headerSafe = await page.evaluate(() =>
+    scaleRecipeSyntax('GROUP a:\n2 onions\nSOURCE_URL: https://example.com/2-of-these\n', 3));
+  check('a URL below a group is left alone', headerSafe.includes('https://example.com/2-of-these'),
+        headerSafe.replace(/\n/g, ' | '));
+
   // The form scales to a headcount too, working the multiplier out of SERVINGS.
   await page.fill('#importInput', 'TITLE: Scale Test\nSOURCE: Somewhere\nSERVINGS: 4\n\nGROUP a:\n300 g pasta\n\nSTAGE:\nMERGE a -> done: Cook [5 min]');
   await page.click('#parseBtn');
@@ -345,6 +366,32 @@ const path = require('path');
         (await page.locator('#aliasesList .source-row').count()) + ' rows');
   check('and offers to reverse them',
         (await page.locator('#aliasesList [data-forget]').count()) >= 4);
+
+  // instant and overnight brackets — required by the conversion
+  // instructions, and every reprocessed recipe will use them.
+  const durationCheck = await page.evaluate(() => ({
+    instant: extractStepDuration('plate up [instant]'),
+    overnight: extractStepDuration('chill [overnight]'),
+    normal: extractStepDuration('bake [40 min]')
+  }));
+  check('instant label has no literal bracket', durationCheck.instant.label === 'plate up',
+        durationCheck.instant.label);
+  check('instant is a real zero-length duration', durationCheck.instant.duration.instant === true &&
+        durationCheck.instant.duration.min === 0, JSON.stringify(durationCheck.instant.duration));
+  check('overnight label has no literal bracket', durationCheck.overnight.label === 'chill',
+        durationCheck.overnight.label);
+  check('overnight is recognised as timing considered', durationCheck.overnight.duration.overnight === true &&
+        durationCheck.overnight.duration.openEnded === true, JSON.stringify(durationCheck.overnight.duration));
+  check('ordinary numeric durations still work', durationCheck.normal.duration.min === 40,
+        JSON.stringify(durationCheck.normal.duration));
+  const badgeCheck = await page.evaluate(() => ({
+    instant: durationBadge({min:0,max:0,openEnded:false,instant:true}),
+    overnight: durationBadge({min:null,max:null,openEnded:true,overnight:true})
+  }));
+  check('instant badge reads INSTANT, not faded', badgeCheck.instant.includes('INSTANT') && !badgeCheck.instant.includes('open-ended'),
+        badgeCheck.instant);
+  check('overnight badge reads OVERNIGHT, faded like until-done', badgeCheck.overnight.includes('OVERNIGHT') && badgeCheck.overnight.includes('open-ended'),
+        badgeCheck.overnight);
 
   // R3: the Group Viewer has no functional gap left.
   await page.click('.navlink[data-view="planner"]');

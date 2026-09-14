@@ -27,7 +27,7 @@ Claude Code session.
 > - `RecipeFlowKeeper` is a **public** repo. Recipe, planner and diary data must never be
 >   committed to it. Backups go to the private `PrivateBackup` repo.
 > - There's an offline test harness in `test/`. Run `node test/build.js && node test/smoke.js`
->   after any change — 98 checks, and it catches real bugs. It stubs Supabase, so it proves
+>   after any change — 97 checks, and it catches real bugs. It stubs Supabase, so it proves
 >   nothing about sign-in or the write queue.
 > - Don't trust status notes, including the handover, where you can check the real thing
 >   instead. The last session found two tasks marked "done" that weren't. Verify against the

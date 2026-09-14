@@ -219,7 +219,7 @@ own build order, so they're not overdue — but they were invisible, which is th
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **98 checks** across every screen, `shots.js` captures screenshots.
+`smoke.js` runs **97 checks** across every screen, `shots.js` captures screenshots.
 
 ```sh
 npm install playwright
