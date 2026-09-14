@@ -123,6 +123,33 @@ for re-conversion, worst first:
 | Easy No-Bake Almond Butter Oatmeal Bars | `wetbase` holds both the dry mix and the almond butter/syrup stirred in after |
 | Chocolate chunk cookies | vanilla grouped with butter and sugars, though beaten in with the egg a step later |
 
+### Second scan — 14 Sep 2026
+
+Two library-wide faults the first scan missed. Both matter more than the late-addition
+list above, because they affect nearly everything rather than four recipes.
+
+**No step timings anywhere.** 296 of 302 MERGE lines across all 40 recipes carry no
+`[duration]` bracket. 39 recipes have none at all; not one is fully timed. The app only
+reads a duration from a trailing bracket, and `computeTimeline` returns null unless at
+least one step has one — so the timeline strip never appears and no step shows a time
+badge. A whole feature is dark across the library. Test 4 covers this for new
+conversions; the back catalogue predates it.
+
+**Split lines that repeat the total instead of the portion.** 8 split lines across 3
+recipes. The shopping list strips the parenthetical when matching names, so both halves
+of a split combine — which is correct only if each line carries its own portion.
+Verified against the app's own aggregation code:
+
+| Recipe | Written as | Totals to | Should be |
+| --- | --- | --- | --- |
+| Chicken Fried Rice | `1 tbsp oil` ×2 | 2 tbsp | 2 tbsp — correct |
+| Chicken Fried Rice | `2 tbsp dark soy sauce` ×2 | 4 tbsp | 2 tbsp |
+| Jambalaya | `960 ml chicken stock` ×2 | 1.92 L | 960 ml |
+
+The oil lines show the right pattern: each states what that use needs. The soy sauce and
+stock lines each restate the whole amount, so the shopping list buys double. Test 2's
+`30g butter (split: 1 of 50g)` is the shape to aim for.
+
 Checked and correct — flagged by the scan but right as they stand: the `topping` and
 `garnish` groups in Greek Potato Hash, Creamy Cajun Prawn Pasta, Cajun Prawns with
 Noodles and Tuscan Salmon with Orzo all merge at the final stage, which is exactly where

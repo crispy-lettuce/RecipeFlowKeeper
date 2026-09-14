@@ -240,6 +240,8 @@
     font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.08em;
   }
   .backlink:hover{ color:var(--plum-lift); }
+  .meta-source-link{ color:inherit; text-decoration:underline; text-underline-offset:2px; }
+  .meta-source-link:hover{ color:var(--plum); }
   .viewer-meta{
     /* A real basis, not 0: with flex-wrap on, a zero-basis meta line gets
        crushed into a one-word-wide column when the head is full of buttons
@@ -1280,7 +1282,7 @@
     <p class="subtle" id="modalSubtitle">Paste the syntax from your recipe-conversion chat, check the preview, then fill in anything missing.</p>
 
     <label class="field-label" for="importInput">RECIPE SYNTAX</label>
-    <textarea id="importInput" spellcheck="false" placeholder="TITLE: ...&#10;SOURCE: ...&#10;IMAGE: ...&#10;TIME: ...&#10;TAGS: course=Main, Veg&#10;&#10;GROUP handle:&#10;...&#10;&#10;STAGE:&#10;MERGE ... -> ...: ..."></textarea>
+    <textarea id="importInput" spellcheck="false" placeholder="TITLE: ...&#10;SOURCE: ...&#10;SOURCE_URL: ...&#10;IMAGE: ...&#10;TIME: ...&#10;TAGS: course=Main, Veg&#10;&#10;GROUP handle:&#10;...&#10;&#10;STAGE:&#10;MERGE ... -> ...: ..."></textarea>
     <button class="btn primary" id="parseBtn">PARSE &amp; PREVIEW</button>
 
     <div class="add-form" id="addForm" style="display:none;">
@@ -1293,6 +1295,9 @@
         <label><span>TIME</span><input type="text" id="f-time" placeholder="e.g. 35 min"></label>
         <label><span>SERVINGS <span class="required">*</span></span><input type="number" id="f-servings" placeholder="e.g. 4" min="1" step="1"></label>
         <label><span>IMAGE URL</span><input type="text" id="f-image" placeholder="optional"></label>
+      </div>
+      <div class="field-row">
+        <label><span>SOURCE URL</span><input type="text" id="f-source-url" placeholder="where this recipe came from — worth filling in, it's what makes a re-convert cheap"></label>
       </div>
       <div class="field-row">
         <label><span>EQUIPMENT (SIZE-SPECIFIC)</span><input type="text" id="f-equipment" placeholder="e.g. 20cm springform tin — leave blank if none"></label>
@@ -1618,7 +1623,7 @@ function wireGroupTimelineInteractions(container){
 
 function parseRecipe(text){
   const rawLines = String(text||'').split('\n');
-  let title='', source='', imageUrl='', time='', servings='', equipment='', tagsRaw='', setup=[], groups=[], stages=[];
+  let title='', source='', sourceUrl='', imageUrl='', time='', servings='', equipment='', tagsRaw='', setup=[], groups=[], stages=[];
   /* NOTES is now structured into named subsections — Variations/Storing/
      Freezing/Tips — rather than one flat list, per the 14 Aug decision.
      `general` is the fallback bucket: anything under a bare NOTES: with
@@ -1633,6 +1638,14 @@ function parseRecipe(text){
     let m;
     if(m = line.match(/^TITLE:\s*(.*)$/i)){ title = m[1].trim(); mode=''; continue; }
     if(m = line.match(/^SOURCE:\s*(.*)$/i)){ source = m[1].trim(); mode=''; continue; }
+    /* Where the recipe came from. Carried in the syntax rather than only in
+       the form, so a reprocessed recipe pasted back in brings its own origin
+       with it and the link survives the round trip. SOURCE_URL is what the
+       converter instructions specify; bare URL is accepted as an alias
+       because it is the obvious thing to type by hand. Must be tested before
+       nothing else — /^SOURCE:/ cannot match "SOURCE_URL:" anyway, since the
+       colon does not follow, but keeping them adjacent makes that visible. */
+    if(m = line.match(/^(?:SOURCE_URL|URL):\s*(.*)$/i)){ sourceUrl = m[1].trim(); mode=''; continue; }
     if(m = line.match(/^IMAGE:\s*(.*)$/i)){ imageUrl = m[1].trim(); mode=''; continue; }
     if(m = line.match(/^TIME:\s*(.*)$/i)){ time = m[1].trim(); mode=''; continue; }
     if(m = line.match(/^SERVINGS:\s*(.*)$/i)){ servings = m[1].trim(); mode=''; continue; }
@@ -1671,7 +1684,7 @@ function parseRecipe(text){
     else if(mode==='notes-tips') notes.tips.push(line);
     else if(mode==='group' && currentGroup) currentGroup.items.push(line);
   }
-  return {title, source, imageUrl, time, servings, equipment, tags: parseTags(tagsRaw), setup, notes, groups, stages};
+  return {title, source, sourceUrl, imageUrl, time, servings, equipment, tags: parseTags(tagsRaw), setup, notes, groups, stages};
 }
 
 /* The Title field and the syntax's own TITLE: line are two copies of the
@@ -1733,7 +1746,7 @@ function scaleRecipeSyntax(syntaxText, multiplier){
        would otherwise be read as an ingredient and scaled. */
     if(trimmed === ''
        || /^(STEPS|STAGE|NOTES|VARIATIONS|STORING|FREEZING|TIPS)\s*:?\s*$/i.test(trimmed)
-       || /^(TITLE|SOURCE|IMAGE|TIME|SERVINGS|EQUIPMENT|TAGS)\s*:/i.test(trimmed)
+       || /^(TITLE|SOURCE|SOURCE_URL|URL|IMAGE|TIME|SERVINGS|EQUIPMENT|TAGS)\s*:/i.test(trimmed)
        || /^MERGE\b/i.test(trimmed)){
       inGroup = false;
       return line;
@@ -3428,7 +3441,17 @@ function renderViewer(){
   if(targetServings) bits.push(`SERVES ${targetServings}${scale!==1 ? ` (SCALED FROM ${baseServings})` : ''}`);
   bits.push(n ? `COOKED ${n}×` : 'NEVER COOKED');
   if(used) bits.push('LAST ' + formatDate(used));
-  meta.textContent = bits.filter(Boolean).join('  ·  ').toUpperCase();
+  /* The source becomes a link when the recipe knows where it came from —
+     the reason it's worth filling the field in at all. Built as HTML rather
+     than text only for that link, so everything here is escaped, and only
+     http(s) is allowed through: a recipe is data, and a javascript: URL in
+     a field would otherwise run on click. */
+  const metaHtml = bits.filter(Boolean).map(b=> escapeHtml(String(b).toUpperCase())).join('  ·  ');
+  const safeUrl = /^https?:\/\//i.test(recipe.sourceUrl || '') ? recipe.sourceUrl : '';
+  meta.innerHTML = safeUrl
+    ? metaHtml.replace(escapeHtml(String(recipe.source || '').toUpperCase()),
+        `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="meta-source-link">${escapeHtml(String(recipe.source || '').toUpperCase())}</a>`)
+    : metaHtml;
 
   const favBtn = document.getElementById('favouriteBtn');
   favBtn.classList.toggle('on', !!recipe.favourite);
@@ -5043,6 +5066,7 @@ function openEditModal(recipeId){
   document.getElementById('f-servings').value = recipe.servings || '';
   document.getElementById('f-equipment').value = recipe.equipment || '';
   document.getElementById('f-image').value = recipe.imageUrl || '';
+  document.getElementById('f-source-url').value = recipe.sourceUrl || '';
 
   const tags = recipe.tags || {};
   [['f-course', tags.course]]
@@ -5472,6 +5496,9 @@ function parseAndPreview(){
   document.getElementById('f-servings').value = parsed.servings || '';
   document.getElementById('f-equipment').value = parsed.equipment || '';
   document.getElementById('f-image').value = parsed.imageUrl || '';
+  /* Only overwrite from a parse when the syntax actually carries a URL —
+     otherwise pasting a recipe without one would wipe a link already typed. */
+  if(parsed.sourceUrl) document.getElementById('f-source-url').value = parsed.sourceUrl;
 
   /* A tag from the syntax that isn't in the master list yet still needs selecting. */
   [['f-course', parsed.tags.course]]
@@ -5608,6 +5635,7 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     title: finalTitle,
     source,
     imageUrl: document.getElementById('f-image').value.trim() || null,
+    sourceUrl: document.getElementById('f-source-url').value.trim() || null,
     time: document.getElementById('f-time').value.trim(),
     servings: servingsRaw ? parseInt(servingsRaw, 10) : null,
     equipment: document.getElementById('f-equipment').value.trim(),
