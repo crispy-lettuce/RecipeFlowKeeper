@@ -2,8 +2,8 @@
 
 ## Context
 
-Phases 1 and 2 are built and pushed to `claude/recipe-app-supabase-0z139o` (15 commits ahead of
-`main`), and 86 automated checks pass. But those checks run against a **stubbed** Supabase: every
+Phases 1 and 2 are built and pushed to `claude/recipe-app-supabase-0z139o` (21 commits ahead of
+`main`), and 97 automated checks pass. But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
 security, and the background write queue.
@@ -143,14 +143,10 @@ Tell me the step number, what you saw, and anything red in the console. Useful t
 Merging `claude/recipe-app-supabase-0z139o` into `main` is what puts it on the tablet, and is the
 go-live moment for the Supabase migration as a whole.
 
-**Then: reprocess the library against the new converter instructions** — decided 14 Sep, building
-up to all 40 eventually rather than only the flagged ones.
-
-That absorbs the 23 missing servings rather than needing a separate backfill, because the new
-instructions make `SERVINGS:` mandatory and require *asking* for a yield rather than inventing one
-(test 5 in `converter/test-set.md`). No separate servings job needed.
-
-Two things to settle before that campaign starts:
+**The library reprocess that used to come next has already happened** (20 Sep, ahead of this pass
+rather than after it — see `docs/HANDOVER.md` §3). So after a clean pass the next step is the
+merge itself, and then image re-hosting (R7). The two open questions this section used to list
+are both resolved:
 
 1. **~~There is nowhere to record where a recipe came from.~~** Resolved. `SOURCE_URL:` is now
    read by `parseRecipe` and carried in the syntax, and 32 of the 33 recipes have one, so a
