@@ -1437,18 +1437,43 @@ function extractStepDuration(rawLabel){
   if(bracket === 'overnight'){
     return { label: before, duration: { min:null, max:null, openEnded:true, overnight:true } };
   }
-  const range = bracket.match(/^~?\s*(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*(min|mins|minutes?|m|hrs?|hours?|h)?$/);
+  /* Everything below is "a number with a unit", so the unit vocabulary and
+     the dash live in one place rather than being restated per pattern.
+
+     Seconds are here because a 30-second step is a real thing a recipe
+     says ("cook the garlic 30 sec") and the only way to write it without
+     them is `[0.5 min]`, which nobody writes. Minutes stay the internal
+     unit, so seconds arrive as a fraction — 30 sec is 0.5, not 30.
+
+     DASH matters more than it looks: a range is the one place a converter
+     naturally reaches for an en dash, because that's what a range is
+     typographically. An ASCII-only pattern read `[4–5 min]` as an
+     unrecognised bracket and left it sitting in the step label as raw
+     text — the same visible-bracket failure `[instant]` caused before it
+     was understood. Accepting the dash family costs nothing: the
+     characters are unambiguous between two numbers. */
+  const UNIT = '(sec|secs|seconds?|min|mins|minutes?|m|hrs?|hours?|h)';
+  const DASH = '[-\\u2010-\\u2015]';
+  const unitMultiplier = u => /^h/.test(u) ? 60 : /^s/.test(u) ? 1/60 : 1;
+
+  /* A compound "1 hr 30" is how the TIME: field is already written, so a
+     step duration gets written the same way sooner or later. Checked
+     before the plain patterns because neither would match it — it would
+     otherwise fall through to unrecognised. */
+  const compound = bracket.match(new RegExp(`^~?\\s*(\\d+)\\s*(?:hrs?|hours?|h)\\s*(\\d+)\\s*(?:mins?|minutes?|m)?$`));
+  if(compound){
+    const n = parseInt(compound[1],10) * 60 + parseInt(compound[2],10);
+    return { label: before, duration: { min:n, max:n, openEnded:false } };
+  }
+  const range = bracket.match(new RegExp(`^~?\\s*(\\d+(?:\\.\\d+)?)\\s*${DASH}\\s*(\\d+(?:\\.\\d+)?)\\s*${UNIT}?$`));
   if(range){
-    const unit = (range[3]||'').toLowerCase();
-    const mult = /^h/.test(unit) ? 60 : 1; // hours -> minutes internally, so all downstream maths is one unit
+    const mult = unitMultiplier((range[3]||'').toLowerCase()); // hours -> minutes internally, so all downstream maths is one unit
     const a = parseFloat(range[1]) * mult, b = parseFloat(range[2]) * mult;
     return { label: before, duration: { min: Math.min(a,b), max: Math.max(a,b), openEnded:false } };
   }
-  const fixed = bracket.match(/^~?\s*(\d+(?:\.\d+)?)\s*(min|mins|minutes?|m|hrs?|hours?|h)?$/);
+  const fixed = bracket.match(new RegExp(`^~?\\s*(\\d+(?:\\.\\d+)?)\\s*${UNIT}?$`));
   if(fixed){
-    const unit = (fixed[2]||'').toLowerCase();
-    const mult = /^h/.test(unit) ? 60 : 1;
-    const n = parseFloat(fixed[1]) * mult;
+    const n = parseFloat(fixed[1]) * unitMultiplier((fixed[2]||'').toLowerCase());
     return { label: before, duration: { min:n, max:n, openEnded:false } };
   }
   // Bracket present but not recognised as a duration — leave the label
