@@ -6,3 +6,10 @@ kitchen-backup-*.json
 # Built by test/build.js and test/shots.js from index.html — regenerate, don't commit.
 test/app-under-test.html
 test/*.png
+
+# `npm install playwright` (per test/README.md) drops these in the repo root.
+# Playwright is installed ad hoc for a test run rather than pinned as a
+# dependency — the app itself has none — so none of this belongs in the repo.
+node_modules/
+package.json
+package-lock.json
