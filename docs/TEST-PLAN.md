@@ -32,42 +32,48 @@ the screen looks fine.
 
 ## What the database holds right now
 
-Numbers to check against, read from the project just now:
+Numbers to check against, **re-read from the project on 20 Sep 2026, after the recipe
+ingestion.** The earlier figures in this table described the 40-recipe library that ingestion
+replaced.
 
 | | |
 |---|---|
-| Recipes | 40 |
-| Cooking-log entries | 125 |
+| Recipes | 33 |
+| Cooking-log entries | 114 |
 | Keywords | 34 |
 | Planned days | 15 |
-| Shortlist items | 1 |
+| Shortlist items | 2 |
 | Meal groups | 2 |
 | Ingredient swaps | 1 |
 | Ticked shopping items | 0 (cleared deliberately) |
 | Word matches | 0 (none recorded yet) |
 | Week starts on | Friday |
 
-## The thing that will look like a bug and isn't
+## The things that will look like bugs and aren't
 
-**23 of the 40 recipes have no servings.** That is over half the library, and it has a visible
-consequence everywhere Phase 2 touches:
+**This section used to say that 23 of 40 recipes had no servings, so most of Phase 2 was
+invisible. That is no longer true** — the 20 Sep ingestion gave every recipe servings and nearly
+every one full step timings. The scaling controls and the timeline strip should now appear
+almost everywhere, so **if either fails to render, that is a real finding**, not the library
+being sparse. Any recipe is now a fair choice for the scaling checks.
 
-- no **COOK FOR** row in the Viewer — there is no base to scale from
-- no **SERVES** pill on the Planner row
-- no scaling of that recipe in the Shopping List or Group Viewer
-- and, because servings are now required to save, **editing one of those 23 will refuse to save
-  until you fill the field in**
+Three things that *will* still look wrong and aren't:
 
-All of that is the intended design, but it means the headline feature of Phase 2 is unavailable on
-most of the library until those 23 have servings. Worth deciding what you want to do about that —
-it is a separate piece of work, not a bug to report from this pass.
-
-Pick a recipe that *does* have servings for the scaling checks.
+1. **8 planner slots and 2 meal-group entries show "Recipe removed".** They point at recipes
+   deleted during ingestion. `planner_days.recipe_ids` and `meal_groups.recipe_ids` are plain
+   `uuid[]` with no foreign key, so nothing cleaned them up. Expected. Clear them from the
+   Planner when convenient — but check they render as placeholders rather than throwing first,
+   because that path has never been exercised with real data.
+2. **One shortlist item has no recipe behind it.** `shortlist_items.recipe_id` is
+   `ON DELETE SET NULL`, so a dropped recipe leaves the entry as plain text. By design.
+3. **Victoria Sandwich has no timeline strip and no source link.** It is the one recipe the
+   ingestion deliberately left untouched — see `docs/HANDOVER.md` §3. Every *other* recipe
+   should show both.
 
 ## A — Phase 1 foundations (never yet run against the real backend)
 
-1. **Sign in.** Expect the library to appear, 40 cards, no console errors.
-2. **Hard reload** (Ctrl/Cmd-Shift-R). Expect to stay signed in, still 40.
+1. **Sign in.** Expect the library to appear, 33 cards, no console errors.
+2. **Hard reload** (Ctrl/Cmd-Shift-R). Expect to stay signed in, still 33.
 3. **Sign out, then back in.** The riskiest single path — any throw during hydration signs you
    straight back out, which would show as a login screen you cannot get past.
 4. **Check the counts** against the table above: sidebar shortlist count, keywords and sources in
@@ -146,17 +152,18 @@ instructions make `SERVINGS:` mandatory and require *asking* for a yield rather 
 
 Two things to settle before that campaign starts:
 
-1. **There is nowhere to record where a recipe came from.** `source_url` exists in the table and in
-   `recipeToRow`/`rowToRecipe` (`index.html:2230`, `2247`), but no field in the Add/Edit form ever
-   sets it, so all 40 are empty. Every reprocess therefore means re-finding the original from the
-   source name alone. Adding a SOURCE URL field beside IMAGE URL is small, and makes the *next*
-   reprocess — there will be one, the instructions will change again — much cheaper. Worth doing
-   first so each recipe reprocessed from here on records its own origin.
-2. **Order the flagged ones first.** `converter/test-set.md` names 7 recipes, but 4 are versions of
-   the same granola recipe, so it is 4 distinct dishes: Maple Almond Granola Clusters (v1/v2/v3/v2b),
-   No-Bake Chocolate Oat Bars, Easy No-Bake Almond Butter Oatmeal Bars, Chocolate chunk cookies.
-   These have known-wrong structure today — a late addition collapsed into an earlier group — so
-   they are the ones actually giving bad flow diagrams in the kitchen. The other 33 were checked and
-   are correct as they stand; reprocessing those is about consistency, not repair.
+1. **~~There is nowhere to record where a recipe came from.~~** Resolved. `SOURCE_URL:` is now
+   read by `parseRecipe` and carried in the syntax, and 32 of the 33 recipes have one, so a
+   future reprocess starts from the actual page rather than a site name. The one gap is
+   Victoria Sandwich.
+2. **~~Order the flagged ones first.~~** Resolved by the 20 Sep ingestion. All four dishes with
+   known-wrong structure — the granola clusters, No-Bake Chocolate Oat Bars, the almond butter
+   oatmeal bars and the chocolate chunk cookies — were restructured, and the three redundant
+   granola versions were deleted. The third scan in `converter/test-set.md` records the
+   before-and-after for each.
+
+   **Worth checking with your own eyes during this pass**, since the fix has only ever been
+   confirmed against the parser, not in a kitchen: open Maple Almond Granola Clusters and
+   confirm the vanilla sits in its own box joining *after* the syrup comes off the heat.
 
 Also still deferred: S2 dark mode, dropped out of Phase 2 scope.

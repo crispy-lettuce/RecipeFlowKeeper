@@ -155,3 +155,75 @@ Checked and correct — flagged by the scan but right as they stand: the `toppin
 Noodles and Tuscan Salmon with Orzo all merge at the final stage, which is exactly where
 the method adds them. Creaming butter with sugar (Victoria Sandwich, scones) is one
 action, not two moments.
+
+---
+
+## Third scan — 20 Sep 2026, after ingestion
+
+The reprocessed library went in on 20 Sep: 33 recipes, replacing the 40 the two scans above
+describe. **Those two scans are now history, not status** — they describe recipes that either
+no longer exist or have been rewritten. Kept as written, because what they found is the reason
+the conversion instructions say what they say.
+
+Re-run of all five tests against the ingested library. Checked against the syntax actually in
+the database, which was first confirmed byte-identical to the validated text by md5.
+
+| Test | Was | Now |
+| --- | --- | --- |
+| 1 — late addition | 7 recipes flagged | **Fixed.** All four surviving flagged recipes restructured; see below |
+| 2 — split ingredient | 2 lines restating a total | **Fixed.** No line in the library now restates a total |
+| 3 — parallel prep | not measured | 10 stages carry more than one MERGE line |
+| 4 — instant step | 296 of 302 MERGE lines bare | **249 of 249 timed.** `[instant]` used 78 times |
+| 5 — no stated yield | 23 of 40 missing | **33 of 33 present** |
+
+### Test 1 — the four flagged recipes
+
+- **Maple Almond Granola Clusters** — the case that started all this. `vanilla` is now its own
+  group, merging into the heated syrup a stage later: `MERGE wet_heated, vanilla -> syrup:
+  Remove from the heat and whisk in the vanilla [instant]`. The diagram now says what the
+  method says. The v2/v2b/v3 duplicates were deleted.
+- **No-Bake Chocolate Oat Bars** — the collapsed `base`/`topping` pair is gone; four groups
+  (dry, peanut butter, honey, chocolate) each merge at their own stage, matching the method's
+  "fold in the chocolate chips last".
+- **Chocolate Almond Butter Oatmeal Bars** (was *Easy No-Bake Almond Butter Oatmeal Bars*) —
+  `wetbase` no longer holds both the dry mix and what's stirred in after; the topping and
+  almonds join at their own later stages.
+- **Chocolate Chunk Cookies** — vanilla has moved out of the creamed butter-and-sugar group
+  into `eggwet`, beaten in with the egg a step later, which is what the recipe does.
+
+### Test 2 — the split lines that bought double
+
+Both faults are gone, and by different routes:
+
+| Was | Now |
+| --- | --- |
+| Jambalaya: `960 ml chicken stock` ×2, totalling 1.92 L | appears once. Fixed |
+| Chicken Fried Rice: `2 tbsp dark soy sauce` ×2, totalling 4 tbsp | that recipe was dropped; its successor **Egg Fried Rice** splits the 2 tbsp properly as `1/4 tbsp` + `1 3/4 tbsp` |
+
+23 other ingredients are named in more than one group across the library. Every one was checked
+and every one states what *that* use needs — six of them legitimately repeat the same figure
+(1 tbsp oil for each of two fryings, 1 tsp cumin in both a marinade and a spice mix), which is
+the correct pattern the first audit blessed, not the incorrect one it flagged.
+
+### One borderline, not called a failure
+
+**Classic Scones** warms the milk and stirs the vanilla and lemon juice into it within a single
+group: `MERGE wet -> wet_warm: Warm the milk in a jug ... until warm but not hot; stir in the
+vanilla and lemon juice [1 min]`. Strictly this is the test 1 shape — two moments inside one
+group. It is left alone because the stakes are nothing like the granola case: the milk is
+brought to lukewarm rather than cooked, so there is no aromatic to drive off, and the source
+presents it as one action. Recorded here so the next person doesn't have to re-derive the
+judgement.
+
+### A parser gap this scan exists because of
+
+The first version of the reprocess wrote its timings as prose inside the MERGE label rather
+than in brackets, so all 33 recipes arrived untimed and were rejected before they reached the
+database. Re-run correctly, they exposed a second problem: `extractStepDuration` did not
+recognise `[4–5 min]` with an en dash, `[30 sec]`, or `[1 hr 30]`. An unrecognised bracket is
+not inert — the label keeps it, so the raw text shows in the diagram and the step counts as
+untimed. All three are now accepted. The batch used `[30 sec]` three times.
+
+**The lesson for this file:** a conversion can satisfy every rule here and still land wrong,
+because these tests check what the converter writes, not what the parser reads. When the two
+disagree the failure is silent. `test/validate-recipes.js` now checks the second half.

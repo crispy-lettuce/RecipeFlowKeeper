@@ -15,7 +15,8 @@ GitHub at the time of writing.
 4. **`docs/INFRASTRUCTURE.md`** — repos, Supabase, credentials policy.
 
 Then pick up work from **`docs/NEXT-SESSION.md`**, which sets out the order things should
-happen in. As of 14 Sep 2026 the project is at **step 1 of 5: ingesting the reprocessed recipes**.
+happen in. As of 20 Sep 2026 the project is at **step 2 of 5: the browser test pass**. Step 1,
+ingesting the reprocessed recipes, is done — 33 recipes, recorded in `docs/HANDOVER.md` §3.
 
 ---
 
@@ -111,11 +112,16 @@ recognise, leaving raw bracket text visible in the diagram).
 ### `converter/test-set.md` — the converter's regression tests
 **What:** Five deliberately awkward recipes, each isolating one failure mode — a late addition, a
 split ingredient, parallel prep, a zero-length step, a missing yield — with what a correct
-conversion must produce and what counts as a failure. Plus two audits of the real library
-recording what's wrong with it.
+conversion must produce and what counts as a failure. Plus three audits of the real library. The
+first two (13 and 14 Sep) describe the pre-reprocess library and are history now; the third
+(20 Sep) re-runs all five tests against what's actually in the database.
 
 **Use it when:** you change `conversion-instructions.md`. Run all five through the revised
-instructions and compare. Also the record of which existing recipes have known problems.
+instructions and compare. Also the record of which library faults have been fixed and when.
+
+**Worth knowing:** these tests check what the *converter* writes, not what the app's parser
+*reads*. A batch can pass every rule here and still land wrong — which is exactly what happened
+on 20 Sep. `test/validate-recipes.js` covers the other half.
 
 ---
 
@@ -124,6 +130,15 @@ instructions and compare. Also the record of which existing recipes have known p
 (everything about the real backend).
 
 **Use it when:** making any code change.
+
+Alongside it, **`test/validate-recipes.js`** checks a batch of converted recipes before it goes
+anywhere near the database, by calling the app's own `parseRecipe` and `computeColumns` inside
+the built page rather than reimplementing them. Takes the batch as a file path, outside this
+repo — recipe data must never be committed here.
+
+```sh
+node test/build.js && node test/validate-recipes.js ~/recipes.md
+```
 
 ---
 

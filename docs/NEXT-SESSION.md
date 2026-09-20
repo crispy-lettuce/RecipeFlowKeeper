@@ -12,34 +12,36 @@ that document assumes no prior context at all, including no Claude Code session.
 
 The sequence matters in three places. Everything else is preference.
 
-### 0. Reprocess the recipes *(happening now, outside any session)*
+### 0. Reprocess the recipes — **done, 20 Sep**
 
-Running the library back through `converter/conversion-instructions.md`, landing at roughly 33
-recipes. Expected to produce, for the first time: servings on every recipe, bracketed durations
-on every MERGE, equipment where it applies, and a source URL each.
+Ran the library back through `converter/conversion-instructions.md`. It took two attempts: the
+first produced no durations, no source URLs and no equipment at all, because it hadn't been run
+against the current instructions. That was caught before anything was written, by validating
+the batch with the app's own parser. The second attempt delivered all four.
 
-### 1. Ingest the reprocessed recipes ← **start here**
+### 1. Ingest the reprocessed recipes — **done, 20 Sep**
 
-Update in place by title match. Full method in `docs/HANDOVER.md` §3.
+33 recipes in, 27 updated in place, 5 inserted, 12 deleted, 114 of 126 cooking logs kept.
+Outcome and the two deliberate deviations from the agreed column list are in
+`docs/HANDOVER.md` §3; the re-run of the converter tests is the third scan in
+`converter/test-set.md`.
 
-**Take a fresh backup first.** The nightly one runs at 04:00 UTC, so depending on the hour it
-could be most of a day stale — and this step deletes the recipes not carried forward. Run the
-workflow manually from the Actions tab of `crispy-lettuce/PrivateBackup` and wait for it to go
-green before writing anything.
-
-### 2. The browser test pass
+### 2. The browser test pass ← **start here**
 
 `docs/TEST-PLAN.md`. Nothing in the Supabase rewrite has ever been confirmed working against the
 real backend by a human in a browser.
 
-**Why this comes after ingestion, not before:** the test plan exercises scaling, the timeline and
-per-day servings — and on today's library those are largely untestable. 23 of 40 recipes have no
-servings, so the scaling controls don't even appear on them, and 39 of 40 have no step timings,
-so the timeline never renders. Testing against that library mostly proves that features correctly
-hide themselves. After ingestion the same checklist actually exercises the features.
+**Why this came after ingestion, not before:** the test plan exercises scaling, the timeline and
+per-day servings, and on the old library those were largely untestable — 23 of 40 recipes had no
+servings, so the scaling controls never appeared, and 39 of 40 had no step timings, so the
+timeline never rendered. Testing against that library would mostly have proved that features
+correctly hide themselves.
 
-Ingestion doesn't depend on the app working — it goes in through SQL, not the UI — so there's no
-risk in this order.
+**That is no longer true, so this step is now worth real effort.** All 33 recipes have servings
+and 32 have full step timings, so the scaling controls and the timeline strip appear everywhere
+and the checklist genuinely exercises them. Nothing in the Supabase rewrite has still ever been
+confirmed working against the real backend by a human in a browser — and the offline harness
+stubs Supabase entirely, so the 97 checks say nothing about it.
 
 > **One trap.** Test plan steps 19–20 export the data and import it straight back, and the import
 > **rewrites everything**. Take that export *after* ingestion. An export taken beforehand, imported
@@ -58,10 +60,11 @@ currently lives only on `claude/recipe-app-supabase-0z139o`.
 
 `docs/HANDOVER.md` §2. An Edge Function, run as a decoupled sweep.
 
-**Why after ingestion:** re-hosting images now would do the work against recipes about to be
-replaced, and the reprocessed ones arrive with their own fresh `IMAGE:` URLs. It's server-side
-work that doesn't need the app merged, so it can equally happen alongside step 3 — but not
-before step 1.
+**Why after ingestion:** re-hosting images beforehand would have done the work against recipes
+about to be replaced. Ingestion has happened, so this is now unblocked: **29 of the 33 recipes
+have an image and every one of them is hosted on the source website**, with the
+`recipe-images` bucket still holding zero objects. It's server-side work that doesn't need the
+app merged, so it can equally happen alongside step 3.
 
 ### 5. Phase 3, and anything left
 
@@ -84,75 +87,57 @@ crispy-lettuce/RecipeFlowKeeper, on branch claude/recipe-app-supabase-0z139o.
 Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md   — the map of all documentation
-  docs/HANDOVER.md         — verified status; §3 covers exactly this task
+  docs/HANDOVER.md         — verified status; §3 records what the last
+                             session did and the two deviations it made
   docs/ARCHITECTURE.md     — how the app and its recipe format work
-  docs/NEXT-SESSION.md     — the order of work; we are at step 1
+  docs/NEXT-SESSION.md     — the order of work; we are at step 2
+  docs/TEST-PLAN.md        — the checklist for this task
 
-THE TASK: ingest my reprocessed recipes into the database.
+THE TASK: the browser test pass, against the real backend.
 
-Before writing anything:
+Nothing in the Supabase rewrite has ever been confirmed working by a human
+in a browser. Sign-in, hydration, row-level security and the background
+write queue are all stubbed by the offline harness, so its 97 green checks
+say nothing about any of them. I'll run the steps locally and report back.
 
-1. Tell me to trigger a fresh backup, and wait for me to confirm it went
-   green. Manual run from the Actions tab of crispy-lettuce/PrivateBackup.
-   This step deletes recipes and the nightly backup may be hours stale.
+Start by telling me how to get the branch running, then walk me through
+docs/TEST-PLAN.md a few steps at a time rather than all at once.
 
-2. Validate every recipe I give you using the app's own parseRecipe and
-   computeColumns — not a reimplementation — via the offline harness in
-   test/. Hold back anything with structural errors, a missing SOURCE:, or
-   a missing or non-numeric SERVINGS:. Report those rather than guessing.
+Things to know before we start:
 
-3. Show me the proposed old-to-new title mapping and wait for my approval.
-   I need to see which existing recipes will be updated, which are new, and
-   which will be deleted. A near-miss title match could pair the wrong two
-   or silently duplicate.
-
-Then ingest, using the agreed method in docs/HANDOVER.md §3:
-
-  - Title matches an existing recipe -> UPDATE that row's source,
-    source_url, image_url, time_text, servings, equipment, tags and syntax.
-    Leave id, household_id, favourite and date_added alone.
-  - No match -> INSERT with a fresh UUID.
-  - Existing recipe with no counterpart in the new set -> DELETE, but only
-    once the new set is confirmed in.
-
-This must be update-in-place, never delete-and-reinsert: recipe_logs
-cascades on delete and would destroy 125 cooking-log entries, and the
-planner and meal groups reference recipes by id.
-
-Afterwards, report what changed, and re-run the checks in
-converter/test-set.md against the new library — the previous audits found
-missing durations, missing equipment and split ingredient lines that made
-the shopping list buy double. I want to know whether the reprocess
-actually fixed those.
-
-Some context worth having:
-
+  - The riskiest step is signing out and back in. Any exception inside
+    hydrate() signs the user out, so the failure mode is a login screen I
+    can't get past. If that happens, treat it as the priority.
+  - TRAP: test plan steps 19-20 export the data and import it straight
+    back, and the import rewrites everything. The export must be taken
+    now, after the recipe ingestion — an older export imported today would
+    wipe the whole reprocessed library.
+  - The library is 33 recipes as of 20 Sep. All have servings and 32 have
+    full step timings, so the scaling controls and the timeline strip
+    should now appear on nearly everything. On the old library they were
+    mostly invisible, so if either fails to render, that's a real bug and
+    not the library being sparse.
+  - 8 planner slots and 2 meal groups point at recipes deleted during
+    ingestion and will show "Recipe removed". That's expected, not a bug.
   - index.html is the whole app. One file, no build step, no framework.
-  - Run `node test/build.js && node test/smoke.js` after any code change.
-    97 checks. It stubs Supabase, so it proves nothing about sign-in or
-    the write queue.
+    Run `node test/build.js && node test/smoke.js` after any code change.
   - The repo is public. Recipe data must never be committed to it.
   - Don't trust status notes, mine included, where you can check the real
-    thing instead. Three separate audits found things recorded as done
-    that weren't.
-
-My recipes are below.
-
-[paste the fenced code blocks — one per recipe, each starting TITLE:]
+    thing instead.
 ```
-
----
 
 ## Alternative starting points
 
 If you want to do something other than step 1, swap the task section of the prompt above.
 
-### B. The browser test pass (step 2)
+### B. Ingesting more recipes
 
-> Nothing has ever been tested against the real backend — sign-in, hydration, row-level security
-> and the write queue are all unverified. Walk me through `docs/TEST-PLAN.md`. I'll run it locally
-> and report back. Start by telling me how to get the branch running. Note the export/import trap:
-> the export at step 19 must be taken after any recipe ingestion, not before.
+> I've got more recipes converted with `converter/conversion-instructions.md`. Ingest them the
+> same way as the 20 Sep batch — the method, and the two deviations from it that turned out to be
+> necessary, are in `docs/HANDOVER.md` §3. Validate them first with
+> `node test/build.js && node test/validate-recipes.js <file>`, which runs the app's own parser,
+> and show me the title mapping before writing. Take a fresh backup first if any existing recipe
+> is going to be deleted.
 
 ### C. Going live (step 3)
 

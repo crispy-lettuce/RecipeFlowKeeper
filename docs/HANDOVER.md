@@ -42,7 +42,7 @@ verified status. **Nothing here is inferred from a previous summary.**
 | R3 | Group Viewer parity | **Done, with two conscious omissions.** Delivered: Keep Awake, Favourite, Edit, Export PNG, Print, Reset Ticks, plus **OPEN →** per recipe. Omitted on purpose: *Shortlist* (contradictory for something already planned) and a *group-level Scale row* (no single base to scale from) — OPEN → covers both. **Worth confirming you're happy with that reading**, since the brief lists both as gaps to close. |
 | R4 | Dated cooking notes | **Not started.** Phase 3. The `recipe_notes` table already exists, empty and unreferenced by the app — it was created in Phase 1 anticipating this. Not dead schema; just early. |
 | R5 | Scale by servings | **Done.** Multiplier buttons retired everywhere. Viewer reads `SERVES 6 (SCALED FROM 4)`. |
-| R6 | Servings mandatory | **App side done, library retrofit outstanding.** Save is blocked without servings. But **23 of 40 recipes still have none** — the retrofit rides on the reprocess. See §3. |
+| R6 | Servings mandatory | **Done, both sides, 20 Sep.** Save is blocked without servings, and all 33 recipes now carry one. The retrofit rode on the reprocess, as planned. |
 | R7 | Recipe images | **Not started. Bucket only.** See §2 — this is the gap that prompted the audit. |
 
 ### Shopping list
@@ -71,13 +71,13 @@ hasn't caught up yet.
 
 | | Item | Instructions | Library data |
 | --- | --- | --- | --- |
-| C1 | Extract equipment | Done | **39 of 40 recipes have no equipment**; 0 have an `EQUIPMENT:` line |
-| C2 | Capture source URL | Done | **0 of 40 have a source URL** |
-| C3 | Guarantee bracket timings | Done | **296 of 302 MERGE lines have no duration**; 39 of 40 recipes have none at all |
-| C4 | Servings mandatory + fallback | Done | 23 of 40 missing |
+| C1 | Extract equipment | Done | **Done, 20 Sep.** 8 of 33 carry an `EQUIPMENT:` line — the 8 that need a specific tin or basin. The other 25 need nothing size-specific. |
+| C2 | Capture source URL | Done | **Done, 20 Sep.** 32 of 33. The one gap is Victoria Sandwich, deliberately left untouched — see §3. |
+| C3 | Guarantee bracket timings | Done | **Done, 20 Sep.** 249 of 249 MERGE lines timed across the 32 ingested recipes; `[instant]` used 78 times. Every one of those recipes now renders a timeline. Was 6 of 302. |
+| C4 | Servings mandatory + fallback | Done | **Done, 20 Sep.** 33 of 33. |
 | C5 | Consistent phrasing | Done | — |
 | C6 | Standardised units | Done | — |
-| C7 | Test set and audit | Done | 5 tests in `converter/test-set.md`, plus two library audits |
+| C7 | Test set and audit | Done | 5 tests in `converter/test-set.md`, plus three library audits — the third (20 Sep) re-runs them against the ingested library |
 
 ### Architecture
 
@@ -108,8 +108,10 @@ earlier record was misleading.
 **completely empty — zero objects ever uploaded**.
 
 **What doesn't exist:** any code at all. `index.html` contains no reference to Supabase Storage —
-no upload, no signed URL, nothing. All 33 recipes that have an image point straight at the
-source website. 7 have no image.
+no upload, no signed URL, nothing. All 29 recipes that have an image point straight at the
+source website; zero objects are self-hosted. 4 have no image.
+
+*(Counts re-checked 20 Sep after ingestion: 29 of 33 with an image, all external. Was 33 of 40.)*
 
 An old task read "Create Storage bucket recipe-images — completed", which was true of the
 bucket and false of the feature. R7 in the brief is the actual requirement, and it was never
@@ -135,15 +137,41 @@ part of why it's the right home for this.
 
 ---
 
-## 3. Immediate next task: ingesting the reprocessed recipes
+## 3. Recipe ingestion — DONE, 20 Sep 2026
 
-*This is step 1 of five. `docs/NEXT-SESSION.md` sets out the full order and why it matters —
-in particular why the browser test pass is better done after this, not before.*
+*This was step 1 of five. `docs/NEXT-SESSION.md` has the full order; the project is now at
+step 2, the browser test pass.*
 
-The library is being reprocessed against the revised conversion instructions, landing at
-roughly 33 recipes. Older recipes that aren't carried forward can be dropped — confirmed.
+**Outcome: the library is 33 recipes, down from 40.** 27 rows updated in place, 5 inserted,
+12 deleted. Cooking logs went 126 → 114: the 12 lost all belonged to deleted recipes, and
+every log on a surviving recipe was kept, which is the whole reason for updating in place.
 
-**Agreed method: update in place, by title match.**
+**Verified, not assumed.** After ingestion, every one of the 32 ingested recipes was checked
+by md5 against the exact text the validator had passed — zero mismatches. That rules out
+escaping or transport damage, which a spot-check of a few recipes would not have.
+
+Known state afterwards: 33 of 33 have servings, 32 of 33 a source URL, 32 of 33 bracketed
+durations, 8 carry equipment, 29 have an image. The single gap in each case is
+**Victoria Sandwich**, left deliberately untouched — see the note below.
+
+**Two things to know about what's in there now:**
+
+- **Victoria Sandwich is the River Cottage one**, kept as it was on request. The reprocess
+  offered a *Classic Victoria Sandwich* from BBC Good Food — a genuinely different recipe
+  (different source, image, and yield), not a new version of the same one — so it was not
+  ingested and the existing row was not deleted. That row therefore still has no source URL
+  and no step timings. Reconverting the River Cottage page would close both.
+- **8 planner slots and 2 meal groups now point at deleted recipes** and will render as
+  "Recipe removed". Expected and accepted; clear them from the Planner when convenient.
+
+**Two conversions carry a `⚠️ Source note` in their own syntax**, written by the converter
+rather than by this ingestion: *No-Bake Chocolate Oat Bars* (allrecipes.com couldn't be
+fetched, so it's reconstructed from a secondary reproduction) and *Lasagne Loaded Fries*
+(poppycooks.com returned an access error, so it uses McCain's branded reproduction). Both are
+worth a glance against the original page before cooking from them. *Cacao & Almond Oat Bar*
+carries a note about two inconsistencies on the source page itself.
+
+**The method used, for the record:**
 
 | Case | Action |
 | --- | --- |
@@ -152,7 +180,8 @@ roughly 33 recipes. Older recipes that aren't carried forward can be dropped —
 | Existing recipe with no counterpart in the new set | **DELETE**, once the new set is confirmed in. |
 
 **Why update rather than wipe and reseed:** `recipe_logs.recipe_id` is `ON DELETE CASCADE`, so
-deleting a recipe row destroys its cooking history — 125 log entries are at stake. Keeping the
+deleting a recipe row destroys its cooking history — 126 log entries were at stake, and 114
+survived because only recipes with no counterpart were deleted. Keeping the
 same `id` also keeps Planner assignments and meal groups pointing at something real;
 `planner_days.recipe_ids` and `meal_groups.recipe_ids` are plain `uuid[]` with no FK, so a
 delete-and-reinsert would leave them showing "Recipe removed" placeholders.
@@ -168,7 +197,28 @@ gets held back and reported rather than guessed at.
 **Before writing anything:** parse each block with the app's real `parseRecipe`, lay it out with
 `computeColumns` to catch structural errors, and show the proposed old→new title mapping for
 confirmation — a near-miss title match could pair the wrong two recipes or silently create a
-duplicate.
+duplicate. `test/validate-recipes.js` does the parsing half; it calls the app's own functions
+inside `app-under-test.html` rather than reimplementing them.
+
+**One deviation from the column list above, made deliberately.** `title` was updated too. The
+list omits it because it assumes an exact title match, but four of the 27 were renames
+(*Creamy Cajun Prawn Pasta* → *Cajun Prawn Pasta*, and three others), and the app keeps the
+`title` column and the syntax's own `TITLE:` line identical on every save — that's what
+`withUpdatedTitleLine` is for. Leaving the column behind would have shown one name on the card
+and another in the recipe's own flow table.
+
+**A second deviation, same reasoning.** `image_url`, `time_text` and `equipment` were written
+with `coalesce` rather than plain assignment, so a value already in the database is never
+replaced by an empty one. The conversion instructions tell the converter to *omit* these when
+it can't find them, so a missing line means "not found", not "there is none" — and *Viral
+Parmesan Potatoes* had an image its new block didn't carry. A literal overwrite would have
+thrown that away for nothing. A value that is present always wins.
+
+**What a near-miss actually looked like.** Four pairs matched on nothing better than a partial
+title, and all four turned out to be the same recipe renamed — confirmed by identical image
+URLs, and in one case by the new `SOURCE_URL` still reading `/creamy-cajun-prawn-pasta/`. A
+fifth, *Classic Victoria Sandwich* against *Victoria Sandwich*, looked just as close and was
+two different recipes. Title similarity decided none of them; source and image did.
 
 ---
 
@@ -210,7 +260,7 @@ Two tasks were marked complete that were not:
 
 - **"Create Storage bucket recipe-images"** — the bucket was created; the feature (R7) was never
   built. Restated in §2.
-- **"Servings backfill pass"** — never happened. 23 of 40 recipes still have no servings. It
+- **"Servings backfill pass"** — never happened at the time of writing; **done 20 Sep** via the ingestion. It
   rides on the reprocess.
 
 And these brief items appeared in **no** task list at all: **P3** (calendar), **R4** (cooking
