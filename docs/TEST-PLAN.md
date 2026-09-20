@@ -40,7 +40,7 @@ replaced.
 |---|---|
 | Recipes | 33 |
 | Cooking-log entries | 114 |
-| Keywords | 34 |
+| Keywords | 47 |
 | Planned days | 15 |
 | Shortlist items | 2 |
 | Meal groups | 2 |
@@ -69,6 +69,10 @@ Three things that *will* still look wrong and aren't:
 3. **Victoria Sandwich has no timeline strip and no source link.** It is the one recipe the
    ingestion deliberately left untouched — see `docs/HANDOVER.md` §3. Every *other* recipe
    should show both.
+4. **27 keywords in the vocabulary that nothing is tagged with** — Christmas, Easter, BBQ,
+   Weeknight, Picnic and so on. Not leftovers to tidy away: the conversion instructions
+   deliberately refuse to guess occasion tags, leaving them for you to apply by hand, so these
+   are vocabulary waiting to be used. Leave them.
 
 ## A — Phase 1 foundations (never yet run against the real backend)
 
