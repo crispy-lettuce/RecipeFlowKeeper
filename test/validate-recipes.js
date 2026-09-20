@@ -116,11 +116,47 @@ function extractBlocks(md){
     if(!r.stageCount) blockers.push('no STAGE blocks');
     if(b.unterminated) blockers.push('code fence never closed');
 
+    /* A line the parser doesn't recognise is not an error anywhere — it
+       simply falls through and is discarded, silently. A GROUP whose
+       handle has a hyphen in it, or a MERGE written with a Unicode arrow,
+       vanishes and the recipe renders as though those ingredients were
+       never written. That is worse than a loud failure, so it is a
+       blocker.
+
+       These patterns mirror parseRecipe's own and must be kept in step
+       with it — they answer only "would the parser recognise this line",
+       never what it means. */
+    const KEYWORD = /^(GROUP|STAGE|MERGE)\b/i;
+    const RECOGNISED = [
+      /^GROUP\s+(\w+)\s*:\s*$/i,
+      /^STAGE:\s*$/i,
+      /^MERGE\s+(.+?)\s*->\s*(\w+)\s*:\s*(.+)$/i
+    ];
+    b.text.split('\n').map(l => l.trim()).forEach(line => {
+      if(!KEYWORD.test(line)) return;
+      if(RECOGNISED.some(re => re.test(line))) return;
+      blockers.push(`line silently ignored by the parser: "${line.slice(0,72)}"`);
+    });
+
     /* Warnings do not hold a recipe back — they are library-quality facts
        the audits in converter/test-set.md care about. */
     const warnings = [];
     const bare = r.merges.filter(m => !m.duration);
-    if(bare.length) warnings.push(`${bare.length} of ${r.merges.length} MERGE lines have no [duration]`);
+
+    /* A bracket the parser couldn't read is the nastiest of these,
+       because it looks done. parseRecipe leaves such a label untouched,
+       brackets and all, so the raw text shows in the diagram — the
+       failure `[instant]` caused before the keyword existed. Reported
+       separately from "no bracket at all", with the text shown, because
+       `[to taste]` falling through is deliberate and fine while
+       `[4-5 min]` with the wrong dash is a real loss. */
+    const unread = r.merges
+      .filter(m => !m.duration && /\]\s*$/.test(m.label))
+      .map(m => (m.label.match(/\[([^\]]*)\]\s*$/) || [,''])[1]);
+    if(unread.length) warnings.push(`${unread.length} bracket(s) present but NOT read as a duration: ${unread.map(u=>`[${u}]`).join(' ')}`);
+
+    const trulyBare = bare.length - unread.length;
+    if(trulyBare > 0) warnings.push(`${trulyBare} of ${r.merges.length} MERGE lines have no [duration] at all`);
     if(r.timelineNull) warnings.push('no timing data at all — the timeline strip will not render');
     if(!r.sourceUrl) warnings.push('no SOURCE_URL:');
     if(!r.imageUrl) warnings.push('no IMAGE:');
