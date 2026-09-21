@@ -1,0 +1,152 @@
+/* Re-hosts recipe images into Supabase Storage (R7).
+ *
+ * WHY SERVER-SIDE: most recipe-site CDNs (Sanity, Cloudinary, WordPress,
+ * immediate.co.uk) send no permissive CORS headers, so a browser cannot
+ * read the bytes. An Edge Function has its own egress and no CORS rules
+ * apply to it, which is the whole reason this isn't done in the app.
+ *
+ * WHY A SWEEP, NOT THE SAVE PATH: recipes save with whatever image_url
+ * they arrive with, and this walks the table separately. That treats the
+ * existing library and every future recipe identically with no
+ * special-casing, and it keeps "did my recipe save" from depending on a
+ * third party's server answering.
+ *
+ * WHY A PUBLIC BUCKET: the alternative, signed URLs, expires. image_url
+ * is written verbatim into the app's JSON export AND into the nightly
+ * pg_dump, so a signed URL would rot inside the backups — restore one
+ * months later and every image is dead. The photos are scraped from
+ * public recipe pages and are not sensitive; paths are keyed by record
+ * UUID, so they aren't guessable. A correctness argument, not a
+ * convenience one.
+ *
+ * Idempotent: anything already pointing at our own storage is skipped, so
+ * re-running is safe and cheap. Call with {"dryRun": true} to see what it
+ * would do without writing anything.
+ */
+import { createClient } from 'jsr:@supabase/supabase-js@2';
+
+const BUCKET = 'recipe-images';
+const MAX_BYTES = 10 * 1024 * 1024;   // a hero photo far exceeding this is a wrong URL, not a big picture
+const FETCH_TIMEOUT_MS = 20_000;
+const POLITE_DELAY_MS = 250;          // these are someone else's servers; don't hammer them
+
+/* Several CDNs answer a bare Deno fetch with 403 and a real browser UA
+   with 200. Sending one is the difference between this working on
+   kitchensanctuary.com and not. */
+const UA = 'Mozilla/5.0 (compatible; KitchenApp/1.0; +https://github.com/crispy-lettuce/RecipeFlowKeeper)';
+
+const EXT: Record<string, string> = {
+  'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png',
+  'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif',
+};
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+Deno.serve(async (req: Request) => {
+  const url = Deno.env.get('SUPABASE_URL')!;
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+  /* The caller's token decides WHICH household is swept; the service key
+     does the storage write, because a public bucket still needs a policy
+     to write to and there is no reason to grant the browser one. */
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const asUser = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: { user }, error: userErr } = await asUser.auth.getUser();
+  if (userErr || !user) {
+    return new Response(JSON.stringify({ error: 'Not signed in' }), {
+      status: 401, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const admin = createClient(url, serviceKey);
+
+  let body: { dryRun?: boolean; limit?: number } = {};
+  try { body = await req.json(); } catch { /* no body is fine — sweep everything */ }
+  const dryRun = body.dryRun === true;
+  const limit = typeof body.limit === 'number' ? body.limit : 500;
+
+  const { data: households, error: hErr } = await admin
+    .from('household_members').select('household_id').eq('user_id', user.id);
+  if (hErr || !households?.length) {
+    return new Response(JSON.stringify({ error: 'No household for this user' }), {
+      status: 403, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  const householdIds = households.map(h => h.household_id);
+
+  const { data: recipes, error: rErr } = await admin
+    .from('recipes').select('id, household_id, title, image_url')
+    .in('household_id', householdIds)
+    .not('image_url', 'is', null)
+    .limit(limit);
+  if (rErr) {
+    return new Response(JSON.stringify({ error: rErr.message }), {
+      status: 500, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const selfHost = `${url}/storage/v1/object/public/${BUCKET}/`;
+  const report: Array<Record<string, unknown>> = [];
+  let rehosted = 0, skipped = 0, failed = 0;
+
+  for (const r of recipes ?? []) {
+    const src = (r.image_url ?? '').trim();
+    if (!src) { skipped++; report.push({ title: r.title, outcome: 'skipped', why: 'no image_url' }); continue; }
+    if (src.startsWith(selfHost)) { skipped++; report.push({ title: r.title, outcome: 'skipped', why: 'already self-hosted' }); continue; }
+
+    try {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
+      const res = await fetch(src, { headers: { 'User-Agent': UA, 'Accept': 'image/*' }, signal: ctl.signal, redirect: 'follow' });
+      clearTimeout(timer);
+
+      if (!res.ok) throw new Error(`source returned ${res.status}`);
+      const ct = (res.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
+      const ext = EXT[ct];
+      /* Refuse anything that isn't a recognised image rather than storing
+         it and finding out later. An HTML error page served with 200 is
+         the common case this catches. */
+      if (!ext) throw new Error(`not an image (content-type: ${ct || 'none'})`);
+
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      if (bytes.byteLength === 0) throw new Error('empty response');
+      if (bytes.byteLength > MAX_BYTES) throw new Error(`too large (${bytes.byteLength} bytes)`);
+
+      const path = `${r.household_id}/${r.id}.${ext}`;
+      const publicUrl = `${selfHost}${path}`;
+
+      if (dryRun) {
+        rehosted++;
+        report.push({ title: r.title, outcome: 'would rehost', bytes: bytes.byteLength, contentType: ct, to: publicUrl });
+      } else {
+        /* upsert so a re-run replaces rather than erroring, which makes
+           this safe to run repeatedly after a partial failure. */
+        const { error: upErr } = await admin.storage.from(BUCKET)
+          .upload(path, bytes, { contentType: ct, upsert: true, cacheControl: '31536000' });
+        if (upErr) throw new Error(`upload failed: ${upErr.message}`);
+
+        const { error: updErr } = await admin.from('recipes')
+          .update({ image_url: publicUrl, updated_at: new Date().toISOString() })
+          .eq('id', r.id);
+        /* The column is only rewritten once the bytes are safely stored,
+           so a failure here leaves the recipe pointing at a source that
+           still works rather than at a file that may not exist. */
+        if (updErr) throw new Error(`stored, but column not updated: ${updErr.message}`);
+
+        rehosted++;
+        report.push({ title: r.title, outcome: 'rehosted', bytes: bytes.byteLength, contentType: ct, from: src, to: publicUrl });
+      }
+    } catch (e) {
+      failed++;
+      report.push({ title: r.title, outcome: 'failed', from: src, why: String((e as Error).message ?? e) });
+    }
+
+    await sleep(POLITE_DELAY_MS);
+  }
+
+  return new Response(JSON.stringify({
+    dryRun, considered: recipes?.length ?? 0, rehosted, skipped, failed, report,
+  }, null, 2), { headers: { 'Content-Type': 'application/json' } });
+});
