@@ -41,13 +41,21 @@ replaced.
 | Recipes | 33 |
 | Cooking-log entries | 114 |
 | Keywords | 47 |
-| Planned days | 15 |
+| Planned days | 15 **stored rows — expect the Planner to look empty** |
+| Meal groups | 2 **stored rows — likewise not visible** |
 | Shortlist items | 2 |
-| Meal groups | 2 |
 | Ingredient swaps | 1 |
 | Ticked shopping items | 0 (cleared deliberately) |
 | Word matches | 0 (none recorded yet) |
 | Week starts on | Friday |
+
+**Those first two rows are row counts, not what you will see.** Every stored planner day and
+meal group is in the past — the newest is 11 Sep — and the Planner only shows a fortnight from
+the current week start. So **an empty Planner is the correct result**, not a hydration failure,
+and it will stay that way until you plan something. Verify the 15 by checking the database or
+by paging the Planner back, not by counting what's on screen.
+
+This bit the first person through the plan, on 21 Sep.
 
 ## The things that will look like bugs and aren't
 
