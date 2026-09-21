@@ -1,0 +1,68 @@
+/* Builds a runnable copy of the app: swaps the two CDN <script> tags (both
+   blocked in this sandbox) for the local stub, and injects canned data. */
+const fs = require('fs');
+const path = require('path');
+
+const SRC = path.join(__dirname, '..', 'index.html');
+const OUT = path.join(__dirname, 'app-under-test.html');
+
+const HOUSE = '286a8a12-c12a-4b83-afbc-0912533f6b1c';
+const R1 = '11111111-1111-4111-8111-111111111111';
+const R2 = '22222222-2222-4222-8222-222222222222';
+
+function iso(offsetDays){
+  const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + offsetDays);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+const data = {
+  household_members: [{ household_id: HOUSE }],
+  household_settings: [{ household_id: HOUSE, week_start_day: 5, dark_mode: 'system' }],
+  aliases: [],
+  recipes: [
+    { id: R1, household_id: HOUSE, title: 'Test Pasta', source: 'Test Kitchen', source_url: null,
+      image_url: null, time_text: '30 min', servings: 4, favourite: false, equipment: '',
+      tags: { course: 'Main', keywords: ['Pasta'] }, date_added: iso(-30),
+      syntax: [
+        'TITLE: Test Pasta','SOURCE: Test Kitchen','TIME: 30 min','SERVINGS: 4','TAGS: course=Main, Pasta','',
+        'GROUP pasta:','300 g dried pasta','',
+        'GROUP sauce:','500 g chopped tomatoes','2 cloves garlic, minced','1 tbsp olive oil','',
+        'STAGE:','MERGE pasta -> cooked: Boil until al dente [10 min]','',
+        'STAGE:','MERGE sauce -> simmered: Simmer gently [12 min]','',
+        'STAGE:','MERGE cooked, simmered -> done: Toss together and serve [instant]'
+      ].join('\n') },
+    { id: R2, household_id: HOUSE, title: 'Test Soup', source: 'Test Kitchen', source_url: null,
+      image_url: null, time_text: '45 min', servings: 2, favourite: true, equipment: '',
+      tags: { course: 'Main', keywords: ['Veg'] }, date_added: iso(-10),
+      syntax: [
+        'TITLE: Test Soup','SOURCE: Test Kitchen','TIME: 45 min','SERVINGS: 2','TAGS: course=Main, Veg','',
+        'GROUP base:','1 kg chopped tomatoes','1 onion, finely diced','',
+        'GROUP finish:','2 cloves garlic','',
+        'STAGE:','MERGE base -> softened: Sweat down [15 min]','',
+        'STAGE:','MERGE softened, finish -> soup: Blend smooth [5 min]'
+      ].join('\n') }
+  ],
+  recipe_logs: [{ recipe_id: R1, cooked_on: iso(-7) }],
+  keywords: [{ name: 'Pasta' }, { name: 'Veg' }, { name: 'Batch' }],
+  planner_days: [
+    { household_id: HOUSE, plan_date: iso(0), is_blank: false, recipe_ids: [R1], servings: [] },
+    { household_id: HOUSE, plan_date: iso(1), is_blank: false, recipe_ids: [R1, R2], servings: [] }
+  ],
+  shortlist_items: [{ id: '33333333-3333-4333-8333-333333333333', household_id: HOUSE, text: 'Bolognese', recipe_id: null, date_added: iso(-2) }],
+  meal_groups: [{ id: '44444444-4444-4444-8444-444444444444', household_id: HOUSE,
+                  date_iso: iso(1), recipe_ids: [R1, R2], name: '' }],
+  ingredient_swaps: [],
+  shopping_checked: []
+};
+
+let html = fs.readFileSync(SRC, 'utf8');
+
+// Drop both CDN tags; neither host is reachable from this sandbox.
+html = html.replace(/<script src="https:\/\/cdnjs[^"]*"><\/script>\s*/g, '');
+html = html.replace(/<script src="https:\/\/cdn\.jsdelivr[^"]*"><\/script>\s*/g,
+  `<script>window.html2canvas = function(){ return Promise.resolve(document.createElement('canvas')); };</script>\n` +
+  `<script>window.__STUB_DATA__ = ${JSON.stringify(data)};</script>\n` +
+  `<script src="stub.js"></script>\n`);
+
+fs.writeFileSync(OUT, html);
+console.log('built', OUT, html.length, 'bytes');

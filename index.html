@@ -240,8 +240,13 @@
     font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.08em;
   }
   .backlink:hover{ color:var(--plum-lift); }
+  .meta-source-link{ color:inherit; text-decoration:underline; text-underline-offset:2px; }
+  .meta-source-link:hover{ color:var(--plum); }
   .viewer-meta{
-    flex:1; min-width:0;
+    /* A real basis, not 0: with flex-wrap on, a zero-basis meta line gets
+       crushed into a one-word-wide column when the head is full of buttons
+       instead of wrapping onto a row of its own. */
+    flex:1 1 260px; min-width:200px;
     font-family:'IBM Plex Mono', monospace; font-size:10.5px;
     letter-spacing:.08em; color:var(--ink-faint);
   }
@@ -262,7 +267,7 @@
   }
   .scale-btn:hover{ border-color:var(--plum); color:var(--plum); }
   .scale-btn.active{ background:var(--plum); border-color:var(--plum); color:#fff; }
-  #viewerScaleCustom{
+  #viewerServesCustom{
     width:80px; padding:6px 8px; border:1px solid var(--line); border-radius:var(--r);
     background:var(--card); font-family:'Newsreader', Georgia, serif; font-size:13px;
   }
@@ -479,6 +484,15 @@
     flex:none; width:60px; text-align:right;
     font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.03em; color:var(--ink-mute);
   }
+  .day-recipe-serves{
+    flex:none; background:none; border:1px solid transparent; border-radius:20px; cursor:pointer;
+    padding:2px 8px; font-family:'IBM Plex Mono', monospace; font-size:10.5px;
+    letter-spacing:.04em; color:var(--ink-faint);
+  }
+  .day-recipe-serves:hover{ border-color:var(--line); color:var(--plum); }
+  /* Lit up only when this day asks for a different number than the recipe
+     is written for — otherwise it's just quiet information. */
+  .day-recipe-serves.on{ border-color:var(--plum); color:var(--plum); }
   .day-recipe-remove{
     flex:none; background:none; border:none; cursor:pointer; color:var(--ink-faint);
     font-size:14px; line-height:1; padding:2px;
@@ -527,6 +541,12 @@
   .stacked-recipe:last-child{ margin-bottom:0; }
   .stacked-recipe-head{ display:flex; align-items:center; gap:9px; margin-bottom:10px; }
   .stacked-recipe-head h3{ font-size:18px; font-weight:600; margin:0; color:var(--ink); }
+  .stacked-recipe-serves{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px;
+    letter-spacing:.04em; color:var(--ink-mute); flex:none;
+  }
+  .stacked-recipe-actions{ display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
+  .stacked-recipe-actions .btn{ padding:6px 10px; font-size:10px; }
   .stacked-recipe .recipe-swatch{ width:10px; height:10px; border-radius:2px; flex:none; }
   .day-choose.day-add-more{ font-size:10.5px; align-self:flex-start; margin-top:2px; }
   .day-choose.day-add-more .circle{ width:18px; height:18px; font-size:12px; }
@@ -757,7 +777,7 @@
   .scale-hint{
     font-size:12.5px; color:var(--ink-mute); font-style:italic; flex-basis:100%; margin-top:4px;
   }
-  #f-scale-custom{
+  #f-scale-servings{
     padding:8px 10px; border:1px solid var(--line); border-radius:var(--r);
     background:var(--card); font-family:'Newsreader', Georgia, serif; font-size:14px;
   }
@@ -785,6 +805,27 @@
   }
   .btn.small-danger:hover{ border-color:var(--danger); color:var(--danger); }
 
+  /* ---- Settings ---- */
+  .settings-body{ padding:0 30px 40px; overflow-y:auto; display:flex; flex-direction:column; gap:34px; max-width:820px; }
+  .settings-block .side-label{ margin-bottom:6px; }
+  .settings-block .subtle{ margin-bottom:14px; }
+  /* The lists here sit in a scrolling page, not a fixed-height modal, so they
+     grow with their contents instead of scrolling inside themselves. */
+  .settings-block .sources-list{ max-height:none; overflow:visible; }
+  .alias-form{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  .alias-form input{ flex:1; min-width:150px; }
+  .alias-arrow{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--ink-faint); flex:none;
+  }
+  .alias-pair{ font-size:14.5px; color:var(--ink); }
+  .alias-pair .alias-arrow{ margin:0 8px; }
+  .alias-group-label{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.1em;
+    color:var(--ink-mute); margin:14px 0 2px;
+  }
+  .alias-group-label:first-child{ margin-top:0; }
+
   .swap-form{
     padding:16px; border:1px solid var(--line); border-radius:var(--r); background:var(--card);
     max-width:760px; margin:0 30px;
@@ -801,7 +842,9 @@
     font-size:13px; opacity:0; pointer-events:none; transition:all .25s ease; z-index:200;
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
-  @media (prefers-reduced-motion: reduce){ .toast{ transition:none; } }
+  @media (prefers-reduced-motion: reduce){
+    .toast, .sidebar, .sidebar-peek-btn{ transition:none; }
+  }
 
   /* Auto-collapses the sidebar specifically while the Recipe Viewer is
      open, on screens too narrow to comfortably show both the sidebar and
@@ -819,8 +862,47 @@
      List don't have the same "just let me see this properly" pressure
      the handover named. */
   @media (min-width: 861px) and (max-width: 1180px){
-    .app.viewer-open .sidebar{ display:none; }
+    /* Width, not display:none — the sidebar slides out of the way rather
+       than vanishing, and can slide back without leaving the recipe. */
+    .app.viewer-open .sidebar{
+      width:0; padding-left:0; padding-right:0;
+      border-right-width:0; overflow:hidden;
+    }
+    .app.viewer-open.sidebar-peek .sidebar{ width:214px; border-right-width:1px; }
+    .app.viewer-open .sidebar-peek-btn{ display:flex; }
   }
+  /* Keep Awake on means "I am cooking from this right now", which is a
+     far better signal that the menu is in the way than window width is —
+     width is a guess about the device, this is a statement of intent. So
+     it collapses the sidebar at ANY width, not just the 861-1180px band
+     above, added 21 Sep after the first real kitchen try.
+
+     Still scoped to .viewer-open, and still leaves the peek tab: Keep
+     Awake is global session state, so without that scope, turning it on
+     and navigating away would leave you on a screen with no menu and no
+     obvious way back. Leaving the recipe restores the sidebar; so does
+     switching Keep Awake off. */
+  .app.keep-awake.viewer-open .sidebar{
+    width:0; padding-left:0; padding-right:0;
+    border-right-width:0; overflow:hidden;
+  }
+  .app.keep-awake.viewer-open.sidebar-peek .sidebar{ width:214px; border-right-width:1px; }
+  .app.keep-awake.viewer-open .sidebar-peek-btn{ display:flex; }
+
+  .sidebar{ transition:width .22s ease, border-right-width .22s ease; }
+  /* The tab that brings it back. Hidden everywhere except a collapsed
+     sidebar on a mid-width screen, by the rule above. */
+  .sidebar-peek-btn{
+    display:none; position:fixed; left:0; top:50%; transform:translateY(-50%); z-index:60;
+    align-items:center; justify-content:center;
+    width:18px; height:64px; padding:0;
+    border:1px solid var(--line); border-left:none;
+    border-radius:0 var(--r) var(--r) 0;
+    background:var(--card); color:var(--ink-mute); cursor:pointer;
+    font-family:'IBM Plex Mono', monospace; font-size:11px; line-height:1;
+  }
+  .sidebar-peek-btn:hover{ color:var(--plum); border-color:var(--plum); }
+  .app.sidebar-peek .sidebar-peek-btn{ left:214px; }
 
   @media (max-width: 860px){
     body{ overflow:auto; }
@@ -830,6 +912,19 @@
       padding:10px 12px; border-right:none; border-bottom:1px solid var(--line);
       gap:4px;
     }
+    /* Same Keep Awake collapse as above, but this layout stacks the
+       sidebar as a bar across the top, so the dimension that has to go
+       is height, not width. Collapsing width here would leave a
+       full-width strip of padding sitting where the menu was. */
+    .app.keep-awake.viewer-open .sidebar{
+      width:100%; height:0;
+      padding-top:0; padding-bottom:0;
+      border-bottom-width:0; overflow:hidden;
+    }
+    .app.keep-awake.viewer-open.sidebar-peek .sidebar{
+      height:auto; padding-top:10px; padding-bottom:10px; border-bottom-width:1px;
+    }
+
     .brand, .side-rule, .side-block, .side-count{ display:none; }
     .side-spacer{ flex:none; }
     .navlink{ padding:11px 14px; white-space:nowrap; border-left:none; border-bottom:2px solid transparent; }
@@ -868,12 +963,30 @@
      dialog) do the rest. Only the Viewer and Shopping List are meaningful
      to print; everything else falls back to whatever's on screen if
      someone prints from elsewhere, which is an acceptable edge case. */
+  /* Applied to .app only while a PNG capture is in flight, then removed.
+     Same unclipping the print rules below do, for the same reason: the
+     shell is height:100vh with overflow:hidden, so anything taller than
+     the window is cropped to one screenful no matter how much the
+     captured node itself is expanded. Print already solved this; PNG was
+     expanding the scrolling pane (see exportNodeAsPng) without ever
+     touching the ancestor doing the cropping, so a tall flow table, a
+     long shopping list or a multi-recipe Group Viewer captured only what
+     happened to be on screen.
+
+     Kept as a class rather than inline styles so the two paths that need
+     identical treatment sit next to each other and are edited together. */
+  .app.exporting{ display:block; height:auto; overflow:visible; }
+  .app.exporting .view{ display:none; }
+  .app.exporting .view.active{ display:block; }
+
   @media print{
     body{ overflow:visible !important; }
     .sidebar, .navlink, .btn, .backlink, .toggle-switch,
     .keep-awake-status, #keepAwakeVideo,
     .filter-head, .assign-banner,
-    .shop-head-right, #shopWeekSelect{ display:none !important; }
+    .shop-head-right, #shopWeekSelect,
+    #shopHideCheckedBtn, #shopClearBtn,
+    .sidebar-peek-btn{ display:none !important; }
     .app{ display:block !important; height:auto !important; overflow:visible !important; }
     .view{ display:none !important; }
     .view.active{ display:block !important; }
@@ -947,6 +1060,7 @@
     <button class="navlink" data-view="shopping" id="navShopping">SHOPPING</button>
     <button class="navlink" data-view="history">HISTORY</button>
     <button class="navlink" data-view="swaps">SWAPS</button>
+    <button class="navlink" data-view="settings">SETTINGS</button>
 
     <div class="side-rule"></div>
     <div class="side-block">
@@ -966,12 +1080,21 @@
     <div class="data-actions">
       <button class="data-link" id="exportDataBtn">EXPORT DATA</button>
       <button class="data-link" id="importDataBtn">IMPORT DATA</button>
-      <button class="data-link" id="manageSourcesBtn">MANAGE SOURCES</button>
-      <button class="data-link" id="manageKeywordsBtn">MANAGE KEYWORDS</button>
       <button class="data-link" id="signOutBtn">SIGN OUT</button>
       <input type="file" id="importFileInput" accept="application/json" style="display:none;">
     </div>
   </nav>
+  <button class="sidebar-peek-btn" id="sidebarPeekBtn" aria-label="Show or hide the menu">☰</button>
+  <!-- Wake-lock fallback: a silent, near-invisible 2x2px 1-second loop.
+       The real Screen Wake Lock API is blocked on file:// pages (secure
+       contexts only), which is how this app normally runs — this video
+       trick is what actually keeps the screen on in that case. Kept at
+       a tiny non-zero opacity rather than display:none/opacity:0, since
+       some browsers pause fully-hidden media as an optimisation. -->
+  <video id="keepAwakeVideo" loop muted playsinline
+         style="position:fixed; bottom:0; right:0; width:1px; height:1px; opacity:0.01; pointer-events:none;">
+    <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMRbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAA+gAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAjt0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAA+gAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAIAAAACAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAPoAAAAAAABAAAAAAGzbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAQABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABXm1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAR5zdGJsAAAAunN0c2QAAAAAAAAAAQAAAKphdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAIAAgBIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAAMGF2Y0MBQsAK/+EAGGdCwArZH4iIwEQAAAMABAAAAwAIPEiZIAEABWjLg8sgAAAAEHBhc3AAAAABAAAAAQAAABRidHJ0AAAAAAAAFDAAABQwAAAAGHN0dHMAAAAAAAAAAQAAAAEAAEAAAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAABAAAAAQAAABRzdHN6AAAAAAAAAoYAAAABAAAAFHN0Y28AAAAAAAAAAQAAA0EAAABidWR0YQAAAFptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjYwLjE2LjEwMAAAAAhmcmVlAAACjm1kYXQAAAJwBgX//2zcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBILjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5odG1sIC0gb3B0aW9uczogY2FiYWM9MCByZWY9MyBkZWJsb2NrPTE6MDowIGFuYWx5c2U9MHgxOjB4MTExIG1lPWhleCBzdWJtZT03IHBzeT0xIHBzeV9yZD0xLjAwOjAuMDAgbWl4ZWRfcmVmPTEgbWVfcmFuZ2U9MTYgY2hyb21hX21lPTEgdHJlbGxpcz0xIDh4OGRjdD0wIGNxbT0wIGRlYWR6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PS0yIHRocmVhZHM9MSBsb29rYWhlYWRfdGhyZWFkcz0xIHNsaWNlZF90aHJlYWRzPTAgbnI9MCBkZWNpbWF0ZT0xIGludGVybGFjZWQ9MCBibHVyYXlfY29tcGF0PTAgY29uc3RyYWluZWRfaW50cmE9MCBiZnJhbWVzPTAgd2VpZ2h0cD0wIGtleWludD0yNTAga2V5aW50X21pbj0xIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAADmWIhAV///8PRQABQt+A" type="video/mp4">
+  </video>
 
   <main class="stage">
     <!-- ================= HOME / SEARCH ================= -->
@@ -996,39 +1119,31 @@
         <button class="backlink" id="backToRecipes">← ALL RECIPES</button>
         <div class="viewer-meta" id="viewerMeta"></div>
         <label class="toggle-switch" title="Keep the screen from timing out while cooking">
-          <input type="checkbox" id="keepAwakeToggle">
+          <input type="checkbox" class="keep-awake-toggle">
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
           <span class="toggle-label">KEEP AWAKE</span>
         </label>
         <button class="btn" id="favouriteBtn">☆ FAVOURITE</button>
         <button class="btn" id="shortlistBtn">+ SHORTLIST</button>
         <button class="btn" id="editRecipeBtn">EDIT</button>
+        <button class="btn" id="resetTicksBtn">RESET TICKS</button>
         <button class="btn" id="exportPngBtn">EXPORT PNG</button>
         <button class="btn" id="printBtn">PRINT / A4 PDF</button>
         <button class="btn danger" id="deleteBtn">DELETE</button>
       </div>
       <div class="viewer-scale-row">
-        <span class="scale-label">SCALE</span>
-        <button class="scale-btn" data-viewer-scale="0.5">×0.5</button>
-        <button class="scale-btn" data-viewer-scale="1">×1</button>
-        <button class="scale-btn" data-viewer-scale="2">×2</button>
-        <button class="scale-btn" data-viewer-scale="3">×3</button>
-        <input type="number" id="viewerScaleCustom" placeholder="custom ×" min="0.1" step="0.1">
-        <button class="scale-btn" id="viewerScaleCustomBtn">GO</button>
+        <span class="scale-label">COOK FOR</span>
+        <button class="scale-btn" data-viewer-serves="2">2</button>
+        <button class="scale-btn" data-viewer-serves="4">4</button>
+        <button class="scale-btn" data-viewer-serves="6">6</button>
+        <button class="scale-btn" data-viewer-serves="8">8</button>
+        <input type="number" id="viewerServesCustom" placeholder="people" min="1" step="1">
+        <button class="scale-btn" id="viewerServesCustomBtn">GO</button>
+        <button class="scale-btn" id="viewerServesResetBtn">RESET</button>
         <span class="scale-note">Adjusts this view only — nothing is saved. Resets next time you open this recipe.</span>
       </div>
       <div id="viewerEquipmentWarning" class="equipment-warning" style="display:none;"></div>
-      <div id="keepAwakeStatus" class="keep-awake-status" style="display:none;"></div>
-      <!-- Wake-lock fallback: a silent, near-invisible 2x2px 1-second loop.
-           The real Screen Wake Lock API is blocked on file:// pages (secure
-           contexts only), which is how this app normally runs — this video
-           trick is what actually keeps the screen on in that case. Kept at
-           a tiny non-zero opacity rather than display:none/opacity:0, since
-           some browsers pause fully-hidden media as an optimisation. -->
-      <video id="keepAwakeVideo" loop muted playsinline
-             style="position:fixed; bottom:0; right:0; width:1px; height:1px; opacity:0.01; pointer-events:none;">
-        <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMRbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAA+gAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAjt0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAA+gAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAIAAAACAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAPoAAAAAAABAAAAAAGzbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAQABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABXm1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAR5zdGJsAAAAunN0c2QAAAAAAAAAAQAAAKphdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAIAAgBIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAAMGF2Y0MBQsAK/+EAGGdCwArZH4iIwEQAAAMABAAAAwAIPEiZIAEABWjLg8sgAAAAEHBhc3AAAAABAAAAAQAAABRidHJ0AAAAAAAAFDAAABQwAAAAGHN0dHMAAAAAAAAAAQAAAAEAAEAAAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAABAAAAAQAAABRzdHN6AAAAAAAAAoYAAAABAAAAFHN0Y28AAAAAAAAAAQAAA0EAAABidWR0YQAAAFptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjYwLjE2LjEwMAAAAAhmcmVlAAACjm1kYXQAAAJwBgX//2zcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBILjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5odG1sIC0gb3B0aW9uczogY2FiYWM9MCByZWY9MyBkZWJsb2NrPTE6MDowIGFuYWx5c2U9MHgxOjB4MTExIG1lPWhleCBzdWJtZT03IHBzeT0xIHBzeV9yZD0xLjAwOjAuMDAgbWl4ZWRfcmVmPTEgbWVfcmFuZ2U9MTYgY2hyb21hX21lPTEgdHJlbGxpcz0xIDh4OGRjdD0wIGNxbT0wIGRlYWR6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PS0yIHRocmVhZHM9MSBsb29rYWhlYWRfdGhyZWFkcz0xIHNsaWNlZF90aHJlYWRzPTAgbnI9MCBkZWNpbWF0ZT0xIGludGVybGFjZWQ9MCBibHVyYXlfY29tcGF0PTAgY29uc3RyYWluZWRfaW50cmE9MCBiZnJhbWVzPTAgd2VpZ2h0cD0wIGtleWludD0yNTAga2V5aW50X21pbj0xIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAADmWIhAV///8PRQABQt+A" type="video/mp4">
-      </video>
+      <div class="keep-awake-status" style="display:none;"></div>
       <div class="viewer-body"><div id="flowMount"></div></div>
     </section>
 
@@ -1037,14 +1152,21 @@
       <div class="viewer-head">
         <button class="backlink" id="backFromGroupViewer">← PLANNER</button>
         <div class="viewer-meta" id="groupViewerMeta"></div>
+        <label class="toggle-switch" title="Keep the screen from timing out while cooking">
+          <input type="checkbox" class="keep-awake-toggle">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-label">KEEP AWAKE</span>
+        </label>
+        <button class="btn" id="groupResetTicksBtn">RESET TICKS</button>
+        <button class="btn" id="groupExportPngBtn">EXPORT PNG</button>
+        <button class="btn" id="groupPrintBtn">PRINT / A4 PDF</button>
         <button class="btn small-danger" id="groupUngroupBtn">UNGROUP</button>
       </div>
-      <!-- No "keep awake" toggle here yet — the existing implementation is
-           wired to specific single-recipe element ids (keepAwakeVideo etc.)
-           rather than parameterised to a target screen. Duplicating it as-is
-           risks two copies drifting apart; properly sharing it is a real
-           small refactor, not a one-line add, so it's left as a follow-up
-           rather than half-done here. -->
+      <!-- Keep Awake is the same one machine as the Recipe Viewer's: one
+           video at .app level, and every .keep-awake-toggle / .keep-awake-status
+           on the page kept in step by the shared handler. No per-screen copy
+           to drift. -->
+      <div class="keep-awake-status" style="display:none;"></div>
       <div class="viewer-body"><div id="groupFlowMount"></div></div>
     </section>
 
@@ -1087,6 +1209,8 @@
           </div>
           <div class="shop-head-right">
             <select class="sort" id="shopWeekSelect" aria-label="Select week"></select>
+            <button class="btn" id="shopHideCheckedBtn" aria-pressed="false">HIDE TICKED</button>
+            <button class="btn" id="shopClearBtn">CLEAR TICKS</button>
             <button class="btn" id="shopExportBtn">EXPORT PNG</button>
             <button class="btn" id="shopPrintBtn">PRINT / A4 PDF</button>
           </div>
@@ -1104,9 +1228,7 @@
             <button class="backlink" id="historyNextMonth" aria-label="Next month">→</button>
             <button class="btn" id="historyTodayBtn">TODAY</button>
           </div>
-          <div class="history-weekday-labels">
-            <span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span>
-          </div>
+          <div class="history-weekday-labels" id="historyWeekdayLabels"></div>
           <div id="historyGrid" class="history-grid"></div>
         </div>
         <aside class="shortlist-panel">
@@ -1143,6 +1265,60 @@
       </div>
       <div id="swapsList" class="swaps-list"></div>
     </section>
+
+    <!-- ================= SETTINGS ================= -->
+    <section id="view-settings" class="view">
+      <div class="filter-head">
+        <div>
+          <h1>Settings</h1>
+          <p class="subtle" style="margin:4px 0 0;">How the app behaves, and the
+            words it treats as the same thing.</p>
+        </div>
+      </div>
+      <div class="settings-body">
+        <div class="settings-block">
+          <div class="side-label">WEEK STARTS ON</div>
+          <p class="subtle">Your planner and shopping list group days into weeks that
+            start on this day. Friday suits a Friday shop.</p>
+          <select class="sort" id="setWeekStart" aria-label="Day the week starts on"></select>
+        </div>
+
+        <div class="settings-block">
+          <div class="side-label">WORD MATCHES</div>
+          <p class="subtle">Things you've told the app are the same. Ingredient matches
+            get added together on the shopping list; source matches stop you being asked
+            about a spelling you've already settled.</p>
+          <div class="alias-form">
+            <input type="text" id="alias-from" placeholder="e.g. spring onion">
+            <span class="alias-arrow">means</span>
+            <input type="text" id="alias-to" placeholder="e.g. spring onions">
+            <select class="sort" id="alias-kind" aria-label="Kind of match">
+              <option value="ingredient">INGREDIENT</option>
+              <option value="source">SOURCE</option>
+            </select>
+            <button class="btn" id="aliasAddBtn">ADD</button>
+          </div>
+          <p class="field-error" id="aliasError" style="display:none;"></p>
+          <div id="aliasesList" class="sources-list"></div>
+        </div>
+
+        <div class="settings-block">
+          <div class="side-label">SOURCES</div>
+          <p class="subtle">Every distinct source currently in use. If two entries are
+            really the same place, merge one into the other — every recipe using it gets
+            renamed. This can't be undone. (Merging renames the recipes you already have;
+            a word match above only stops you being asked again.)</p>
+          <div id="sourcesList" class="sources-list"></div>
+        </div>
+
+        <div class="settings-block">
+          <div class="side-label">KEYWORDS</div>
+          <p class="subtle">Every keyword you can tag a recipe with. Merge duplicates,
+            or delete one to remove it from every recipe carrying it.</p>
+          <div id="keywordsList" class="sources-list"></div>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -1153,7 +1329,7 @@
     <p class="subtle" id="modalSubtitle">Paste the syntax from your recipe-conversion chat, check the preview, then fill in anything missing.</p>
 
     <label class="field-label" for="importInput">RECIPE SYNTAX</label>
-    <textarea id="importInput" spellcheck="false" placeholder="TITLE: ...&#10;SOURCE: ...&#10;IMAGE: ...&#10;TIME: ...&#10;TAGS: course=Main, Veg&#10;&#10;GROUP handle:&#10;...&#10;&#10;STAGE:&#10;MERGE ... -> ...: ..."></textarea>
+    <textarea id="importInput" spellcheck="false" placeholder="TITLE: ...&#10;SOURCE: ...&#10;SOURCE_URL: ...&#10;IMAGE: ...&#10;TIME: ...&#10;TAGS: course=Main, Veg&#10;&#10;GROUP handle:&#10;...&#10;&#10;STAGE:&#10;MERGE ... -> ...: ..."></textarea>
     <button class="btn primary" id="parseBtn">PARSE &amp; PREVIEW</button>
 
     <div class="add-form" id="addForm" style="display:none;">
@@ -1164,20 +1340,20 @@
       </div>
       <div class="field-row">
         <label><span>TIME</span><input type="text" id="f-time" placeholder="e.g. 35 min"></label>
-        <label><span>SERVINGS</span><input type="number" id="f-servings" placeholder="e.g. 4" min="1" step="1"></label>
+        <label><span>SERVINGS <span class="required">*</span></span><input type="number" id="f-servings" placeholder="e.g. 4" min="1" step="1"></label>
         <label><span>IMAGE URL</span><input type="text" id="f-image" placeholder="optional"></label>
+      </div>
+      <div class="field-row">
+        <label><span>SOURCE URL</span><input type="text" id="f-source-url" placeholder="where this recipe came from — worth filling in, it's what makes a re-convert cheap"></label>
       </div>
       <div class="field-row">
         <label><span>EQUIPMENT (SIZE-SPECIFIC)</span><input type="text" id="f-equipment" placeholder="e.g. 20cm springform tin — leave blank if none"></label>
       </div>
       <div class="scale-row">
-        <span class="scale-label">SCALE THIS RECIPE</span>
-        <button type="button" class="btn small-danger" data-scale="0.5">×0.5</button>
-        <button type="button" class="btn small-danger" data-scale="2">×2</button>
-        <button type="button" class="btn small-danger" data-scale="3">×3</button>
-        <input type="number" id="f-scale-custom" placeholder="custom ×" min="0.1" step="0.1" style="width:90px;">
-        <button type="button" class="btn small-danger" id="f-scale-custom-btn">APPLY</button>
-        <span class="scale-hint">Rewrites ingredient amounts and servings below, permanently, once saved — review before saving.</span>
+        <span class="scale-label">SCALE TO SERVE</span>
+        <input type="number" id="f-scale-servings" placeholder="e.g. 6" min="1" step="1" style="width:90px;">
+        <button type="button" class="btn small-danger" id="f-scale-apply">APPLY</button>
+        <span class="scale-hint">Works out the scale from the SERVINGS this recipe already makes, then rewrites ingredient amounts and servings below, permanently, once saved — review before saving.</span>
       </div>
       <div class="equipment-warning" id="equipmentWarning" style="display:none;"></div>
       <div class="field-row">
@@ -1198,30 +1374,6 @@
       <button class="btn primary" id="saveBtn">SAVE RECIPE</button>
       <p class="field-error" id="saveError" style="display:none;"></p>
     </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="sourcesModalOverlay">
-  <div class="modal-panel" role="dialog" aria-modal="true" aria-label="Manage sources">
-    <button class="modal-close" id="closeSourcesModal" aria-label="Close">×</button>
-    <h1>Manage sources</h1>
-    <p class="subtle">Every distinct source currently in use. If two entries
-      are really the same place, merge one into the other — every recipe
-      using it gets renamed. This can't be undone.</p>
-    <div id="sourcesList" class="sources-list"></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="keywordsModalOverlay">
-  <div class="modal-panel" role="dialog" aria-modal="true" aria-label="Manage keywords">
-    <button class="modal-close" id="closeKeywordsModal" aria-label="Close">×</button>
-    <h1>Manage keywords</h1>
-    <p class="subtle">Every keyword in the list, including ones seeded by
-      default that no recipe has used yet (0). Merge two that turned out
-      to be the same idea, or delete one you don't want suggested again —
-      deleting also removes it from any recipe currently tagged with it.
-      Both can't be undone.</p>
-    <div id="keywordsList" class="sources-list"></div>
   </div>
 </div>
 
@@ -1313,18 +1465,62 @@ function extractStepDuration(rawLabel){
   if(/^(?:until|till)\b/.test(bracket)){
     return { label: before, duration: { min:null, max:null, openEnded:true } };
   }
-  const range = bracket.match(/^~?\s*(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*(min|mins|minutes?|m|hrs?|hours?|h)?$/);
+  /* Exact matches, not prefixes — unlike until/till above, these are whole
+     words the conversion instructions ask for verbatim, so there's no
+     "cook to done"-style phrase to accidentally widen into. A genuinely
+     zero-length step (plating, a final stir, a garnish) is a real timing
+     fact, distinct from a step whose length just wasn't recorded — see
+     the "instantaneous" comment on computeTimeline below, which this
+     completes: a truly instant step gets duration 0, not the default
+     filler. */
+  if(bracket === 'instant'){
+    return { label: before, duration: { min:0, max:0, openEnded:false, instant:true } };
+  }
+  /* An overnight (or similarly long, unattended) step is a real timing
+     decision too, but plotting 8-12 hours literally would dwarf every
+     other step on a shared same-session cooking timeline and make it
+     useless — so this rides the same DEFAULT_STEP_MINUTES filler as
+     open-ended below, badged distinctly rather than measured. */
+  if(bracket === 'overnight'){
+    return { label: before, duration: { min:null, max:null, openEnded:true, overnight:true } };
+  }
+  /* Everything below is "a number with a unit", so the unit vocabulary and
+     the dash live in one place rather than being restated per pattern.
+
+     Seconds are here because a 30-second step is a real thing a recipe
+     says ("cook the garlic 30 sec") and the only way to write it without
+     them is `[0.5 min]`, which nobody writes. Minutes stay the internal
+     unit, so seconds arrive as a fraction — 30 sec is 0.5, not 30.
+
+     DASH matters more than it looks: a range is the one place a converter
+     naturally reaches for an en dash, because that's what a range is
+     typographically. An ASCII-only pattern read `[4–5 min]` as an
+     unrecognised bracket and left it sitting in the step label as raw
+     text — the same visible-bracket failure `[instant]` caused before it
+     was understood. Accepting the dash family costs nothing: the
+     characters are unambiguous between two numbers. */
+  const UNIT = '(sec|secs|seconds?|min|mins|minutes?|m|hrs?|hours?|h)';
+  const DASH = '[-\\u2010-\\u2015]';
+  const unitMultiplier = u => /^h/.test(u) ? 60 : /^s/.test(u) ? 1/60 : 1;
+
+  /* A compound "1 hr 30" is how the TIME: field is already written, so a
+     step duration gets written the same way sooner or later. Checked
+     before the plain patterns because neither would match it — it would
+     otherwise fall through to unrecognised. */
+  const compound = bracket.match(new RegExp(`^~?\\s*(\\d+)\\s*(?:hrs?|hours?|h)\\s*(\\d+)\\s*(?:mins?|minutes?|m)?$`));
+  if(compound){
+    const n = parseInt(compound[1],10) * 60 + parseInt(compound[2],10);
+    return { label: before, duration: { min:n, max:n, openEnded:false } };
+  }
+  const range = bracket.match(new RegExp(`^~?\\s*(\\d+(?:\\.\\d+)?)\\s*${DASH}\\s*(\\d+(?:\\.\\d+)?)\\s*${UNIT}?$`));
   if(range){
-    const unit = (range[3]||'').toLowerCase();
-    const mult = /^h/.test(unit) ? 60 : 1; // hours -> minutes internally, so all downstream maths is one unit
+    const mult = unitMultiplier((range[3]||'').toLowerCase()); // hours -> minutes internally, so all downstream maths is one unit
     const a = parseFloat(range[1]) * mult, b = parseFloat(range[2]) * mult;
     return { label: before, duration: { min: Math.min(a,b), max: Math.max(a,b), openEnded:false } };
   }
-  const fixed = bracket.match(/^~?\s*(\d+(?:\.\d+)?)\s*(min|mins|minutes?|m|hrs?|hours?|h)?$/);
+  const fixed = bracket.match(new RegExp(`^~?\\s*(\\d+(?:\\.\\d+)?)\\s*${UNIT}?$`));
   if(fixed){
-    const unit = (fixed[2]||'').toLowerCase();
-    const mult = /^h/.test(unit) ? 60 : 1;
-    const n = parseFloat(fixed[1]) * mult;
+    const n = parseFloat(fixed[1]) * unitMultiplier((fixed[2]||'').toLowerCase());
     return { label: before, duration: { min:n, max:n, openEnded:false } };
   }
   // Bracket present but not recognised as a duration — leave the label
@@ -1350,13 +1546,21 @@ function formatMinutesForDisplay(n){
 }
 function formatDuration(d){
   if(!d) return '';
+  if(d.instant) return 'instant';
+  if(d.overnight) return 'overnight';
   if(d.openEnded) return 'until done';
   if(d.min === d.max) return formatMinutesForDisplay(d.min);
   return `${formatMinutesForDisplay(d.min)}–${formatMinutesForDisplay(d.max)}`;
 }
 function durationBadge(d){
   if(!d) return '';
-  const text = d.openEnded ? '~ UNTIL DONE' : formatDuration(d).toUpperCase();
+  const text = d.instant ? 'INSTANT'
+    : d.overnight ? 'OVERNIGHT'
+    : d.openEnded ? '~ UNTIL DONE'
+    : formatDuration(d).toUpperCase();
+  // overnight carries openEnded too, so it already gets the same faded,
+  // approximate styling as "until done" — instant stays plain: it's a
+  // precise fact, not a fuzzy one.
   return `<span class="step-duration${d.openEnded?' open-ended':''}">${escapeHtml(text)}</span>`;
 }
 
@@ -1518,7 +1722,7 @@ function wireGroupTimelineInteractions(container){
 
 function parseRecipe(text){
   const rawLines = String(text||'').split('\n');
-  let title='', source='', imageUrl='', time='', servings='', equipment='', tagsRaw='', setup=[], groups=[], stages=[];
+  let title='', source='', sourceUrl='', imageUrl='', time='', servings='', equipment='', tagsRaw='', setup=[], groups=[], stages=[];
   /* NOTES is now structured into named subsections — Variations/Storing/
      Freezing/Tips — rather than one flat list, per the 14 Aug decision.
      `general` is the fallback bucket: anything under a bare NOTES: with
@@ -1533,6 +1737,14 @@ function parseRecipe(text){
     let m;
     if(m = line.match(/^TITLE:\s*(.*)$/i)){ title = m[1].trim(); mode=''; continue; }
     if(m = line.match(/^SOURCE:\s*(.*)$/i)){ source = m[1].trim(); mode=''; continue; }
+    /* Where the recipe came from. Carried in the syntax rather than only in
+       the form, so a reprocessed recipe pasted back in brings its own origin
+       with it and the link survives the round trip. SOURCE_URL is what the
+       converter instructions specify; bare URL is accepted as an alias
+       because it is the obvious thing to type by hand. Must be tested before
+       nothing else — /^SOURCE:/ cannot match "SOURCE_URL:" anyway, since the
+       colon does not follow, but keeping them adjacent makes that visible. */
+    if(m = line.match(/^(?:SOURCE_URL|URL):\s*(.*)$/i)){ sourceUrl = m[1].trim(); mode=''; continue; }
     if(m = line.match(/^IMAGE:\s*(.*)$/i)){ imageUrl = m[1].trim(); mode=''; continue; }
     if(m = line.match(/^TIME:\s*(.*)$/i)){ time = m[1].trim(); mode=''; continue; }
     if(m = line.match(/^SERVINGS:\s*(.*)$/i)){ servings = m[1].trim(); mode=''; continue; }
@@ -1571,7 +1783,7 @@ function parseRecipe(text){
     else if(mode==='notes-tips') notes.tips.push(line);
     else if(mode==='group' && currentGroup) currentGroup.items.push(line);
   }
-  return {title, source, imageUrl, time, servings, equipment, tags: parseTags(tagsRaw), setup, notes, groups, stages};
+  return {title, source, sourceUrl, imageUrl, time, servings, equipment, tags: parseTags(tagsRaw), setup, notes, groups, stages};
 }
 
 /* The Title field and the syntax's own TITLE: line are two copies of the
@@ -1626,7 +1838,15 @@ function scaleRecipeSyntax(syntaxText, multiplier){
   const scaledLines = lines.map(line=>{
     const trimmed = line.trim();
     if(/^GROUP\s+\w+\s*:\s*$/i.test(trimmed)){ inGroup = true; return line; }
-    if(trimmed === '' || /^(STEPS|STAGE|NOTES|VARIATIONS|STORING|FREEZING|TIPS)\s*:?\s*$/i.test(trimmed) || /^MERGE\b/i.test(trimmed)){
+    /* Any header line ends the group — including the keyed ones that carry a
+       value (TITLE:, SERVINGS: and friends). They only ever appear above the
+       first GROUP today, so this is belt and braces, but after P1 this runs
+       on every shopping-list build and a stray "TIME: 1 hr" below a group
+       would otherwise be read as an ingredient and scaled. */
+    if(trimmed === ''
+       || /^(STEPS|STAGE|NOTES|VARIATIONS|STORING|FREEZING|TIPS)\s*:?\s*$/i.test(trimmed)
+       || /^(TITLE|SOURCE|SOURCE_URL|URL|IMAGE|TIME|SERVINGS|EQUIPMENT|TAGS)\s*:/i.test(trimmed)
+       || /^MERGE\b/i.test(trimmed)){
       inGroup = false;
       return line;
     }
@@ -1879,6 +2099,13 @@ function buildFlowHTML(parsed){
    overlap check against every other cell is enough to catch the whole
    lineage in one pass — no need to walk the graph stage by stage.
    Un-ticking only affects the one cell clicked, not its ancestors. */
+/* Session-only, so a plain object on state rather than anything stored. */
+function viewerTickSet(key){
+  if(!state.viewerTicks[key]) state.viewerTicks[key] = new Set();
+  return state.viewerTicks[key];
+}
+function clearViewerTicks(key){ delete state.viewerTicks[key]; }
+
 function mountFlow(container, parsed, opts){
   opts = opts || {};
   const {html, colCount} = buildFlowHTML(parsed);
@@ -1905,6 +2132,17 @@ function mountFlow(container, parsed, opts){
   const cells = Array.from(container.querySelectorAll('.ing-cell, .box-cell'));
   const colOf = cell => cell.classList.contains('ing-cell') ? -1 : parseInt(cell.dataset.col, 10);
 
+  /* Ticks are addressed by where a cell sits in the flow, not by its text.
+     Geometry only moves when the recipe's *structure* does, so scaling to
+     a different number of people — which rewrites quantities and nothing
+     else — leaves every tick exactly where it was. That is the whole
+     point: you shouldn't lose your place halfway through cooking because
+     you doubled the recipe. Session-only, deliberately; a tick means
+     "done just now", not something to find still set tomorrow. */
+  const cellKey = cell => colOf(cell) + ':' + cell.dataset.rowStart + ':' + cell.dataset.rowSpan;
+  const ticks = opts.tickKey ? viewerTickSet(opts.tickKey) : null;
+  if(ticks) cells.forEach(cell=>{ if(ticks.has(cellKey(cell))) cell.classList.add('done'); });
+
   cells.forEach(cell=>{
     cell.addEventListener('click', ()=>{
       const turningOn = !cell.classList.contains('done');
@@ -1920,6 +2158,11 @@ function mountFlow(container, parsed, opts){
         });
       } else {
         cell.classList.remove('done');
+      }
+      /* Recorded before onToggle, which is free to re-render. */
+      if(ticks){
+        ticks.clear();
+        cells.forEach(c=>{ if(c.classList.contains('done')) ticks.add(cellKey(c)); });
       }
       if(opts.onToggle) opts.onToggle();
       const finalCells = container.querySelectorAll(`.box-cell[data-col="${colCount-1}"]`);
@@ -2012,9 +2255,33 @@ function exportNodeAsPng(node, filename, opts){
     });
   }
 
+  /* Unclip the shell itself. Expanding the scrolling pane above is not
+     enough on its own: .app is height:100vh with overflow:hidden, so a
+     node taller than the window is still cropped to one screenful and
+     the capture silently loses everything below the fold. This was the
+     21 Sep finding — Print came out right and PNG didn't, because the
+     print stylesheet unclips .app and this path never did.
+
+     windowHeight matters for the same reason one level further out:
+     html2canvas lays the clone out in a viewport-sized frame, so it has
+     to be told the document is taller than the window, or the content it
+     was just given room for still has nowhere to go. */
+  const appEl = node.closest('.app') || document.querySelector('.app');
+  if(appEl){
+    appEl.classList.add('exporting');
+    restoreFns.push(()=> appEl.classList.remove('exporting'));
+  }
+
   const restore = ()=> restoreFns.forEach(fn=>fn());
 
-  html2canvas(node, {backgroundColor:'#F5F1E6', scale:2}).then(canvas=>{
+  html2canvas(node, {
+    backgroundColor:'#F5F1E6',
+    scale:2,
+    scrollX:0,
+    scrollY:-window.scrollY,
+    windowWidth: Math.max(document.documentElement.scrollWidth, node.scrollWidth),
+    windowHeight: Math.max(document.documentElement.scrollHeight, node.scrollHeight)
+  }).then(canvas=>{
     restore();
     const link = document.createElement('a');
     link.download = filename + '.png';
@@ -2053,9 +2320,14 @@ const sb = (typeof supabase !== 'undefined' && supabase.createClient)
   : null;
 
 let HOUSEHOLD_ID = null;
+/* Friday, matching the household_settings column default — a Friday shop wants
+   its week to break on a Friday. 0 = Sunday, as per Date.getDay(). */
+const DEFAULT_WEEK_START_DAY = 5;
 const cache = {
   recipes: [], keywords: [], plan: {}, shortlist: [],
-  groups: [], swaps: [], shoppingChecked: {}
+  groups: [], swaps: [], shoppingChecked: {},
+  settings: { weekStartDay: DEFAULT_WEEK_START_DAY, darkMode: 'system' },
+  aliases: []
 };
 
 /* Writes are queued rather than fired off in parallel, so two edits made in
@@ -2132,7 +2404,7 @@ async function hydrate(){
   if(!memberships.length) throw new Error("This account isn't linked to a household yet.");
   HOUSEHOLD_ID = memberships[0].household_id;
 
-  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked] = await Promise.all([
+  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases] = await Promise.all([
     sb.from('recipes').select('*'),
     sb.from('recipe_logs').select('recipe_id, cooked_on').not('recipe_id','is',null),
     sb.from('keywords').select('name').order('sort_order'),
@@ -2140,9 +2412,13 @@ async function hydrate(){
     sb.from('shortlist_items').select('*').order('date_added', {ascending:false}),
     sb.from('meal_groups').select('*'),
     sb.from('ingredient_swaps').select('*'),
-    sb.from('shopping_checked').select('week_start, item_key')
+    sb.from('shopping_checked').select('week_start, item_key'),
+    /* maybeSingle, not single: a household with no settings row yet must come
+       back as null rather than throwing, since any throw in here signs you out. */
+    sb.from('household_settings').select('*').maybeSingle(),
+    sb.from('aliases').select('*')
   ]);
-  for(const res of [recipes, logs, keywords, planner, shortlist, groups, swaps, checked]){
+  for(const res of [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases]){
     if(res.error) throw res.error;
   }
 
@@ -2156,7 +2432,9 @@ async function hydrate(){
   cache.keywords = keywords.data.map(k=>k.name);
   cache.plan = {};
   planner.data.forEach(row=>{
-    cache.plan[row.plan_date] = row.is_blank ? {blank:true} : {recipeIds: row.recipe_ids || []};
+    cache.plan[row.plan_date] = row.is_blank
+      ? {blank:true}
+      : {recipeIds: row.recipe_ids || [], servings: row.servings || []};
   });
   cache.shortlist = shortlist.data.map(row=>({
     id: row.id, text: row.text || '', dateAdded: row.date_added, recipeId: row.recipe_id
@@ -2172,7 +2450,76 @@ async function hydrate(){
   checked.data.forEach(row=>{
     (cache.shoppingChecked[row.week_start] = cache.shoppingChecked[row.week_start] || {})[row.item_key] = true;
   });
+  cache.settings = {
+    weekStartDay: settings.data ? settings.data.week_start_day : DEFAULT_WEEK_START_DAY,
+    darkMode: (settings.data && settings.data.dark_mode) || 'system'
+  };
+  cache.aliases = aliases.data.map(row=>({
+    id: row.id, kind: row.kind, alias: row.alias, canonical: row.canonical || ''
+  }));
+  rebuildAliasMaps();
 }
+
+/* ---- Household settings ----
+   One row per household, so this can't use pushList (which keys on a UUID id).
+   Same shape as pushKeywords: a bespoke upsert on the real primary key. */
+function loadSettings(){ return cache.settings; }
+function saveSettings(next){
+  cache.settings = next;
+  return queueWrite('your settings', async ()=>{
+    const { error } = await sb.from('household_settings').upsert({
+      household_id: HOUSEHOLD_ID,
+      week_start_day: next.weekStartDay,
+      /* Round-tripped rather than exposed: dark mode is a later phase, and
+         writing the column back unchanged keeps this upsert from clobbering it. */
+      dark_mode: next.darkMode || 'system',
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'household_id' });
+    if(error) throw error;
+  });
+}
+function setSetting(key, value){
+  return saveSettings({ ...loadSettings(), [key]: value });
+}
+
+/* ---- Aliases ----
+   Two strings the household has declared equivalent (kind 'source'/'ingredient'),
+   or declared *not* equivalent (kind '..._distinct', where `alias` holds a sorted
+   pair key and `canonical` is empty). The distinct kinds are what stop the app
+   asking about the same pair forever.
+
+   Lookups happen per ingredient line while building a shopping list, so the
+   list is indexed into Maps on every write rather than scanned each time. */
+let aliasMaps = { source: new Map(), ingredient: new Map(), distinct: new Set() };
+function rebuildAliasMaps(){
+  const maps = { source: new Map(), ingredient: new Map(), distinct: new Set() };
+  cache.aliases.forEach(a=>{
+    if(a.kind === 'source' || a.kind === 'ingredient') maps[a.kind].set(a.alias, a.canonical);
+    else if(a.kind === 'source_distinct' || a.kind === 'ingredient_distinct') maps.distinct.add(a.kind + '|' + a.alias);
+  });
+  aliasMaps = maps;
+}
+function loadAliases(){ return cache.aliases; }
+function saveAliases(list){
+  cache.aliases = list;
+  rebuildAliasMaps();
+  return queueWrite('word matches', ()=> pushList('aliases', list.map(a=>({
+    id: a.id, household_id: HOUSEHOLD_ID,
+    kind: a.kind, alias: a.alias, canonical: a.canonical || ''
+  }))));
+}
+function addAlias(kind, alias, canonical){
+  const list = loadAliases().filter(a=> !(a.kind === kind && a.alias === alias));
+  list.push({ id: uid(), kind, alias, canonical: canonical || '' });
+  return saveAliases(list);
+}
+function removeAlias(id){ return saveAliases(loadAliases().filter(a=>a.id !== id)); }
+/* A pair key is order-independent, so "is this pair settled?" gives the same
+   answer whichever of the two names the shopping list happens to see first. */
+function pairKeyFor(a, b){ return [a, b].sort().join(' || '); }
+function isPairDistinct(kind, a, b){ return aliasMaps.distinct.has(kind + '_distinct|' + pairKeyFor(a, b)); }
+function applyIngredientAlias(name){ return aliasMaps.ingredient.get(name) || name; }
+function applySourceAlias(name){ return aliasMaps.source.get(name) || name; }
 
 function loadRecipes(){ return cache.recipes; }
 function saveRecipesList(list){
@@ -2247,6 +2594,7 @@ async function pushPlan(p){
     plan_date: date,
     is_blank: !!entry.blank,
     recipe_ids: planRecipeIds(entry),
+    servings: planServings(entry),
     updated_at: new Date().toISOString()
   }));
   if(rows.length){
@@ -2273,13 +2621,44 @@ function planRecipeIds(entry){
   if(entry.recipeId) return [entry.recipeId];
   return [];
 }
+/* How many people each entry on the day is for, positionally alongside
+   recipeIds. 0 means "whatever the recipe itself says" — kept as 0 rather
+   than null because the column is a NOT NULL smallint[], and because an
+   older tab that still writes only recipe_ids then reads back as a day
+   with no overrides rather than a day of nulls. Always padded to the same
+   length as the ids, so index n always addresses the same entry in both. */
+function planServings(entry){
+  const ids = planRecipeIds(entry);
+  const raw = (entry && Array.isArray(entry.servings)) ? entry.servings : [];
+  return ids.map((_, i)=> parseInt(raw[i], 10) || 0);
+}
+/* The two arrays read as one list of entries. planRecipeIds stays as it was
+   so the call sites that only want ids are untouched. */
+function planEntries(entry){
+  const servings = planServings(entry);
+  return planRecipeIds(entry).map((recipeId, i)=> ({ recipeId, servings: servings[i] }));
+}
 function setPlanBlank(dateStr){ const p = loadPlan(); p[dateStr] = {blank:true}; return savePlan(p); }
 function clearPlanDay(dateStr){ const p = loadPlan(); delete p[dateStr]; return savePlan(p); }
 function addPlanRecipe(dateStr, recipeId){
   const p = loadPlan();
   const ids = planRecipeIds(p[dateStr]);
+  const servings = planServings(p[dateStr]);
   ids.push(recipeId);
-  p[dateStr] = {recipeIds: ids};
+  servings.push(0); // as written, until someone says otherwise
+  p[dateStr] = {recipeIds: ids, servings};
+  return savePlan(p);
+}
+/* 0 clears the override and falls back to the recipe's own servings. */
+function setPlanServingsAt(dateStr, index, people){
+  const p = loadPlan();
+  const entry = p[dateStr];
+  if(!entry) return true;
+  const ids = planRecipeIds(entry);
+  if(index < 0 || index >= ids.length) return true;
+  const servings = planServings(entry);
+  servings[index] = parseInt(people, 10) || 0;
+  p[dateStr] = {recipeIds: ids, servings};
   return savePlan(p);
 }
 /* Removes by list position, not by id — if the same recipe is assigned
@@ -2290,8 +2669,10 @@ function removePlanRecipeAt(dateStr, index){
   const entry = p[dateStr];
   if(!entry) return true;
   const ids = planRecipeIds(entry);
+  const servings = planServings(entry);
   ids.splice(index, 1);
-  if(ids.length) p[dateStr] = {recipeIds: ids}; else delete p[dateStr];
+  servings.splice(index, 1); // in lockstep, or every later entry's servings shift up one
+  if(ids.length) p[dateStr] = {recipeIds: ids, servings}; else delete p[dateStr];
   return savePlan(p);
 }
 
@@ -2518,7 +2899,7 @@ function sourceCounts(recipes){
   });
   return counts;
 }
-function normalizeSourceForMatch(s){
+function normalizeTermForMatch(s){
   return String(s||'').toLowerCase().replace(/'s\b/g,'').replace(/[^\w\s]/g,' ').replace(/\s+/g,' ').trim();
 }
 /* Suggests a likely-existing match for a newly-typed source using
@@ -2529,19 +2910,19 @@ function normalizeSourceForMatch(s){
    and can flag things that turn out not to be the same source — it's
    only ever offered as a dismissible suggestion, never an automatic
    merge, for exactly that reason. */
-function findSimilarSource(newSource, countsBySource){
-  const norm = normalizeSourceForMatch(newSource);
+function findSimilarTerm(newTerm, countsByTerm){
+  const norm = normalizeTermForMatch(newTerm);
   if(!norm) return null;
   let best = null, bestCount = -1;
-  countsBySource.forEach((count, existing)=>{
-    if(existing === newSource) return;
-    const en = normalizeSourceForMatch(existing);
+  countsByTerm.forEach((count, existing)=>{
+    if(existing === newTerm) return;
+    const en = normalizeTermForMatch(existing);
     if(!en) return;
     if(en === norm || en.includes(norm) || norm.includes(en)){
       if(count > bestCount){ best = existing; bestCount = count; }
     }
   });
-  return best ? {source: best, count: bestCount} : null;
+  return best ? {term: best, count: bestCount} : null;
 }
 
 /* =====================================================================
@@ -2561,6 +2942,10 @@ const state = {
   selectedShortlistId: null,   // shortlist item currently picked, awaiting a day tap in the Planner
   pickingForDate: null,        // date string Home is currently picking a recipe for, if any
   shoppingWeekIndex: 0,        // which week-bucket the Shopping List is currently showing
+  shoppingBothWeeks: false,    // showing this week and next as one combined list
+  shoppingHideChecked: false,  // hide items already ticked off, for shopping with
+  aliasPrompting: false,       // guards the ingredient-match prompt against re-entering its own re-render
+  viewerTicks: {},             // recipeId -> Set of ticked flow cells, session-only and cleared on reload
   editingRecipeId: null,       // recipe id currently open in the Add/Edit modal, if editing rather than adding
   historyMonth: null,          // {year, month(0-indexed)} the History calendar is currently showing
   historySelectedDate: null,   // ISO date string currently selected in the History calendar, if any
@@ -2569,7 +2954,7 @@ const state = {
   groupingSelection: [],       // recipe ids currently ticked while groupingDate is active
   selectedGroupId: null,       // the meal-group id currently open in the Group Viewer, if any
   groupViewerReturnTo: null,   // where "← PLANNER" in the Group Viewer should navigate back to
-  viewerScale: 1               // ad-hoc scaling multiplier for the currently open Viewer recipe —
+  viewerServes: null           // ad-hoc target headcount for the currently open Viewer recipe, null = the recipe's own —
                                 // deliberately session-only per the 14 Aug decision: resets to 1 every
                                 // time a recipe is opened, never saved to the recipe itself. Permanent
                                 // scaling (Add/Edit form) is a completely separate mechanism that writes
@@ -2608,7 +2993,13 @@ function showView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const el = document.getElementById('view-'+name);
   if(el) el.classList.add('active');
-  const activeNav = name==='viewer' ? state.viewerReturnTo : name;
+  /* Neither Viewer has a nav entry of its own, so both keep the highlight
+     on wherever you came from — and a recipe opened out of a group points
+     at the group's own origin rather than at nothing. */
+  const activeNav = name==='viewer'
+    ? (state.viewerReturnTo === 'group-viewer' ? (state.groupViewerReturnTo || 'planner') : state.viewerReturnTo)
+    : name==='group-viewer' ? (state.groupViewerReturnTo || 'planner')
+    : name;
   document.querySelectorAll('.navlink[data-view]').forEach(b=>{
     b.classList.toggle('active', b.dataset.view === activeNav);
   });
@@ -2616,13 +3007,19 @@ function showView(name){
      auto-collapses on mid-width screens for both the single-recipe
      Viewer and the Group Viewer — see the CSS comment for why those two
      screens specifically need the room. */
-  document.querySelector('.app').classList.toggle('viewer-open', name === 'viewer' || name === 'group-viewer');
+  const app = document.querySelector('.app');
+  app.classList.toggle('viewer-open', name === 'viewer' || name === 'group-viewer');
+  app.classList.remove('sidebar-peek'); // a peek lasts as long as the recipe you opened it over
   window.scrollTo(0,0);
   if(name === 'planner') renderPlanner();
   if(name === 'shopping') renderShopping();
   if(name === 'history') renderHistory();
   if(name === 'swaps') renderSwaps();
+  if(name === 'settings') renderSettings();
 }
+document.getElementById('sidebarPeekBtn').addEventListener('click', ()=>{
+  document.querySelector('.app').classList.toggle('sidebar-peek');
+});
 document.querySelectorAll('.navlink[data-view]').forEach(btn=>{
   /* Shortlist lives inside the Planner screen (per the mockup), not a screen of its own. */
   const target = btn.dataset.view === 'shortlist' ? 'planner' : btn.dataset.view;
@@ -2967,7 +3364,7 @@ document.querySelectorAll('.saved-view').forEach(btn=>{
 function openRecipe(id, returnTo){
   state.selectedRecipeId = id;
   state.viewerReturnTo = returnTo || 'recipes';
-  state.viewerScale = 1; // ad-hoc scaling always starts fresh — never remembered between visits
+  state.viewerServes = null; // ad-hoc scaling always starts fresh — never remembered between visits
   showView('viewer');
   renderViewer();
 }
@@ -2977,6 +3374,17 @@ function openGroup(groupId, returnTo){
   state.groupViewerReturnTo = returnTo || 'planner';
   showView('group-viewer');
   renderGroupViewer();
+}
+
+/* The headcount each recipe on a given day is planned for. Returns a
+   lookup rather than a map of one, since a day can hold the same recipe
+   twice — the first entry's figure is the sensible one to show. */
+function plannedServingsLookup(dateIso){
+  const entries = planEntries(loadPlan()[dateIso]);
+  return recipeId => {
+    const hit = entries.find(e=> e.recipeId === recipeId);
+    return hit ? hit.servings : 0;
+  };
 }
 
 function renderGroupViewer(){
@@ -2990,10 +3398,19 @@ function renderGroupViewer(){
   if(!group){ showView('planner'); renderPlanner(); return; }
 
   const allRecipes = loadRecipes();
+  /* Scaled to the same headcount the shopping list bought for, so the
+     amounts on screen and the amounts in the trolley agree. */
+  const targetFor = plannedServingsLookup(group.dateIso);
   const recipesWithParsed = group.recipeIds
     .map(id => allRecipes.find(r=>r.id===id))
     .filter(Boolean) // a recipe deleted since the group was made — see the note below
-    .map(recipe => ({ recipe, parsed: parseRecipe(recipe.syntax||'') }));
+    .map(recipe => {
+      const base = parseInt(recipe.servings, 10) || 0;
+      const target = targetFor(recipe.id) || base;
+      const multiplier = (base && target && target !== base) ? target / base : 1;
+      const syntax = multiplier !== 1 ? scaleRecipeSyntax(recipe.syntax||'', multiplier) : (recipe.syntax||'');
+      return { recipe, serves: target, parsed: parseRecipe(syntax) };
+    });
 
   if(recipesWithParsed.length < 2){
     /* A group that's lost enough recipes to no longer be a group (down
@@ -3019,12 +3436,18 @@ function renderGroupViewer(){
      which is exactly why each recipe needs its own div rather than all
      sharing groupFlowMount directly — a single shared container would
      have each recipe's mountFlow call erase the one before it. */
-  const shellHtml = recipesWithParsed.map(({recipe}, i)=>{
+  const shellHtml = recipesWithParsed.map(({recipe, serves}, i)=>{
     const colour = PALETTE[i % PALETTE.length];
     return `<div class="stacked-recipe" data-recipe-id="${escapeHtml(recipe.id)}">
       <div class="stacked-recipe-head">
         <span class="recipe-swatch" style="background:${colour};"></span>
         <h3>${escapeHtml(recipe.title)}</h3>
+        ${serves ? `<span class="stacked-recipe-serves">SERVES ${serves}</span>` : ''}
+        <span class="stacked-recipe-actions">
+          <button class="btn" data-group-action="favourite">${recipe.favourite ? '★ FAVOURITE' : '☆ FAVOURITE'}</button>
+          <button class="btn" data-group-action="edit">EDIT</button>
+          <button class="btn" data-group-action="open">OPEN →</button>
+        </span>
       </div>
       <div class="stacked-recipe-flow" id="groupFlow-${escapeHtml(recipe.id)}"></div>
     </div>`;
@@ -3036,6 +3459,10 @@ function renderGroupViewer(){
     const sub = document.getElementById(`groupFlow-${recipe.id}`);
     if(!sub) return;
     mountFlow(sub, parsed, {
+      /* The same tick key as the single Viewer: it's the same recipe and
+         the same flow, so ticking here and opening it on its own keeps
+         your place either way. */
+      tickKey: recipe.id,
       onComplete: ()=> logRecipeUsed(recipe.id)
       // showTimeline deliberately omitted — the group's own combined
       // timeline strip above already covers this recipe's steps; a
@@ -3049,6 +3476,57 @@ function renderGroupViewer(){
 document.getElementById('backFromGroupViewer').addEventListener('click', ()=>{
   showView(state.groupViewerReturnTo || 'planner');
   if(state.groupViewerReturnTo === 'planner' || !state.groupViewerReturnTo) renderPlanner();
+});
+
+/* Per-recipe actions on the stacked cards. Delegated, because the cards are
+   rebuilt on every render. Shortlisting is deliberately absent — a recipe
+   already on the plan has nothing to shortlist — and there is no group-level
+   scale row, since the recipes have no single base to scale from; OPEN →
+   covers both by handing you the recipe on its own. */
+document.getElementById('groupFlowMount').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-group-action]');
+  if(!btn) return;
+  const card = btn.closest('.stacked-recipe');
+  if(!card) return;
+  const id = card.dataset.recipeId;
+  const action = btn.dataset.groupAction;
+
+  if(action === 'open'){
+    openRecipe(id, 'group-viewer');
+  } else if(action === 'edit'){
+    state.viewerReturnTo = 'group-viewer';
+    openEditModal(id);
+  } else if(action === 'favourite'){
+    const recipes = loadRecipes();
+    const idx = recipes.findIndex(r=>r.id === id);
+    if(idx === -1) return;
+    recipes[idx].favourite = !recipes[idx].favourite;
+    if(!saveRecipesList(recipes)) return;
+    renderGroupViewer();
+  }
+});
+
+document.getElementById('groupResetTicksBtn').addEventListener('click', ()=>{
+  /* In place, like the single Viewer's — the point is to start again
+     without losing your place on screen. */
+  const group = loadGroups().find(g=>g.id === state.selectedGroupId);
+  (group ? group.recipeIds : []).forEach(clearViewerTicks);
+  document.querySelectorAll('#groupFlowMount .done').forEach(c=> c.classList.remove('done'));
+  showToast('Ticks cleared');
+});
+
+document.getElementById('groupPrintBtn').addEventListener('click', ()=> window.print());
+
+document.getElementById('groupExportPngBtn').addEventListener('click', ()=>{
+  const group = loadGroups().find(g=>g.id === state.selectedGroupId);
+  const names = (group ? group.recipeIds : [])
+    .map(id=>{ const r = loadRecipes().find(x=>x.id===id); return r ? r.title : ''; })
+    .filter(Boolean).join('-');
+  exportNodeAsPng(
+    document.querySelector('#view-group-viewer .viewer-body'),
+    (names || 'meal-group').toLowerCase().replace(/[^a-z0-9]+/g,'-'),
+    { scrollFixSelectors: ['#view-group-viewer .viewer-body', '.tablewrap'], dropStickySelectors: ['.ing-cell'] }
+  );
 });
 
 document.getElementById('groupUngroupBtn').addEventListener('click', ()=>{
@@ -3071,18 +3549,32 @@ function renderViewer(){
   const backLabels = { planner: '← PLANNER', history: '← HISTORY' };
   document.getElementById('backToRecipes').textContent = backLabels[state.viewerReturnTo] || '← ALL RECIPES';
 
-  document.getElementById('keepAwakeToggle').checked = state.keepAwake;
-  updateKeepAwakeStatus();
+  updateKeepAwakeStatus(); // also re-syncs every toggle on the page
 
   const n = useCount(recipe);
   const used = lastUsed(recipe);
-  const scale = state.viewerScale || 1;
-  const displayedServings = recipe.servings ? Math.max(1, Math.round(recipe.servings * scale)) : null;
+  /* Scaling is expressed as "cook for N people", so the multiplier is
+     derived rather than chosen: target ÷ what the recipe already makes.
+     Without a SERVINGS on the recipe there's nothing to derive it from,
+     and the control row hides itself below. */
+  const baseServings = parseInt(recipe.servings, 10) || null;
+  const targetServings = (baseServings && state.viewerServes) ? state.viewerServes : baseServings;
+  const scale = (baseServings && targetServings) ? targetServings / baseServings : 1;
   const bits = [recipe.source, recipe.time];
-  if(displayedServings) bits.push(`SERVES ${displayedServings}${scale!==1 ? ` (×${scale})` : ''}`);
+  if(targetServings) bits.push(`SERVES ${targetServings}${scale!==1 ? ` (SCALED FROM ${baseServings})` : ''}`);
   bits.push(n ? `COOKED ${n}×` : 'NEVER COOKED');
   if(used) bits.push('LAST ' + formatDate(used));
-  meta.textContent = bits.filter(Boolean).join('  ·  ').toUpperCase();
+  /* The source becomes a link when the recipe knows where it came from —
+     the reason it's worth filling the field in at all. Built as HTML rather
+     than text only for that link, so everything here is escaped, and only
+     http(s) is allowed through: a recipe is data, and a javascript: URL in
+     a field would otherwise run on click. */
+  const metaHtml = bits.filter(Boolean).map(b=> escapeHtml(String(b).toUpperCase())).join('  ·  ');
+  const safeUrl = /^https?:\/\//i.test(recipe.sourceUrl || '') ? recipe.sourceUrl : '';
+  meta.innerHTML = safeUrl
+    ? metaHtml.replace(escapeHtml(String(recipe.source || '').toUpperCase()),
+        `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="meta-source-link">${escapeHtml(String(recipe.source || '').toUpperCase())}</a>`)
+    : metaHtml;
 
   const favBtn = document.getElementById('favouriteBtn');
   favBtn.classList.toggle('on', !!recipe.favourite);
@@ -3096,25 +3588,29 @@ function renderViewer(){
 
   /* Ad-hoc scaling: the recipe's OWN syntax on disk is never touched here —
      scaleRecipeSyntax runs fresh against recipe.syntax every render, purely
-     for display. state.viewerScale resets to 1 on every openRecipe() call,
-     so there's nothing to clean up if the person navigates away without
-     resetting it themselves. */
+     for display. state.viewerServes resets to null on every openRecipe()
+     call, so there's nothing to clean up if the person navigates away
+     without resetting it themselves. */
   const scaledSyntax = scale !== 1 ? scaleRecipeSyntax(recipe.syntax, scale) : recipe.syntax;
   const parsedForView = parseRecipe(scaledSyntax);
 
-  document.querySelectorAll('.viewer-scale-row .scale-btn[data-viewer-scale]').forEach(btn=>{
-    btn.classList.toggle('active', parseFloat(btn.dataset.viewerScale) === scale);
+  /* Nothing to scale against on a recipe with no servings, so don't offer it. */
+  document.querySelector('.viewer-scale-row').style.display = baseServings ? '' : 'none';
+  document.querySelectorAll('.viewer-scale-row .scale-btn[data-viewer-serves]').forEach(btn=>{
+    btn.classList.toggle('active', parseInt(btn.dataset.viewerServes, 10) === targetServings);
   });
+  document.getElementById('viewerServesResetBtn').classList.toggle('active', scale === 1);
 
   const warningEl = document.getElementById('viewerEquipmentWarning');
   if(scale !== 1 && parsedForView.equipment){
-    warningEl.textContent = `⚠ Scaled ×${scale} for this view — this recipe specifies ${parsedForView.equipment}, sized for the original quantities. You'll need to work out the right size yourself.`;
+    warningEl.textContent = `⚠ Scaled to serve ${targetServings} for this view — this recipe specifies ${parsedForView.equipment}, sized for ${baseServings}. You'll need to work out the right size yourself.`;
     warningEl.style.display = 'block';
   } else {
     warningEl.style.display = 'none';
   }
 
   mountFlow(mount, parsedForView, {
+    tickKey: recipe.id,
     onComplete: ()=> logRecipeUsed(recipe.id),
     showTimeline: true
   });
@@ -3144,28 +3640,36 @@ function logRecipeUsed(id){
 function backFromViewer(){
   showView(state.viewerReturnTo);
   // showView already re-renders planner/shopping/history internally;
-  // 'recipes' is the one origin it doesn't auto-render.
+  // 'recipes' and 'group-viewer' are the origins it doesn't auto-render.
   if(state.viewerReturnTo === 'recipes') renderHome();
+  if(state.viewerReturnTo === 'group-viewer') renderGroupViewer();
 }
 document.getElementById('backToRecipes').addEventListener('click', backFromViewer);
 
-/* Ad-hoc scaling controls — set state.viewerScale and re-render. Nothing
-   is written to the recipe; renderViewer applies the scale fresh on every
-   call by re-running scaleRecipeSyntax against the recipe's own untouched
-   syntax, so there's no accumulated drift from scaling repeatedly. */
-document.querySelectorAll('.viewer-scale-row .scale-btn[data-viewer-scale]').forEach(btn=>{
+/* Ad-hoc scaling controls — set state.viewerServes and re-render. Nothing
+   is written to the recipe; renderViewer works the multiplier out fresh on
+   every call and re-runs scaleRecipeSyntax against the recipe's own
+   untouched syntax, so there's no accumulated drift from scaling
+   repeatedly — asking for 8 after asking for 6 scales from the original,
+   not from the 6. */
+document.querySelectorAll('.viewer-scale-row .scale-btn[data-viewer-serves]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    state.viewerScale = parseFloat(btn.dataset.viewerScale);
+    state.viewerServes = parseInt(btn.dataset.viewerServes, 10);
     renderViewer();
   });
 });
-document.getElementById('viewerScaleCustomBtn').addEventListener('click', ()=>{
-  const val = parseFloat(document.getElementById('viewerScaleCustom').value);
+document.getElementById('viewerServesCustomBtn').addEventListener('click', ()=>{
+  const val = parseInt(document.getElementById('viewerServesCustom').value, 10);
   if(!val || isNaN(val) || val <= 0){
-    showToast('Enter a valid scale, e.g. 0.5 or 2');
+    showToast('Enter how many people you\'re cooking for, e.g. 6');
     return;
   }
-  state.viewerScale = val;
+  state.viewerServes = val;
+  renderViewer();
+});
+document.getElementById('viewerServesResetBtn').addEventListener('click', ()=>{
+  state.viewerServes = null;
+  document.getElementById('viewerServesCustom').value = '';
   renderViewer();
 });
 
@@ -3201,12 +3705,24 @@ let keepAwakeStatusInterval = null;
    interval while the toggle is on specifically so it can catch the video
    silently stopping partway through, not just its state at the moment the
    toggle was flipped. */
+/* The Recipe Viewer and the Group Viewer each have a status line and a
+   toggle, but there is only one wake lock and one video — so every copy on
+   the page is written at once and kept in step. */
 function updateKeepAwakeStatus(){
-  const el = document.getElementById('keepAwakeStatus');
+  const els = Array.from(document.querySelectorAll('.keep-awake-status'));
+  document.querySelectorAll('.keep-awake-toggle').forEach(t=>{ t.checked = state.keepAwake; });
+  /* Drives the sidebar collapse — see the .app.keep-awake CSS. Synced
+     here rather than in the toggle handler because this function is
+     already the one place every path re-syncs through (the handler, the
+     visibility-change re-acquire, and showView), so the class cannot
+     drift out of step with the toggles it sits beside. */
+  document.querySelector('.app').classList.toggle('keep-awake', state.keepAwake);
   if(!state.keepAwake){
-    el.style.display = 'none';
-    el.classList.remove('warn');
-    el.textContent = '';
+    els.forEach(el=>{
+      el.style.display = 'none';
+      el.classList.remove('warn');
+      el.textContent = '';
+    });
     return;
   }
   const elapsedSec = keepAwakeEnabledAt ? Math.round((Date.now() - keepAwakeEnabledAt) / 1000) : 0;
@@ -3224,9 +3740,11 @@ function updateKeepAwakeStatus(){
     text = `KEEP AWAKE — unexpected state, neither method looks active · running ${elapsedStr}`;
     isWarning = true;
   }
-  el.style.display = 'block';
-  el.classList.toggle('warn', isWarning);
-  el.textContent = text;
+  els.forEach(el=>{
+    el.style.display = 'block';
+    el.classList.toggle('warn', isWarning);
+    el.textContent = text;
+  });
 }
 
 function enableKeepAwake(){
@@ -3276,9 +3794,13 @@ document.addEventListener('visibilitychange', ()=>{
     }).catch(()=>{});
   }
 });
-document.getElementById('keepAwakeToggle').addEventListener('change', async e=>{
+document.querySelectorAll('.keep-awake-toggle').forEach(toggleEl=>{
+toggleEl.addEventListener('change', async e=>{
   const toggle = e.target;
   if(toggle.checked){
+    /* enableKeepAwake() must be reached synchronously from the tap —
+       Android Chrome refuses video.play() otherwise — so nothing is looked
+       up or awaited before this line. */
     const ok = await enableKeepAwake();
     if(!ok){
       toggle.checked = false;
@@ -3298,6 +3820,7 @@ document.getElementById('keepAwakeToggle').addEventListener('change', async e=>{
     clearInterval(keepAwakeStatusInterval);
     updateKeepAwakeStatus();
   }
+});
 });
 
 document.getElementById('favouriteBtn').addEventListener('click', ()=>{
@@ -3362,12 +3885,33 @@ function dayList(){
 function formatDayLabel(d){
   return d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase() + ' ' + d.getDate();
 }
-/* Groups days into Sunday-start calendar weeks, in order — bucket 0 is
-   always "this week" (today onward), bucket 1 "next week", and so on. */
+/* Which day a week starts on is a household setting (Settings screen), because
+   a shop done every Friday wants its weeks to break on Fridays. Everything that
+   needs a week boundary goes through startOfWeek so the Planner, Shopping List
+   and History can't drift apart. */
+function weekStartDay(){
+  const n = cache.settings && cache.settings.weekStartDay;
+  return (typeof n === 'number') ? n : DEFAULT_WEEK_START_DAY;
+}
+function startOfWeek(d){
+  const ws = new Date(d);
+  ws.setHours(0,0,0,0);
+  ws.setDate(d.getDate() - ((d.getDay() - weekStartDay() + 7) % 7));
+  return ws;
+}
+/* The label for a week bucket. Bucket 0 is always "this week" (today onward),
+   bucket 1 "next week"; with a mid-week start day a 14-day window can reach a
+   third bucket, which gets dated rather than named. */
+function weekBucketLabel(i, bucketDays){
+  return i === 0 ? 'THIS WEEK'
+       : i === 1 ? 'NEXT WEEK'
+       : ('WEEK OF ' + formatDayLabel(bucketDays[0]));
+}
+/* Groups days into calendar weeks, in order, starting on the configured day. */
 function groupDaysByWeek(days){
   const buckets = []; const idx = {};
   days.forEach(d=>{
-    const ws = new Date(d); ws.setDate(d.getDate() - d.getDay());
+    const ws = startOfWeek(d);
     const key = isoLocal(ws);
     if(!(key in idx)){ idx[key] = buckets.length; buckets.push([]); }
     buckets[idx[key]].push(d);
@@ -3388,7 +3932,7 @@ function renderPlannerDays(){
 
   let html = '';
   buckets.forEach((bucketDays, i)=>{
-    const label = i===0 ? 'THIS WEEK' : i===1 ? 'NEXT WEEK' : ('WEEK OF ' + formatDayLabel(bucketDays[0]));
+    const label = weekBucketLabel(i, bucketDays);
     html += `<div class="week-label">${label}</div>`;
     bucketDays.forEach(d=>{
       const iso = isoLocal(d);
@@ -3407,7 +3951,8 @@ function renderPlannerDays(){
            the recipe already carries. The original array position (idx)
            travels with each row regardless of sort order, since that's
            what removal and "view" need to target the right entry. */
-        const items = ids.map((id, idx)=>({ idx, recipe: recipes.find(r=>r.id===id) }));
+        const entryServings = planServings(entry);
+        const items = ids.map((id, idx)=>({ idx, serves: entryServings[idx], recipe: recipes.find(r=>r.id===id) }));
         items.sort((a,b)=>
           courseSortIndex(a.recipe && a.recipe.tags && a.recipe.tags.course) -
           courseSortIndex(b.recipe && b.recipe.tags && b.recipe.tags.course)
@@ -3417,7 +3962,7 @@ function renderPlannerDays(){
         const isGroupingThisDay = state.groupingDate === iso;
         const groupingSel = state.groupingSelection || [];
 
-        const rows = items.map(({idx, recipe})=>{
+        const rows = items.map(({idx, serves, recipe})=>{
           if(!recipe){
             return `<div class="day-recipe-row">
               <span class="day-away">Recipe removed</span>
@@ -3442,6 +3987,7 @@ function renderPlannerDays(){
             <button class="day-recipe-title" data-action="view" data-idx="${idx}">${escapeHtml(recipe.title||'Untitled')}</button>
             ${course ? `<span class="day-recipe-course${tone}">${escapeHtml(course.toUpperCase())}</span>` : ''}
             <span class="day-recipe-time">${escapeHtml((recipe.time||'').toUpperCase())}</span>
+            ${servesPill(recipe, serves, idx)}
             <button class="day-recipe-remove" data-action="removeOne" data-idx="${idx}" aria-label="Remove from this day">×</button>
           </div>`;
         }).join('');
@@ -3543,13 +4089,28 @@ function renderShortlistPanel(){
 }
 
 /* ------------------------------- One-time listeners ------------------------------- */
+/* The per-day headcount. A recipe with no servings of its own has nothing
+   to scale from, so it gets no control rather than a broken one. */
+function servesPill(recipe, serves, idx){
+  const base = parseInt(recipe.servings, 10) || 0;
+  if(!base) return '';
+  const target = serves || base;
+  const overridden = !!serves && serves !== base;
+  return `<button class="day-recipe-serves${overridden?' on':''}" data-action="setServes" data-idx="${idx}"
+    title="Cooking for ${target}${overridden ? ` — written for ${base}` : ''}. Tap to change.">SERVES ${target}</button>`;
+}
+
 function initPlannerListeners(){
   document.getElementById('dayList').addEventListener('click', e=>{
     const row = e.target.closest('.day-row');
     if(!row) return;
     const date = row.dataset.date;
 
-    if(state.selectedShortlistId && state.groupingDate !== date){
+    /* Tapping anywhere on a day assigns the selected shortlist item — except
+       on the headcount button, which would otherwise never be reachable
+       while something is selected. */
+    if(state.selectedShortlistId && state.groupingDate !== date
+       && !e.target.closest('[data-action="setServes"]')){
       const item = loadShortlist().find(i=>i.id === state.selectedShortlistId);
       if(item && item.recipeId){
         addPlanRecipe(date, item.recipeId);
@@ -3568,6 +4129,32 @@ function initPlannerListeners(){
       const ids = planRecipeIds(loadPlan()[date]);
       const id = ids[parseInt(actionEl.dataset.idx, 10)];
       if(id) openRecipe(id, 'planner');
+    } else if(action === 'setServes'){
+      /* prompt() rather than an inline input: #dayList re-renders wholesale
+         on every planner change, so an inline field would need focus and
+         caret restoration to survive — a lot of machinery for a number
+         typed a few times a week. */
+      const idx = parseInt(actionEl.dataset.idx, 10);
+      const ent = planEntries(loadPlan()[date])[idx];
+      if(!ent) return;
+      const recipe = loadRecipes().find(r=>r.id === ent.recipeId);
+      const base = recipe ? (parseInt(recipe.servings, 10) || 0) : 0;
+      if(!base) return;
+      const answer = prompt(
+        `How many people is ${recipe.title || 'this'} for on this day?\n\n` +
+        `The recipe is written for ${base}. Leave blank to cook it as written.`,
+        ent.servings || base
+      );
+      if(answer === null) return;
+      const trimmed = String(answer).trim();
+      const people = trimmed === '' ? 0 : parseInt(trimmed, 10);
+      if(trimmed !== '' && (!people || people < 1)){
+        showToast('Enter how many people, e.g. 6');
+        return;
+      }
+      setPlanServingsAt(date, idx, people === base ? 0 : people);
+      renderPlanner();
+      updateSidebarCounts();
     } else if(action === 'choose'){
       state.pickingForDate = date;
       showView('recipes');
@@ -3684,10 +4271,11 @@ function saveShoppingChecked(all){
     }
   });
 }
-/* Checked-off items are keyed by the ISO date of the Sunday that starts
-   their week, not by "this week"/"next week" — those labels shift meaning
-   daily as the rolling window advances, but a given calendar week's key
-   never changes, so progress made mid-week doesn't get scrambled. */
+/* Checked-off items are keyed by the ISO date of the day that starts their
+   week, not by "this week"/"next week" — those labels shift meaning daily as
+   the rolling window advances, but a given calendar week's key never changes,
+   so progress made mid-week doesn't get scrambled. Changing the week-start
+   setting does re-key them, which is why ticks were cleared when it moved. */
 function toggleShoppingChecked(weekStartIso, itemKey){
   const all = loadShoppingChecked();
   if(!all[weekStartIso]) all[weekStartIso] = {};
@@ -3697,9 +4285,7 @@ function toggleShoppingChecked(weekStartIso, itemKey){
 }
 function weekStartIsoOf(days){
   if(!days.length) return todayStr();
-  const ws = new Date(days[0]);
-  ws.setDate(days[0].getDate() - days[0].getDay());
-  return isoLocal(ws);
+  return isoLocal(startOfWeek(days[0]));
 }
 
 /* ------------------------------- Amount parsing ------------------------------- */
@@ -3715,9 +4301,30 @@ function parseFraction(s){
   return isNaN(n) ? null : n;
 }
 function normalizeUnit(u){
-  const map = {teaspoon:'tsp', teaspoons:'tsp', tablespoon:'tbsp', tablespoons:'tbsp', cups:'cup'};
+  const map = {
+    teaspoon:'tsp', teaspoons:'tsp', tablespoon:'tbsp', tablespoons:'tbsp', cups:'cup',
+    gram:'g', grams:'g', gramme:'g', grammes:'g',
+    kilogram:'kg', kilograms:'kg', kilo:'kg', kilos:'kg', kgs:'kg',
+    millilitre:'ml', millilitres:'ml', milliliter:'ml', milliliters:'ml',
+    litre:'l', litres:'l', liter:'l', liters:'l', ltr:'l'
+  };
   const lu = (u||'').toLowerCase();
   return map[lu] || lu;
+}
+/* One base unit per system, so "500 g flour" and "1 kg flour" total instead
+   of sitting on the shelf as two separate lines. Metric only, and
+   deliberately: mixing grams with ounces would mean picking a system to
+   show the total in, and the library is metric throughout. */
+const UNIT_BASES = { kg: {unit:'g', factor:1000}, l: {unit:'ml', factor:1000} };
+function toBaseUnit(amount, unit){
+  const base = UNIT_BASES[unit];
+  return base ? { amount: amount * base.factor, unit: base.unit } : { amount, unit };
+}
+/* And back out again for display: grams up to a kilo stay grams. */
+function formatShoppingQty(amount, unit){
+  if(unit === 'g' && amount >= 1000) return `${formatAmount(amount/1000)} kg`;
+  if(unit === 'ml' && amount >= 1000) return `${formatAmount(amount/1000)} L`;
+  return `${formatAmount(amount)}${unit ? ' '+unit : ''}`;
 }
 /* Turns splitQty's raw quantity string ("500g", "3 tbsp", "1/2 tsp", "4")
    into {amount, unit}. Returns null when it doesn't reduce to a clean
@@ -3730,8 +4337,12 @@ function parseIngredientAmount(qtyStr){
   const amount = parseFraction(m[1]);
   return amount === null ? null : { amount, unit: normalizeUnit(m[2]) };
 }
+/* What two ingredient lines have to agree on to be totalled together.
+   Prep words are noise here: "2 cloves garlic" and "1 clove garlic, minced"
+   are one entry on a shopping list, however differently the two recipes
+   wrote them. */
 function normalizeIngredientName(rest){
-  return String(rest||'').trim().toLowerCase().replace(/\s+/g,' ');
+  return stripPrepWords(rest, AGGREGATION_PREP_WORDS).replace(/\s+/g,' ').trim();
 }
 /* Reverses a decimal back to the kind of fraction these recipes are
    written in (0.75 -> "3/4"), since that's the notation the ingredient
@@ -3773,14 +4384,22 @@ const PREP_WORDS = [
   'softened','beaten','whisked','drained','rinsed','deseeded','stoned',
   'finely','roughly','thinly','thickly','freshly','fresh','fine','coarse'
 ];
-function stripPrepWordsForCategorizing(name){
+function stripPrepWords(name, words){
   let s = ' ' + String(name||'').toLowerCase() + ' ';
   s = s.replace(/\([^)]*\)/g, ' ');                                  // "(approx. 525 g)", "(skinless and boneless)"
   s = s.replace(/\b(cut|sliced|chopped|diced)\s+into\s+[^,]*/g, ' '); // "sliced into thin strips"
-  PREP_WORDS.forEach(w=>{ s = s.replace(new RegExp('\\b'+w+'\\b','g'), ' '); });
+  words.forEach(w=>{ s = s.replace(new RegExp('\\b'+w+'\\b','g'), ' '); });
   s = s.replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
   return s || String(name||'').toLowerCase(); // don't return empty if we stripped everything
 }
+function stripPrepWordsForCategorizing(name){
+  return stripPrepWords(name, PREP_WORDS);
+}
+/* Totalling is stricter than categorising about one word: "ground coriander"
+   is seed and "coriander" is leaf, and adding them together would put a
+   wrong number on the shopping list. Categorising can afford to be loose —
+   both belong under Produce either way. */
+const AGGREGATION_PREP_WORDS = PREP_WORDS.filter(w=> w !== 'ground');
 const SHOPPING_CATEGORIES = [
   { name:'Spices & Seasoning', keywords:['salt','pepper','oregano','cumin','paprika','cinnamon','chilli flakes','chili flakes','cayenne','turmeric','nutmeg','dried thyme','dried rosemary','dried basil','bay leaf','seasoning','garam masala','chilli powder','chili powder','spice'] },
   { name:'Dairy & Eggs', keywords:['cheese','parmesan','feta','cheddar','mozzarella','butter','milk','cream','yogurt','yoghurt','egg'] },
@@ -3863,11 +4482,16 @@ function buildShoppingList(weekDays){
 
   weekDays.forEach(d=>{
     const entry = plan[isoLocal(d)];
-    planRecipeIds(entry).forEach(id=>{
-      const recipe = recipes.find(r=>r.id === id);
+    planEntries(entry).forEach(({recipeId, servings})=>{
+      const recipe = recipes.find(r=>r.id === recipeId);
       if(!recipe) return; // orphaned reference — nothing to shop for, skip quietly
       recipeTitles.add(recipe.title);
-      parseRecipe(recipe.syntax).groups.forEach(g=>{
+      /* Shop for the number of people the day actually asks for. Scaled from
+         the recipe's own untouched syntax every build, so there's no drift. */
+      const base = parseInt(recipe.servings, 10) || 0;
+      const multiplier = (base && servings && servings !== base) ? servings / base : 1;
+      const syntax = multiplier !== 1 ? scaleRecipeSyntax(recipe.syntax, multiplier) : recipe.syntax;
+      parseRecipe(syntax).groups.forEach(g=>{
         g.items.forEach(item=> lineItems.push({ recipeTitle: recipe.title, raw: item }));
       });
     });
@@ -3877,14 +4501,20 @@ function buildShoppingList(weekDays){
   lineItems.forEach(({recipeTitle, raw})=>{
     const {qty, rest} = splitQty(raw);
     const parsedQty = parseIngredientAmount(qty);
-    const normName = normalizeIngredientName(rest);
-    const unit = parsedQty ? parsedQty.unit : '';
+    const normName = applyIngredientAlias(normalizeIngredientName(rest));
+    /* Key on the base unit, not the written one — otherwise kg and g are
+       two different shelves for the same ingredient. */
+    const based = parsedQty ? toBaseUnit(parsedQty.amount, parsedQty.unit) : null;
+    const unit = based ? based.unit : '';
     const key = normName + '|' + unit;
     if(!combined.has(key)){
       combined.set(key, {
         key, name: rest.trim(),
-        unit, amount: parsedQty ? parsedQty.amount : 0,
-        hasQty: !!parsedQty, count: 1,
+        unit, amount: based ? based.amount : 0,
+        hasQty: !!based, count: 1,
+        /* Lines with no readable quantity at all, counted separately so a
+           total can say "and one more of these" rather than swallowing it. */
+        unqtyCount: based ? 0 : 1,
         recipes: new Set([recipeTitle]),
         category: categorizeIngredient(normName)
       });
@@ -3892,7 +4522,15 @@ function buildShoppingList(weekDays){
       const e = combined.get(key);
       e.count += 1;
       e.recipes.add(recipeTitle);
-      if(parsedQty) e.amount += parsedQty.amount;
+      if(based){
+        e.amount += based.amount;
+        /* Not first-wins: a quantity anywhere in the group is a quantity to
+           show. Before this, "garlic" followed by "2 garlic" displayed as
+           "×2" and quietly dropped the 2. */
+        e.hasQty = true;
+      } else {
+        e.unqtyCount += 1;
+      }
     }
   });
 
@@ -3904,37 +4542,101 @@ function buildShoppingList(weekDays){
     .filter(name => byCategory[name] && byCategory[name].length)
     .map(name => ({ name, items: byCategory[name].sort((a,b)=>a.name.localeCompare(b.name)) }));
 
-  return { categories, totalItems: items.length, recipeCount: recipeTitles.size };
+  return {
+    categories, totalItems: items.length, recipeCount: recipeTitles.size,
+    suggestions: findIngredientMatchSuggestions(items)
+  };
+}
+
+/* Names on this list that look like they might be the same ingredient.
+   buildShoppingList only ever *reports* these — it runs on every planner
+   change via updateSidebarCounts, so it must stay free of side effects and
+   must never put a dialog in front of anyone. renderShopping does the
+   asking. */
+function findIngredientMatchSuggestions(items){
+  const counts = new Map();
+  items.forEach(it=>{
+    const name = it.key.split('|')[0];
+    if(name) counts.set(name, (counts.get(name) || 0) + it.count);
+  });
+
+  const seen = new Set();
+  const out = [];
+  counts.forEach((count, name)=>{
+    const match = findSimilarTerm(name, counts);
+    if(!match) return;
+    const pair = pairKeyFor(name, match.term);
+    if(seen.has(pair)) return;
+    seen.add(pair);
+    if(isPairDistinct('ingredient', name, match.term)) return;
+    /* Fold the rarer spelling into the commoner one, so the name that
+       survives is the one the library already mostly uses. */
+    const [from, to] = count <= match.count ? [name, match.term] : [match.term, name];
+    out.push({ from, to });
+  });
+  return out;
 }
 
 /* ------------------------------- Rendering ------------------------------- */
+/* The tick keys belonging to one mode: combined lines are prefixed, single
+   week lines are not, and neither should be able to clear the other. */
+function ticksInMode(checkedForWeek, keyPrefix){
+  return Object.keys(checkedForWeek || {}).filter(k=>
+    keyPrefix ? k.startsWith(keyPrefix) : !k.startsWith('both|'));
+}
+
 function renderShopping(){
   const buckets = groupDaysByWeek(dayList());
   if(state.shoppingWeekIndex >= buckets.length) state.shoppingWeekIndex = 0;
 
-  const weekLabels = buckets.map((bucketDays, i)=>
-    i===0 ? 'THIS WEEK' : i===1 ? 'NEXT WEEK' : ('WEEK OF ' + formatDayLabel(bucketDays[0]))
-  );
+  const weekLabels = buckets.map((bucketDays, i)=> weekBucketLabel(i, bucketDays));
+  const canCombine = buckets.length >= 2;
+  if(state.shoppingBothWeeks && !canCombine) state.shoppingBothWeeks = false;
+  const both = state.shoppingBothWeeks;
+
   const sel = document.getElementById('shopWeekSelect');
   sel.innerHTML = weekLabels.map((label, i)=>
-    `<option value="${i}"${i===state.shoppingWeekIndex?' selected':''}>${label}</option>`
-  ).join('');
+    `<option value="${i}"${(!both && i===state.shoppingWeekIndex)?' selected':''}>${label}</option>`
+  ).join('') + (canCombine ? `<option value="both"${both?' selected':''}>BOTH WEEKS</option>` : '');
 
-  const weekDays = buckets[state.shoppingWeekIndex] || [];
+  /* Combined mode shops two weeks as one trip. Its ticks are stored under
+     their own key prefix rather than shared with the single-week lists: a
+     combined line is a different quantity drawn from two weeks, so ticking
+     it off can't honestly mean the this-week line is bought too. */
+  const weekDays = both
+    ? [].concat(buckets[0] || [], buckets[1] || [])
+    : (buckets[state.shoppingWeekIndex] || []);
   const weekStartIso = weekStartIsoOf(weekDays);
-  const { categories, totalItems, recipeCount } = buildShoppingList(weekDays);
+  const keyPrefix = both ? 'both|' : '';
+  const { categories: allCategories, totalItems, recipeCount, suggestions } = buildShoppingList(weekDays);
   const checkedForWeek = loadShoppingChecked()[weekStartIso] || {};
+
+  /* Hiding ticked items can empty a category out; drop the heading too
+     rather than leaving a title with nothing under it. */
+  const categories = state.shoppingHideChecked
+    ? allCategories
+        .map(cat=>({ name: cat.name, items: cat.items.filter(it=> !checkedForWeek[keyPrefix + it.key]) }))
+        .filter(cat=> cat.items.length)
+    : allCategories;
+
+  const hideBtn = document.getElementById('shopHideCheckedBtn');
+  hideBtn.textContent = state.shoppingHideChecked ? 'SHOW TICKED' : 'HIDE TICKED';
+  hideBtn.setAttribute('aria-pressed', String(state.shoppingHideChecked));
+  /* Combined and single-week ticks live in the same week bucket, separated
+     only by the key prefix — so count (and later clear) just this mode's. */
+  document.getElementById('shopClearBtn').disabled = !ticksInMode(checkedForWeek, keyPrefix).length;
 
   /* The week label goes in here too (not just the dropdown) so the
      exported PNG — which hides the interactive dropdown — still states
      which week it's for. */
-  const weekLabel = weekLabels[state.shoppingWeekIndex] || '';
+  const weekLabel = both ? 'THIS WEEK + NEXT WEEK' : (weekLabels[state.shoppingWeekIndex] || '');
   document.getElementById('shopMeta').textContent = totalItems
     ? `${weekLabel} · ${totalItems} item${totalItems===1?'':'s'} · ${recipeCount} recipe${recipeCount===1?'':'s'}`
     : weekLabel;
 
   const body = document.getElementById('shopBody');
   body.dataset.weekStart = weekStartIso;
+  body.dataset.keyPrefix = keyPrefix;
 
   if(!totalItems){
     body.innerHTML = `<div class="grid-empty">
@@ -3945,14 +4647,27 @@ function renderShopping(){
     return;
   }
 
+  if(!categories.length){
+    body.innerHTML = `<div class="grid-empty">
+      <p>Everything on this list is ticked off.</p>
+      <button class="btn" id="shopShowTicked">SHOW TICKED</button>
+    </div>`;
+    document.getElementById('shopShowTicked').addEventListener('click', ()=>{
+      state.shoppingHideChecked = false;
+      renderShopping();
+    });
+    return;
+  }
+
   body.innerHTML = categories.map(cat=>{
     const rows = cat.items.map(it=>{
-      const isChecked = !!checkedForWeek[it.key];
+      const storedKey = keyPrefix + it.key;
+      const isChecked = !!checkedForWeek[storedKey];
       const qtyText = it.hasQty
-        ? `${formatAmount(it.amount)}${it.unit ? ' '+it.unit : ''}`
+        ? formatShoppingQty(it.amount, it.unit) + (it.unqtyCount ? ` + ${it.unqtyCount} more` : '')
         : (it.count > 1 ? `×${it.count}` : '');
       const recipeList = escapeHtml(Array.from(it.recipes).join(', '));
-      return `<label class="shop-item${isChecked?' checked':''}" data-key="${escapeHtml(it.key)}">
+      return `<label class="shop-item${isChecked?' checked':''}" data-key="${escapeHtml(storedKey)}">
         <input type="checkbox" ${isChecked?'checked':''}>
         <span class="shop-item-main">
           <span class="shop-item-name">${qtyText?`<span class="qty">${escapeHtml(qtyText)}</span>`:''}${escapeHtml(it.name)}</span>
@@ -3965,12 +4680,70 @@ function renderShopping(){
       ${rows}
     </div>`;
   }).join('');
+
+  /* Asked last, with the list already on screen behind the dialog, so the
+     question has visible context. Any answer changes the totals, so the
+     list is rebuilt once afterwards rather than per answer. */
+  if(promptIngredientMatches(suggestions)) renderShopping();
+}
+
+/* At most three questions per visit — enough to tidy up a list over a few
+   weeks, few enough that opening the Shopping List never turns into an
+   interrogation. Both answers are remembered: "yes" as a match, "no" as a
+   pair to stop asking about. */
+const MAX_MATCH_PROMPTS = 3;
+function promptIngredientMatches(suggestions){
+  if(!suggestions || !suggestions.length) return false;
+  if(state.aliasPrompting) return false; // re-entrancy: renderShopping calls this, and this calls renderShopping
+  state.aliasPrompting = true;
+  let changed = false;
+  try{
+    suggestions.slice(0, MAX_MATCH_PROMPTS).forEach(({from, to})=>{
+      if(isPairDistinct('ingredient', from, to)) return; // settled by an earlier answer in this same run
+      const same = confirm(
+        `Are these the same ingredient?\n\n` +
+        `    ${from}\n    ${to}\n\n` +
+        `OK to add them together on the shopping list from now on, ` +
+        `Cancel to keep them as two separate items.`
+      );
+      if(same) addAlias('ingredient', from, to);
+      else addAlias('ingredient_distinct', pairKeyFor(from, to), '');
+      changed = true;
+    });
+  } finally {
+    state.aliasPrompting = false;
+  }
+  if(changed) renderAliasesList();
+  return changed;
 }
 
 /* ------------------------------- One-time listeners ------------------------------- */
 function initShoppingListeners(){
   document.getElementById('shopWeekSelect').addEventListener('change', e=>{
-    state.shoppingWeekIndex = parseInt(e.target.value, 10) || 0;
+    if(e.target.value === 'both'){
+      state.shoppingBothWeeks = true;
+    } else {
+      state.shoppingBothWeeks = false;
+      state.shoppingWeekIndex = parseInt(e.target.value, 10) || 0;
+    }
+    renderShopping();
+  });
+
+  document.getElementById('shopHideCheckedBtn').addEventListener('click', ()=>{
+    state.shoppingHideChecked = !state.shoppingHideChecked;
+    renderShopping();
+  });
+
+  document.getElementById('shopClearBtn').addEventListener('click', ()=>{
+    const body = document.getElementById('shopBody');
+    const weekStart = body.dataset.weekStart;
+    const all = loadShoppingChecked();
+    const keys = ticksInMode(all[weekStart], body.dataset.keyPrefix);
+    if(!keys.length) return;
+    if(!confirm(`Untick all ${keys.length} item${keys.length===1?'':'s'} on this list?`)) return;
+    keys.forEach(k=> delete all[weekStart][k]);
+    if(!Object.keys(all[weekStart]).length) delete all[weekStart];
+    saveShoppingChecked(all);
     renderShopping();
   });
 
@@ -3982,7 +4755,9 @@ function initShoppingListeners(){
   });
 
   document.getElementById('shopExportBtn').addEventListener('click', ()=>{
-    const labelBit = state.shoppingWeekIndex===0 ? 'this-week' : state.shoppingWeekIndex===1 ? 'next-week' : 'week';
+    const labelBit = state.shoppingBothWeeks ? 'both-weeks'
+      : state.shoppingWeekIndex===0 ? 'this-week'
+      : state.shoppingWeekIndex===1 ? 'next-week' : 'week';
     exportNodeAsPng(
       document.querySelector('.shop-wrap'),
       `shopping-list-${labelBit}`,
@@ -4000,8 +4775,17 @@ document.getElementById('shopPrintBtn').addEventListener('click', ()=> window.pr
    ===================================================================== */
 const WEEKDAY_NAMES = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
 
+/* getDay() numbers in the order the week is shown, e.g. [5,6,0,1,2,3,4]
+   for a Friday start. Never reorder WEEKDAY_NAMES itself — it is indexed
+   by getDay() in several places. */
+function weekdaysInDisplayOrder(){
+  return Array.from({length:7}, (_, i)=> (weekStartDay() + i) % 7);
+}
+
 function historyMonthGrid(year, month){
-  const firstWeekday = new Date(year, month, 1).getDay();
+  /* How many leading cells belong to the previous month: the distance from
+     the configured week start to the weekday the 1st falls on. */
+  const firstWeekday = (new Date(year, month, 1).getDay() - weekStartDay() + 7) % 7;
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const cells = [];
   for(let i=0; i<firstWeekday; i++){
@@ -4049,7 +4833,10 @@ function computeHistoryStats(recipes){
     const wd = new Date(dateIso+'T00:00:00').getDay();
     weekdayCounts[wd].set(recipeId, (weekdayCounts[wd].get(recipeId)||0) + 1);
   });
-  const byWeekday = WEEKDAY_NAMES.map((name, wd)=>{
+  /* Read the counts out in display order. WEEKDAY_NAMES and weekdayCounts
+     both stay getDay()-indexed — only the order we walk them changes, so
+     "most cooked on a Tuesday" keeps meaning Tuesday. */
+  const byWeekday = weekdaysInDisplayOrder().map(wd=>{
     let best = null;
     weekdayCounts[wd].forEach((count, recipeId)=>{
       if(!best || count>best.count){
@@ -4057,7 +4844,7 @@ function computeHistoryStats(recipes){
         best = { title: r ? r.title : 'Recipe removed', count };
       }
     });
-    return { name, best };
+    return { name: WEEKDAY_NAMES[wd], best };
   });
 
   /* A streak counts back from today if today's already cooked, or from
@@ -4128,6 +4915,9 @@ function renderHistoryCalendar(){
 
   document.getElementById('historyMonthLabel').textContent =
     new Date(year, month, 1).toLocaleDateString(undefined, {month:'long', year:'numeric'});
+
+  document.getElementById('historyWeekdayLabels').innerHTML =
+    weekdaysInDisplayOrder().map(wd=>`<span>${WEEKDAY_NAMES[wd]}</span>`).join('');
 
   document.getElementById('historyGrid').innerHTML = cells.map(({date, inMonth})=>{
     const iso = isoLocal(date);
@@ -4405,6 +5195,7 @@ function openEditModal(recipeId){
   document.getElementById('f-servings').value = recipe.servings || '';
   document.getElementById('f-equipment').value = recipe.equipment || '';
   document.getElementById('f-image').value = recipe.imageUrl || '';
+  document.getElementById('f-source-url').value = recipe.sourceUrl || '';
 
   const tags = recipe.tags || {};
   [['f-course', tags.course]]
@@ -4442,6 +5233,14 @@ function closeAddModal(){
 document.getElementById('openAddBtn').addEventListener('click', openAddModal);
 document.getElementById('editRecipeBtn').addEventListener('click', ()=>{
   if(state.selectedRecipeId) openEditModal(state.selectedRecipeId);
+});
+/* Unticks in place rather than re-rendering — "start again without
+   navigating away" means the recipe stays exactly where it is on screen,
+   scroll position and all. */
+document.getElementById('resetTicksBtn').addEventListener('click', ()=>{
+  if(state.selectedRecipeId) clearViewerTicks(state.selectedRecipeId);
+  document.querySelectorAll('#flowMount .done').forEach(c=> c.classList.remove('done'));
+  showToast('Ticks cleared');
 });
 document.getElementById('closeAddModal').addEventListener('click', closeAddModal);
 document.getElementById('addModalOverlay').addEventListener('click', e=>{
@@ -4489,29 +5288,16 @@ function renderSourcesList(){
       const recipes2 = loadRecipes();
       recipes2.forEach(r=>{ if(r.source === from) r.source = to; });
       if(!saveRecipesList(recipes2)) return;
+      /* Record the decision, so typing the old spelling on the next recipe
+         quietly lands on the merged one instead of recreating the split. */
+      addAlias('source', from, to);
       showToast(`Merged "${from}" into "${to}"`);
       renderSourcesList();
+      renderAliasesList();
       if(state.view === 'recipes') renderHome();
     });
   });
 }
-function openSourcesModal(){
-  renderSourcesList();
-  const overlay = document.getElementById('sourcesModalOverlay');
-  overlay.classList.add('open');
-  overlay.scrollTop = 0;
-  document.body.style.overflow = 'hidden';
-}
-function closeSourcesModal(){
-  document.getElementById('sourcesModalOverlay').classList.remove('open');
-  document.body.style.overflow = '';
-}
-document.getElementById('manageSourcesBtn').addEventListener('click', openSourcesModal);
-document.getElementById('closeSourcesModal').addEventListener('click', closeSourcesModal);
-document.getElementById('sourcesModalOverlay').addEventListener('click', e=>{
-  if(e.target.id === 'sourcesModalOverlay') closeSourcesModal();
-});
-
 /* ------------------------------- Manage Keywords ------------------------------- */
 function keywordCounts(recipes){
   const counts = new Map();
@@ -4602,21 +5388,114 @@ function renderKeywordsList(){
     });
   });
 }
-function openKeywordsModal(){
+/* =====================================================================
+   SETTINGS
+   Sources and keywords used to be two separate sidebar modals. They live
+   here now alongside the week-start setting and the word matches, because
+   all four are the same kind of thing: how the app treats your library
+   rather than what's in it.
+   ===================================================================== */
+function renderSettings(){
+  const sel = document.getElementById('setWeekStart');
+  sel.innerHTML = WEEKDAY_NAMES.map((name, i)=>
+    `<option value="${i}"${i === weekStartDay() ? ' selected' : ''}>${name}</option>`
+  ).join('');
+  renderAliasesList();
+  renderSourcesList();
   renderKeywordsList();
-  const overlay = document.getElementById('keywordsModalOverlay');
-  overlay.classList.add('open');
-  overlay.scrollTop = 0;
-  document.body.style.overflow = 'hidden';
 }
-function closeKeywordsModal(){
-  document.getElementById('keywordsModalOverlay').classList.remove('open');
-  document.body.style.overflow = '';
+
+document.getElementById('setWeekStart').addEventListener('change', e=>{
+  const n = parseInt(e.target.value, 10);
+  if(isNaN(n)) return;
+  setSetting('weekStartDay', n);
+  showToast(`Weeks now start on ${WEEKDAY_NAMES[n]}`);
+  updateSidebarCounts();
+});
+
+/* ------------------------------- Word matches ------------------------------- */
+/* An alias is just two strings and a kind, so there's nothing to "rename" —
+   editing one means deleting it and adding it back, which is what the ADD
+   form is for. FORGET on a kept-separate pair makes the app ask about it
+   again next time it sees both names. */
+function renderAliasesList(){
+  const list = document.getElementById('aliasesList');
+  const all = loadAliases();
+  const matches = all.filter(a=> a.kind === 'ingredient' || a.kind === 'source');
+  const distinct = all.filter(a=> a.kind === 'ingredient_distinct' || a.kind === 'source_distinct');
+
+  if(!matches.length && !distinct.length){
+    list.innerHTML = `<p class="empty">No word matches yet. The shopping list will
+      ask when it spots two names that look like the same ingredient.</p>`;
+    return;
+  }
+
+  const rowsFor = (kind, label)=>{
+    const rows = matches.filter(a=>a.kind===kind)
+      .sort((a,b)=> a.alias.localeCompare(b.alias));
+    if(!rows.length) return '';
+    return `<div class="alias-group-label">${label}</div>` + rows.map(a=>`
+      <div class="source-row">
+        <div class="alias-pair">${escapeHtml(a.alias)}<span class="alias-arrow">means</span>${escapeHtml(a.canonical)}</div>
+        <button class="btn small-danger" data-forget="${a.id}">FORGET</button>
+      </div>`).join('');
+  };
+
+  let html = rowsFor('ingredient', 'INGREDIENTS') + rowsFor('source', 'SOURCES');
+
+  if(distinct.length){
+    html += `<div class="alias-group-label">KEPT SEPARATE — THE APP WON'T ASK AGAIN</div>` +
+      distinct.sort((a,b)=>a.alias.localeCompare(b.alias)).map(a=>{
+        const pair = a.alias.split(' || ');
+        return `<div class="source-row">
+          <div class="alias-pair">${escapeHtml(pair[0]||'')}<span class="alias-arrow">is not</span>${escapeHtml(pair[1]||'')}</div>
+          <button class="btn small-danger" data-forget="${a.id}">ASK AGAIN</button>
+        </div>`;
+      }).join('');
+  }
+
+  list.innerHTML = html;
+
+  list.querySelectorAll('[data-forget]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const entry = loadAliases().find(a=>a.id === btn.dataset.forget);
+      if(!entry) return;
+      if(!confirm('Forget this match? The app may ask about these two again.')) return;
+      removeAlias(entry.id);
+      showToast('Forgotten');
+      renderAliasesList();
+      if(state.view === 'shopping') renderShopping();
+    });
+  });
 }
-document.getElementById('manageKeywordsBtn').addEventListener('click', openKeywordsModal);
-document.getElementById('closeKeywordsModal').addEventListener('click', closeKeywordsModal);
-document.getElementById('keywordsModalOverlay').addEventListener('click', e=>{
-  if(e.target.id === 'keywordsModalOverlay') closeKeywordsModal();
+
+document.getElementById('aliasAddBtn').addEventListener('click', ()=>{
+  const fromEl = document.getElementById('alias-from');
+  const toEl = document.getElementById('alias-to');
+  const errorEl = document.getElementById('aliasError');
+  const kind = document.getElementById('alias-kind').value;
+  /* Ingredient aliases are looked up against the shopping list's normalised
+     name, so they have to be stored in that same form or they'd never match. */
+  const norm = v => kind === 'ingredient' ? normalizeIngredientName(v) : v.trim();
+  const from = norm(fromEl.value);
+  const to = norm(toEl.value);
+
+  errorEl.style.display = 'none';
+  if(!from || !to){
+    errorEl.textContent = 'Fill in both words.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if(from === to){
+    errorEl.textContent = "Those are the same word — nothing to match.";
+    errorEl.style.display = 'block';
+    return;
+  }
+  addAlias(kind, from, to);
+  fromEl.value = ''; toEl.value = '';
+  showToast(`"${from}" now means "${to}"`);
+  renderAliasesList();
+  if(state.view === 'shopping') renderShopping();
 });
 
 /* ------------------------------- Swaps ------------------------------- */
@@ -4727,8 +5606,6 @@ document.getElementById('swapAddBtn').addEventListener('click', ()=>{
 
 document.addEventListener('keydown', e=>{
   if(e.key !== 'Escape') return;
-  if(document.getElementById('keywordsModalOverlay').classList.contains('open')){ closeKeywordsModal(); return; }
-  if(document.getElementById('sourcesModalOverlay').classList.contains('open')){ closeSourcesModal(); return; }
   if(document.getElementById('addModalOverlay').classList.contains('open')){ closeAddModal(); return; }
   if(state.view === 'viewer'){ backFromViewer(); return; }
   if(state.pickingForDate){ state.pickingForDate = null; renderHome(); return; }
@@ -4748,6 +5625,9 @@ function parseAndPreview(){
   document.getElementById('f-servings').value = parsed.servings || '';
   document.getElementById('f-equipment').value = parsed.equipment || '';
   document.getElementById('f-image').value = parsed.imageUrl || '';
+  /* Only overwrite from a parse when the syntax actually carries a URL —
+     otherwise pasting a recipe without one would wipe a link already typed. */
+  if(parsed.sourceUrl) document.getElementById('f-source-url').value = parsed.sourceUrl;
 
   /* A tag from the syntax that isn't in the master list yet still needs selecting. */
   [['f-course', parsed.tags.course]]
@@ -4772,17 +5652,30 @@ document.getElementById('parseBtn').addEventListener('click', parseAndPreview);
    changed before ever saving. Nothing is written to the actual recipe
    until SAVE is pressed — scaling here only touches the form's working
    text, same as typing an edit into any other field would. */
-function applyScaleToForm(multiplier){
+function applyScaleToForm(targetServings){
   const textEl = document.getElementById('importInput');
   const current = textEl.value;
   if(!current.trim()){
     showToast('Parse a recipe first, then scale it');
     return;
   }
-  if(!multiplier || isNaN(multiplier) || multiplier <= 0){
-    showToast('Enter a valid scale, e.g. 0.5 or 2');
+  if(!targetServings || isNaN(targetServings) || targetServings <= 0){
+    showToast("Enter how many people you're cooking for, e.g. 6");
     return;
   }
+  /* The multiplier comes from the text being scaled, not from the SERVINGS
+     field — the field is only populated by a PARSE, so it can be stale or
+     empty while the textarea already says otherwise. */
+  const base = parseInt(parseRecipe(current).servings, 10);
+  if(!base || base <= 0){
+    showToast('Add a SERVINGS line before scaling — there\'s nothing to scale from without it');
+    return;
+  }
+  if(targetServings === base){
+    showToast(`Already written to serve ${base}`);
+    return;
+  }
+  const multiplier = targetServings / base;
   textEl.value = scaleRecipeSyntax(current, multiplier);
   parseAndPreview();
   const equipment = document.getElementById('f-equipment').value.trim();
@@ -4793,20 +5686,16 @@ function applyScaleToForm(multiplier){
      re-scale. Persistent, not transient, per the 14 Aug decision that
      ingredients scale but equipment doesn't and that needs to be obvious,
      not just briefly mentioned. */
-  if(multiplier !== 1 && equipment){
-    warningEl.textContent = `⚠ Scaled ×${multiplier} — this recipe specifies ${equipment}, sized for the original quantities. Ingredients and servings have been scaled; you'll need to work out the right size yourself.`;
+  if(equipment){
+    warningEl.textContent = `⚠ Scaled from ${base} to ${targetServings} — this recipe specifies ${equipment}, sized for the original quantities. Ingredients and servings have been scaled; you'll need to work out the right size yourself.`;
     warningEl.style.display = 'block';
   } else {
     warningEl.style.display = 'none';
   }
-  showToast(`Scaled ×${multiplier} — review the preview, then save`);
+  showToast(`Scaled to serve ${targetServings} — review the preview, then save`);
 }
-document.querySelectorAll('[data-scale]').forEach(btn=>{
-  btn.addEventListener('click', ()=> applyScaleToForm(parseFloat(btn.dataset.scale)));
-});
-document.getElementById('f-scale-custom-btn').addEventListener('click', ()=>{
-  const val = parseFloat(document.getElementById('f-scale-custom').value);
-  applyScaleToForm(val);
+document.getElementById('f-scale-apply').addEventListener('click', ()=>{
+  applyScaleToForm(parseInt(document.getElementById('f-scale-servings').value, 10));
 });
 
 document.getElementById('saveBtn').addEventListener('click', ()=>{
@@ -4821,6 +5710,17 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     document.getElementById('f-source').focus();
     return;
   }
+  /* Servings are what scaling, the planner and the shopping list all work
+     from, so a recipe without them is half-useless the moment it's saved.
+     Deliberately not enforced in importAllData — a restore has to bring
+     back exactly what was backed up, including anything older than this. */
+  const servingsCheck = parseInt(document.getElementById('f-servings').value, 10);
+  if(!servingsCheck || servingsCheck < 1){
+    errorEl.textContent = 'Add the servings before saving — scaling and the shopping list both work from them.';
+    errorEl.style.display = 'block';
+    document.getElementById('f-servings').focus();
+    return;
+  }
   errorEl.style.display = 'none';
 
   /* Only nudge when the source is new or has actually changed — not on
@@ -4830,17 +5730,29 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     ? (loadRecipes().find(r=>r.id === state.editingRecipeId) || {}).source
     : null;
   if(source !== priorSource){
-    const match = findSimilarSource(source, sourceCounts(loadRecipes()));
-    if(match){
-      const useExisting = confirm(
-        `This looks similar to an existing source: "${match.source}" ` +
-        `(used on ${match.count} recipe${match.count===1?'':'s'}).\n\n` +
-        `Use "${match.source}" instead of "${source}"?\n\n` +
-        `OK to use the existing source, Cancel to keep your own spelling.`
-      );
-      if(useExisting){
-        source = match.source;
-        document.getElementById('f-source').value = source;
+    /* A spelling already settled once just gets used — no second prompt. */
+    const known = applySourceAlias(source);
+    if(known !== source){
+      source = known;
+      document.getElementById('f-source').value = source;
+    } else {
+      const match = findSimilarTerm(source, sourceCounts(loadRecipes()));
+      if(match && !isPairDistinct('source', source, match.term)){
+        const useExisting = confirm(
+          `This looks similar to an existing source: "${match.term}" ` +
+          `(used on ${match.count} recipe${match.count===1?'':'s'}).\n\n` +
+          `Use "${match.term}" instead of "${source}"?\n\n` +
+          `OK to use the existing source, Cancel to keep your own spelling.`
+        );
+        if(useExisting){
+          addAlias('source', source, match.term);
+          source = match.term;
+          document.getElementById('f-source').value = source;
+        } else {
+          /* Remembering the "no" is the half that was missing: without it
+             the same pair got asked about on every single save. */
+          addAlias('source_distinct', pairKeyFor(source, match.term), '');
+        }
       }
     }
   }
@@ -4852,6 +5764,7 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     title: finalTitle,
     source,
     imageUrl: document.getElementById('f-image').value.trim() || null,
+    sourceUrl: document.getElementById('f-source-url').value.trim() || null,
     time: document.getElementById('f-time').value.trim(),
     servings: servingsRaw ? parseInt(servingsRaw, 10) : null,
     equipment: document.getElementById('f-equipment').value.trim(),
@@ -4872,6 +5785,10 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     // about the recipe's details, not a new entry replacing its record.
     recipes[idx] = { ...recipes[idx], ...fields };
     if(!saveRecipesList(recipes)) return;
+    /* An edit can move the groups and stages around, and a tick is a
+       position in that layout — so what was ticked no longer means
+       anything reliable. Start the recipe clean. */
+    clearViewerTicks(state.editingRecipeId);
     const editedId = state.editingRecipeId;
     const returnTo = state.viewerReturnTo;
     closeAddModal();
@@ -4898,7 +5815,7 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
 function exportAllData(){
   const payload = {
     app: 'Kitchen',
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     recipes: loadRecipes(),
     plan: loadPlan(),
@@ -4906,7 +5823,9 @@ function exportAllData(){
     keywordVocab: loadKeywordVocab(),
     shoppingChecked: loadShoppingChecked(),
     swaps: loadSwaps(),
-    groups: loadGroups()
+    groups: loadGroups(),
+    settings: loadSettings(),
+    aliases: loadAliases()
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -4945,6 +5864,10 @@ function importAllData(file){
     saveShoppingChecked(data.shoppingChecked || {});
     saveSwaps(Array.isArray(data.swaps) ? data.swaps : []);
     saveGroups(Array.isArray(data.groups) ? data.groups : []);
+    /* Both absent from version 1 backups — restoring one of those keeps
+       whatever's already set rather than wiping it. */
+    if(data.settings) saveSettings({ ...loadSettings(), ...data.settings });
+    if(Array.isArray(data.aliases)) saveAliases(data.aliases);
 
     state.selectedRecipeId = null;
     state.editingRecipeId = null;
