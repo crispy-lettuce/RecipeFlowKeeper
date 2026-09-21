@@ -281,16 +281,24 @@ point, and confirming the schedule still fires afterwards.
 
 ## 6. Corrections to the earlier record
 
-Two tasks were marked complete that were not:
+Five times now, something recorded as true wasn't. The pattern is worth more than the individual
+corrections: **every one was found by checking the real thing, and none by reading more carefully.**
 
-- **"Create Storage bucket recipe-images"** — the bucket was created; the feature (R7) was never
-  built. Restated in §2.
-- **"Servings backfill pass"** — never happened at the time of writing; **done 20 Sep** via the ingestion. It
-  rides on the reprocess.
+| Recorded | Actually | Found |
+| --- | --- | --- |
+| "Create Storage bucket recipe-images — completed" | Bucket existed, feature (R7) never built | 13 Sep audit |
+| "Servings backfill pass — completed" | Never ran. **Done 20 Sep** via the ingestion | 14 Sep audit |
+| "`main` still serves the pre-Supabase app" — in four documents | `main` had been serving the Supabase rewrite since PR #1, 13 Sep | 21 Sep, before the merge |
+| "Nothing here is deployed and nothing live can break" | Pages had been live and sharing this database throughout | 21 Sep, same check |
+| Test plan's "Planned days 15" read as an on-screen expectation | A row count; every stored day was in the past, so an empty Planner was correct | 21 Sep, by the person running the pass |
 
-And these brief items appeared in **no** task list at all: **P3** (calendar), **R4** (cooking
-notes), **R7** (images), **H1/H2/H3** (history and food diary). All are Phase 3 in the brief's
-own build order, so they're not overdue — but they were invisible, which is the real problem.
+The last two are the instructive ones. Both were *written down carefully* and both were wrong,
+because nobody had opened a browser or read the workflow history. The rule in `CLAUDE.md` — verify
+rather than trust status notes, including these — earned itself five times over.
+
+These brief items appeared in **no** task list at all: **P3** (calendar), **R4** (cooking notes),
+**R7** (images, since built), **H1/H2/H3** (history and food diary). All are Phase 3 in the brief's
+own build order, so they were never overdue — but they were invisible, which is the real problem.
 
 ---
 
@@ -347,5 +355,20 @@ and import round-tripped with every table count intact.
   `queueWrite`, which always returns `true` immediately.
 - Any exception inside `hydrate()` signs the user out. `household_settings` must use
   `.maybeSingle()`, not `.single()`, for exactly this reason.
-- `[instant]` and `[overnight]` are real duration keywords the parser now understands. Any
-  other unrecognised bracket (`[to taste]`) is deliberately left intact in the label.
+- `[instant]` and `[overnight]` are real duration keywords the parser now understands, as are
+  en-dash ranges (`[4–5 min]`), seconds (`[30 sec]`) and compound hours (`[1 hr 30]`) since
+  21 Sep. Any *other* unrecognised bracket (`[to taste]`) is deliberately left intact in the
+  label — the parser under-detects on purpose rather than mistake a seasoning note for a timing.
+- **An unrecognised bracket is not inert.** The label keeps it, so the raw text shows in the
+  diagram and the step counts as untimed. That is why the three forms above were worth adding:
+  the first reprocess wrote its timings as prose and the second used `[30 sec]` three times.
+- **`main` is production.** GitHub Pages serves from `main`, and the `pages build and deployment`
+  workflow runs once per commit to it — so every merge deploys to the tablet immediately, with no
+  staging step and no approval. Work on the branch; merge deliberately.
+- **`PrivateBackup`'s default branch is `claude/recipe-app-supabase-0z139o`, not `main`.** That is
+  why the nightly backup fires. Renaming it stops backups silently. Its workflow also depends on
+  the Session pooler connection string (the direct one is IPv6-only, and GitHub runners have no
+  IPv6 route) and the full path to `pg_dump` 17 (the runner's own is older than the server). Both
+  took several failed runs to find; don't undo either.
+- **Recipe images are not re-hosted automatically.** A new recipe keeps its external image URL
+  until the sweep is run by hand. `docs/IMAGES.md` is the runbook.
