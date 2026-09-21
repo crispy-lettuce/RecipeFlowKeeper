@@ -42,7 +42,39 @@ const EXT: Record<string, string> = {
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
+/* CORS. The app calls this from the browser, cross-origin — the page is on
+   github.io and the function is on supabase.co — so without a preflight
+   handler every call dies before reaching any of the code below, with a
+   message about a missing Access-Control-Allow-Origin header.
+
+   An allowlist rather than '*': this function holds the service-role key
+   and rewrites rows, so there is no reason for an arbitrary origin to get
+   a usable response, even though verify_jwt already means a caller needs
+   a real token. An origin that isn't recognised gets no CORS headers and
+   the browser blocks it, which is the intended answer. */
+const ALLOWED_ORIGIN = /^https:\/\/crispy-lettuce\.github\.io$|^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('Origin') ?? '';
+  if (!ALLOWED_ORIGIN.test(origin)) return {};
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Vary': 'Origin',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Max-Age': '86400',
+  };
+}
+
 Deno.serve(async (req: Request) => {
+  const cors = corsHeaders(req);
+  /* The preflight carries no Authorization header by design, so it has to
+     be answered before any auth check. */
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  const json = (payload: unknown, status = 200) =>
+    new Response(JSON.stringify(payload, null, 2), {
+      status, headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+
   const url = Deno.env.get('SUPABASE_URL')!;
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -54,11 +86,7 @@ Deno.serve(async (req: Request) => {
     global: { headers: { Authorization: authHeader } },
   });
   const { data: { user }, error: userErr } = await asUser.auth.getUser();
-  if (userErr || !user) {
-    return new Response(JSON.stringify({ error: 'Not signed in' }), {
-      status: 401, headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  if (userErr || !user) return json({ error: 'Not signed in' }, 401);
 
   const admin = createClient(url, serviceKey);
 
@@ -69,11 +97,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: households, error: hErr } = await admin
     .from('household_members').select('household_id').eq('user_id', user.id);
-  if (hErr || !households?.length) {
-    return new Response(JSON.stringify({ error: 'No household for this user' }), {
-      status: 403, headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  if (hErr || !households?.length) return json({ error: 'No household for this user' }, 403);
   const householdIds = households.map(h => h.household_id);
 
   const { data: recipes, error: rErr } = await admin
@@ -81,11 +105,7 @@ Deno.serve(async (req: Request) => {
     .in('household_id', householdIds)
     .not('image_url', 'is', null)
     .limit(limit);
-  if (rErr) {
-    return new Response(JSON.stringify({ error: rErr.message }), {
-      status: 500, headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  if (rErr) return json({ error: rErr.message }, 500);
 
   const selfHost = `${url}/storage/v1/object/public/${BUCKET}/`;
   const report: Array<Record<string, unknown>> = [];
@@ -146,7 +166,5 @@ Deno.serve(async (req: Request) => {
     await sleep(POLITE_DELAY_MS);
   }
 
-  return new Response(JSON.stringify({
-    dryRun, considered: recipes?.length ?? 0, rehosted, skipped, failed, report,
-  }, null, 2), { headers: { 'Content-Type': 'application/json' } });
+  return json({ dryRun, considered: recipes?.length ?? 0, rehosted, skipped, failed, report });
 });
