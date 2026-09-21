@@ -77,7 +77,14 @@ since PR #1, and four documents said otherwise.
 Also the moment the documentation becomes visible on the repo's default branch. Everything
 currently lives only on `claude/recipe-app-supabase-0z139o`.
 
-### 4. Image re-hosting (R7) ← **start here**
+### 4. Image re-hosting (R7) — **done, 21 Sep**
+
+All 29 images self-hosted, 4.1 MB, verified against the dry run's own byte counts. Built as an
+Edge Function sweep; the app was not touched, because it renders whatever is in `image_url`.
+Full account, including three things that cost time and would cost them again, in
+`docs/HANDOVER.md` §2.
+
+### 4a. The original reasoning, kept because it still holds
 
 `docs/HANDOVER.md` §2. An Edge Function, run as a decoupled sweep.
 
@@ -87,7 +94,7 @@ have an image and every one of them is hosted on the source website**, with the
 `recipe-images` bucket still holding zero objects. It's server-side work that doesn't need the
 app merged, so it can equally happen alongside step 3.
 
-### 5. Phase 3, and anything left
+### 5. Phase 3, and anything left ← **start here**
 
 No dependencies between these; pick by appetite.
 
@@ -109,44 +116,42 @@ Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md   — the map of all documentation
   docs/HANDOVER.md         — verified status
-  docs/INFRASTRUCTURE.md   — repos, Pages, Supabase, secrets policy
-  docs/NEXT-SESSION.md     — the order of work; we are at step 3
+  docs/ARCHITECTURE.md     — how the app and its recipe format work
+  docs/BUILD-BRIEF.md      — the original spec, for the reference codes
+  docs/NEXT-SESSION.md     — the order of work; we are at step 5
 
-THE TASK: merge to main and go live.
+Steps 1 to 4 are all done: the library was reprocessed and ingested
+(33 recipes), the full browser test pass was run against the real backend,
+the app was merged to main and is live on GitHub Pages, and all 29 recipe
+images are now self-hosted in Supabase Storage.
 
-main already serves an OLDER BUILD of the Supabase app — it is not the
-pre-Supabase one the docs claimed until 21 Sep, and PR #1 put the rewrite
-there at some earlier point. So this is an update of a deployed app, not a
-first deployment. It is still the moment the current code reaches the
-tablet I cook from.
+THE TASK: Phase 3. Nothing here has been started, and none of it has
+dependencies on the others, so tell me what you'd do first and why before
+building anything.
 
-Both blockers are now cleared: the library was reprocessed and ingested on
-20 Sep (33 recipes), and the full 20-step browser test pass was completed
-on 21 Sep against the real backend.
-
-Before merging, tell me what could go wrong, and in particular:
-
-1. Confirm what https://crispy-lettuce.github.io/RecipeFlowKeeper/ is
-   actually serving right now. docs/INFRASTRUCTURE.md §2 flags this as
-   unverified — no sandbox has been able to reach github.io to check. If
-   it is live, it is currently the old app, publicly reachable.
-2. Tell me whether merging changes what that URL serves, and whether I
-   want it to.
-3. Whether main should become the default branch for future work, and what
-   that means for the odd branch naming across both repos.
-
-Do NOT touch PrivateBackup's default branch — it is
-claude/recipe-app-supabase-0z139o, and that is why the nightly backup
-fires. Renaming it silently stops backups.
+  H1  meal type at the point of logging a cook
+  H2  ad-hoc diary entries, not tied to a recipe
+  H3  CSV export of the food diary
+  R4  dated cooking notes (the recipe_notes table already exists, empty)
+  P3  automatic calendar push, needing a one-off Google consent
+  S2  dark mode, deferred out of Phase 2 (the CSS is already token-driven,
+      19 tokens, so this is meant to be small)
 
 Some context worth having:
 
+  - MAIN IS PRODUCTION. Pages serves from main, and every merge deploys to
+    the tablet I cook from immediately. There is no staging step. Work on
+    the branch and I'll decide when to merge.
   - index.html is the whole app. One file, no build step, no framework.
     Run `node test/build.js && node test/smoke.js` after any code change.
     102 checks. It stubs Supabase, so it proves nothing about sign-in.
+  - Several columns already exist for these features (recipe_logs.meal_type,
+    recipe_logs.note, household_settings.dark_mode). A column existing does
+    not mean the feature does — docs/ARCHITECTURE.md §4 lists them.
   - The repo is public. Recipe data must never be committed to it.
   - Don't trust status notes, mine included, where you can check the real
-    thing instead.
+    thing instead. Four separate times now, something recorded as true
+    wasn't.
 ```
 
 ## Alternative starting points
@@ -169,13 +174,12 @@ If you want to do something other than step 1, swap the task section of the prom
 > the write queue, or anything the plan's expected counts depend on. Re-read those counts from
 > the database first; they go stale every time the library changes.
 
-### D. Image re-hosting (step 4)
+### D. Re-running the image sweep
 
-> Let's build the image re-hosting Edge Function in `docs/HANDOVER.md` §2. The approach is
-> decided: server-side fetch, because browser-side fails CORS on most recipe CDNs, run as a
-> decoupled sweep rather than wired into the save path. One thing still open — whether to make the
-> `recipe-images` bucket public or keep it private with signed URLs. Give me your recommendation
-> and reasoning before building.
+> I've added recipes since the last sweep and their images are still on the source sites. Re-run
+> `rehost-images` — it's idempotent, so anything already self-hosted is skipped. Check the dry
+> run's byte counts for outliers first: one Contentful image was 7.7 MB until it was asked to
+> resize, which was more than the rest of the library put together.
 
 ### E. Phase 3 (step 5)
 

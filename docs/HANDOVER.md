@@ -43,7 +43,7 @@ verified status. **Nothing here is inferred from a previous summary.**
 | R4 | Dated cooking notes | **Not started.** Phase 3. The `recipe_notes` table already exists, empty and unreferenced by the app — it was created in Phase 1 anticipating this. Not dead schema; just early. |
 | R5 | Scale by servings | **Done.** Multiplier buttons retired everywhere. Viewer reads `SERVES 6 (SCALED FROM 4)`. |
 | R6 | Servings mandatory | **Done, both sides, 20 Sep.** Save is blocked without servings, and all 33 recipes now carry one. The retrofit rode on the reprocess, as planned. |
-| R7 | Recipe images | **Not started. Bucket only.** See §2 — this is the gap that prompted the audit. |
+| R7 | Recipe images | **Done, 21 Sep.** All 29 images self-hosted in Supabase Storage via a decoupled Edge Function sweep. See §2. |
 
 ### Shopping list
 
@@ -87,7 +87,7 @@ hasn't caught up yet.
 | Backend (Supabase) | **Done.** 13 tables, RLS enabled with policies on every one. |
 | Household id on every table from day one | **Done, verified.** |
 | Backup to a separate private repo | **Done and genuinely working.** See §5. |
-| Images in Supabase Storage | **Not done** — see §2. |
+| Images in Supabase Storage | **Done, 21 Sep** — 29 objects, 4.1 MB. See §2. |
 | Calendar reminders | **Not done** — P3, see §4. |
 
 ### Brief's own open items
@@ -99,41 +99,64 @@ hasn't caught up yet.
 
 ---
 
-## 2. The image gap (R7) — what's actually true
+## 2. Recipe images (R7) — DONE, 21 Sep 2026
 
-This is the one that prompted the audit, and it's worth being precise about because the
-earlier record was misleading.
+**All 29 images that existed are now self-hosted.** The library no longer depends on eleven
+third parties continuing to serve the same URLs.
 
-**What exists:** a Supabase Storage bucket named `recipe-images`, created 13 Sep, **private**,
-**completely empty — zero objects ever uploaded**.
+| | |
+| --- | --- |
+| Objects in `recipe-images` | 29 |
+| Recipe rows pointing at Supabase | 29 of 29 with an image |
+| Total storage | 4.1 MB |
+| Rows pointing at a missing file | 0 |
+| Orphaned objects | 0 |
 
-**What doesn't exist:** any code at all. `index.html` contains no reference to Supabase Storage —
-no upload, no signed URL, nothing. All 29 recipes that have an image point straight at the
-source website; zero objects are self-hosted. 4 have no image.
+Verified after the run, not assumed: every stored file's byte count matches what the dry run
+had predicted for that recipe, which is what rules out a truncated download; every row resolves
+to an object that exists; and nothing is stored that isn't a JPEG.
 
-*(Counts re-checked 20 Sep after ingestion: 29 of 33 with an image, all external. Was 33 of 40.)*
+**How it works.** `supabase/functions/rehost-images/index.ts`, a decoupled sweep. Recipes save
+with whatever `image_url` they arrive with; this walks the table separately, fetches anything
+externally hosted, stores it at `<household_id>/<recipe_id>.<ext>`, and rewrites the column.
+Idempotent — anything already self-hosted is skipped — so re-running after adding recipes is
+safe and cheap. Invoke it from the app's console while signed in:
 
-An old task read "Create Storage bucket recipe-images — completed", which was true of the
-bucket and false of the feature. R7 in the brief is the actual requirement, and it was never
-tracked as a task.
+```js
+await sb.functions.invoke('rehost-images', { body: { dryRun: true } });  // report only
+await sb.functions.invoke('rehost-images', {});                          // do it
+```
 
-**Agreed approach (14 Sep):** a Supabase **Edge Function** does the fetching server-side.
-A browser-side fetch was rejected because most recipe-site CDNs (Sanity, Cloudinary, WordPress)
-don't send permissive CORS headers, so reading the bytes would fail for many sources.
+**The bucket is public**, with a 10 MB size limit and an image-only MIME allowlist. Public
+affects exactly one thing: the `/object/public/` endpoint serves bytes without auth. Writes,
+deletes and *listing* still go through the four RLS policies on `storage.objects`, which
+require the first folder segment to be a household the caller belongs to — and
+`private.household_ids_for_user()` is granted to `authenticated` only. So it is "readable if
+you know the exact path", not browsable, and the paths are two random v4 UUIDs.
 
-**Agreed shape:** a **decoupled sweep**, not wired into the save path. Recipes save with
-whatever `image_url` they arrive with; separately, a job walks the table, finds externally
-hosted images, re-hosts them, and rewrites the column. Reasons: it treats the existing 33 and
-any future recipe identically with no special-casing, and it keeps "did my recipe save" from
-depending on a third-party fetch succeeding.
+**Why public rather than signed URLs**, which the 14 Sep note left open: `image_url` is written
+verbatim into the app's JSON export *and* into the nightly `pg_dump`. A signed URL would expire
+inside the backups — restore one months later and every image is dead. That is a correctness
+argument, not the convenience one originally recorded.
 
-**Still undecided:** whether to flip the bucket public (recommended — a recipe photo isn't
-sensitive, and a signed URL that expires would need re-signing everywhere `image_url` renders:
-card grid, Viewer, Group Viewer, PNG export) or keep it private with signed URLs.
+**Three things learned in the doing, worth not rediscovering:**
 
-**Note for whoever builds it:** the Claude Code sandbox has no outbound access to fetch
-arbitrary web images. An Edge Function has its own egress and isn't subject to that, which is
-part of why it's the right home for this.
+1. **The function needed a CORS preflight handler.** The app is on `github.io` and the function
+   on `supabase.co`, so every browser call is cross-origin. Without it the request never
+   reaches the function at all, and the error reads like a permissions problem. The preflight
+   must be answered *before* the auth check, because it deliberately carries no `Authorization`
+   header.
+2. **A browser User-Agent is not optional.** Several CDNs answer a bare Deno fetch with 403.
+   All 29 succeeded with one; expect failures without.
+3. **One image was 7.7 MB** — 67% of the library on its own — because Contentful serves the
+   original by default. Appending `?w=1600&q=80&fm=jpg` to that `image_url` before the sweep
+   brought the whole library from 11.5 MB to 4.1 MB. Worth checking the dry run's byte counts
+   for outliers before any future run.
+
+**One cosmetic thing left:** Tuscan Chicken Pasta's image is 10 KB where its Kitchen Sanctuary
+siblings are 130–200 KB, which suggests the reprocess captured a lazy-load placeholder rather
+than the hero image. It is the same picture the cards showed before, so nothing regressed. Fix
+by putting a better URL on that recipe and re-running the sweep.
 
 ---
 

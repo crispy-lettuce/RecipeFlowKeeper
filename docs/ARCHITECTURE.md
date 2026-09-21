@@ -167,8 +167,15 @@ mistake that made the image work look finished):
 | `meal_groups.name` | Written as `''`; no UI ever names a group |
 | `households.name`, `household_members.role` | Multi-household support, deliberately anticipated |
 
-Storage has one bucket, `recipe-images` — **private and empty**. No code references Supabase
-Storage at all. See `docs/HANDOVER.md` §2.
+Storage has one bucket, `recipe-images` — **public, 29 objects, 4.1 MB** as of 21 Sep. Public
+affects only the `/object/public/` read endpoint; writes, deletes and listing still go through
+four RLS policies keyed on household membership, so it is readable-if-you-know-the-path rather
+than browsable.
+
+`index.html` still references Supabase Storage nowhere, and deliberately — images are re-hosted
+by a decoupled Edge Function sweep (`supabase/functions/rehost-images/`), and the app just
+renders whatever URL is in `image_url`. That is the whole point of decoupling it: the app never
+has to know where a photo lives. See `docs/HANDOVER.md` §2.
 
 ## 5. Testing
 
@@ -191,6 +198,7 @@ Keep Awake can only be tested on a real tablet.
 | Path | What it is |
 | --- | --- |
 | `index.html` | **The app.** Everything lives here. |
+| `supabase/functions/` | Edge Functions. Currently one: `rehost-images`, the image re-hosting sweep (R7). |
 | `index-old.html` | The pre-Supabase version, kept for reference. **Not used, not served, not maintained** — don't edit it thinking it's live. |
 | `converter/` | Conversion instructions and the standing test set for writing recipes. |
 | `test/` | Offline test harness. |
