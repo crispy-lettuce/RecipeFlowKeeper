@@ -49,18 +49,31 @@ project's own rule, restated in §4) or a plain identifier that grants nothing o
   ```
   Any Claude Code session opened against this repo picks up the Supabase connector
   automatically from this file — no manual setup needed.
-- **GitHub Pages is configured on this repo** (`has_pages: true` in the repo's own settings).
-  Because the default branch is `main`, this most likely means **the old, pre-Supabase,
-  localStorage-only app is live right now** at:
+- **GitHub Pages is configured on this repo** (`has_pages: true` in the repo's own settings), at:
 
   **`https://crispy-lettuce.github.io/RecipeFlowKeeper/`**
 
-  This is unverified rather than assumed — the sandbox this was written from has no route to
-  `github.io` to check the page's actual content. **Open that URL in a browser before treating
-  either "it's live" or "nothing's deployed" as fact.** If it is serving `main`, that's the old
-  app, not the Supabase-backed rewrite — it can't reach your recipe data (that needs the
-  Supabase login), but it's a stale, publicly-reachable copy of the tool. Whether that matters
-  depends on whether anyone but you would ever land on it.
+  **Correction (21 Sep 2026): `main` is NOT the pre-Supabase app**, as this document and three
+  others claimed until today. Its HEAD is
+  `107ebeb Merge pull request #1 from crispy-lettuce/claude/recipe-app-supabase-0z139o` — the
+  Supabase rewrite was merged to `main` at some earlier point and nobody recorded it. Checked
+  directly against the GitHub API and the objects themselves, not inferred.
+
+  What `main` actually holds is an **older build of the Supabase app**: 5,053 lines against the
+  working branch's 5,976. It has `createClient`, `queueWrite`, `computeTimeline` and Keep Awake;
+  it does **not** have `SOURCE_URL:` parsing or the auto-collapsing sidebar (R2). So it is a
+  mid-rewrite snapshot, not the localStorage original.
+
+  Two consequences worth holding onto:
+
+  1. Going live is an **update of an already-deployed app**, not a first deployment. Much of the
+     risk the other documents attach to it does not exist.
+  2. If the Pages site is live, what is publicly reachable is a Supabase-backed login screen.
+     Still no data without credentials — row-level security is keyed to the signed-in user's
+     household — but it is not the harmless old toy the earlier note described.
+
+  **Still genuinely unverified:** whether Pages is serving, and from which branch and path. No
+  sandbox has ever had a route to `github.io`. Open the URL in a browser to settle it.
 
 ### `crispy-lettuce/PrivateBackup` — the nightly database dump
 

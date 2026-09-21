@@ -17,7 +17,10 @@ query is answered from a fixed object in `test/stub.js` and every write is recor
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
 security, and the background write queue.
 
-`main` still holds the pre-Supabase app, so nothing here is deployed and nothing live can break.
+`main` holds an **older build of the Supabase app** — not the pre-Supabase one this line claimed
+until 21 Sep; see `docs/INFRASTRUCTURE.md` §2. So something *is* deployed, and it shares this
+database. Nothing in this plan writes anything the app itself wouldn't, but "nothing live can
+break" was never quite true.
 This pass is about earning the confidence to merge.
 
 **Scope of this plan:** run the branch locally, work the checklist below, report what fails.

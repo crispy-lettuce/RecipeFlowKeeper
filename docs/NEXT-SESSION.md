@@ -108,9 +108,11 @@ Please read these first, in this order:
 
 THE TASK: merge to main and go live.
 
-The branch has never been deployed. main still serves the pre-Supabase,
-localStorage-only app. This is the go-live moment for the whole Supabase
-migration, and the moment the code reaches the tablet I actually cook from.
+main already serves an OLDER BUILD of the Supabase app — it is not the
+pre-Supabase one the docs claimed until 21 Sep, and PR #1 put the rewrite
+there at some earlier point. So this is an update of a deployed app, not a
+first deployment. It is still the moment the current code reaches the
+tablet I cook from.
 
 Both blockers are now cleared: the library was reprocessed and ingested on
 20 Sep (33 recipes), and the full 20-step browser test pass was completed

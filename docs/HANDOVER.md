@@ -83,7 +83,7 @@ hasn't caught up yet.
 
 | Item | Status |
 | --- | --- |
-| Hosting (GitHub Pages) | **Correction (14 Sep, this pass) — likely live, not "nothing deployed" as previously stated here.** The repo's own settings report Pages as configured (`has_pages: true`), and the default branch is `main` — which still holds the pre-Supabase, localStorage-only app. The Claude Code sandbox has no route to `github.io` to confirm the page's actual content, so **check `https://crispy-lettuce.github.io/RecipeFlowKeeper/` in a browser** before assuming either way. If it's live, anyone with the URL can reach the old app (though not your Supabase data — that's a separate login). See `docs/INFRASTRUCTURE.md` for the full repo/Pages picture. |
+| Hosting (GitHub Pages) | **Second correction (21 Sep): `main` is not the pre-Supabase app, and never was during this project.** Its HEAD is a merge commit from this very branch — PR #1 — so the rewrite reached `main` at some earlier point and nobody wrote it down. `main` holds an *older build* of the Supabase app (5,053 lines vs the branch's 5,976; no `SOURCE_URL:` parsing, no auto-collapsing sidebar). Verified against the GitHub API and the git objects, not inferred. **So going live is an update, not a first deployment.** Whether Pages is actually serving, and from which branch, remains unverified — no sandbox has a route to `github.io`. See `docs/INFRASTRUCTURE.md` §2. |
 | Backend (Supabase) | **Done.** 13 tables, RLS enabled with policies on every one. |
 | Household id on every table from day one | **Done, verified.** |
 | Backup to a separate private repo | **Done and genuinely working.** See §5. |
