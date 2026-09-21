@@ -60,18 +60,24 @@ Two findings came out of it, both fixed the same day — see step 2a.
   signal — it is a statement that cooking is happening now, not a guess about the screen. The
   peek tab stays available and leaving the recipe restores the sidebar, so it cannot strand you.
 
-### 3. Merge to `main` and go live ← **start here**
+### 3. Merge to `main` and go live — **done, 21 Sep**
 
-Option C below. This is the moment the Supabase rewrite reaches the tablet, and the moment the
-GitHub Pages site changes. **Step 2 is done, so the blocker on this is gone.**
+PR #2, merged. `main` now holds the build the test pass verified, and Pages redeployed itself
+within a couple of minutes of the merge.
 
-One thing to confirm first, still unverified: what `https://crispy-lettuce.github.io/RecipeFlowKeeper/`
-currently serves. `docs/INFRASTRUCTURE.md` §2 flags it as unchecked from any sandbox.
+**The thing this step actually taught:** Pages serves from `main`, so **every merge to `main`
+redeploys the live app immediately**, with no staging step and no approval. That was never
+written down before. Treat `main` as production from here on — which is the opposite of the
+assumption the earlier notes carried, that nothing was deployed and nothing could break.
+
+The related correction, recorded in `docs/INFRASTRUCTURE.md` §2: `main` was never the
+pre-Supabase app during this project. It had been serving an older build of the Supabase rewrite
+since PR #1, and four documents said otherwise.
 
 Also the moment the documentation becomes visible on the repo's default branch. Everything
 currently lives only on `claude/recipe-app-supabase-0z139o`.
 
-### 4. Image re-hosting (R7)
+### 4. Image re-hosting (R7) ← **start here**
 
 `docs/HANDOVER.md` §2. An Edge Function, run as a decoupled sweep.
 

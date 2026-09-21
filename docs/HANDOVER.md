@@ -83,7 +83,7 @@ hasn't caught up yet.
 
 | Item | Status |
 | --- | --- |
-| Hosting (GitHub Pages) | **Second correction (21 Sep): `main` is not the pre-Supabase app, and never was during this project.** Its HEAD is a merge commit from this very branch — PR #1 — so the rewrite reached `main` at some earlier point and nobody wrote it down. `main` holds an *older build* of the Supabase app (5,053 lines vs the branch's 5,976; no `SOURCE_URL:` parsing, no auto-collapsing sidebar). Verified against the GitHub API and the git objects, not inferred. **So going live is an update, not a first deployment.** Whether Pages is actually serving, and from which branch, remains unverified — no sandbox has a route to `github.io`. See `docs/INFRASTRUCTURE.md` §2. |
+| Hosting (GitHub Pages) | **Live, verified 21 Sep.** Serving from `main` at `https://crispy-lettuce.github.io/RecipeFlowKeeper/`, confirmed by a browser screenshot and by the `pages build and deployment` workflow having one run per commit to `main`. **Every merge to `main` redeploys automatically** — there is no staging step. `main` holds the current build as of PR #2. Two earlier claims in this document were wrong and are corrected in `docs/INFRASTRUCTURE.md` §2: `main` was never the pre-Supabase app during this project, and "nothing is deployed" was never true. |
 | Backend (Supabase) | **Done.** 13 tables, RLS enabled with policies on every one. |
 | Household id on every table from day one | **Done, verified.** |
 | Backup to a separate private repo | **Done and genuinely working.** See §5. |

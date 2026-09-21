@@ -72,8 +72,14 @@ project's own rule, restated in §4) or a plain identifier that grants nothing o
      Still no data without credentials — row-level security is keyed to the signed-in user's
      household — but it is not the harmless old toy the earlier note described.
 
-  **Still genuinely unverified:** whether Pages is serving, and from which branch and path. No
-  sandbox has ever had a route to `github.io`. Open the URL in a browser to settle it.
+  **Settled 21 Sep, finally.** Pages **is** serving, from `main`, at the repo root. Confirmed two
+  ways: a browser screenshot of the live site (signed in, showing the reprocessed 33 recipes), and
+  the `pages build and deployment` workflow, which has a run per commit to `main` — run #18 was
+  PR #1, run #19 was PR #2. So every merge to `main` redeploys the app automatically, with no
+  action needed and no way to stage it first.
+
+  **`main` now holds the current build** (PR #2, merged 21 Sep). The gap this section described
+  is closed.
 
 ### `crispy-lettuce/PrivateBackup` — the nightly database dump
 
