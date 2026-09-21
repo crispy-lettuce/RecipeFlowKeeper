@@ -101,62 +101,64 @@ hasn't caught up yet.
 
 ## 2. Recipe images (R7) — DONE, 21 Sep 2026
 
-**All 29 images that existed are now self-hosted.** The library no longer depends on eleven
-third parties continuing to serve the same URLs.
+**All 29 images that existed are now self-hosted.** The library no longer depends on eleven third
+parties continuing to serve the same URLs — Kitchen Sanctuary alone held seventeen.
+
+**`docs/IMAGES.md` is the runbook** — how a new recipe's image gets to Supabase, how to replace
+one, what goes wrong and how to verify. Read that rather than this. What follows is only the
+status and the decisions.
 
 | | |
 | --- | --- |
 | Objects in `recipe-images` | 29 |
-| Recipe rows pointing at Supabase | 29 of 29 with an image |
+| Rows self-hosted | 29 of 29 with an image (4 recipes have none) |
 | Total storage | 4.1 MB |
-| Rows pointing at a missing file | 0 |
-| Orphaned objects | 0 |
+| Dangling rows / orphaned files / syntax disagreements | 0 / 0 / 0 |
 
-Verified after the run, not assumed: every stored file's byte count matches what the dry run
-had predicted for that recipe, which is what rules out a truncated download; every row resolves
-to an object that exists; and nothing is stored that isn't a JPEG.
+**It is not automatic.** Nothing re-hosts on save; a sweep is run by hand from the browser console.
+That is deliberate — saving a recipe should not depend on a third party's server answering — and
+`docs/IMAGES.md` §4 gives the full reasoning, §5 what automating it would take (`pg_cron` and
+`pg_net` are available on this project but not installed).
 
-**How it works.** `supabase/functions/rehost-images/index.ts`, a decoupled sweep. Recipes save
-with whatever `image_url` they arrive with; this walks the table separately, fetches anything
-externally hosted, stores it at `<household_id>/<recipe_id>.<ext>`, and rewrites the column.
-Idempotent — anything already self-hosted is skipped — so re-running after adding recipes is
-safe and cheap. Invoke it from the app's console while signed in:
+**Verified rather than reported:** every stored file's byte count matches what the dry run predicted
+for that recipe, which is the only check that catches a truncated download; every row resolves to an
+object that exists; no orphans; nothing stored that isn't a JPEG.
 
-```js
-await sb.functions.invoke('rehost-images', { body: { dryRun: true } });  // report only
-await sb.functions.invoke('rehost-images', {});                          // do it
-```
+### Decisions worth not relitigating
 
-**The bucket is public**, with a 10 MB size limit and an image-only MIME allowlist. Public
-affects exactly one thing: the `/object/public/` endpoint serves bytes without auth. Writes,
-deletes and *listing* still go through the four RLS policies on `storage.objects`, which
-require the first folder segment to be a household the caller belongs to — and
-`private.household_ids_for_user()` is granted to `authenticated` only. So it is "readable if
-you know the exact path", not browsable, and the paths are two random v4 UUIDs.
+**Public bucket, not signed URLs** — the one thing the 14 Sep plan left open, and settled on
+different grounds than it anticipated. `image_url` is written verbatim into the app's JSON export
+*and* the nightly `pg_dump`, so a signed URL would expire inside the backups: restore one months
+later and every image is dead. Correctness, not convenience. Public affects only the
+`/object/public/` read endpoint; writes, deletes and listing still go through household-scoped RLS,
+so it is "readable if you know the path", not browsable, and paths are two random v4 UUIDs.
 
-**Why public rather than signed URLs**, which the 14 Sep note left open: `image_url` is written
-verbatim into the app's JSON export *and* into the nightly `pg_dump`. A signed URL would expire
-inside the backups — restore one months later and every image is dead. That is a correctness
-argument, not the convenience one originally recorded.
+**A sweep, not the save path** — one code path for the existing library and everything added since,
+and a browser could not do it anyway, because most recipe CDNs send no permissive CORS headers.
 
-**Three things learned in the doing, worth not rediscovering:**
+### Four things that cost time, and would again
 
-1. **The function needed a CORS preflight handler.** The app is on `github.io` and the function
-   on `supabase.co`, so every browser call is cross-origin. Without it the request never
-   reaches the function at all, and the error reads like a permissions problem. The preflight
-   must be answered *before* the auth check, because it deliberately carries no `Authorization`
-   header.
-2. **A browser User-Agent is not optional.** Several CDNs answer a bare Deno fetch with 403.
-   All 29 succeeded with one; expect failures without.
-3. **One image was 7.7 MB** — 67% of the library on its own — because Contentful serves the
-   original by default. Appending `?w=1600&q=80&fm=jpg` to that `image_url` before the sweep
-   brought the whole library from 11.5 MB to 4.1 MB. Worth checking the dry run's byte counts
-   for outliers before any future run.
+1. **The function needed a CORS preflight handler.** The app is on `github.io`, the function on
+   `supabase.co`, so every browser call is cross-origin. Without it the request never reaches the
+   function and the error reads like a permissions problem. The preflight must be answered *before*
+   the auth check, because it carries no `Authorization` header by design.
+2. **A browser User-Agent is not optional.** Several CDNs answer a bare Deno fetch with 403. All 29
+   succeeded with one.
+3. **One image was 7.7 MB** — more than the rest of the library combined — because Contentful serves
+   originals by default. One URL parameter took the library from 11.5 MB to 4.1 MB. **Check the dry
+   run's byte counts for outliers before any future sweep.**
+4. **Two defects found while documenting it, both fixed the same day.** Objects are cached for a
+   year at a stable path, so replacing a photo would have shown the *old* one until 2027 — fixed
+   with a `?v=<unix seconds>` token that changes the URL without changing the path. And the sweep
+   rewrote `image_url` but not the `IMAGE:` line in `syntax`, which broke the invariant in
+   `ARCHITECTURE.md` §2 that the recipe text is the source of truth — it meant re-parsing a recipe
+   would silently revert its image to the CDN. The sweep now moves both, and the 29 already done
+   were backfilled.
 
-**One cosmetic thing left:** Tuscan Chicken Pasta's image is 10 KB where its Kitchen Sanctuary
-siblings are 130–200 KB, which suggests the reprocess captured a lazy-load placeholder rather
-than the hero image. It is the same picture the cards showed before, so nothing regressed. Fix
-by putting a better URL on that recipe and re-running the sweep.
+**One cosmetic thing outstanding:** Tuscan Chicken Pasta's image is 10 KB where its Kitchen
+Sanctuary siblings are 130–200 KB, so the reprocess caught a lazy-load placeholder rather than the
+hero photo. Same picture the cards showed before, so nothing regressed. `docs/IMAGES.md` §3 says how
+to replace it.
 
 ---
 

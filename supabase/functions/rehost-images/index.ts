@@ -101,7 +101,7 @@ Deno.serve(async (req: Request) => {
   const householdIds = households.map(h => h.household_id);
 
   const { data: recipes, error: rErr } = await admin
-    .from('recipes').select('id, household_id, title, image_url')
+    .from('recipes').select('id, household_id, title, image_url, syntax')
     .in('household_id', householdIds)
     .not('image_url', 'is', null)
     .limit(limit);
@@ -135,7 +135,14 @@ Deno.serve(async (req: Request) => {
       if (bytes.byteLength > MAX_BYTES) throw new Error(`too large (${bytes.byteLength} bytes)`);
 
       const path = `${r.household_id}/${r.id}.${ext}`;
-      const publicUrl = `${selfHost}${path}`;
+      /* The stored path is stable per recipe, so replacing a photo
+         overwrites the same object at the same URL — and these are served
+         with max-age=31536000, so every browser that already cached it
+         would go on showing the OLD picture for a year. The version token
+         changes the URL without changing the path, which busts the cache
+         while keeping the long max-age that makes the common case fast.
+         `startsWith(selfHost)` still recognises it, so re-runs still skip. */
+      const publicUrl = `${selfHost}${path}?v=${Math.floor(Date.now() / 1000)}`;
 
       if (dryRun) {
         rehosted++;
@@ -147,8 +154,30 @@ Deno.serve(async (req: Request) => {
           .upload(path, bytes, { contentType: ct, upsert: true, cacheControl: '31536000' });
         if (upErr) throw new Error(`upload failed: ${upErr.message}`);
 
+        /* A replacement photo in a different format lands at a different
+           extension, leaving the old file orphaned and paying for storage
+           forever. One call, and paths that don't exist are ignored. */
+        const stale = Object.values(EXT)
+          .filter((e, i, a) => a.indexOf(e) === i && e !== ext)
+          .map(e => `${r.household_id}/${r.id}.${e}`);
+        await admin.storage.from(BUCKET).remove(stale).catch(() => {});
+
+        /* The syntax's own IMAGE: line has to move with the column.
+           docs/ARCHITECTURE.md §2: the recipe text is the source of truth,
+           and the app re-derives the form from it — parseAndPreview()
+           repopulates the image field from a parse, so leaving the old CDN
+           URL in the text means re-parsing a recipe silently reverts it to
+           the external image. Divergence here is not cosmetic.
+
+           The original source is not lost: SOURCE_URL: still records the
+           page the photo came from, which is where you would go to find a
+           better one. */
+        const newSyntax = /^IMAGE:.*$/m.test(r.syntax ?? '')
+          ? (r.syntax as string).replace(/^IMAGE:.*$/m, `IMAGE: ${publicUrl}`)
+          : r.syntax;
+
         const { error: updErr } = await admin.from('recipes')
-          .update({ image_url: publicUrl, updated_at: new Date().toISOString() })
+          .update({ image_url: publicUrl, syntax: newSyntax, updated_at: new Date().toISOString() })
           .eq('id', r.id);
         /* The column is only rewritten once the bytes are safely stored,
            so a failure here leaves the recipe pointing at a source that
