@@ -198,6 +198,33 @@ const path = require('path');
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.waitForTimeout(300);
 
+  /* Keep Awake collapses the sidebar at ANY width (21 Sep), where the rule
+     exercised above only fires between 861 and 1180px. 1280px is therefore
+     the whole point of this block: the width rule is not in play.
+
+     It sets the state directly instead of clicking the toggle, because
+     enableKeepAwake() needs a real wake lock or a playable video and gets
+     neither headless — see test/README.md. What is ours to test is that the
+     sidebar answers the state, and that the peek tab is still there, since
+     without it Keep Awake would strand you on a screen with no menu. */
+  await page.locator('.rcard', { hasText: 'Test Pasta' }).first().click();
+  await page.waitForTimeout(400);
+  check('sidebar is open in a recipe at 1280px', (await sidebarW()) > 200, (await sidebarW()) + 'px');
+  await page.evaluate(() => { state.keepAwake = true; updateKeepAwakeStatus(); });
+  await page.waitForTimeout(400);
+  check('keep awake collapses it even at 1280px', (await sidebarW()) < 10, (await sidebarW()) + 'px');
+  check('and still offers the peek tab', await page.isVisible('#sidebarPeekBtn'));
+  await page.click('#sidebarPeekBtn');
+  await page.waitForTimeout(400);
+  check('which still brings it back', (await sidebarW()) > 200, (await sidebarW()) + 'px');
+  await page.click('#sidebarPeekBtn');
+  await page.waitForTimeout(400);
+  await page.evaluate(() => { state.keepAwake = false; updateKeepAwakeStatus(); });
+  await page.waitForTimeout(400);
+  check('switching keep awake off restores it', (await sidebarW()) > 200, (await sidebarW()) + 'px');
+  await page.click('#backToRecipes');
+  await page.waitForTimeout(300);
+
   // R6: servings are mandatory on save.
   await page.click('#openAddBtn');
   await page.waitForTimeout(300);

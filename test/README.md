@@ -25,7 +25,7 @@ Both scripts use whichever Chromium Playwright installs. Set
 
 ## What it can and can't tell you
 
-**97 checks.** It covers the parts that are pure app logic: week bucketing, scaling,
+**102 checks.** It covers the parts that are pure app logic: week bucketing, scaling,
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, and that every screen
 renders without throwing.

@@ -49,5 +49,5 @@ npm install playwright
 node test/build.js && node test/smoke.js
 ```
 
-97 checks against a stubbed backend. See [`test/README.md`](test/README.md) for what it does and
+102 checks against a stubbed backend. See [`test/README.md`](test/README.md) for what it does and
 doesn't prove.

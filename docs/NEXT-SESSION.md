@@ -26,32 +26,47 @@ Outcome and the two deliberate deviations from the agreed column list are in
 `docs/HANDOVER.md` §3; the re-run of the converter tests is the third scan in
 `converter/test-set.md`.
 
-### 2. The browser test pass ← **start here**
+### 2. The browser test pass — **done, 21 Sep**
 
-`docs/TEST-PLAN.md`. Nothing in the Supabase rewrite has ever been confirmed working against the
-real backend by a human in a browser.
+All 20 steps of `docs/TEST-PLAN.md` run against the real backend by a human in a browser, for
+the first time. **Nothing in the Supabase rewrite is unverified any more.** Sign-in, hydration,
+row-level security and the background write queue all worked; export and import round-tripped
+with every table count intact.
 
-**Why this came after ingestion, not before:** the test plan exercises scaling, the timeline and
-per-day servings, and on the old library those were largely untestable — 23 of 40 recipes had no
-servings, so the scaling controls never appeared, and 39 of 40 had no step timings, so the
-timeline never rendered. Testing against that library would mostly have proved that features
-correctly hide themselves.
+Worth recording what the pass actually proved, since the offline harness can prove none of it:
 
-**That is no longer true, so this step is now worth real effort.** All 33 recipes have servings
-and 32 have full step timings, so the scaling controls and the timeline strip appear everywhere
-and the checklist genuinely exercises them. Nothing in the Supabase rewrite has still ever been
-confirmed working against the real backend by a human in a browser — and the offline harness
-stubs Supabase entirely, so the 97 checks say nothing about it.
+- `hydrate()` completes without throwing, and signing out and back in survives it. That was the
+  single riskiest path — any exception there signs the user out, so the failure mode is a login
+  screen you cannot get past.
+- One favourite toggle rewrites the **whole** library: `saveRecipesList` → `pushList` upserts
+  all 33 rows and then deletes anything not in the list. It behaved correctly, but it means a
+  hydration that silently returned a partial library would have the next favourite delete the
+  rest. Nothing to fix today; worth knowing before anything is changed in `hydrate()`.
+- `shopping_checked.item_key` is the aggregation string itself, so the 20 Sep ingest re-keyed
+  every possible tick. It happened to be empty, so nothing broke. **The next reprocess will not
+  be so lucky** — clear the ticked list first, or expect orphaned keys.
 
-> **One trap.** Test plan steps 19–20 export the data and import it straight back, and the import
-> **rewrites everything**. Take that export *after* ingestion. An export taken beforehand, imported
-> afterwards, would wipe the entire reprocessed library.
+Two findings came out of it, both fixed the same day — see step 2a.
 
-### 3. Merge to `main` and go live
+### 2a. What the test pass found
 
-Option D below. This is the moment the Supabase rewrite reaches the tablet, and the moment the
-GitHub Pages site changes. Don't do it before step 2 — that would put never-verified code on the
-device you actually cook from.
+- **PNG export truncated to one screenful.** `.app` is `height:100vh; overflow:hidden`, so
+  expanding the scrolling pane was never enough; the shell still cropped. Print was unaffected
+  because the print stylesheet already unclips `.app` — the PNG path simply never learned to.
+  Affected the Recipe Viewer and Shopping List exports too, not just the Group Viewer where it
+  was spotted. Fixed by unclipping the shell during capture, the same way print does.
+- **Keep Awake now collapses the sidebar at any width.** Previously only 861–1180px did that,
+  on the theory that width implies a cramped device. Keep Awake being on is a much better
+  signal — it is a statement that cooking is happening now, not a guess about the screen. The
+  peek tab stays available and leaving the recipe restores the sidebar, so it cannot strand you.
+
+### 3. Merge to `main` and go live ← **start here**
+
+Option C below. This is the moment the Supabase rewrite reaches the tablet, and the moment the
+GitHub Pages site changes. **Step 2 is done, so the blocker on this is gone.**
+
+One thing to confirm first, still unverified: what `https://crispy-lettuce.github.io/RecipeFlowKeeper/`
+currently serves. `docs/INFRASTRUCTURE.md` §2 flags it as unchecked from any sandbox.
 
 Also the moment the documentation becomes visible on the repo's default branch. Everything
 currently lives only on `claude/recipe-app-supabase-0z139o`.
@@ -87,40 +102,40 @@ crispy-lettuce/RecipeFlowKeeper, on branch claude/recipe-app-supabase-0z139o.
 Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md   — the map of all documentation
-  docs/HANDOVER.md         — verified status; §3 records what the last
-                             session did and the two deviations it made
-  docs/ARCHITECTURE.md     — how the app and its recipe format work
-  docs/NEXT-SESSION.md     — the order of work; we are at step 2
-  docs/TEST-PLAN.md        — the checklist for this task
+  docs/HANDOVER.md         — verified status
+  docs/INFRASTRUCTURE.md   — repos, Pages, Supabase, secrets policy
+  docs/NEXT-SESSION.md     — the order of work; we are at step 3
 
-THE TASK: the browser test pass, against the real backend.
+THE TASK: merge to main and go live.
 
-Nothing in the Supabase rewrite has ever been confirmed working by a human
-in a browser. Sign-in, hydration, row-level security and the background
-write queue are all stubbed by the offline harness, so its 97 green checks
-say nothing about any of them. I'll run the steps locally and report back.
+The branch has never been deployed. main still serves the pre-Supabase,
+localStorage-only app. This is the go-live moment for the whole Supabase
+migration, and the moment the code reaches the tablet I actually cook from.
 
-Start by telling me how to get the branch running, then walk me through
-docs/TEST-PLAN.md a few steps at a time rather than all at once.
+Both blockers are now cleared: the library was reprocessed and ingested on
+20 Sep (33 recipes), and the full 20-step browser test pass was completed
+on 21 Sep against the real backend.
 
-Things to know before we start:
+Before merging, tell me what could go wrong, and in particular:
 
-  - The riskiest step is signing out and back in. Any exception inside
-    hydrate() signs the user out, so the failure mode is a login screen I
-    can't get past. If that happens, treat it as the priority.
-  - TRAP: test plan steps 19-20 export the data and import it straight
-    back, and the import rewrites everything. The export must be taken
-    now, after the recipe ingestion — an older export imported today would
-    wipe the whole reprocessed library.
-  - The library is 33 recipes as of 20 Sep. All have servings and 32 have
-    full step timings, so the scaling controls and the timeline strip
-    should now appear on nearly everything. On the old library they were
-    mostly invisible, so if either fails to render, that's a real bug and
-    not the library being sparse.
-  - 8 planner slots and 2 meal groups point at recipes deleted during
-    ingestion and will show "Recipe removed". That's expected, not a bug.
+1. Confirm what https://crispy-lettuce.github.io/RecipeFlowKeeper/ is
+   actually serving right now. docs/INFRASTRUCTURE.md §2 flags this as
+   unverified — no sandbox has been able to reach github.io to check. If
+   it is live, it is currently the old app, publicly reachable.
+2. Tell me whether merging changes what that URL serves, and whether I
+   want it to.
+3. Whether main should become the default branch for future work, and what
+   that means for the odd branch naming across both repos.
+
+Do NOT touch PrivateBackup's default branch — it is
+claude/recipe-app-supabase-0z139o, and that is why the nightly backup
+fires. Renaming it silently stops backups.
+
+Some context worth having:
+
   - index.html is the whole app. One file, no build step, no framework.
     Run `node test/build.js && node test/smoke.js` after any code change.
+    102 checks. It stubs Supabase, so it proves nothing about sign-in.
   - The repo is public. Recipe data must never be committed to it.
   - Don't trust status notes, mine included, where you can check the real
     thing instead.
@@ -139,12 +154,12 @@ If you want to do something other than step 1, swap the task section of the prom
 > and show me the title mapping before writing. Take a fresh backup first if any existing recipe
 > is going to be deleted.
 
-### C. Going live (step 3)
+### C. Re-running the browser test pass
 
-> The branch has never been deployed — `main` still serves the pre-Supabase app. Let's merge
-> `claude/recipe-app-supabase-0z139o` and confirm Pages is serving it. This is the go-live moment
-> for the whole Supabase migration, so tell me what could go wrong first. Also confirm what the
-> Pages site is currently serving — `docs/INFRASTRUCTURE.md` §2 flags this as unverified.
+> Walk me through `docs/TEST-PLAN.md` again. The full pass was completed 21 Sep, so this is a
+> regression run rather than a first verification — worth doing after any change to `hydrate()`,
+> the write queue, or anything the plan's expected counts depend on. Re-read those counts from
+> the database first; they go stale every time the library changes.
 
 ### D. Image re-hosting (step 4)
 

@@ -871,6 +871,24 @@
     .app.viewer-open.sidebar-peek .sidebar{ width:214px; border-right-width:1px; }
     .app.viewer-open .sidebar-peek-btn{ display:flex; }
   }
+  /* Keep Awake on means "I am cooking from this right now", which is a
+     far better signal that the menu is in the way than window width is —
+     width is a guess about the device, this is a statement of intent. So
+     it collapses the sidebar at ANY width, not just the 861-1180px band
+     above, added 21 Sep after the first real kitchen try.
+
+     Still scoped to .viewer-open, and still leaves the peek tab: Keep
+     Awake is global session state, so without that scope, turning it on
+     and navigating away would leave you on a screen with no menu and no
+     obvious way back. Leaving the recipe restores the sidebar; so does
+     switching Keep Awake off. */
+  .app.keep-awake.viewer-open .sidebar{
+    width:0; padding-left:0; padding-right:0;
+    border-right-width:0; overflow:hidden;
+  }
+  .app.keep-awake.viewer-open.sidebar-peek .sidebar{ width:214px; border-right-width:1px; }
+  .app.keep-awake.viewer-open .sidebar-peek-btn{ display:flex; }
+
   .sidebar{ transition:width .22s ease, border-right-width .22s ease; }
   /* The tab that brings it back. Hidden everywhere except a collapsed
      sidebar on a mid-width screen, by the rule above. */
@@ -894,6 +912,19 @@
       padding:10px 12px; border-right:none; border-bottom:1px solid var(--line);
       gap:4px;
     }
+    /* Same Keep Awake collapse as above, but this layout stacks the
+       sidebar as a bar across the top, so the dimension that has to go
+       is height, not width. Collapsing width here would leave a
+       full-width strip of padding sitting where the menu was. */
+    .app.keep-awake.viewer-open .sidebar{
+      width:100%; height:0;
+      padding-top:0; padding-bottom:0;
+      border-bottom-width:0; overflow:hidden;
+    }
+    .app.keep-awake.viewer-open.sidebar-peek .sidebar{
+      height:auto; padding-top:10px; padding-bottom:10px; border-bottom-width:1px;
+    }
+
     .brand, .side-rule, .side-block, .side-count{ display:none; }
     .side-spacer{ flex:none; }
     .navlink{ padding:11px 14px; white-space:nowrap; border-left:none; border-bottom:2px solid transparent; }
@@ -932,6 +963,22 @@
      dialog) do the rest. Only the Viewer and Shopping List are meaningful
      to print; everything else falls back to whatever's on screen if
      someone prints from elsewhere, which is an acceptable edge case. */
+  /* Applied to .app only while a PNG capture is in flight, then removed.
+     Same unclipping the print rules below do, for the same reason: the
+     shell is height:100vh with overflow:hidden, so anything taller than
+     the window is cropped to one screenful no matter how much the
+     captured node itself is expanded. Print already solved this; PNG was
+     expanding the scrolling pane (see exportNodeAsPng) without ever
+     touching the ancestor doing the cropping, so a tall flow table, a
+     long shopping list or a multi-recipe Group Viewer captured only what
+     happened to be on screen.
+
+     Kept as a class rather than inline styles so the two paths that need
+     identical treatment sit next to each other and are edited together. */
+  .app.exporting{ display:block; height:auto; overflow:visible; }
+  .app.exporting .view{ display:none; }
+  .app.exporting .view.active{ display:block; }
+
   @media print{
     body{ overflow:visible !important; }
     .sidebar, .navlink, .btn, .backlink, .toggle-switch,
@@ -2208,9 +2255,33 @@ function exportNodeAsPng(node, filename, opts){
     });
   }
 
+  /* Unclip the shell itself. Expanding the scrolling pane above is not
+     enough on its own: .app is height:100vh with overflow:hidden, so a
+     node taller than the window is still cropped to one screenful and
+     the capture silently loses everything below the fold. This was the
+     21 Sep finding — Print came out right and PNG didn't, because the
+     print stylesheet unclips .app and this path never did.
+
+     windowHeight matters for the same reason one level further out:
+     html2canvas lays the clone out in a viewport-sized frame, so it has
+     to be told the document is taller than the window, or the content it
+     was just given room for still has nowhere to go. */
+  const appEl = node.closest('.app') || document.querySelector('.app');
+  if(appEl){
+    appEl.classList.add('exporting');
+    restoreFns.push(()=> appEl.classList.remove('exporting'));
+  }
+
   const restore = ()=> restoreFns.forEach(fn=>fn());
 
-  html2canvas(node, {backgroundColor:'#F5F1E6', scale:2}).then(canvas=>{
+  html2canvas(node, {
+    backgroundColor:'#F5F1E6',
+    scale:2,
+    scrollX:0,
+    scrollY:-window.scrollY,
+    windowWidth: Math.max(document.documentElement.scrollWidth, node.scrollWidth),
+    windowHeight: Math.max(document.documentElement.scrollHeight, node.scrollHeight)
+  }).then(canvas=>{
     restore();
     const link = document.createElement('a');
     link.download = filename + '.png';
@@ -3640,6 +3711,12 @@ let keepAwakeStatusInterval = null;
 function updateKeepAwakeStatus(){
   const els = Array.from(document.querySelectorAll('.keep-awake-status'));
   document.querySelectorAll('.keep-awake-toggle').forEach(t=>{ t.checked = state.keepAwake; });
+  /* Drives the sidebar collapse — see the .app.keep-awake CSS. Synced
+     here rather than in the toggle handler because this function is
+     already the one place every path re-syncs through (the handler, the
+     visibility-change re-acquire, and showView), so the class cannot
+     drift out of step with the toggles it sits beside. */
+  document.querySelector('.app').classList.toggle('keep-awake', state.keepAwake);
   if(!state.keepAwake){
     els.forEach(el=>{
       el.style.display = 'none';

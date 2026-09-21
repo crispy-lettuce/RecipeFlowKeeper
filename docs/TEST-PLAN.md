@@ -1,9 +1,18 @@
 # Kitchen App — Verifying Phases 1 and 2 against the real backend
 
+> **This pass was completed on 21 Sep 2026.** All 20 steps passed against the real backend.
+> Two findings came out of it — PNG export truncating to one screenful, and a request that Keep
+> Awake collapse the sidebar — both fixed the same day; see `docs/HANDOVER.md` §7.
+>
+> The document stays live as a **regression checklist**: run it again after any change to
+> `hydrate()`, the write queue, or anything the expected counts below depend on. **Re-read those
+> counts from the database before each run** — they go stale every time the library changes, and
+> a stale count reads as a failure.
+
 ## Context
 
 Phases 1 and 2 are built and pushed to `claude/recipe-app-supabase-0z139o` (21 commits ahead of
-`main`), and 97 automated checks pass. But those checks run against a **stubbed** Supabase: every
+`main`), and 102 automated checks pass. But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
 security, and the background write queue.

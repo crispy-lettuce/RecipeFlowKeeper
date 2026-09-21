@@ -38,8 +38,8 @@ verified status. **Nothing here is inferred from a previous summary.**
 | | Item | Status |
 | --- | --- | --- |
 | R1 | Reset ticked ingredients/stages | **Done.** Ticks are keyed to flow geometry, so they survive a rescale; RESET TICKS clears in place without re-rendering. Session-only by design. |
-| R2 | Auto-collapsing sidebar | **Done.** Collapses over both Viewers at 861–1180px, peek tab restores it, navigating away resets it. Mobile untouched. |
-| R3 | Group Viewer parity | **Done, with two conscious omissions.** Delivered: Keep Awake, Favourite, Edit, Export PNG, Print, Reset Ticks, plus **OPEN →** per recipe. Omitted on purpose: *Shortlist* (contradictory for something already planned) and a *group-level Scale row* (no single base to scale from) — OPEN → covers both. **Worth confirming you're happy with that reading**, since the brief lists both as gaps to close. |
+| R2 | Auto-collapsing sidebar | **Done, extended 21 Sep.** Collapses over both Viewers at 861–1180px, peek tab restores it, navigating away resets it. **Also collapses at any width while Keep Awake is on** — a statement that cooking is happening now beats a guess from the window size. Peek tab still offered, so it cannot strand you. |
+| R3 | Group Viewer parity | **Done, with two conscious omissions.** (Its PNG export truncated to one screenful until 21 Sep — see §7.) Delivered: Keep Awake, Favourite, Edit, Export PNG, Print, Reset Ticks, plus **OPEN →** per recipe. Omitted on purpose: *Shortlist* (contradictory for something already planned) and a *group-level Scale row* (no single base to scale from) — OPEN → covers both. **Worth confirming you're happy with that reading**, since the brief lists both as gaps to close. |
 | R4 | Dated cooking notes | **Not started.** Phase 3. The `recipe_notes` table already exists, empty and unreferenced by the app — it was created in Phase 1 anticipating this. Not dead schema; just early. |
 | R5 | Scale by servings | **Done.** Multiplier buttons retired everywhere. Viewer reads `SERVES 6 (SCALED FROM 4)`. |
 | R6 | Servings mandatory | **Done, both sides, 20 Sep.** Save is blocked without servings, and all 33 recipes now carry one. The retrofit rode on the reprocess, as planned. |
@@ -272,7 +272,7 @@ own build order, so they're not overdue — but they were invisible, which is th
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **97 checks** across every screen, `shots.js` captures screenshots.
+`smoke.js` runs **102 checks** across every screen, `shots.js` captures screenshots.
 
 ```sh
 npm install playwright
@@ -283,9 +283,32 @@ node test/build.js && node test/smoke.js
 queue are all stubbed. A green run is not a substitute for opening the real app. Keep Awake
 can't be tested outside a real tablet.
 
-**Still outstanding:** the full browser pass has never been run. `docs/TEST-PLAN.md` has the
-checklist. The riskiest step is signing out and back in — any exception during hydration signs
-you straight back out, so the failure mode is a login screen you can't get past.
+**The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
+the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
+worked; sign-out-and-back-in, the path that had most worried this document, was clean; export
+and import round-tripped with every table count intact.
+
+**Two findings, both fixed the same day:**
+
+- **PNG export captured only one screenful.** `.app` is `height:100vh; overflow:hidden`, so
+  expanding the scrolling pane — which the 3 Aug fix already did — was never enough on its own;
+  the shell went on cropping. Print was unaffected, because the print stylesheet unclips `.app`
+  and the PNG path never did. It affected the Recipe Viewer and Shopping List exports too, not
+  only the Group Viewer where it was noticed. Fixed by unclipping the shell for the duration of
+  the capture, the same way print does, plus telling html2canvas the document is taller than the
+  window. **Not reproducible in this sandbox** — the egress proxy blocks cdnjs, so html2canvas
+  cannot load and `test/build.js` stubs it — so the fix was verified by a human, not by a test.
+- **Keep Awake now collapses the sidebar at any width.** See R2.
+
+**Two things the pass established that are worth not rediscovering:**
+
+- A single favourite toggle rewrites the entire library. `saveRecipesList` → `pushList` upserts
+  every recipe and then deletes any row not in the list. It behaved correctly against 33 rows,
+  but it means a `hydrate()` that ever returned a partial library would have the next favourite
+  delete the remainder. Worth remembering before changing anything in `hydrate()`.
+- `shopping_checked.item_key` is the aggregation string, so the 20 Sep ingest re-keyed every
+  possible tick. The ticked list was empty, so nothing broke — luck, not design. Clear the ticks
+  before the next reprocess.
 
 ---
 
