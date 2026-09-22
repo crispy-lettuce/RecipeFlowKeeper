@@ -104,7 +104,7 @@ app merged, so it can equally happen alongside step 3.
 
 No dependencies between these; pick by appetite.
 
-- **H1–H3** — meal type at logging, ad-hoc diary entries, CSV export
+- ~~**H1–H3** — meal type at logging, ad-hoc diary entries, CSV export~~ — **done, 22 Sep**
 - **R4** — dated cooking notes (the `recipe_notes` table already exists for it)
 - **P3** — automatic calendar push, needing a one-off Google consent
 - ~~**S2** — dark mode~~ — **done, 22 Sep**
@@ -135,9 +135,7 @@ THE TASK: Phase 3. Nothing here has been started, and none of it has
 dependencies on the others, so tell me what you'd do first and why before
 building anything.
 
-  H1  meal type at the point of logging a cook
-  H2  ad-hoc diary entries, not tied to a recipe
-  H3  CSV export of the food diary
+  (H1, H2 and H3 are done, 22 Sep — the food diary is built.)
   R4  dated cooking notes (the recipe_notes table already exists, empty)
   P3  automatic calendar push, needing a one-off Google consent
   (S2 dark mode is done, 22 Sep.)
@@ -149,7 +147,7 @@ Some context worth having:
     the branch and I'll decide when to merge.
   - index.html is the whole app. One file, no build step, no framework.
     Run `node test/build.js && node test/smoke.js` after any code change.
-    114 checks. It stubs Supabase, so it proves nothing about sign-in.
+    140 checks. It stubs Supabase, so it proves nothing about sign-in.
   - Several columns already exist for these features (recipe_logs.meal_type,
     recipe_logs.note). A column existing does
     not mean the feature does — docs/ARCHITECTURE.md §4 lists them.

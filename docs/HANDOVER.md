@@ -216,13 +216,92 @@ is used. A boot script in `<head>` paints from a `localStorage` mirror before fi
 `hydrate()` reconciles. The database stays the source of truth, the mirror is a cache of the
 last known answer, and `applyTheme` is its only writer. A stale mirror costs one repaint.
 
-**One bug was found by looking, not by reasoning.** `SINGLE_RECIPE_TIMELINE_COLOUR` stayed
-dark while `--on-accent` flipped to dark text, giving dark-on-dark lane labels on the recipe
-timeline. Reading the code did not surface it; a screenshot did, immediately. The smoke suite
-now pins it — verified by reverting the fix and watching that check fail.
+**Three bugs were found by looking, not by reasoning**, and the pattern in them matters more
+than any one of them. Each was a colour living in JavaScript rather than in a token:
 
-Smoke coverage went from 102 to **114 checks**. What it cannot judge is contrast on the real
-tablet in a real kitchen, which is the one thing worth a human eye.
+| | what it did |
+| --- | --- |
+| `SINGLE_RECIPE_TIMELINE_COLOUR` | stayed dark while `--on-accent` flipped, giving dark-on-dark lane labels |
+| `PIE_COLOURS` | dark plum slices on a dark history card |
+| html2canvas `backgroundColor` | a cream border around dark content in every exported PNG |
+
+The first two were caught by screenshots. The third was caught only by giving up on reading the
+code and grepping the whole script for hex literals — which is what should have been done first,
+and is the lesson worth keeping: **an exhaustive search beats a careful reading when the question
+is "have I found all of them?"**
+
+The export background is now read from the live `--paper` token rather than named, so it cannot
+drift from the theme again, including from any theme added later.
+
+Smoke coverage went from 102 to **116 checks**, each mutation-tested. What none of them can judge
+is contrast on the real tablet in a real kitchen, which is the one thing worth a human eye.
+
+---
+
+## 2b. The food diary (H1, H2, H3) — DONE, 22 Sep 2026
+
+Meal type at the point of logging, ad-hoc entries for things with no recipe card, and a CSV of
+the lot. All three on one timeline, per the Build Brief.
+
+**One table, not two.** Ad-hoc entries are `recipe_logs` rows with a null `recipe_id`. That seam
+was already open: the column was nullable and both read paths already filtered on it, and the
+comment at `logRecipeUsed` said outright that the food diary would build on these rows. The only
+thing genuinely missing was somewhere to put an ad-hoc entry's name.
+
+**`recipe_logs.title` was added rather than reusing `note`.** `note` is scaffolding for R4, which
+applies to recipe-backed logs too; one column serving both would make "a takeaway called X" and
+"a note about recipe Y" indistinguishable. A CHECK constraint
+(`recipe_logs_identifies_something`) now requires every row to have either a recipe or a title, so
+a nameless entry is unwriteable rather than merely unlikely. Verified by attempting one.
+
+**`meal_type` already had its CHECK constraint** restricting it to breakfast/lunch/dinner/snack —
+exactly H1's four. `MEAL_TYPES` in the app is the same list, and the buttons are generated from
+it, so the UI and the database cannot drift.
+
+**The prompt comes after the write, not before.** Logging happens by ticking the last column of
+the flow table — the moment a meal ends, hands full. A dialog in front of that write would mean a
+dismissed prompt loses the log entirely. So the entry lands immediately with `meal_type` null,
+which is a legitimate state, and the prompt upgrades it. The id is generated client-side
+precisely so the prompt can target a row whose insert is still in flight.
+
+**`cache.diary` is new; `recipe.history` is untouched.** The bare date array still feeds the
+cards, "last cooked" and the streak, where a list of dates is exactly right — and it is also the
+shape the JSON export has always had. Enriching it would have rippled through all of those and
+changed the export format. The richer view lives alongside it.
+
+### The backup bug this closed
+
+`replaceAllRecipeLogs` rebuilt every log from `recipes[].history` on a restore. That array holds
+bare dates, so **restoring a backup would have silently erased every meal type and every ad-hoc
+entry** — and looked like a clean restore. The export was the other half: it selected only rows
+with a `recipe_id`, so a backup would have been missing the diary in the first place.
+
+Both are fixed, and the fix has two paths on purpose:
+
+| Backup | What happens |
+| --- | --- |
+| version 3 (has `diary`) | Replaces every log, ids, meal types and ad-hoc entries included |
+| version 2 or older (no `diary`) | Replaces only recipe-backed rows, leaves ad-hoc entries alone |
+
+An older backup says nothing about ad-hoc entries, and saying nothing is not the same as saying
+there are none — so restoring one cannot destroy a diary it has never heard of.
+
+### CSV
+
+The Build Brief's columns verbatim: date, meal type, entry, source (recipe vs ad hoc), course,
+ingredients without quantities. Quantities are dropped because they scale with servings, so a row
+claiming "300 g" would be wrong more often than right; the ingredient names answer what the sheet
+is for. Ad-hoc rows leave course and ingredients blank rather than "n/a", because a blank cell
+filters correctly in a spreadsheet and "n/a" is a value you have to exclude by hand. Every field
+is quoted (RFC 4180) and the file carries a BOM, since the likely destination is Excel, which
+reads a BOM-less UTF-8 CSV as the system codepage and mangles every accent.
+
+**Known imperfection:** `splitQty` doesn't recognise "cloves" as a unit, so "2 cloves garlic,
+minced" exports as "cloves garlic" rather than "garlic". Understandable in the sheet, and not
+worth stripping leading words from real ingredient names to fix.
+
+Smoke coverage **116 → 140 checks**. The two that matter most were mutation-tested: putting the
+prompt before the write, and dropping `diary` from the backup, each produce named failures.
 
 ---
 
@@ -369,7 +448,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **114 checks** across every screen, `shots.js` captures screenshots.
+`smoke.js` runs **140 checks** across every screen, `shots.js` captures screenshots.
 
 ```sh
 npm install playwright
