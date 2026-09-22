@@ -13,10 +13,17 @@ GitHub at the time of writing.
 2. **`docs/ARCHITECTURE.md`** — how the app and its recipe format actually work.
 3. **`docs/HANDOVER.md`** — what's built, what isn't, and what was found to be wrongly recorded.
 4. **`docs/INFRASTRUCTURE.md`** — repos, Supabase, credentials policy.
+5. **`docs/IMAGES.md`** — the one feature with a manual step you have to know about.
 
 Then pick up work from **`docs/NEXT-SESSION.md`**, which sets out the order things should
-happen in. As of 20 Sep 2026 the project is at **step 2 of 5: the browser test pass**. Step 1,
-ingesting the reprocessed recipes, is done — 33 recipes, recorded in `docs/HANDOVER.md` §3.
+happen in. As of 21 Sep 2026 **steps 1 to 4 are done** — the library was reprocessed and ingested
+(33 recipes), the full browser test pass was run against the real backend, the app was merged to
+`main` and is live, and all 29 recipe images are self-hosted. The project is at **step 5:
+Phase 3**, none of which has been started.
+
+**One thing to absorb before changing anything: `main` is production.** GitHub Pages serves from
+`main`, and every merge deploys straight to the tablet. There is no staging step. This was
+discovered on 21 Sep, having been recorded the other way round in four documents.
 
 ---
 
@@ -56,6 +63,19 @@ things previously recorded wrongly.
 
 **Use it when:** you need to know what's actually done. This is the document to update as work
 progresses — and to distrust first if something doesn't match reality.
+
+---
+
+### `docs/IMAGES.md` — how recipe photos get to Supabase
+**What:** The runbook for image re-hosting (R7). Answers the two questions that come up in
+practice — what happens to the image when you add a recipe, and how you replace one — plus the
+console commands, what goes wrong, and how to verify.
+
+**Use it when:** you've added recipes and want their photos self-hosted, or you want to change an
+image. **Start with the short answer at the top: it is not automatic.** A new recipe keeps its
+external image URL until someone runs the sweep by hand.
+
+**Don't:** expect a file picker. The app only ever takes a URL; there is no upload-from-device.
 
 ---
 

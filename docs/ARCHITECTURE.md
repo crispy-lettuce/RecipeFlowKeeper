@@ -163,12 +163,19 @@ mistake that made the image work look finished):
 | `recipe_notes` (whole table, empty) | R4, dated cooking notes |
 | `recipe_logs.meal_type` | H1, meal type at point of logging |
 | `recipe_logs.note` | R4 / food diary |
-| `household_settings.dark_mode` | S2, dark mode (deferred out of Phase 2) |
+| ~~`household_settings.dark_mode`~~ | S2 shipped 22 Sep — no longer scaffolding |
 | `meal_groups.name` | Written as `''`; no UI ever names a group |
 | `households.name`, `household_members.role` | Multi-household support, deliberately anticipated |
 
-Storage has one bucket, `recipe-images` — **private and empty**. No code references Supabase
-Storage at all. See `docs/HANDOVER.md` §2.
+Storage has one bucket, `recipe-images` — **public, 29 objects, 4.1 MB** as of 21 Sep. Public
+affects only the `/object/public/` read endpoint; writes, deletes and listing still go through
+four RLS policies keyed on household membership, so it is readable-if-you-know-the-path rather
+than browsable.
+
+`index.html` still references Supabase Storage nowhere, and deliberately — images are re-hosted
+by a decoupled Edge Function sweep (`supabase/functions/rehost-images/`), and the app just
+renders whatever URL is in `image_url`. That is the whole point of decoupling it: the app never
+has to know where a photo lives. See `docs/HANDOVER.md` §2.
 
 ## 5. Testing
 
@@ -178,7 +185,7 @@ Storage at all. See `docs/HANDOVER.md` §2.
 ```sh
 npm install playwright
 node test/build.js    # bake index.html against the stub
-node test/smoke.js    # 102 checks; exits non-zero on failure
+node test/smoke.js    # 114 checks; exits non-zero on failure
 ```
 
 It has caught real bugs, including a parser gap that would have broken every reprocessed recipe.
@@ -191,6 +198,7 @@ Keep Awake can only be tested on a real tablet.
 | Path | What it is |
 | --- | --- |
 | `index.html` | **The app.** Everything lives here. |
+| `supabase/functions/` | Edge Functions. `rehost-images` is the image re-hosting sweep (R7); `find-recipe-image` reports a page's candidate hero images and their real sizes, read-only. Both need a signed-in caller. See `docs/IMAGES.md`. |
 | `index-old.html` | The pre-Supabase version, kept for reference. **Not used, not served, not maintained** — don't edit it thinking it's live. |
 | `converter/` | Conversion instructions and the standing test set for writing recipes. |
 | `test/` | Offline test harness. |

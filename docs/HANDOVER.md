@@ -22,7 +22,7 @@ verified status. **Nothing here is inferred from a previous summary.**
 | | Item | Status |
 | --- | --- | --- |
 | S1 | Week start day | **Done.** Settings screen, default Friday, drives Planner, Shopping List and History together. |
-| S2 | Dark mode | **Deliberately deferred** out of Phase 2. A `dark_mode` column exists on `household_settings`, unused. The CSS is token-driven (19 tokens), so it's a small job when wanted. |
+| S2 | Dark mode | **Done, 22 Sep.** Three states per the brief. The column was already read and written by `hydrate()`/`saveSettings`; what was missing was applying it. See §2a. |
 | S3 | Aliases manager | **Done.** Settings → Word Matches. Covers source *and* ingredient names, both "same" and "not the same" answers, all reversible. |
 
 ### Planner
@@ -43,7 +43,7 @@ verified status. **Nothing here is inferred from a previous summary.**
 | R4 | Dated cooking notes | **Not started.** Phase 3. The `recipe_notes` table already exists, empty and unreferenced by the app — it was created in Phase 1 anticipating this. Not dead schema; just early. |
 | R5 | Scale by servings | **Done.** Multiplier buttons retired everywhere. Viewer reads `SERVES 6 (SCALED FROM 4)`. |
 | R6 | Servings mandatory | **Done, both sides, 20 Sep.** Save is blocked without servings, and all 33 recipes now carry one. The retrofit rode on the reprocess, as planned. |
-| R7 | Recipe images | **Not started. Bucket only.** See §2 — this is the gap that prompted the audit. |
+| R7 | Recipe images | **Done, 21 Sep.** All 29 images self-hosted in Supabase Storage via a decoupled Edge Function sweep. See §2. |
 
 ### Shopping list
 
@@ -83,11 +83,11 @@ hasn't caught up yet.
 
 | Item | Status |
 | --- | --- |
-| Hosting (GitHub Pages) | **Second correction (21 Sep): `main` is not the pre-Supabase app, and never was during this project.** Its HEAD is a merge commit from this very branch — PR #1 — so the rewrite reached `main` at some earlier point and nobody wrote it down. `main` holds an *older build* of the Supabase app (5,053 lines vs the branch's 5,976; no `SOURCE_URL:` parsing, no auto-collapsing sidebar). Verified against the GitHub API and the git objects, not inferred. **So going live is an update, not a first deployment.** Whether Pages is actually serving, and from which branch, remains unverified — no sandbox has a route to `github.io`. See `docs/INFRASTRUCTURE.md` §2. |
+| Hosting (GitHub Pages) | **Live, verified 21 Sep.** Serving from `main` at `https://crispy-lettuce.github.io/RecipeFlowKeeper/`, confirmed by a browser screenshot and by the `pages build and deployment` workflow having one run per commit to `main`. **Every merge to `main` redeploys automatically** — there is no staging step. `main` holds the current build as of PR #2. Two earlier claims in this document were wrong and are corrected in `docs/INFRASTRUCTURE.md` §2: `main` was never the pre-Supabase app during this project, and "nothing is deployed" was never true. |
 | Backend (Supabase) | **Done.** 13 tables, RLS enabled with policies on every one. |
 | Household id on every table from day one | **Done, verified.** |
 | Backup to a separate private repo | **Done and genuinely working.** See §5. |
-| Images in Supabase Storage | **Not done** — see §2. |
+| Images in Supabase Storage | **Done, 21 Sep** — 29 objects, 4.1 MB. See §2. |
 | Calendar reminders | **Not done** — P3, see §4. |
 
 ### Brief's own open items
@@ -99,41 +99,130 @@ hasn't caught up yet.
 
 ---
 
-## 2. The image gap (R7) — what's actually true
+## 2. Recipe images (R7) — DONE, 21 Sep 2026; integrity checking added 22 Sep
 
-This is the one that prompted the audit, and it's worth being precise about because the
-earlier record was misleading.
+**All 29 images that existed are now self-hosted.** The library no longer depends on eleven third
+parties continuing to serve the same URLs — Kitchen Sanctuary alone held seventeen.
 
-**What exists:** a Supabase Storage bucket named `recipe-images`, created 13 Sep, **private**,
-**completely empty — zero objects ever uploaded**.
+**`docs/IMAGES.md` is the runbook** — how a new recipe's image gets to Supabase, how to replace
+one, what goes wrong and how to verify. Read that rather than this. What follows is only the
+status and the decisions.
 
-**What doesn't exist:** any code at all. `index.html` contains no reference to Supabase Storage —
-no upload, no signed URL, nothing. All 29 recipes that have an image point straight at the
-source website; zero objects are self-hosted. 4 have no image.
+| | |
+| --- | --- |
+| Objects in `recipe-images` | 29 |
+| Rows self-hosted | 29 of 29 with an image (4 recipes have none) |
+| Total storage | 4,426 kB |
+| Dangling rows / orphaned files / syntax disagreements | 0 / 0 / 0 |
+| Verified whole | 29 of 29, by `{"verify": true}` on 22 Sep |
 
-*(Counts re-checked 20 Sep after ingestion: 29 of 33 with an image, all external. Was 33 of 40.)*
+**It is not automatic.** Nothing re-hosts on save; a sweep is run by hand from the browser console.
+That is deliberate — saving a recipe should not depend on a third party's server answering — and
+`docs/IMAGES.md` §4 gives the full reasoning, §5 what automating it would take (`pg_cron` and
+`pg_net` are available on this project but not installed).
 
-An old task read "Create Storage bucket recipe-images — completed", which was true of the
-bucket and false of the feature. R7 in the brief is the actual requirement, and it was never
-tracked as a task.
+**Verified rather than reported:** every stored file's byte count matches what the dry run predicted
+for that recipe, which is the only check that catches a truncated download; every row resolves to an
+object that exists; no orphans; nothing stored that isn't a JPEG.
 
-**Agreed approach (14 Sep):** a Supabase **Edge Function** does the fetching server-side.
-A browser-side fetch was rejected because most recipe-site CDNs (Sanity, Cloudinary, WordPress)
-don't send permissive CORS headers, so reading the bytes would fail for many sources.
+### Decisions worth not relitigating
 
-**Agreed shape:** a **decoupled sweep**, not wired into the save path. Recipes save with
-whatever `image_url` they arrive with; separately, a job walks the table, finds externally
-hosted images, re-hosts them, and rewrites the column. Reasons: it treats the existing 33 and
-any future recipe identically with no special-casing, and it keeps "did my recipe save" from
-depending on a third-party fetch succeeding.
+**Public bucket, not signed URLs** — the one thing the 14 Sep plan left open, and settled on
+different grounds than it anticipated. `image_url` is written verbatim into the app's JSON export
+*and* the nightly `pg_dump`, so a signed URL would expire inside the backups: restore one months
+later and every image is dead. Correctness, not convenience. Public affects only the
+`/object/public/` read endpoint; writes, deletes and listing still go through household-scoped RLS,
+so it is "readable if you know the path", not browsable, and paths are two random v4 UUIDs.
 
-**Still undecided:** whether to flip the bucket public (recommended — a recipe photo isn't
-sensitive, and a signed URL that expires would need re-signing everywhere `image_url` renders:
-card grid, Viewer, Group Viewer, PNG export) or keep it private with signed URLs.
+**A sweep, not the save path** — one code path for the existing library and everything added since,
+and a browser could not do it anyway, because most recipe CDNs send no permissive CORS headers.
 
-**Note for whoever builds it:** the Claude Code sandbox has no outbound access to fetch
-arbitrary web images. An Edge Function has its own egress and isn't subject to that, which is
-part of why it's the right home for this.
+### Four things that cost time, and would again
+
+1. **The function needed a CORS preflight handler.** The app is on `github.io`, the function on
+   `supabase.co`, so every browser call is cross-origin. Without it the request never reaches the
+   function and the error reads like a permissions problem. The preflight must be answered *before*
+   the auth check, because it carries no `Authorization` header by design.
+2. **A browser User-Agent is not optional.** Several CDNs answer a bare Deno fetch with 403. All 29
+   succeeded with one.
+3. **One image was 7.7 MB** — more than the rest of the library combined — because Contentful serves
+   originals by default. One URL parameter took the library from 11.5 MB to 4.1 MB. **Check the dry
+   run's byte counts for outliers before any future sweep.**
+4. **Two defects found while documenting it, both fixed the same day.** Objects are cached for a
+   year at a stable path, so replacing a photo would have shown the *old* one until 2027 — fixed
+   with a `?v=<unix seconds>` token that changes the URL without changing the path. And the sweep
+   rewrote `image_url` but not the `IMAGE:` line in `syntax`, which broke the invariant in
+   `ARCHITECTURE.md` §2 that the recipe text is the source of truth — it meant re-parsing a recipe
+   would silently revert its image to the CDN. The sweep now moves both, and the 29 already done
+   were backfilled.
+
+**Both broken images are fixed, and the diagnosis they came with was wrong twice.** Tuscan
+Chicken Pasta was recorded here as a lazy-load placeholder. It was not: it was a truncated JPEG,
+which rendered as a photo on the top 40% of the card and solid grey below. Chasing that turned up a
+second one nobody had noticed — Classic Scones, cut off mid-transfer at exactly 35 × 1024 bytes.
+
+Both now carry whole files (257,931 and 35,613 bytes) and a full verify sweep reports 29 of 29
+whole. The Scones replacement is *smaller* than the file it replaced, which is the tell: the broken
+copy had been padded to a block boundary.
+
+**The lesson is about the verification, not the images.** Two checks were written and shipped
+before one worked. The first compared the stored byte count against the dry run's — but both reads
+fetch the same source, so a file broken at source yields two identical counts and a clean bill of
+health. The second checked for the JPEG end marker — but that marker was present; what had run out
+early was the scan data. Neither failure was bad luck; both were reasoning that could not have
+caught the fault. `docs/IMAGES.md` §2 has the full account and the measured density distribution
+the current threshold rests on. `test/image-integrity.js` pins all three checks.
+
+---
+
+## 2a. Dark mode (S2) — DONE, 22 Sep 2026
+
+Three states, per the Build Brief: follow the system, light, or dark. The control is in
+Settings under APPEARANCE, and the choice is shared with the household like every other
+setting there.
+
+**Half of it already existed and nobody had noticed.** `household_settings.dark_mode` was
+being read by `hydrate()` into `state.settings.darkMode` and written back by `saveSettings`,
+with a comment explaining it was round-tripped so a later phase wouldn't be clobbered. So
+persistence was built *and* had been exercised by the 21 Sep test pass. What was missing was
+everything downstream of the value: nothing ever read it.
+
+**The estimate was wrong, and in an instructive way.** Every note said this was small
+"because the CSS is token-driven". The CSS is 18 tokens — but there were also 8 hard-coded
+`#fff`, 23 `rgba()` literals and, the part that mattered, **three colours living in
+JavaScript**:
+
+| | |
+| --- | --- |
+| `PALETTE` | six hues used as *text* on a 10% tint of themselves |
+| `MERGE_COLOR` | `#5B2A4A`, the plum |
+| `SINGLE_RECIPE_TIMELINE_COLOUR` | `#5B2A4A` again |
+
+These are painted into inline styles at render time, because the flow table doesn't know how
+many columns it has until it has parsed the recipe. No token swap can reach them, so there
+are two palettes and `applyTheme` picks one.
+
+Most of the `rgba()` literals turned out to be fine: an accent at 10% over *any* ground reads
+as a tint of that accent. The ones that broke were the two that are surfaces rather than
+tints, and those became `--card-veil`.
+
+**`--on-accent` is the non-obvious token.** White works on every light-theme accent because
+they are all dark. The dark theme lightens them to stay legible, and white stops working — so
+the foreground that sits *on* an accent has to flip too.
+
+**No flash of the wrong theme.** The household's choice is in Supabase, a round trip away, so
+painting from it would show light and then snap to dark — worst in the dark, which is when it
+is used. A boot script in `<head>` paints from a `localStorage` mirror before first paint;
+`hydrate()` reconciles. The database stays the source of truth, the mirror is a cache of the
+last known answer, and `applyTheme` is its only writer. A stale mirror costs one repaint.
+
+**One bug was found by looking, not by reasoning.** `SINGLE_RECIPE_TIMELINE_COLOUR` stayed
+dark while `--on-accent` flipped to dark text, giving dark-on-dark lane labels on the recipe
+timeline. Reading the code did not surface it; a screenshot did, immediately. The smoke suite
+now pins it — verified by reverting the fix and watching that check fail.
+
+Smoke coverage went from 102 to **114 checks**. What it cannot judge is contrast on the real
+tablet in a real kitchen, which is the one thing worth a human eye.
 
 ---
 
@@ -256,23 +345,31 @@ point, and confirming the schedule still fires afterwards.
 
 ## 6. Corrections to the earlier record
 
-Two tasks were marked complete that were not:
+Five times now, something recorded as true wasn't. The pattern is worth more than the individual
+corrections: **every one was found by checking the real thing, and none by reading more carefully.**
 
-- **"Create Storage bucket recipe-images"** — the bucket was created; the feature (R7) was never
-  built. Restated in §2.
-- **"Servings backfill pass"** — never happened at the time of writing; **done 20 Sep** via the ingestion. It
-  rides on the reprocess.
+| Recorded | Actually | Found |
+| --- | --- | --- |
+| "Create Storage bucket recipe-images — completed" | Bucket existed, feature (R7) never built | 13 Sep audit |
+| "Servings backfill pass — completed" | Never ran. **Done 20 Sep** via the ingestion | 14 Sep audit |
+| "`main` still serves the pre-Supabase app" — in four documents | `main` had been serving the Supabase rewrite since PR #1, 13 Sep | 21 Sep, before the merge |
+| "Nothing here is deployed and nothing live can break" | Pages had been live and sharing this database throughout | 21 Sep, same check |
+| Test plan's "Planned days 15" read as an on-screen expectation | A row count; every stored day was in the past, so an empty Planner was correct | 21 Sep, by the person running the pass |
 
-And these brief items appeared in **no** task list at all: **P3** (calendar), **R4** (cooking
-notes), **R7** (images), **H1/H2/H3** (history and food diary). All are Phase 3 in the brief's
-own build order, so they're not overdue — but they were invisible, which is the real problem.
+The last two are the instructive ones. Both were *written down carefully* and both were wrong,
+because nobody had opened a browser or read the workflow history. The rule in `CLAUDE.md` — verify
+rather than trust status notes, including these — earned itself five times over.
+
+These brief items appeared in **no** task list at all: **P3** (calendar), **R4** (cooking notes),
+**R7** (images, since built), **H1/H2/H3** (history and food diary). All are Phase 3 in the brief's
+own build order, so they were never overdue — but they were invisible, which is the real problem.
 
 ---
 
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **102 checks** across every screen, `shots.js` captures screenshots.
+`smoke.js` runs **114 checks** across every screen, `shots.js` captures screenshots.
 
 ```sh
 npm install playwright
@@ -322,5 +419,20 @@ and import round-tripped with every table count intact.
   `queueWrite`, which always returns `true` immediately.
 - Any exception inside `hydrate()` signs the user out. `household_settings` must use
   `.maybeSingle()`, not `.single()`, for exactly this reason.
-- `[instant]` and `[overnight]` are real duration keywords the parser now understands. Any
-  other unrecognised bracket (`[to taste]`) is deliberately left intact in the label.
+- `[instant]` and `[overnight]` are real duration keywords the parser now understands, as are
+  en-dash ranges (`[4–5 min]`), seconds (`[30 sec]`) and compound hours (`[1 hr 30]`) since
+  21 Sep. Any *other* unrecognised bracket (`[to taste]`) is deliberately left intact in the
+  label — the parser under-detects on purpose rather than mistake a seasoning note for a timing.
+- **An unrecognised bracket is not inert.** The label keeps it, so the raw text shows in the
+  diagram and the step counts as untimed. That is why the three forms above were worth adding:
+  the first reprocess wrote its timings as prose and the second used `[30 sec]` three times.
+- **`main` is production.** GitHub Pages serves from `main`, and the `pages build and deployment`
+  workflow runs once per commit to it — so every merge deploys to the tablet immediately, with no
+  staging step and no approval. Work on the branch; merge deliberately.
+- **`PrivateBackup`'s default branch is `claude/recipe-app-supabase-0z139o`, not `main`.** That is
+  why the nightly backup fires. Renaming it stops backups silently. Its workflow also depends on
+  the Session pooler connection string (the direct one is IPv6-only, and GitHub runners have no
+  IPv6 route) and the full path to `pg_dump` 17 (the runner's own is older than the server). Both
+  took several failed runs to find; don't undo either.
+- **Recipe images are not re-hosted automatically.** A new recipe keeps its external image URL
+  until the sweep is run by hand. `docs/IMAGES.md` is the runbook.

@@ -186,4 +186,5 @@ are both resolved:
    confirmed against the parser, not in a kitchen: open Maple Almond Granola Clusters and
    confirm the vanilla sits in its own box joining *after* the syrup comes off the heat.
 
-Also still deferred: S2 dark mode, dropped out of Phase 2 scope.
+S2 dark mode shipped 22 Sep and is covered by the smoke suite; the thing worth a human eye is
+contrast on the real tablet, which no headless check can judge.
