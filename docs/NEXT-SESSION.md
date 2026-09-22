@@ -79,8 +79,14 @@ currently lives only on `claude/recipe-app-supabase-0z139o`.
 
 ### 4. Image re-hosting (R7) — **done, 21 Sep**
 
-All 29 images self-hosted, 4.1 MB, verified against the dry run's own byte counts. Built as an
-Edge Function sweep; the app was not touched, because it renders whatever is in `image_url`.
+All 29 images self-hosted, 4,426 kB. Built as an Edge Function sweep; the app was not touched,
+because it renders whatever is in `image_url`.
+
+**The verification in the original version of this line was worthless and has been replaced.** It
+compared each stored file's byte count against the dry run's — but both reads fetch the same
+source, so a file broken at source produces two identical counts and a clean pass. Two images were
+in fact broken. Integrity is now checked on the way in, and
+`{"verify": true}` re-checks the stored library; see `docs/IMAGES.md` §2.
 Full account, including three things that cost time and would cost them again, in
 `docs/HANDOVER.md` §2.
 
