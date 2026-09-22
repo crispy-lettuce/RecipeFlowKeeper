@@ -296,9 +296,20 @@ filters correctly in a spreadsheet and "n/a" is a value you have to exclude by h
 is quoted (RFC 4180) and the file carries a BOM, since the likely destination is Excel, which
 reads a BOM-less UTF-8 CSV as the system codepage and mangles every accent.
 
-**Known imperfection:** `splitQty` doesn't recognise "cloves" as a unit, so "2 cloves garlic,
-minced" exports as "cloves garlic" rather than "garlic". Understandable in the sheet, and not
-worth stripping leading words from real ingredient names to fix.
+**Ingredient names are tidied for the CSV only**, by `tidyIngredientName`, which drops leading
+count, container and size words: "cloves garlic" becomes "garlic", "large eggs" becomes "eggs",
+"x 125 g tins tuna in olive oil" becomes "tuna in olive oil". 34 of the library's 424
+quantity-bearing lines (8%) needed it — measured, not guessed.
+
+**It is deliberately not fixed in `splitQty`, which is where it looks like it belongs.**
+`splitQty`'s output feeds `buildShoppingList`, whose result *is* `shopping_checked.item_key`.
+Teaching it a new unit would silently re-key every ticked item on the shopping list. The CSV is
+the safe place for this because nothing is keyed on its output.
+
+**The rule that makes it safe is "never strip the last word."** "cloves" is a unit in "2 cloves
+garlic" and an ingredient in "1 tsp whole cloves" — the first loses it and becomes "garlic", the
+second strips "whole" and stops. A list of known units alone would have destroyed the spice.
+Mutation-tested: removing that rule fails three checks by name.
 
 Smoke coverage **116 → 140 checks**. The two that matter most were mutation-tested: putting the
 prompt before the write, and dropping `diary` from the backup, each produce named failures.
@@ -448,7 +459,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **140 checks** across every screen, `shots.js` captures screenshots.
+`smoke.js` runs **148 checks** across every screen, `shots.js` captures screenshots.
 
 ```sh
 npm install playwright
