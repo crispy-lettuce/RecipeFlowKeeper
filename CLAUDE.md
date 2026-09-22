@@ -20,8 +20,11 @@ check the code, the database or GitHub Actions directly, do that instead of beli
 node test/build.js && node test/smoke.js
 ```
 
-157 checks. It stubs Supabase entirely, so it proves nothing about sign-in, hydration, RLS or the
-write queue — never claim the app works end to end on the strength of a green run.
+174 checks. **Run both, always** — `smoke.js` loads what `build.js` wrote, so skipping the build
+tests your previous edit and reports a pass or a failure that belongs to code you have changed.
+
+It stubs Supabase entirely, so it proves nothing about sign-in, hydration, RLS or the write
+queue — never claim the app works end to end on the strength of a green run.
 
 **After any change to the image Edge Functions, also run:**
 
@@ -29,9 +32,9 @@ write queue — never claim the app works end to end on the strength of a green 
 node test/image-integrity.js
 ```
 
-24 checks over the integrity checker in `supabase/functions/*/index.ts`. It lifts the checker out
-of the real source rather than copying it, so a signature change makes it throw rather than pass
-vacuously.
+31 checks over the integrity checker and `parseRecipeFilter` in `supabase/functions/*/index.ts`.
+It lifts the code out of the real source rather than copying it, so a signature change makes it
+throw rather than pass vacuously.
 
 ## Things that will bite
 
@@ -49,6 +52,10 @@ vacuously.
   rows. See `docs/ARCHITECTURE.md` §2.
 - **A schema column existing does not mean the feature exists.** Several columns are Phase 3
   scaffolding; `docs/ARCHITECTURE.md` §4 lists them.
+- **Anything the app learns from the server must be written back into `cache`.** `pushList`
+  upserts *every* cached recipe on every save, so a value the cache doesn't know about is
+  overwritten by the next favourite toggle. This is why `rehostImageFor` writes its answer back
+  rather than trusting the row.
 
 ## Style
 

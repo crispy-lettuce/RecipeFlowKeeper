@@ -25,10 +25,15 @@ Both scripts use whichever Chromium Playwright installs. Set
 
 ## What it can and can't tell you
 
-**157 checks.** It covers the parts that are pure app logic: week bucketing, scaling,
+**174 checks.** It covers the parts that are pure app logic: week bucketing, scaling,
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
-`SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, and that every screen
-renders without throwing.
+`SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, the automatic image
+re-host on save, and that every screen renders without throwing.
+
+**`node test/build.js` first, every time.** `smoke.js` opens `test/app-under-test.html`, which
+`build.js` writes from `index.html`. Run `smoke.js` on its own after editing the app and you are
+testing the previous build — which passes, or fails for a reason that no longer exists. That has
+cost real time here.
 
 It cannot tell you anything about **Supabase itself** — `stub.js` answers every
 query from a fixed object and records writes to `window.__WRITES__` rather than

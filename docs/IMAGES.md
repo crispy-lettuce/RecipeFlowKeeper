@@ -1,27 +1,49 @@
 # Recipe images — how they get to Supabase
 
-**Written 21 Sep 2026**, the day the feature was built, and verified against the running function
-and the live database rather than described from the plan.
-
-Answers the two questions that matter in practice: what happens to the image when you add a
-recipe, and how you change one.
+**Written 21 Sep 2026**, the day the feature was built; §4 and §5 rewritten 22 Sep, then rewritten
+again the same day when Option A was actually built. Verified against the running functions and the
+live database rather than described from the plan.
 
 ---
 
-## The short answer
+## Answers first
 
-**It is not automatic.** Nothing re-hosts an image when you add or edit a recipe. A new recipe
-keeps whatever image URL it arrived with — usually pointing at the recipe site it came from — and
-stays that way until someone runs the sweep by hand.
+### How do I add an image to a new recipe?
 
-That is a deliberate choice, not an oversight; §4 explains why, and §5 says what it would take to
-change if the manual step gets tiresome.
+You don't do anything separate. The conversion produces an `IMAGE:` line, that URL lands in the
+**IMAGE URL** field when you paste the recipe, and saving stores it. The photo appears immediately,
+hotlinked from the recipe site — and a second or two later the app has quietly replaced it with its
+own copy. §1 has the detail.
 
-**The sweep is one line in the browser console**, and it is safe to run at any time:
+### How do I replace an image on an existing recipe?
 
-```js
-await sb.functions.invoke('rehost-images', {});
-```
+Open the recipe → **EDIT** → paste a new address over the `supabase.co/...` URL in **IMAGE URL**
+→ **Save**. That is the whole thing; the copy happens by itself, because the address you pasted is
+not one of ours. §3 has the detail, including how to find a good replacement address.
+
+### How does an image get "moved" to Supabase?
+
+**The app asks for it, on save.** Whenever you save a recipe whose image URL is not already in our
+own storage, the app queues a call to the `rehost-images` Edge Function for that one recipe. The
+function downloads the bytes, checks the file is whole, uploads it into the `recipe-images` bucket,
+and returns the new address; the app writes that into the recipe. You see nothing unless it fails,
+in which case you get the ordinary "couldn't save…" toast and the recipe keeps its external URL,
+which still displays. §2 has the detail.
+
+Two cases the save cannot cover — a **restore from backup**, and a save made **offline** — so the
+old sweep over every recipe is still there, as a catch-up. It is now a button:
+**Settings → RECIPE PHOTOS → RE-HOST EXTERNAL IMAGES**. The browser console is no longer needed for
+anything in normal use.
+
+**It cannot be done from the app's own page** because most recipe CDNs send no CORS headers, so
+the browser is not allowed to read the bytes. That is why there is a server-side function at
+all.
+
+### Can this happen automatically when I save a recipe?
+
+**It does, since 22 Sep 2026.** This was Option A in §5, and §5 now describes it as built rather
+than as a recommendation. No new infrastructure, no scheduled job, no stored credential, and saving
+still never waits on a third party.
 
 ---
 
@@ -33,19 +55,47 @@ await sb.functions.invoke('rehost-images', {});
    field on the form.
 3. You save. The URL goes into `recipes.image_url` exactly as written, and into the recipe's
    `syntax` as the `IMAGE:` line. Both point at the source website.
-4. The card, the Viewer and the Group Viewer all render that external URL. **It works
-   immediately** — the photo shows up straight away, hotlinked from the recipe site.
-5. **Nothing has been copied to Supabase yet.** Until the sweep runs, that image depends on
-   someone else's server continuing to serve it.
+4. **The card** renders that external URL. It works immediately — the photo shows up straight
+   away, hotlinked from the recipe site. The card is the *only* place an image is drawn: the
+   Viewer and the Group Viewer show the recipe's text and columns, not its photo. (This document
+   said all three until 22 Sep. `r.imageUrl` is read in exactly one render path, `renderHome`'s
+   `rcard-photo`.)
+5. **Then the app re-hosts it, by itself.** Because the URL is not already in our storage, the
+   save queues a call to `rehost-images` for that one recipe. A second or two later the recipe's
+   `image_url` and `IMAGE:` line both point at our bucket, and the card re-renders with the
+   stored copy. Nothing is shown while this happens, and nothing waits for it.
+6. **If it fails**, you get the standard "couldn't save…" toast and the recipe keeps the external
+   URL. That still displays — the outcome of a failure is a borrowed photo, not a broken one.
 
-So a newly added recipe looks completely finished and is quietly still borrowing its photo. The
-sweep is what makes it yours.
+The detail of *why* it is queued rather than awaited, and what happens when it is neither, is in
+§5.
 
 ---
 
-## 2. Running the sweep
+## 2. The sweep — the catch-up over every recipe
 
-In the browser console, **on the app, while signed in** — the function takes your household from
+The save path handles every recipe you add or edit in the app. The sweep exists for the two cases
+it cannot see: a **restore from backup**, which brings recipes in through a different path, and a
+save made **offline**, where the call never fired. Run it after either; there is no need to run it
+after adding a recipe normally.
+
+### From Settings (the normal way)
+
+**Settings → RECIPE PHOTOS** has two buttons:
+
+| Button | What it does |
+| --- | --- |
+| **RE-HOST EXTERNAL IMAGES** | The full sweep. Copies every still-external image into our storage |
+| **CHECK STORED IMAGES** | Read-only. Re-reads every stored file and reports whether each is whole |
+
+Both report a one-line result underneath, and **both also update the open page's recipes from what
+the function reports**, which is what makes them safe to use without reloading — see the hazard
+below.
+
+### From the console (for the dry run and the full report)
+
+The console still gets you the detail the buttons summarise: the dry run, the per-recipe table,
+and `data.all`. Run it **on the app, while signed in** — the function takes your household from
 your token, so it will not work from a blank tab or the Supabase dashboard.
 
 Open https://crispy-lettuce.github.io/RecipeFlowKeeper/, press F12, choose **Console**. Chrome
@@ -74,8 +124,25 @@ because these are other people's servers.
 recipes costs two fetches and skips the rest. There is no harm in running it more often than
 needed, and no need to track which recipes are outstanding.
 
-**Then hard-reload** before judging the result. Your browser has the old URLs cached against the
-cards.
+**After a console sweep, hard-reload — before touching anything else in the app.** This is the
+hazard the Settings buttons were added to remove, and it is worth understanding because it explains
+a design decision in §5.
+
+**The sweep changes the database; the open page does not know.** `saveRecipesList` goes through
+`pushList`, which upserts *every* recipe from the in-memory cache — and after a console sweep that
+cache still holds the old external URLs. So the next save of **any** recipe, including toggling one
+favourite, writes all 29 stale `image_url` and `IMAGE:` values back over what the sweep just did.
+The library silently un-self-hosts itself, and nothing looks wrong, because the external URLs still
+load.
+
+A reload runs `hydrate()`, which re-reads the real values, and the hazard is gone. Until then, treat
+the page as stale.
+
+**The Settings buttons do not have this problem**, because `runImageSweep` walks the function's
+report and writes each new URL — and its `IMAGE:` line — straight into the cached recipe before
+re-rendering. That reconciliation is not a nicety: without it the button would undo itself on the
+next save, exactly as the console does. The same reasoning produced `applyRehostedUrl` on the save
+path; this is the library-scale version of it.
 
 ### Check the dry run's sizes before a real run
 
@@ -154,15 +221,21 @@ functions carry an identical checker. Run it with `node test/image-integrity.js`
 
 ## 3. Changing or replacing an image
 
-The sweep skips anything already self-hosted, so you cannot replace a photo by re-running it. You
-have to give the recipe a new external URL first.
+Re-running the sweep will not do it — the sweep skips anything already self-hosted, which is also
+what stops it re-fetching 29 images every time. You replace a photo by giving the recipe a new
+external URL, and the save does the rest.
 
 1. Find the image you want. Either right-click the photo on the source page → **Copy image
    address**, or let `find-recipe-image` do it (below).
 2. In the app, open the recipe → **EDIT**.
 3. Paste it into the **IMAGE URL** field, replacing the `supabase.co/...` URL that is there.
-4. **Save.** The card now shows the new external image.
-5. Run the sweep. It sees a non-Supabase URL, fetches it, and stores it.
+4. **Save.** That is the end of it. The card shows the new external image at once, the save queues
+   a re-host because the pasted URL is not ours, and a second or two later the card is showing the
+   stored copy instead.
+
+**Why overwriting the Supabase URL is the trigger, and not a flag.** "Not already ours" is the
+entire condition. It needs nothing remembered and nothing reset: once a recipe has been re-hosted,
+its URL *is* ours, so editing its title or its servings never fires a re-host again.
 
 ### Finding the right URL without a browser
 
@@ -190,8 +263,10 @@ usually but not always the hero — a printable version or a step photo can outw
 byte count alone would be exactly the kind of guess the conventions here exist to prevent. It
 writes nothing: not to the recipe, not to storage.
 
-**For a recipe that has never had an image**, it is the same minus step 3's deletion: put a URL in
-the empty **IMAGE URL** field, save, sweep. Four recipes currently have no image at all.
+**For a recipe that has never had an image**, it is the same minus the overwriting: put a URL in
+the empty **IMAGE URL** field and save. Four recipes currently have no image at all. **Saving with
+the field empty asks for nothing** — there is no URL to fetch, so no call is made and nothing is
+reported.
 
 ### Two things that make this work properly
 
@@ -202,12 +277,21 @@ already seen the old photo went on showing it for a year. The sweep therefore ap
 token, `?v=<unix seconds>`, which changes on every re-host. Same path, new URL, cache busted, long
 caching kept for the common case.
 
-**The recipe text is updated too.** The sweep rewrites the `IMAGE:` line inside `syntax`, not just
-the `image_url` column. `docs/ARCHITECTURE.md` §2 says the recipe text is the source of truth, and
-the app means it — `parseAndPreview()` repopulates the form from a parse, so if the text still held
-the old CDN URL, re-parsing a recipe would silently revert its image. The original source is not
-lost: `SOURCE_URL:` still records the page the photo came from, which is where you would go for a
-better one.
+**The recipe text is updated too — everywhere, now.** Both the column and the `IMAGE:` line inside
+`syntax` are rewritten. `docs/ARCHITECTURE.md` §2 says the recipe text is the source of truth, and
+the app means it: `parseAndPreview()` repopulates the form from a parse, so a text still holding the
+old URL silently reverts the image the next time the recipe is parsed.
+
+The sweep had always done this. **The app's own save had not** — until 22 Sep, saving a recipe wrote
+the form's image URL to `image_url` and left the `IMAGE:` line alone, so changing a photo by hand
+produced a row whose column and text disagreed, and the disagreement healed itself in the wrong
+direction. It went unnoticed because the card reads the column, so the new photo appeared and the
+stale text only surfaced on a later edit. `withUpdatedImageLine` now reconciles the line on every
+save, in the same place the title line has always been reconciled. The §7 query that counts
+disagreements exists for precisely this class of fault.
+
+The original source is not lost: `SOURCE_URL:` still records the page the photo came from, which is
+where you would go for a better one.
 
 **Uploading a file from your device is not supported.** There is no file picker; the app only ever
 takes a URL. If you have a photo of your own, it needs to be somewhere reachable by URL first. This
@@ -215,40 +299,166 @@ was never in the Build Brief and has not been missed so far.
 
 ---
 
-## 4. Why it is a manual sweep and not automatic
+## 4. Why it was a manual sweep until 22 Sep
 
-Three reasons, in order of how much they mattered:
+The reasoning from when this was built. One part of it still binds the design; the rest turned
+out to be unexamined.
 
-1. **Saving a recipe should not depend on someone else's server.** If re-hosting ran on save, a
-   slow or unavailable CDN would make saving slow or make it fail, and "did my recipe save" would
-   become a question with a complicated answer. As it stands, saving is instant and always
-   succeeds; the photo catches up later.
-2. **It treats everything identically.** A sweep over the table has no special case for "recipes
-   that existed before the feature" versus "recipes added since". There is one code path.
+1. **Saving a recipe should not depend on someone else's server.** If re-hosting ran *inside*
+   the save, a slow or unavailable CDN would make saving slow or make it fail, and "did my
+   recipe save" would become a question with a complicated answer. **This one still holds, and
+   it is the constraint the built version respects** — it rules out re-hosting *synchronously*,
+   which is not the same thing as ruling out doing it automatically. Everything in §5 turns on
+   that distinction.
+2. **It treats everything identically.** A sweep over the table has no special case for
+   "recipes that existed before the feature" versus "recipes added since". One code path. Still
+   true, and still the reason the sweep is kept rather than deleted.
 3. **A browser cannot do it anyway.** Most recipe CDNs send no permissive CORS headers, so
    JavaScript in the page cannot read the bytes even to re-upload them. That is what forces the
-   work server-side into an Edge Function, and once it is a separate server-side job, a sweep is
-   its natural shape.
+   work server-side into an Edge Function. *(True for a URL on someone else's site. Not true
+   for a file you pick off your own device — see Option D.)*
+
+**And one thing nobody wrote down:** until 22 Sep the app had never called an Edge Function at
+all. `functions.invoke` appeared **zero** times in `index.html`. Every snippet in this document
+was something a person typed into devtools. That was not a deliberate design decision anywhere
+in the record — it was simply the shape the feature was first built in, and it was the whole
+reason this felt like a chore. Worth remembering the next time something here looks like a
+considered constraint: check whether anyone ever considered it.
 
 ---
 
-## 5. Making it automatic, if you want to
+## 5. How the automatic re-host works
 
-Not done, and a genuine option rather than a vague aspiration. `pg_cron` (1.6.4) and `pg_net`
-(0.20.4) are **available on this project but not installed**, which is all that is needed:
+Built 22 Sep 2026. This section used to weigh four options and recommend one; the recommendation
+was taken, so what follows is how the built thing behaves, with the rejected options kept at the
+end because the reasons they were rejected are still the reasons not to revisit them.
 
-- enable both extensions
-- store a token in Supabase Vault for the cron job to call the function with
-- schedule a nightly `pg_net.http_post` to the function's URL
+### The mechanism
 
-The catch worth weighing first: the function currently takes the household from the **caller's
-JWT**, so a cron job needs either a service-role call with the household hard-coded, or a small
-change to let a trusted caller sweep every household. Neither is difficult; both need deciding
-rather than guessing.
+`rehost-images` takes an optional `recipeId`, so it can do one recipe instead of sweeping all of
+them. Immediately after a save, the app queues a call for that recipe — but only if its image URL
+is set and does not already point at our own storage:
 
-**Whether it is worth it** depends on how often recipes get added. At a handful a month, one
-console paste after a batch of conversions is less machinery than a scheduled job that can fail
-silently in the night.
+```js
+saveRecipesList(recipes);                     // the row goes first
+rehostImageFor(recipe.id, fields.imageUrl);   // then the re-host, behind it in the queue
+```
+
+**Order matters and is guaranteed, not hoped for.** `queueWrite` is strict FIFO on a single
+chain, so the recipe row is upserted before the function is asked about it. A function asked to
+re-host a recipe that does not exist yet would report nothing to do, and the image would stay
+external until the next sweep — quietly, which is the worst kind of wrong.
+
+**The `recipeId` filter can only narrow.** The function still applies the household filter from
+the caller's JWT and adds `.eq('id', …)` on top of it, and rejects anything that is not a UUID
+before it reaches the query. A parameter that could *widen* what a caller sees would be a
+different kind of change entirely.
+
+### What happens in each case
+
+| You do | What fires | What you see |
+| --- | --- | --- |
+| **Add a recipe that has an image** — paste, PARSE & PREVIEW fills IMAGE URL, Save | The save completes, then a queued call for that one recipe | Card appears with the source's photo; a second or two later it is the stored copy. No console, no reload |
+| **Replace an image** — EDIT, paste a new address over the `supabase.co` one, Save | The same, because the pasted URL is not self-hosted | New photo on the card once the call returns |
+| **Add a recipe with no image** — Save with IMAGE URL empty | Nothing. There is no URL to fetch | Exactly as before. Add one later via EDIT and it behaves like the row above |
+| **Edit a recipe whose photo is already ours** — change the title, the servings, a step | Nothing. The URL is already self-hosted | Nothing. This is what keeps it from re-firing forever |
+| **Toggle a favourite** | Nothing new | Nothing — but see the write-back below, which is what makes this true |
+| **Save with no connection** | The call is queued, fails, and is reported | The recipe saves; the standard "couldn't save…" toast; the photo stays external until a sweep |
+
+### Why the response has to be written back
+
+The function returns the new public URL, and the app writes it into the cached recipe —
+`applyRehostedUrl`. **This is load-bearing, not polish.** `pushList` upserts *every* recipe from
+the in-memory cache on every save, and nothing refreshes that cache after `hydrate()`. Leave the
+cache holding the old external URL and the very next save of **any** recipe — toggling one
+favourite is enough — pushes it back over the row the function just fixed. The feature would undo
+itself, silently, and nothing would look wrong because the external URL still loads.
+
+So the write-back sets **both** the column and the `IMAGE:` line, for the reason in §3: the text
+is the source of truth, and a stale line reverts the column on the next parse.
+
+### The race, and the guard
+
+The call is in flight for a second or two, and nothing stops the person editing the same recipe
+again in that window. A response that arrives for a URL that is no longer current must be thrown
+away, or a slower answer to an older question overwrites a newer choice:
+
+```js
+if((recipes[idx].imageUrl || '') !== sentUrl) return;
+```
+
+The URL that was sent is the test. If it still holds, nothing has changed underneath us; if it
+does not, the reply is stale by definition. The response is matched to its recipe by `id`, which
+the function now returns on every report row, rather than by position or title.
+
+### What it deliberately does not cover
+
+- **A restore from backup** calls `saveRecipesList` with the whole library at once and never goes
+  near the save handler, so nothing fires. Run the sweep afterwards. Having a restore fire thirty
+  calls at once would be a worse trade than pressing one button.
+- **A save made offline** never reaches the function. The recipe is saved; the photo stays
+  external until a sweep.
+- **The recipes that were already self-hosted** — correctly, they are done.
+
+The sweep therefore has not gone away. It has stopped being the only mechanism, and it has moved
+out of the console into Settings (§2).
+
+### What is tested, and what that is worth
+
+`test/smoke.js` covers the trigger condition, the request shape, the write-back into both the
+column and the text, the no-revert-on-next-save property, the race guard, and the two silent
+cases. Each of those checks was mutation-tested — the behaviour was broken on purpose and the
+suite had to name the failure. **Two of them passed a broken app on the first attempt** (the race
+guard, and the save-path `IMAGE:` line), which is why the checks read the way they do now.
+
+What none of it proves: the suite stubs Supabase entirely, so it says nothing about whether the
+function actually re-hosts anything. §7 is how you answer that.
+
+### The options that were not taken
+
+#### Option B — a nightly `pg_cron` job
+
+`pg_cron` (1.6.4) and `pg_net` (0.20.4) are **available on this project but not installed**;
+`supabase_vault` (0.3.1) **is** installed. So it was buildable: enable both extensions, store a
+token in Vault, schedule a nightly `pg_net.http_post` to the function's URL.
+
+Two real costs. The function identifies the household from the caller's JWT, so a cron job needs
+either a service-role call with the household hard-coded or a change letting a trusted caller
+sweep every household — a decision, not a guess. And **a scheduled job fails silently in the
+night**; you would find out when an image 404s, not when the job broke.
+
+Worth it only if images must become self-hosted without anyone opening the app. They do not — an
+external image works fine in the meantime, and the save path now covers everything except the two
+cases in §2.
+
+#### Option C — a database trigger on `recipes.image_url`
+
+The most literally automatic: a trigger firing `pg_net.http_post` whenever `image_url` changes.
+
+**Not recommended.** It needs the same extensions and stored token as Option B, and it puts an
+outbound HTTP call in the commit path of every recipe write — a well-known source of latency and
+failures that are hard to trace. It would also fire 33 times during a bulk ingest unless
+specifically guarded. All of that to move a call the app makes perfectly well itself.
+
+#### Option D — upload straight from the browser
+
+Blocked **for an image on someone else's site**: no CORS headers, so the page cannot read the
+bytes. That is settled and is why the Edge Function exists.
+
+**But not blocked for a file on your own device.** A file picker writing into the bucket involves
+no cross-origin fetch, and the Storage RLS policies already permit a signed-in household member to
+write to their own folder. That is a genuinely separate feature — "use my own photo" rather than
+"copy this recipe site's photo" — and there is no file picker in the app today. Worth knowing it
+is possible and small, if you ever want to photograph your own cooking.
+
+#### Summary
+
+| | New infrastructure | Covers | Fails |
+| --- | --- | --- | --- |
+| **A — app calls on save** *(built)* | none | every recipe saved in the app, online | visibly, as a toast |
+| B — nightly cron | 2 extensions, Vault token | everything, within a day | silently, at night |
+| C — database trigger | 2 extensions, Vault token | every write, including bulk | in the commit path |
+| D — browser upload | none | only files from your device | visibly |
 
 ---
 
@@ -267,6 +477,9 @@ silently in the night.
 | Sweep reports `JPEG ends correctly but carries too little image data` | The density check — the file is terminated but not full | Working as intended. Find a different URL (§3). If you believe the photo is genuinely fine, check its bytes/pixel in `data.all` before changing the threshold |
 | Sweep reports `failed` with `truncated JPEG: no end-of-image marker` | The source is serving a broken file | Working as intended — it stopped rather than storing it. Find a different URL (§3) |
 | Sweep reports `failed` with `transfer truncated: server declared N bytes, got M` | The download died mid-flight | Usually transient. Re-run the sweep; if it repeats, the host is at fault and needs a different URL |
+| Saved a recipe and the photo is still on the source's server | The queued call failed — most often no connection at the moment of saving | You will have seen a "couldn't save…" toast. **Settings → RECIPE PHOTOS → RE-HOST EXTERNAL IMAGES** picks it up |
+| Restored a backup and everything is hotlinked again | Correct and expected. A restore does not go through the save path (§5) | Press **RE-HOST EXTERNAL IMAGES** once afterwards |
+| Edited a photo, and after a later edit the old one is back | The `image_url` column and the `IMAGE:` line in the recipe text disagree, so re-parsing reverts the column | Fixed on the save path since 22 Sep (§3). Run the third query in §7; if it is not 0, re-save the recipes it names |
 | `find-recipe-image` returns no candidates | The page hides its images behind JavaScript, or has no `og:image` | Fall back to right-click → Copy image address in a browser |
 | `source page returned 403` from `find-recipe-image` | The site blocks non-browser traffic harder than its CDN does | Same fallback — get the URL by hand and put it on the recipe |
 
@@ -307,6 +520,11 @@ where image_url is not null and image_url <> '' and syntax like '%IMAGE:%'
 
 All three should be **0**.
 
+The third is the one to run after any change to how images are saved. Until 22 Sep the app's own
+save could put the column and the text out of step (§3), and nothing in the app complained — the
+card reads the column, so it looked right. A count above 0 means some recipe is one parse away
+from silently reverting its photo.
+
 **Do not verify by comparing byte counts between the dry run and the real run.** That check was
 here until 22 Sep and it is worthless: both runs fetch the same source, so a file that is broken at
 source produces two identical byte counts and a clean bill of health. That is precisely how a
@@ -342,8 +560,9 @@ For a single recipe, `find-recipe-image` reports the same check on its current i
 | | |
 | --- | --- |
 | Function source | `supabase/functions/rehost-images/index.ts` (the sweep) and `supabase/functions/find-recipe-image/index.ts` (candidate finder, read-only) |
-| Deployed as | `rehost-images` (v7) and `find-recipe-image` (v4), both `verify_jwt: true` |
-| Tests | `node test/image-integrity.js` — 24 checks over the integrity checker |
+| Deployed as | `rehost-images` (v8) and `find-recipe-image` (v4), both `verify_jwt: true` |
+| Called from | **The app**, on save (`rehostImageFor`) and from Settings (`runImageSweep`), and by hand from the console. v8 added the optional `recipeId`; a call without it behaves exactly as v7 |
+| Tests | `node test/image-integrity.js` — 31 checks over the integrity checker and `parseRecipeFilter`. The save path is covered by `node test/build.js && node test/smoke.js` |
 | Bucket | `recipe-images` — **public**, 10 MB file limit, MIME allowlist of jpeg/png/webp/gif/avif |
 | Storage path | `<household_id>/<recipe_id>.<ext>` |
 | Public URL | `<project>/storage/v1/object/public/recipe-images/<path>`, with `?v=<unix seconds>` appended on re-host |

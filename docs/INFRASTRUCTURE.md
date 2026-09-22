@@ -159,8 +159,10 @@ correctness decision, not a convenience one: the alternative, signed URLs, expir
 `image_url` is written verbatim into both the JSON export and the nightly `pg_dump`, so a
 signed URL would rot inside the backups.
 
-The app still references Supabase Storage **nowhere**, deliberately: re-hosting is done by a
-decoupled Edge Function sweep and the app just renders whatever is in `image_url`.
+The app does not read or write Storage directly — the bytes are moved server-side and the app
+renders whatever is in `image_url`. It does, since 22 Sep, **call the Edge Function that moves
+them**, after a save and from two buttons in Settings. The single string it knows about Storage is
+the public URL prefix it compares against, to decide whether a photo is already ours.
 `docs/IMAGES.md` is the runbook.
 
 ### Edge Functions
@@ -170,7 +172,7 @@ decoupled Edge Function sweep and the app just renders whatever is in `image_url
 
 | Function | Version | What it does |
 | --- | --- | --- |
-| `rehost-images` | v7 | The sweep: copies external images into Storage. `{"dryRun": true}` to preview, `{"verify": true}` to re-check what is already stored |
+| `rehost-images` | v8 | Copies external images into Storage. `{"recipeId": "…"}` for one recipe — what the app sends after a save, added in v8; omit it for the full sweep, which is what v7 and earlier always did. `{"dryRun": true}` to preview, `{"verify": true}` to re-check what is already stored |
 | `find-recipe-image` | v4 | Read-only. Finds and measures candidate hero images for a recipe |
 
 P3's calendar push would be a third; that one does not exist yet.
@@ -178,6 +180,11 @@ P3's calendar push would be a third; that one does not exist yet.
 **These are deployed straight to Supabase, not through GitHub Pages**, which is why the image
 fixes reached the live app without a merge. A change to their source in this repo is a record,
 not a deployment — the two can drift, and have.
+
+**The corollary bit on 22 Sep:** v8's `recipeId` was deployed before the app that sends it, which
+was safe only because a call without the parameter behaves exactly as v7. Deploying a function and
+merging the app are two separate acts, in whichever order; if a change is not backwards compatible,
+that ordering is a decision to make explicitly rather than discover.
 
 ### Migration history
 

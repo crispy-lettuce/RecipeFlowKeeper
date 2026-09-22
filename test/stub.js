@@ -58,6 +58,24 @@
   }
   function thenable(v){ return { then(res, rej){ return Promise.resolve(v).then(res, rej); } }; }
 
+  /* Edge Function calls.
+     Recorded like writes, and answerable per test. Without this,
+     `sb.functions.invoke` is a TypeError that queueWrite swallows into a
+     toast — the suite stays green while the feature is entirely broken.
+     That is not hypothetical: the missing `update()` above did exactly
+     that. A test sets window.__INVOKE_REPLY__ to control the response, so
+     the error path is reachable and not just the happy one. */
+  window.__INVOKES__ = [];
+  window.__INVOKE_REPLY__ = null;
+  function invoke(name, opts){
+    const call = { name, body: (opts && opts.body) || null };
+    window.__INVOKES__.push(call);
+    const reply = typeof window.__INVOKE_REPLY__ === 'function'
+      ? window.__INVOKE_REPLY__(call)
+      : window.__INVOKE_REPLY__;
+    return Promise.resolve(reply || { data: null, error: null });
+  }
+
   window.supabase = {
     createClient(){
       return {
@@ -68,7 +86,8 @@
           signInWithPassword(){ return Promise.resolve({ error: null }); },
           signOut(){ return Promise.resolve({ error: null }); }
         },
-        storage: { from(){ return { createSignedUrl(){ return Promise.resolve({data:null, error:null}); } }; } }
+        storage: { from(){ return { createSignedUrl(){ return Promise.resolve({data:null, error:null}); } }; } },
+        functions: { invoke }
       };
     }
   };

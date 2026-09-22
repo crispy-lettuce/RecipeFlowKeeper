@@ -54,16 +54,16 @@ function loadChecker() {
     .replace(/:\s*Uint8Array\b/g, '');
 
   const factory = new Function(js +
-    '\nreturn { jpegDimensions, imageIntegrity, isobmffTruncated, MIN_BYTES_PER_PIXEL };');
+    '\nreturn { jpegDimensions, imageIntegrity, isobmffTruncated, parseRecipeFilter, MIN_BYTES_PER_PIXEL };');
   const out = factory();
-  for (const name of ['jpegDimensions', 'imageIntegrity', 'isobmffTruncated']) {
+  for (const name of ['jpegDimensions', 'imageIntegrity', 'isobmffTruncated', 'parseRecipeFilter']) {
     if (typeof out[name] !== 'function') throw new Error(`${name} missing from ${SRC} — checks would be vacuous`);
   }
   if (typeof out.MIN_BYTES_PER_PIXEL !== 'number') throw new Error('MIN_BYTES_PER_PIXEL missing');
   return out;
 }
 
-const { jpegDimensions, imageIntegrity, isobmffTruncated, MIN_BYTES_PER_PIXEL } = loadChecker();
+const { jpegDimensions, imageIntegrity, isobmffTruncated, parseRecipeFilter, MIN_BYTES_PER_PIXEL } = loadChecker();
 
 /* A JPEG the checker can read: SOI, a SOF0 declaring the dimensions, a
    SOS, `scanBytes` of payload, and optionally the EOI marker. Not a
@@ -209,6 +209,28 @@ function check(name, condition, detail) {
 {
   check('a file too small to be an image is caught',
     /too small/.test(imageIntegrity(new Uint8Array([0xFF, 0xD8, 0x00]), null) || ''));
+}
+
+/* ---- parseRecipeFilter ----
+   The app now asks for one recipe rather than a whole sweep, and the id
+   comes off the wire. This is the only part of the request handling that
+   can be reached from Node, which is why it was put where it was. */
+{
+  const ID = '11111111-1111-4111-8111-111111111111';
+  check('an absent recipeId means the whole sweep', parseRecipeFilter({}) === null);
+  check('an empty recipeId means the whole sweep', parseRecipeFilter({ recipeId: '   ' }) === null);
+  check('a valid uuid is returned', parseRecipeFilter({ recipeId: ID }) === ID);
+  check('surrounding whitespace is tolerated', parseRecipeFilter({ recipeId: ` ${ID} ` }) === ID);
+  /* Rejected here rather than handed to Postgres, which answers a bad uuid
+     with an opaque 22P02 that tells the caller nothing useful. */
+  let threw = false;
+  try { parseRecipeFilter({ recipeId: 'not-a-uuid' }); } catch (e) { threw = /not a uuid/.test(e.message); }
+  check('a malformed id is rejected, not passed to the database', threw);
+  let threwInjection = false;
+  try { parseRecipeFilter({ recipeId: `${ID}' or '1'='1` }); } catch (e) { threwInjection = true; }
+  check('anything appended to a valid id is rejected too', threwInjection);
+  check('a non-string recipeId is ignored rather than coerced',
+        parseRecipeFilter({ recipeId: 12345 }) === null);
 }
 
 /* The checker is shared by both functions. If they drift apart, one of

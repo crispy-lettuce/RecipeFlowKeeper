@@ -198,6 +198,29 @@ function imageIntegrity(bytes: Uint8Array, contentLength: number | null): string
   return null;
 }
 
+/* Which recipes a request is asking about.
+ *
+ * Deliberately declared above the point where test/image-integrity.js
+ * stops lifting code out of this file; anything after it cannot be tested
+ * in Node without dragging in Deno, fetch and the supabase client.
+ * Validation that can be tested is worth more than validation sitting next
+ * to the code it guards.
+ *
+ * (That boundary is found by searching for a literal string in this file,
+ * so do not quote it in a comment — doing so once truncated the lifted
+ * region mid-sentence and broke the whole suite with a syntax error.)
+ *
+ * Returns null for "every recipe in the household", which is the sweep.
+ * A malformed id is rejected rather than passed to Postgres, where it
+ * would surface as an opaque 22P02 instead of a clear answer. */
+function parseRecipeFilter(body: { recipeId?: unknown }): string | null {
+  const raw = body && typeof body.recipeId === 'string' ? body.recipeId.trim() : '';
+  if (!raw) return null;
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID.test(raw)) throw new Error(`recipeId is not a uuid: ${raw}`);
+  return raw;
+}
+
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 /* CORS. The app calls this from the browser, cross-origin — the page is on
@@ -248,22 +271,29 @@ Deno.serve(async (req: Request) => {
 
   const admin = createClient(url, serviceKey);
 
-  let body: { dryRun?: boolean; limit?: number; verify?: boolean } = {};
+  let body: { dryRun?: boolean; limit?: number; verify?: boolean; recipeId?: string } = {};
   try { body = await req.json(); } catch { /* no body is fine — sweep everything */ }
   const dryRun = body.dryRun === true;
   const verify = body.verify === true;
   const limit = typeof body.limit === 'number' ? body.limit : 500;
+  /* One recipe, for the app's save-time call; null for the whole sweep. */
+  let onlyRecipeId: string | null = null;
+  try { onlyRecipeId = parseRecipeFilter(body); }
+  catch (e) { return json({ error: String((e as Error).message ?? e) }, 400); }
 
   const { data: households, error: hErr } = await admin
     .from('household_members').select('household_id').eq('user_id', user.id);
   if (hErr || !households?.length) return json({ error: 'No household for this user' }, 403);
   const householdIds = households.map(h => h.household_id);
 
-  const { data: recipes, error: rErr } = await admin
-    .from('recipes').select('id, household_id, title, image_url, syntax')
+  /* The household filter stays even when one recipe is named: the id comes
+     from the caller, and without it someone could re-host a row belonging
+     to a household they are not in. Narrowing, never widening. */
+  let q = admin.from('recipes').select('id, household_id, title, image_url, syntax')
     .in('household_id', householdIds)
-    .not('image_url', 'is', null)
-    .limit(limit);
+    .not('image_url', 'is', null);
+  if (onlyRecipeId) q = q.eq('id', onlyRecipeId);
+  const { data: recipes, error: rErr } = await q.limit(limit);
   if (rErr) return json({ error: rErr.message }, 500);
 
   const selfHost = `${url}/storage/v1/object/public/${BUCKET}/`;
@@ -332,8 +362,8 @@ Deno.serve(async (req: Request) => {
 
   for (const r of recipes ?? []) {
     const src = (r.image_url ?? '').trim();
-    if (!src) { skipped++; report.push({ title: r.title, outcome: 'skipped', why: 'no image_url' }); continue; }
-    if (src.startsWith(selfHost)) { skipped++; report.push({ title: r.title, outcome: 'skipped', why: 'already self-hosted' }); continue; }
+    if (!src) { skipped++; report.push({ id: r.id, title: r.title, outcome: 'skipped', why: 'no image_url' }); continue; }
+    if (src.startsWith(selfHost)) { skipped++; report.push({ id: r.id, title: r.title, outcome: 'skipped', why: 'already self-hosted' }); continue; }
 
     try {
       const ctl = new AbortController();
@@ -370,7 +400,7 @@ Deno.serve(async (req: Request) => {
 
       if (dryRun) {
         rehosted++;
-        report.push({ title: r.title, outcome: 'would rehost', bytes: bytes.byteLength, contentType: ct, to: publicUrl });
+        report.push({ id: r.id, title: r.title, outcome: 'would rehost', bytes: bytes.byteLength, contentType: ct, to: publicUrl });
       } else {
         /* upsert so a re-run replaces rather than erroring, which makes
            this safe to run repeatedly after a partial failure. */
@@ -409,11 +439,11 @@ Deno.serve(async (req: Request) => {
         if (updErr) throw new Error(`stored, but column not updated: ${updErr.message}`);
 
         rehosted++;
-        report.push({ title: r.title, outcome: 'rehosted', bytes: bytes.byteLength, contentType: ct, from: src, to: publicUrl });
+        report.push({ id: r.id, title: r.title, outcome: 'rehosted', bytes: bytes.byteLength, contentType: ct, from: src, to: publicUrl });
       }
     } catch (e) {
       failed++;
-      report.push({ title: r.title, outcome: 'failed', from: src, why: String((e as Error).message ?? e) });
+      report.push({ id: r.id, title: r.title, outcome: 'failed', from: src, why: String((e as Error).message ?? e) });
     }
 
     await sleep(POLITE_DELAY_MS);

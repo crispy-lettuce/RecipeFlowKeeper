@@ -16,11 +16,17 @@ const path = require('path');
   page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
   page.on('console', m => {
     // Google Fonts is blocked by this sandbox's egress proxy — not an app fault.
-    /* ERR_CERT_AUTHORITY_INVALID is this sandbox's TLS-intercepting proxy
-       refusing the Google Fonts stylesheet. The browser's message for a cert
-       failure carries neither the URL nor the other tokens, so it needs
-       naming explicitly or the suite can never go green here. */
-    if (m.type() === 'error' && !/ERR_CONNECTION_RESET|ERR_BLOCKED|ERR_CERT_AUTHORITY_INVALID|fonts\.googleapis/.test(m.text())) {
+    /* Network errors this sandbox produces for anything outside it, none of
+       which is an app fault:
+         ERR_CERT_AUTHORITY_INVALID  the TLS-intercepting proxy, on Google Fonts
+         ERR_TUNNEL_CONNECTION_FAILED  the proxy refusing outbound entirely,
+             which is what the R3 fixture's external image URL hits — and that
+             fixture has to carry a real external URL, because "not yet
+             self-hosted" is the whole state it exists to represent.
+       The browser's message for these carries neither the URL nor the other
+       tokens, so each needs naming or the suite can never go green here.
+       Everything else still fails the run. */
+    if (m.type() === 'error' && !/ERR_CONNECTION_RESET|ERR_BLOCKED|ERR_CERT_AUTHORITY_INVALID|ERR_TUNNEL_CONNECTION_FAILED|fonts\.googleapis/.test(m.text())) {
       errors.push('CONSOLE: ' + m.text());
     }
   });
@@ -842,6 +848,182 @@ const path = require('path');
   await page.waitForTimeout(300);
   check('group reset clears every tick', (await page.locator('#groupFlowMount .done').count()) === 0);
   check('and stays on the group', await page.isVisible('#view-group-viewer'));
+
+  /* The add-recipe modal is left open by an earlier section, and an open
+     overlay intercepts every click. This block navigates and clicks cards,
+     so it needs a clean screen first. */
+  await page.click('#closeAddModal').catch(() => {});
+  await page.waitForTimeout(300);
+
+  /* ================= Automatic image re-hosting (IMAGES.md §5 Option A) =================
+     Everything here asserts on the recorded INVOKE or the recorded WRITE, not
+     on loadRecipes(). The cache is updated before the write is queued, so a
+     cache-only assertion passes while the call is throwing — the mistake that
+     made the meal-type check vacuous. */
+
+  // The pure helper first: it is what keeps image_url and the IMAGE: line in step.
+  const imageLine = await page.evaluate(() => ({
+    replaced: withUpdatedImageLine('TITLE: X\nIMAGE: http://old/a.jpg\nTIME: 5 min', 'http://new/b.jpg'),
+    inserted: withUpdatedImageLine('TITLE: X\nSOURCE: Y\nTIME: 5 min', 'http://new/b.jpg'),
+    removed:  withUpdatedImageLine('TITLE: X\nIMAGE: http://old/a.jpg\nTIME: 5 min', ''),
+    noneToRemove: withUpdatedImageLine('TITLE: X\nTIME: 5 min', ''),
+  }));
+  check('an existing IMAGE line is replaced',
+        /IMAGE: http:\/\/new\/b\.jpg/.test(imageLine.replaced) && !/old/.test(imageLine.replaced));
+  check('a missing IMAGE line is inserted after SOURCE',
+        /SOURCE: Y\nIMAGE: http:\/\/new\/b\.jpg/.test(imageLine.inserted), imageLine.inserted.replace(/\n/g,' | '));
+  check('clearing the URL removes the line rather than blanking it',
+        !/IMAGE:/.test(imageLine.removed), imageLine.removed.replace(/\n/g,' | '));
+  check('removing a line that is not there changes nothing',
+        imageLine.noneToRemove === 'TITLE: X\nTIME: 5 min');
+
+  /* The fixture recipe R3 carries an external image, which is the only
+     state this feature acts on. Open it, save it unchanged, and the app
+     should ask the Edge Function to re-host exactly that recipe. */
+  const REHOSTED = 'https://mhkayefzrtceesgizkjs.supabase.co/storage/v1/object/public/recipe-images/h/r.jpg?v=123';
+  await page.evaluate((to) => {
+    window.__INVOKES__.length = 0;
+    window.__INVOKE_REPLY__ = (call) => ({
+      data: { report: [{ id: call.body.recipeId, outcome: 'rehosted', to }] }, error: null
+    });
+  }, REHOSTED);
+
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+  const r3 = page.locator('.rcard', { hasText: 'Test Traybake' }).first();
+  await r3.click();
+  await page.waitForTimeout(400);
+  await page.click('#editRecipeBtn');
+  await page.waitForTimeout(400);
+  const externalUrl = await page.inputValue('#f-image');
+  check('the fixture recipe really does have an external image',
+        externalUrl.startsWith('https://cdn.example.com/'), externalUrl);
+  await page.click('#saveBtn');
+  await page.waitForFunction(() => (window.__INVOKES__ || []).length > 0, null, { timeout: 4000 })
+    .catch(() => {});
+
+  const invokes = await page.evaluate(() => window.__INVOKES__ || []);
+  check('saving a recipe with an external image asks for a re-host',
+        invokes.length === 1 && invokes[0].name === 'rehost-images', JSON.stringify(invokes));
+  check('and asks for that one recipe, not a whole sweep',
+        !!(invokes[0] && invokes[0].body && invokes[0].body.recipeId), JSON.stringify(invokes[0] && invokes[0].body));
+
+  const applied = await page.evaluate((to) => {
+    const r = loadRecipes().find(x => x.title === 'Test Traybake');
+    return { url: r.imageUrl, syntaxHasNew: r.syntax.includes('IMAGE: ' + to), syntaxHasOld: /cdn\.example\.com/.test(r.syntax) };
+  }, REHOSTED);
+  check('the returned URL is written back to the recipe', applied.url === REHOSTED, applied.url);
+  check('and into the IMAGE line, not just the column',
+        applied.syntaxHasNew && !applied.syntaxHasOld, JSON.stringify(applied));
+
+  /* THE REGRESSION TEST. pushList upserts every cached recipe, so if the
+     write-back above had not happened, this next save would push the stale
+     external URL straight back over the row. Assert on what was SENT. */
+  const beforeToggle = await page.evaluate(() =>
+    (window.__WRITES__ || []).filter(w => w.table === 'recipes' && w.op === 'upsert').length);
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+  await page.locator('.rcard', { hasText: 'Test Traybake' }).first().locator('.rcard-favourite').click();
+  await page.waitForTimeout(500);
+  const afterToggle = await page.evaluate(() =>
+    (window.__WRITES__ || []).filter(w => w.table === 'recipes' && w.op === 'upsert').length);
+  /* Companion assertion: without this, "the URL did not revert" would pass
+     just as well if no save had happened at all. */
+  check('a later save really did write the whole library', afterToggle > beforeToggle,
+        beforeToggle + ' -> ' + afterToggle);
+  const pushed = await page.evaluate(() => {
+    const last = (window.__WRITES__ || []).filter(w => w.table === 'recipes' && w.op === 'upsert').pop();
+    const row = (last.rows || []).find(r => r.title === 'Test Traybake');
+    return row ? { image_url: row.image_url, syntax_has_cdn: /cdn\.example\.com/.test(row.syntax || '') } : null;
+  });
+  check('a later save does NOT revert the re-hosted URL',
+        pushed && pushed.image_url === REHOSTED, JSON.stringify(pushed));
+  check('nor revert the IMAGE line', pushed && !pushed.syntax_has_cdn, JSON.stringify(pushed));
+
+  /* A recipe already self-hosted must not ask again — this is what makes
+     the trigger self-limiting rather than needing a flag. */
+  await page.evaluate(() => { window.__INVOKES__.length = 0; });
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+  await page.locator('.rcard', { hasText: 'Test Traybake' }).first().click();
+  await page.waitForTimeout(400);
+  await page.click('#editRecipeBtn');
+  await page.waitForTimeout(400);
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  check('saving an already self-hosted recipe asks for nothing',
+        (await page.evaluate(() => window.__INVOKES__.length)) === 0);
+
+  /* The save path's own IMAGE: line update.
+     Until 22 Sep nothing wrote that line — only TITLE: was reconciled with
+     the form — so changing the image URL left image_url and the recipe text
+     disagreeing, and parseAndPreview would later read the stale line back
+     over the field. Asserting on the pushed row, not on loadRecipes(): the
+     cache is updated before the write is queued. */
+  const CHANGED = 'https://cdn.example.com/changed-photo.jpg';
+  await page.evaluate(() => { window.__INVOKES__.length = 0; window.__INVOKE_REPLY__ = { data: { report: [] }, error: null }; });
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+  await page.locator('.rcard', { hasText: 'Test Traybake' }).first().click();
+  await page.waitForTimeout(400);
+  await page.click('#editRecipeBtn');
+  await page.waitForTimeout(400);
+  await page.fill('#f-image', CHANGED);
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const savedRow = await page.evaluate(() => {
+    const last = (window.__WRITES__ || []).filter(w => w.table === 'recipes' && w.op === 'upsert').pop();
+    const row = (last.rows || []).find(r => r.title === 'Test Traybake');
+    return row ? { image_url: row.image_url, imageLine: (row.syntax.match(/^IMAGE:.*$/m) || [''])[0] } : null;
+  });
+  check('editing the image URL writes it to the column',
+        savedRow && savedRow.image_url === CHANGED, JSON.stringify(savedRow));
+  check('and updates the IMAGE line in the recipe text to match',
+        savedRow && savedRow.imageLine === `IMAGE: ${CHANGED}`, JSON.stringify(savedRow));
+
+  /* The race guard.
+     The call is in flight for a second or two, and the person may change the
+     image again in that time. A response for a URL that is no longer current
+     must be discarded, or an older answer silently overwrites a newer choice. */
+  const LATER = 'https://cdn.example.com/even-newer.jpg';
+  const STALE_REPLY = 'https://mhkayefzrtceesgizkjs.supabase.co/storage/v1/object/public/recipe-images/h/stale.jpg?v=1';
+  await page.evaluate(({ later, stale }) => {
+    window.__INVOKES__.length = 0;
+    /* Answer as though the re-host of the PREVIOUS url had just completed,
+       while the recipe has since moved on to `later`. */
+    window.__INVOKE_REPLY__ = (call) => {
+      const r = loadRecipes().find(x => x.id === call.body.recipeId);
+      if (r) r.imageUrl = later;          // the person edits again, mid-flight
+      return { data: { report: [{ id: call.body.recipeId, outcome: 'rehosted', to: stale }] }, error: null };
+    };
+  }, { later: LATER, stale: STALE_REPLY });
+
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+  await page.locator('.rcard', { hasText: 'Test Traybake' }).first().click();
+  await page.waitForTimeout(400);
+  await page.click('#editRecipeBtn');
+  await page.waitForTimeout(400);
+  await page.fill('#f-image', 'https://cdn.example.com/in-flight.jpg');
+  await page.click('#saveBtn');
+  await page.waitForFunction(() => (window.__INVOKES__ || []).length > 0, null, { timeout: 4000 }).catch(() => {});
+  await page.waitForTimeout(500);
+  const afterRace = await page.evaluate(() => loadRecipes().find(r => r.title === 'Test Traybake').imageUrl);
+  check('a response for a URL that has since changed is discarded',
+        afterRace === LATER, afterRace);
+
+  // A recipe with no image at all must not ask either.
+  await page.evaluate(() => { window.__INVOKES__.length = 0; });
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+  await page.locator('.rcard', { hasText: 'Test Soup' }).first().click();
+  await page.waitForTimeout(400);
+  await page.click('#editRecipeBtn');
+  await page.waitForTimeout(400);
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  check('saving a recipe with no image asks for nothing',
+        (await page.evaluate(() => window.__INVOKES__.length)) === 0);
 
   await page.screenshot({ path: path.join(__dirname, 'settings.png'), fullPage: false });
 

@@ -43,7 +43,7 @@ verified status. **Nothing here is inferred from a previous summary.**
 | R4 | Dated cooking notes | **Not started.** Phase 3. The `recipe_notes` table already exists, empty and unreferenced by the app — it was created in Phase 1 anticipating this. Not dead schema; just early. |
 | R5 | Scale by servings | **Done.** Multiplier buttons retired everywhere. Viewer reads `SERVES 6 (SCALED FROM 4)`. |
 | R6 | Servings mandatory | **Done, both sides, 20 Sep.** Save is blocked without servings, and all 33 recipes now carry one. The retrofit rode on the reprocess, as planned. |
-| R7 | Recipe images | **Done, 21 Sep.** All 29 images self-hosted in Supabase Storage via a decoupled Edge Function sweep. See §2. |
+| R7 | Recipe images | **Done, 21 Sep.** All 29 images self-hosted in Supabase Storage via an Edge Function. Automatic on save since 22 Sep. See §2 and §2d. |
 
 ### Shopping list
 
@@ -116,14 +116,16 @@ status and the decisions.
 | Dangling rows / orphaned files / syntax disagreements | 0 / 0 / 0 |
 | Verified whole | 29 of 29, by `{"verify": true}` on 22 Sep |
 
-**It is not automatic.** Nothing re-hosts on save; a sweep is run by hand from the browser console.
-That is deliberate — saving a recipe should not depend on a third party's server answering — and
-`docs/IMAGES.md` §4 gives the full reasoning, §5 what automating it would take (`pg_cron` and
-`pg_net` are available on this project but not installed).
+**It is automatic since 22 Sep — see §2d.** When this section was written it was not: a sweep had
+to be run by hand from the browser console, and the reason recorded for that was "saving a recipe
+should not depend on a third party's server answering". That constraint is real and still holds;
+what nobody had noticed is that it rules out re-hosting *synchronously*, not automatically.
 
-**Verified rather than reported:** every stored file's byte count matches what the dry run predicted
-for that recipe, which is the only check that catches a truncated download; every row resolves to an
-object that exists; no orphans; nothing stored that isn't a JPEG.
+**Verified rather than reported:** every row resolves to an object that exists; no orphans; nothing
+stored that isn't a JPEG; every stored file passes the integrity checks in `docs/IMAGES.md` §2.
+*(This paragraph used to lead with "every stored file's byte count matches what the dry run
+predicted", which is in the corrections table below as a check that cannot detect the fault it
+claims to.)*
 
 ### Decisions worth not relitigating
 
@@ -136,6 +138,8 @@ so it is "readable if you know the path", not browsable, and paths are two rando
 
 **A sweep, not the save path** — one code path for the existing library and everything added since,
 and a browser could not do it anyway, because most recipe CDNs send no permissive CORS headers.
+*(The CORS half still holds. The first half was superseded on 22 Sep: the save path now asks the
+same function for one recipe, and the sweep is kept as the catch-up — §2d.)*
 
 ### Four things that cost time, and would again
 
@@ -373,6 +377,77 @@ writes have not been through it.
 
 ---
 
+## 2d. Automatic image re-hosting (IMAGES.md §5 Option A) — DONE, 22 Sep 2026
+
+Adding a recipe used to leave its photo hotlinked from the recipe site until someone opened
+devtools and ran a sweep. Now the app asks for the re-host itself, on save, and the console is no
+longer needed for anything in normal use.
+
+**`docs/IMAGES.md` §5 is the reference.** What follows is what a later session needs to know that
+the reference does not say.
+
+| | |
+| --- | --- |
+| App → Edge Function calls | 2 (`rehostImageFor` on save, `runImageSweep` in Settings). Before this there were **zero** |
+| `rehost-images` | **v8** — adds an optional `recipeId`. A call without it behaves exactly as v7 |
+| `find-recipe-image` | Unchanged, v4 |
+| Smoke | **157 → 174** |
+| Integrity | **24 → 31** |
+
+### The thing that made this more than a one-line feature
+
+**`pushList` upserts every cached recipe on every save**, and nothing refreshes `cache.recipes`
+after `hydrate()`. So a value the server knows and the cache does not is overwritten by the next
+save of *any* recipe — toggling one favourite is enough. A re-host that did not write its answer
+back into the cache would therefore undo itself, silently, and look fine, because the external URL
+still loads.
+
+That is why `applyRehostedUrl` exists, why `runImageSweep` reconciles from the function's report
+rather than just printing it, and why the end-to-end check below is "toggle a favourite and
+reload" rather than "look at the card". **The same hazard is still live for the console sweep** —
+hard-reload after running one — and `pushList`'s habit of also *deleting* rows absent from the
+cache is untouched and still wants its own piece of work.
+
+### A pre-existing defect this had to fix first
+
+Saving a recipe wrote the form's image URL into `image_url` and **left the `IMAGE:` line in the
+recipe text alone.** The title line had always been reconciled; the image line never had been. So
+changing a photo by hand produced a row whose column and text disagreed, and because
+`parseAndPreview()` refills the form from a parse, the disagreement healed itself *towards the old
+URL*. It had gone unnoticed since the feature was built because the card reads the column, so the
+new photo appeared immediately and the stale text only surfaced on a later edit.
+
+`withUpdatedImageLine` now reconciles it on every save. The third query in `docs/IMAGES.md` §7
+counts these disagreements and should be 0.
+
+### Mutation testing found two checks that could not fail
+
+Five behaviours were broken on purpose to see whether the suite noticed. Three were caught. **Two
+were not:** the race guard that discards a reply for a URL that has since changed, and the
+save-path `IMAGE:` line. `sentUrl` and `f-image` appeared zero times in `test/smoke.js` — the
+code was written and reviewed, and nothing tested it. Both now have named checks, and both
+mutations were re-run afterwards to confirm the checks fail.
+
+**And a trap worth knowing:** `smoke.js` loads `test/app-under-test.html`, which `build.js`
+writes. Re-running `smoke.js` without rebuilding tests the *previous* edit. That cost a round of
+false results here — a mutation appearing to pass, then a clean tree appearing to fail — and it
+looks exactly like a real finding. `node test/build.js && node test/smoke.js`, always the pair.
+
+### Not covered, deliberately
+
+A restore from backup calls `saveRecipesList` with the whole library and never touches the save
+handler, so nothing fires; a save made offline never reaches the function. Both are what the sweep
+is now for, and the sweep has moved out of the console into **Settings → RECIPE PHOTOS**.
+
+### Still unverified against the real backend
+
+The suite stubs Supabase, so none of this proves the function re-hosts anything. Outstanding:
+add a recipe with an external image and watch the URL become ours; **toggle a favourite, reload,
+and confirm it is still ours**; replace an image; run the §7 queries expecting 0; both Settings
+buttons; and a save with the network off.
+
+---
+
 ## 3. Recipe ingestion — DONE, 20 Sep 2026
 
 *This was step 1 of five. `docs/NEXT-SESSION.md` has the full order; the project is now at
@@ -492,7 +567,7 @@ point, and confirming the schedule still fires afterwards.
 
 ## 6. Corrections to the earlier record
 
-Eleven times now, something recorded as true wasn't. The pattern is worth more than the individual
+Fourteen times now, something recorded as true wasn't. The pattern is worth more than the individual
 corrections: **every one was found by checking the real thing, and none by reading more carefully.**
 
 | Recorded | Actually | Found |
@@ -508,15 +583,24 @@ corrections: **every one was found by checking the real thing, and none by readi
 | `INFRASTRUCTURE.md`: bucket "private, and currently empty"; "no Edge Functions deployed" | Public with 29 objects, and two functions live — both for six days | 22 Sep audit |
 | `HANDOVER.md` §1: H1/H2/H3 "Not started" | Built, merged and deployed the same day, contradicting §2b in this very file | 22 Sep audit |
 | `node test/build.js && node test/smoke.js` documented as the green gate | Exited 1. The stub had no `update()`, so the diary's write threw and a check passed on the cache alone | 22 Sep review, by reading the exit code rather than counting "ok" lines |
+| `IMAGES.md`: "the recipe text is updated too", of changing an image | True of the sweep, **false of the app's own save** — which left the `IMAGE:` line stale, so the change reverted on the next parse | 22 Sep, while building §2d |
+| `IMAGES.md`: "the card, the Viewer and the Group Viewer all render that external URL" | Only the card. `r.imageUrl` is read in exactly one render path | 22 Sep, by grepping for the field rather than re-reading the sentence |
+| "The new checks pass; the mutations prove nothing" — briefly believed of §2d's tests | The artifact had not been rebuilt, so three runs in a row tested the wrong file. Rebuilt, the baseline was green and both mutations failed by name | 22 Sep, by noticing a debug probe that could not possibly be missing was missing |
 
 **The last one is the most instructive, because the verification itself was the thing that was
 wrong.** Every "the tests pass" statement in this repo was false for a day, and the reason it went
 unnoticed is that the person checking counted passing lines instead of reading `$?`. A test that
 cannot fail and a suite whose result is not read are the same problem wearing different clothes.
 
+**The last one is the other shape of the same problem.** Nothing was recorded wrongly; the
+*measurement* was wrong, and it produced a confident, specific, entirely false finding — that two
+new tests were worthless. A stale build is indistinguishable from a real result unless you check
+which file you are actually running.
+
 The rule in `CLAUDE.md` — verify rather than trust status notes, including these — has now earned
-itself eleven times over. Two of these eleven were found by agents reviewing work that had just
-been done and declared finished.
+itself fourteen times over. Two were found by agents reviewing work that had just been done and
+declared finished; three came out of building §2d, on top of work declared finished the day
+before.
 
 These brief items appeared in **no** task list at all: **P3** (calendar), **R4** (cooking notes),
 **R7** (images, since built), **H1/H2/H3** (history and food diary). All are Phase 3 in the brief's
@@ -527,7 +611,8 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **157 checks** across every screen, `shots.js` captures screenshots.
+`smoke.js` runs **174 checks** across every screen, `shots.js` captures screenshots. Run
+`build.js` first, every time — see §2d.
 
 ```sh
 npm install playwright
@@ -592,5 +677,7 @@ and import round-tripped with every table count intact.
   the Session pooler connection string (the direct one is IPv6-only, and GitHub runners have no
   IPv6 route) and the full path to `pg_dump` 17 (the runner's own is older than the server). Both
   took several failed runs to find; don't undo either.
-- **Recipe images are not re-hosted automatically.** A new recipe keeps its external image URL
-  until the sweep is run by hand. `docs/IMAGES.md` is the runbook.
+- **Recipe images re-host themselves on save, since 22 Sep** (§2d). The two cases that miss are a
+  restore from backup and a save made offline; **Settings → RECIPE PHOTOS** covers both. The
+  console sweep still works and still needs a hard-reload after it. `docs/IMAGES.md` is the
+  runbook.

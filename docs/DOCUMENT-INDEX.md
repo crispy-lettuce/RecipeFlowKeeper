@@ -13,7 +13,8 @@ GitHub at the time of writing.
 2. **`docs/ARCHITECTURE.md`** — how the app and its recipe format actually work.
 3. **`docs/HANDOVER.md`** — what's built, what isn't, and what was found to be wrongly recorded.
 4. **`docs/INFRASTRUCTURE.md`** — repos, Supabase, credentials policy.
-5. **`docs/IMAGES.md`** — the one feature with a manual step you have to know about.
+5. **`docs/IMAGES.md`** — how recipe photos become ours, and the two cases that still need a
+   button pressed.
 
 Then pick up work from **`docs/NEXT-SESSION.md`**, which sets out the order things should
 happen in. As of 21 Sep 2026 **steps 1 to 4 are done** — the library was reprocessed and ingested
@@ -67,15 +68,18 @@ progresses — and to distrust first if something doesn't match reality.
 ---
 
 ### `docs/IMAGES.md` — how recipe photos get to Supabase
-**What:** The runbook for image re-hosting (R7). Answers the two questions that come up in
-practice — what happens to the image when you add a recipe, and how you replace one — plus the
-console commands, what goes wrong, and how to verify.
+**What:** The runbook for image re-hosting (R7). Opens with **"Answers first"** — adding an image
+to a new recipe, replacing one, how images get moved to Supabase, and whether it can be made
+automatic — then the console commands, the integrity checks, what goes wrong, and how to verify.
 
-**Use it when:** you've added recipes and want their photos self-hosted, or you want to change an
-image. **Start with the short answer at the top: it is not automatic.** A new recipe keeps its
-external image URL until someone runs the sweep by hand.
+**Use it when:** you want to change an image, or you've restored a backup and want the photos
+self-hosted again. **Adding a recipe needs nothing** — since 22 Sep the app re-hosts the photo
+itself on save (§5). The sweep is kept for the two cases that cannot reach: a restore, and a save
+made offline. It is a button in Settings, not a console command.
 
-**Don't:** expect a file picker. The app only ever takes a URL; there is no upload-from-device.
+**Don't:** expect a file picker. The app only ever takes a URL; there is no upload-from-device
+(§5 Option D covers what adding one would involve — it is smaller than it sounds, because no
+cross-origin fetch is involved).
 
 ---
 
