@@ -105,6 +105,11 @@ recommending it. Three independent checks, because they catch different faults:
 - **Data density, for JPEGs** — bytes per pixel, measured against the dimensions read out of the
   file's own SOF segment. Catches a file that has an end marker and still isn't whole.
 
+Each of these has caught something the others did not, so none is redundant. The 22 Sep sweep is
+the worked example: **Classic Scones** is cut off with no `FFD9` at all, yet its density is a
+perfectly healthy 0.2036 — only the marker check sees it. **Tuscan Chicken Pasta** ends correctly
+and is starved of data at 0.011 — only the density check sees it.
+
 A failure is reported as `failed` with the reason, and the recipe is left alone rather than having
 a broken image written over a working one.
 
@@ -117,12 +122,24 @@ integrity** — only something that knows what a whole file looks like can tell 
 
 The end-marker check replaced it, and **still passed Tuscan Chicken Pasta**. The file's marker
 chain is intact and `FFD9` is present; what ran out early is the entropy-coded scan data, which a
-decoder fills with mid-grey. An end marker proves a file was terminated, not that it is full. The
-density check is what separates the two: 10,515 bytes across the dimensions that file declares is
-under 0.02 bytes/pixel, where a real photo in this library measures 0.05–0.30.
+decoder fills with mid-grey. An end marker proves a file was terminated, not that it is full.
 
 It did find a second broken image nobody had noticed — Classic Scones with Jam & Clotted Cream, 35
 KB with no end marker at all — so the weaker check was not useless, just insufficient.
+
+### Where the 0.02 threshold comes from
+
+Measured, not estimated. The full verify sweep of 22 Sep:
+
+| | bytes/pixel |
+| --- | --- |
+| The 27 whole images | 0.087 – 0.385 |
+| Tuscan Chicken Pasta (renders grey) | 0.011 |
+
+So the threshold sits about 4× below the leanest real photo in the library and about 2× above the
+broken one. Clear of both, rather than finely balanced between them. If the library ever gains a
+legitimately sparse image — a flat graphic rather than a photograph — this is the number to revisit,
+and `data.all` is where you would get the evidence to revisit it with.
 
 `test/image-integrity.js` pins all of this. It lifts the checker out of the Edge Function source
 rather than keeping a copy, synthesises each failure shape from marker bytes, and asserts both

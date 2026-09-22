@@ -74,13 +74,17 @@ function jpegDimensions(bytes: Uint8Array): { w: number; h: number } | null {
 
 /* Below this, a JPEG claiming to be a photograph is not carrying one.
  *
- * Web-optimised recipe photos in this library sit around 0.05-0.30
- * bytes/pixel. Tuscan Chicken Pasta was 0.006-0.02 depending on how you
- * read its dimensions — one to two orders of magnitude short. The
- * threshold is deliberately far below anything a real photo reaches, so
- * it flags the unmistakable cases and stays quiet otherwise; the verify
- * mode reports the measured figure for every image so this number can be
- * argued with from evidence rather than taken on faith. */
+ * Measured, not guessed. A verify sweep of all 29 images on 22 Sep put the
+ * 27 whole ones between 0.087 and 0.385 bytes/pixel, and Tuscan Chicken
+ * Pasta — the one rendering grey below the top rows — at 0.011 against its
+ * declared 1200x800. So 0.02 sits about 4x below the leanest real photo in
+ * the library and about 2x above the broken one: clear of both, and not
+ * finely balanced between them.
+ *
+ * Verify mode reports the measured figure for every image, including the
+ * ones that pass, so this number stays arguable from evidence. If a real
+ * photo ever trips it, that table is what shows the threshold is wrong
+ * rather than the photo. */
 const MIN_BYTES_PER_PIXEL = 0.02;
 
 /* Is this actually a complete image file?
