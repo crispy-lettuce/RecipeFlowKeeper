@@ -859,8 +859,15 @@
     font-family:'IBM Plex Mono', monospace; font-size:9.5px; letter-spacing:.08em;
     color:var(--ink-faint); margin-left:8px;
   }
-  .history-day.has-adhoc{ background:rgba(110,102,90,.10); }
-  .history-day.has-entries.has-adhoc{ background:rgba(124,148,115,.09); }
+  /* `has-adhoc` is only ever set alongside `has-entries`, so a rule for it
+     alone is unreachable — and the combined rule, sitting after
+     `.history-day.has-entries.selected` at equal specificity, used to win on
+     source order and swallow the selection highlight on any day with a
+     takeaway on it. The tint now comes from a border rather than a
+     background, which cannot collide with the selected state at all. */
+  .history-day.has-adhoc{ border-left:2px solid var(--ink-faint); }
+  .history-day.has-entries.selected,
+  .history-day.selected{ background:var(--plum-wash); border-color:var(--plum); }
   .modal-panel h1{ font-size:24px; font-weight:300; margin-bottom:6px; }
   .subtle{ color:var(--ink-soft); font-size:14px; line-height:1.6; margin-bottom:20px; max-width:62ch; }
   .field-label{
@@ -1683,8 +1690,16 @@ function rerenderForTheme(){
   else if(state.view === 'history') renderHistory();
 }
 
+/* Quotes are escaped as well as angle brackets, because the result is
+   interpolated into HTML *attributes* in more than twenty places — for
+   example the ad-hoc autocomplete's <option value="...">. Without this, a
+   diary entry named `x" onfocus="alert(1)` breaks out of the attribute.
+   Escaping quotes is harmless in text content, so one function covers both
+   contexts rather than leaving the choice to each call site. */
 function escapeHtml(s){
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function splitQty(line){
@@ -2845,10 +2860,14 @@ function diaryEntryTitle(entry, recipesById){
    file synchronous, as the rest of them are. */
 function addDiaryEntry({ recipeId = null, title = '', cookedOn, mealType = null, note = '' }){
   const entry = {
-    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
+    /* uid(), not a second copy of it: the inline version here lacked the
+       `window.crypto &&` guard and produced a value no uuid column accepts. */
+    id: uid(),
     recipeId, title: title.trim(), cookedOn, mealType, note
   };
   cache.diary = cache.diary.concat([entry]);
+  /* Assumed unsaved until the insert says otherwise — see unsavedDiaryIds. */
+  unsavedDiaryIds.add(entry.id);
   queueWrite('the food diary', async ()=>{
     const { error } = await sb.from('recipe_logs').insert({
       id: entry.id, household_id: HOUSEHOLD_ID,
@@ -2856,13 +2875,26 @@ function addDiaryEntry({ recipeId = null, title = '', cookedOn, mealType = null,
       cooked_on: entry.cookedOn, meal_type: entry.mealType, note: entry.note || null
     });
     if(error) throw error;
+    unsavedDiaryIds.delete(entry.id);
   });
   return entry;
 }
 
+/* Tracks entries whose insert failed, so a later edit to one of them does
+   not report success. PostgREST returns no error for an update that matches
+   zero rows, so without this the sequence is: insert fails, "Couldn't save
+   the food diary"; user taps a meal type; update matches nothing and
+   resolves cleanly; "Tagged as lunch". Two toasts, opposite meanings, and
+   the second one wrong. */
+const unsavedDiaryIds = new Set();
+
 function updateDiaryEntry(id, changes){
   const idx = cache.diary.findIndex(e=>e.id === id);
   if(idx === -1) return false;
+  if(unsavedDiaryIds.has(id)){
+    showToast("That entry didn't save — check your connection and log it again");
+    return false;
+  }
   const next = { ...cache.diary[idx], ...changes };
   cache.diary = cache.diary.map((e,i)=> i === idx ? next : e);
   queueWrite('the food diary', async ()=>{
@@ -2994,10 +3026,25 @@ function saveRecipesList(list){
    has never heard of. */
 async function replaceAllDiary(recipeList, diaryList){
   if(Array.isArray(diaryList)){
-    const del = await sb.from('recipe_logs').delete().eq('household_id', HOUSEHOLD_ID);
-    if(del.error) throw del.error;
+    /* WRITE FIRST, THEN REMOVE WHAT THE BACKUP DOES NOT CONTAIN.
+
+       The obvious order — delete everything, then insert the backup — has no
+       transaction around it, because these are two PostgREST round trips.
+       If the delete lands and the insert does not, the diary is gone. That
+       used to be survivable: every log row could be rebuilt from
+       `recipes[].history` in the very file being restored. It is not
+       survivable now. Meal types and ad-hoc entries exist in no other
+       table and in no other field, so a failed insert would be permanent
+       loss of data the user cannot get back — on a kitchen tablet, over
+       kitchen wifi, at the exact moment they were trying to restore it.
+
+       Upsert first means a failure leaves the existing diary untouched.
+       Upsert rather than insert because a restore should replace rows that
+       share an id, not collide with them — which is also what makes
+       re-running a failed restore safe. */
     const rows = diaryList
-      .filter(e=> e && e.cookedOn && (e.recipeId || (e.title||'').trim()))
+      .filter(e=> e && e.cookedOn && /^\d{4}-\d{2}-\d{2}$/.test(String(e.cookedOn))
+                  && (e.recipeId || (e.title||'').trim()))
       .map(e=>({
         id: e.id, household_id: HOUSEHOLD_ID,
         recipe_id: e.recipeId || null,
@@ -3006,10 +3053,23 @@ async function replaceAllDiary(recipeList, diaryList){
         meal_type: MEAL_TYPES.indexOf(e.mealType) === -1 ? null : e.mealType,
         note: e.note || null
       }));
+
     if(rows.length){
-      const { error } = await sb.from('recipe_logs').insert(rows);
+      const { error } = await sb.from('recipe_logs').upsert(rows, { onConflict: 'id' });
       if(error) throw error;
     }
+
+    /* Only once the new rows are safely stored: drop whatever the backup
+       did not mention. `not in` over the incoming ids gets the same end
+       state as delete-then-insert, with no window where the table is
+       empty. A failure here leaves a superset of the correct diary —
+       duplicates of nothing, just some stale rows — which is recoverable
+       by re-running, unlike an empty table. */
+    let cull = sb.from('recipe_logs').delete().eq('household_id', HOUSEHOLD_ID);
+    if(rows.length) cull = cull.not('id', 'in', '(' + rows.map(r=>r.id).join(',') + ')');
+    const del = await cull;
+    if(del.error) throw del.error;
+
     cache.diary = rows.map(rowToDiaryEntry);
     return;
   }
@@ -3242,9 +3302,27 @@ function addShortlistRecipe(recipeId){
 }
 function removeShortlistItem(id){ return saveShortlist(loadShortlist().filter(i=>i.id!==id)); }
 
+/* Every id this returns is stored in a Postgres `uuid` column, so the
+   fallback has to BE a uuid, not merely be unique. The previous fallback
+   ("r-" + timestamp + random) was rejected outright with "invalid input
+   syntax for type uuid" — and it only ran on browsers without
+   crypto.randomUUID, which are exactly the old tablets nobody tests on. The
+   failure was silent: the row never saved, the cache said it had, and the
+   entry vanished on reload.
+
+   randomUUID is secure-context-only and fairly recent, so the fallback is
+   not hypothetical. getRandomValues is far older and far more widely
+   available; only if both are missing does this fall back to Math.random,
+   which is a weak source but still produces a structurally valid v4. */
 function uid(){
   if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
-  return 'r-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  const b = new Uint8Array(16);
+  if(window.crypto && crypto.getRandomValues) crypto.getRandomValues(b);
+  else for(let i=0;i<16;i++) b[i] = Math.floor(Math.random()*256);
+  b[6] = (b[6] & 0x0f) | 0x40;   // version 4
+  b[8] = (b[8] & 0x3f) | 0x80;   // variant 1
+  const h = [...b].map(x=>x.toString(16).padStart(2,'0')).join('');
+  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
 }
 /* Local calendar date, not UTC — "today" should mean the household's today,
    which matters once the Planner compares dates against history entries. */
@@ -5533,6 +5611,11 @@ function renderHistoryDayDetail(){
       deleteDiaryEntry(entry.id);
       showToast(`Removed "${name}"`);
       renderHistory();
+      /* deleteDiaryEntry edits the recipe's own `history`, which drives the
+         card's COOKED n× and the MOST/LEAST COOKED sort. showView('recipes')
+         does not re-render Home, so without this the card keeps the
+         pre-delete count until something else happens to redraw it. */
+      renderHome();
     });
   });
 }
@@ -6619,9 +6702,19 @@ function diaryIngredientSummary(recipe){
 /* RFC 4180: quote everything, and double any quote inside. Quoting every
    field rather than only the ones that need it is deliberate — a name with
    a comma in it is exactly the case that silently corrupts a sheet, and
-   uniform quoting means there is no rule to get wrong. */
+   uniform quoting means there is no rule to get wrong.
+
+   Quoting does NOT stop a spreadsheet evaluating a leading =, +, - or @:
+   Excel strips the quotes on import and then parses the cell. A diary entry
+   called "=1+1" would open as the number 2, and the mechanism that allows
+   that also allows =HYPERLINK(...). Both columns that can carry it are free
+   text — the entry name is typed by hand, and ingredient names come from
+   recipe syntax pasted off the web. A leading apostrophe is the standard
+   neutraliser and is not displayed by Excel or LibreOffice. */
 function csvCell(value){
-  return '"' + String(value == null ? '' : value).replace(/"/g, '""') + '"';
+  let text = String(value == null ? '' : value);
+  if(/^[=+\-@\t\r]/.test(text)) text = "'" + text;
+  return '"' + text.replace(/"/g, '""') + '"';
 }
 
 function exportDiaryCsv(){
@@ -6682,6 +6775,23 @@ function importAllData(file){
     if(!confirm(`Import ${n} recipe${n===1?'':'s'}? This replaces everything currently in your library — your existing recipes, plan, and shortlist will be gone, on every device. This can't be undone.`)) return;
 
     saveRecipesList(data.recipes);
+    /* The cache is set here, synchronously, as well as inside the queued
+       write. saveRecipesList above updates cache.recipes immediately, so
+       without this there is a window where the new library is paired with
+       the OLD diary: History renders every entry as "(deleted recipe)", and
+       an export taken in that window writes a version 3 backup whose diary
+       references recipes the file does not contain. Restoring that backup
+       is the one case this file cannot recover from. */
+    if(Array.isArray(data.diary)){
+      cache.diary = data.diary
+        .filter(e=> e && e.cookedOn && (e.recipeId || (e.title||'').trim()))
+        .map(e=>({
+          id: e.id, recipeId: e.recipeId || null, title: e.title || '',
+          cookedOn: e.cookedOn,
+          mealType: MEAL_TYPES.indexOf(e.mealType) === -1 ? null : e.mealType,
+          note: e.note || ''
+        }));
+    }
     queueWrite('cooking history', ()=> replaceAllDiary(data.recipes, Array.isArray(data.diary) ? data.diary : null));
     savePlan(data.plan || {});
     saveShortlist(data.shortlist || []);

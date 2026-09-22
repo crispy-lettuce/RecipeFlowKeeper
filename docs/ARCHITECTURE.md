@@ -92,7 +92,7 @@ Recipes are written by pasting a source into a conversion prompt; see
 
 ## 3. The app's shape
 
-One file, `index.html` — about 5,900 lines, no build step, no framework, no dependencies
+One file, `index.html` — about 6,913 lines, no build step, no framework, no dependencies
 beyond two CDN scripts (supabase-js and html2canvas). Screens are `<section class="view">`
 elements toggled by `showView(name)`.
 
@@ -162,7 +162,7 @@ mistake that made the image work look finished):
 | --- | --- |
 | `recipe_notes` (whole table, empty) | R4, dated cooking notes |
 | ~~`recipe_logs.meal_type`~~ | H1 shipped 22 Sep — now written by the prompt after logging |
-| `recipe_logs.note` | R4, dated cooking notes. Deliberately **not** used by H2: an ad-hoc entry's name lives in `recipe_logs.title`, added 22 Sep, so "a takeaway called X" and "a note about recipe Y" stay distinguishable |
+| `recipe_logs.note` | R4, dated cooking notes. Round-tripped by the diary since 22 Sep (read, written back unchanged) but no UI sets it. Deliberately **not** used by H2: an ad-hoc entry's name lives in `recipe_logs.title`, added 22 Sep, so "a takeaway called X" and "a note about recipe Y" stay distinguishable |
 | ~~`household_settings.dark_mode`~~ | S2 shipped 22 Sep — no longer scaffolding |
 | `meal_groups.name` | Written as `''`; no UI ever names a group |
 | `households.name`, `household_members.role` | Multi-household support, deliberately anticipated |
@@ -185,7 +185,7 @@ has to know where a photo lives. See `docs/HANDOVER.md` §2.
 ```sh
 npm install playwright
 node test/build.js    # bake index.html against the stub
-node test/smoke.js    # 148 checks; exits non-zero on failure
+node test/smoke.js    # 157 checks; exits non-zero on failure
 ```
 
 It has caught real bugs, including a parser gap that would have broken every reprocessed recipe.
@@ -202,5 +202,5 @@ Keep Awake can only be tested on a real tablet.
 | `index-old.html` | The pre-Supabase version, kept for reference. **Not used, not served, not maintained** — don't edit it thinking it's live. |
 | `converter/` | Conversion instructions and the standing test set for writing recipes. |
 | `test/` | Offline test harness. |
-| `docs/` | Everything in §7 of `docs/DOCUMENT-INDEX.md`. |
+| `docs/` | Everything listed in `docs/DOCUMENT-INDEX.md` under "The documents". |
 | `.mcp.json` | Wires the Supabase connector for Claude Code automatically. |

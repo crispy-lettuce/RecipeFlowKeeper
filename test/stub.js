@@ -23,11 +23,29 @@
       upsert(rows, opts){ window.__WRITES__.push({table, op:'upsert', rows, opts}); return thenable({error:null}); },
       insert(rows){ window.__WRITES__.push({table, op:'insert', rows}); return thenable({error:null}); },
       delete(){ window.__WRITES__.push({table, op:'delete'}); return deleteChain(); },
+      /* Added 22 Sep. Its absence made the food diary's only update path
+         throw a TypeError that queueWrite swallowed, so the check on the
+         meal-type prompt passed by asserting the in-memory cache while the
+         write had never run — and the suite went red without anyone
+         noticing, because it was being read by counting 'ok' lines rather
+         than by its exit code. Records like the others so a test can assert
+         on the patch actually sent, not just on what the cache believes. */
+      update(patch){ window.__WRITES__.push({table, op:'update', patch}); return updateChain(table, patch); },
       then(res, rej){
         const r = result(table);
         const out = single ? { data: Array.isArray(r.data) ? (r.data[0] || null) : r.data, error: null } : r;
         return Promise.resolve(out).then(res, rej);
       }
+    };
+    return api;
+  }
+  function updateChain(table, patch){
+    const api = {
+      /* .eq() is recorded rather than ignored: a patch aimed at the wrong
+         row is a real bug the tests should be able to see. */
+      eq(column, value){ window.__WRITES__[window.__WRITES__.length-1].match = {column, value}; return api; },
+      not(){ return api; }, in(){ return api; },
+      then(res, rej){ return Promise.resolve({error:null}).then(res, rej); }
     };
     return api;
   }

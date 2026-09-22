@@ -173,7 +173,7 @@ the database, which was first confirmed byte-identical to the validated text by 
 | 1 — late addition | 7 recipes flagged | **Fixed.** All four surviving flagged recipes restructured; see below |
 | 2 — split ingredient | 2 lines restating a total | **Fixed.** No line in the library now restates a total |
 | 3 — parallel prep | not measured | 10 stages carry more than one MERGE line |
-| 4 — instant step | 296 of 302 MERGE lines bare | **249 of 249 timed.** `[instant]` used 78 times |
+| 4 — instant step | 296 of 302 MERGE lines bare | **242 of 242 timed.** `[instant]` used 78 times. (Recorded as 249 until a 22 Sep recount: 250 MERGE lines exist, 8 of them in Victoria Sandwich, deliberately never converted.) |
 | 5 — no stated yield | 23 of 40 missing | **33 of 33 present** |
 
 ### Test 1 — the four flagged recipes

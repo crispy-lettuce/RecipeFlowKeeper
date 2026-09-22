@@ -48,7 +48,14 @@ const data = {
   recipe_logs: [
     { id: 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', household_id: HOUSE, recipe_id: R1, cooked_on: iso(-7), meal_type: 'dinner', note: null, title: null },
     { id: 'aaaaaaaa-2222-4222-8222-aaaaaaaaaaaa', household_id: HOUSE, recipe_id: R2, cooked_on: iso(-3), meal_type: null, note: null, title: null },
-    { id: 'aaaaaaaa-3333-4333-8333-aaaaaaaaaaaa', household_id: HOUSE, recipe_id: null, cooked_on: iso(-3), meal_type: 'lunch', note: null, title: 'Fish and chips' }
+    { id: 'aaaaaaaa-3333-4333-8333-aaaaaaaaaaaa', household_id: HOUSE, recipe_id: null, cooked_on: iso(-3), meal_type: 'lunch', note: null, title: 'Fish and chips' },
+    /* A title that a spreadsheet would evaluate, and one that would break
+       out of an HTML attribute. Both are things a person can genuinely
+       type into the ad-hoc entry box, and without them in the data the
+       checks for formula neutralisation and attribute escaping pass
+       vacuously — there is nothing for them to catch. */
+    { id: 'aaaaaaaa-4444-4444-8444-aaaaaaaaaaaa', household_id: HOUSE, recipe_id: null, cooked_on: iso(-2), meal_type: 'snack', note: null, title: '=1+1' },
+    { id: 'aaaaaaaa-5555-4555-8555-aaaaaaaaaaaa', household_id: HOUSE, recipe_id: null, cooked_on: iso(-2), meal_type: null, note: null, title: 'x" onfocus="alert(1)' }
   ],
   keywords: [{ name: 'Pasta' }, { name: 'Veg' }, { name: 'Batch' }],
   planner_days: [

@@ -45,6 +45,9 @@ Worth recording what the pass actually proved, since the offline harness can pro
 - `shopping_checked.item_key` is the aggregation string itself, so the 20 Sep ingest re-keyed
   every possible tick. It happened to be empty, so nothing broke. **The next reprocess will not
   be so lucky** — clear the ticked list first, or expect orphaned keys.
+  **As of 22 Sep there are 9 ticked items**, so this has stopped being hypothetical. Check with
+  `select count(*) from shopping_checked` before any reprocess; `docs/TEST-PLAN.md` recorded it
+  as 0 for a day after it stopped being 0.
 
 Two findings came out of it, both fixed the same day — see step 2a.
 
@@ -90,14 +93,15 @@ in fact broken. Integrity is now checked on the way in, and
 Full account, including three things that cost time and would cost them again, in
 `docs/HANDOVER.md` §2.
 
-### 4a. The original reasoning, kept because it still holds
+### 4a. The original reasoning, kept because it still holds *(written before the sweep ran)*
 
 `docs/HANDOVER.md` §2. An Edge Function, run as a decoupled sweep.
 
 **Why after ingestion:** re-hosting images beforehand would have done the work against recipes
-about to be replaced. Ingestion has happened, so this is now unblocked: **29 of the 33 recipes
-have an image and every one of them is hosted on the source website**, with the
-`recipe-images` bucket still holding zero objects. It's server-side work that doesn't need the
+about to be replaced. *(What follows describes how things stood BEFORE the sweep ran on 21 Sep
+— all 29 are now self-hosted, 4,426 kB. Kept because the reasoning still explains why the step
+sits where it does.)* At the time: **29 of the 33 recipes had an image and every one of them
+was hosted on the source website**, with the `recipe-images` bucket holding zero objects. It's server-side work that doesn't need the
 app merged, so it can equally happen alongside step 3.
 
 ### 5. Phase 3, and anything left ← **start here**
@@ -147,19 +151,21 @@ Some context worth having:
     the branch and I'll decide when to merge.
   - index.html is the whole app. One file, no build step, no framework.
     Run `node test/build.js && node test/smoke.js` after any code change.
-    148 checks. It stubs Supabase, so it proves nothing about sign-in.
+    157 checks. It stubs Supabase, so it proves nothing about sign-in.
   - Several columns already exist for these features (recipe_logs.meal_type,
     recipe_logs.note). A column existing does
     not mean the feature does — docs/ARCHITECTURE.md §4 lists them.
   - The repo is public. Recipe data must never be committed to it.
   - Don't trust status notes, mine included, where you can check the real
-    thing instead. Four separate times now, something recorded as true
+    thing instead. Repeatedly now — the corrections table in docs/HANDOVER.md
+    keeps growing — something recorded as true
     wasn't.
 ```
 
 ## Alternative starting points
 
-If you want to do something other than step 1, swap the task section of the prompt above.
+If you want to do something other than the current step, swap the task section of the prompt
+above.
 
 ### B. Ingesting more recipes
 
@@ -186,8 +192,10 @@ If you want to do something other than step 1, swap the task section of the prom
 
 ### E. Phase 3 (step 5)
 
-> Let's plan Phase 3: the food diary (H1, H2, H3), dated cooking notes (R4), and the calendar push
-> (P3). All are in `docs/BUILD-BRIEF.md` with reference codes; none has been started. §1 and §4 of
+> Let's carry on with Phase 3. The food diary (H1, H2, H3) and dark mode (S2) are done — what's
+> left is dated cooking notes (R4) and the calendar push (P3). Both are in
+> `docs/BUILD-BRIEF.md` with reference codes. R4 needs a decision before any code: `recipe_notes`
+> exists but has no user-settable date column, and `recipe_logs.note` is also free. §1 and §4 of
 > the handover cover what's decided.
 
 ---

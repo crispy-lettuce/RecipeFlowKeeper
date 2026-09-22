@@ -22,25 +22,48 @@ const path = require('path');
 
 const SRC = path.join(__dirname, '..', 'supabase', 'functions', 'rehost-images', 'index.ts');
 
-/* Pull the two functions and the threshold out of the deployed source and
-   strip the type annotations, which is all that stands between this Deno
-   module and plain Node. Deliberately narrow: if the signatures change,
-   this throws rather than silently testing nothing. */
+/* Pull the checker out of the deployed source and strip the type
+   annotations, which is all that stands between this Deno module and plain
+   Node.
+
+   The stripping is generic rather than a list of known signatures. The
+   earlier version named each function it expected and silently passed
+   everything else through — so adding `isobmffTruncated` broke the whole
+   file with a syntax error rather than testing the new function. Generic
+   also means a signature change no longer needs this file edited in step.
+
+   Still deliberately strict about WHAT it finds: the explicit check below
+   throws if any expected export is missing, so a renamed or deleted
+   function fails loudly instead of leaving checks that quietly test
+   nothing. */
 function loadChecker() {
   const src = fs.readFileSync(SRC, 'utf8');
   const from = src.indexOf('function jpegDimensions');
   const to = src.indexOf('const sleep =');
   if (from < 0 || to < 0 || to < from) throw new Error('could not find the checker in ' + SRC);
-  const js = src.slice(from, to).split('\n').map(line => {
-    if (line.startsWith('function jpegDimensions')) return 'function jpegDimensions(bytes) {';
-    if (line.startsWith('function imageIntegrity')) return 'function imageIntegrity(bytes, contentLength) {';
-    return line.replace('(i: number)', '(i)');
-  }).join('\n');
-  const factory = new Function(js + '\nreturn { jpegDimensions, imageIntegrity, MIN_BYTES_PER_PIXEL };');
-  return factory();
+  const js = src.slice(from, to)
+    /* `function name(a: T, b: U | null): {x: number} | null {` -> `function name(a, b) {`
+       Anchored on the brace that ENDS THE LINE, not the first brace found:
+       a return type can itself contain braces (`{ w: number; h: number }`),
+       and matching the first one leaves the type behind as syntax. */
+    .replace(/function\s+(\w+)\s*\(([^)]*)\)[^\n]*\{\s*$/gm,
+      (_, name, args) => `function ${name}(${args.split(',')
+        .map(a => a.split(':')[0].trim()).filter(Boolean).join(', ')}) {`)
+    // `const f = (i: number) => …` and other inline annotations
+    .replace(/\(([A-Za-z_$][\w$]*)\s*:\s*[A-Za-z_$][\w$.<>|\[\] ]*\)\s*=>/g, '($1) =>')
+    .replace(/:\s*Uint8Array\b/g, '');
+
+  const factory = new Function(js +
+    '\nreturn { jpegDimensions, imageIntegrity, isobmffTruncated, MIN_BYTES_PER_PIXEL };');
+  const out = factory();
+  for (const name of ['jpegDimensions', 'imageIntegrity', 'isobmffTruncated']) {
+    if (typeof out[name] !== 'function') throw new Error(`${name} missing from ${SRC} — checks would be vacuous`);
+  }
+  if (typeof out.MIN_BYTES_PER_PIXEL !== 'number') throw new Error('MIN_BYTES_PER_PIXEL missing');
+  return out;
 }
 
-const { jpegDimensions, imageIntegrity, MIN_BYTES_PER_PIXEL } = loadChecker();
+const { jpegDimensions, imageIntegrity, isobmffTruncated, MIN_BYTES_PER_PIXEL } = loadChecker();
 
 /* A JPEG the checker can read: SOI, a SOF0 declaring the dimensions, a
    SOS, `scanBytes` of payload, and optionally the EOI marker. Not a
@@ -143,6 +166,45 @@ function check(name, condition, detail) {
 {
   const riff = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0xFF, 0xFF, 0x00, 0x00, ...new Array(20).fill(0)]);
   check('a WEBP shorter than its header claims is caught', /truncated WEBP/.test(imageIntegrity(riff, null) || ''));
+  /* The counterpart the audit found missing: without a passing case, a
+     branch changed to condemn every WEBP would break nothing here. */
+  const body = new Array(20).fill(0x57);
+  const len = 4 + body.length;                      // "WEBP" + payload
+  const whole = new Uint8Array([0x52, 0x49, 0x46, 0x46,
+    len & 0xFF, (len >> 8) & 0xFF, (len >> 16) & 0xFF, (len >> 24) & 0xFF,
+    0x57, 0x45, 0x42, 0x50, ...body]);
+  check('a WEBP whose header matches its length passes', imageIntegrity(whole, null) === null,
+        imageIntegrity(whole, null));
+}
+
+/* ---- AVIF / ISOBMFF ----
+   AVIF is in the storage MIME allowlist and in the sweep's EXT map, but is
+   neither JPEG, PNG, GIF nor RIFF — so before this it reached the final
+   `return null` and was stored with no check at all, while the runbook said
+   every download was verified. */
+{
+  const box = (type, payloadLen) => {
+    const size = 8 + payloadLen;
+    return [ (size >>> 24) & 0xFF, (size >>> 16) & 0xFF, (size >>> 8) & 0xFF, size & 0xFF,
+             ...[...type].map(c => c.charCodeAt(0)), ...new Array(payloadLen).fill(0x00) ];
+  };
+  const whole = new Uint8Array([...box('ftyp', 16), ...box('meta', 32), ...box('mdat', 64)]);
+  check('a whole AVIF passes', imageIntegrity(whole, null) === null, imageIntegrity(whole, null));
+
+  // Cut inside the final mdat: the box still claims its full size.
+  const cut = whole.subarray(0, whole.length - 30);
+  check('an AVIF cut inside its last box is caught',
+        /truncated AVIF/.test(imageIntegrity(new Uint8Array(cut), null) || ''),
+        imageIntegrity(new Uint8Array(cut), null));
+
+  // size === 0 means "runs to end of file", which is legal and complete.
+  const openEnded = new Uint8Array([...box('ftyp', 16),
+    0,0,0,0, ...[...'mdat'].map(c=>c.charCodeAt(0)), ...new Array(40).fill(0)]);
+  check('an AVIF whose last box runs to EOF passes', imageIntegrity(openEnded, null) === null,
+        imageIntegrity(openEnded, null));
+
+  check('an impossible box size is caught',
+        /impossible box size/.test(isobmffTruncated(new Uint8Array([0,0,0,3, 0x66,0x74,0x79,0x70, 0,0,0,0])) || ''));
 }
 {
   check('a file too small to be an image is caught',
