@@ -142,32 +142,14 @@ Some things that *will* still look wrong and aren't:
 
 ## B2 — Automatic image re-hosting (new 22 Sep, never run against the real backend)
 
-The smoke suite stubs Supabase entirely, so it proves nothing about whether any of this actually
-moves an image. These six steps are the only thing that does. `docs/HANDOVER.md` §2d is the
-background; `docs/IMAGES.md` §7 has the queries.
+**Split into its own document: `docs/TEST-IMAGES.md`.** Eleven steps, about 25 minutes, needs a
+desktop because three of them want devtools or the SQL editor. It is kept separate because it is
+the only pass that can say anything about whether images actually reach Supabase — the smoke suite
+stubs the backend entirely — and because it stands alone: you will want to re-run it after any
+change to how images are saved, without re-running everything else here.
 
-18a. **A new recipe with an external image.** Add one from a recipe site as usual — PARSE &
-     PREVIEW should fill IMAGE URL with the source's address — and save. The card shows the photo
-     straight away. Wait a couple of seconds, then open EDIT again: **IMAGE URL should now read
-     `…supabase.co/storage/v1/object/public/recipe-images/…`**. No console, no reload.
-18b. **The one that matters: toggle a favourite, then reload.** On any recipe, tap the favourite
-     star, reload the page, and open the recipe you added in 18a. Its image URL must **still** be
-     the `supabase.co` one. This is the regression test for the cache hazard in §2d — if the URL
-     has reverted to the source site, the write-back is not working and every re-host is being
-     undone by the next save.
-18c. **Replacing an image.** Open a recipe → EDIT → paste a different external address over the
-     `supabase.co` URL → Save. The card shows the new photo at once; a few seconds later the
-     stored URL should be a `supabase.co` one again, with a **`?v=` token** on the end because the
-     file was overwritten.
-18d. **The column and the text must agree.** Run the third query in `docs/IMAGES.md` §7. **Expect
-     0.** Anything else means a recipe is one parse away from silently reverting its photo.
-18e. **Both Settings buttons.** Settings → RECIPE PHOTOS. **CHECK STORED IMAGES** should report
-     everything whole. **RE-HOST EXTERNAL IMAGES** should report 0 copied and the rest already
-     yours, assuming 18a–18c have run.
-18f. **Saving with no connection.** Devtools → Network → Offline, or turn off the wifi. Edit a
-     recipe's image URL to an external address and save. Expect the recipe to save, a "couldn't
-     save…" toast, and the photo to stay external. Go back online and press **RE-HOST EXTERNAL
-     IMAGES**; it should pick that one up.
+Its step 4 is the one to stop on. If a re-hosted photo reverts after an *unrelated* save, the
+feature is undoing itself silently and nothing on screen looks wrong.
 
 ## C — Export and import (Phase 1 task, still open)
 

@@ -25,10 +25,16 @@ Both scripts use whichever Chromium Playwright installs. Set
 
 ## What it can and can't tell you
 
-**174 checks.** It covers the parts that are pure app logic: week bucketing, scaling,
+**191 checks.** It covers the parts that are pure app logic: week bucketing, scaling,
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, the automatic image
-re-host on save, and that every screen renders without throwing.
+re-host on save, what happens when you come back to the tab (online, offline, mid-save, after a
+failed save), and that every screen renders without throwing.
+
+**`stub.js` can misbehave on request.** `__READ_FAIL__` / `__WRITE_FAIL__` fail the way supabase-js
+reports a dead network; `__READ_DELAY__` / `__WRITE_DELAY__` hold a request open; `__LOG__` records
+reads and completed writes in order; `__AUTH_CB__` is the app's auth listener, so a test can fire
+`SIGNED_IN` as a tab return does; `__SIGNOUTS__` counts sign-outs. All off by default.
 
 **`node test/build.js` first, every time.** `smoke.js` opens `test/app-under-test.html`, which
 `build.js` writes from `index.html`. Run `smoke.js` on its own after editing the app and you are

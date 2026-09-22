@@ -108,6 +108,23 @@ The riskiest step is signing out and back in.
 
 ---
 
+### `docs/TEST-IMAGES.md` — the image re-hosting pass
+**What:** Eleven steps against the live app, checking that a new recipe's photo is copied into our
+own Storage on save and stays there, and that losing the connection loses nothing. Roughly 25
+minutes; needs a desktop, because several steps want devtools or the SQL editor.
+
+**Use it when:** after any change to how images are saved, or to how the app loads and refreshes
+the library. First run on the live app 22 Sep: steps 1–8 passed; step 9 found the sign-out and the
+stale grid (`HANDOVER.md` §2e), and steps 9–11 were rewritten afterwards. It is separate from
+`TEST-PLAN.md` so it can be re-run on its own.
+
+**Don't:** take a green `node test/smoke.js` as covering any of it. The suite stubs Supabase
+entirely, so it can show the app *asks* for a re-host and what it does with the reply, and nothing
+about whether a file is ever stored. **Step 4 is the one to stop on** — a re-hosted photo that
+reverts after an unrelated save is the feature failing in a way that looks exactly like success.
+
+---
+
 ### `docs/NEXT-SESSION.md` — the order of work, and how to start
 **What:** **The definitive sequence for what happens next**, with the reasoning behind the three
 places where order genuinely matters. Plus a complete, ready-to-paste prompt for the next session

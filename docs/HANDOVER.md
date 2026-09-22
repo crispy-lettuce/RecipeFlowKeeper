@@ -448,6 +448,79 @@ buttons; and a save with the network off.
 
 ---
 
+## 2e. Coming back to the tab — the sign-out, and the grid that didn't redraw — FIXED, 22 Sep 2026
+
+Found by running `docs/TEST-IMAGES.md` step 9 on the live app — the first test ever run offline.
+Two symptoms: a jump to the sign-in screen (*"Couldn't load your library — TypeError: Failed to
+fetch"*), and a card that showed the new photo briefly and then the old one.
+
+**Both are older than the image work.** Neither was caused by §2d; step 9 was simply the first
+thing to go looking.
+
+### The sign-out
+
+supabase-js emits `SIGNED_IN` **every time the tab goes hidden → visible** — verified in the
+`@supabase/auth-js` 2.117.0 source (`_onVisibilityChanged` → `_recoverAndRefresh`), with no network
+call, so offline too. The app answered every `SIGNED_IN` with `startApp()`: re-download
+everything, and sign out if that failed. Leave the tab while offline — to copy a recipe from the
+converter, say — and coming back signed you out. On the tablet, waking it before the wifi had
+reconnected would do the same.
+
+It did not reproduce on a retry because the retry stayed on the tab. That looked like user error
+and was nearly recorded as such.
+
+### What the re-download had been doing all along
+
+**Coming back to a tab has always silently re-downloaded the whole library.** Nobody knew:
+`ARCHITECTURE.md` said two tabs "won't see each other's changes until reloaded". And it turned
+out to be load-bearing. `pushList` pushes the *whole* cached table and deletes rows it doesn't
+hold, so a tablet left open since the morning would, on its first save that evening, overwrite
+the desktop's edits and **delete the desktop's new recipes** (cascading their cooking history).
+The accidental refresh is the only thing that prevented that.
+
+**So the refresh was kept, and made safe** — `refreshLibrary()`:
+
+| It | Because otherwise |
+| --- | --- |
+| waits for the write queue to empty before reading | it reads the server before this tab's own saves arrive, and replaces them |
+| stands down while any save has failed | the tab holds a change the server lacks; the refresh would silently undo it |
+| discards what it fetched if anything changed mid-fetch | the change is wiped from the cache, then `pushList` pushes the loss — and deletes a recipe added in the gap |
+| on any failure, does nothing | a refresh is an opportunity, never a reason to sign anyone out |
+
+A failed save clears only when a later save of the **whole** table or row succeeds — then the
+server provably matches the tab again. The food diary writes one row at a time, so a diary failure
+blocks refreshing until a reload. The labels are an allowlist, so one added later defaults to
+blocking.
+
+**Starting up** offline no longer signs you out either: the gate says the server couldn't be
+reached, and the session is kept, so coming back to the tab once connected starts the app by
+itself. A non-network failure — an account not linked to a household — still signs out as before.
+
+### The grid
+
+`showView('recipes')` redrew nothing; every other screen redraws on entry. An EDIT save lands on
+the Viewer, so a re-hosted photo arrived while the grid was hidden, and coming back by the
+**sidebar** showed the previous photo until a reload. The Viewer's ← button did redraw, which is
+why it looked intermittent. A comment in the History code already recorded the defect and worked
+around it for one case; the fix is one line in `showView`.
+
+### Tested
+
+Smoke **174 → 191**. Seven mutations, each breaking one mechanism, each failing by name — and one
+check that passed a broken app on the first mutation run, because the test before it left a
+favourite flipped so a wrongly applied refresh happened to land on the expected value. Fixed by
+starting that check from the fixture's own values; re-run, it fails as it should.
+
+The stub gained switches for failed and slow reads and writes, an ordered log of reads and
+completed writes, a handle on the app's auth listener, and a sign-out counter. All off by default.
+
+### Still unverified against the real backend
+
+`docs/TEST-IMAGES.md` steps 9–11, rewritten. **Step 10 is the one this section is about** —
+offline, click another tab and back, and still be signed in.
+
+---
+
 ## 3. Recipe ingestion — DONE, 20 Sep 2026
 
 *This was step 1 of five. `docs/NEXT-SESSION.md` has the full order; the project is now at
@@ -567,7 +640,7 @@ point, and confirming the schedule still fires afterwards.
 
 ## 6. Corrections to the earlier record
 
-Fourteen times now, something recorded as true wasn't. The pattern is worth more than the individual
+Sixteen times now, something recorded as true wasn't. The pattern is worth more than the individual
 corrections: **every one was found by checking the real thing, and none by reading more carefully.**
 
 | Recorded | Actually | Found |
@@ -586,21 +659,23 @@ corrections: **every one was found by checking the real thing, and none by readi
 | `IMAGES.md`: "the recipe text is updated too", of changing an image | True of the sweep, **false of the app's own save** — which left the `IMAGE:` line stale, so the change reverted on the next parse | 22 Sep, while building §2d |
 | `IMAGES.md`: "the card, the Viewer and the Group Viewer all render that external URL" | Only the card. `r.imageUrl` is read in exactly one render path | 22 Sep, by grepping for the field rather than re-reading the sentence |
 | "The new checks pass; the mutations prove nothing" — briefly believed of §2d's tests | The artifact had not been rebuilt, so three runs in a row tested the wrong file. Rebuilt, the baseline was green and both mutations failed by name | 22 Sep, by noticing a debug probe that could not possibly be missing was missing |
+| `TEST-IMAGES.md` step 9: "go back online, hard-reload, expect 1 copied in" | Impossible. An offline save never reaches the database, so the reload discards it and there is nothing left to copy | 22 Sep, by running it on the live app |
+| `ARCHITECTURE.md`: two tabs "won't see each other's changes until reloaded" | Coming back to a tab has always re-downloaded the whole library, and that was what kept a long-open tablet from overwriting the desktop | 22 Sep, while tracing the sign-out in §2e |
 
 **The last one is the most instructive, because the verification itself was the thing that was
 wrong.** Every "the tests pass" statement in this repo was false for a day, and the reason it went
 unnoticed is that the person checking counted passing lines instead of reading `$?`. A test that
 cannot fail and a suite whose result is not read are the same problem wearing different clothes.
 
-**The last one is the other shape of the same problem.** Nothing was recorded wrongly; the
+**The stale-build one is the other shape of the same problem.** Nothing was recorded wrongly; the
 *measurement* was wrong, and it produced a confident, specific, entirely false finding — that two
 new tests were worthless. A stale build is indistinguishable from a real result unless you check
 which file you are actually running.
 
 The rule in `CLAUDE.md` — verify rather than trust status notes, including these — has now earned
-itself fourteen times over. Two were found by agents reviewing work that had just been done and
+itself sixteen times over. Two were found by agents reviewing work that had just been done and
 declared finished; three came out of building §2d, on top of work declared finished the day
-before.
+before; two more came from actually running the test document written for §2d.
 
 These brief items appeared in **no** task list at all: **P3** (calendar), **R4** (cooking notes),
 **R7** (images, since built), **H1/H2/H3** (history and food diary). All are Phase 3 in the brief's
@@ -611,7 +686,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **174 checks** across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **191 checks** across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d.
 
 ```sh

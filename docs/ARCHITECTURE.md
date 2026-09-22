@@ -106,13 +106,25 @@ Consequently:
   immediately**. Callers never await a write.
 - Because writes are fire-and-forget, the way to prove something persisted is to **reload** —
   the page rebuilds entirely from Supabase.
-- There is no live sync between devices. Two open tabs won't see each other's changes until
-  reloaded. This is by design; offline use was explicitly not required.
+- There is no live sync between devices — but **coming back to a tab re-reads the library**
+  (`refreshLibrary`). supabase-js emits `SIGNED_IN` on every hidden → visible change of the tab,
+  and the app answers the second and later ones with a refresh. This document used to say two
+  tabs never saw each other's changes until reloaded; they always did, by accident, from the day
+  the Supabase rewrite shipped. It matters more than it looks: `pushList` pushes the whole cached
+  table and deletes what it doesn't hold, so a long-open tab that never refreshed would overwrite
+  another device's work on its next save.
+- A refresh can never lose anything. It waits for the write queue to empty, stands down while any
+  save has failed, and discards what it fetched if anything changed mid-fetch. Any failure
+  leaves everything as it was. Offline use is still not a requirement; not being thrown out by a
+  flaky connection is.
 
-**`hydrate()` is the fragile part.** Any exception thrown inside it signs the user out, so the
-failure mode is a login screen you can't get past. This is why `household_settings` is read with
-`.maybeSingle()` rather than `.single()` — a household with no settings row must come back as
-`null`, not throw.
+**`hydrate()` is the fragile part.** At start-up, an exception thrown inside it signs the user out
+— unless it is a network failure, which keeps the session and says the server couldn't be
+reached. On a refresh, nothing it throws signs anyone out. It still must not throw on data that
+might legitimately be absent: this is why `household_settings` is read with `.maybeSingle()`
+rather than `.single()` — a household with no settings row must come back as `null`, not throw.
+`hydrate(opts)` asks `opts.shouldApply()` once, after every fetch and before any assignment, so a
+refresh lands whole or not at all.
 
 ### The functions worth knowing
 
@@ -197,7 +209,7 @@ a URL is already ours. See `docs/IMAGES.md` §5.
 ```sh
 npm install playwright
 node test/build.js    # bake index.html against the stub
-node test/smoke.js    # 174 checks; exits non-zero on failure
+node test/smoke.js    # 191 checks; exits non-zero on failure
 ```
 
 **`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,

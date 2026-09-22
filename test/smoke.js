@@ -1025,6 +1025,178 @@ const path = require('path');
   check('saving a recipe with no image asks for nothing',
         (await page.evaluate(() => window.__INVOKES__.length)) === 0);
 
+  /* Coming back to the grid by the sidebar must show the re-hosted photo.
+     An EDIT save lands on the Viewer, so the re-host reply arrives while the
+     grid is hidden and applyRehostedUrl rightly doesn't draw it. The grid
+     then has to be drawn on the way back — and showView('recipes') didn't,
+     so the card kept the pre-edit photo until a reload. Found on the live
+     app, 22 Sep: "the new one appears briefly, then the old one". */
+  const VIA_SIDEBAR = 'https://mhkayefzrtceesgizkjs.supabase.co/storage/v1/object/public/recipe-images/h/sidebar.jpg?v=7';
+  await page.evaluate((to) => {
+    window.__INVOKES__.length = 0;
+    window.__INVOKE_REPLY__ = (call) => ({ data: { report: [{ id: call.body.recipeId, outcome: 'rehosted', to }] }, error: null });
+  }, VIA_SIDEBAR);
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+  await page.locator('.rcard', { hasText: 'Test Traybake' }).first().click();
+  await page.waitForTimeout(400);
+  await page.click('#editRecipeBtn');
+  await page.waitForTimeout(400);
+  await page.fill('#f-image', 'https://cdn.example.com/sidebar-source.jpg');
+  await page.click('#saveBtn');
+  await page.waitForFunction(() => (window.__INVOKES__ || []).length > 0, null, { timeout: 4000 }).catch(() => {});
+  await page.waitForTimeout(500);
+  const cardSrc = () => page.evaluate(() => {
+    const card = [...document.querySelectorAll('.rcard')].find(c => c.textContent.includes('Test Traybake'));
+    const img = card && card.querySelector('.rcard-photo img');
+    return img ? img.getAttribute('src') : null;
+  });
+  /* The precondition, asserted rather than assumed: the reply really did
+     land while the Viewer was showing, and the hidden grid really is stale.
+     Without this the check below could pass for the wrong reason. */
+  const onViewer = await page.evaluate(() => ({
+    view: state.view,
+    cached: loadRecipes().find(r => r.title === 'Test Traybake').imageUrl
+  }));
+  const staleSrc = await cardSrc();
+  check('an edit save lands on the Viewer, and the reply is applied there',
+        onViewer.view === 'viewer' && onViewer.cached === VIA_SIDEBAR, JSON.stringify(onViewer));
+  check('so the hidden grid is still showing the old photo',
+        staleSrc !== VIA_SIDEBAR, String(staleSrc));
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+  check('returning by the sidebar shows the re-hosted photo',
+        (await cardSrc()) === VIA_SIDEBAR, String(await cardSrc()));
+
+  /* ---- Coming back to the tab (22 Sep) ----
+     supabase-js emits SIGNED_IN on every hidden → visible change of the tab,
+     with no network call, so offline too. The app used to treat each one as
+     a fresh start: re-download everything, and sign you out if that failed.
+     Found by the first offline test ever run against the live app.
+
+     Each check below targets one mechanism in refreshLibrary, and each was
+     mutation-tested by breaking exactly that mechanism. Note the stub's
+     "server" never applies writes, so a refresh that DOES apply resets the
+     cache to the fixture — which is why these sit at the end of the suite. */
+  const fireSignedIn = () => page.evaluate(() => window.__AUTH_CB__('SIGNED_IN'));
+  const setServerTitle = (t) => page.evaluate((t) => { window.__STUB_DATA__.recipes[0].title = t; }, t);
+  const hasTitle = (t) => page.evaluate((t) => loadRecipes().some(r => r.title === t), t);
+  /* A deliberate failure logs 'Sync failed' to the console, which this suite
+     otherwise counts as an app fault. Only that, only inside the window. */
+  const allowSyncFailures = async (fn) => {
+    const mark = errors.length;
+    await fn();
+    for (let i = errors.length - 1; i >= mark; i--) if (/Sync failed/.test(errors[i])) errors.splice(i, 1);
+  };
+  const favState = async () => page.evaluate(() => {
+    const btn = document.querySelector('.rcard-favourite');
+    const r = loadRecipes().find(x => x.id === btn.dataset.favourite);
+    return { id: r.id, favourite: !!r.favourite };
+  });
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+
+  check('the app is listening for SIGNED_IN at all',
+        await page.evaluate(() => typeof window.__AUTH_CB__ === 'function'));
+
+  // Offline: nothing may be lost, and nobody may be signed out.
+  const countBefore = await page.evaluate(() => loadRecipes().length);
+  const signoutsBefore = await page.evaluate(() => window.__SIGNOUTS__);
+  await page.evaluate(() => { window.__READ_FAIL__ = true; });
+  await fireSignedIn();
+  await page.waitForTimeout(400);
+  await page.evaluate(() => { window.__READ_FAIL__ = false; });
+  check('coming back to the tab offline does not sign you out',
+        (await page.evaluate(() => window.__SIGNOUTS__)) === signoutsBefore && !(await page.isVisible('#loginGate')));
+  check('and keeps the library that was loaded',
+        (await page.evaluate(() => loadRecipes().length)) === countBefore && countBefore > 0, String(countBefore));
+
+  // Online: the refresh must still happen — it is what keeps a long-open tab current.
+  await setServerTitle('Test Pasta, edited elsewhere');
+  await fireSignedIn();
+  await page.waitForTimeout(400);
+  check('coming back online picks up a change made on another device',
+        await hasTitle('Test Pasta, edited elsewhere'));
+  await setServerTitle('Test Pasta');
+
+  // It must not read the server before this page's own saves have reached it.
+  await page.evaluate(() => { window.__WRITE_DELAY__ = 600; window.__LOG__.length = 0; });
+  await page.locator('.rcard-favourite').first().click();
+  await fireSignedIn();
+  await page.waitForTimeout(1400);
+  await page.evaluate(() => { window.__WRITE_DELAY__ = 0; });
+  const order = await page.evaluate(() => window.__LOG__.slice());
+  const writeDone = order.indexOf('write-done:recipes');
+  const firstRead = order.findIndex(e => e.startsWith('read:'));
+  check('a refresh waits for queued saves before reading',
+        writeDone !== -1 && firstRead > writeDone, order.slice(0, 4).join(', '));
+
+  // A change made while the refresh is fetching must survive it.
+  await setServerTitle('Test Pasta, edited mid-fetch');
+  await page.evaluate(() => { window.__READ_DELAY__ = 500; });
+  await fireSignedIn();
+  await page.waitForTimeout(150);
+  const midBefore = await favState();
+  await page.locator('.rcard-favourite').first().click();
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => { window.__READ_DELAY__ = 0; });
+  const midAfter = await page.evaluate((id) => !!loadRecipes().find(r => r.id === id).favourite, midBefore.id);
+  check('a refresh is discarded if anything changed while it was fetching',
+        !(await hasTitle('Test Pasta, edited mid-fetch')));
+  check('so the change made mid-fetch is kept', midAfter === !midBefore.favourite,
+        `${midBefore.favourite} -> ${midAfter}`);
+  await setServerTitle('Test Pasta');
+
+  // A save that failed must not be undone by a refresh.
+  /* Start from the fixture's own values. The test above leaves this recipe's
+     favourite flipped, and from there one failed toggle lands back ON the
+     fixture value — so a refresh that wrongly applied would "restore" exactly
+     what the check expects, and the check would pass a broken app. It did,
+     under mutation, before this line was added. */
+  await fireSignedIn();
+  await page.waitForTimeout(400);
+  const unsentBefore = await favState();
+  await allowSyncFailures(async () => {
+    await page.evaluate(() => { window.__WRITE_FAIL__ = true; });
+    await page.locator('.rcard-favourite').first().click();
+    await page.waitForTimeout(300);
+    await page.evaluate(() => { window.__WRITE_FAIL__ = false; });
+  });
+  await setServerTitle('Test Pasta, edited while a save was failing');
+  await fireSignedIn();
+  await page.waitForTimeout(400);
+  check('a refresh stands down while a save has failed',
+        !(await hasTitle('Test Pasta, edited while a save was failing')));
+  check('so the unsaved change is still there to be sent',
+        (await page.evaluate((id) => !!loadRecipes().find(r => r.id === id).favourite, unsentBefore.id)) === !unsentBefore.favourite);
+  // The next save of the whole table carries it, and then refreshing may resume.
+  await page.locator('.rcard-favourite').first().click();
+  await page.waitForTimeout(300);
+  await fireSignedIn();
+  await page.waitForTimeout(400);
+  check('once a later save of the whole table succeeds, refreshing resumes',
+        await hasTitle('Test Pasta, edited while a save was failing'));
+  await setServerTitle('Test Pasta');
+
+  // Starting up offline: explain, keep the session, and recover without a password.
+  const cold = await browser.newPage();
+  const coldErrors = [];
+  cold.on('pageerror', e => coldErrors.push(e.message));
+  await cold.addInitScript(() => { window.__READ_FAIL__ = true; });
+  await cold.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await cold.waitForTimeout(1200);
+  const coldMsg = (await cold.textContent('#loginError')) || '';
+  check('starting up offline does not sign you out',
+        (await cold.evaluate(() => window.__SIGNOUTS__)) === 0);
+  check('and says the server could not be reached, not that sign-in failed',
+        (await cold.isVisible('#loginGate')) && /reach the server/.test(coldMsg), coldMsg);
+  await cold.evaluate(() => { window.__READ_FAIL__ = false; window.__AUTH_CB__('SIGNED_IN'); });
+  await cold.waitForTimeout(600);
+  check('coming back once connected starts the app by itself',
+        !(await cold.isVisible('#loginGate')) && (await cold.locator('.rcard').count()) > 0);
+  check('the offline start raised no page errors', coldErrors.length === 0, coldErrors.join('; '));
+  await cold.close();
+
   await page.screenshot({ path: path.join(__dirname, 'settings.png'), fullPage: false });
 
   let failed = 0;
