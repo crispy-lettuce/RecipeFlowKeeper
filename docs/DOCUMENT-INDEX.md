@@ -125,6 +125,20 @@ reverts after an unrelated save is the feature failing in a way that looks exact
 
 ---
 
+### `docs/REVIEW-INGREDIENT-MATCHING.md` — brief for reviewing the shopping list's matching
+**What:** A self-contained brief for a separate review session. It covers how ingredient lines
+become shopping-list items today, the faults already found by running the real functions, what
+makes changes expensive, the questions to answer, and how to measure against the real library.
+It ends with the prompt that starts the session.
+
+**Use it when:** starting that review, or before touching `splitQty`, `normalizeIngredientName`,
+word matches or the converter's ingredient rules.
+
+**Don't:** commit library data while following it. Its examples are made up on purpose; the repo
+is public.
+
+---
+
 ### `docs/NEXT-SESSION.md` — the order of work, and how to start
 **What:** **The definitive sequence for what happens next**, with the reasoning behind the three
 places where order genuinely matters. Plus a complete, ready-to-paste prompt for the next session
