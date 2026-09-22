@@ -90,7 +90,7 @@ store it:
 - **Far too small.** Under about 20 KB means something is wrong, though not always the same
   thing. A lazy-load placeholder captured instead of the real photo is one cause; a file that is
   simply broken at source is another. Tuscan Chicken Pasta was 10 KB and turned out to be the
-  second — see below.
+  second — its replacement is 257,931 bytes, 25× larger.
 
 ### Every download is checked for integrity
 
@@ -280,7 +280,9 @@ select
      from storage.objects where bucket_id = 'recipe-images')                                      as total_size;
 ```
 
-As of 21 Sep 2026: **29 objects, 29 rows self-hosted, 29 rows with an image, 4.1 MB.**
+As of 22 Sep 2026: **29 objects, 29 rows self-hosted, 29 rows with an image, 4,426 kB**, and
+`dangling_rows`, `orphaned_files` and text/column disagreements all 0. A full verify sweep the
+same day reported **29 whole, 0 broken**.
 
 Two checks worth more than the counts:
 

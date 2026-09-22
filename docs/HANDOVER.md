@@ -99,7 +99,7 @@ hasn't caught up yet.
 
 ---
 
-## 2. Recipe images (R7) — DONE, 21 Sep 2026
+## 2. Recipe images (R7) — DONE, 21 Sep 2026; integrity checking added 22 Sep
 
 **All 29 images that existed are now self-hosted.** The library no longer depends on eleven third
 parties continuing to serve the same URLs — Kitchen Sanctuary alone held seventeen.
@@ -112,8 +112,9 @@ status and the decisions.
 | --- | --- |
 | Objects in `recipe-images` | 29 |
 | Rows self-hosted | 29 of 29 with an image (4 recipes have none) |
-| Total storage | 4.1 MB |
+| Total storage | 4,426 kB |
 | Dangling rows / orphaned files / syntax disagreements | 0 / 0 / 0 |
+| Verified whole | 29 of 29, by `{"verify": true}` on 22 Sep |
 
 **It is not automatic.** Nothing re-hosts on save; a sweep is run by hand from the browser console.
 That is deliberate — saving a recipe should not depend on a third party's server answering — and
@@ -155,10 +156,22 @@ and a browser could not do it anyway, because most recipe CDNs send no permissiv
    would silently revert its image to the CDN. The sweep now moves both, and the 29 already done
    were backfilled.
 
-**One cosmetic thing outstanding:** Tuscan Chicken Pasta's image is 10 KB where its Kitchen
-Sanctuary siblings are 130–200 KB, so the reprocess caught a lazy-load placeholder rather than the
-hero photo. Same picture the cards showed before, so nothing regressed. `docs/IMAGES.md` §3 says how
-to replace it.
+**Both broken images are fixed, and the diagnosis they came with was wrong twice.** Tuscan
+Chicken Pasta was recorded here as a lazy-load placeholder. It was not: it was a truncated JPEG,
+which rendered as a photo on the top 40% of the card and solid grey below. Chasing that turned up a
+second one nobody had noticed — Classic Scones, cut off mid-transfer at exactly 35 × 1024 bytes.
+
+Both now carry whole files (257,931 and 35,613 bytes) and a full verify sweep reports 29 of 29
+whole. The Scones replacement is *smaller* than the file it replaced, which is the tell: the broken
+copy had been padded to a block boundary.
+
+**The lesson is about the verification, not the images.** Two checks were written and shipped
+before one worked. The first compared the stored byte count against the dry run's — but both reads
+fetch the same source, so a file broken at source yields two identical counts and a clean bill of
+health. The second checked for the JPEG end marker — but that marker was present; what had run out
+early was the scan data. Neither failure was bad luck; both were reasoning that could not have
+caught the fault. `docs/IMAGES.md` §2 has the full account and the measured density distribution
+the current threshold rests on. `test/image-integrity.js` pins all three checks.
 
 ---
 
