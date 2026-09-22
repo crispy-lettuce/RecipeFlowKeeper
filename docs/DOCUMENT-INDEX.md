@@ -139,6 +139,29 @@ is public.
 
 ---
 
+### `docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md` — what that review found, and what to do
+**What:** The answer to the brief above, measured against the real library on 22 Sep 2026: 34
+recipes and 463 lines, scored with the app's own functions against a hand-labelled answer key of
+168 items. It covers:
+
+- the fault classes and how often each occurs;
+- every idea tested, one at a time and combined;
+- two real weeks rebuilt before and after;
+- ranked recommendations;
+- the proposed ingredient-line format and converter wording;
+- a migration plan for recipes, word matches and ticks;
+- a test plan in which every check names the mutation that must fail it.
+
+It ends with twelve decisions for the household.
+
+**Use it when:** deciding what to build for the shopping list, or before changing `splitQty`,
+the converter's ingredient rules or word matches. **Nothing in it has been implemented.**
+
+**Don't:** look for the real lines here. They are in a private appendix that was handed to the
+household and is not in this repo.
+
+---
+
 ### `docs/NEXT-SESSION.md` — the order of work, and how to start
 **What:** **The definitive sequence for what happens next**, with the reasoning behind the three
 places where order genuinely matters. Plus a complete, ready-to-paste prompt for the next session
