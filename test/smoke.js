@@ -78,6 +78,22 @@ const path = require('path');
   const mirror = await page.evaluate(() => { try { return localStorage.getItem('kitchen.darkMode'); } catch (e) { return 'BLOCKED'; } });
   check('theme mirrored to localStorage for the next boot', mirror === 'dark', String(mirror));
 
+  /* Two colour sets live in JavaScript beyond the flow table's, and both
+     were missed on the first pass at dark mode: the history pie palette
+     (dark slices on a dark card) and the PNG export background (a cream
+     border around dark content). Neither is reachable by a token swap, so
+     neither fails visibly in any test that only checks CSS. */
+  await page.click('.navlink[data-view="history"]');
+  await page.waitForTimeout(600);
+  const pieFill = await page.evaluate(() => {
+    const el = document.querySelector('#view-history svg path');
+    return el ? el.getAttribute('fill') : 'NONE';
+  });
+  check('pie chart uses the dark palette', pieFill === '#C98FB4', pieFill);
+  const exportBg = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--paper').trim());
+  check('PNG export background follows the theme', exportBg === '#1C1915', exportBg);
+
   /* The flow table paints PALETTE into inline styles, so it is the one
      screen a token swap cannot reach on its own. */
   await page.click('.navlink[data-view="recipes"]');

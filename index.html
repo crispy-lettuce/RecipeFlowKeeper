@@ -1508,6 +1508,17 @@ const SINGLE_RECIPE_TIMELINE_COLOUR_LIGHT = '#5B2A4A';
 const SINGLE_RECIPE_TIMELINE_COLOUR_DARK  = '#C98FB4';
 let SINGLE_RECIPE_TIMELINE_COLOUR = SINGLE_RECIPE_TIMELINE_COLOUR_LIGHT;
 
+/* The history pie charts. Declared here with the other palettes rather
+   than beside renderPieChart, so applyTheme can never reach it before the
+   line that creates it. */
+const PIE_COLOURS_LIGHT = ['#5B2A4A','#7C9473','#B08A2E','#7A3D65','#8C3A34','#6E665A','#A79E8D','#C9BFA6','#D8CFB8'];
+/* The light set runs saturated-to-pale because it sits on paper. On a dark
+   ground every slice has to be LIGHTER than what is behind it, so this is
+   not the light set darkened — the neutrals at the tail move up, not down,
+   and the hues stay spread so nine slices remain tellable apart. */
+const PIE_COLOURS_DARK  = ['#C98FB4','#9DBE92','#D9B463','#8FB3D1','#E08A82','#B8AE9C','#7FBFBF','#C2996A','#D8CFB8'];
+let PIE_COLOURS = PIE_COLOURS_LIGHT;
+
 /* ------------------------------- Theme (S2) -------------------------------
    Three states, per the Build Brief: on, off, or follow the system.
 
@@ -1533,6 +1544,7 @@ function applyTheme(mode){
   MERGE_COLOR = theme === 'dark' ? MERGE_COLOR_DARK : MERGE_COLOR_LIGHT;
   SINGLE_RECIPE_TIMELINE_COLOUR = theme === 'dark'
     ? SINGLE_RECIPE_TIMELINE_COLOUR_DARK : SINGLE_RECIPE_TIMELINE_COLOUR_LIGHT;
+  PIE_COLOURS = theme === 'dark' ? PIE_COLOURS_DARK : PIE_COLOURS_LIGHT;
   /* The mirror the boot script reads. Written here and nowhere else, so it
      cannot drift from what was actually applied. */
   try { localStorage.setItem('kitchen.darkMode', mode); } catch(e){ /* blocked storage is not fatal */ }
@@ -1577,6 +1589,9 @@ function rerenderForTheme(){
   if(!themeBooted) return;
   if(state.view === 'viewer') renderViewer();
   else if(state.view === 'group-viewer') renderGroupViewer();
+  /* History draws its pie charts as inline SVG fills, so it is in the same
+     position as the flow table: a token swap cannot reach it. */
+  else if(state.view === 'history') renderHistory();
 }
 
 function escapeHtml(s){
@@ -2467,8 +2482,16 @@ function exportNodeAsPng(node, filename, opts){
 
   const restore = ()=> restoreFns.forEach(fn=>fn());
 
+  /* Read the live token rather than naming a colour. The export used to
+     hard-code the light paper colour, which in the dark theme produced a
+     cream border around dark content — a broken-looking PNG from a
+     correct-looking screen. Reading --paper means this cannot drift from
+     the theme again, including from any theme added later. */
+  const exportBg = getComputedStyle(document.documentElement)
+    .getPropertyValue('--paper').trim() || '#F5F1E6';
+
   html2canvas(node, {
-    backgroundColor:'#F5F1E6',
+    backgroundColor: exportBg,
     scale:2,
     scrollX:0,
     scrollY:-window.scrollY,
@@ -5165,7 +5188,6 @@ function renderHistoryDayDetail(){
    rather than introducing bright chart-ish colours that would clash with
    the paper/ink aesthetic. Cycles if there are more slices than colours
    (unlikely at 9 meal-base keywords max, but harmless if it happens). */
-const PIE_COLOURS = ['#5B2A4A','#7C9473','#B08A2E','#7A3D65','#8C3A34','#6E665A','#A79E8D','#C9BFA6','#D8CFB8'];
 
 /* Simple inline SVG pie chart — no charting library, per the "simple
    charts" decision. Returns an SVG + legend as one HTML string. Empty

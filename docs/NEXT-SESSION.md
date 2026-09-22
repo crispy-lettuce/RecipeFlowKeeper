@@ -149,7 +149,7 @@ Some context worth having:
     the branch and I'll decide when to merge.
   - index.html is the whole app. One file, no build step, no framework.
     Run `node test/build.js && node test/smoke.js` after any code change.
-    114 checks. It stubs Supabase, so it proves nothing about sign-in.
+    116 checks. It stubs Supabase, so it proves nothing about sign-in.
   - Several columns already exist for these features (recipe_logs.meal_type,
     recipe_logs.note). A column existing does
     not mean the feature does — docs/ARCHITECTURE.md §4 lists them.

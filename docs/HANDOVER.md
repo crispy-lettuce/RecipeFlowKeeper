@@ -216,13 +216,25 @@ is used. A boot script in `<head>` paints from a `localStorage` mirror before fi
 `hydrate()` reconciles. The database stays the source of truth, the mirror is a cache of the
 last known answer, and `applyTheme` is its only writer. A stale mirror costs one repaint.
 
-**One bug was found by looking, not by reasoning.** `SINGLE_RECIPE_TIMELINE_COLOUR` stayed
-dark while `--on-accent` flipped to dark text, giving dark-on-dark lane labels on the recipe
-timeline. Reading the code did not surface it; a screenshot did, immediately. The smoke suite
-now pins it — verified by reverting the fix and watching that check fail.
+**Three bugs were found by looking, not by reasoning**, and the pattern in them matters more
+than any one of them. Each was a colour living in JavaScript rather than in a token:
 
-Smoke coverage went from 102 to **114 checks**. What it cannot judge is contrast on the real
-tablet in a real kitchen, which is the one thing worth a human eye.
+| | what it did |
+| --- | --- |
+| `SINGLE_RECIPE_TIMELINE_COLOUR` | stayed dark while `--on-accent` flipped, giving dark-on-dark lane labels |
+| `PIE_COLOURS` | dark plum slices on a dark history card |
+| html2canvas `backgroundColor` | a cream border around dark content in every exported PNG |
+
+The first two were caught by screenshots. The third was caught only by giving up on reading the
+code and grepping the whole script for hex literals — which is what should have been done first,
+and is the lesson worth keeping: **an exhaustive search beats a careful reading when the question
+is "have I found all of them?"**
+
+The export background is now read from the live `--paper` token rather than named, so it cannot
+drift from the theme again, including from any theme added later.
+
+Smoke coverage went from 102 to **116 checks**, each mutation-tested. What none of them can judge
+is contrast on the real tablet in a real kitchen, which is the one thing worth a human eye.
 
 ---
 
@@ -369,7 +381,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **114 checks** across every screen, `shots.js` captures screenshots.
+`smoke.js` runs **116 checks** across every screen, `shots.js` captures screenshots.
 
 ```sh
 npm install playwright

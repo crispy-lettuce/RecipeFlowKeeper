@@ -185,7 +185,7 @@ has to know where a photo lives. See `docs/HANDOVER.md` §2.
 ```sh
 npm install playwright
 node test/build.js    # bake index.html against the stub
-node test/smoke.js    # 114 checks; exits non-zero on failure
+node test/smoke.js    # 116 checks; exits non-zero on failure
 ```
 
 It has caught real bugs, including a parser gap that would have broken every reprocessed recipe.
