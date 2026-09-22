@@ -21,7 +21,8 @@
  *
  * Idempotent: anything already pointing at our own storage is skipped, so
  * re-running is safe and cheap. Call with {"dryRun": true} to see what it
- * would do without writing anything.
+ * would do without writing anything, or {"verify": true} to re-read what
+ * is already stored and check every file is whole.
  */
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -39,6 +40,64 @@ const EXT: Record<string, string> = {
   'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png',
   'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif',
 };
+
+/* Is this actually a complete image file?
+ *
+ * Added 22 Sep after Tuscan Chicken Pasta rendered as a photo on top and
+ * grey below — the signature of a JPEG whose scanlines stop early. It had
+ * been stored, and passed verification, because the check at the time
+ * compared the stored byte count against the dry run's byte count. Both
+ * fetches returned exactly 10,515 bytes, so they agreed with each other
+ * and were both incomplete. Agreement between two reads of the same bad
+ * source says nothing about integrity.
+ *
+ * Two independent checks, because they catch different faults:
+ *
+ *   Content-Length vs what arrived catches a transfer that died mid-flight
+ *   — the server promised more than it sent.
+ *
+ *   The format's own end marker catches a file that is corrupt at source,
+ *   where Content-Length agrees with the bytes because the server is
+ *   faithfully serving a broken file. That is this case.
+ */
+function imageIntegrity(bytes: Uint8Array, contentLength: number | null): string | null {
+  if (contentLength !== null && contentLength !== bytes.byteLength) {
+    return `transfer truncated: server declared ${contentLength} bytes, got ${bytes.byteLength}`;
+  }
+  const n = bytes.byteLength;
+  if (n < 12) return 'file too small to be an image';
+  const at = (i: number) => bytes[i];
+
+  // JPEG: SOI FFD8 ... EOI FFD9. Trailing NULs after EOI are legal and common.
+  if (at(0) === 0xFF && at(1) === 0xD8) {
+    let e = n - 1;
+    while (e > 1 && at(e) === 0x00) e--;
+    if (!(at(e - 1) === 0xFF && at(e) === 0xD9)) return 'truncated JPEG: no end-of-image marker';
+    return null;
+  }
+  // PNG: 8-byte signature, and an IEND chunk to finish.
+  if (at(0) === 0x89 && at(1) === 0x50 && at(2) === 0x4E && at(3) === 0x47) {
+    const tail = bytes.subarray(Math.max(0, n - 12));
+    const hasIend = Array.from(tail).some((_, i) =>
+      tail[i] === 0x49 && tail[i + 1] === 0x45 && tail[i + 2] === 0x4E && tail[i + 3] === 0x44);
+    if (!hasIend) return 'truncated PNG: no IEND chunk';
+    return null;
+  }
+  // GIF: ends with the 0x3B trailer.
+  if (at(0) === 0x47 && at(1) === 0x49 && at(2) === 0x46) {
+    if (at(n - 1) !== 0x3B) return 'truncated GIF: no trailer byte';
+    return null;
+  }
+  // WEBP/AVIF declare their own length in the container header.
+  if (at(0) === 0x52 && at(1) === 0x49 && at(2) === 0x46 && at(3) === 0x46) {
+    const riff = at(4) | (at(5) << 8) | (at(6) << 16) | (at(7) << 24);
+    if (riff + 8 > n) return `truncated WEBP: header declares ${riff + 8} bytes, got ${n}`;
+    return null;
+  }
+  /* AVIF and anything else: no cheap end-marker check. Saying so beats
+     implying a clean bill of health we did not earn. */
+  return null;
+}
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -90,9 +149,10 @@ Deno.serve(async (req: Request) => {
 
   const admin = createClient(url, serviceKey);
 
-  let body: { dryRun?: boolean; limit?: number } = {};
+  let body: { dryRun?: boolean; limit?: number; verify?: boolean } = {};
   try { body = await req.json(); } catch { /* no body is fine — sweep everything */ }
   const dryRun = body.dryRun === true;
+  const verify = body.verify === true;
   const limit = typeof body.limit === 'number' ? body.limit : 500;
 
   const { data: households, error: hErr } = await admin
@@ -110,6 +170,42 @@ Deno.serve(async (req: Request) => {
   const selfHost = `${url}/storage/v1/object/public/${BUCKET}/`;
   const report: Array<Record<string, unknown>> = [];
   let rehosted = 0, skipped = 0, failed = 0;
+
+  /* {"verify": true} inverts the sweep: instead of re-hosting what is still
+     external, it re-reads what we have already stored and checks that each
+     file is whole.
+
+     WHY THIS IS A SEPARATE MODE. The sweep skips anything self-hosted, which
+     is what makes it idempotent and cheap — and also means it can never
+     notice that something it stored months ago is broken. Tuscan Chicken
+     Pasta was stored truncated and stayed that way until a person looked at
+     a card. The integrity check on the way in stops new ones; this is how
+     you ask whether the existing library has others. Read-only. */
+  if (verify) {
+    let whole = 0; const broken: Array<Record<string, unknown>> = [];
+    for (const r of recipes ?? []) {
+      const src = (r.image_url ?? '').trim();
+      if (!src.startsWith(selfHost)) {
+        broken.push({ title: r.title, problem: 'not self-hosted', image_url: src || null });
+        continue;
+      }
+      try {
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
+        const res = await fetch(src, { headers: { 'Accept': 'image/*' }, signal: ctl.signal, redirect: 'follow' })
+          .finally(() => clearTimeout(timer));
+        if (!res.ok) { broken.push({ title: r.title, problem: `stored object returned ${res.status}`, image_url: src }); continue; }
+        const declared = res.headers.get('content-length');
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        const problem = imageIntegrity(bytes, declared === null ? null : parseInt(declared, 10));
+        if (problem) broken.push({ title: r.title, problem, bytes: bytes.byteLength, image_url: src });
+        else whole++;
+      } catch (e) {
+        broken.push({ title: r.title, problem: String((e as Error).message ?? e), image_url: src });
+      }
+    }
+    return json({ verify: true, checked: recipes?.length ?? 0, whole, broken: broken.length, report: broken });
+  }
 
   for (const r of recipes ?? []) {
     const src = (r.image_url ?? '').trim();
@@ -130,9 +226,14 @@ Deno.serve(async (req: Request) => {
          the common case this catches. */
       if (!ext) throw new Error(`not an image (content-type: ${ct || 'none'})`);
 
+      const declared = res.headers.get('content-length');
       const bytes = new Uint8Array(await res.arrayBuffer());
       if (bytes.byteLength === 0) throw new Error('empty response');
       if (bytes.byteLength > MAX_BYTES) throw new Error(`too large (${bytes.byteLength} bytes)`);
+      /* Refuse a broken file rather than store it. A truncated photo looks
+         fine in a byte count and wrong in the kitchen. */
+      const broken = imageIntegrity(bytes, declared === null ? null : parseInt(declared, 10));
+      if (broken) throw new Error(broken);
 
       const path = `${r.household_id}/${r.id}.${ext}`;
       /* The stored path is stable per recipe, so replacing a photo

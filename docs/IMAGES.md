@@ -87,9 +87,32 @@ store it:
   `?w=1600&q=80&fm=jpg` to that recipe's image URL before the sweep took the whole library from
   11.5 MB to 4.1 MB. Most large CDNs have an equivalent: WordPress `?w=`, Cloudinary `w_1600`,
   Sanity `?w=1600`.
-- **Far too small.** Under about 20 KB usually means the conversion captured a lazy-load
-  placeholder rather than the real photo. Tuscan Chicken Pasta is 10 KB for that reason and is
-  still waiting for a better URL.
+- **Far too small.** Under about 20 KB means something is wrong, though not always the same
+  thing. A lazy-load placeholder captured instead of the real photo is one cause; a file that is
+  simply broken at source is another. Tuscan Chicken Pasta was 10 KB and turned out to be the
+  second — see below.
+
+### Every download is checked for integrity
+
+Since 22 Sep both functions verify that what arrived is a *complete* image before storing it or
+recommending it. Two independent checks, because they catch different faults:
+
+- **Content-Length against the bytes that arrived.** Catches a transfer that died mid-flight — the
+  server promised more than it delivered.
+- **The format's own end marker** — JPEG `FFD9`, PNG `IEND`, GIF `0x3B`, the length in a WEBP RIFF
+  header. Catches a file that is corrupt at source, where Content-Length agrees with the bytes
+  because the server is faithfully serving a broken file.
+
+A failure is reported as `failed` with the reason, and the recipe is left alone rather than having
+a broken image written over a working one.
+
+**Why this exists, because the lesson generalises.** Tuscan Chicken Pasta rendered as a photo on
+the top 40% of the card with solid grey below — the signature of a JPEG whose scanlines stop early.
+It had been stored, and had *passed verification*, because the check at the time compared the
+stored byte count against the byte count the dry run had seen. Both fetches returned exactly 10,515
+bytes. They agreed with each other, and both were incomplete. **Agreement between two reads of the
+same bad source is not evidence of integrity** — only something that knows what a whole file looks
+like can tell you that.
 
 ---
 
@@ -116,9 +139,13 @@ recipe currently has, so the comparison is like for like.
 const { data } = await sb.functions.invoke('find-recipe-image', {
   body: { title: 'Tuscan Chicken Pasta' }
 });
-console.log('current:', data.currentImageBytes, 'bytes');
-console.table(data.candidates.map(c => ({ KB: c.bytes && Math.round(c.bytes/1024), source: c.source, url: c.url, error: c.error })));
+console.log('current:', data.currentImageBytes, 'bytes', data.currentImageProblem ?? 'ok');
+console.table(data.candidates.map(c => ({ KB: c.bytes && Math.round(c.bytes/1024), ok: c.ok, source: c.source, url: c.url, problem: c.problem ?? c.error })));
 ```
+
+**Read the `ok` column, not just `KB`.** A candidate can be the largest and still be broken; the
+finder reports integrity (§2) on every candidate and on the recipe's current image so you do not
+pick the biggest corrupt one.
 
 Takes `title`, `recipeId`, or a bare `pageUrl` for something not in the library yet.
 
@@ -200,6 +227,9 @@ silently in the night.
 | `not an image (content-type: text/html)` | The URL returns an error page, not a photo | The URL is wrong or the image has been removed. Find a new one |
 | Photo does not change after replacing it | Browser cache | Hard-reload. If it persists, check `image_url` actually has a new `?v=` token |
 | An image looks like a tiny blurry placeholder | The conversion captured a lazy-load thumbnail | Run `find-recipe-image` for that recipe, pick a candidate, replace it (§3) |
+| Photo renders correctly at the top and goes solid grey below | Truncated JPEG — the scanlines stop early | The sweep now refuses these outright. Run `find-recipe-image`, check `currentImageProblem` and each candidate's `problem`, pick one reporting `ok: true`, replace it (§3) |
+| Sweep reports `failed` with `truncated JPEG: no end-of-image marker` | The source is serving a broken file | Working as intended — it stopped rather than storing it. Find a different URL (§3) |
+| Sweep reports `failed` with `transfer truncated: server declared N bytes, got M` | The download died mid-flight | Usually transient. Re-run the sweep; if it repeats, the host is at fault and needs a different URL |
 | `find-recipe-image` returns no candidates | The page hides its images behind JavaScript, or has no `og:image` | Fall back to right-click → Copy image address in a browser |
 | `source page returned 403` from `find-recipe-image` | The site blocks non-browser traffic harder than its CDN does | Same fallback — get the URL by hand and put it on the recipe |
 
@@ -236,9 +266,29 @@ where image_url is not null and image_url <> '' and syntax like '%IMAGE:%'
   and position('IMAGE: ' || image_url in syntax) = 0;
 ```
 
-All three should be **0**. The strongest check of all, though, is comparing each stored file's byte
-count against what the dry run predicted for that recipe — a file smaller than predicted is a
-truncated download, and nothing else catches that.
+All three should be **0**.
+
+**Do not verify by comparing byte counts between the dry run and the real run.** That check was
+here until 22 Sep and it is worthless: both runs fetch the same source, so a file that is broken at
+source produces two identical byte counts and a clean bill of health. That is precisely how a
+truncated JPEG got stored and reported as verified. The integrity check described in §2 is what
+actually answers the question, and it runs on the way in — a stored image has already passed it.
+
+**To re-check the whole library after the fact**, the sweep has a read-only verify mode. It is the
+inverse of the normal sweep: instead of re-hosting what is still external, it re-reads every file
+already stored and checks each one is whole. Nothing is written.
+
+```js
+const { data } = await sb.functions.invoke('rehost-images', { body: { verify: true } });
+console.log(`${data.whole} whole, ${data.broken} broken of ${data.checked}`);
+console.table(data.report);
+```
+
+`broken: 0` is the answer you want. Anything listed needs a replacement URL (§3). Worth running
+after any bulk ingestion, and after any run that reported failures.
+
+For a single recipe, `find-recipe-image` reports the same check on its current image as
+`currentImageProblem`.
 
 ---
 

@@ -6,9 +6,9 @@
  * person with a browser doing right-click → copy image address. That is
  * fine once and tedious at scale, and it cannot be done at all from a
  * sandbox with no outbound web access — which is where the library is
- * maintained from. The reprocess captured at least one lazy-load
- * placeholder (Tuscan Chicken Pasta, 10 KB against a 137 KB median), so
- * this is a recurring problem, not a one-off.
+ * maintained from. The reprocess captured at least one broken image
+ * (Tuscan Chicken Pasta, 10 KB against a 137 KB median), so this is a
+ * recurring problem, not a one-off.
  *
  * WHY IT REPORTS SIZES RATHER THAN PICKING: a page offers several images
  * and the biggest is usually but not always the hero. Guessing is exactly
@@ -37,6 +37,64 @@ function corsHeaders(req: Request): Record<string, string> {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Max-Age': '86400',
   };
+}
+
+/* Is this actually a complete image file?
+ *
+ * Added 22 Sep after Tuscan Chicken Pasta rendered as a photo on top and
+ * grey below — the signature of a JPEG whose scanlines stop early. It had
+ * been stored, and passed verification, because the check at the time
+ * compared the stored byte count against the dry run's byte count. Both
+ * fetches returned exactly 10,515 bytes, so they agreed with each other
+ * and were both incomplete. Agreement between two reads of the same bad
+ * source says nothing about integrity.
+ *
+ * Two independent checks, because they catch different faults:
+ *
+ *   Content-Length vs what arrived catches a transfer that died mid-flight
+ *   — the server promised more than it sent.
+ *
+ *   The format's own end marker catches a file that is corrupt at source,
+ *   where Content-Length agrees with the bytes because the server is
+ *   faithfully serving a broken file. That is this case.
+ */
+function imageIntegrity(bytes: Uint8Array, contentLength: number | null): string | null {
+  if (contentLength !== null && contentLength !== bytes.byteLength) {
+    return `transfer truncated: server declared ${contentLength} bytes, got ${bytes.byteLength}`;
+  }
+  const n = bytes.byteLength;
+  if (n < 12) return 'file too small to be an image';
+  const at = (i: number) => bytes[i];
+
+  // JPEG: SOI FFD8 ... EOI FFD9. Trailing NULs after EOI are legal and common.
+  if (at(0) === 0xFF && at(1) === 0xD8) {
+    let e = n - 1;
+    while (e > 1 && at(e) === 0x00) e--;
+    if (!(at(e - 1) === 0xFF && at(e) === 0xD9)) return 'truncated JPEG: no end-of-image marker';
+    return null;
+  }
+  // PNG: 8-byte signature, and an IEND chunk to finish.
+  if (at(0) === 0x89 && at(1) === 0x50 && at(2) === 0x4E && at(3) === 0x47) {
+    const tail = bytes.subarray(Math.max(0, n - 12));
+    const hasIend = Array.from(tail).some((_, i) =>
+      tail[i] === 0x49 && tail[i + 1] === 0x45 && tail[i + 2] === 0x4E && tail[i + 3] === 0x44);
+    if (!hasIend) return 'truncated PNG: no IEND chunk';
+    return null;
+  }
+  // GIF: ends with the 0x3B trailer.
+  if (at(0) === 0x47 && at(1) === 0x49 && at(2) === 0x46) {
+    if (at(n - 1) !== 0x3B) return 'truncated GIF: no trailer byte';
+    return null;
+  }
+  // WEBP/AVIF declare their own length in the container header.
+  if (at(0) === 0x52 && at(1) === 0x49 && at(2) === 0x46 && at(3) === 0x46) {
+    const riff = at(4) | (at(5) << 8) | (at(6) << 16) | (at(7) << 24);
+    if (riff + 8 > n) return `truncated WEBP: header declares ${riff + 8} bytes, got ${n}`;
+    return null;
+  }
+  /* AVIF and anything else: no cheap end-marker check. Saying so beats
+     implying a clean bill of health we did not earn. */
+  return null;
 }
 
 const timedFetch = (url: string, init: RequestInit = {}) => {
@@ -116,6 +174,7 @@ Deno.serve(async (req: Request) => {
   let pageUrl = body.pageUrl;
   let title = body.title;
   let currentBytes: number | null = null;
+  let currentProblem: string | null = null;
 
   if (!pageUrl) {
     if (!body.title && !body.recipeId) return json({ error: 'Give a title, a recipeId, or a pageUrl' }, 400);
@@ -135,7 +194,12 @@ Deno.serve(async (req: Request) => {
     if (r.image_url) {
       try {
         const cur = await timedFetch(r.image_url);
-        if (cur.ok) currentBytes = (await cur.arrayBuffer()).byteLength;
+        if (cur.ok) {
+          const declared = cur.headers.get('content-length');
+          const buf = new Uint8Array(await cur.arrayBuffer());
+          currentBytes = buf.byteLength;
+          currentProblem = imageIntegrity(buf, declared === null ? null : parseInt(declared, 10));
+        }
       } catch { /* unreachable current image is itself worth seeing */ }
     }
   }
@@ -157,7 +221,12 @@ Deno.serve(async (req: Request) => {
       const ct = (res.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
       if (!res.ok) { measured.push({ ...c, error: `returned ${res.status}` }); continue; }
       if (!ct.startsWith('image/')) { measured.push({ ...c, error: `not an image (${ct || 'no content-type'})` }); continue; }
-      measured.push({ ...c, bytes: (await res.arrayBuffer()).byteLength, contentType: ct });
+      const declared = res.headers.get('content-length');
+      const buf = new Uint8Array(await res.arrayBuffer());
+      /* Report integrity alongside size, so a candidate isn't chosen for
+         being the biggest when it is the biggest broken one. */
+      const broken = imageIntegrity(buf, declared === null ? null : parseInt(declared, 10));
+      measured.push({ ...c, bytes: buf.byteLength, contentType: ct, ok: !broken, problem: broken ?? undefined });
     } catch (e) {
       measured.push({ ...c, error: String((e as Error).message ?? e) });
     }
@@ -168,6 +237,7 @@ Deno.serve(async (req: Request) => {
   return json({
     title, pageUrl,
     currentImageBytes: currentBytes,
+    currentImageProblem: currentProblem,
     hint: 'Pick a candidate, set it as the recipe IMAGE URL in the app, then run rehost-images.',
     candidates: measured,
   });
