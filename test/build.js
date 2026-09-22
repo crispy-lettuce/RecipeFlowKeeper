@@ -42,7 +42,14 @@ const data = {
         'STAGE:','MERGE softened, finish -> soup: Blend smooth [5 min]'
       ].join('\n') }
   ],
-  recipe_logs: [{ recipe_id: R1, cooked_on: iso(-7) }],
+  /* One of each kind the diary now holds: a cooked recipe with a meal type,
+     a cooked recipe without one (still legitimate — H1 is an enrichment),
+     and an ad-hoc entry with no recipe at all. */
+  recipe_logs: [
+    { id: 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', household_id: HOUSE, recipe_id: R1, cooked_on: iso(-7), meal_type: 'dinner', note: null, title: null },
+    { id: 'aaaaaaaa-2222-4222-8222-aaaaaaaaaaaa', household_id: HOUSE, recipe_id: R2, cooked_on: iso(-3), meal_type: null, note: null, title: null },
+    { id: 'aaaaaaaa-3333-4333-8333-aaaaaaaaaaaa', household_id: HOUSE, recipe_id: null, cooked_on: iso(-3), meal_type: 'lunch', note: null, title: 'Fish and chips' }
+  ],
   keywords: [{ name: 'Pasta' }, { name: 'Veg' }, { name: 'Batch' }],
   planner_days: [
     { household_id: HOUSE, plan_date: iso(0), is_blank: false, recipe_ids: [R1], servings: [] },

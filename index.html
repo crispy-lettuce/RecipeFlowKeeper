@@ -810,6 +810,57 @@
     font-size:16px; line-height:1; cursor:pointer; color:var(--ink-soft);
   }
   .modal-close:hover{ border-color:var(--plum); color:var(--plum); }
+
+  /* ---- Meal-type prompt (H1) and the ad-hoc entry form (H2) ----
+     A narrow panel rather than the full modal: both are a question and a
+     handful of choices, and the recipe modal's 780px would make either
+     look like a form to fill in rather than a tap to make. */
+  .mini-panel{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+    padding:24px 26px; max-width:420px; width:100%; position:relative;
+  }
+  .mini-panel h2{ font-size:19px; font-weight:300; margin-bottom:4px; }
+  .mini-panel .subtle{ margin-bottom:18px; }
+  .meal-type-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .meal-type-btn{
+    flex:1 1 calc(50% - 4px); padding:14px 10px; cursor:pointer;
+    border:1px solid var(--line); border-radius:var(--r); background:var(--paper);
+    color:var(--ink); font-size:13.5px; letter-spacing:.02em;
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .meal-type-btn:hover{ border-color:var(--plum); color:var(--plum); }
+  .meal-type-btn.on{ border-color:var(--plum); background:var(--plum-wash); color:var(--plum); }
+  .mini-actions{ display:flex; gap:10px; justify-content:flex-end; align-items:center; }
+  .link-btn{
+    background:none; border:none; cursor:pointer; color:var(--ink-mute);
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.06em;
+  }
+  .link-btn:hover{ color:var(--plum); }
+  .mini-field{ display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+  .mini-field span{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.08em;
+    color:var(--ink-mute);
+  }
+  .mini-field input{
+    padding:9px 10px; border:1px solid var(--line); border-radius:var(--r);
+    background:var(--paper); color:var(--ink); font-size:14px;
+  }
+
+  /* An ad-hoc entry is deliberately distinguishable from a cooked recipe
+     without being separated from it — the Build Brief puts both on one
+     timeline. A left rule and the muted label do that; a different
+     background would read as a different kind of list. */
+  .diary-adhoc{ border-left:2px solid var(--ink-faint); padding-left:10px; }
+  .diary-meal-tag{
+    font-family:'IBM Plex Mono', monospace; font-size:9.5px; letter-spacing:.08em;
+    color:var(--ink-mute); margin-left:8px; text-transform:uppercase;
+  }
+  .diary-kind{
+    font-family:'IBM Plex Mono', monospace; font-size:9.5px; letter-spacing:.08em;
+    color:var(--ink-faint); margin-left:8px;
+  }
+  .history-day.has-adhoc{ background:rgba(110,102,90,.10); }
+  .history-day.has-entries.has-adhoc{ background:rgba(124,148,115,.09); }
   .modal-panel h1{ font-size:24px; font-weight:300; margin-bottom:6px; }
   .subtle{ color:var(--ink-soft); font-size:14px; line-height:1.6; margin-bottom:20px; max-width:62ch; }
   .field-label{
@@ -1311,6 +1362,8 @@
             <h1 id="historyMonthLabel">Month</h1>
             <button class="backlink" id="historyNextMonth" aria-label="Next month">→</button>
             <button class="btn" id="historyTodayBtn">TODAY</button>
+            <button class="btn" id="historyAddEntryBtn">+ ENTRY</button>
+            <button class="btn" id="historyCsvBtn">CSV</button>
           </div>
           <div class="history-weekday-labels" id="historyWeekdayLabels"></div>
           <div id="historyGrid" class="history-grid"></div>
@@ -1413,6 +1466,42 @@
       </div>
     </section>
   </main>
+</div>
+
+<!-- H1: asked immediately after a cook is logged, never before it. -->
+<div class="modal-overlay" id="mealTypeOverlay">
+  <div class="mini-panel" role="dialog" aria-modal="true" aria-labelledby="mealTypeHeading">
+    <h2 id="mealTypeHeading">Which meal was that?</h2>
+    <p class="subtle"><span id="mealTypeWhat"></span> is logged. Tag it, or skip &mdash; it stays logged either way.</p>
+    <div class="meal-type-row" id="mealTypeChoices"></div>
+    <div class="mini-actions">
+      <button class="link-btn" id="mealTypeSkip">SKIP</button>
+    </div>
+  </div>
+</div>
+
+<!-- H2: a takeaway, a snack, anything with no recipe card. -->
+<div class="modal-overlay" id="adHocOverlay">
+  <div class="mini-panel" role="dialog" aria-modal="true" aria-labelledby="adHocHeading">
+    <button class="modal-close" id="adHocClose" aria-label="Close">&times;</button>
+    <h2 id="adHocHeading">Add a diary entry</h2>
+    <p class="subtle">For something you ate that has no recipe card.</p>
+    <label class="mini-field">
+      <span>WHAT WAS IT</span>
+      <input type="text" id="adHocTitle" list="adHocVocab" autocomplete="off" placeholder="e.g. Fish and chips">
+      <datalist id="adHocVocab"></datalist>
+    </label>
+    <label class="mini-field">
+      <span>DATE</span>
+      <input type="date" id="adHocDate">
+    </label>
+    <div class="meal-type-row" id="adHocMealChoices"></div>
+    <p class="field-error" id="adHocError" style="display:none;"></p>
+    <div class="mini-actions">
+      <button class="link-btn" id="adHocCancel">CANCEL</button>
+      <button class="btn primary" id="adHocSave">ADD</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="addModalOverlay">
@@ -2543,7 +2632,8 @@ const cache = {
   recipes: [], keywords: [], plan: {}, shortlist: [],
   groups: [], swaps: [], shoppingChecked: {},
   settings: { weekStartDay: DEFAULT_WEEK_START_DAY, darkMode: 'system' },
-  aliases: []
+  aliases: [],
+  diary: []
 };
 
 /* Writes are queued rather than fired off in parallel, so two edits made in
@@ -2622,7 +2712,11 @@ async function hydrate(){
 
   const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases] = await Promise.all([
     sb.from('recipes').select('*'),
-    sb.from('recipe_logs').select('recipe_id, cooked_on').not('recipe_id','is',null),
+    /* Every column, and no recipe_id filter. The filter was here because a
+       log could only ever be a cooked recipe; an ad-hoc diary entry (H2) is
+       a row with no recipe_id, and filtering them out at the source would
+       make them invisible to the app that just wrote them. */
+    sb.from('recipe_logs').select('id, recipe_id, cooked_on, meal_type, note, title'),
     sb.from('keywords').select('name').order('sort_order'),
     sb.from('planner_days').select('*'),
     sb.from('shortlist_items').select('*').order('date_added', {ascending:false}),
@@ -2638,11 +2732,25 @@ async function hydrate(){
     if(res.error) throw res.error;
   }
 
+  /* Two shapes from one query, deliberately.
+
+     `historyById` stays exactly what it was — bare date strings per recipe
+     — because it is what recipe cards, "last cooked", the streak counter
+     and the JSON export all read. Enriching it would have rippled through
+     all of those and changed the export format, which the nightly backup
+     depends on.
+
+     `cache.diary` is the new richer view: one entry per log row, carrying
+     the id, meal type and (for ad-hoc entries) its own title. The History
+     screen and the CSV read this. Recipe-backed rows appear in both. */
   const historyById = {};
   logs.data.forEach(l=>{
+    if(!l.recipe_id) return;
     (historyById[l.recipe_id] = historyById[l.recipe_id] || []).push(l.cooked_on);
   });
   Object.values(historyById).forEach(dates=>dates.sort());
+
+  cache.diary = logs.data.map(rowToDiaryEntry);
 
   cache.recipes = recipes.data.map(row=>rowToRecipe(row, historyById));
   cache.keywords = keywords.data.map(k=>k.name);
@@ -2680,6 +2788,127 @@ async function hydrate(){
     id: row.id, kind: row.kind, alias: row.alias, canonical: row.canonical || ''
   }));
   rebuildAliasMaps();
+}
+
+/* ---- The food diary (H1, H2) ----
+
+   One entry per row of recipe_logs. Two kinds share the table:
+
+     a cooked recipe   recipe_id set, title null, name comes from the recipe
+     an ad-hoc entry   recipe_id null, title carries its own name
+
+   WHY ONE TABLE AND NOT TWO. The Build Brief asks for both on a single
+   timeline, and the shape of the data is identical — a date, a meal type,
+   a thing that was eaten. Two tables would mean every read merging them
+   and every sort interleaving them, to represent a distinction the
+   timeline deliberately plays down. `recipe_logs.recipe_id` was already
+   nullable and both read paths already filtered on it, so the seam was
+   left here on purpose.
+
+   These do NOT go through pushList. pushList upserts a whole list and then
+   deletes anything absent from it, which is right for the recipe library
+   and wrong here: the diary is append-mostly and grows without bound, and
+   rewriting 115 rows to add one would make a cheap action expensive and a
+   partial hydrate destructive. */
+const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'];
+const MEAL_TYPE_LABELS = { breakfast:'Breakfast', lunch:'Lunch', dinner:'Dinner', snack:'Snack' };
+
+function rowToDiaryEntry(row){
+  return {
+    id: row.id,
+    recipeId: row.recipe_id || null,
+    title: row.title || '',
+    cookedOn: row.cooked_on,
+    mealType: row.meal_type || null,
+    note: row.note || ''
+  };
+}
+
+function loadDiary(){ return cache.diary; }
+
+/* The display name of an entry, whichever kind it is. Recipe-backed rows
+   deliberately read their name live from the library rather than copying
+   it at log time, so renaming a recipe renames its history too. A recipe
+   deleted since is the one case that has no name to find — it says so
+   rather than rendering an empty row, because recipe_logs cascades on
+   delete and those rows should not exist. */
+function diaryEntryTitle(entry, recipesById){
+  if(!entry.recipeId) return entry.title || '(untitled)';
+  const r = recipesById ? recipesById.get(entry.recipeId) : loadRecipes().find(x=>x.id === entry.recipeId);
+  return r ? r.title : '(deleted recipe)';
+}
+
+/* Appends one entry. The id is generated here rather than by the database
+   so the caller knows it without waiting for the write — which is what
+   lets the meal-type prompt (H1) update the row it just created while the
+   insert is still in flight, and keeps every loader and saver in this
+   file synchronous, as the rest of them are. */
+function addDiaryEntry({ recipeId = null, title = '', cookedOn, mealType = null, note = '' }){
+  const entry = {
+    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
+    recipeId, title: title.trim(), cookedOn, mealType, note
+  };
+  cache.diary = cache.diary.concat([entry]);
+  queueWrite('the food diary', async ()=>{
+    const { error } = await sb.from('recipe_logs').insert({
+      id: entry.id, household_id: HOUSEHOLD_ID,
+      recipe_id: entry.recipeId, title: entry.title || null,
+      cooked_on: entry.cookedOn, meal_type: entry.mealType, note: entry.note || null
+    });
+    if(error) throw error;
+  });
+  return entry;
+}
+
+function updateDiaryEntry(id, changes){
+  const idx = cache.diary.findIndex(e=>e.id === id);
+  if(idx === -1) return false;
+  const next = { ...cache.diary[idx], ...changes };
+  cache.diary = cache.diary.map((e,i)=> i === idx ? next : e);
+  queueWrite('the food diary', async ()=>{
+    const patch = {};
+    if('mealType' in changes) patch.meal_type = next.mealType;
+    if('title' in changes)    patch.title = next.title || null;
+    if('note' in changes)     patch.note = next.note || null;
+    if('cookedOn' in changes) patch.cooked_on = next.cookedOn;
+    const { error } = await sb.from('recipe_logs').update(patch).eq('id', id);
+    if(error) throw error;
+  });
+  return true;
+}
+
+/* Deleting a recipe-backed entry has to take the date out of the recipe's
+   own `history` too, or the card would go on claiming it was cooked. */
+function deleteDiaryEntry(id){
+  const entry = cache.diary.find(e=>e.id === id);
+  if(!entry) return false;
+  cache.diary = cache.diary.filter(e=>e.id !== id);
+  if(entry.recipeId){
+    const recipes = loadRecipes();
+    const r = recipes.find(x=>x.id === entry.recipeId);
+    if(r && (r.history||[]).includes(entry.cookedOn)){
+      const stillLogged = cache.diary.some(e=>
+        e.recipeId === entry.recipeId && e.cookedOn === entry.cookedOn);
+      if(!stillLogged) r.history = r.history.filter(d=>d !== entry.cookedOn);
+    }
+  }
+  queueWrite('the food diary', async ()=>{
+    const { error } = await sb.from('recipe_logs').delete().eq('id', id);
+    if(error) throw error;
+  });
+  return true;
+}
+
+/* Names already used for ad-hoc entries, most recent first — the
+   autocomplete the brief asks for, so "Fish and chips" stays one thing
+   rather than becoming three spellings of it. */
+function adHocTitleSuggestions(){
+  const seen = new Map();
+  loadDiary()
+    .filter(e=>!e.recipeId && e.title)
+    .sort((a,b)=> b.cookedOn.localeCompare(a.cookedOn))
+    .forEach(e=>{ if(!seen.has(e.title.toLowerCase())) seen.set(e.title.toLowerCase(), e.title); });
+  return [...seen.values()];
 }
 
 /* ---- Household settings ----
@@ -2746,19 +2975,62 @@ function saveRecipesList(list){
   cache.recipes = list;
   return queueWrite('recipes', ()=> pushList('recipes', list.map(recipeToRow)));
 }
-/* Only used by a restore-from-backup, where the incoming recipes carry their
-   own history. Normal cooking logs go through logRecipeUsed, one row at a
-   time, rather than rewriting every log on every save. */
-async function replaceAllRecipeLogs(list){
+/* Only used by a restore-from-backup. Normal logs go through
+   addDiaryEntry, one row at a time, rather than rewriting every log.
+
+   TWO PATHS, BECAUSE A BACKUP'S AGE CHANGES WHAT IT IS ENTITLED TO SAY.
+
+   A version 3 backup carries the diary in full — ids, meal types, ad-hoc
+   entries — so it replaces the lot. Rebuilding from `recipes[].history`
+   instead would be silent data loss: that array holds bare dates, so every
+   meal type and every ad-hoc entry in the restored file would be dropped
+   on the way in, and the result would look like a clean restore.
+
+   An older backup has no `diary` key at all. It says nothing about ad-hoc
+   entries, which did not exist when it was written — and saying nothing is
+   not the same as saying there are none. So it replaces only the
+   recipe-backed rows and leaves ad-hoc entries alone, which is exactly
+   what the old code did. Restoring a v2 backup cannot destroy a diary it
+   has never heard of. */
+async function replaceAllDiary(recipeList, diaryList){
+  if(Array.isArray(diaryList)){
+    const del = await sb.from('recipe_logs').delete().eq('household_id', HOUSEHOLD_ID);
+    if(del.error) throw del.error;
+    const rows = diaryList
+      .filter(e=> e && e.cookedOn && (e.recipeId || (e.title||'').trim()))
+      .map(e=>({
+        id: e.id, household_id: HOUSEHOLD_ID,
+        recipe_id: e.recipeId || null,
+        title: (e.title||'').trim() || null,
+        cooked_on: e.cookedOn,
+        meal_type: MEAL_TYPES.indexOf(e.mealType) === -1 ? null : e.mealType,
+        note: e.note || null
+      }));
+    if(rows.length){
+      const { error } = await sb.from('recipe_logs').insert(rows);
+      if(error) throw error;
+    }
+    cache.diary = rows.map(rowToDiaryEntry);
+    return;
+  }
+
   const del = await sb.from('recipe_logs').delete().eq('household_id', HOUSEHOLD_ID).not('recipe_id','is',null);
   if(del.error) throw del.error;
-  const rows = list.flatMap(r=>(r.history||[]).map(d=>({
+  const rows = recipeList.flatMap(r=>(r.history||[]).map(d=>({
     household_id: HOUSEHOLD_ID, recipe_id: r.id, cooked_on: d
   })));
   if(rows.length){
     const { error } = await sb.from('recipe_logs').insert(rows);
     if(error) throw error;
   }
+  /* Re-read rather than reconstruct: the ad-hoc rows that were deliberately
+     spared are not in `rows`, and the inserted ones have database-generated
+     ids this function never saw. */
+  const { data, error } = await sb.from('recipe_logs')
+    .select('id, recipe_id, cooked_on, meal_type, note, title')
+    .eq('household_id', HOUSEHOLD_ID);
+  if(error) throw error;
+  cache.diary = (data||[]).map(rowToDiaryEntry);
 }
 function loadKeywordVocab(){ return cache.keywords; }
 async function pushKeywords(list){
@@ -3847,14 +4119,45 @@ function logRecipeUsed(id){
   const today = todayStr();
   if(recipes[idx].history.includes(today)) return;
   recipes[idx].history.push(today);
-  queueWrite('the cooking log', async ()=>{
-    const { error } = await sb.from('recipe_logs').insert({
-      household_id: HOUSEHOLD_ID, recipe_id: id, cooked_on: today
-    });
-    if(error) throw error;
-  });
+  /* The log is written first and the meal type asked for afterwards, not
+     the other way round.
+
+     This is called by ticking the last column of the flow table — the
+     moment a meal finishes, hands full. Putting a dialog in front of that
+     write would mean a dismissed prompt loses the log entirely, and would
+     make ticking a box depend on answering a question. So the entry lands
+     immediately with meal_type null, which is a legitimate state (H1 is an
+     enrichment, not a requirement), and the prompt upgrades it.
+
+     The id is generated client-side by addDiaryEntry precisely so the
+     prompt can target this row while its insert is still in flight. */
+  const entry = addDiaryEntry({ recipeId: id, cookedOn: today });
   showToast(`Logged "${recipes[idx].title}" as cooked today`);
   renderViewer();
+  promptForMealType(entry.id, recipes[idx].title);
+}
+
+/* ---- H1: meal type at the point of logging ----
+   One tap, four choices, and a way out. Chosen over inferring from the
+   clock (Build Brief H1): a curry eaten at 3pm is still dinner, and a
+   wrong guess quietly recorded is worse than a blank.
+
+   SKIP is not a cancel — the entry is already saved. It says "no meal
+   type", which the diary and CSV both render honestly as blank. */
+function promptForMealType(entryId, label){
+  const overlay = document.getElementById('mealTypeOverlay');
+  if(!overlay) return;
+  document.getElementById('mealTypeWhat').textContent = label || '';
+  overlay.dataset.entryId = entryId;
+  overlay.classList.add('open');
+  renderMealTypeButtons(document.getElementById('mealTypeChoices'), null);
+  const first = overlay.querySelector('.meal-type-btn');
+  if(first) first.focus();
+}
+
+function closeMealTypePrompt(){
+  const overlay = document.getElementById('mealTypeOverlay');
+  if(overlay){ overlay.classList.remove('open'); delete overlay.dataset.entryId; }
 }
 
 function backFromViewer(){
@@ -5023,14 +5326,35 @@ function historyMonthGrid(year, month){
 }
 
 /* Every cooked date, reversed from recipe.history[] into date -> recipes. */
+/* Date -> everything eaten that day, cooked recipes and ad-hoc entries
+   together, which is what the Build Brief means by one timeline.
+
+   Reads cache.diary rather than each recipe's `history` array: the array
+   holds bare dates and cannot carry a meal type, an ad-hoc name, or the
+   log's own id — and the id is what makes an entry editable and
+   deletable. `history` is still the source for the cards and the streak,
+   where a list of dates is exactly right.
+
+   The `recipes` argument is kept so every existing caller stays valid,
+   and is used to resolve names live rather than at log time. */
 function historyByDate(recipes){
+  const byId = new Map((recipes || []).map(r=>[r.id, r]));
   const map = new Map();
-  recipes.forEach(r=>{
-    (r.history||[]).forEach(dateIso=>{
-      if(!map.has(dateIso)) map.set(dateIso, []);
-      map.get(dateIso).push({id:r.id, title:r.title});
+  loadDiary().forEach(e=>{
+    if(!map.has(e.cookedOn)) map.set(e.cookedOn, []);
+    map.get(e.cookedOn).push({
+      logId: e.id,
+      id: e.recipeId,
+      recipeId: e.recipeId,
+      adHoc: !e.recipeId,
+      mealType: e.mealType,
+      title: diaryEntryTitle(e, byId)
     });
   });
+  /* Cooked recipes first, then ad-hoc, each alphabetical — a stable order,
+     so a day's list does not reshuffle itself between renders. */
+  map.forEach(list=> list.sort((a,b)=>
+    (a.adHoc === b.adHoc) ? a.title.localeCompare(b.title) : (a.adHoc ? 1 : -1)));
   return map;
 }
 
@@ -5148,11 +5472,18 @@ function renderHistoryCalendar(){
     if(iso === state.historySelectedDate) classes.push('selected');
     if(entries.length) classes.push('has-entries');
 
-    const info = entries.length === 1
-      ? `<div class="history-day-info">${escapeHtml(entries[0].title)}</div>`
-      : entries.length > 1
-        ? `<div class="history-day-info">${entries.length} cooked</div>`
-        : '';
+    if(entries.some(e=>e.adHoc)) classes.push('has-adhoc');
+
+    /* "3 cooked" was accurate when every entry was a cooked recipe. With
+       ad-hoc entries on the same timeline it would be a lie on any day
+       that mixes them, so the wording follows what is actually there. */
+    const cookedCount = entries.filter(e=>!e.adHoc).length;
+    const summary = entries.length === 1
+      ? escapeHtml(entries[0].title)
+      : cookedCount === entries.length ? `${entries.length} cooked`
+      : cookedCount === 0 ? `${entries.length} logged`
+      : `${entries.length} entries`;
+    const info = entries.length ? `<div class="history-day-info">${summary}</div>` : '';
 
     return `<button class="${classes.join(' ')}" data-date="${iso}">
       <span class="history-day-num">${date.getDate()}</span>
@@ -5169,10 +5500,21 @@ function renderHistoryDayDetail(){
   const label = new Date(iso+'T00:00:00').toLocaleDateString(undefined, {weekday:'long', day:'numeric', month:'long'});
 
   const body = entries.length
-    ? entries.map(e=>`<div class="history-day-recipe">
-        <button class="day-recipe-title" data-recipe-id="${e.id}">${escapeHtml(e.title)}</button>
-      </div>`).join('')
-    : `<p class="history-empty-day">Nothing cooked this day.</p>`;
+    ? entries.map(e=>{
+        const tag = e.mealType
+          ? `<span class="diary-meal-tag">${MEAL_TYPE_LABELS[e.mealType]}</span>` : '';
+        /* An ad-hoc entry has no card to open, so its name is text rather
+           than a button — the absence of a link is the clearest possible
+           statement that there is nothing behind it. */
+        const name = e.adHoc
+          ? `<span>${escapeHtml(e.title)}</span><span class="diary-kind">AD HOC</span>`
+          : `<button class="day-recipe-title" data-recipe-id="${e.recipeId}">${escapeHtml(e.title)}</button>`;
+        return `<div class="history-day-recipe${e.adHoc ? ' diary-adhoc' : ''}">
+          <span>${name}${tag}</span>
+          <button class="link-btn" data-delete-log="${e.logId}" aria-label="Remove this entry">REMOVE</button>
+        </div>`;
+      }).join('')
+    : `<p class="history-empty-day">Nothing logged this day.</p>`;
 
   el.innerHTML = `<div class="history-day-detail">
     <div class="history-day-detail-title">${escapeHtml(label)}</div>
@@ -5181,6 +5523,17 @@ function renderHistoryDayDetail(){
 
   el.querySelectorAll('[data-recipe-id]').forEach(btn=>{
     btn.addEventListener('click', ()=> openRecipe(btn.dataset.recipeId, 'history'));
+  });
+  el.querySelectorAll('[data-delete-log]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const entry = loadDiary().find(x=>x.id === btn.dataset.deleteLog);
+      if(!entry) return;
+      const name = diaryEntryTitle(entry);
+      if(!confirm(`Remove "${name}" from ${label}?`)) return;
+      deleteDiaryEntry(entry.id);
+      showToast(`Removed "${name}"`);
+      renderHistory();
+    });
   });
 }
 
@@ -5288,6 +5641,104 @@ function initHistoryListeners(){
     renderHistoryCalendar();
     renderHistoryDayDetail();
   });
+  document.getElementById('historyAddEntryBtn').addEventListener('click', ()=> openAdHocEntry());
+  document.getElementById('historyCsvBtn').addEventListener('click', exportDiaryCsv);
+}
+
+/* ---- H1 prompt wiring ----
+   The four buttons are generated from MEAL_TYPES rather than written out,
+   so the list and the database's CHECK constraint cannot drift apart. */
+function renderMealTypeButtons(container, selected){
+  container.innerHTML = MEAL_TYPES.map(m=>
+    `<button type="button" class="meal-type-btn${m === selected ? ' on' : ''}" data-meal="${m}">${MEAL_TYPE_LABELS[m]}</button>`
+  ).join('');
+}
+
+document.getElementById('mealTypeChoices').addEventListener('click', e=>{
+  const btn = e.target.closest('.meal-type-btn');
+  if(!btn) return;
+  const overlay = document.getElementById('mealTypeOverlay');
+  const entryId = overlay.dataset.entryId;
+  if(entryId) updateDiaryEntry(entryId, { mealType: btn.dataset.meal });
+  closeMealTypePrompt();
+  showToast(`Tagged as ${MEAL_TYPE_LABELS[btn.dataset.meal].toLowerCase()}`);
+  if(state.view === 'history') renderHistory();
+});
+document.getElementById('mealTypeSkip').addEventListener('click', closeMealTypePrompt);
+document.getElementById('mealTypeOverlay').addEventListener('click', e=>{
+  /* Clicking the backdrop skips rather than cancels — there is nothing to
+     cancel, the entry is already saved. */
+  if(e.target.id === 'mealTypeOverlay') closeMealTypePrompt();
+});
+
+/* ---- H2: ad-hoc entries ---- */
+let adHocMeal = null;
+
+function openAdHocEntry(){
+  adHocMeal = null;
+  const overlay = document.getElementById('adHocOverlay');
+  document.getElementById('adHocTitle').value = '';
+  /* Defaults to the day you have selected in the calendar, falling back to
+     today. Logging yesterday's takeaway is the normal case for this
+     feature, so defaulting to today alone would mean always retyping. */
+  document.getElementById('adHocDate').value = state.historySelectedDate || todayStr();
+  document.getElementById('adHocError').style.display = 'none';
+  document.getElementById('adHocVocab').innerHTML =
+    adHocTitleSuggestions().map(t=>`<option value="${escapeHtml(t)}"></option>`).join('');
+  renderMealTypeButtons(document.getElementById('adHocMealChoices'), null);
+  overlay.classList.add('open');
+  document.getElementById('adHocTitle').focus();
+}
+
+function closeAdHocEntry(){
+  document.getElementById('adHocOverlay').classList.remove('open');
+}
+
+document.getElementById('adHocMealChoices').addEventListener('click', e=>{
+  const btn = e.target.closest('.meal-type-btn');
+  if(!btn) return;
+  /* Tapping the chosen one again clears it: a meal type is optional here
+     as it is everywhere else, and there would otherwise be no way back to
+     "not saying" once you had tapped. */
+  adHocMeal = (adHocMeal === btn.dataset.meal) ? null : btn.dataset.meal;
+  renderMealTypeButtons(document.getElementById('adHocMealChoices'), adHocMeal);
+});
+document.getElementById('adHocCancel').addEventListener('click', closeAdHocEntry);
+document.getElementById('adHocClose').addEventListener('click', closeAdHocEntry);
+document.getElementById('adHocOverlay').addEventListener('click', e=>{
+  if(e.target.id === 'adHocOverlay') closeAdHocEntry();
+});
+document.getElementById('adHocTitle').addEventListener('keydown', e=>{
+  if(e.key === 'Enter'){ e.preventDefault(); saveAdHocEntry(); }
+});
+document.getElementById('adHocSave').addEventListener('click', saveAdHocEntry);
+
+function saveAdHocEntry(){
+  const title = document.getElementById('adHocTitle').value.trim();
+  const date = document.getElementById('adHocDate').value;
+  const err = document.getElementById('adHocError');
+  /* The database enforces this too (recipe_logs_identifies_something), but
+     a constraint violation surfaces as a failed background write long after
+     the dialog has gone. Checking here is what makes it a correction. */
+  if(!title){
+    err.textContent = 'Give it a name — even "leftovers" is enough to find it again.';
+    err.style.display = '';
+    return;
+  }
+  if(!date){
+    err.textContent = 'Pick a date.';
+    err.style.display = '';
+    return;
+  }
+  addDiaryEntry({ title, cookedOn: date, mealType: adHocMeal });
+  closeAdHocEntry();
+  showToast(`Added "${title}"`);
+  state.historySelectedDate = date;
+  /* Jump the calendar to the month the entry landed in, so adding one for
+     last month does not look like it did nothing. */
+  const d = new Date(date + 'T00:00:00');
+  state.historyMonth = { year: d.getFullYear(), month: d.getMonth() };
+  renderHistory();
 }
 
 
@@ -6053,7 +6504,11 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
 function exportAllData(){
   const payload = {
     app: 'Kitchen',
-    version: 2,
+    /* 3: adds `diary`. The export used to carry cooking history only as
+       bare dates inside each recipe, which cannot represent a meal type or
+       an entry with no recipe — so a backup taken before this would have
+       restored an emptied diary without saying so. */
+    version: 3,
     exportedAt: new Date().toISOString(),
     recipes: loadRecipes(),
     plan: loadPlan(),
@@ -6063,7 +6518,8 @@ function exportAllData(){
     swaps: loadSwaps(),
     groups: loadGroups(),
     settings: loadSettings(),
-    aliases: loadAliases()
+    aliases: loadAliases(),
+    diary: loadDiary()
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -6073,6 +6529,92 @@ function exportAllData(){
   link.click();
   URL.revokeObjectURL(url);
   showToast('Exported your data');
+}
+
+/* ---- H3: CSV export of the food diary ----
+
+   Columns are the Build Brief's list verbatim: date, meal type, entry
+   name, source (recipe vs ad hoc), course tag where applicable,
+   ingredient summary without quantities.
+
+   WHY WITHOUT QUANTITIES. The brief asks for it, and the reason holds up:
+   this sheet is for looking at what gets eaten, where "chicken, rice,
+   soy sauce" answers the question and "300 g chicken thighs, 250 g
+   basmati rice" is a shopping list in the wrong place. The quantities are
+   in the recipe, which is where they mean something — they scale with
+   servings, and a servings-independent row claiming 300 g would be wrong
+   more often than right.
+
+   Ad-hoc rows have no course and no ingredients and are left blank rather
+   than filled with "n/a": a blank cell sorts and filters correctly in a
+   spreadsheet, and "n/a" is a value that has to be excluded by hand. */
+function diaryIngredientSummary(recipe){
+  if(!recipe || !recipe.syntax) return '';
+  let parsed;
+  try { parsed = parseRecipe(recipe.syntax); }
+  catch(e){ return ''; }   /* a recipe that will not parse still belongs in the diary */
+  const names = [];
+  (parsed.groups || []).forEach(g=>{
+    (g.items || []).forEach(line=>{
+      /* splitQty is the app's own quantity splitter, the same one the flow
+         table uses — so "what counts as a quantity" cannot drift between
+         the ingredient column and this sheet. */
+      const rest = splitQty(line).rest || line;
+      /* "2 cloves garlic, minced" -> "garlic": the preparation is a method
+         note, not part of what was eaten. */
+      const name = rest.split(',')[0].trim();
+      if(name && !names.some(n=>n.toLowerCase() === name.toLowerCase())) names.push(name);
+    });
+  });
+  return names.join('; ');
+}
+
+/* RFC 4180: quote everything, and double any quote inside. Quoting every
+   field rather than only the ones that need it is deliberate — a name with
+   a comma in it is exactly the case that silently corrupts a sheet, and
+   uniform quoting means there is no rule to get wrong. */
+function csvCell(value){
+  return '"' + String(value == null ? '' : value).replace(/"/g, '""') + '"';
+}
+
+function exportDiaryCsv(){
+  const recipes = loadRecipes();
+  const byId = new Map(recipes.map(r=>[r.id, r]));
+  const rows = loadDiary()
+    .slice()
+    .sort((a,b)=> a.cookedOn.localeCompare(b.cookedOn) ||
+                  diaryEntryTitle(a, byId).localeCompare(diaryEntryTitle(b, byId)));
+
+  if(!rows.length){
+    showToast('Nothing in the diary to export yet');
+    return;
+  }
+
+  const header = ['Date','Meal type','Entry','Source','Course','Ingredients'];
+  const body = rows.map(e=>{
+    const recipe = e.recipeId ? byId.get(e.recipeId) : null;
+    return [
+      e.cookedOn,
+      e.mealType ? MEAL_TYPE_LABELS[e.mealType] : '',
+      diaryEntryTitle(e, byId),
+      e.recipeId ? 'Recipe' : 'Ad hoc',
+      recipe && recipe.tags ? (recipe.tags.course || '') : '',
+      recipe ? diaryIngredientSummary(recipe) : ''
+    ].map(csvCell).join(',');
+  });
+
+  /* A BOM, because the most likely destination is Excel, which reads a
+     BOM-less UTF-8 CSV as the system codepage and turns every accented
+     ingredient into mojibake. */
+  const csv = '\uFEFF' + [header.map(csvCell).join(','), ...body].join('\r\n') + '\r\n';
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `kitchen-diary-${todayStr()}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+  showToast(`Exported ${rows.length} diary ${rows.length === 1 ? 'entry' : 'entries'}`);
 }
 
 /* Import replaces everything currently saved on this tablet — treated as
@@ -6093,7 +6635,7 @@ function importAllData(file){
     if(!confirm(`Import ${n} recipe${n===1?'':'s'}? This replaces everything currently in your library — your existing recipes, plan, and shortlist will be gone, on every device. This can't be undone.`)) return;
 
     saveRecipesList(data.recipes);
-    queueWrite('cooking history', ()=> replaceAllRecipeLogs(data.recipes));
+    queueWrite('cooking history', ()=> replaceAllDiary(data.recipes, Array.isArray(data.diary) ? data.diary : null));
     savePlan(data.plan || {});
     saveShortlist(data.shortlist || []);
     if(Array.isArray(data.keywordVocab)){

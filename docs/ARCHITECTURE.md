@@ -161,13 +161,13 @@ mistake that made the image work look finished):
 | Column / table | Waiting on |
 | --- | --- |
 | `recipe_notes` (whole table, empty) | R4, dated cooking notes |
-| `recipe_logs.meal_type` | H1, meal type at point of logging |
-| `recipe_logs.note` | R4 / food diary |
+| ~~`recipe_logs.meal_type`~~ | H1 shipped 22 Sep — now written by the prompt after logging |
+| `recipe_logs.note` | R4, dated cooking notes. Deliberately **not** used by H2: an ad-hoc entry's name lives in `recipe_logs.title`, added 22 Sep, so "a takeaway called X" and "a note about recipe Y" stay distinguishable |
 | ~~`household_settings.dark_mode`~~ | S2 shipped 22 Sep — no longer scaffolding |
 | `meal_groups.name` | Written as `''`; no UI ever names a group |
 | `households.name`, `household_members.role` | Multi-household support, deliberately anticipated |
 
-Storage has one bucket, `recipe-images` — **public, 29 objects, 4.1 MB** as of 21 Sep. Public
+Storage has one bucket, `recipe-images` — **public, 29 objects, 4,426 kB** as of 22 Sep. Public
 affects only the `/object/public/` read endpoint; writes, deletes and listing still go through
 four RLS policies keyed on household membership, so it is readable-if-you-know-the-path rather
 than browsable.
@@ -185,7 +185,7 @@ has to know where a photo lives. See `docs/HANDOVER.md` §2.
 ```sh
 npm install playwright
 node test/build.js    # bake index.html against the stub
-node test/smoke.js    # 116 checks; exits non-zero on failure
+node test/smoke.js    # 140 checks; exits non-zero on failure
 ```
 
 It has caught real bugs, including a parser gap that would have broken every reprocessed recipe.

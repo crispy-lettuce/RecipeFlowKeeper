@@ -20,7 +20,7 @@ check the code, the database or GitHub Actions directly, do that instead of beli
 node test/build.js && node test/smoke.js
 ```
 
-116 checks. It stubs Supabase entirely, so it proves nothing about sign-in, hydration, RLS or the
+140 checks. It stubs Supabase entirely, so it proves nothing about sign-in, hydration, RLS or the
 write queue — never claim the app works end to end on the strength of a green run.
 
 **After any change to the image Edge Functions, also run:**

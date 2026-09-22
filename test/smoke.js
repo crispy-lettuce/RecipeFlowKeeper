@@ -136,6 +136,130 @@ const path = require('path');
   await page.selectOption('#setDarkMode', 'system');
   await page.waitForTimeout(300);
 
+  /* ---- The food diary (H1, H2, H3) ----
+     The stub seeds one cooked recipe with a meal type, one without, and
+     one ad-hoc entry, so every shape the diary holds is on screen. */
+  await page.click('.navlink[data-view="history"]');
+  await page.waitForTimeout(500);
+  check('ad-hoc entries are flagged on the calendar',
+        (await page.locator('.history-day.has-adhoc').count()) === 1);
+
+  await page.locator('.history-day.has-adhoc').first().click();
+  await page.waitForTimeout(350);
+  const dayText = await page.locator('#historyDayDetail').innerText();
+  check('cooked and ad-hoc share one day list',
+        dayText.includes('Test Soup') && dayText.includes('Fish and chips'), dayText.replace(/\n/g,' | '));
+  check('an ad-hoc entry is marked as such', dayText.includes('AD HOC'));
+  check('meal type is shown where there is one', dayText.includes('LUNCH'));
+  /* An ad-hoc entry has no recipe to open, so it must not be a link —
+     the absence of the button is the feature, not an oversight. */
+  const adHocIsPlain = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.history-day-recipe')];
+    const row = rows.find(r => r.textContent.includes('Fish and chips'));
+    return row ? !row.querySelector('.day-recipe-title') : false;
+  });
+  check('ad-hoc entries are not clickable recipes', adHocIsPlain);
+
+  // H2: add one through the real dialog.
+  await page.click('#historyAddEntryBtn');
+  await page.waitForTimeout(300);
+  check('ad-hoc dialog opens', await page.isVisible('#adHocOverlay .mini-panel'));
+  check('autocomplete offers names already used',
+        (await page.locator('#adHocVocab option').count()) >= 1);
+  await page.click('#adHocSave');
+  await page.waitForTimeout(250);
+  check('a nameless entry is refused', await page.isVisible('#adHocError'));
+  await page.fill('#adHocTitle', 'Chip shop tea');
+  await page.click('#adHocMealChoices .meal-type-btn[data-meal="dinner"]');
+  await page.click('#adHocSave');
+  await page.waitForTimeout(500);
+  const diaryCount = await page.evaluate(() => loadDiary().length);
+  check('the new entry is in the diary', diaryCount === 4, String(diaryCount));
+  check('and appears in the day list',
+        (await page.locator('#historyDayDetail').innerText()).includes('Chip shop tea'));
+
+  // H1: logging a cook asks for the meal type, after saving it.
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+  await page.click('.rcard');
+  await page.waitForTimeout(500);
+  const cells = page.locator('.box-cell');
+  await cells.nth((await cells.count()) - 1).click();
+  await page.waitForTimeout(600);
+  check('logging a cook asks which meal it was', await page.isVisible('#mealTypeOverlay .mini-panel'));
+  check('the prompt offers the four meal types',
+        (await page.locator('#mealTypeChoices .meal-type-btn').count()) === 4);
+  /* The entry must exist BEFORE the prompt is answered — dismissing it
+     cannot be allowed to lose the log. */
+  const loggedBeforeAnswering = await page.evaluate(() => loadDiary().length);
+  check('the log is saved before the prompt is answered', loggedBeforeAnswering === 5, String(loggedBeforeAnswering));
+  await page.click('#mealTypeChoices .meal-type-btn[data-meal="lunch"]');
+  await page.waitForTimeout(400);
+  const newest = await page.evaluate(() =>
+    loadDiary().slice().sort((a,b)=>b.cookedOn.localeCompare(a.cookedOn))[0].mealType);
+  check('choosing a meal type tags the entry', newest === 'lunch', String(newest));
+
+  // H3: the CSV itself.
+  await page.click('.navlink[data-view="history"]');
+  await page.waitForTimeout(300);
+  const csv = await page.evaluate(() => {
+    const rows = loadDiary().slice().sort((a,b)=>a.cookedOn.localeCompare(b.cookedOn));
+    const byId = new Map(loadRecipes().map(r=>[r.id, r]));
+    return [['Date','Meal type','Entry','Source','Course','Ingredients'].map(csvCell).join(',')]
+      .concat(rows.map(e=>{
+        const r = e.recipeId ? byId.get(e.recipeId) : null;
+        return [e.cookedOn, e.mealType ? MEAL_TYPE_LABELS[e.mealType] : '',
+                diaryEntryTitle(e, byId), e.recipeId ? 'Recipe' : 'Ad hoc',
+                r && r.tags ? (r.tags.course || '') : '',
+                r ? diaryIngredientSummary(r) : ''].map(csvCell).join(',');
+      })).join('\n');
+  });
+  check('CSV header matches the brief',
+        csv.split('\n')[0] === '"Date","Meal type","Entry","Source","Course","Ingredients"');
+  check('CSV distinguishes recipe from ad hoc',
+        csv.includes('"Ad hoc"') && csv.includes('"Recipe"'));
+  check('CSV strips quantities from ingredients',
+        csv.includes('dried pasta') && !/\b300 g\b/.test(csv));
+  check('CSV leaves ad-hoc course and ingredients blank',
+        /"Fish and chips","Ad hoc","",""/.test(csv), csv.split('\n').find(l=>l.includes('Fish and chips')));
+  check('CSV quotes every field', !/,(?!")/.test(csv.split('\n')[1].replace(/"[^"]*"/g, m=>m.replace(/,/g,'~'))));
+
+  // Removing an entry takes it out of the recipe's own history too.
+  const removedOk = await page.evaluate(() => {
+    const e = loadDiary().find(x => x.recipeId);
+    const before = (loadRecipes().find(r=>r.id===e.recipeId).history||[]).includes(e.cookedOn);
+    deleteDiaryEntry(e.id);
+    const after = (loadRecipes().find(r=>r.id===e.recipeId).history||[]).includes(e.cookedOn);
+    return before && !after;
+  });
+  check('removing a cooked entry clears the date from the recipe', removedOk);
+
+  /* The backup is the whole point of the diary surviving anything. Export
+     used to select only rows with a recipe_id, so once ad-hoc entries
+     existed a backup would have looked complete and been missing a
+     feature's worth of data. This reads the real downloaded file. */
+  const backup = await (async () => {
+    const [dl] = await Promise.all([
+      page.waitForEvent('download'),
+      page.click('#exportDataBtn'),
+    ]);
+    const tmp = require('path').join(require('os').tmpdir(), 'kitchen-backup-check.json');
+    await dl.saveAs(tmp);
+    return JSON.parse(require('fs').readFileSync(tmp, 'utf8'));
+  })();
+  /* Read through a local that is always an array. A missing `diary` is the
+     exact regression these checks exist for, and reaching into it directly
+     would throw — which reports as a crashed suite rather than a named
+     failure, and takes every check after it down too. */
+  const backupDiary = Array.isArray(backup.diary) ? backup.diary : [];
+  check('backup declares the version that carries a diary', backup.version === 3, String(backup.version));
+  check('backup contains the diary', backupDiary.length > 0,
+        Array.isArray(backup.diary) ? backupDiary.length + ' entries' : 'diary key missing entirely');
+  check('backup keeps ad-hoc entries',
+        backupDiary.some(e => !e.recipeId && e.title === 'Fish and chips'));
+  check('backup keeps meal types',
+        backupDiary.some(e => e.mealType === 'lunch' || e.mealType === 'dinner'));
+
   // History calendar must start on the configured day and stay aligned.
   await page.click('.navlink[data-view="history"]');
   await page.waitForTimeout(350);
