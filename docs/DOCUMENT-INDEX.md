@@ -67,15 +67,17 @@ progresses — and to distrust first if something doesn't match reality.
 ---
 
 ### `docs/IMAGES.md` — how recipe photos get to Supabase
-**What:** The runbook for image re-hosting (R7). Answers the two questions that come up in
-practice — what happens to the image when you add a recipe, and how you replace one — plus the
-console commands, what goes wrong, and how to verify.
+**What:** The runbook for image re-hosting (R7). Opens with **"Answers first"** — adding an image
+to a new recipe, replacing one, how images get moved to Supabase, and whether it can be made
+automatic — then the console commands, the integrity checks, what goes wrong, and how to verify.
 
 **Use it when:** you've added recipes and want their photos self-hosted, or you want to change an
-image. **Start with the short answer at the top: it is not automatic.** A new recipe keeps its
-external image URL until someone runs the sweep by hand.
+image. **It is not automatic today.** A new recipe keeps its external image URL until someone
+runs the sweep by hand — §5 sets out four ways to change that and recommends one.
 
-**Don't:** expect a file picker. The app only ever takes a URL; there is no upload-from-device.
+**Don't:** expect a file picker. The app only ever takes a URL; there is no upload-from-device
+(§5 Option D covers what adding one would involve — it is smaller than it sounds, because no
+cross-origin fetch is involved).
 
 ---
 

@@ -1,27 +1,53 @@
 # Recipe images — how they get to Supabase
 
-**Written 21 Sep 2026**, the day the feature was built, and verified against the running function
-and the live database rather than described from the plan.
-
-Answers the two questions that matter in practice: what happens to the image when you add a
-recipe, and how you change one.
+**Written 21 Sep 2026**, the day the feature was built; §4 and §5 rewritten 22 Sep. Verified
+against the running functions and the live database rather than described from the plan.
 
 ---
 
-## The short answer
+## Answers first
 
-**It is not automatic.** Nothing re-hosts an image when you add or edit a recipe. A new recipe
-keeps whatever image URL it arrived with — usually pointing at the recipe site it came from — and
-stays that way until someone runs the sweep by hand.
+### How do I add an image to a new recipe?
 
-That is a deliberate choice, not an oversight; §4 explains why, and §5 says what it would take to
-change if the manual step gets tiresome.
+You don't do anything separate. The conversion produces an `IMAGE:` line, that URL lands in the
+**IMAGE URL** field when you paste the recipe, and saving stores it. The photo appears
+immediately — **hotlinked from the recipe site, not yet yours.** §1 has the detail.
 
-**The sweep is one line in the browser console**, and it is safe to run at any time:
+### How do I replace an image on an existing recipe?
+
+Open the recipe → **EDIT** → paste a new address over the `supabase.co/...` URL in **IMAGE URL**
+→ **Save**. Then run the sweep. You have to overwrite the Supabase URL first, because the sweep
+deliberately skips anything already self-hosted. §3 has the detail, including how to find a good
+replacement address.
+
+### How does an image get "moved" to Supabase?
+
+By a sweep you run by hand, from the browser console, signed in to the app:
 
 ```js
 await sb.functions.invoke('rehost-images', {});
 ```
+
+That calls an Edge Function which, for every recipe whose image is still on someone else's
+server, downloads the bytes, checks the file is whole, uploads it into the `recipe-images`
+bucket, and rewrites both `image_url` and the `IMAGE:` line in the recipe text. It is
+idempotent — anything already done is skipped — so running it more often than necessary costs
+nothing. §2 has the detail.
+
+**It cannot be done from the app's own page** because most recipe CDNs send no CORS headers, so
+the browser is not allowed to read the bytes. That is why there is a server-side function at
+all.
+
+### Can this happen automatically when I save a recipe?
+
+**Yes, and it should.** The app has never called an Edge Function — `functions.invoke` appears
+zero times in `index.html` — which is the entire reason this feels like a console chore. Nothing
+in the record says it had to be that way.
+
+The recommendation is **Option A in §5**: after a save, the app queues a call to the same
+function for that one recipe. No new infrastructure, no scheduled job, no stored credential,
+and saving still never waits on a third party. §5 sets it out against three alternatives,
+including the nightly cron job this document used to propose.
 
 ---
 
@@ -215,40 +241,110 @@ was never in the Build Brief and has not been missed so far.
 
 ---
 
-## 4. Why it is a manual sweep and not automatic
+## 4. Why it is a manual sweep today
 
-Three reasons, in order of how much they mattered:
+The reasoning from when this was built, with one part now out of date:
 
-1. **Saving a recipe should not depend on someone else's server.** If re-hosting ran on save, a
-   slow or unavailable CDN would make saving slow or make it fail, and "did my recipe save" would
-   become a question with a complicated answer. As it stands, saving is instant and always
-   succeeds; the photo catches up later.
-2. **It treats everything identically.** A sweep over the table has no special case for "recipes
-   that existed before the feature" versus "recipes added since". There is one code path.
+1. **Saving a recipe should not depend on someone else's server.** If re-hosting ran *inside*
+   the save, a slow or unavailable CDN would make saving slow or make it fail, and "did my
+   recipe save" would become a question with a complicated answer. This one still holds, and it
+   is the constraint any automation has to respect — but note it rules out re-hosting
+   *synchronously*, not automatically. §5 turns on that distinction.
+2. **It treats everything identically.** A sweep over the table has no special case for
+   "recipes that existed before the feature" versus "recipes added since". One code path.
 3. **A browser cannot do it anyway.** Most recipe CDNs send no permissive CORS headers, so
    JavaScript in the page cannot read the bytes even to re-upload them. That is what forces the
-   work server-side into an Edge Function, and once it is a separate server-side job, a sweep is
-   its natural shape.
+   work server-side into an Edge Function. *(True for a URL on someone else's site. Not true
+   for a file you pick off your own device — see Option D.)*
+
+**And one thing nobody wrote down:** the app has never called an Edge Function at all.
+`functions.invoke` appears **zero** times in `index.html`. Every snippet in this document is
+something a person types into devtools. That is not a deliberate design decision anywhere in
+the record — it is simply the shape the feature was first built in, and it is the whole reason
+this feels like a chore.
 
 ---
 
-## 5. Making it automatic, if you want to
+## 5. Making it automatic — the options, and which one to pick
 
-Not done, and a genuine option rather than a vague aspiration. `pg_cron` (1.6.4) and `pg_net`
-(0.20.4) are **available on this project but not installed**, which is all that is needed:
+### Recommended: the app asks for the re-host itself, right after a save
 
-- enable both extensions
-- store a token in Supabase Vault for the cron job to call the function with
-- schedule a nightly `pg_net.http_post` to the function's URL
+**What changes.** `rehost-images` gains a `recipeId` parameter so it can do one recipe instead
+of sweeping all of them. The app, immediately after saving a recipe whose image is not already
+self-hosted, queues a call to it:
 
-The catch worth weighing first: the function currently takes the household from the **caller's
-JWT**, so a cron job needs either a service-role call with the household hard-coded, or a small
-change to let a trusted caller sweep every household. Neither is difficult; both need deciding
-rather than guessing.
+```js
+queueWrite('the recipe image', () => sb.functions.invoke('rehost-images', { body: { recipeId } }));
+```
 
-**Whether it is worth it** depends on how often recipes get added. At a handful a month, one
-console paste after a batch of conversions is less machinery than a scheduled job that can fail
-silently in the night.
+**Why this is the right shape.**
+
+- **It respects reason 1 above.** The call goes through `queueWrite`, which returns immediately
+  and runs in the background. The save itself never waits on a CDN. A failure surfaces as the
+  same "couldn't save…" toast as any other background write, and the consequence is only that
+  the photo stays hotlinked — which still displays correctly.
+- **No new infrastructure at all.** No extensions to enable, no scheduled job, no credential
+  stored anywhere. Compare Options B and C, which need all three.
+- **The authentication already works.** The function takes the household from the caller's JWT,
+  and the app is already signed in as exactly the right person. This is the thing that makes
+  the cron options awkward — a cron job has no caller.
+- **It is small.** One parameter in the function, one call site in the app, plus tests.
+
+**What it does not cover**, and why the manual sweep stays:
+
+- A restore-from-backup brings recipes in through a different path, so those still need a sweep.
+- A save made with no connection never fires the call; the image stays external until the next
+  sweep.
+- It does nothing for the 29 recipes already self-hosted, which is correct — they are done.
+
+So the sweep does not go away, it stops being the *only* mechanism. Run it occasionally as a
+catch-up; stop having to run it after every recipe.
+
+### Option B — a nightly `pg_cron` job
+
+`pg_cron` (1.6.4) and `pg_net` (0.20.4) are **available on this project but not installed**;
+`supabase_vault` (0.3.1) **is** installed. So it is buildable: enable both extensions, store a
+token in Vault, schedule a nightly `pg_net.http_post` to the function's URL.
+
+Two real costs. The function identifies the household from the caller's JWT, so a cron job
+needs either a service-role call with the household hard-coded or a change letting a trusted
+caller sweep every household — a decision, not a guess. And **a scheduled job fails silently in
+the night**; you would find out when an image 404s, not when the job broke.
+
+Worth it only if images must become self-hosted without anyone opening the app. They do not —
+an external image works fine in the meantime.
+
+### Option C — a database trigger on `recipes.image_url`
+
+The most literally automatic: a trigger firing `pg_net.http_post` whenever `image_url` changes.
+
+**Not recommended.** It needs the same extensions and stored token as Option B, and it puts an
+outbound HTTP call in the commit path of every recipe write — a well-known source of latency
+and failures that are hard to trace. It would also fire 33 times during a bulk ingest unless
+specifically guarded. All of that to move a call that the app can make perfectly well itself.
+
+### Option D — upload straight from the browser
+
+Blocked **for an image on someone else's site**: no CORS headers, so the page cannot read the
+bytes. That is settled and is why the Edge Function exists.
+
+**But not blocked for a file on your own device.** A file picker writing into the bucket
+involves no cross-origin fetch, and the Storage RLS policies already permit a signed-in
+household member to write to their own folder. That is a genuinely separate feature — "use my
+own photo" rather than "copy this recipe site's photo" — and there is no file picker in the app
+today. Worth knowing it is possible and small, if you ever want to photograph your own cooking.
+
+### Summary
+
+| | New infrastructure | Covers | Fails |
+| --- | --- | --- | --- |
+| **A — app calls on save** *(recommended)* | none | every recipe saved in the app | visibly, as a toast |
+| B — nightly cron | 2 extensions, Vault token | everything, within a day | silently, at night |
+| C — database trigger | 2 extensions, Vault token | every write, including bulk | in the commit path |
+| D — browser upload | none | only files from your device | visibly |
+
+**Recommendation: build Option A, keep the sweep as a catch-up.** It removes the console step
+you actually mind, costs no new moving parts, and leaves the existing safety net in place.
 
 ---
 
