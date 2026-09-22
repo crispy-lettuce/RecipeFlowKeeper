@@ -104,6 +104,11 @@ recommending it. Three independent checks, because they catch different faults:
   because the server is faithfully serving a broken file.
 - **Data density, for JPEGs** — bytes per pixel, measured against the dimensions read out of the
   file's own SOF segment. Catches a file that has an end marker and still isn't whole.
+- **The box chain, for AVIF and HEIC** — every ISOBMFF box declares its own size, and the sizes
+  must land exactly on the end of the file. Added 22 Sep: AVIF is in the bucket's MIME allowlist
+  and in the sweep's extension map, but it is neither JPEG, PNG, GIF nor RIFF, so before this it
+  reached the final "no check" branch and was stored unverified while this section said
+  everything was verified. The code comment was honest about it; this document was not.
 
 Each of these has caught something the others did not, so none is redundant. The 22 Sep sweep is
 the worked example: **Classic Scones** is cut off with no `FFD9` at all, yet its density is a
@@ -256,7 +261,7 @@ silently in the night.
 | `{ error: 'Not signed in' }` | Signed out, or the token expired | Sign in and try again |
 | One recipe reports `source returned 403` | That CDN refused us | The function already sends a browser User-Agent, which is what makes the other 28 work. If one host still refuses, download the image and host it somewhere reachable |
 | `not an image (content-type: text/html)` | The URL returns an error page, not a photo | The URL is wrong or the image has been removed. Find a new one |
-| Photo does not change after replacing it | Browser cache | Hard-reload. If it persists, check `image_url` actually has a new `?v=` token |
+| Photo does not change after replacing it | Browser cache | Hard-reload. If it persists, check `image_url` has a **newer** `?v=` token than before. Note most images have **no token at all** — only 2 of 29 as of 22 Sep — because the token is added when a photo is re-hosted over an existing one, and the original sweep wrote each URL once. A missing token on an untouched image is normal, not a fault |
 | An image looks like a tiny blurry placeholder | The conversion captured a lazy-load thumbnail | Run `find-recipe-image` for that recipe, pick a candidate, replace it (§3) |
 | Photo renders correctly at the top and goes solid grey below | JPEG with an intact end marker but scan data that stops early | The density check catches these; the end-marker check did not. Run `find-recipe-image`, check `currentImageProblem` and each candidate's `problem`, pick one reporting `ok: true`, replace it (§3) |
 | Sweep reports `JPEG ends correctly but carries too little image data` | The density check — the file is terminated but not full | Working as intended. Find a different URL (§3). If you believe the photo is genuinely fine, check its bytes/pixel in `data.all` before changing the threshold |
@@ -337,11 +342,11 @@ For a single recipe, `find-recipe-image` reports the same check on its current i
 | | |
 | --- | --- |
 | Function source | `supabase/functions/rehost-images/index.ts` (the sweep) and `supabase/functions/find-recipe-image/index.ts` (candidate finder, read-only) |
-| Deployed as | `rehost-images` (v6) and `find-recipe-image` (v3), both `verify_jwt: true` |
-| Tests | `node test/image-integrity.js` — 19 checks over the integrity checker |
+| Deployed as | `rehost-images` (v7) and `find-recipe-image` (v4), both `verify_jwt: true` |
+| Tests | `node test/image-integrity.js` — 24 checks over the integrity checker |
 | Bucket | `recipe-images` — **public**, 10 MB file limit, MIME allowlist of jpeg/png/webp/gif/avif |
 | Storage path | `<household_id>/<recipe_id>.<ext>` |
-| Public URL | `<project>/storage/v1/object/public/recipe-images/<path>?v=<unix seconds>` |
+| Public URL | `<project>/storage/v1/object/public/recipe-images/<path>`, with `?v=<unix seconds>` appended on re-host |
 | Cache | `max-age=31536000`, busted by the version token |
 
 **Public means read-only, and not browsable.** It affects exactly one thing: the `/object/public/`

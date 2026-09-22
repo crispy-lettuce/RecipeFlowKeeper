@@ -59,9 +59,9 @@ verified status. **Nothing here is inferred from a previous summary.**
 
 | | Item | Status |
 | --- | --- | --- |
-| H1 | Meal type at point of logging | **Not started.** Phase 3. |
-| H2 | Ad-hoc entries | **Not started.** Phase 3. |
-| H3 | CSV export | **Not started.** Phase 3. |
+| H1 | Meal type at point of logging | **Done, 22 Sep.** One tap after the log is saved, never before it. See §2b. |
+| H2 | Ad-hoc entries | **Done, 22 Sep.** `recipe_logs` rows with a null `recipe_id` and their own `title`. See §2b. |
+| H3 | CSV export | **Done, 22 Sep.** The brief's columns verbatim, quantities stripped. See §2b. |
 
 ### Converter & conversion instructions
 
@@ -73,7 +73,7 @@ hasn't caught up yet.
 | --- | --- | --- | --- |
 | C1 | Extract equipment | Done | **Done, 20 Sep.** 8 of 33 carry an `EQUIPMENT:` line — the 8 that need a specific tin or basin. The other 25 need nothing size-specific. |
 | C2 | Capture source URL | Done | **Done, 20 Sep.** 32 of 33. The one gap is Victoria Sandwich, deliberately left untouched — see §3. |
-| C3 | Guarantee bracket timings | Done | **Done, 20 Sep.** 249 of 249 MERGE lines timed across the 32 ingested recipes; `[instant]` used 78 times. Every one of those recipes now renders a timeline. Was 6 of 302. |
+| C3 | Guarantee bracket timings | Done | **Done, 20 Sep.** 242 of 242 MERGE lines timed across the 32 ingested recipes; `[instant]` used 78 times. (Recorded as "249 of 249" until a 22 Sep audit counted it: the library holds 250 MERGE lines, 8 of them in Victoria Sandwich, the one recipe deliberately left unconverted.) Every one of those recipes now renders a timeline. Was 6 of 302. |
 | C4 | Servings mandatory + fallback | Done | **Done, 20 Sep.** 33 of 33. |
 | C5 | Consistent phrasing | Done | — |
 | C6 | Standardised units | Done | — |
@@ -83,11 +83,11 @@ hasn't caught up yet.
 
 | Item | Status |
 | --- | --- |
-| Hosting (GitHub Pages) | **Live, verified 21 Sep.** Serving from `main` at `https://crispy-lettuce.github.io/RecipeFlowKeeper/`, confirmed by a browser screenshot and by the `pages build and deployment` workflow having one run per commit to `main`. **Every merge to `main` redeploys automatically** — there is no staging step. `main` holds the current build as of PR #2. Two earlier claims in this document were wrong and are corrected in `docs/INFRASTRUCTURE.md` §2: `main` was never the pre-Supabase app during this project, and "nothing is deployed" was never true. |
+| Hosting (GitHub Pages) | **Live, verified 21 Sep.** Serving from `main` at `https://crispy-lettuce.github.io/RecipeFlowKeeper/`, confirmed by a browser screenshot and by the `pages build and deployment` workflow having one run per commit to `main`. **Every merge to `main` redeploys automatically** — there is no staging step. `main` holds the current build as of PR #5 (22 Sep). Two earlier claims in this document were wrong and are corrected in `docs/INFRASTRUCTURE.md` §2: `main` was never the pre-Supabase app during this project, and "nothing is deployed" was never true. |
 | Backend (Supabase) | **Done.** 13 tables, RLS enabled with policies on every one. |
 | Household id on every table from day one | **Done, verified.** |
 | Backup to a separate private repo | **Done and genuinely working.** See §5. |
-| Images in Supabase Storage | **Done, 21 Sep** — 29 objects, 4.1 MB. See §2. |
+| Images in Supabase Storage | **Done, 21 Sep** — 29 objects, 4,426 kB. See §2. |
 | Calendar reminders | **Not done** — P3, see §4. |
 
 ### Brief's own open items
@@ -146,7 +146,8 @@ and a browser could not do it anyway, because most recipe CDNs send no permissiv
 2. **A browser User-Agent is not optional.** Several CDNs answer a bare Deno fetch with 403. All 29
    succeeded with one.
 3. **One image was 7.7 MB** — more than the rest of the library combined — because Contentful serves
-   originals by default. One URL parameter took the library from 11.5 MB to 4.1 MB. **Check the dry
+   originals by default. One URL parameter took the library from 11.5 MB to 4.1 MB (4,426 kB today,
+   after two images were replaced with whole ones). **Check the dry
    run's byte counts for outliers before any future sweep.**
 4. **Two defects found while documenting it, both fixed the same day.** Objects are cached for a
    year at a stable path, so replacing a photo would have shown the *old* one until 2027 — fixed
@@ -316,6 +317,62 @@ prompt before the write, and dropping `diary` from the backup, each produce name
 
 ---
 
+## 2c. Independent review — 22 Sep 2026
+
+Two agents reviewed the app after the food diary shipped: one on code correctness, one on
+whether the documentation matched reality. Both were read-only. They found things this session
+had missed while declaring the same work finished, which is the point of running them.
+
+### The finding that mattered most
+
+**The documented test command exited 1, and one of its checks was vacuous.** `test/stub.js`
+implemented `select/upsert/insert/delete` but not `update` — and `updateDiaryEntry` is the only
+caller of `.update()` in the app. So the diary's meal-type write threw a TypeError, `queueWrite`
+swallowed it, and the check passed anyway **because it asserted `loadDiary()`, the in-memory
+cache, which is updated before the write is queued.**
+
+That means H1's persistence write had never executed anywhere — not in the harness, not against
+the real backend. And it went unnoticed because the result was being read by counting `ok` lines
+instead of by the exit code.
+
+The stub now implements `update` and records the patch and the `.eq()` target, so a test can
+assert on the column names actually sent. A patch built with `mealType` instead of `meal_type`
+would satisfy the cache and lose every meal type the household ever taps; that is now caught.
+
+### Code fixes
+
+| | |
+| --- | --- |
+| **Restore could destroy the diary** | `replaceAllDiary` deleted every log row and then inserted — two round trips, no transaction. Meal types and ad-hoc entries exist in no other table, so a failed insert was unrecoverable. Now upserts first and culls afterwards: a failure leaves the existing diary untouched |
+| **Import left `cache.diary` stale** | `saveRecipesList` is synchronous, `replaceAllDiary` is queued. In between, an export would write a backup whose diary referenced recipes the file did not contain — which then triggered the row above on restore |
+| **A failed insert followed by a silent update** | PostgREST returns no error for an update matching zero rows, so a failed log produced "Couldn't save" and then a cheerful "Tagged as lunch". Unsaved ids are tracked now |
+| **`uid()`'s fallback was not a UUID** | `'r-' + Date.now() + ...` is rejected by a `uuid` column. It only ran on browsers without `crypto.randomUUID` — the old tablets nobody tests on — and failed silently |
+| **CSV formula injection** | An entry named `=1+1` opened in Excel as the number 2. Quoting does not prevent it; a leading apostrophe does |
+| **`escapeHtml` did not escape quotes** | The ad-hoc title reaches an HTML attribute, so a name containing `"` could break out of it |
+| **AVIF was stored unverified** | Accepted by the MIME allowlist but matched no branch of the integrity check. Now walks the ISOBMFF box chain |
+| **Selection highlight lost on ad-hoc days** | A CSS rule at equal specificity sat after `.selected` and won on source order |
+
+### Test fixes
+
+The CSV checks **reimplemented the exporter inside the test** and asserted against their own
+output — every one would have passed with `exportDiaryCsv` deleted, and they had already drifted
+(the test joined with `\n` where the app uses `\r\n`, and omitted the BOM). They now download
+the real file. Two other checks asserted the absence of selectors the app has never used, or
+collected data and never asserted on it.
+
+Fixture data now includes a title that a spreadsheet would evaluate and one that would break out
+of an HTML attribute, because without adversarial data those checks pass vacuously.
+
+Smoke **148 → 157**, integrity **19 → 24**, every new check mutation-tested.
+
+### What the review did not cover
+
+Both agents ran against the stub and the database. Neither exercised sign-in, hydration or RLS
+against the real backend — `docs/TEST-PLAN.md` is still the only thing that does, and the diary's
+writes have not been through it.
+
+---
+
 ## 3. Recipe ingestion — DONE, 20 Sep 2026
 
 *This was step 1 of five. `docs/NEXT-SESSION.md` has the full order; the project is now at
@@ -435,7 +492,7 @@ point, and confirming the schedule still fires afterwards.
 
 ## 6. Corrections to the earlier record
 
-Five times now, something recorded as true wasn't. The pattern is worth more than the individual
+Eleven times now, something recorded as true wasn't. The pattern is worth more than the individual
 corrections: **every one was found by checking the real thing, and none by reading more carefully.**
 
 | Recorded | Actually | Found |
@@ -445,10 +502,21 @@ corrections: **every one was found by checking the real thing, and none by readi
 | "`main` still serves the pre-Supabase app" — in four documents | `main` had been serving the Supabase rewrite since PR #1, 13 Sep | 21 Sep, before the merge |
 | "Nothing here is deployed and nothing live can break" | Pages had been live and sharing this database throughout | 21 Sep, same check |
 | Test plan's "Planned days 15" read as an on-screen expectation | A row count; every stored day was in the past, so an empty Planner was correct | 21 Sep, by the person running the pass |
+| Tuscan Chicken Pasta's image was "a lazy-load placeholder, cosmetic" | A truncated JPEG. Chasing it found a second broken image nobody had noticed | 22 Sep, from a screenshot of the card |
+| Image re-hosting "verified against the dry run's byte counts" | That check cannot detect the fault it claims to — both reads fetch the same source | 22 Sep, while fixing the above |
+| "C3: 249 of 249 MERGE lines timed" | 242 of 242. The library holds 250; 8 are in the one recipe never converted | 22 Sep audit, by counting |
+| `INFRASTRUCTURE.md`: bucket "private, and currently empty"; "no Edge Functions deployed" | Public with 29 objects, and two functions live — both for six days | 22 Sep audit |
+| `HANDOVER.md` §1: H1/H2/H3 "Not started" | Built, merged and deployed the same day, contradicting §2b in this very file | 22 Sep audit |
+| `node test/build.js && node test/smoke.js` documented as the green gate | Exited 1. The stub had no `update()`, so the diary's write threw and a check passed on the cache alone | 22 Sep review, by reading the exit code rather than counting "ok" lines |
 
-The last two are the instructive ones. Both were *written down carefully* and both were wrong,
-because nobody had opened a browser or read the workflow history. The rule in `CLAUDE.md` — verify
-rather than trust status notes, including these — earned itself five times over.
+**The last one is the most instructive, because the verification itself was the thing that was
+wrong.** Every "the tests pass" statement in this repo was false for a day, and the reason it went
+unnoticed is that the person checking counted passing lines instead of reading `$?`. A test that
+cannot fail and a suite whose result is not read are the same problem wearing different clothes.
+
+The rule in `CLAUDE.md` — verify rather than trust status notes, including these — has now earned
+itself eleven times over. Two of these eleven were found by agents reviewing work that had just
+been done and declared finished.
 
 These brief items appeared in **no** task list at all: **P3** (calendar), **R4** (cooking notes),
 **R7** (images, since built), **H1/H2/H3** (history and food diary). All are Phase 3 in the brief's
@@ -459,7 +527,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **148 checks** across every screen, `shots.js` captures screenshots.
+`smoke.js` runs **157 checks** across every screen, `shots.js` captures screenshots.
 
 ```sh
 npm install playwright

@@ -185,7 +185,9 @@ TIPS:
   combine (pour, bake, cool, cut, serve), not just the mixing steps.
 - **Every MERGE line ends with a bracketed duration.** Write the time the step takes in
   square brackets at the end of the label: `[8 min]`, `[10-13 min]` for a range,
-  `[1 hr]`, or `[overnight]`. For a step that takes no meaningful time — plating,
+  `[1 hr]`, `[1 hr 30]` for hours and minutes, `[30 sec]`, or `[overnight]`.
+  A range may use a hyphen or an en dash (`[4–5 min]`). `[until done]` and
+  `[till reduced]` are read as open-ended. For a step that takes no meaningful time — plating,
   a final stir, sprinkling a garnish — write `[instant]`. Never leave the bracket off:
   the app builds a shared timeline across recipes being cooked together, and one
   missing duration makes that timeline wrong rather than merely incomplete.

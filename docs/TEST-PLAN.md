@@ -51,23 +51,26 @@ replaced.
 | | |
 |---|---|
 | Recipes | 33 |
-| Cooking-log entries | 114 |
+| Diary entries (`recipe_logs`) | 115 |
 | Keywords | 47 |
-| Planned days | 15 **stored rows — expect the Planner to look empty** |
-| Meal groups | 2 **stored rows — likewise not visible** |
-| Shortlist items | 2 |
+| Planned days | 18 |
+| Meal groups | 4 |
+| Shortlist items | 3 |
 | Ingredient swaps | 1 |
-| Ticked shopping items | 0 (cleared deliberately) |
-| Word matches | 0 (none recorded yet) |
+| Ticked shopping items | 9 |
+| Word matches (aliases) | 7 |
 | Week starts on | Friday |
 
-**Those first two rows are row counts, not what you will see.** Every stored planner day and
-meal group is in the past — the newest is 11 Sep — and the Planner only shows a fortnight from
-the current week start. So **an empty Planner is the correct result**, not a hydration failure,
-and it will stay that way until you plan something. Verify the 15 by checking the database or
-by paging the Planner back, not by counting what's on screen.
+**Re-read these from the database before every pass.** They change whenever the library or the
+planner does, and a stale number here turns a correct app into a reported failure. The query is
+at the end of this document.
 
-This bit the first person through the plan, on 21 Sep.
+**The Planner is no longer expected to look empty.** Until 22 Sep this section said every
+stored planner day was in the past and that an empty Planner was therefore the correct result.
+That is now false — the newest planner day and meal group are both **2026-09-23**, in the
+future — so **an empty Planner today would be a genuine bug**. This is exactly the kind of
+prose conclusion that goes stale along with the numbers it was drawn from, while looking like
+settled guidance.
 
 ## The things that will look like bugs and aren't
 
@@ -77,7 +80,7 @@ every one full step timings. The scaling controls and the timeline strip should 
 almost everywhere, so **if either fails to render, that is a real finding**, not the library
 being sparse. Any recipe is now a fair choice for the scaling checks.
 
-Three things that *will* still look wrong and aren't:
+Some things that *will* still look wrong and aren't:
 
 1. **8 planner slots and 2 meal-group entries show "Recipe removed".** They point at recipes
    deleted during ingestion. `planner_days.recipe_ids` and `meal_groups.recipe_ids` are plain
@@ -139,7 +142,8 @@ Three things that *will* still look wrong and aren't:
 
 ## C — Export and import (Phase 1 task, still open)
 
-19. **Export.** Sidebar → EXPORT DATA. Open the file and confirm it has `version: 2` with `settings`
+19. **Export.** Sidebar → EXPORT DATA. Open the file and confirm it has `version: 3`, a `diary`
+    array carrying meal types and any ad-hoc entries, and `settings`
     and `aliases` alongside the recipes.
 20. **Import it straight back.** Expect the counts above to be unchanged afterwards. This rewrites
     everything, so do it while you still have the export you just took.
@@ -158,7 +162,9 @@ Three things that *will* still look wrong and aren't:
 Tell me the step number, what you saw, and anything red in the console. Useful to know:
 
 - Your data is in Supabase, not the browser, so clearing site data or closing the tab loses nothing.
-- Nothing is deployed — `main` is untouched, so there is no live app to roll back.
+- **`main` IS production.** GitHub Pages serves from it and every merge redeploys the live app
+  within minutes. This line used to say the opposite; it was wrong from PR #1 onwards. To roll
+  back, revert the merge commit on `main` — Pages will redeploy the previous build.
 - If a screen throws, the console error and the step that triggered it is usually enough for me to
   find it without you digging further.
 
@@ -188,3 +194,30 @@ are both resolved:
 
 S2 dark mode shipped 22 Sep and is covered by the smoke suite; the thing worth a human eye is
 contrast on the real tablet, which no headless check can judge.
+
+---
+
+## Re-reading the expected counts
+
+Run this before every pass and replace the table at the top with what it returns. The counts
+went stale between 21 and 22 Sep and produced a section of confidently wrong guidance, which is
+the failure this query exists to prevent.
+
+```sql
+select (select count(*) from recipes)          as recipes,
+       (select count(*) from recipe_logs)      as diary_entries,
+       (select count(*) from keywords)         as keywords,
+       (select count(*) from planner_days)     as planned_days,
+       (select count(*) from meal_groups)      as meal_groups,
+       (select count(*) from shortlist_items)  as shortlist,
+       (select count(*) from ingredient_swaps) as swaps,
+       (select count(*) from shopping_checked) as ticked_shopping,
+       (select count(*) from aliases)          as word_matches,
+       (select week_start_day from household_settings limit 1) as week_start_day,
+       (select max(plan_date)::text from planner_days)         as newest_planner_day,
+       (select max(date_iso)::text  from meal_groups)          as newest_meal_group;
+```
+
+**Read the last two.** If `newest_planner_day` is in the past, an empty Planner is correct. If
+it is in the future, an empty Planner is a bug. That one distinction is what the 21 Sep version
+of this document got wrong for a day.

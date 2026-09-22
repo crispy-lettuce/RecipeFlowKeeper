@@ -20,7 +20,7 @@ check the code, the database or GitHub Actions directly, do that instead of beli
 node test/build.js && node test/smoke.js
 ```
 
-148 checks. It stubs Supabase entirely, so it proves nothing about sign-in, hydration, RLS or the
+157 checks. It stubs Supabase entirely, so it proves nothing about sign-in, hydration, RLS or the
 write queue — never claim the app works end to end on the strength of a green run.
 
 **After any change to the image Edge Functions, also run:**
@@ -29,7 +29,7 @@ write queue — never claim the app works end to end on the strength of a green 
 node test/image-integrity.js
 ```
 
-19 checks over the integrity checker in `supabase/functions/*/index.ts`. It lifts the checker out
+24 checks over the integrity checker in `supabase/functions/*/index.ts`. It lifts the checker out
 of the real source rather than copying it, so a signature change makes it throw rather than pass
 vacuously.
 

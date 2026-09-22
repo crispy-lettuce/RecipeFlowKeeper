@@ -1,7 +1,10 @@
 # Kitchen App — Infrastructure Reference
 
-**Written 14 Sep 2026, verified against the live GitHub API and Supabase project at the time
-of writing** — not copied from an earlier note. This document assumes nothing about who or
+**Written 14 Sep 2026** and verified against the live GitHub API and Supabase project *at that
+time*; sections have been added and corrected since, most recently 22 Sep 2026. Treat the
+original date as the age of the oldest content, not as a warrant over all of it — a 22 Sep
+audit found this file still describing the Storage bucket as empty and the Edge Functions as
+non-existent, six days after both shipped. This document assumes nothing about who or
 what is reading it: it's written to stand on its own for a human, a different AI tool, or a
 future Claude Code session with no memory of this one.
 
@@ -59,8 +62,9 @@ project's own rule, restated in §4) or a plain identifier that grants nothing o
   Supabase rewrite was merged to `main` at some earlier point and nobody recorded it. Checked
   directly against the GitHub API and the objects themselves, not inferred.
 
-  What `main` actually holds is an **older build of the Supabase app**: 5,053 lines against the
-  working branch's 5,976. It has `createClient`, `queueWrite`, `computeTimeline` and Keep Awake;
+  *(As of 22 Sep this is history: `main` and the working branch are content-identical at
+  6,913 lines, five PRs merged.)* What `main` held at the time was an **older build of the
+  Supabase app**: 5,053 lines against the working branch's then-5,976. It has `createClient`, `queueWrite`, `computeTimeline` and Keep Awake;
   it does **not** have `SOURCE_URL:` parsing or the auto-collapsing sidebar (R2). So it is a
   mid-rewrite snapshot, not the localStorage original.
 
@@ -144,14 +148,36 @@ ad-hoc SQL scoped to it.
 
 ### Storage
 
-One bucket, `recipe-images` — **private, and currently empty (zero objects)**. No app code
-references Supabase Storage yet. See `docs/HANDOVER.md` §2 for the agreed plan (an Edge
-Function, run as a decoupled sweep) — nothing built yet.
+One bucket, `recipe-images` — **public, 29 objects, 4,426 kB** (verified 22 Sep 2026). Built
+21 Sep; this section described it as private and empty until an audit on 22 Sep caught that.
+
+**Public means the `/object/public/` read endpoint serves bytes without auth, and nothing
+more.** Writes, deletes and *listing* all still go through four RLS policies on
+`storage.objects` requiring the first path segment to be a household the caller belongs to. So
+it is readable-if-you-know-the-exact-path, and the paths are two random v4 UUIDs. That was a
+correctness decision, not a convenience one: the alternative, signed URLs, expire — and
+`image_url` is written verbatim into both the JSON export and the nightly `pg_dump`, so a
+signed URL would rot inside the backups.
+
+The app still references Supabase Storage **nowhere**, deliberately: re-hosting is done by a
+decoupled Edge Function sweep and the app just renders whatever is in `image_url`.
+`docs/IMAGES.md` is the runbook.
 
 ### Edge Functions
 
-**None deployed.** Both the image re-hosting plan and the calendar-push plan (P3) depend on one
-each; neither exists yet.
+**Two deployed**, both `verify_jwt: true`, both with source in this repo under
+`supabase/functions/`:
+
+| Function | Version | What it does |
+| --- | --- | --- |
+| `rehost-images` | v7 | The sweep: copies external images into Storage. `{"dryRun": true}` to preview, `{"verify": true}` to re-check what is already stored |
+| `find-recipe-image` | v4 | Read-only. Finds and measures candidate hero images for a recipe |
+
+P3's calendar push would be a third; that one does not exist yet.
+
+**These are deployed straight to Supabase, not through GitHub Pages**, which is why the image
+fixes reached the live app without a merge. A change to their source in this repo is a record,
+not a deployment — the two can drift, and have.
 
 ### Migration history
 
@@ -169,7 +195,13 @@ For a full account of how the schema got here, in order:
 20260913025952  create_import_staging
 20260913031333  drop_import_staging
 20260913172854  phase2_planner_servings_and_alias_kinds
+20260921193429  make_recipe_images_public_with_guards
+20260922122137  add_recipe_logs_title_for_adhoc_diary_entries
 ```
+
+The last two were missing from this list until 22 Sep, while the features they carry were
+recorded as done elsewhere. If you are adding a migration, add it here in the same breath —
+`select version, name from supabase_migrations.schema_migrations` is the check.
 
 ---
 
@@ -213,5 +245,6 @@ screen — never into a conversation, a file in either repo, or this document.
    and URL (`https://mhkayefzrtceesgizkjs.supabase.co`) above are everything needed to point
    the Supabase CLI or dashboard at the right project. Sign in at
    https://supabase.com/dashboard with the account that owns organisation CrispyLettuce.
-5. **Before assuming anything about deployment, check the Pages URL directly** — §2 above
-   flags this as unverified from where this document was written.
+5. **`main` is production.** GitHub Pages serves from it and every merge redeploys the live
+   app within a couple of minutes, with no staging step and no approval. This was settled on
+   21 Sep and is no longer an open question — §2 above has the evidence.

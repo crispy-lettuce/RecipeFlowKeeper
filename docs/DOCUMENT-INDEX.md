@@ -95,7 +95,10 @@ useful with no Claude Code session and no prior context at all.
 write queue, then every Phase 2 feature, then export/import. Includes expected row counts to
 check against and flags which failures would be serious.
 
-**Use it when:** running the outstanding verification, which **has never been done**. Nothing in
+**Use it when:** running a regression pass. The full 20-step pass **was completed on 21 Sep
+2026** — the sentence that used to sit here, saying it had never been done, was true when
+written and stale within a week. What follows is the original framing, kept because it explains
+what the pass is for. Nothing in
 the Supabase rewrite has been confirmed working against the real backend by a human in a browser.
 The riskiest step is signing out and back in.
 
@@ -107,7 +110,8 @@ places where order genuinely matters. Plus a complete, ready-to-paste prompt for
 and alternative starting points if you want to work out of sequence.
 
 **Use it when:** starting a new session, or whenever you're unsure what should happen next.
-Currently at **step 1: ingest the reprocessed recipes**.
+Currently at **step 5: Phase 3** — steps 1 to 4 are done, and within Phase 3 the food diary
+(H1–H3) and dark mode (S2) have shipped. R4 and P3 remain.
 
 **Contains one warning worth not missing:** the test plan's export/import step rewrites
 everything, so that export must be taken *after* recipe ingestion, never before.
@@ -146,7 +150,7 @@ on 20 Sep. `test/validate-recipes.js` covers the other half.
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 102-check test suite, and an honest account of what it can't tell you
+**What:** How to run the 157-check test suite, and an honest account of what it can't tell you
 (everything about the real backend).
 
 **Use it when:** making any code change.

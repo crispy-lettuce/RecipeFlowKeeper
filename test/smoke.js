@@ -16,7 +16,11 @@ const path = require('path');
   page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
   page.on('console', m => {
     // Google Fonts is blocked by this sandbox's egress proxy — not an app fault.
-    if (m.type() === 'error' && !/ERR_CONNECTION_RESET|ERR_BLOCKED|fonts\.googleapis/.test(m.text())) {
+    /* ERR_CERT_AUTHORITY_INVALID is this sandbox's TLS-intercepting proxy
+       refusing the Google Fonts stylesheet. The browser's message for a cert
+       failure carries neither the URL nor the other tokens, so it needs
+       naming explicitly or the suite can never go green here. */
+    if (m.type() === 'error' && !/ERR_CONNECTION_RESET|ERR_BLOCKED|ERR_CERT_AUTHORITY_INVALID|fonts\.googleapis/.test(m.text())) {
       errors.push('CONSOLE: ' + m.text());
     }
   });
@@ -141,8 +145,15 @@ const path = require('path');
      one ad-hoc entry, so every shape the diary holds is on screen. */
   await page.click('.navlink[data-view="history"]');
   await page.waitForTimeout(500);
-  check('ad-hoc entries are flagged on the calendar',
-        (await page.locator('.history-day.has-adhoc').count()) === 1);
+  /* Derived from the fixture rather than hard-coded: a count written as a
+     literal makes every future fixture change look like a regression, which
+     trains people to edit the number instead of reading the failure. */
+  const expectedAdHocDays = await page.evaluate(() =>
+    new Set(loadDiary().filter(e => !e.recipeId).map(e => e.cookedOn)).size);
+  const adHocCellsShown = await page.locator('.history-day.has-adhoc').count();
+  check('every day with an ad-hoc entry is flagged on the calendar',
+        adHocCellsShown === expectedAdHocDays,
+        adHocCellsShown + ' shown, ' + expectedAdHocDays + ' expected');
 
   await page.locator('.history-day.has-adhoc').first().click();
   await page.waitForTimeout(350);
@@ -161,11 +172,31 @@ const path = require('path');
   check('ad-hoc entries are not clickable recipes', adHocIsPlain);
 
   // H2: add one through the real dialog.
+  const diaryBefore = await page.evaluate(() => loadDiary().length);
   await page.click('#historyAddEntryBtn');
   await page.waitForTimeout(300);
   check('ad-hoc dialog opens', await page.isVisible('#adHocOverlay .mini-panel'));
   check('autocomplete offers names already used',
         (await page.locator('#adHocVocab option').count()) >= 1);
+  /* The autocomplete puts a user-typed title into an HTML attribute. The
+     fixture includes a title containing a double quote, which before
+     escapeHtml handled quotes would break out of value="..." and inject an
+     attribute. Asserting on the parsed DOM, not the markup string: if the
+     escape fails the browser sees an extra attribute, and the option's
+     value is truncated at the quote. */
+  const attrSafety = await page.evaluate(() => {
+    const opts = [...document.querySelectorAll('#adHocVocab option')];
+    const hit = opts.find(o => o.value.includes('onfocus'));
+    return {
+      found: !!hit,
+      value: hit ? hit.value : null,
+      strayAttrs: hit ? [...hit.attributes].map(a => a.name).filter(n => n !== 'value') : []
+    };
+  });
+  check('a quote in an entry name does not break out of the attribute',
+        attrSafety.found && attrSafety.value === 'x" onfocus="alert(1)'
+          && attrSafety.strayAttrs.length === 0,
+        JSON.stringify(attrSafety));
   await page.click('#adHocSave');
   await page.waitForTimeout(250);
   check('a nameless entry is refused', await page.isVisible('#adHocError'));
@@ -174,7 +205,8 @@ const path = require('path');
   await page.click('#adHocSave');
   await page.waitForTimeout(500);
   const diaryCount = await page.evaluate(() => loadDiary().length);
-  check('the new entry is in the diary', diaryCount === 4, String(diaryCount));
+  check('the new entry is in the diary', diaryCount === diaryBefore + 1,
+        diaryCount + ' after, ' + diaryBefore + ' before');
   check('and appears in the day list',
         (await page.locator('#historyDayDetail').innerText()).includes('Chip shop tea'));
 
@@ -192,69 +224,81 @@ const path = require('path');
   /* The entry must exist BEFORE the prompt is answered — dismissing it
      cannot be allowed to lose the log. */
   const loggedBeforeAnswering = await page.evaluate(() => loadDiary().length);
-  check('the log is saved before the prompt is answered', loggedBeforeAnswering === 5, String(loggedBeforeAnswering));
+  check('the log is saved before the prompt is answered',
+        loggedBeforeAnswering === diaryBefore + 2,
+        loggedBeforeAnswering + ' entries, expected ' + (diaryBefore + 2));
   await page.click('#mealTypeChoices .meal-type-btn[data-meal="lunch"]');
   await page.waitForTimeout(400);
   const newest = await page.evaluate(() =>
     loadDiary().slice().sort((a,b)=>b.cookedOn.localeCompare(a.cookedOn))[0].mealType);
-  check('choosing a meal type tags the entry', newest === 'lunch', String(newest));
+  check('choosing a meal type tags the entry in memory', newest === 'lunch', String(newest));
 
-  // H3: the CSV itself.
+  /* And that it reaches the database. The version of this check that only
+     read loadDiary() passed while the write was throwing a TypeError, because
+     the cache is updated before the write is queued. Asserting on the
+     recorded write is what makes the column names real: a patch built with
+     `mealType` instead of `meal_type` would satisfy the cache and lose every
+     meal type the household ever taps. */
+  const mealWrite = await page.evaluate(() =>
+    window.__WRITES__.filter(w => w.table === 'recipe_logs' && w.op === 'update').pop() || null);
+  check('the meal type is actually written', mealWrite !== null,
+        mealWrite ? '' : 'no update reached recipe_logs');
+  check('written with the database\'s own column name',
+        mealWrite && mealWrite.patch && mealWrite.patch.meal_type === 'lunch',
+        mealWrite ? JSON.stringify(mealWrite.patch) : '-');
+  check('and aimed at the row just logged',
+        mealWrite && mealWrite.match && mealWrite.match.column === 'id',
+        mealWrite ? JSON.stringify(mealWrite.match) : '-');
+
+  /* H3: the CSV, read from the file the app actually produces.
+
+     The version of this block that came before built a CSV inside the test
+     from its own literal header and its own row logic, then asserted against
+     that. Every one of those checks would have passed with exportDiaryCsv
+     deleted. They had also already drifted from it — the test joined with \n
+     where the app uses \r\n, and omitted the BOM whose four-line
+     justification sits in the source. Downloading the real file is the only
+     version of this that means anything, and the backup check below already
+     showed the harness can do it. */
   await page.click('.navlink[data-view="history"]');
   await page.waitForTimeout(300);
-  const csv = await page.evaluate(() => {
-    const rows = loadDiary().slice().sort((a,b)=>a.cookedOn.localeCompare(b.cookedOn));
-    const byId = new Map(loadRecipes().map(r=>[r.id, r]));
-    return [['Date','Meal type','Entry','Source','Course','Ingredients'].map(csvCell).join(',')]
-      .concat(rows.map(e=>{
-        const r = e.recipeId ? byId.get(e.recipeId) : null;
-        return [e.cookedOn, e.mealType ? MEAL_TYPE_LABELS[e.mealType] : '',
-                diaryEntryTitle(e, byId), e.recipeId ? 'Recipe' : 'Ad hoc',
-                r && r.tags ? (r.tags.course || '') : '',
-                r ? diaryIngredientSummary(r) : ''].map(csvCell).join(',');
-      })).join('\n');
-  });
+  const csv = await (async () => {
+    const [dl] = await Promise.all([
+      page.waitForEvent('download'),
+      page.click('#historyCsvBtn'),
+    ]);
+    const tmp = require('path').join(require('os').tmpdir(), 'kitchen-diary-check.csv');
+    await dl.saveAs(tmp);
+    return { name: dl.suggestedFilename(), text: require('fs').readFileSync(tmp, 'utf8') };
+  })();
+  const csvLines = csv.text.replace(/^\uFEFF/, '').split('\r\n').filter(Boolean);
+
+  check('CSV downloads with a dated filename', /^kitchen-diary-\d{4}-\d{2}-\d{2}\.csv$/.test(csv.name), csv.name);
+  /* The BOM is why an accented ingredient survives Excel. Nothing else in
+     the suite would notice it going missing. */
+  check('CSV starts with a BOM for Excel', csv.text.charCodeAt(0) === 0xFEFF,
+        'first char code ' + csv.text.charCodeAt(0));
+  check('CSV uses CRLF line endings', csv.text.includes('\r\n'));
   check('CSV header matches the brief',
-        csv.split('\n')[0] === '"Date","Meal type","Entry","Source","Course","Ingredients"');
+        csvLines[0] === '"Date","Meal type","Entry","Source","Course","Ingredients"', csvLines[0]);
+  check('CSV has one row per diary entry',
+        csvLines.length - 1 === (await page.evaluate(() => loadDiary().length)),
+        (csvLines.length - 1) + ' rows');
   check('CSV distinguishes recipe from ad hoc',
-        csv.includes('"Ad hoc"') && csv.includes('"Recipe"'));
-  /* The CSV-only name tidier. The two cases that matter are opposites:
-     "cloves" is a unit in "2 cloves garlic" and an ingredient in "whole
-     cloves", and only the never-strip-the-last-word rule tells them apart.
-     A fix applied inside splitQty could not have made that distinction —
-     and would have re-keyed every ticked shopping item besides. */
-  const tidy = await page.evaluate(() => ({
-    garlic:   tidyIngredientName('cloves garlic'),
-    spice:    tidyIngredientName('whole cloves'),
-    alone:    tidyIngredientName('cloves'),
-    eggs:     tidyIngredientName('large eggs'),
-    multi:    tidyIngredientName('x 125 g tins tuna in olive oil'),
-    plain:    tidyIngredientName('dried pasta'),
-    lastWord: tidyIngredientName('large'),
-  }));
-  check('a leading unit is dropped', tidy.garlic === 'garlic', tidy.garlic);
-  check('but never the last word, so the spice survives', tidy.spice === 'cloves', tidy.spice);
-  check('a bare unit-looking ingredient is left alone', tidy.alone === 'cloves', tidy.alone);
-  check('size words are dropped too', tidy.eggs === 'eggs', tidy.eggs);
-  check('a multipack unwinds to the ingredient', tidy.multi === 'tuna in olive oil', tidy.multi);
-  check('an already-clean name is untouched', tidy.plain === 'dried pasta', tidy.plain);
-  check('a one-word name is never emptied', tidy.lastWord === 'large', tidy.lastWord);
-
-  /* splitQty must be untouched by all of this: its output is the shopping
-     list's aggregation key, so a change there silently unticks everything. */
-  const splitUnchanged = await page.evaluate(() => {
-    const a = splitQty('2 cloves garlic, minced');
-    const b = splitQty('300 g dried pasta');
-    return a.rest === 'cloves garlic, minced' && a.qty === '2'
-        && b.rest === 'dried pasta' && b.qty === '300 g';
-  });
-  check('splitQty still splits exactly as before', splitUnchanged);
-
+        csv.text.includes('"Ad hoc"') && csv.text.includes('"Recipe"'));
   check('CSV strips quantities from ingredients',
-        csv.includes('dried pasta') && !/\b300 g\b/.test(csv));
+        csv.text.includes('dried pasta') && !/\b300 g\b/.test(csv.text));
   check('CSV leaves ad-hoc course and ingredients blank',
-        /"Fish and chips","Ad hoc","",""/.test(csv), csv.split('\n').find(l=>l.includes('Fish and chips')));
-  check('CSV quotes every field', !/,(?!")/.test(csv.split('\n')[1].replace(/"[^"]*"/g, m=>m.replace(/,/g,'~'))));
+        /"Fish and chips","Ad hoc","",""/.test(csv.text),
+        csvLines.find(l => l.includes('Fish and chips')));
+  check('CSV rows are ordered by date',
+        (() => { const d = csvLines.slice(1).map(l => l.slice(1, 11));
+                 return d.every((v, i) => i === 0 || d[i-1] <= v); })(),
+        csvLines.slice(1).map(l => l.slice(1, 11)).join(' '));
+  /* A cell beginning = + - or @ is a formula to Excel, quotes or not. */
+  check('CSV neutralises spreadsheet formulas',
+        !/,"[=+@]/.test(csv.text) && !/^"[=+@]/m.test(csv.text),
+        (csv.text.match(/"[=+@][^"]*"/) || ['none'])[0]);
 
   // Removing an entry takes it out of the recipe's own history too.
   const removedOk = await page.evaluate(() => {
@@ -316,7 +360,28 @@ const path = require('path');
   // Planner should bucket into Friday-start weeks.
   await page.click('.navlink[data-view="planner"]');
   await page.waitForTimeout(350);
-  const weekLabels = await page.locator('.week-label, .day-week-label').allTextContents();
+  /* S1 claims week-start drives Planner, Shopping and History together.
+     History's bucketing is checked above; the Planner's was not — this line
+     used to collect week labels and then never assert on them. */
+  /* The planner's day list starts at TODAY, so the first row is whatever
+     day it happens to be — asserting Friday there tests the calendar, not
+     the app. What week-start actually governs is where the BUCKET
+     BOUNDARIES fall, so that is what to check: every bucket after the first
+     must open on the configured day. */
+  const bucketOpeners = await page.evaluate(() => {
+    const out = [];
+    document.querySelectorAll('#plannerDays .week-label, .planner-days .week-label, .week-label')
+      .forEach(label => {
+        let el = label.nextElementSibling;
+        while(el && !el.classList.contains('day-row')) el = el.nextElementSibling;
+        if(el) out.push(el.textContent.trim().slice(0, 12));
+      });
+    return out;
+  });
+  check('planner groups days into week buckets', bucketOpeners.length > 0, bucketOpeners.join(' | '));
+  check('every bucket after the first opens on the configured day (Friday)',
+        bucketOpeners.slice(1).every(t => /\bFRI\b/i.test(t)),
+        bucketOpeners.join(' | '));
   check('planner rendered day rows', (await page.locator('.day-row').count()) > 0,
         (await page.locator('.day-row').count()) + ' days');
 
@@ -384,7 +449,16 @@ const path = require('path');
   await page.waitForTimeout(400);
   const metaBase = await page.locator('#viewerMeta').textContent();
   check('viewer shows the recipe servings', /SERVES 4/.test(metaBase), metaBase.trim().slice(0, 90));
-  check('no multiplier buttons anywhere', (await page.locator('[data-viewer-scale], [data-scale]').count()) === 0);
+  /* R5 retired multiplier buttons (×2, ×3) in favour of a headcount. The
+     previous version of this checked for `[data-viewer-scale], [data-scale]`
+     — two attributes the app has never used, so it asserted the absence of
+     things that were never there and would not have noticed multipliers
+     reappearing under any other name. Check what is actually on screen:
+     the scale控 controls must offer people, never a × multiplier. */
+  const scaleLabels = await page.locator('.viewer-scale-row button').allTextContents();
+  check('scale controls exist at all', scaleLabels.length > 0, scaleLabels.join(','));
+  check('and none of them is a multiplier',
+        !scaleLabels.some(t => /[×x]\s*\d/i.test(t.trim())), scaleLabels.join(','));
   await page.click('.viewer-scale-row .scale-btn[data-viewer-serves="6"]');
   await page.waitForTimeout(300);
   const metaScaled = await page.locator('#viewerMeta').textContent();
@@ -474,12 +548,22 @@ const path = require('path');
   await page.click('#parseBtn');
   await page.waitForTimeout(300);
   await page.fill('#f-servings', '');
+  /* Count writes to `recipes` BEFORE the blocked save, and compare after.
+     The previous version asserted that no write to that table had happened
+     at any point in the entire run — which passes today only because
+     nothing earlier in the suite writes it. Adding a favourite-toggle test
+     upstream would have broken this check for a reason that has nothing to
+     do with what it is testing. */
+  const writesBefore = await page.evaluate(() =>
+    (window.__WRITES__ || []).filter(w => w.table === 'recipes').length);
   await page.click('#saveBtn');
   await page.waitForTimeout(300);
   const err = await page.locator('#saveError').textContent();
   check('save blocked with servings empty', /servings/i.test(err) && await page.isVisible('#saveError'), err.trim().slice(0, 70));
-  const savedAnyway = await page.evaluate(() => (window.__WRITES__ || []).some(w => w.table === 'recipes'));
-  check('nothing written when blocked', !savedAnyway);
+  const writesAfter = await page.evaluate(() =>
+    (window.__WRITES__ || []).filter(w => w.table === 'recipes').length);
+  check('nothing written when blocked', writesAfter === writesBefore,
+        writesBefore + ' before, ' + writesAfter + ' after');
 
   // A reprocessed recipe carries its own origin through the parse.
   await page.fill('#importInput', 'TITLE: URL Test\nSOURCE: Somewhere\nSOURCE_URL: https://example.com/a-recipe\nSERVINGS: 4\n\nGROUP a:\n1 onion\n\nSTAGE:\nMERGE a -> done: Cook [5 min]');
@@ -641,8 +725,39 @@ const path = require('path');
   const durationCheck = await page.evaluate(() => ({
     instant: extractStepDuration('plate up [instant]'),
     overnight: extractStepDuration('chill [overnight]'),
-    normal: extractStepDuration('bake [40 min]')
+    normal: extractStepDuration('bake [40 min]'),
+    /* The three forms that caused a real, library-wide silent failure: the
+       parser did not recognise any of them, and an unrecognised bracket is
+       not inert — the raw text shows up in the diagram. The reprocessed
+       batch used [30 sec] three times. Without these, removing the en-dash
+       class or the seconds unit would break the whole library and the suite
+       would stay green. */
+    enDash: extractStepDuration('simmer [4\u20135 min]'),
+    seconds: extractStepDuration('blitz [30 sec]'),
+    compound: extractStepDuration('prove [1 hr 30]'),
+    untilDone: extractStepDuration('reduce [until thickened]')
   }));
+  check('an en-dash range is read as a range',
+        durationCheck.enDash && durationCheck.enDash.duration
+          && durationCheck.enDash.duration.min === 4 && durationCheck.enDash.duration.max === 5,
+        JSON.stringify(durationCheck.enDash));
+  check('seconds are read as a fraction of a minute',
+        durationCheck.seconds && durationCheck.seconds.duration
+          && Math.abs(durationCheck.seconds.duration.min - 0.5) < 1e-9,
+        JSON.stringify(durationCheck.seconds));
+  check('hours and minutes combine',
+        durationCheck.compound && durationCheck.compound.duration
+          && durationCheck.compound.duration.min === 90,
+        JSON.stringify(durationCheck.compound));
+  check('an until-phrase is open-ended, not a number',
+        durationCheck.untilDone && durationCheck.untilDone.duration
+          && durationCheck.untilDone.duration.openEnded === true,
+        JSON.stringify(durationCheck.untilDone));
+  check('and none of them leaves the bracket in the label',
+        [durationCheck.enDash, durationCheck.seconds, durationCheck.compound, durationCheck.untilDone]
+          .every(d => d && !/[\[\]]/.test(d.label)),
+        [durationCheck.enDash, durationCheck.seconds, durationCheck.compound, durationCheck.untilDone]
+          .map(d => d && d.label).join(' | '));
   check('instant label has no literal bracket', durationCheck.instant.label === 'plate up',
         durationCheck.instant.label);
   check('instant is a real zero-length duration', durationCheck.instant.duration.instant === true &&

@@ -87,6 +87,42 @@ function jpegDimensions(bytes: Uint8Array): { w: number; h: number } | null {
  * rather than the photo. */
 const MIN_BYTES_PER_PIXEL = 0.02;
 
+/* AVIF and other ISOBMFF files: walk the top-level box chain.
+ *
+ * AVIF is not RIFF, so the WEBP branch never fires for it — which meant an
+ * AVIF was accepted into storage with no integrity check at all, while
+ * docs/IMAGES.md said every download was verified. The comment in the code
+ * was honest that nothing was checked; the runbook was not.
+ *
+ * A box chain is a walk: each box declares its own size, and the sizes must
+ * land exactly on the end of the file. A truncated AVIF fails because the
+ * final box (almost always the large `mdat`) claims more bytes than remain.
+ * That is the same class of evidence as a JPEG's end marker: the file's own
+ * declaration checked against what actually arrived. */
+function isobmffTruncated(bytes: Uint8Array): string | null {
+  const n = bytes.byteLength;
+  const u32 = (i: number) => (bytes[i] << 24 >>> 0) + (bytes[i+1] << 16) + (bytes[i+2] << 8) + bytes[i+3];
+  let off = 0;
+  while(off + 8 <= n){
+    let size = u32(off);
+    if(size === 1){
+      /* 64-bit extended size. The high word is beyond anything we would
+         store, so a non-zero high word is itself a broken file. */
+      if(off + 16 > n) return 'truncated AVIF: extended box header is cut short';
+      if(u32(off + 8) !== 0) return 'truncated AVIF: implausible 64-bit box size';
+      size = u32(off + 12);
+      if(size < 16) return 'truncated AVIF: impossible extended box size';
+    } else if(size === 0){
+      return null;   /* "to end of file" — legal, and by definition complete */
+    } else if(size < 8){
+      return `truncated AVIF: impossible box size ${size}`;
+    }
+    if(off + size > n) return `truncated AVIF: a box declares ${off + size} bytes, file has ${n}`;
+    off += size;
+  }
+  return off === n ? null : 'truncated AVIF: trailing bytes are not a whole box';
+}
+
 /* Is this actually a complete image file?
  *
  * Added 22 Sep after Tuscan Chicken Pasta rendered as a photo on top and
@@ -97,7 +133,7 @@ const MIN_BYTES_PER_PIXEL = 0.02;
  * and were both incomplete. Agreement between two reads of the same bad
  * source says nothing about integrity.
  *
- * Two independent checks, because they catch different faults:
+ * Several independent checks, because they catch different faults:
  *
  *   Content-Length vs what arrived catches a transfer that died mid-flight
  *   — the server promised more than it sent.
@@ -153,8 +189,12 @@ function imageIntegrity(bytes: Uint8Array, contentLength: number | null): string
     if (riff + 8 > n) return `truncated WEBP: header declares ${riff + 8} bytes, got ${n}`;
     return null;
   }
-  /* AVIF and anything else: no cheap end-marker check. Saying so beats
-     implying a clean bill of health we did not earn. */
+  /* ISOBMFF: AVIF, HEIC. `ftyp` is always the first box. */
+  if(at(4) === 0x66 && at(5) === 0x74 && at(6) === 0x79 && at(7) === 0x70){
+    return isobmffTruncated(bytes);
+  }
+  /* Anything else: no cheap structural check. Saying so beats implying a
+     clean bill of health we did not earn. */
   return null;
 }
 

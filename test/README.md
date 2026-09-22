@@ -25,7 +25,7 @@ Both scripts use whichever Chromium Playwright installs. Set
 
 ## What it can and can't tell you
 
-**102 checks.** It covers the parts that are pure app logic: week bucketing, scaling,
+**157 checks.** It covers the parts that are pure app logic: week bucketing, scaling,
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, and that every screen
 renders without throwing.
@@ -38,6 +38,6 @@ once. **Keep Awake** can't be tested here either; it needs a real tablet.
 
 ## The canned data
 
-Two recipes, a fortnight of plan, one meal group, a shortlist item and a
+Two recipes, two planned days, one meal group, a shortlist item and a
 handful of keywords — all invented, in `build.js`. Deliberately no real recipes:
 this repo is public.
