@@ -98,11 +98,34 @@ store it:
 The sweep skips anything already self-hosted, so you cannot replace a photo by re-running it. You
 have to give the recipe a new external URL first.
 
-1. Find the image you want and copy its address (right-click → **Copy image address**).
+1. Find the image you want. Either right-click the photo on the source page → **Copy image
+   address**, or let `find-recipe-image` do it (below).
 2. In the app, open the recipe → **EDIT**.
 3. Paste it into the **IMAGE URL** field, replacing the `supabase.co/...` URL that is there.
 4. **Save.** The card now shows the new external image.
 5. Run the sweep. It sees a non-Supabase URL, fetches it, and stores it.
+
+### Finding the right URL without a browser
+
+`find-recipe-image` reads the recipe's `SOURCE_URL:`, fetches that page, pulls out every
+candidate hero image — `og:image`, `twitter:image`, and any `schema.org` Recipe image — then
+**downloads each one to find out how big it really is** and ranks them. It also measures what the
+recipe currently has, so the comparison is like for like.
+
+```js
+const { data } = await sb.functions.invoke('find-recipe-image', {
+  body: { title: 'Tuscan Chicken Pasta' }
+});
+console.log('current:', data.currentImageBytes, 'bytes');
+console.table(data.candidates.map(c => ({ KB: c.bytes && Math.round(c.bytes/1024), source: c.source, url: c.url, error: c.error })));
+```
+
+Takes `title`, `recipeId`, or a bare `pageUrl` for something not in the library yet.
+
+**It reports; it does not choose.** A page usually offers several images and the largest is
+usually but not always the hero — a printable version or a step photo can outweigh it. Picking on
+byte count alone would be exactly the kind of guess the conventions here exist to prevent. It
+writes nothing: not to the recipe, not to storage.
 
 **For a recipe that has never had an image**, it is the same minus step 3's deletion: put a URL in
 the empty **IMAGE URL** field, save, sweep. Four recipes currently have no image at all.
@@ -176,7 +199,9 @@ silently in the night.
 | One recipe reports `source returned 403` | That CDN refused us | The function already sends a browser User-Agent, which is what makes the other 28 work. If one host still refuses, download the image and host it somewhere reachable |
 | `not an image (content-type: text/html)` | The URL returns an error page, not a photo | The URL is wrong or the image has been removed. Find a new one |
 | Photo does not change after replacing it | Browser cache | Hard-reload. If it persists, check `image_url` actually has a new `?v=` token |
-| An image looks like a tiny blurry placeholder | The conversion captured a lazy-load thumbnail | Get the real image address from the source page and replace it (§3) |
+| An image looks like a tiny blurry placeholder | The conversion captured a lazy-load thumbnail | Run `find-recipe-image` for that recipe, pick a candidate, replace it (§3) |
+| `find-recipe-image` returns no candidates | The page hides its images behind JavaScript, or has no `og:image` | Fall back to right-click → Copy image address in a browser |
+| `source page returned 403` from `find-recipe-image` | The site blocks non-browser traffic harder than its CDN does | Same fallback — get the URL by hand and put it on the recipe |
 
 ---
 
@@ -221,8 +246,8 @@ truncated download, and nothing else catches that.
 
 | | |
 | --- | --- |
-| Function source | `supabase/functions/rehost-images/index.ts` |
-| Deployed as | `rehost-images`, `verify_jwt: true` |
+| Function source | `supabase/functions/rehost-images/index.ts` (the sweep) and `supabase/functions/find-recipe-image/index.ts` (candidate finder, read-only) |
+| Deployed as | `rehost-images` and `find-recipe-image`, both `verify_jwt: true` |
 | Bucket | `recipe-images` — **public**, 10 MB file limit, MIME allowlist of jpeg/png/webp/gif/avif |
 | Storage path | `<household_id>/<recipe_id>.<ext>` |
 | Public URL | `<project>/storage/v1/object/public/recipe-images/<path>?v=<unix seconds>` |

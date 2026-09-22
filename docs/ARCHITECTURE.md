@@ -198,7 +198,7 @@ Keep Awake can only be tested on a real tablet.
 | Path | What it is |
 | --- | --- |
 | `index.html` | **The app.** Everything lives here. |
-| `supabase/functions/` | Edge Functions. Currently one: `rehost-images`, the image re-hosting sweep (R7). |
+| `supabase/functions/` | Edge Functions. `rehost-images` is the image re-hosting sweep (R7); `find-recipe-image` reports a page's candidate hero images and their real sizes, read-only. Both need a signed-in caller. See `docs/IMAGES.md`. |
 | `index-old.html` | The pre-Supabase version, kept for reference. **Not used, not served, not maintained** — don't edit it thinking it's live. |
 | `converter/` | Conversion instructions and the standing test set for writing recipes. |
 | `test/` | Offline test harness. |
