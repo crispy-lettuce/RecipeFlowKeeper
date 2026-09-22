@@ -22,7 +22,7 @@ verified status. **Nothing here is inferred from a previous summary.**
 | | Item | Status |
 | --- | --- | --- |
 | S1 | Week start day | **Done.** Settings screen, default Friday, drives Planner, Shopping List and History together. |
-| S2 | Dark mode | **Deliberately deferred** out of Phase 2. A `dark_mode` column exists on `household_settings`, unused. The CSS is token-driven (19 tokens), so it's a small job when wanted. |
+| S2 | Dark mode | **Done, 22 Sep.** Three states per the brief. The column was already read and written by `hydrate()`/`saveSettings`; what was missing was applying it. See §2a. |
 | S3 | Aliases manager | **Done.** Settings → Word Matches. Covers source *and* ingredient names, both "same" and "not the same" answers, all reversible. |
 
 ### Planner
@@ -175,6 +175,57 @@ the current threshold rests on. `test/image-integrity.js` pins all three checks.
 
 ---
 
+## 2a. Dark mode (S2) — DONE, 22 Sep 2026
+
+Three states, per the Build Brief: follow the system, light, or dark. The control is in
+Settings under APPEARANCE, and the choice is shared with the household like every other
+setting there.
+
+**Half of it already existed and nobody had noticed.** `household_settings.dark_mode` was
+being read by `hydrate()` into `state.settings.darkMode` and written back by `saveSettings`,
+with a comment explaining it was round-tripped so a later phase wouldn't be clobbered. So
+persistence was built *and* had been exercised by the 21 Sep test pass. What was missing was
+everything downstream of the value: nothing ever read it.
+
+**The estimate was wrong, and in an instructive way.** Every note said this was small
+"because the CSS is token-driven". The CSS is 18 tokens — but there were also 8 hard-coded
+`#fff`, 23 `rgba()` literals and, the part that mattered, **three colours living in
+JavaScript**:
+
+| | |
+| --- | --- |
+| `PALETTE` | six hues used as *text* on a 10% tint of themselves |
+| `MERGE_COLOR` | `#5B2A4A`, the plum |
+| `SINGLE_RECIPE_TIMELINE_COLOUR` | `#5B2A4A` again |
+
+These are painted into inline styles at render time, because the flow table doesn't know how
+many columns it has until it has parsed the recipe. No token swap can reach them, so there
+are two palettes and `applyTheme` picks one.
+
+Most of the `rgba()` literals turned out to be fine: an accent at 10% over *any* ground reads
+as a tint of that accent. The ones that broke were the two that are surfaces rather than
+tints, and those became `--card-veil`.
+
+**`--on-accent` is the non-obvious token.** White works on every light-theme accent because
+they are all dark. The dark theme lightens them to stay legible, and white stops working — so
+the foreground that sits *on* an accent has to flip too.
+
+**No flash of the wrong theme.** The household's choice is in Supabase, a round trip away, so
+painting from it would show light and then snap to dark — worst in the dark, which is when it
+is used. A boot script in `<head>` paints from a `localStorage` mirror before first paint;
+`hydrate()` reconciles. The database stays the source of truth, the mirror is a cache of the
+last known answer, and `applyTheme` is its only writer. A stale mirror costs one repaint.
+
+**One bug was found by looking, not by reasoning.** `SINGLE_RECIPE_TIMELINE_COLOUR` stayed
+dark while `--on-accent` flipped to dark text, giving dark-on-dark lane labels on the recipe
+timeline. Reading the code did not surface it; a screenshot did, immediately. The smoke suite
+now pins it — verified by reverting the fix and watching that check fail.
+
+Smoke coverage went from 102 to **114 checks**. What it cannot judge is contrast on the real
+tablet in a real kitchen, which is the one thing worth a human eye.
+
+---
+
 ## 3. Recipe ingestion — DONE, 20 Sep 2026
 
 *This was step 1 of five. `docs/NEXT-SESSION.md` has the full order; the project is now at
@@ -318,7 +369,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **102 checks** across every screen, `shots.js` captures screenshots.
+`smoke.js` runs **114 checks** across every screen, `shots.js` captures screenshots.
 
 ```sh
 npm install playwright

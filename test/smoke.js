@@ -50,6 +50,76 @@ const path = require('path');
   check('keywords list populated', (await page.locator('#keywordsList .source-row').count()) > 0);
   check('aliases list present', await page.isVisible('#aliasesList'));
 
+  /* ---- Dark mode (S2) ----
+     The stub's household_settings says dark_mode:'system', and the harness
+     runs with no system preference, so the app must boot light. Everything
+     below drives the real control rather than poking state, because the
+     thing worth testing is that choosing a theme repaints the app. */
+  const themeOpts = await page.locator('#setDarkMode option').allTextContents();
+  check('appearance select offers three states', themeOpts.length === 3, themeOpts.join(','));
+  check('appearance defaults to follow-system',
+        (await page.locator('#setDarkMode').inputValue()) === 'system');
+  check('app boots light when nothing asks for dark',
+        (await page.getAttribute('html', 'data-theme')) === 'light');
+
+  await page.selectOption('#setDarkMode', 'dark');
+  await page.waitForTimeout(300);
+  check('choosing dark sets the theme attribute',
+        (await page.getAttribute('html', 'data-theme')) === 'dark');
+
+  const darkBody = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  check('dark theme actually repaints the page', darkBody === 'rgb(20, 18, 16)', darkBody);
+  const meta = await page.getAttribute('meta[name="theme-color"]', 'content');
+  check('browser chrome colour follows the theme', meta === '#141210', String(meta));
+
+  /* The localStorage mirror is what the boot script reads to paint the
+     first frame. If this stops being written, dark mode still works but
+     flashes light on every load — a regression nothing else would catch. */
+  const mirror = await page.evaluate(() => { try { return localStorage.getItem('kitchen.darkMode'); } catch (e) { return 'BLOCKED'; } });
+  check('theme mirrored to localStorage for the next boot', mirror === 'dark', String(mirror));
+
+  /* The flow table paints PALETTE into inline styles, so it is the one
+     screen a token swap cannot reach on its own. */
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+  await page.click('.rcard');
+  await page.waitForTimeout(500);
+  const laneBg = await page.evaluate(() => {
+    const el = document.querySelector('.timeline-lane-abs');
+    return el ? getComputedStyle(el).backgroundColor : 'NONE';
+  });
+  check('timeline lane uses the light-on-dark colour', laneBg === 'rgb(201, 143, 180)', laneBg);
+  const boxColour = await page.evaluate(() => {
+    const el = document.querySelector('.box-cell');
+    return el ? getComputedStyle(el).color : 'NONE';
+  });
+  check('flow box text is a dark-theme palette colour',
+        boxColour !== 'NONE' && boxColour !== 'rgb(91, 42, 74)', boxColour);
+
+  // Back to light, and the flow table has to come back with it.
+  await page.click('.navlink[data-view="settings"]');
+  await page.waitForTimeout(300);
+  await page.selectOption('#setDarkMode', 'light');
+  await page.waitForTimeout(300);
+  check('switching back restores light',
+        (await page.getAttribute('html', 'data-theme')) === 'light');
+  const lightBody = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  check('light theme is the original shell colour', lightBody === 'rgb(234, 228, 213)', lightBody);
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+  await page.click('.rcard');
+  await page.waitForTimeout(500);
+  const laneLight = await page.evaluate(() => {
+    const el = document.querySelector('.timeline-lane-abs');
+    return el ? getComputedStyle(el).backgroundColor : 'NONE';
+  });
+  check('timeline lane returns to the plum', laneLight === 'rgb(91, 42, 74)', laneLight);
+
+  await page.click('.navlink[data-view="settings"]');
+  await page.waitForTimeout(300);
+  await page.selectOption('#setDarkMode', 'system');
+  await page.waitForTimeout(300);
+
   // History calendar must start on the configured day and stay aligned.
   await page.click('.navlink[data-view="history"]');
   await page.waitForTimeout(350);

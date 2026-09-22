@@ -3,11 +3,42 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Kept in step with the theme by applyTheme, so the browser chrome on a
+     tablet does not sit as a light bar above a dark app. -->
+<meta name="theme-color" content="#EAE4D5">
 <title>Kitchen</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* Resolve the theme before the first paint (S2).
+ *
+ * This has to run here, synchronously in <head>, rather than with the rest
+ * of the application. The household's choice lives in Supabase and hydrate()
+ * is a network round trip away, so waiting for it would show a light screen
+ * first and then snap to dark — the one thing a dark mode must not do, and
+ * most visible in the dark, which is when it is used.
+ *
+ * localStorage is therefore a mirror of the setting, not the setting. The
+ * database stays the source of truth; this is a cache of the last known
+ * answer so the first paint is right, and hydrate() reconciles it. A stale
+ * or absent mirror costs one repaint, not a wrong theme.
+ *
+ * 'system' is resolved to an explicit light/dark here so the stylesheet
+ * needs only one selector — see the DARK THEME block below for why that
+ * matters more than supporting prefers-color-scheme in CSS as well.
+ */
+(function(){
+  var mode = 'system';
+  try { mode = localStorage.getItem('kitchen.darkMode') || 'system'; }
+  catch(e){ /* private browsing or blocked storage: 'system' is a fine answer */ }
+  var dark = mode === 'dark' ||
+    (mode === 'system' && window.matchMedia &&
+     window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+})();
+</script>
 <style>
   :root{
     --paper:#F5F1E6;
@@ -27,7 +58,60 @@
     --sage:#7C9473;
     --gold:#B08A2E;
     --danger:#8C3A34;
+    /* A foreground that sits ON an accent fill. White works in the light
+       theme because every accent is dark; in the dark theme the accents are
+       lightened to stay legible, and white on them does not. */
+    --on-accent:#fff;
+    /* The card colour at 92%, used where a control floats over a photo. It
+       has to be a token rather than a literal: it is a *surface*, so unlike
+       the accent washes it cannot survive the background inverting. */
+    --card-veil:rgba(251,248,240,.92);
     --r:2px;
+    color-scheme:light;
+  }
+
+  /* ======================== DARK THEME (S2) ==========================
+     One attribute on <html> swaps the whole palette; nothing else in the
+     stylesheet needs to know the theme exists.
+
+     WHY A SINGLE SELECTOR AND NOT A MEDIA QUERY TOO: 'system' is resolved
+     to an explicit light/dark by the boot script in <head> before first
+     paint, so this rule is the only place the dark values live. Supporting
+     `prefers-color-scheme` here as well would mean keeping a second copy of
+     every value in sync with this one, and a palette that has to be edited
+     in two places will eventually be edited in one.
+
+     THE SURFACES INVERT RATHER THAN NEGATE. In the light theme `shell` is
+     the darkest and `card` the lightest, because paper is lit from in
+     front. In the dark theme a raised surface is *lighter* than the thing
+     it sits on, so the ordering flips — `shell` becomes the darkest thing
+     on screen and `card` lifts away from it.
+
+     The accents are lightened rather than kept. Plum at #5B2A4A is a dark
+     colour doing a dark colour's job; on a dark ground it disappears. The
+     dark values keep the hue and raise the lightness, which is why
+     --on-accent has to stop being white at the same time. */
+  :root[data-theme="dark"]{
+    --paper:#1C1915;
+    --shell:#141210;
+    --card:#232019;
+    --well:#191611;
+    --ink:#EDE7DA;
+    --ink-soft:#B8AE9C;
+    --ink-mute:#958B7A;
+    --ink-faint:#6F6759;
+    --line:#3A352C;
+    --line-soft:#2B2720;
+    --line-faint:#4A4437;
+    --plum:#C98FB4;
+    --plum-lift:#DCA6C8;
+    --plum-wash:rgba(201,143,180,.10);
+    --sage:#9DBE92;
+    --gold:#D9B463;
+    --danger:#E08A82;
+    --on-accent:#1C1915;
+    --card-veil:rgba(35,32,25,.92);
+    color-scheme:dark;
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   body{
@@ -183,7 +267,7 @@
   .rcard-shortlist{
     position:absolute; top:8px; right:8px; z-index:2;
     width:27px; height:27px; border-radius:50%;
-    border:1px solid var(--line); background:rgba(251,248,240,.92);
+    border:1px solid var(--line); background:var(--card-veil);
     display:flex; align-items:center; justify-content:center;
     font-size:15px; line-height:1; color:var(--ink-soft); cursor:pointer;
   }
@@ -192,7 +276,7 @@
   .rcard-favourite{
     position:absolute; top:8px; left:8px; z-index:2;
     width:27px; height:27px; border-radius:50%;
-    border:1px solid var(--line); background:rgba(251,248,240,.92);
+    border:1px solid var(--line); background:var(--card-veil);
     display:flex; align-items:center; justify-content:center;
     font-size:15px; line-height:1; color:var(--ink-soft); cursor:pointer;
   }
@@ -266,7 +350,7 @@
     background:var(--card); color:var(--ink-soft); cursor:pointer;
   }
   .scale-btn:hover{ border-color:var(--plum); color:var(--plum); }
-  .scale-btn.active{ background:var(--plum); border-color:var(--plum); color:#fff; }
+  .scale-btn.active{ background:var(--plum); border-color:var(--plum); color:var(--on-accent); }
   #viewerServesCustom{
     width:80px; padding:6px 8px; border:1px solid var(--line); border-radius:var(--r);
     background:var(--card); font-family:'Newsreader', Georgia, serif; font-size:13px;
@@ -281,8 +365,8 @@
     background:var(--card); color:var(--ink-soft); cursor:pointer;
   }
   .btn:hover{ border-color:var(--plum); color:var(--plum); }
-  .btn.primary{ background:var(--plum); border-color:var(--plum); color:#fff; }
-  .btn.primary:hover{ background:var(--plum-lift); color:#fff; }
+  .btn.primary{ background:var(--plum); border-color:var(--plum); color:var(--on-accent); }
+  .btn.primary:hover{ background:var(--plum-lift); color:var(--on-accent); }
   .btn.danger:hover{ border-color:var(--danger); color:var(--danger); }
   .btn.on{ border-color:var(--gold); color:var(--gold); background:rgba(176,138,46,.08); }
 
@@ -315,7 +399,7 @@
   ol.setup li{ counter-increment:step; display:flex; align-items:baseline; gap:10px; font-size:14.5px; }
   ol.setup li::before{
     content:counter(step); font-family:'IBM Plex Mono', monospace; font-size:10px;
-    color:#fff; background:var(--ink-mute); width:18px; height:18px; border-radius:50%;
+    color:var(--on-accent); background:var(--ink-mute); width:18px; height:18px; border-radius:50%;
     display:inline-flex; align-items:center; justify-content:center; flex:none;
   }
   .hint{
@@ -352,7 +436,7 @@
   .ing-cell.done, .box-cell.done{ opacity:.35; }
   .ing-cell.done::after, .box-cell.done::after{
     content:'✓'; position:absolute; top:6px; right:8px; width:18px; height:18px;
-    border-radius:50%; background:var(--plum); color:#fff; font-size:10px;
+    border-radius:50%; background:var(--plum); color:var(--on-accent); font-size:10px;
     display:flex; align-items:center; justify-content:center; line-height:1;
   }
   .ing-cell.done{ position:sticky; }
@@ -384,7 +468,7 @@
   }
   .timeline-lane-abs:hover{ filter:brightness(1.12); }
   .timeline-lane-abs span{
-    font-size:8.5px; font-family:'IBM Plex Mono', monospace; color:#fff; padding:0 6px;
+    font-size:8.5px; font-family:'IBM Plex Mono', monospace; color:var(--on-accent); padding:0 6px;
     white-space:nowrap; letter-spacing:.02em;
   }
   .timeline-lane-abs.open-ended{ background-image:repeating-linear-gradient(135deg, rgba(255,255,255,.18) 0 4px, transparent 4px 8px); }
@@ -1026,7 +1110,7 @@
   .login-card input:focus{ outline:none; border-color:var(--plum); }
   .login-card button{
     width:100%; padding:10px; border:none; border-radius:var(--r);
-    background:var(--plum); color:#fff; cursor:pointer;
+    background:var(--plum); color:var(--on-accent); cursor:pointer;
     font-family:'IBM Plex Mono', monospace; font-size:11px;
     letter-spacing:.1em; text-transform:uppercase;
   }
@@ -1284,6 +1368,15 @@
         </div>
 
         <div class="settings-block">
+          <div class="side-label">APPEARANCE</div>
+          <p class="subtle">Follow the system and the app changes when your device does,
+            which on most tablets means it goes dark in the evening. Light and dark
+            override that. The choice is shared with the household, like every other
+            setting here.</p>
+          <select class="sort" id="setDarkMode" aria-label="Appearance"></select>
+        </div>
+
+        <div class="settings-block">
           <div class="side-label">WORD MATCHES</div>
           <p class="subtle">Things you've told the app are the same. Ingredient matches
             get added together on the shopping list; source matches stop you being asked
@@ -1381,8 +1474,110 @@
 /* =====================================================================
    PARSER  (unchanged from Stage 1 — the syntax contract stays put)
    ===================================================================== */
-const PALETTE = ['#B08A2E','#7C9473','#5B7A99','#9C6B8B','#8C6A3F','#4E8C8C'];
-const MERGE_COLOR = '#5B2A4A';
+/* The flow table's colours live here rather than in CSS because they are
+   applied per box at render time, as an inline style — the table does not
+   know how many columns it will have until it has parsed the recipe.
+   Consequence for S2: the dark theme cannot reach them by swapping a token,
+   so there are two palettes and `applyTheme` picks one.
+
+   These are not the light values darkened. Both sets are used as TEXT on a
+   10% tint of themselves, so each has to clear the contrast bar against its
+   own background: the light set is mid-tone against paper, the dark set is
+   the same hues lifted until they read against #1C1915.
+
+   MERGE_COLOR is the sharpest example of why this is necessary. #5B2A4A is
+   the plum — a dark colour doing a dark colour's job. On a dark ground it
+   is all but invisible, and merges are the one thing in the table you most
+   need to see. */
+const PALETTE_LIGHT = ['#B08A2E','#7C9473','#5B7A99','#9C6B8B','#8C6A3F','#4E8C8C'];
+const PALETTE_DARK  = ['#D9B463','#9DBE92','#8FB3D1','#C79BB6','#C2996A','#7FBFBF'];
+const MERGE_COLOR_LIGHT = '#5B2A4A';
+const MERGE_COLOR_DARK  = '#C98FB4';
+
+/* Reassigned by applyTheme rather than read through a function, so the six
+   call sites that index into PALETTE stay exactly as they were. */
+let PALETTE = PALETTE_LIGHT;
+let MERGE_COLOR = MERGE_COLOR_LIGHT;
+
+/* The single-recipe timeline is one colour throughout, deliberately not a
+   PALETTE entry (see the comment above computeTimeline). It still has to
+   change with the theme: the light value is the plum, and lane labels are
+   drawn in --on-accent, so leaving it dark would put dark text on a dark
+   lane. Caught by looking at a screenshot, not by reading the code. */
+const SINGLE_RECIPE_TIMELINE_COLOUR_LIGHT = '#5B2A4A';
+const SINGLE_RECIPE_TIMELINE_COLOUR_DARK  = '#C98FB4';
+let SINGLE_RECIPE_TIMELINE_COLOUR = SINGLE_RECIPE_TIMELINE_COLOUR_LIGHT;
+
+/* ------------------------------- Theme (S2) -------------------------------
+   Three states, per the Build Brief: on, off, or follow the system.
+
+   `mode` is what the household chose and is what gets stored. What actually
+   reaches the DOM is the *resolved* theme, because 'system' is not something
+   CSS can be given — see the boot script in <head>, which does this same
+   resolution before first paint.
+
+   Called from three places: the boot reconciliation after hydrate(), the
+   settings control, and the system-preference listener below. */
+const THEME_MODES = ['system', 'light', 'dark'];
+
+function resolvedTheme(mode){
+  if(mode === 'dark' || mode === 'light') return mode;
+  return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    ? 'dark' : 'light';
+}
+
+function applyTheme(mode){
+  const theme = resolvedTheme(mode);
+  document.documentElement.setAttribute('data-theme', theme);
+  PALETTE = theme === 'dark' ? PALETTE_DARK : PALETTE_LIGHT;
+  MERGE_COLOR = theme === 'dark' ? MERGE_COLOR_DARK : MERGE_COLOR_LIGHT;
+  SINGLE_RECIPE_TIMELINE_COLOUR = theme === 'dark'
+    ? SINGLE_RECIPE_TIMELINE_COLOUR_DARK : SINGLE_RECIPE_TIMELINE_COLOUR_LIGHT;
+  /* The mirror the boot script reads. Written here and nowhere else, so it
+     cannot drift from what was actually applied. */
+  try { localStorage.setItem('kitchen.darkMode', mode); } catch(e){ /* blocked storage is not fatal */ }
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute('content', theme === 'dark' ? '#141210' : '#EAE4D5');
+}
+
+/* `var`, not `let`: this is read by the system-preference listener, which
+   can fire while the rest of the file is still being evaluated, and a `let`
+   would be in its temporal dead zone at that moment. */
+var themeBooted = false;
+
+/* Following the system means following it as it changes, not only at load.
+   A tablet that flips at sunset does it in the middle of cooking.
+
+   Reads the mode from the localStorage mirror rather than from `cache`,
+   because `cache` is declared further down this file and this listener can
+   fire before that line has run. The mirror is safe to trust here for the
+   same reason it is safe at boot: applyTheme is its only writer, so it
+   cannot disagree with what is on screen. */
+if(window.matchMedia){
+  const q = window.matchMedia('(prefers-color-scheme: dark)');
+  const onSystemChange = ()=>{
+    let mode = 'system';
+    try { mode = localStorage.getItem('kitchen.darkMode') || 'system'; } catch(e){ /* blocked storage */ }
+    if(mode !== 'system') return;
+    applyTheme('system');
+    rerenderForTheme();
+  };
+  if(q.addEventListener) q.addEventListener('change', onSystemChange);
+  else if(q.addListener) q.addListener(onSystemChange);
+}
+
+/* The flow table bakes PALETTE into inline styles, so a theme change has to
+   redraw whatever is currently showing one. Everything else is driven by CSS
+   tokens and updates itself the moment the attribute changes.
+
+   The guard matters: a system flip can arrive before the app has booted, and
+   `state` is a const declared further down, so reaching for it early throws
+   rather than reading as undefined. */
+function rerenderForTheme(){
+  if(!themeBooted) return;
+  if(state.view === 'viewer') renderViewer();
+  else if(state.view === 'group-viewer') renderGroupViewer();
+}
 
 function escapeHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1568,8 +1763,6 @@ function durationBadge(d){
    distinguish between). Matches the plum accent used elsewhere for
    single-recipe UI, rather than reusing a PALETTE colour that would
    otherwise suggest a specific ingredient group. */
-const SINGLE_RECIPE_TIMELINE_COLOUR = '#5B2A4A';
-
 function buildTimelineHTML(timeline){
   const {steps, totalSpan} = timeline;
   if(!steps.length || totalSpan <= 0) return '';
@@ -2454,6 +2647,12 @@ async function hydrate(){
     weekStartDay: settings.data ? settings.data.week_start_day : DEFAULT_WEEK_START_DAY,
     darkMode: (settings.data && settings.data.dark_mode) || 'system'
   };
+  /* The database is the source of truth; the boot script painted from the
+     localStorage mirror. This is where the two are reconciled — on this
+     device for the first time, or after the setting was changed on another,
+     the mirror is wrong and this corrects it (and rewrites the mirror). */
+  applyTheme(cache.settings.darkMode);
+  themeBooted = true;
   cache.aliases = aliases.data.map(row=>({
     id: row.id, kind: row.kind, alias: row.alias, canonical: row.canonical || ''
   }));
@@ -2470,8 +2669,6 @@ function saveSettings(next){
     const { error } = await sb.from('household_settings').upsert({
       household_id: HOUSEHOLD_ID,
       week_start_day: next.weekStartDay,
-      /* Round-tripped rather than exposed: dark mode is a later phase, and
-         writing the column back unchanged keeps this upsert from clobbering it. */
       dark_mode: next.darkMode || 'system',
       updated_at: new Date().toISOString()
     }, { onConflict: 'household_id' });
@@ -5395,10 +5592,16 @@ function renderKeywordsList(){
    all four are the same kind of thing: how the app treats your library
    rather than what's in it.
    ===================================================================== */
+const THEME_LABELS = { system:'FOLLOW SYSTEM', light:'LIGHT', dark:'DARK' };
+
 function renderSettings(){
   const sel = document.getElementById('setWeekStart');
   sel.innerHTML = WEEKDAY_NAMES.map((name, i)=>
     `<option value="${i}"${i === weekStartDay() ? ' selected' : ''}>${name}</option>`
+  ).join('');
+  const current = (loadSettings() && loadSettings().darkMode) || 'system';
+  document.getElementById('setDarkMode').innerHTML = THEME_MODES.map(m=>
+    `<option value="${m}"${m === current ? ' selected' : ''}>${THEME_LABELS[m]}</option>`
   ).join('');
   renderAliasesList();
   renderSourcesList();
@@ -5411,6 +5614,19 @@ document.getElementById('setWeekStart').addEventListener('change', e=>{
   setSetting('weekStartDay', n);
   showToast(`Weeks now start on ${WEEKDAY_NAMES[n]}`);
   updateSidebarCounts();
+});
+
+/* Applied before the write is queued, not after it lands. setSetting goes
+   through queueWrite, which returns immediately and completes in the
+   background, so waiting for it would leave the screen in the old theme
+   with no way to tell whether the tap had registered. */
+document.getElementById('setDarkMode').addEventListener('change', e=>{
+  const mode = e.target.value;
+  if(THEME_MODES.indexOf(mode) === -1) return;
+  applyTheme(mode);
+  rerenderForTheme();
+  setSetting('darkMode', mode);
+  showToast(mode === 'system' ? 'Appearance now follows your device' : `Appearance set to ${mode}`);
 });
 
 /* ------------------------------- Word matches ------------------------------- */

@@ -107,7 +107,7 @@ No dependencies between these; pick by appetite.
 - **H1–H3** — meal type at logging, ad-hoc diary entries, CSV export
 - **R4** — dated cooking notes (the `recipe_notes` table already exists for it)
 - **P3** — automatic calendar push, needing a one-off Google consent
-- **S2** — dark mode, deferred out of Phase 2; small, since the CSS is already token-driven
+- ~~**S2** — dark mode~~ — **done, 22 Sep**
 
 ---
 
@@ -140,8 +140,7 @@ building anything.
   H3  CSV export of the food diary
   R4  dated cooking notes (the recipe_notes table already exists, empty)
   P3  automatic calendar push, needing a one-off Google consent
-  S2  dark mode, deferred out of Phase 2 (the CSS is already token-driven,
-      19 tokens, so this is meant to be small)
+  (S2 dark mode is done, 22 Sep.)
 
 Some context worth having:
 
@@ -150,9 +149,9 @@ Some context worth having:
     the branch and I'll decide when to merge.
   - index.html is the whole app. One file, no build step, no framework.
     Run `node test/build.js && node test/smoke.js` after any code change.
-    102 checks. It stubs Supabase, so it proves nothing about sign-in.
+    114 checks. It stubs Supabase, so it proves nothing about sign-in.
   - Several columns already exist for these features (recipe_logs.meal_type,
-    recipe_logs.note, household_settings.dark_mode). A column existing does
+    recipe_logs.note). A column existing does
     not mean the feature does — docs/ARCHITECTURE.md §4 lists them.
   - The repo is public. Recipe data must never be committed to it.
   - Don't trust status notes, mine included, where you can check the real

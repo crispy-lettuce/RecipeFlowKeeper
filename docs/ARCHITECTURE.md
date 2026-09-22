@@ -163,7 +163,7 @@ mistake that made the image work look finished):
 | `recipe_notes` (whole table, empty) | R4, dated cooking notes |
 | `recipe_logs.meal_type` | H1, meal type at point of logging |
 | `recipe_logs.note` | R4 / food diary |
-| `household_settings.dark_mode` | S2, dark mode (deferred out of Phase 2) |
+| ~~`household_settings.dark_mode`~~ | S2 shipped 22 Sep — no longer scaffolding |
 | `meal_groups.name` | Written as `''`; no UI ever names a group |
 | `households.name`, `household_members.role` | Multi-household support, deliberately anticipated |
 
@@ -185,7 +185,7 @@ has to know where a photo lives. See `docs/HANDOVER.md` §2.
 ```sh
 npm install playwright
 node test/build.js    # bake index.html against the stub
-node test/smoke.js    # 102 checks; exits non-zero on failure
+node test/smoke.js    # 114 checks; exits non-zero on failure
 ```
 
 It has caught real bugs, including a parser gap that would have broken every reprocessed recipe.
