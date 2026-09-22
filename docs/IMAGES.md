@@ -100,8 +100,20 @@ because these are other people's servers.
 recipes costs two fetches and skips the rest. There is no harm in running it more often than
 needed, and no need to track which recipes are outstanding.
 
-**Then hard-reload** before judging the result. Your browser has the old URLs cached against the
-cards.
+**Then hard-reload — before touching anything else in the app.** Two separate reasons, and the
+second one matters far more than the first:
+
+1. Your browser has the old URLs cached against the cards, so the photos may not visibly change.
+2. **The sweep changes the database; the open page does not know.** `saveRecipesList` goes
+   through `pushList`, which upserts *every* recipe from the in-memory cache — and that cache
+   still holds the old external URLs. So the next save of **any** recipe, including toggling one
+   favourite, writes all 29 stale `image_url` and `IMAGE:` values back over what the sweep just
+   did. The library silently un-self-hosts itself, and nothing looks wrong because the external
+   URLs still load.
+
+A reload runs `hydrate()`, which re-reads the real values, and the hazard is gone. Until then,
+treat the page as stale. This is the strongest single argument for §5 Option A: an app that asks
+for the re-host itself also knows the answer, and cannot fall out of step with it.
 
 ### Check the dry run's sizes before a real run
 
@@ -289,6 +301,25 @@ queueWrite('the recipe image', () => sb.functions.invoke('rehost-images', { body
   and the app is already signed in as exactly the right person. This is the thing that makes
   the cron options awkward — a cron job has no caller.
 - **It is small.** One parameter in the function, one call site in the app, plus tests.
+
+**The three workflows it produces.**
+
+| You do | What fires | What you see |
+| --- | --- | --- |
+| **Add a recipe that has an image** — paste, PARSE & PREVIEW fills IMAGE URL, Save | The save completes, then a queued call for that one recipe | Card appears with the source's photo; a second or two later it is the stored copy. No console, no reload |
+| **Replace an image** — EDIT, paste a new address over the `supabase.co` one, Save | Same, because the pasted URL is not self-hosted | New photo on the card once the call returns |
+| **Add a recipe with no image** — Save with IMAGE URL empty | Nothing. There is no URL to fetch | Exactly as today. Add one later via EDIT and it behaves like the row above |
+
+**The trigger is a single condition:** `image_url` is set *and* does not already point at our own
+storage. That makes the whole thing self-limiting — once a recipe has been re-hosted its URL *is*
+self-hosted, so ordinary edits (fixing a typo, changing the servings) never fire it again. No
+extra flag to keep, and nothing to reset.
+
+**Updating the in-memory recipe from the function's response is required, not polish.** The
+function returns the new public URL; the app must write it into the cached recipe. If it does
+not, the hazard described in §2 applies immediately — `pushList` would push the stale external
+URL back over the row on the very next save. Any implementation that skips this step quietly
+undoes itself.
 
 **What it does not cover**, and why the manual sweep stays:
 
