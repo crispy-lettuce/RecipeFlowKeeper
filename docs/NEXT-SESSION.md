@@ -82,8 +82,10 @@ currently lives only on `claude/recipe-app-supabase-0z139o`.
 
 ### 4. Image re-hosting (R7) — **done, 21 Sep**
 
-All 29 images self-hosted, 4,426 kB. Built as an Edge Function sweep; the app was not touched,
-because it renders whatever is in `image_url`.
+All 29 images self-hosted, 4,426 kB. Built as an Edge Function sweep, with the app untouched
+because it renders whatever is in `image_url`. **On 22 Sep the app was touched after all** — it
+now calls that function itself after a save, so a new recipe's photo becomes ours without anyone
+opening the console. `docs/HANDOVER.md` §2d.
 
 **The verification in the original version of this line was worthless and has been replaced.** It
 compared each stored file's byte count against the dry run's — but both reads fetch the same
@@ -151,7 +153,9 @@ Some context worth having:
     the branch and I'll decide when to merge.
   - index.html is the whole app. One file, no build step, no framework.
     Run `node test/build.js && node test/smoke.js` after any code change.
-    157 checks. It stubs Supabase, so it proves nothing about sign-in.
+    174 checks. Run both — smoke.js loads what build.js wrote, so skipping
+    the build tests your previous edit. It stubs Supabase, so it proves
+    nothing about sign-in.
   - Several columns already exist for these features (recipe_logs.meal_type,
     recipe_logs.note). A column existing does
     not mean the feature does — docs/ARCHITECTURE.md §4 lists them.
@@ -185,10 +189,15 @@ above.
 
 ### D. Re-running the image sweep
 
-> I've added recipes since the last sweep and their images are still on the source sites. Re-run
-> `rehost-images` — it's idempotent, so anything already self-hosted is skipped. Check the dry
-> run's byte counts for outliers first: one Contentful image was 7.7 MB until it was asked to
-> resize, which was more than the rest of the library put together.
+Normally unnecessary since 22 Sep — saving a recipe re-hosts its photo by itself. You want this
+after a **restore from backup** or a save made **offline**, which are the two cases the save path
+cannot see.
+
+> Some recipes' images are still on the source sites. Run the sweep — **Settings → RECIPE
+> PHOTOS → RE-HOST EXTERNAL IMAGES**. It's idempotent, so anything already self-hosted is skipped.
+> If you want the per-image detail first, `docs/IMAGES.md` §2 has the console dry run; check its
+> byte counts for outliers, because one Contentful image was 7.7 MB until it was asked to resize,
+> which was more than the rest of the library put together.
 
 ### E. Phase 3 (step 5)
 

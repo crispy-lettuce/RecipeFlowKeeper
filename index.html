@@ -1437,6 +1437,18 @@
         </div>
 
         <div class="settings-block">
+          <div class="side-label">RECIPE PHOTOS</div>
+          <p class="subtle">Photos are copied into your own storage automatically when you save a
+            recipe. These are for the times that cannot cover: after restoring a backup, or after
+            saving while offline.</p>
+          <div class="alias-form">
+            <button class="btn" id="rehostSweepBtn">RE-HOST EXTERNAL IMAGES</button>
+            <button class="btn" id="verifyImagesBtn">CHECK STORED IMAGES</button>
+          </div>
+          <p class="subtle" id="imagesSweepResult" style="display:none;"></p>
+        </div>
+
+        <div class="settings-block">
           <div class="side-label">WORD MATCHES</div>
           <p class="subtle">Things you've told the app are the same. Ingredient matches
             get added together on the shopping list; source matches stop you being asked
@@ -2109,6 +2121,38 @@ function withUpdatedTitleLine(syntaxText, newTitle){
     return syntaxText.replace(/^TITLE:\s*.*$/im, `TITLE: ${newTitle}`);
   }
   return syntaxText;
+}
+
+/* The same job for IMAGE:, which had no equivalent until 22 Sep.
+ *
+ * WHY THIS MATTERS MORE THAN IT LOOKS. docs/ARCHITECTURE.md §2 makes the
+ * recipe text the source of truth, and parseAndPreview repopulates the
+ * form from a parse. So a save that changed `image_url` but left the old
+ * IMAGE: line behind produced two things that disagree — and the
+ * disagreement is self-reverting: the next PARSE & PREVIEW reads the stale
+ * line back over the field, undoing the change. docs/IMAGES.md §7 has a
+ * SQL check asserting the two never diverge, and it only ever passed
+ * because the image sweep rewrites both.
+ *
+ * Inserted after SOURCE_URL:/SOURCE: rather than appended, because the
+ * header block is read by a person and IMAGE: belongs with its neighbours.
+ * A cleared URL removes the line rather than writing an empty one, so
+ * "no image" is expressed the same way a converter would write it. */
+function withUpdatedImageLine(syntaxText, url){
+  const text = String(syntaxText || '');
+  const clean = (url || '').trim();
+  if(/^IMAGE:\s*.*$/im.test(text)){
+    return clean
+      ? text.replace(/^IMAGE:\s*.*$/im, `IMAGE: ${clean}`)
+      : text.replace(/^IMAGE:\s*.*$\n?/im, '');
+  }
+  if(!clean) return text;
+  const after = text.match(/^(?:SOURCE_URL|URL):\s*.*$/im) || text.match(/^SOURCE:\s*.*$/im);
+  if(after){
+    return text.replace(after[0], `${after[0]}\nIMAGE: ${clean}`);
+  }
+  /* No header to anchor to — put it first rather than lose it. */
+  return `IMAGE: ${clean}\n${text}`;
 }
 
 /* ------------------------------- Scaling -------------------------------
@@ -3001,6 +3045,66 @@ function pairKeyFor(a, b){ return [a, b].sort().join(' || '); }
 function isPairDistinct(kind, a, b){ return aliasMaps.distinct.has(kind + '_distinct|' + pairKeyFor(a, b)); }
 function applyIngredientAlias(name){ return aliasMaps.ingredient.get(name) || name; }
 function applySourceAlias(name){ return aliasMaps.source.get(name) || name; }
+
+/* ---- Automatic image re-hosting (docs/IMAGES.md §5 Option A) ----
+
+   A recipe saved with an image still on someone else's server gets that
+   photo copied into our own Storage, without anyone opening a console.
+
+   WHY IT IS QUEUED RATHER THAN CALLED. queueWrite is strict FIFO on one
+   chain, so queueing this immediately after saveRecipesList guarantees the
+   recipe row exists server-side before the function goes looking for it. A
+   bare call would race the upsert. It also means the save itself never
+   waits: the person sees "Saved" at once, exactly as before, and the photo
+   catches up a second later.
+
+   WHY THE RESPONSE IS WRITTEN BACK. The function rewrites image_url and
+   the IMAGE: line server-side; nothing else in this app ever re-reads a
+   recipe after hydrate(). saveRecipesList pushes EVERY cached recipe, so
+   without this the next save of any recipe — one favourite toggle is
+   enough — would put the stale external URL straight back over it. The
+   feature would quietly undo itself. */
+const SELF_HOST_PREFIX = `${SUPABASE_URL}/storage/v1/object/public/recipe-images/`;
+
+function needsRehosting(url){
+  const u = (url || '').trim();
+  return !!u && !u.startsWith(SELF_HOST_PREFIX);
+}
+
+function rehostImageFor(recipeId, sentUrl){
+  if(!needsRehosting(sentUrl)) return;
+  queueWrite('the recipe image', async ()=>{
+    const { data, error } = await sb.functions.invoke('rehost-images', { body: { recipeId } });
+    if(error) throw error;
+    const done = (data && data.report || []).find(r=> r.id === recipeId && r.outcome === 'rehosted');
+    /* Skipped or failed is not an error worth shouting about — the recipe
+       keeps the URL it had, which still displays. The sweep or the next
+       save will try again. */
+    if(!done || !done.to) return;
+    applyRehostedUrl(recipeId, sentUrl, done.to);
+  });
+}
+
+/* Only applied if the recipe still looks like the one we sent.
+
+   The call is in flight for a second or two, and in that time the person
+   may have edited the image again, or deleted the recipe. Writing the
+   response in regardless would silently overwrite a newer choice with an
+   older one. Matching on the exact URL we sent is the cheapest correct
+   test: if it still holds, nothing has changed underneath us. */
+function applyRehostedUrl(recipeId, sentUrl, newUrl){
+  const recipes = loadRecipes();
+  const idx = recipes.findIndex(r=> r.id === recipeId);
+  if(idx === -1) return;
+  if((recipes[idx].imageUrl || '') !== sentUrl) return;
+  recipes[idx].imageUrl = newUrl;
+  /* BOTH, always. The column alone leaves the stale IMAGE: line to revert
+     it the next time the recipe is parsed — see withUpdatedImageLine. */
+  recipes[idx].syntax = withUpdatedImageLine(recipes[idx].syntax, newUrl);
+  /* The card is the only place an image is rendered in this whole app, so
+     this is the only view that needs redrawing. */
+  if(state.view === 'recipes') renderHome();
+}
 
 function loadRecipes(){ return cache.recipes; }
 function saveRecipesList(list){
@@ -6176,6 +6280,61 @@ document.getElementById('setWeekStart').addEventListener('change', e=>{
    through queueWrite, which returns immediately and completes in the
    background, so waiting for it would leave the screen in the old theme
    with no way to tell whether the tap had registered. */
+/* ---- The image sweeps, as buttons rather than console incantations ----
+   Everything these do was previously only reachable by opening devtools and
+   pasting a line from docs/IMAGES.md. The automatic save-time re-host covers
+   the normal case; these cover restores and offline saves, and the second one
+   is how you ask whether anything already stored has gone bad. */
+function runImageSweep(btnId, body, describe){
+  const btn = document.getElementById(btnId);
+  const out = document.getElementById('imagesSweepResult');
+  const others = ['rehostSweepBtn','verifyImagesBtn'].map(id=>document.getElementById(id));
+  others.forEach(b=> b.disabled = true);
+  const original = btn.textContent;
+  btn.textContent = 'WORKING…';
+  out.style.display = '';
+  out.textContent = 'Asking the server — this takes about a second per image.';
+
+  sb.functions.invoke('rehost-images', { body })
+    .then(({ data, error })=>{
+      if(error) throw error;
+      if(data && data.error) throw new Error(data.error);
+      out.textContent = describe(data || {});
+      /* A sweep changes image_url server-side, so the cache must be brought
+         back into step or the next save pushes the old URLs over it — the
+         same hazard applyRehostedUrl exists for, at library scale. */
+      const report = (data && data.report) || [];
+      let changed = 0;
+      report.forEach(row=>{
+        if(row.outcome !== 'rehosted' || !row.to || !row.id) return;
+        const r = loadRecipes().find(x=> x.id === row.id);
+        if(!r) return;
+        r.imageUrl = row.to;
+        r.syntax = withUpdatedImageLine(r.syntax, row.to);
+        changed++;
+      });
+      if(changed) renderHome();
+    })
+    .catch(err=>{
+      console.error('Image sweep failed:', err);
+      out.textContent = `Couldn't finish: ${err.message || err}`;
+    })
+    .finally(()=>{
+      btn.textContent = original;
+      others.forEach(b=> b.disabled = false);
+    });
+}
+
+document.getElementById('rehostSweepBtn').addEventListener('click', ()=>
+  runImageSweep('rehostSweepBtn', {}, d=>
+    `${d.rehosted || 0} copied in, ${d.skipped || 0} already yours, ${d.failed || 0} failed.`));
+
+document.getElementById('verifyImagesBtn').addEventListener('click', ()=>
+  runImageSweep('verifyImagesBtn', { verify: true }, d=>
+    (d.broken === 0)
+      ? `All ${d.whole || 0} stored photos are intact.`
+      : `${d.broken} of ${d.checked} need replacing: ${(d.report||[]).map(r=>r.title).join(', ')}`));
+
 document.getElementById('setDarkMode').addEventListener('change', e=>{
   const mode = e.target.value;
   if(THEME_MODES.indexOf(mode) === -1) return;
@@ -6544,7 +6703,10 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
       course: document.getElementById('f-course').value,
       keywords
     },
-    syntax: withUpdatedTitleLine(text, finalTitle)
+    /* Both header lines are reconciled with the form. IMAGE: was not,
+       until 22 Sep — see withUpdatedImageLine for what that cost. */
+    syntax: withUpdatedImageLine(withUpdatedTitleLine(text, finalTitle),
+                                 document.getElementById('f-image').value.trim())
   };
 
   const recipes = loadRecipes();
@@ -6556,7 +6718,9 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     // id, history, and dateAdded survive an edit untouched — editing is
     // about the recipe's details, not a new entry replacing its record.
     recipes[idx] = { ...recipes[idx], ...fields };
-    if(!saveRecipesList(recipes)) return;
+    saveRecipesList(recipes);
+    /* Before closeAddModal() below, which nulls state.editingRecipeId. */
+    rehostImageFor(state.editingRecipeId, fields.imageUrl || '');
     /* An edit can move the groups and stages around, and a tick is a
        position in that layout — so what was ticked no longer means
        anything reliable. Start the recipe clean. */
@@ -6570,7 +6734,8 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
   } else {
     const recipe = { id: uid(), ...fields, history: [], dateAdded: todayStr() };
     recipes.push(recipe);
-    if(!saveRecipesList(recipes)) return;
+    saveRecipesList(recipes);
+    rehostImageFor(recipe.id, fields.imageUrl || '');
     closeAddModal();
     showView('recipes');
     renderHome();

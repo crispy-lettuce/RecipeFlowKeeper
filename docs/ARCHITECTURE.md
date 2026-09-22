@@ -92,7 +92,7 @@ Recipes are written by pasting a source into a conversion prompt; see
 
 ## 3. The app's shape
 
-One file, `index.html` — about 6,913 lines, no build step, no framework, no dependencies
+One file, `index.html` — about 7,078 lines, no build step, no framework, no dependencies
 beyond two CDN scripts (supabase-js and html2canvas). Screens are `<section class="view">`
 elements toggled by `showView(name)`.
 
@@ -125,6 +125,9 @@ failure mode is a login screen you can't get past. This is why `household_settin
 | `scaleRecipeSyntax(text, multiplier)` | Rewrites quantities in the raw text. Callers compute `multiplier = target ÷ base`; nothing scales by a raw multiplier any more. |
 | `buildShoppingList(weekDays)` | Aggregates the plan into a shopping list. **Must stay side-effect free** — it runs on every planner change via `updateSidebarCounts()`. |
 | `queueWrite(label, fn)` | Background write queue. Returns `true` synchronously. |
+| `rehostImageFor(id, sentUrl)` | Queued after a save. Asks `rehost-images` to copy one recipe's photo into our own Storage, if it is not there already. Never awaited by the save. |
+| `applyRehostedUrl(id, sentUrl, newUrl)` | Writes the re-hosted URL back into the cached recipe — both `imageUrl` and the `IMAGE:` line — and discards a reply whose `sentUrl` is no longer current. |
+| `withUpdatedImageLine(text, url)` | Reconciles the `IMAGE:` line in recipe syntax with a URL: replaces, inserts after `SOURCE`, or removes when the URL is blank. The image counterpart of `withUpdatedTitleLine`. |
 | `hydrate()` | Loads everything into `cache` at sign-in. Throws = signed out. |
 
 ## 4. The database
@@ -172,10 +175,19 @@ affects only the `/object/public/` read endpoint; writes, deletes and listing st
 four RLS policies keyed on household membership, so it is readable-if-you-know-the-path rather
 than browsable.
 
-`index.html` still references Supabase Storage nowhere, and deliberately — images are re-hosted
-by a decoupled Edge Function sweep (`supabase/functions/rehost-images/`), and the app just
-renders whatever URL is in `image_url`. That is the whole point of decoupling it: the app never
-has to know where a photo lives. See `docs/HANDOVER.md` §2.
+`index.html` does not read or write Storage directly and does not need to — the bytes are moved
+server-side by `supabase/functions/rehost-images/`, and the app just renders whatever URL is in
+`image_url`. Most recipe CDNs send no CORS headers, so a browser could not read those bytes even
+to re-upload them; that is what forces the work into an Edge Function rather than a preference.
+
+**The app does call that function, since 22 Sep 2026.** It is the only Edge Function call in
+`index.html` — `functions.invoke` appears nowhere else — and there are two call sites:
+`rehostImageFor`, queued after a save when the recipe's image URL is not already ours, and
+`runImageSweep`, behind the two Settings buttons. Both write the returned URL back into
+`cache.recipes`, which is not optional: `pushList` upserts every cached recipe on every save, so a
+cache left holding the old URL would push it back over the row on the next favourite toggle. The
+one string the app knows about Storage is the public prefix it compares against to decide whether
+a URL is already ours. See `docs/IMAGES.md` §5.
 
 ## 5. Testing
 
@@ -185,8 +197,13 @@ has to know where a photo lives. See `docs/HANDOVER.md` §2.
 ```sh
 npm install playwright
 node test/build.js    # bake index.html against the stub
-node test/smoke.js    # 157 checks; exits non-zero on failure
+node test/smoke.js    # 174 checks; exits non-zero on failure
 ```
+
+**`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,
+which `build.js` writes from `index.html`. Run `smoke.js` without rebuilding and you are testing
+the previous edit — which will happily report a pass, or a failure belonging to code you have
+already changed. Always run the pair.
 
 It has caught real bugs, including a parser gap that would have broken every reprocessed recipe.
 **But it stubs the backend entirely** — sign-in, hydration, RLS and the write queue are never
