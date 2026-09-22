@@ -218,6 +218,38 @@ const path = require('path');
         csv.split('\n')[0] === '"Date","Meal type","Entry","Source","Course","Ingredients"');
   check('CSV distinguishes recipe from ad hoc',
         csv.includes('"Ad hoc"') && csv.includes('"Recipe"'));
+  /* The CSV-only name tidier. The two cases that matter are opposites:
+     "cloves" is a unit in "2 cloves garlic" and an ingredient in "whole
+     cloves", and only the never-strip-the-last-word rule tells them apart.
+     A fix applied inside splitQty could not have made that distinction —
+     and would have re-keyed every ticked shopping item besides. */
+  const tidy = await page.evaluate(() => ({
+    garlic:   tidyIngredientName('cloves garlic'),
+    spice:    tidyIngredientName('whole cloves'),
+    alone:    tidyIngredientName('cloves'),
+    eggs:     tidyIngredientName('large eggs'),
+    multi:    tidyIngredientName('x 125 g tins tuna in olive oil'),
+    plain:    tidyIngredientName('dried pasta'),
+    lastWord: tidyIngredientName('large'),
+  }));
+  check('a leading unit is dropped', tidy.garlic === 'garlic', tidy.garlic);
+  check('but never the last word, so the spice survives', tidy.spice === 'cloves', tidy.spice);
+  check('a bare unit-looking ingredient is left alone', tidy.alone === 'cloves', tidy.alone);
+  check('size words are dropped too', tidy.eggs === 'eggs', tidy.eggs);
+  check('a multipack unwinds to the ingredient', tidy.multi === 'tuna in olive oil', tidy.multi);
+  check('an already-clean name is untouched', tidy.plain === 'dried pasta', tidy.plain);
+  check('a one-word name is never emptied', tidy.lastWord === 'large', tidy.lastWord);
+
+  /* splitQty must be untouched by all of this: its output is the shopping
+     list's aggregation key, so a change there silently unticks everything. */
+  const splitUnchanged = await page.evaluate(() => {
+    const a = splitQty('2 cloves garlic, minced');
+    const b = splitQty('300 g dried pasta');
+    return a.rest === 'cloves garlic, minced' && a.qty === '2'
+        && b.rest === 'dried pasta' && b.qty === '300 g';
+  });
+  check('splitQty still splits exactly as before', splitUnchanged);
+
   check('CSV strips quantities from ingredients',
         csv.includes('dried pasta') && !/\b300 g\b/.test(csv));
   check('CSV leaves ad-hoc course and ingredients blank',

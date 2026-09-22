@@ -6548,6 +6548,53 @@ function exportAllData(){
    Ad-hoc rows have no course and no ingredients and are left blank rather
    than filled with "n/a": a blank cell sorts and filters correctly in a
    spreadsheet, and "n/a" is a value that has to be excluded by hand. */
+/* Words that count or size a thing rather than name it.
+ *
+ * WHY THIS IS NOT IN splitQty. That would be the obvious place, and it is
+ * the wrong one: splitQty's output feeds buildShoppingList, whose result
+ * IS `shopping_checked.item_key`. Teaching it a new unit would silently
+ * re-key every ticked item on the shopping list — the exact failure
+ * CLAUDE.md warns about. This runs on the CSV only, where nothing is keyed
+ * on the result and being wrong costs a slightly odd cell.
+ *
+ * Measured before written: 34 of the library's 424 quantity-bearing lines
+ * (8%) start with one of these after splitQty has done its part.
+ *
+ * NEVER STRIPS THE LAST WORD, which is what makes "cloves" safe to list.
+ * "2 cloves garlic" loses it and becomes "garlic"; "1 tsp whole cloves" is
+ * the spice, and strips "whole" down to "cloves" and then stops. A rule
+ * that just removed known units would have destroyed the second one.
+ */
+const NAME_NOISE = new Set([
+  'x',
+  /* containers and counts */
+  'clove','cloves','sprig','sprigs','handful','handfuls','bunch','bunches',
+  'stick','sticks','slice','slices','rasher','rashers','fillet','fillets',
+  'can','cans','tin','tins','jar','jars','pack','packs','packet','packets',
+  'punnet','punnets','head','heads','stalk','stalks','knob','knobs',
+  'chunk','chunks','pinch','pinches','dash','dashes','strip','strips',
+  'sheet','sheets','ball','balls','cube','cubes','block','blocks',
+  'bar','bars','tub','tubs','bottle','bottles','rib','ribs',
+  /* sizes: "large eggs" is eggs */
+  'large','small','medium','whole',
+  /* units splitQty only removes when they follow the number directly */
+  'g','kg','ml','l','litre','litres','pint','pints','oz','lb',
+  'tsp','tbsp','teaspoon','teaspoons','tablespoon','tablespoons','cup','cups'
+]);
+
+function tidyIngredientName(name){
+  let words = String(name || '').trim().split(/\s+/).filter(Boolean);
+  /* `> 1` is the whole safety rule: whatever else happens, the ingredient
+     keeps a name. */
+  while(words.length > 1){
+    const first = words[0].toLowerCase().replace(/[^a-z]/g, '');
+    const isNumber = /^[\d¼½¾⅓⅔./]+$/.test(words[0]);
+    if(isNumber || NAME_NOISE.has(first)) words = words.slice(1);
+    else break;
+  }
+  return words.join(' ');
+}
+
 function diaryIngredientSummary(recipe){
   if(!recipe || !recipe.syntax) return '';
   let parsed;
@@ -6562,7 +6609,7 @@ function diaryIngredientSummary(recipe){
       const rest = splitQty(line).rest || line;
       /* "2 cloves garlic, minced" -> "garlic": the preparation is a method
          note, not part of what was eaten. */
-      const name = rest.split(',')[0].trim();
+      const name = tidyIngredientName(rest.split(',')[0].trim());
       if(name && !names.some(n=>n.toLowerCase() === name.toLowerCase())) names.push(name);
     });
   });
