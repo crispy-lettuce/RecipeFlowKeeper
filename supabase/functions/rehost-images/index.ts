@@ -41,6 +41,48 @@ const EXT: Record<string, string> = {
   'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif',
 };
 
+/* Width and height out of a JPEG's SOF segment.
+ *
+ * Walks the marker chain rather than scanning for a byte pattern, because
+ * FFC0 occurs inside compressed data often enough that a naive search
+ * finds garbage. Returns null rather than throwing on anything malformed —
+ * a file we cannot measure is not thereby a file we can condemn. */
+function jpegDimensions(bytes: Uint8Array): { w: number; h: number } | null {
+  const n = bytes.byteLength;
+  let i = 2; // past SOI
+  while (i + 3 < n) {
+    if (bytes[i] !== 0xFF) { i++; continue; }
+    let m = bytes[i + 1];
+    while (m === 0xFF && i + 2 < n) { i++; m = bytes[i + 1]; } // fill bytes are legal
+    // Standalone markers carry no length payload.
+    if (m === 0x01 || (m >= 0xD0 && m <= 0xD8)) { i += 2; continue; }
+    // Start of scan or end of image: no SOF is coming.
+    if (m === 0xDA || m === 0xD9) return null;
+    const len = (bytes[i + 2] << 8) | bytes[i + 3];
+    if (len < 2) return null;
+    // SOF0..SOF15 except DHT (C4), JPG (C8) and DAC (CC).
+    if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) {
+      if (i + 8 >= n) return null;
+      const h = (bytes[i + 5] << 8) | bytes[i + 6];
+      const w = (bytes[i + 7] << 8) | bytes[i + 8];
+      return (w > 0 && h > 0) ? { w, h } : null;
+    }
+    i += 2 + len;
+  }
+  return null;
+}
+
+/* Below this, a JPEG claiming to be a photograph is not carrying one.
+ *
+ * Web-optimised recipe photos in this library sit around 0.05-0.30
+ * bytes/pixel. Tuscan Chicken Pasta was 0.006-0.02 depending on how you
+ * read its dimensions — one to two orders of magnitude short. The
+ * threshold is deliberately far below anything a real photo reaches, so
+ * it flags the unmistakable cases and stays quiet otherwise; the verify
+ * mode reports the measured figure for every image so this number can be
+ * argued with from evidence rather than taken on faith. */
+const MIN_BYTES_PER_PIXEL = 0.02;
+
 /* Is this actually a complete image file?
  *
  * Added 22 Sep after Tuscan Chicken Pasta rendered as a photo on top and
@@ -73,6 +115,19 @@ function imageIntegrity(bytes: Uint8Array, contentLength: number | null): string
     let e = n - 1;
     while (e > 1 && at(e) === 0x00) e--;
     if (!(at(e - 1) === 0xFF && at(e) === 0xD9)) return 'truncated JPEG: no end-of-image marker';
+    /* An end marker proves the file was terminated, not that it is full.
+       Tuscan Chicken Pasta had FFD9 and still rendered grey below the top
+       rows: the marker chain was intact and the entropy-coded scan data
+       ran out early, which a decoder fills with mid-grey. Density is what
+       separates that from a whole photo. */
+    const dim = jpegDimensions(bytes);
+    if (dim) {
+      const bpp = n / (dim.w * dim.h);
+      if (bpp < MIN_BYTES_PER_PIXEL) {
+        return `JPEG ends correctly but carries too little image data: ${dim.w}x${dim.h} in ${n} bytes `
+             + `(${bpp.toFixed(4)} bytes/pixel, under ${MIN_BYTES_PER_PIXEL}) — decodes to grey below the top rows`;
+      }
+    }
     return null;
   }
   // PNG: 8-byte signature, and an IEND chunk to finish.
@@ -182,11 +237,18 @@ Deno.serve(async (req: Request) => {
      a card. The integrity check on the way in stops new ones; this is how
      you ask whether the existing library has others. Read-only. */
   if (verify) {
-    let whole = 0; const broken: Array<Record<string, unknown>> = [];
+    let whole = 0;
+    const broken: Array<Record<string, unknown>> = [];
+    /* Every image's measurements, not just the failures. The density
+       threshold is a judgement call, and a judgement call you cannot see
+       the distribution behind is just a magic number — this is what makes
+       it arguable from evidence. */
+    const all: Array<Record<string, unknown>> = [];
     for (const r of recipes ?? []) {
       const src = (r.image_url ?? '').trim();
       if (!src.startsWith(selfHost)) {
-        broken.push({ title: r.title, problem: 'not self-hosted', image_url: src || null });
+        const row = { title: r.title, problem: 'not self-hosted', image_url: src || null };
+        broken.push(row); all.push({ title: r.title, ok: false, problem: row.problem });
         continue;
       }
       try {
@@ -194,17 +256,34 @@ Deno.serve(async (req: Request) => {
         const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
         const res = await fetch(src, { headers: { 'Accept': 'image/*' }, signal: ctl.signal, redirect: 'follow' })
           .finally(() => clearTimeout(timer));
-        if (!res.ok) { broken.push({ title: r.title, problem: `stored object returned ${res.status}`, image_url: src }); continue; }
+        if (!res.ok) {
+          const problem = `stored object returned ${res.status}`;
+          broken.push({ title: r.title, problem, image_url: src });
+          all.push({ title: r.title, ok: false, problem });
+          continue;
+        }
         const declared = res.headers.get('content-length');
         const bytes = new Uint8Array(await res.arrayBuffer());
         const problem = imageIntegrity(bytes, declared === null ? null : parseInt(declared, 10));
+        const dim = jpegDimensions(bytes);
+        const bpp = dim ? bytes.byteLength / (dim.w * dim.h) : null;
+        all.push({
+          title: r.title,
+          kb: Math.round(bytes.byteLength / 1024),
+          pixels: dim ? `${dim.w}x${dim.h}` : null,
+          bytesPerPixel: bpp === null ? null : Number(bpp.toFixed(4)),
+          ok: !problem,
+          problem: problem ?? undefined,
+        });
         if (problem) broken.push({ title: r.title, problem, bytes: bytes.byteLength, image_url: src });
         else whole++;
       } catch (e) {
-        broken.push({ title: r.title, problem: String((e as Error).message ?? e), image_url: src });
+        const problem = String((e as Error).message ?? e);
+        broken.push({ title: r.title, problem, image_url: src });
+        all.push({ title: r.title, ok: false, problem });
       }
     }
-    return json({ verify: true, checked: recipes?.length ?? 0, whole, broken: broken.length, report: broken });
+    return json({ verify: true, checked: recipes?.length ?? 0, whole, broken: broken.length, report: broken, all });
   }
 
   for (const r of recipes ?? []) {

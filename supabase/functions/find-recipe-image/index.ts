@@ -39,6 +39,48 @@ function corsHeaders(req: Request): Record<string, string> {
   };
 }
 
+/* Width and height out of a JPEG's SOF segment.
+ *
+ * Walks the marker chain rather than scanning for a byte pattern, because
+ * FFC0 occurs inside compressed data often enough that a naive search
+ * finds garbage. Returns null rather than throwing on anything malformed —
+ * a file we cannot measure is not thereby a file we can condemn. */
+function jpegDimensions(bytes: Uint8Array): { w: number; h: number } | null {
+  const n = bytes.byteLength;
+  let i = 2; // past SOI
+  while (i + 3 < n) {
+    if (bytes[i] !== 0xFF) { i++; continue; }
+    let m = bytes[i + 1];
+    while (m === 0xFF && i + 2 < n) { i++; m = bytes[i + 1]; } // fill bytes are legal
+    // Standalone markers carry no length payload.
+    if (m === 0x01 || (m >= 0xD0 && m <= 0xD8)) { i += 2; continue; }
+    // Start of scan or end of image: no SOF is coming.
+    if (m === 0xDA || m === 0xD9) return null;
+    const len = (bytes[i + 2] << 8) | bytes[i + 3];
+    if (len < 2) return null;
+    // SOF0..SOF15 except DHT (C4), JPG (C8) and DAC (CC).
+    if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) {
+      if (i + 8 >= n) return null;
+      const h = (bytes[i + 5] << 8) | bytes[i + 6];
+      const w = (bytes[i + 7] << 8) | bytes[i + 8];
+      return (w > 0 && h > 0) ? { w, h } : null;
+    }
+    i += 2 + len;
+  }
+  return null;
+}
+
+/* Below this, a JPEG claiming to be a photograph is not carrying one.
+ *
+ * Web-optimised recipe photos in this library sit around 0.05-0.30
+ * bytes/pixel. Tuscan Chicken Pasta was 0.006-0.02 depending on how you
+ * read its dimensions — one to two orders of magnitude short. The
+ * threshold is deliberately far below anything a real photo reaches, so
+ * it flags the unmistakable cases and stays quiet otherwise; the verify
+ * mode reports the measured figure for every image so this number can be
+ * argued with from evidence rather than taken on faith. */
+const MIN_BYTES_PER_PIXEL = 0.02;
+
 /* Is this actually a complete image file?
  *
  * Added 22 Sep after Tuscan Chicken Pasta rendered as a photo on top and
@@ -71,6 +113,19 @@ function imageIntegrity(bytes: Uint8Array, contentLength: number | null): string
     let e = n - 1;
     while (e > 1 && at(e) === 0x00) e--;
     if (!(at(e - 1) === 0xFF && at(e) === 0xD9)) return 'truncated JPEG: no end-of-image marker';
+    /* An end marker proves the file was terminated, not that it is full.
+       Tuscan Chicken Pasta had FFD9 and still rendered grey below the top
+       rows: the marker chain was intact and the entropy-coded scan data
+       ran out early, which a decoder fills with mid-grey. Density is what
+       separates that from a whole photo. */
+    const dim = jpegDimensions(bytes);
+    if (dim) {
+      const bpp = n / (dim.w * dim.h);
+      if (bpp < MIN_BYTES_PER_PIXEL) {
+        return `JPEG ends correctly but carries too little image data: ${dim.w}x${dim.h} in ${n} bytes `
+             + `(${bpp.toFixed(4)} bytes/pixel, under ${MIN_BYTES_PER_PIXEL}) — decodes to grey below the top rows`;
+      }
+    }
     return null;
   }
   // PNG: 8-byte signature, and an IEND chunk to finish.
@@ -204,13 +259,24 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  /* A failure to reach the source page used to come back as a bare 502,
+     which supabase-js surfaces in the browser as `data: null` and an
+     opaque FunctionsHttpError — the caller then has to dig the body out
+     of error.context to learn anything. Answering 200 with an `error`
+     field keeps the diagnosis in `data`, where it is actually read. */
   let html: string;
   try {
     const res = await timedFetch(pageUrl, { headers: { Accept: 'text/html' } });
-    if (!res.ok) return json({ error: `source page returned ${res.status}`, pageUrl }, 502);
+    if (!res.ok) {
+      return json({ error: `source page returned ${res.status}`, title, pageUrl,
+                    currentImageBytes: currentBytes, currentImageProblem: currentProblem,
+                    hint: 'The site refused us. Get the image address by hand in a browser (docs/IMAGES.md §3).' });
+    }
     html = await res.text();
   } catch (e) {
-    return json({ error: `could not fetch the page: ${String((e as Error).message ?? e)}`, pageUrl }, 502);
+    return json({ error: `could not fetch the page: ${String((e as Error).message ?? e)}`, title, pageUrl,
+                  currentImageBytes: currentBytes, currentImageProblem: currentProblem,
+                  hint: 'The site refused us. Get the image address by hand in a browser (docs/IMAGES.md §3).' });
   }
 
   const candidates = extractCandidates(html, pageUrl);
@@ -226,7 +292,10 @@ Deno.serve(async (req: Request) => {
       /* Report integrity alongside size, so a candidate isn't chosen for
          being the biggest when it is the biggest broken one. */
       const broken = imageIntegrity(buf, declared === null ? null : parseInt(declared, 10));
-      measured.push({ ...c, bytes: buf.byteLength, contentType: ct, ok: !broken, problem: broken ?? undefined });
+      const dim = jpegDimensions(buf);
+      measured.push({ ...c, bytes: buf.byteLength, contentType: ct,
+                      pixels: dim ? `${dim.w}x${dim.h}` : undefined,
+                      ok: !broken, problem: broken ?? undefined });
     } catch (e) {
       measured.push({ ...c, error: String((e as Error).message ?? e) });
     }
@@ -238,7 +307,7 @@ Deno.serve(async (req: Request) => {
     title, pageUrl,
     currentImageBytes: currentBytes,
     currentImageProblem: currentProblem,
-    hint: 'Pick a candidate, set it as the recipe IMAGE URL in the app, then run rehost-images.',
+    hint: 'Pick a candidate reporting ok: true, set it as the recipe IMAGE URL in the app, then run rehost-images.',
     candidates: measured,
   });
 });

@@ -95,24 +95,38 @@ store it:
 ### Every download is checked for integrity
 
 Since 22 Sep both functions verify that what arrived is a *complete* image before storing it or
-recommending it. Two independent checks, because they catch different faults:
+recommending it. Three independent checks, because they catch different faults:
 
 - **Content-Length against the bytes that arrived.** Catches a transfer that died mid-flight — the
   server promised more than it delivered.
 - **The format's own end marker** — JPEG `FFD9`, PNG `IEND`, GIF `0x3B`, the length in a WEBP RIFF
   header. Catches a file that is corrupt at source, where Content-Length agrees with the bytes
   because the server is faithfully serving a broken file.
+- **Data density, for JPEGs** — bytes per pixel, measured against the dimensions read out of the
+  file's own SOF segment. Catches a file that has an end marker and still isn't whole.
 
 A failure is reported as `failed` with the reason, and the recipe is left alone rather than having
 a broken image written over a working one.
 
-**Why this exists, because the lesson generalises.** Tuscan Chicken Pasta rendered as a photo on
-the top 40% of the card with solid grey below — the signature of a JPEG whose scanlines stop early.
-It had been stored, and had *passed verification*, because the check at the time compared the
-stored byte count against the byte count the dry run had seen. Both fetches returned exactly 10,515
-bytes. They agreed with each other, and both were incomplete. **Agreement between two reads of the
-same bad source is not evidence of integrity** — only something that knows what a whole file looks
-like can tell you that.
+**Why there are three, and why the third took two goes.** Tuscan Chicken Pasta rendered as a photo
+on the top 40% of the card with solid grey below. It had been stored, and had *passed
+verification*, because the check at the time compared the stored byte count against the byte count
+the dry run had seen. Both fetches returned exactly 10,515 bytes. They agreed with each other, and
+both were incomplete. **Agreement between two reads of the same bad source is not evidence of
+integrity** — only something that knows what a whole file looks like can tell you that.
+
+The end-marker check replaced it, and **still passed Tuscan Chicken Pasta**. The file's marker
+chain is intact and `FFD9` is present; what ran out early is the entropy-coded scan data, which a
+decoder fills with mid-grey. An end marker proves a file was terminated, not that it is full. The
+density check is what separates the two: 10,515 bytes across the dimensions that file declares is
+under 0.02 bytes/pixel, where a real photo in this library measures 0.05–0.30.
+
+It did find a second broken image nobody had noticed — Classic Scones with Jam & Clotted Cream, 35
+KB with no end marker at all — so the weaker check was not useless, just insufficient.
+
+`test/image-integrity.js` pins all of this. It lifts the checker out of the Edge Function source
+rather than keeping a copy, synthesises each failure shape from marker bytes, and asserts both
+functions carry an identical checker. Run it with `node test/image-integrity.js`.
 
 ---
 
@@ -227,7 +241,8 @@ silently in the night.
 | `not an image (content-type: text/html)` | The URL returns an error page, not a photo | The URL is wrong or the image has been removed. Find a new one |
 | Photo does not change after replacing it | Browser cache | Hard-reload. If it persists, check `image_url` actually has a new `?v=` token |
 | An image looks like a tiny blurry placeholder | The conversion captured a lazy-load thumbnail | Run `find-recipe-image` for that recipe, pick a candidate, replace it (§3) |
-| Photo renders correctly at the top and goes solid grey below | Truncated JPEG — the scanlines stop early | The sweep now refuses these outright. Run `find-recipe-image`, check `currentImageProblem` and each candidate's `problem`, pick one reporting `ok: true`, replace it (§3) |
+| Photo renders correctly at the top and goes solid grey below | JPEG with an intact end marker but scan data that stops early | The density check catches these; the end-marker check did not. Run `find-recipe-image`, check `currentImageProblem` and each candidate's `problem`, pick one reporting `ok: true`, replace it (§3) |
+| Sweep reports `JPEG ends correctly but carries too little image data` | The density check — the file is terminated but not full | Working as intended. Find a different URL (§3). If you believe the photo is genuinely fine, check its bytes/pixel in `data.all` before changing the threshold |
 | Sweep reports `failed` with `truncated JPEG: no end-of-image marker` | The source is serving a broken file | Working as intended — it stopped rather than storing it. Find a different URL (§3) |
 | Sweep reports `failed` with `transfer truncated: server declared N bytes, got M` | The download died mid-flight | Usually transient. Re-run the sweep; if it repeats, the host is at fault and needs a different URL |
 | `find-recipe-image` returns no candidates | The page hides its images behind JavaScript, or has no `og:image` | Fall back to right-click → Copy image address in a browser |
@@ -281,11 +296,17 @@ already stored and checks each one is whole. Nothing is written.
 ```js
 const { data } = await sb.functions.invoke('rehost-images', { body: { verify: true } });
 console.log(`${data.whole} whole, ${data.broken} broken of ${data.checked}`);
-console.table(data.report);
+console.table(data.report);   // the failures
+console.table(data.all);      // every image, with its measured bytes/pixel
 ```
 
 `broken: 0` is the answer you want. Anything listed needs a replacement URL (§3). Worth running
 after any bulk ingestion, and after any run that reported failures.
+
+`data.all` gives the measurement behind every verdict, including the ones that passed. That is
+deliberate: the density threshold is a judgement call, and a judgement call you cannot see the
+distribution behind is just a magic number. If a real photo ever trips it, the table is what tells
+you the threshold is wrong rather than the photo.
 
 For a single recipe, `find-recipe-image` reports the same check on its current image as
 `currentImageProblem`.
@@ -297,7 +318,8 @@ For a single recipe, `find-recipe-image` reports the same check on its current i
 | | |
 | --- | --- |
 | Function source | `supabase/functions/rehost-images/index.ts` (the sweep) and `supabase/functions/find-recipe-image/index.ts` (candidate finder, read-only) |
-| Deployed as | `rehost-images` and `find-recipe-image`, both `verify_jwt: true` |
+| Deployed as | `rehost-images` (v6) and `find-recipe-image` (v3), both `verify_jwt: true` |
+| Tests | `node test/image-integrity.js` — 19 checks over the integrity checker |
 | Bucket | `recipe-images` — **public**, 10 MB file limit, MIME allowlist of jpeg/png/webp/gif/avif |
 | Storage path | `<household_id>/<recipe_id>.<ext>` |
 | Public URL | `<project>/storage/v1/object/public/recipe-images/<path>?v=<unix seconds>` |
