@@ -5,7 +5,33 @@
   const DATA = window.__STUB_DATA__;
   window.__WRITES__ = [];
 
+  /* Switches for the paths that only exist when the network misbehaves —
+     added 22 Sep, when the first offline test on the live app found that
+     coming back to the tab signed you out. All off by default, so every
+     existing check runs exactly as before.
+
+       __READ_FAIL__     reads fail the way supabase-js reports a dead network
+       __READ_DELAY__    ms before a read answers, to open a mid-fetch window
+       __WRITE_FAIL__    upserts fail the same way
+       __WRITE_DELAY__   ms before an upsert answers, to hold the queue open
+       __LOG__           'read:<table>' and 'write-done:<table>', in order,
+                         so a test can prove what happened before what
+       __AUTH_CB__       the app's onAuthStateChange listener, so a test can
+                         fire SIGNED_IN as supabase-js does on a tab return
+       __SIGNOUTS__      how many times the app signed itself out
+
+     The failure is an error OBJECT with the browser's text as its message,
+     not a thrown TypeError — that is what postgrest-js actually hands back,
+     and the app's network test has to recognise that shape. */
+  window.__LOG__ = [];
+  window.__SIGNOUTS__ = 0;
+  const NETWORK_ERROR = { message: 'TypeError: Failed to fetch', details: '', hint: '', code: '' };
+  /* No delay means no timer: a microtask, exactly as before these switches
+     existed, so the timing every other check was written against is kept. */
+  const later = (v, ms) => ms ? new Promise(r => setTimeout(() => r(v), ms)) : Promise.resolve(v);
+
   function result(table){
+    if(window.__READ_FAIL__) return { data: null, error: NETWORK_ERROR };
     const rows = DATA[table] === undefined ? [] : DATA[table];
     return { data: rows, error: null };
   }
@@ -20,7 +46,12 @@
       eq(){ return api; },
       maybeSingle(){ single = true; return api; },
       single(){ single = true; return api; },
-      upsert(rows, opts){ window.__WRITES__.push({table, op:'upsert', rows, opts}); return thenable({error:null}); },
+      upsert(rows, opts){
+        window.__WRITES__.push({table, op:'upsert', rows, opts});
+        const outcome = window.__WRITE_FAIL__ ? { error: NETWORK_ERROR } : { error: null };
+        const done = later(outcome, window.__WRITE_DELAY__).then(v => { window.__LOG__.push('write-done:' + table); return v; });
+        return { then(res, rej){ return done.then(res, rej); } };
+      },
       insert(rows){ window.__WRITES__.push({table, op:'insert', rows}); return thenable({error:null}); },
       delete(){ window.__WRITES__.push({table, op:'delete'}); return deleteChain(); },
       /* Added 22 Sep. Its absence made the food diary's only update path
@@ -32,9 +63,10 @@
          on the patch actually sent, not just on what the cache believes. */
       update(patch){ window.__WRITES__.push({table, op:'update', patch}); return updateChain(table, patch); },
       then(res, rej){
+        window.__LOG__.push('read:' + table);
         const r = result(table);
-        const out = single ? { data: Array.isArray(r.data) ? (r.data[0] || null) : r.data, error: null } : r;
-        return Promise.resolve(out).then(res, rej);
+        const out = (single && !r.error) ? { data: Array.isArray(r.data) ? (r.data[0] || null) : r.data, error: null } : r;
+        return later(out, window.__READ_DELAY__).then(res, rej);
       }
     };
     return api;
@@ -82,9 +114,9 @@
         from: builder,
         auth: {
           getSession(){ return Promise.resolve({ data: { session: { user: { id: 'stub-user' } } } }); },
-          onAuthStateChange(){ return { data: { subscription: { unsubscribe(){} } } }; },
+          onAuthStateChange(cb){ window.__AUTH_CB__ = cb; return { data: { subscription: { unsubscribe(){} } } }; },
           signInWithPassword(){ return Promise.resolve({ error: null }); },
-          signOut(){ return Promise.resolve({ error: null }); }
+          signOut(){ window.__SIGNOUTS__++; return Promise.resolve({ error: null }); }
         },
         storage: { from(){ return { createSignedUrl(){ return Promise.resolve({data:null, error:null}); } }; } },
         functions: { invoke }

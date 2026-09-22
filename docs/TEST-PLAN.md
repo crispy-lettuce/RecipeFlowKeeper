@@ -142,7 +142,7 @@ Some things that *will* still look wrong and aren't:
 
 ## B2 — Automatic image re-hosting (new 22 Sep, never run against the real backend)
 
-**Split into its own document: `docs/TEST-IMAGES.md`.** Nine steps, about 20 minutes, needs a
+**Split into its own document: `docs/TEST-IMAGES.md`.** Eleven steps, about 25 minutes, needs a
 desktop because three of them want devtools or the SQL editor. It is kept separate because it is
 the only pass that can say anything about whether images actually reach Supabase — the smoke suite
 stubs the backend entirely — and because it stands alone: you will want to re-run it after any

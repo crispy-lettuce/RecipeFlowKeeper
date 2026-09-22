@@ -1,15 +1,15 @@
 # Test pass — automatic image re-hosting
 
 **For: the live app at https://crispy-lettuce.github.io/RecipeFlowKeeper/, after PR #7 merged
-22 Sep 2026.** Takes about 20 minutes. Do it at a desktop, not the tablet — three steps need the
+22 Sep 2026; steps 9–11 revised after the first run.** Takes about 25 minutes. Do it at a desktop, not the tablet — three steps need the
 browser's devtools.
 
 ## Why this is worth doing properly
 
-`node test/build.js && node test/smoke.js` passes 174 checks and **proves nothing here.** The
+`node test/build.js && node test/smoke.js` passes 191 checks and **proves nothing here.** The
 suite replaces Supabase with a stub, so it can tell you the app *asks* for a re-host and what it
 does with the answer, but not that anything is ever copied, stored, or survives a reload. These
-nine steps are the only thing that can.
+eleven steps are the only thing that can.
 
 **Step 4 is the one that matters.** The rest are sanity; step 4 is the regression test for a
 failure mode that looks exactly like success — see "What step 4 is really testing" at the bottom.
@@ -158,19 +158,61 @@ the work, so the sweep found nothing left to do.
 
 ### 9. Saving with no connection
 
-Devtools → **Network** tab → set throttling to **Offline**. (Or just turn the wifi off.)
+Devtools → **Network** tab → set throttling to **Offline**. (Or just turn the wifi off.) **Stay on
+this tab** until the step says otherwise — step 10 is the one about leaving it.
 
-Open any recipe → **EDIT** → paste an external image address over its URL → **Save**.
+Open the test recipe → **EDIT** → paste an external image address over its URL → **Save**.
 
-**Expect:** the recipe saves and the editor closes normally, and a toast appears reading
-**"Couldn't save … — check your connection"**. The photo stays external. This is correct: a
-failed re-host is meant to leave you with a borrowed photo, not a broken one.
+**Expect:** the editor closes normally, leaving you on the recipe, and a toast reads **"Couldn't
+save … — check your connection"**. Click **RECIPES** in the sidebar: the card's photo area is
+**blank** — correct, because offline no photo can load from anywhere.
 
-Then go back online, hard-reload, and press **RE-HOST EXTERNAL IMAGES**. It should now report
-**1 copied in**.
+**What has actually happened:** your change is in this tab and nowhere else. The database never
+received it. So:
 
-- [ ] Saves, toast appears, photo stays external
-- [ ] Back online, the sweep picks it up — "1 copied in"
+1. Go back online. **Do not reload.** A reload rebuilds the app from the database, and the
+   database doesn't have your change — the toast was telling you so.
+2. Tap any recipe's favourite star twice (on, then off). Each of those saves sends the *whole*
+   library, including the change that failed.
+3. **SETTINGS → RE-HOST EXTERNAL IMAGES.** Expect **"1 copied in"**, and the card to show the
+   stored photo.
+
+*This step used to say "go back online, hard-reload, and expect 1 copied in". That could never
+have happened — the reload throws the unsaved change away, so there is nothing external left to
+copy. Corrected 22 Sep after it was run for real.*
+
+- [ ] Offline save: editor closes, toast appears, card photo blank
+- [ ] Back online, two favourite taps, then RE-HOST reports "1 copied in"
+
+### 10. Leaving the tab while offline
+
+This is the one that used to throw you out. Go offline again. **Click a different browser tab,
+then click back** to the Kitchen tab.
+
+**Expect:** nothing happens. You are still signed in, and everything is where you left it.
+
+Until 22 Sep, coming back to the tab offline showed the **sign-in screen** with *"Couldn't load
+your library — TypeError: Failed to fetch"*. Coming back to a tab makes the app check for changes
+made elsewhere; offline that check failed, and the app answered a failed check by signing you out.
+On the tablet this could happen every time it woke before the wifi reconnected.
+
+Now go back online, click away to another tab and back again. Still signed in; nothing changes.
+
+- [ ] Offline, away and back: still signed in, nothing lost
+- [ ] Online, away and back: still signed in
+
+### 11. Coming back to the recipes by the sidebar
+
+Online. Open the test recipe → **EDIT** → paste a *different* external image address → **Save**.
+That leaves you looking at the recipe. Wait five seconds, then click **RECIPES** in the sidebar.
+
+**Expect:** the card shows the **new** photo.
+
+Until 22 Sep it showed the *previous* one, until a reload. Every other screen redrew itself when
+you went to it; the recipe grid didn't, so it showed whatever it had last drawn. The ← back
+button on the recipe did redraw, which is why this only showed up by the sidebar.
+
+- [ ] Card shows the new photo straight away
 
 ---
 

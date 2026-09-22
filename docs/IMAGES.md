@@ -363,7 +363,7 @@ different kind of change entirely.
 | **Add a recipe with no image** — Save with IMAGE URL empty | Nothing. There is no URL to fetch | Exactly as before. Add one later via EDIT and it behaves like the row above |
 | **Edit a recipe whose photo is already ours** — change the title, the servings, a step | Nothing. The URL is already self-hosted | Nothing. This is what keeps it from re-firing forever |
 | **Toggle a favourite** | Nothing new | Nothing — but see the write-back below, which is what makes this true |
-| **Save with no connection** | The call is queued, fails, and is reported | The recipe saves; the standard "couldn't save…" toast; the photo stays external until a sweep |
+| **Save with no connection** | Both the recipe's own save and the re-host fail, and are reported | The change is kept **in this tab only** — the database never got it, so a reload discards it. Back online, the next save of any recipe sends it (a favourite tap will do); then the sweep copies the photo. Coming back to the tab meanwhile does not undo it |
 
 ### Why the response has to be written back
 
@@ -396,8 +396,9 @@ the function now returns on every report row, rather than by position or title.
 - **A restore from backup** calls `saveRecipesList` with the whole library at once and never goes
   near the save handler, so nothing fires. Run the sweep afterwards. Having a restore fire thirty
   calls at once would be a worse trade than pressing one button.
-- **A save made offline** never reaches the function. The recipe is saved; the photo stays
-  external until a sweep.
+- **A save made offline** never reaches the function — nor the database. The change is kept in
+  the tab, and the next save of any recipe once connected sends it; then the sweep copies the
+  photo. A reload before that discards it. (This line said "the recipe is saved" until 22 Sep.)
 - **The recipes that were already self-hosted** — correctly, they are done.
 
 The sweep therefore has not gone away. It has stopped being the only mechanism, and it has moved
@@ -477,7 +478,7 @@ is possible and small, if you ever want to photograph your own cooking.
 | Sweep reports `JPEG ends correctly but carries too little image data` | The density check — the file is terminated but not full | Working as intended. Find a different URL (§3). If you believe the photo is genuinely fine, check its bytes/pixel in `data.all` before changing the threshold |
 | Sweep reports `failed` with `truncated JPEG: no end-of-image marker` | The source is serving a broken file | Working as intended — it stopped rather than storing it. Find a different URL (§3) |
 | Sweep reports `failed` with `transfer truncated: server declared N bytes, got M` | The download died mid-flight | Usually transient. Re-run the sweep; if it repeats, the host is at fault and needs a different URL |
-| Saved a recipe and the photo is still on the source's server | The queued call failed — most often no connection at the moment of saving | You will have seen a "couldn't save…" toast. **Settings → RECIPE PHOTOS → RE-HOST EXTERNAL IMAGES** picks it up |
+| Saved a recipe and the photo is still on the source's server | The queued call failed — most often no connection at the moment of saving | You will have seen a "couldn't save…" toast. If the recipe's own save failed too, save any recipe once you're connected (a favourite tap will do) so the database has the new URL; then **Settings → RECIPE PHOTOS → RE-HOST EXTERNAL IMAGES** picks it up |
 | Restored a backup and everything is hotlinked again | Correct and expected. A restore does not go through the save path (§5) | Press **RE-HOST EXTERNAL IMAGES** once afterwards |
 | Edited a photo, and after a later edit the old one is back | The `image_url` column and the `IMAGE:` line in the recipe text disagree, so re-parsing reverts the column | Fixed on the save path since 22 Sep (§3). Run the third query in §7; if it is not 0, re-save the recipes it names |
 | `find-recipe-image` returns no candidates | The page hides its images behind JavaScript, or has no `og:image` | Fall back to right-click → Copy image address in a browser |

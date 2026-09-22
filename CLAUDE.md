@@ -20,7 +20,7 @@ check the code, the database or GitHub Actions directly, do that instead of beli
 node test/build.js && node test/smoke.js
 ```
 
-174 checks. **Run both, always** — `smoke.js` loads what `build.js` wrote, so skipping the build
+191 checks. **Run both, always** — `smoke.js` loads what `build.js` wrote, so skipping the build
 tests your previous edit and reports a pass or a failure that belongs to code you have changed.
 
 It stubs Supabase entirely, so it proves nothing about sign-in, hydration, RLS or the write
@@ -40,8 +40,14 @@ throw rather than pass vacuously.
 
 - **Every `load*`/`save*` is synchronous.** Writes queue in the background via `queueWrite`,
   which always returns `true` immediately. Don't await them; don't make them async.
-- **Any exception inside `hydrate()` signs the user out.** The failure mode is a login screen you
-  can't escape. Use `.maybeSingle()` where a row might legitimately not exist.
+- **An exception inside `hydrate()` at start-up signs the user out** — any except a network
+  failure. The failure mode is a login screen you can't escape. Use `.maybeSingle()` where a row
+  might legitimately not exist.
+- **Coming back to the tab re-runs the load.** supabase-js emits `SIGNED_IN` on every hidden →
+  visible change, offline too; the app turns the second and later ones into `refreshLibrary()`.
+  That refresh is load-bearing — it is what stops a long-open tab pushing a stale library over
+  another device's work — so don't remove it. It must never replace the cache while the cache
+  holds something the server doesn't; `docs/HANDOVER.md` §2e has the four rules it follows.
 - **`buildShoppingList()` must stay side-effect free** — it runs on every planner mutation via
   `updateSidebarCounts()`. Never put a prompt or a write in it.
 - **`recipe_logs` cascades on delete from `recipes`.** Deleting a recipe destroys its cooking

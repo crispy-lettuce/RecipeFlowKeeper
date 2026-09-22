@@ -2699,9 +2699,40 @@ const cache = {
    quick succession can't land out of order. A push that fails is surfaced
    once — the cache would otherwise quietly disagree with the server. */
 let writeQueue = Promise.resolve();
+
+/* Two pieces of bookkeeping for refreshLibrary, which must never replace
+   the cache while it holds something the server doesn't.
+
+   localChanges counts every change made to the cache on this page. A
+   refresh notes it before fetching and discards what it fetched if it has
+   moved — anything changed mid-fetch would otherwise be wiped from the
+   cache, and pushList would then push that loss to the server on the next
+   save (and DELETE any recipe added in the gap, cascading its history).
+
+   unsentLabels holds writes whose last attempt failed. The cache has those
+   changes and the server does not, so a refresh would silently undo them.
+   A later success clears the label only where that write carries the WHOLE
+   table or row — then the server provably matches the cache again. The
+   diary writes one row at a time, so a later success says nothing about
+   the failed one; its label stays until a reload. Listed as an allowlist
+   so a label added later defaults to the safe side: it blocks. */
+let localChanges = 0;
+const unsentLabels = new Set();
+const WHOLE_STATE_LABELS = new Set([
+  'recipes', 'the plan', 'the shortlist', 'meal groups', 'swaps',
+  'word matches', 'keywords', 'your settings', 'ticked items'
+]);
+/* A failed re-host loses nothing: the recipe row keeps the URL it had,
+   which still displays, and the sweep or the next save tries again. */
+const NOTHING_LOST_LABELS = new Set(['the recipe image']);
+
 function queueWrite(label, fn){
-  writeQueue = writeQueue.then(fn).catch(err=>{
+  localChanges++;
+  writeQueue = writeQueue.then(fn).then(()=>{
+    if(WHOLE_STATE_LABELS.has(label)) unsentLabels.delete(label);
+  }, err=>{
     console.error('Sync failed:', label, err);
+    if(!NOTHING_LOST_LABELS.has(label)) unsentLabels.add(label);
     showToast(`Couldn't save ${label} — check your connection`);
   });
   return true;
@@ -2762,7 +2793,11 @@ function rowToRecipe(row, historyById){
    `history` is stitched back onto each recipe from recipe_logs so the
    in-memory recipe object keeps the exact shape the rest of the app
    already expects. */
-async function hydrate(){
+/* Returns true if it replaced the cache, false if opts.shouldApply vetoed
+   it. The veto is asked once, after every fetch has come back and before a
+   single field is assigned, so a refresh is applied whole or not at all —
+   never half. */
+async function hydrate(opts){
   const { data: memberships, error: mErr } = await sb
     .from('household_members').select('household_id').limit(1);
   if(mErr) throw mErr;
@@ -2790,6 +2825,7 @@ async function hydrate(){
   for(const res of [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases]){
     if(res.error) throw res.error;
   }
+  if(opts && opts.shouldApply && !opts.shouldApply()) return false;
 
   /* Two shapes from one query, deliberately.
 
@@ -2847,6 +2883,7 @@ async function hydrate(){
     id: row.id, kind: row.kind, alias: row.alias, canonical: row.canonical || ''
   }));
   rebuildAliasMaps();
+  return true;
 }
 
 /* ---- The food diary (H1, H2) ----
@@ -3102,7 +3139,10 @@ function applyRehostedUrl(recipeId, sentUrl, newUrl){
      it the next time the recipe is parsed — see withUpdatedImageLine. */
   recipes[idx].syntax = withUpdatedImageLine(recipes[idx].syntax, newUrl);
   /* The card is the only place an image is rendered in this whole app, so
-     this is the only view that needs redrawing. */
+     this is the only view that needs redrawing — now if it is showing, or
+     by showView on the way back if not. An EDIT save lands on the Viewer, so
+     "not" is the usual case; before showView redrew on entry, coming back
+     by the sidebar showed the pre-edit photo until a reload. */
   if(state.view === 'recipes') renderHome();
 }
 
@@ -3685,6 +3725,13 @@ function showView(name){
   app.classList.toggle('viewer-open', name === 'viewer' || name === 'group-viewer');
   app.classList.remove('sidebar-peek'); // a peek lasts as long as the recipe you opened it over
   window.scrollTo(0,0);
+  /* Recipes redraws on entry like every other screen. It used not to, and
+     the grid then showed whatever it last drew: a photo re-hosted while you
+     were on the Viewer, or a cooked count changed on History, stayed stale
+     until something else happened to call renderHome. Call sites had grown
+     their own renderHome() after showView to paper over it one at a time;
+     those are harmless now, just redundant. */
+  if(name === 'recipes') renderHome();
   if(name === 'planner') renderPlanner();
   if(name === 'shopping') renderShopping();
   if(name === 'history') renderHistory();
@@ -5717,8 +5764,8 @@ function renderHistoryDayDetail(){
       renderHistory();
       /* deleteDiaryEntry edits the recipe's own `history`, which drives the
          card's COOKED n× and the MOST/LEAST COOKED sort. showView('recipes')
-         does not re-render Home, so without this the card keeps the
-         pre-delete count until something else happens to redraw it. */
+         now redraws Home on entry, so this is belt and braces rather than
+         the only thing keeping the card's count honest. */
       renderHome();
     });
   });
@@ -6313,6 +6360,10 @@ function runImageSweep(btnId, body, describe){
         r.syntax = withUpdatedImageLine(r.syntax, row.to);
         changed++;
       });
+      /* This changes the cache outside the write queue, so it has to tell
+         refreshLibrary itself — a refresh whose fetch overlapped the sweep
+         could otherwise land afterwards holding the pre-sweep URLs. */
+      if(changed) localChanges++;
       if(changed) renderHome();
     })
     .catch(err=>{
@@ -7021,18 +7072,94 @@ function showLoginGate(message){
   loginSubmit.textContent = 'Sign in';
 }
 
+/* Chrome says "Failed to fetch", Firefox "NetworkError when attempting to
+   fetch resource", Safari — the tablet — "Load failed". supabase-js hands
+   these back as an error object whose message is the browser's text. */
+function isNetworkFailure(err){
+  if(typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+  const msg = String((err && (err.message || err)) || '');
+  return /Failed to fetch|NetworkError|Load failed|Network request failed/i.test(msg);
+}
+
+/* Set once the library has loaded. The first SIGNED_IN boots the app; every
+   later one is a refresh — see onSignedIn. */
+let appStarted = false;
+
 async function startApp(){
   try{
     await hydrate();
   }catch(err){
     console.error('Could not load your library', err);
+    /* No connection is not a reason to throw the session away. It was, and
+       signing out offline can't be undone offline — the tablet, woken with
+       its wifi still reconnecting, landed on a sign-in screen it couldn't
+       get past. Keeping the session means the next SIGNED_IN (coming back
+       to the tab once connected) retries by itself; a reload does too. */
+    if(isNetworkFailure(err)){
+      showLoginGate("Couldn't reach the server — check your connection, then come back to this tab or reload.");
+      return;
+    }
     await sb.auth.signOut();
     showLoginGate("Couldn't load your library — " + (err.message || 'please try again.'));
     return;
   }
+  appStarted = true;
   loginGate.hidden = true;
   updateSidebarCounts();
   renderHome();
+}
+
+/* Re-reads the library from the server, but only when that cannot lose
+   anything. Runs every time the tab comes back into view.
+
+   WHY THIS EXISTS AT ALL. supabase-js emits SIGNED_IN on every hidden →
+   visible change of the tab — no network call, so offline too. This app
+   used to answer every SIGNED_IN with startApp, so coming back to the tab
+   re-downloaded everything, and a failure signed you out. The re-download
+   turned out to be load-bearing: it is the only thing that ever brings a
+   long-open tab up to date, and a stale tab is dangerous here, because
+   pushList pushes the WHOLE cached table and deletes rows it doesn't hold.
+   A tablet left open since morning would, on its first save that evening,
+   overwrite the desktop's edits and delete the desktop's new recipes. So
+   the refresh stays; what changed is that it can no longer lose anything.
+
+   It waits for the write queue to empty, so it never reads the server
+   before this page's own saves have reached it. It stands down while any
+   change is unsent. And it throws away what it fetched if anything changed
+   while it was fetching. Any failure leaves everything as it was: a
+   refresh is an opportunity, never a reason to sign anyone out. */
+async function refreshLibrary(){
+  /* Until nothing new arrives while waiting — a save made while the queue
+     drains extends it. */
+  let tail;
+  do { tail = writeQueue; await tail; } while(tail !== writeQueue);
+  if(unsentLabels.size){
+    console.warn('Not refreshing: changes not yet saved —', [...unsentLabels].join(', '));
+    return false;
+  }
+  const changesBefore = localChanges;
+  let applied;
+  try{
+    applied = await hydrate({ shouldApply: ()=> localChanges === changesBefore && !unsentLabels.size });
+  }catch(err){
+    console.warn('Could not refresh the library; keeping what is loaded.', err);
+    return false;
+  }
+  if(!applied) return false;
+  updateSidebarCounts();
+  renderHome();
+  return true;
+}
+
+/* One load at a time. A SIGNED_IN arriving while one is running (boot and
+   a tab switch racing) joins it rather than starting a second. */
+let loadInFlight = null;
+function onSignedIn(){
+  if(!loadInFlight){
+    loadInFlight = (appStarted ? refreshLibrary() : startApp())
+      .finally(()=>{ loadInFlight = null; });
+  }
+  return loadInFlight;
 }
 
 loginForm.addEventListener('submit', async e=>{
@@ -7058,8 +7185,10 @@ document.getElementById('signOutBtn').addEventListener('click', async ()=>{
 
 if(sb){
   sb.auth.onAuthStateChange((event)=>{
-    if(event === 'SIGNED_IN') startApp();
-    if(event === 'SIGNED_OUT') showLoginGate();
+    if(event === 'SIGNED_IN') onSignedIn();
+    /* Whoever signs in next — perhaps someone else — gets a full start,
+       which is also what takes the sign-in screen away again. */
+    if(event === 'SIGNED_OUT'){ appStarted = false; showLoginGate(); }
   });
 }
 
@@ -7070,7 +7199,7 @@ if(sb){
     return;
   }
   const { data: { session } } = await sb.auth.getSession();
-  if(session) startApp();
+  if(session) onSignedIn();
   else showLoginGate();
 })();
 </script>
