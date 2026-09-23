@@ -82,6 +82,7 @@ function checkLine({ line, qty, rest }, vocab){
   if(/^(large|small|medium|big|heaped|level|generous|thumb-sized)\b/.test(first)) why.push('size word before the name');
   if(!PRODUCT_FORM.test(first) && (/^(minced|grated|chopped|diced|sliced|crushed|melted|softened|beaten)\b/.test(first)
      || /^(juice|zest|leaves|stalks)\s+(of|from)\b/.test(first))) why.push('preparation before the name');
+  if(/\b(cups?|oz|ounces?|lbs?|pounds?|quarts?|pints?|sticks? of butter)\b/i.test(qty)) why.push('not metric (convert cups, oz and lb)');
   if(qty && /^(tins?|cans?|jars?|packs?|packets?)\b/.test(first)) why.push('container word in the name (put "(1 tin)" in brackets)');
   if(!qty && !/,.*\bto (taste|serve|glaze|finish)\b/i.test(line) && !/^(pinch|handful|squeeze|knob)\b/i.test(line)) why.push('no quantity');
 

@@ -72,13 +72,14 @@ function sourceName(line){
   let n = line.toLowerCase()
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[\[\]]/g, '')      // shop links: "[paprika](http://…)"
     .replace(/\([^)]*\)/g, ' ')
+    .replace(/^.*:\s*/, '')                                             // "optional for garnish: chopped scallion"
     .split(/\s[–—-]\s|,|\/|\s+or\s+|\s+i\s+(use|like)\b/)[0]            // alternatives, asides
     .replace(/\s+/g, ' ').trim(), prev;
   do {
     prev = n;
     n = n.replace(/^[\d¼½¾⅓⅔⅛.\/\s-]+/, '')
-         .replace(/^(g|kg|ml|l|oz|lbs?|cups?|tsp|tbsp|teaspoons?|tablespoons?)\b\s*/, '')
-         .replace(/^(a|an|x|big|good|large|small|medium|heaped|level|generous|thumb-sized|fresh|freshly|finely|thinly|roughly|chopped|sliced|diced|minced|grated|shredded|chilled)\s+/, '')
+         .replace(/^(g|kg|ml|l|oz|ounces?|lbs?|pounds?|cups?|tsp|tbsp|teaspoons?|tablespoons?)\b\.?\s*/, '')
+         .replace(/^(a|an|x|big|good|large|small|medium|heaped|level|generous|thumb-sized|fresh|freshly|finely|thinly|roughly|chopped|sliced|diced|minced|grated|shredded|chilled|boneless|skinless|optional)\s+/, '')
          .replace(/^(cans?|tins?|jars?|packs?|packets?|pinch(es)?|bunch(es)?|handfuls?|sprigs?|slices?|strips?|rashers?|pieces?|knobs?|stalks?|sticks?|cloves?)\s+(of\s+)?(?=\S)/, '')
          .trim();
   } while(n !== prev);
@@ -95,7 +96,7 @@ const PROTECT = new Set(('ground smoked spring red green yellow white black swee
   + 'cream salted unsalted whole frozen dried cooked raw tinned canned streaky back basmati jasmine arborio long-grain '
   + 'wholemeal granulated demerara muscovado mixed bone-in boneless skinless egg rice wine cider malt balsamic tomato '
   + 'powder seed flake paste sauce juice zest stock cube leaf oil salt sugar curry').split(/\s+/));
-function strictPairs(names){
+function strictPairs(names, protectedToo){
   const out = [];
   for(const a of names) for(const b of names){
     if(a >= b) continue;
@@ -103,7 +104,7 @@ function strictPairs(names){
     const [S, L] = A.length < B.length ? [A, B] : [B, A];
     if(L.length !== S.length + 1 || S[S.length - 1] !== L[L.length - 1]) continue;
     const extra = L.filter(w => !S.includes(w));
-    if(extra.length === 1 && S.every(w => L.includes(w)) && !PROTECT.has(extra[0])) out.push([a, b, extra[0]]);
+    if(extra.length === 1 && S.every(w => L.includes(w)) && PROTECT.has(extra[0]) === !!protectedToo) out.push([a, b, extra[0]]);
   }
   return out;
 }
@@ -175,6 +176,7 @@ function strictPairs(names){
   const candidates = entries.filter(e => !e.listed && e.recipes.size >= 2).sort((a, b) => b.recipes.size - a.recipes.size);
   const onceOnly = entries.filter(e => !e.listed && e.recipes.size < 2);
   const pairs = strictPairs(entries.map(shown));
+  const lookPairs = strictPairs(entries.map(shown), true);
   const sources = new Set(recipes.map(r => r.source).filter(Boolean));
 
   const L = [];
@@ -206,6 +208,8 @@ function strictPairs(names){
   L.push('## 3. Possible duplicates', '');
   L.push('Pairs of names that differ by one word which does not change what you buy (the review\'s strict rule, §2.6). Either they are the same thing and one spelling should win, or the extra word matters and belongs on the never-ignore list.', '');
   L.push(pairs.length ? pairs.map(([a, b, x]) => `- *${a}* ~ *${b}* (extra word: "${x}")`).join('\n') : 'None.');
+  L.push('', '**Worth a look:** the extra word is one that usually changes what you buy, so these are usually different things. Sometimes they are not (*ketchup* ~ *tomato ketchup*); decide by eye.', '');
+  L.push(lookPairs.length ? lookPairs.map(([a, b, x]) => `- *${a}* ~ *${b}* (extra word: "${x}")`).join('\n') : 'None.');
   L.push('');
 
   L.push('## 4. Lines outside the standard shape', '');

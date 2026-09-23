@@ -84,6 +84,9 @@ Rules for the lines:
   the same original on each.
 - Put "? " at the very start of a line when you are unsure of the name or the quantity, for
   example a regional ingredient, or a unit you had to guess. Never leave a doubt unmarked.
+- Keep the source's product. Never swap it for a different one, even a similar one:
+  "Italian seasoning" stays Italian seasoning, not dried oregano. Only its name changes, to the
+  UK shelf name. Mark "? " if you are unsure what the product is called in the UK.
 - Never invent a quantity. If the source gives none and the line isn't "to taste" or "to
   serve", write the line without one and mark it "? ".
 - Never use a " | " inside a line other than the one separator.

@@ -87,7 +87,9 @@ stages in order every time; don't skip Check even for a simple recipe.
   - **Name**: what you buy, **as a UK supermarket labels it on the shelf**, in plain British
     English: *aubergine*, not eggplant; *beef mince*, not ground beef. Where
     `ingredient-names.md` lists the ingredient, use its spelling exactly: that list records
-    the household's own choices and settles ambiguous words. Keep the words that change
+    the household's own choices and settles ambiguous words. Rename, never replace: the
+    product stays the one the source asks for ("Italian seasoning" stays Italian seasoning,
+    not dried oregano). Keep the words that change
     what you buy: ground, dried, frozen, cooked, raw, smoked, double/single,
     plain/self-raising, baby, spring, red/green/yellow, light/dark, unsalted, whole, bone-in.
     Leave out the ones that don't: large, small, medium, ripe, fresh, free-range, pure,
