@@ -1,13 +1,14 @@
 # Converter test set
 
-Five deliberately awkward recipes for checking `conversion-instructions.md` still
+Seven deliberately awkward recipes for checking `conversion-instructions.md` still
 produces the right shape. Run them whenever those instructions change: paste each
 source into a fresh conversion chat and compare the output against the notes here.
 
 These are synthetic — written to isolate one failure mode each, not to be cooked.
 They check structure, not wording: handle names and phrasing will vary, and that's
 fine. What must match is which ingredients sit in which group, where each group joins,
-and that every MERGE carries a duration.
+and that every MERGE carries a duration. Tests 6 and 7 are the exception: they check the ingredient lines
+themselves, because the shopping list totals lines by their wording.
 
 ---
 
@@ -105,6 +106,70 @@ syntax is presented. `SERVINGS:` must be present in the output, carrying the ans
 
 **Fails if:** the `SERVINGS:` line is omitted, or a number is invented from the
 quantities without asking.
+
+---
+
+## 6. Ingredient lines
+
+**Why:** added 23 Sep 2026. The shopping list reads ingredient lines mechanically, so every
+line has to be in the standard shape (`conversion-instructions.md` §1). Measured on the
+library, the lines that broke it were the ones below: fractions it couldn't read, ranges,
+multipliers, two ingredients on a line, alternatives, size words and preparation in the name.
+
+**Source:**
+
+> **Store-Cupboard Bean Stew** — Serves 4. You'll need 1½ tsp ground cumin, 2-3 tbsp
+> olive oil, 1 large onion, diced, 2 x 400g tins chopped tomatoes, 1 cup plain flour, 4 tbsp
+> butter, melted, a knob of butter to finish, juice of 1 lemon, golden syrup or honey
+> (2 tbsp) and salt and freshly ground pepper to taste. Soften the onion in the oil for
+> 8 minutes, add the cumin, then the tomatoes, and simmer for 20 minutes. Stir in the rest
+> and season.
+
+**Must produce** lines in this shape (wording of the preparation may vary):
+
+```
+1 1/2 tsp ground cumin
+2-3 tbsp olive oil
+1 onion (large), diced
+800 g chopped tomatoes (2 tins)
+120 g plain flour
+60 g butter, melted
+1 knob butter, to finish
+1 lemon, juiced
+2 tbsp golden syrup (or honey)
+salt, to taste
+black pepper, to taste
+```
+
+**Fails if** any line:
+- holds two ingredients;
+- contains `½` or `x`;
+- has a size word ("large") between the quantity and the name;
+- puts preparation before the name ("juice of", "melted butter");
+- measures more than 1 tbsp of butter in spoons;
+- or uses an alternative ("or") outside brackets.
+
+---
+
+## 7. Vocabulary
+
+**Why:** added 23 Sep 2026. Lines only total when their names agree, and a converter that
+copies each source's wording writes the same ingredient several ways. `ingredient-names.md`
+is the list it must use.
+
+**Source:**
+
+> **Weeknight Noodle Bowl** — Serves 2. 2 scallions, sliced; a handful of cilantro; 1 red
+> bell pepper, sliced; 2 tbsp neutral oil; 150 ml heavy cream; 3 tbsp plain yogurt; 1 tbsp
+> all-purpose flour; 2 tbsp soy sauce. Fry the pepper in the oil for 4 minutes, stir in the
+> flour, then the soy sauce, cream and yogurt, and warm through for 2 minutes. Top with the
+> scallions and cilantro.
+
+**Must produce** the listed names: *spring onions, fresh coriander, red pepper, vegetable oil,
+double cream, natural yoghurt, plain flour, light soy sauce*.
+
+**Fails if** any source synonym survives into the output (scallions, cilantro, bell pepper,
+neutral oil, heavy cream, yogurt, all-purpose flour, or a bare "soy sauce").
 
 ---
 

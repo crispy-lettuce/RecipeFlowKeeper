@@ -185,6 +185,9 @@ own group.
 **Use it when:** adding any recipe. Paste it, or its contents, into a conversation along with the
 source recipe.
 
+**Give it, with `converter/ingredient-names.md`,** to the conversion project. That file is the
+shared vocabulary ingredient names are taken from, so the shopping list can total them.
+
 **Keep in step with:** the app's parser. The two must agree — a mismatch between what this asks
 for and what `parseRecipe` understands caused a real bug (`[instant]` durations the app didn't
 recognise, leaving raw bracket text visible in the diagram).
@@ -192,13 +195,14 @@ recognise, leaving raw bracket text visible in the diagram).
 ---
 
 ### `converter/test-set.md` — the converter's regression tests
-**What:** Five deliberately awkward recipes, each isolating one failure mode — a late addition, a
-split ingredient, parallel prep, a zero-length step, a missing yield — with what a correct
+**What:** Seven deliberately awkward recipes, each isolating one failure mode — a late addition, a
+split ingredient, parallel prep, a zero-length step, a missing yield, and (since 23 Sep) the
+shape and vocabulary of ingredient lines — with what a correct
 conversion must produce and what counts as a failure. Plus three audits of the real library. The
 first two (13 and 14 Sep) describe the pre-reprocess library and are history now; the third
 (20 Sep) re-runs all five tests against what's actually in the database.
 
-**Use it when:** you change `conversion-instructions.md`. Run all five through the revised
+**Use it when:** you change `conversion-instructions.md`. Run all seven through the revised
 instructions and compare. Also the record of which library faults have been fixed and when.
 
 **Worth knowing:** these tests check what the *converter* writes, not what the app's parser

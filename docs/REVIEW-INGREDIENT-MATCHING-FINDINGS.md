@@ -10,7 +10,8 @@ and scored with the app's own functions. It stopped for the household's decision
 | --- | --- |
 | 1 | **Built on branch `claude/intelligent-feynman-1i4fwp`, not yet on `main`.** `splitQty`, `parseFraction`, `parseIngredientAmount` and `scaleRecipeSyntax` now read mixed numbers, `1½`, ranges, "up to" and `3 x 400 g`. On the real library exactly the 7 predicted lines change, and all 6 scaling faults are gone. Smoke 191 → 197. All seven mutations named in `test/smoke.js` (dropping each branch, buying the lower figure of a range, scaling the pack size, reverting `splitQty`) fail their check by name |
 | 2 | **For the household**, in Settings → Word Matches: delete the inverted match and the orphaned one (the private appendix, section A, names them) |
-| 3–8 | Not started |
+| 3 | **Written, same branch.** `conversion-instructions.md` gains the line shape and the 23 Sep revision note; `ingredient-names.md` holds the vocabulary (the 79 ingredients shared by two or more recipes, with D7–D9 applied); `test-set.md` gains tests 6 and 7; `validate-recipes.js` warns on lines outside the shape. On the real library the warning flags 74 lines, in the fault classes of §2.3. **Still to do by the household:** paste the new instructions and `ingredient-names.md` into the conversion project, then run tests 6 and 7 through it (§7) |
+| 4–8 | Not started |
 
 **No library data is in this file.** The repo is public, so every example line below is made up to
 show the same fault. The real lines, word matches and weeks behind each number are in a private
