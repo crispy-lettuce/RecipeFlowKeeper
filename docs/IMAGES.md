@@ -561,7 +561,7 @@ For a single recipe, `find-recipe-image` reports the same check on its current i
 | | |
 | --- | --- |
 | Function source | `supabase/functions/rehost-images/index.ts` (the sweep) and `supabase/functions/find-recipe-image/index.ts` (candidate finder, read-only) |
-| Deployed as | `rehost-images` (v8) and `find-recipe-image` (v4), both `verify_jwt: true` |
+| Deployed as | `rehost-images` (v8) and `find-recipe-image` (v4), both `verify_jwt: true`. **A deploy is a commit**: v8 went live from an uncommitted copy and the repo drifted for a day (`docs/REVIEW-ARCHITECTURE-FINDINGS.md` F4). Change the file, commit, then deploy |
 | Called from | **The app**, on save (`rehostImageFor`) and from Settings (`runImageSweep`), and by hand from the console. v8 added the optional `recipeId`; a call without it behaves exactly as v7 |
 | Tests | `node test/image-integrity.js` — 31 checks over the integrity checker and `parseRecipeFilter`. The save path is covered by `node test/build.js && node test/smoke.js` |
 | Bucket | `recipe-images` — **public**, 10 MB file limit, MIME allowlist of jpeg/png/webp/gif/avif |

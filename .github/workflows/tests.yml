@@ -1,0 +1,33 @@
+# The offline harness, run by a machine rather than a habit.
+#
+# WHY: `main` deploys to the kitchen tablet on every push, and until this file
+# existed the 197-check suite ran only when someone remembered. HANDOVER.md §6
+# records a day the documented gate exited 1 and nobody noticed. Making this a
+# required check on `main` (a repository setting, not something this file can
+# do) is what turns it into a gate.
+#
+# It proves exactly what test/README.md says it proves: app logic against a
+# stubbed Supabase. Nothing here touches the live project.
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  offline-harness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Installed ad hoc, as test/README.md says: the app has no dependencies
+      # and no package.json, so there is nothing to `npm ci` against.
+      - run: npm install playwright
+      - run: npx playwright install --with-deps chromium
+      # Always both — smoke.js reads what build.js wrote (CLAUDE.md).
+      - run: node test/build.js && node test/smoke.js
+      - run: node test/image-integrity.js

@@ -9,6 +9,19 @@ const launchOpts = process.env.PLAYWRIGHT_CHROMIUM
   : {};
 const path = require('path');
 
+/* Results print the moment they are recorded, not at the end. Until 23 Sep
+   they were held and printed after the last step, so a crash anywhere in the
+   run — a click that timed out because an earlier mutation broke its
+   precondition — reported nothing at all, and two mutations in the
+   architecture review were "caught" only by that silence
+   (docs/REVIEW-ARCHITECTURE-FINDINGS.md, F7). Now the last line printed names
+   the check the run died after. */
+const checks = [];
+const check = (name, pass, detail) => {
+  checks.push({name, pass, detail});
+  console.log(`${pass ? 'ok  ' : 'FAIL'}  ${name}${detail ? '  (' + detail + ')' : ''}`);
+};
+
 (async () => {
   const browser = await chromium.launch(launchOpts);
   const page = await browser.newPage();
@@ -25,17 +38,18 @@ const path = require('path');
              self-hosted" is the whole state it exists to represent.
        The browser's message for these carries neither the URL nor the other
        tokens, so each needs naming or the suite can never go green here.
+         ERR_NAME_NOT_RESOLVED  the same two fetches on a GitHub Actions
+             runner, which has no route to the fonts or to the fixture's
+             made-up host and says so by failing DNS. Found by the first CI
+             run, 23 Sep: 197 checks passed and the job still exited 1.
        Everything else still fails the run. */
-    if (m.type() === 'error' && !/ERR_CONNECTION_RESET|ERR_BLOCKED|ERR_CERT_AUTHORITY_INVALID|ERR_TUNNEL_CONNECTION_FAILED|fonts\.googleapis/.test(m.text())) {
+    if (m.type() === 'error' && !/ERR_CONNECTION_RESET|ERR_BLOCKED|ERR_CERT_AUTHORITY_INVALID|ERR_TUNNEL_CONNECTION_FAILED|ERR_NAME_NOT_RESOLVED|fonts\.googleapis/.test(m.text())) {
       errors.push('CONSOLE: ' + m.text());
     }
   });
 
   await page.goto('file://' + path.join(__dirname, 'app-under-test.html'));
   await page.waitForTimeout(1200);
-
-  const checks = [];
-  const check = (name, pass, detail) => { checks.push({name, pass, detail}); };
 
   check('signed in past the login gate', !(await page.isVisible('#loginGate')));
   check('recipe library rendered', (await page.locator('.rcard').count()) > 0,
@@ -1230,12 +1244,13 @@ const path = require('path');
 
   await page.screenshot({ path: path.join(__dirname, 'settings.png'), fullPage: false });
 
-  let failed = 0;
-  for (const c of checks) {
-    if (!c.pass) failed++;
-    console.log(`${c.pass ? 'ok  ' : 'FAIL'}  ${c.name}${c.detail ? '  (' + c.detail + ')' : ''}`);
-  }
-  console.log(errors.length ? '\nERRORS:\n' + errors.join('\n') : '\nno console/page errors');
+  const failed = checks.filter(c => !c.pass).length;
+  console.log(`\n${checks.length} checks, ${failed} failed`);
+  console.log(errors.length ? '\nERRORS:\n' + errors.join('\n') : 'no console/page errors');
   await browser.close();
   process.exit(failed || errors.length ? 1 : 0);
-})();
+})().catch(e => {
+  /* A crash is a failure with a location, not a silent exit 1. */
+  console.log(`\nCRASH after ${checks.length} checks: ${e && e.message ? e.message.split('\n')[0] : e}`);
+  process.exit(1);
+});
