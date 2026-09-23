@@ -192,8 +192,9 @@ table for the other documents.
 or updating any document it corrects. The household accepted it on 23 Sep; `docs/NEXT-SESSION.md`
 holds the seven-PR plan that carries it out, and each PR ticks the findings it closes.
 
-**Don't:** take its restore finding as tested — it predicts what the documented restore would do
-from the dump's contents and the live grants; the recommendation is to rehearse one.
+**Don't:** read its restore finding (F2) as the current state — it was a prediction from the
+dump's contents and the live grants, rehearsed and closed on 23 Sep by `PrivateBackup` PR #1,
+which found it right and incomplete (the default privileges went too).
 
 ---
 
@@ -304,8 +305,9 @@ list of things that bite.
 
 - **The recipe data itself.** Lives in Supabase. This repo is public, so recipe, planner and
   diary content must never be committed here.
-- **Database backups.** Nightly dumps go to the private `PrivateBackup` repo. Restore
-  instructions are in that repo's own `README.md`.
+- **Database backups and photo backups.** Nightly dumps of the `public` and `private` schemas,
+  and a weekly mirror of the photo bucket, go to the private `PrivateBackup` repo. The restore
+  runbook is that repo's own `README.md`, rehearsed 23 Sep 2026.
 - **Credentials.** See `docs/INFRASTRUCTURE.md` §4 for what lives where.
 
 ---

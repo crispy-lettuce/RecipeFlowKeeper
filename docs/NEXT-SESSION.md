@@ -29,7 +29,7 @@ verified and how.
 | --- | --- | --- | --- | --- |
 | 1 | **Safety net** | Tests run in GitHub Actions on every PR and push to `main`; `smoke.js` prints as it goes and names a crash; supabase-js pinned; `rehost-images` source matches what is deployed; nine documents corrected in place | F4 F6 F7 F9 F10 | **Done**, PR #11, 23 Sep |
 | 2 | **Close the review loop** | The converter no longer renames ingredients to a list (it keeps the source's product, in British English); `ingredient-names.md` becomes the app's dictionary; the findings and this plan land in the repo | §4, §9 of the architecture review; F12 | **This PR** (#10, reworked) |
-| 3 | **Backups** | In `PrivateBackup`: dump the `private` schema too, so the policies' helper function travels with them; a weekly photo backup; a restore runbook written from a rehearsal, including the fresh-project steps | F2 F3 | Not started |
+| 3 | **Backups** | In `PrivateBackup`: dump the `private` schema too, so the policies' helper function travels with them; a weekly photo backup; a restore runbook written from a rehearsal, including the fresh-project steps | F2 F3 | **Done**, `PrivateBackup` PR #1, 23 Sep. The photo workflow's first run is the one after the merge |
 | 4 | **Faithful save** | Reconcile all eight header lines on save, not just `TITLE:` and `IMAGE:`; re-save the two drifted recipes; add the three missing checks (`pushList`'s delete, the `TITLE:` line, the non-adjacent-merge error) | F5 F7 | Not started |
 | 5 | **Row-scoped writes** | One row per save and an explicit delete, for recipes, plan days, groups, shortlist, aliases, swaps and ticks; whole-table replace kept for import only; deleting a recipe also cleans plan days and groups. Then the two-device pass from `docs/TEST-PLAN.md` | F1 F11 | Not started |
 | 6 | **Shopping list release** | Steps 4–8 of the ingredient review as written, plus: the ⅛ fraction; the source-fidelity check in `validate-recipes.js` *before* the 24-line rewrite (D12 waits on it); the pure functions extracted to one `core` script so their tests run in Node; the dictionary's master copy in the app with `ingredient-names.md` generated from it. Ship on a Friday morning, before shopping | §9 of the architecture review; the ingredient review's status rows 4–8 | Not started |
@@ -56,8 +56,9 @@ verified and how.
 - Make the `offline-harness` check **required** on `main` (Settings → Branches). PR 1 could not
   do that from a workflow file.
 - Delete the unused second account in the Supabase dashboard (Authentication → Users).
-- For PR 3: give the session access to `PrivateBackup`, and be ready to run the restore
-  rehearsal in Docker if the session cannot get Postgres 17.
+- After `PrivateBackup` PR #1 merges: run **Back up recipe photos** once from its Actions tab
+  and check the run is green and `photos/manifest.tsv` lists 30 objects. It is the one part of
+  PR 3 that could not run before the merge.
 - Before PR 6: a fresh export from the app's sidebar, kept outside the repo, for the re-measure.
 
 ---
@@ -74,13 +75,13 @@ and open a pull request when the work is tested.
 Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md                  — the map of all documentation
-  docs/NEXT-SESSION.md                    — the seven-PR plan; we are at PR 3
+  docs/NEXT-SESSION.md                    — the seven-PR plan; we are at PR 4
   docs/REVIEW-ARCHITECTURE-FINDINGS.md    — §0 and the findings the PR closes
   docs/HANDOVER.md                        — verified status
   docs/ARCHITECTURE.md                    — how the app and its recipe format work
   CLAUDE.md                               — applies in full
 
-THE TASK: PR 3 from the plan. Tell me what you'd do and what you need from
+THE TASK: PR 4 from the plan. Tell me what you'd do and what you need from
 me before building anything, then build it, run the tests, and open the PR.
 
 Some context worth having:
