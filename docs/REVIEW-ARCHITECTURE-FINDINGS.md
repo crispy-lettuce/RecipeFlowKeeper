@@ -274,6 +274,15 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
 
 ### F2 — The backup has never been restored, and the documented restore would misfire (High)
 
+- ✅ **Closed 23 Sep 2026, `PrivateBackup` PR #1.** The dump now covers `public` and `private`
+  and keeps privileges; the run checks its own table of contents for the function and the 46
+  policies; the README is a runbook written from a rehearsal of both dump formats against a
+  local Postgres 17 imitating the live roles and grants. The rehearsal confirmed this finding
+  and sharpened it: the documented command also destroyed the **default privileges**, so even
+  re-granting the schema would not have covered the next table created; a data-only restore
+  fails in alphabetical order and needs the tables in dependency order; and on a fresh project
+  one policy of 46 survives (the one that checks `auth.uid()` directly). Details, and the list
+  of what was not rehearsed, are in `PrivateBackup/README.md`.
 - `PrivateBackup/.github/workflows/backup-supabase.yml:59-61`: `--schema=public --format=custom
   --no-owner --no-privileges`. `PrivateBackup/README.md:33`: `pg_restore --clean --if-exists
   --no-owner --no-privileges`.
@@ -296,6 +305,12 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
 
 ### F3 — Recipe photos are backed up nowhere (Medium)
 
+- ✅ **Closed 23 Sep 2026, `PrivateBackup` PR #1**, with one caveat. `backup-photos.yml` mirrors
+  the bucket weekly into `photos/recipe-images/` at the bucket's own paths, checking each
+  download's size and MD5 against `storage.objects`; `scripts/restore-photos.sh` puts them back.
+  The caveat: the workflow could not be started from its branch (GitHub dispatches only workflows
+  on the default branch) and the session had no route to the bucket, so its **first run is the
+  one after the merge** — run it from the Actions tab and check the manifest lists 30 objects.
 - 30 objects in `recipe-images`, 30 of 30 recipes with an image self-hosted, 0 disagreements
   between `image_url` and the `IMAGE:` line (verified by the `docs/IMAGES.md` §7 query).
 - The dump covers `public` only; `storage.objects` and the bytes are not in it. The re-host
@@ -430,9 +445,10 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
    grants — whichever the rehearsal shows works). Rehearse against a local Postgres 17 in Docker,
    from the latest dump, and write the fresh-project steps down (create the user, fix the
    membership row's `user_id`, recreate the bucket and functions). Record the date of the
-   rehearsal in `docs/HANDOVER.md` §5. (F2)
+   rehearsal in `docs/HANDOVER.md` §5. (F2) *✅ Done 23 Sep, `PrivateBackup` PR #1.*
 2. **Back up the photos.** A weekly step in the private repo that fetches every `image_url` and
-   commits changed objects only. (F3)
+   commits changed objects only. (F3) *✅ Done 23 Sep, `PrivateBackup` PR #1; first run after
+   the merge.*
 3. **Add a workflow that runs `node test/build.js && node test/smoke.js` and
    `node test/image-integrity.js` on every pull request, and require it on `main`.** (F6)
 4. **Pin supabase-js to an exact version.** (F9)

@@ -622,13 +622,23 @@ This explicitly **supersedes** the earlier downloadable `.ics` idea, which is in
 
 ---
 
-## 5. Backups — working, with one fragility
+## 5. Backups — working, and restorable since 23 Sep
 
 **Verified working.** `.github/workflows/backup-supabase.yml` in `PrivateBackup` runs daily at
 04:00 UTC. The scheduled run on 14 Sep at 04:07 completed successfully on its own. As of 23 Sep,
-13 runs, 12 successful, 12 dumps of 81–88 kB in the tree. **A restore has never been rehearsed**,
-and the 23 Sep review found the documented one would misfire (`docs/REVIEW-ARCHITECTURE-FINDINGS.md`
-F2); that is the next piece of backup work.
+13 runs, 12 successful, 12 dumps of 81–88 kB in the tree. *(Until 23 Sep this paragraph went
+on: "A restore has never been rehearsed". True when written; the next paragraph is what
+changed.)*
+
+**Restore rehearsed 23 Sep 2026** (`PrivateBackup` PR #1, closing F2 and F3): the last
+`public`-only dump and the first `public`+`private` dump, the latter made by the changed
+workflow running from its branch against the live database, were each restored on a local
+Postgres 17 set up to imitate the live roles, grants and `auth` schema; the old README command
+was confirmed to strip every grant *and* the default privileges, data-only needs the 13 tables
+in dependency order, the rebuild-without-dropping-the-schema path restores with no errors, and
+a fresh-project restore ends with row-level security verified for a new user, a stranger and
+`anon`. The photo backup is written and reviewed but has not run: its first run is the one
+after the merge. The runbook and the rehearsed/not-rehearsed table are `PrivateBackup/README.md`.
 
 Getting there took three goes — the direct connection is IPv6-only and GitHub runners have no
 IPv6 route (fixed by using the **Session pooler**), and the runner's own `pg_dump` is older than

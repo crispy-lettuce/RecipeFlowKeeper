@@ -95,9 +95,15 @@ project's own rule, restated in §4) or a plain identifier that grants nothing o
   without any extra configuration. **Renaming or deleting this branch stops the nightly backup
   silently.** If it's ever renamed to `main` for tidiness, confirm afterwards that the schedule
   still fires (check the Actions tab).
-- `.github/workflows/backup-supabase.yml` — runs daily at 04:00 UTC, dumps the `public` schema
-  via `pg_dump`, commits the result under `backups/`, keeps the 30 most recent in the working
-  tree. Verified genuinely working on 14 Sep — the scheduled run fired unattended and committed
+- `.github/workflows/backup-supabase.yml` — runs daily at 04:00 UTC, dumps the `public` **and
+  `private`** schemas via `pg_dump`, privileges included *(since 23 Sep; `public` only and
+  `--no-privileges` before that, which is why the pre-23 Sep dumps cannot rebuild a fresh
+  project's policies)*, checks the archive's own table of contents, commits the result under
+  `backups/`, keeps the 30 most recent in the working tree.
+- `.github/workflows/backup-photos.yml` — runs weekly (Sundays 05:00 UTC), mirrors the
+  `recipe-images` bucket into `photos/recipe-images/` at the bucket's own paths with a manifest,
+  checking every download's size and MD5 against `storage.objects`. Added 23 Sep; its first run
+  is the one after `PrivateBackup` PR #1 merges. Verified genuinely working on 14 Sep — the scheduled run fired unattended and committed
   a real ~87 KB dump.
 - **One repository secret required:** `SUPABASE_DB_URL` — the project's **Session pooler**
   connection string (Supabase Dashboard → Project Settings → Database → Connection string →
@@ -105,7 +111,10 @@ project's own rule, restated in §4) or a plain identifier that grants nothing o
   **Settings → Secrets and variables → Actions** on this repo. Not the direct connection
   (IPv6-only; GitHub's runners have no IPv6 route) and not the transaction pooler on port 6543
   (doesn't give `pg_dump` the session-mode connection it needs).
-- Full restore instructions are in `PrivateBackup/README.md`.
+- The restore runbook is `PrivateBackup/README.md`, **written from a rehearsal on 23 Sep 2026**
+  and ending with a table of what was and was not rehearsed. *(This line said "Full restore
+  instructions are in" that file for ten days during which they had never been run, and would
+  have stripped the API roles' grants.)*
 
 ---
 
