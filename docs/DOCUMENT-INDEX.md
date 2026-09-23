@@ -226,6 +226,27 @@ repo — recipe data must never be committed here.
 node test/build.js && node test/validate-recipes.js ~/recipes.md
 ```
 
+Since 23 Sep it also warns on ingredient lines outside the standard shape, and lists names that
+`converter/ingredient-names.md` doesn't know. Those checks live in **`test/ingredient-lines.js`**,
+shared with **`test/ingredient-survey.js`**. The survey reads a bulk extraction made with
+`converter/ingredient-extraction-prompt.md`, again from outside the repo, and reports names and
+spellings worth adding to the vocabulary.
+
+```sh
+node test/build.js && node test/ingredient-survey.js ~/kitchen-survey/*.md --out ~/kitchen-survey/report.md
+```
+
+---
+
+### `converter/ingredient-extraction-prompt.md` — surveying recipes in bulk
+**What:** A prompt that pulls only the ingredient lines out of a batch of recipes, each in the
+standard shape and in the source's own words. Used with `test/ingredient-survey.js` to grow
+`ingredient-names.md` from recipes it was not built from.
+
+**Use it when:** before adding the vocabulary rows by hand, or every so often as the library
+grows. **Don't** commit the extractions or the report: they are recipe text, and this repo is
+public.
+
 ---
 
 ### `CLAUDE.md` — guidance for AI sessions

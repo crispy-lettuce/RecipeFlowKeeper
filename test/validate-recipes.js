@@ -56,27 +56,10 @@ function extractBlocks(md){
   return out;
 }
 
-/* The converter's shared vocabulary, read from converter/ingredient-names.md
-   so there is one list, not two. Each "Also written as" phrase maps to the name
-   to write instead. Only plain phrases are taken: anything with brackets or a
-   qualifier ("when a powder") needs judgement, and a warning that fires on a
-   correct line is worse than one that stays quiet. Exact matches only, so
-   "olive oil" is never mistaken for "oil". */
-const VOCAB = new Map();
-const CANON = new Set();
-try {
-  const md = fs.readFileSync(path.join(__dirname, '..', 'converter', 'ingredient-names.md'), 'utf8');
-  md.split('\n').forEach(row => {
-    const cells = row.split('|').map(c => c.trim());
-    if(cells.length < 4 || !cells[1] || /^(write|-+)$/i.test(cells[1])) return;
-    const canonical = cells[1].toLowerCase();
-    CANON.add(canonical);
-    cells[2].split(',').map(x => x.trim().toLowerCase()).forEach(syn => {
-      if(!syn || /[()*"'`]|\b(when|not|is|plain "sugar")\b/.test(syn) || syn === canonical) return;
-      VOCAB.set(syn, canonical);
-    });
-  });
-} catch(e){ /* no vocabulary file: the shape check still runs, just without names */ }
+/* The ingredient-line checks live in test/ingredient-lines.js, shared with
+   test/ingredient-survey.js so the two tools cannot disagree. */
+const { loadVocab, checkLine } = require('./ingredient-lines');
+const VOCAB = loadVocab();
 
 (async () => {
   const md = fs.readFileSync(srcPath, 'utf8');
@@ -194,37 +177,10 @@ try {
        lines by their wording. The quantity comes from the app's own splitQty. */
     const shapeFaults = [];
     const newNames = [];
-    r.splits.forEach(({ line, qty, rest }) => {
-      const why = [];
-      const noBrackets = rest.replace(/\([^)]*\)/g, ' ');
-      const segments = noBrackets.split(',').map(x => x.trim());
-      const name = segments[0].toLowerCase();
-      if(/[¼½¾⅓⅔]/.test(line)) why.push('uses ½-style fraction');
-      if(/^\s*[\d.\/\s]+\s*x\s*\d/i.test(line)) why.push('multiplier ("3 x …")');
-      if(/\band\b|&/.test(name) || (segments.length >= 3 && /\band\b/.test(segments[1]))) why.push('two ingredients on one line?');
-      if(/\s(or|and\/or)\s/.test(name)) why.push('alternative outside brackets');
-      if(/^(large|small|medium|big|heaped|level|generous|thumb-sized)\b/.test(name)) why.push('size word before the name');
-      /* Where the prepared form is what you buy, it is the name, not preparation
-         (conversion-instructions.md: "chopped tomatoes, ground cumin, minced beef"). */
-      const productForm = /^(chopped tomatoes|minced (beef|pork|lamb|turkey|chicken)|flaked almonds)\b/.test(name);
-      if(!productForm && (/^(minced|grated|chopped|diced|sliced|crushed|melted|softened|beaten)\b/.test(name)
-         || /^(juice|zest|leaves|stalks)\s+(of|from)\b/.test(name))) why.push('preparation before the name');
-      /* A count word may still lead the name ("handful coriander"): splitQty leaves
-         count words in place on purpose, so drop one before looking the name up. */
-      const bareName = name.replace(/^(pinch(es)?|bunch(es)?|handfuls?|sprigs?|slices?|rashers?|pieces?|tins?|knobs?)\s+(of\s+)?/, '').trim();
-      const listed = VOCAB.get(bareName);
-      if(listed) why.push(`use the listed name "${listed}"`);
-      /* Not a fault: the vocabulary only lists ingredients shared by two or more
-         recipes. Reported so a name can be added when it turns up a second time. */
-      const known = n => CANON.has(n) || VOCAB.has(n);
-      const isNew = CANON.size && bareName && !listed && !known(bareName) && !known(bareName + 's')
-         && !known(bareName.replace(/e?s$/, ''));
-      if(qty && /^(tins?|cans?|jars?|packs?|packets?)\b/.test(name)) why.push('container word in the name (put "(1 tin)" in brackets)');
-      if(!qty && !/,.*\bto (taste|serve|glaze|finish)\b/i.test(line) && !/^(pinch|handful|squeeze|knob)\b/i.test(line)) why.push('no quantity');
-      if(why.length) shapeFaults.push(`"${line.slice(0,64)}" — ${why.join('; ')}`);
-      /* Only from lines that are otherwise clean: a faulty line is fixed first, and
-         its name may change when it is. */
-      else if(isNew && !newNames.includes(bareName)) newNames.push(bareName);
+    r.splits.forEach(split => {
+      const { why, name, isNew } = checkLine(split, VOCAB);
+      if(why.length) shapeFaults.push(`"${split.line.slice(0,64)}" — ${why.join('; ')}`);
+      else if(isNew && !newNames.includes(name)) newNames.push(name);
     });
     if(shapeFaults.length){
       warnings.push(`${shapeFaults.length} ingredient line(s) outside the standard shape:`);
