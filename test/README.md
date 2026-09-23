@@ -17,6 +17,11 @@ CDN `<script>` tags swapped for `stub.js` and a set of canned rows injected.
 Re-run it after every change to `index.html`; `smoke.js` reads only that copy,
 never the original.
 
+`node test/validate-recipes.js <file>` checks a converted batch against the app's own parser,
+and `node test/ingredient-survey.js <files> [--out report.md]` surveys bulk ingredient
+extractions (`converter/ingredient-extraction-prompt.md`). Both read their input from outside
+this repo, and share the ingredient-line checks in `ingredient-lines.js`.
+
 `node test/shots.js` writes a PNG of each main screen, for eyeballing a layout
 change without a browser to hand.
 
@@ -25,7 +30,7 @@ Both scripts use whichever Chromium Playwright installs. Set
 
 ## What it can and can't tell you
 
-**191 checks.** It covers the parts that are pure app logic: week bucketing, scaling,
+**197 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, the automatic image
 re-host on save, what happens when you come back to the tab (online, offline, mid-save, after a

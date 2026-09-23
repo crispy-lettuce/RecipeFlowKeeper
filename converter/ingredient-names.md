@@ -1,0 +1,150 @@
+# Ingredient names — the shared vocabulary
+
+*Created 23 Sep 2026, from `docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md` §4.2.*
+
+**Give this file to the conversion project alongside `conversion-instructions.md`.**
+
+## The rule, before the list
+
+**Name every ingredient as a UK supermarket labels it on the shelf**: the thing you'd pick up,
+in plain British English. *Aubergine*, not eggplant; *beef mince*, not ground beef; *chickpeas*,
+not garbanzo beans; *rocket*, not arugula. The rule works for ingredients no list has ever seen,
+which is most of what a growing library will bring: each new recipe has added about four
+ingredients the library hadn't met before.
+
+**The list below does two narrower jobs** (revised 23 Sep 2026, to avoid fitting it to the
+recipes it was built from):
+
+1. **It records the household's own decisions**, where the shelf rule alone would allow either
+   answer: one vegetable oil, "soy sauce" meaning light, butter and unsalted butter kept apart.
+2. **It settles words the shelf rule can't**: regional or ambiguous ones such as "coriander"
+   (leaf or seed?), "cilantro" and "heavy cream".
+
+The "Also written as" spellings are **examples, not the whole vocabulary**. They are there
+because `test/validate-recipes.js` reads them and warns when one turns up in a converted
+recipe. A name missing from the list is not wrong; it just hasn't come up twice yet.
+
+**When to add a row:** when an ingredient turns up in a **second** recipe under a different
+name. `validate-recipes.js` lists every name the vocabulary doesn't know, so you'll see
+candidates at the moment a recipe is added. An ingredient used once never needs to total with
+anything, so a row for it is upkeep with no benefit.
+
+**Where it's heading.** When the shopping-list release lands (step 4 of the review), the master
+copy of this list moves into the app, this file is generated from it, and a test fails if the two
+differ, so there is only ever one list to edit. Until then, this file is the only copy.
+
+**Where the rows came from.** The rows below are the 79 ingredients shared by two or more recipes in
+September 2026, which covered 80% of all ingredient lines.
+
+**Decided by the household, 23 Sep 2026, and reflected below:**
+
+- "oil", "neutral oil", "vegetable oil" and "sunflower oil" are one item, *vegetable oil* (D7).
+  Olive, sesame and coconut oil stay separate.
+- butter vs unsalted butter, salt vs sea salt, and caster vs golden caster sugar stay separate
+  (D8). Keep whichever the source asks for.
+- "soy sauce" on its own means *light soy sauce* (D9).
+
+---
+
+## Produce
+
+| Write | Also written as | Count as |
+| --- | --- | --- |
+| garlic | garlic clove(s) | `3 garlic cloves` |
+| onion | white onion, brown onion, yellow onion | `2 onions` |
+| spring onions | scallions, green onions | `1 bunch spring onions` |
+| red pepper | red bell pepper | `1 red pepper` |
+| green pepper | green bell pepper | `1 green pepper` |
+| red chilli | red chile, fresh red chilli | `2 red chillies` |
+| fresh ginger | ginger, root ginger, ginger root | weight, or `1 piece fresh ginger (5 cm)` |
+| fresh coriander | coriander, coriander leaves, cilantro | `1 bunch fresh coriander` |
+| parsley | curly parsley, flat-leaf parsley, fresh parsley | `1 bunch parsley` |
+| celery | celery stick(s) | `2 celery sticks` |
+| cherry tomatoes | | weight |
+| baby spinach | spinach leaves (when baby) | weight |
+| lemon juice | fresh lemon juice | ml or spoons; whole lemons: `1 lemon, juiced` |
+
+## Meat & Fish
+
+| Write | Also written as |
+| --- | --- |
+| chicken breast | chicken breasts, chicken breast fillets, skinless chicken breast |
+| chorizo | cooking chorizo (when the source means it) |
+| raw king prawns | king prawns (when cooked in the dish), jumbo shrimp |
+| salmon fillets | tail-end salmon fillets |
+
+## Dairy & Eggs
+
+| Write | Also written as |
+| --- | --- |
+| eggs | egg, large eggs, free-range eggs (write the size in brackets if it matters: `3 eggs (large)`) |
+| butter | salted butter |
+| unsalted butter | |
+| double cream | heavy cream, whipping cream is **not** the same |
+| milk | whole milk, full-fat milk, semi-skimmed milk |
+| natural yoghurt | natural yogurt, plain yoghurt, plain yogurt |
+| parmesan | parmesan cheese, parmigiano reggiano |
+
+## Pantry
+
+| Write | Also written as |
+| --- | --- |
+| vegetable oil | oil, neutral oil, sunflower oil, rapeseed oil, cooking oil |
+| olive oil | extra virgin olive oil |
+| sesame oil | toasted sesame oil |
+| coconut oil | |
+| plain flour | all-purpose flour |
+| self-raising flour | self-rising flour |
+| cornflour | cornstarch |
+| baking powder | |
+| bicarbonate of soda | baking soda |
+| caster sugar | superfine sugar; plain "sugar" when the source doesn't say which |
+| golden caster sugar | |
+| light brown sugar | soft brown sugar, light soft brown sugar |
+| icing sugar | powdered sugar, confectioners' sugar |
+| honey | runny honey |
+| maple syrup | pure maple syrup |
+| vanilla extract | pure vanilla extract |
+| cocoa powder | unsweetened cocoa |
+| dark chocolate | |
+| peanut butter | smooth peanut butter, creamy peanut butter, crunchy peanut butter |
+| almond butter | |
+| rolled oats | oats, old-fashioned oats, porridge oats, quick-cooking oats |
+| flaked almonds | sliced almonds, slivered almonds |
+| raisins | |
+| raspberry jam | seedless raspberry jam, soft-set raspberry jam |
+| long grain rice | long-grain rice (write the **uncooked** amount, D4) |
+| rigatoni | pasta shapes (when rigatoni) |
+| orzo | |
+| chopped tomatoes | tinned chopped tomatoes (write `400 g chopped tomatoes (1 tin)`, as the tin is labelled) |
+| tomato purée | tomato paste |
+| sun-dried tomatoes | |
+| chicken stock | chicken broth, hot chicken stock |
+| light soy sauce | soy sauce |
+| dark soy sauce | |
+| oyster sauce | |
+| worcestershire sauce | |
+| chinese rice wine | shaoxing wine, shaoxing rice wine |
+| white wine | dry white wine |
+
+## Spices & Seasoning
+
+| Write | Also written as |
+| --- | --- |
+| salt | table salt, fine salt |
+| sea salt | fine sea salt, flaky sea salt |
+| black pepper | pepper, ground black pepper, freshly ground black pepper |
+| garlic salt | |
+| garlic powder | |
+| paprika | sweet paprika (not smoked, which is its own item) |
+| chilli flakes | crushed chillies, red pepper flakes |
+| chilli powder | mild chilli powder, hot chilli powder |
+| cajun seasoning | cajun spice mix, cajun spice |
+| dried oregano | oregano (when dried) |
+| ground cumin | cumin (when a powder) |
+| ground coriander | coriander powder (bare "coriander" means the leaf, so write *fresh coriander* for that) |
+| ground cinnamon | cinnamon (when a powder) |
+| ground turmeric | turmeric |
+| cardamom pods | green cardamom pods |
+| whole cloves | cloves (the spice) |
+| sesame seeds | |

@@ -56,6 +56,11 @@ function extractBlocks(md){
   return out;
 }
 
+/* The ingredient-line checks live in test/ingredient-lines.js, shared with
+   test/ingredient-survey.js so the two tools cannot disagree. */
+const { loadVocab, checkLine } = require('./ingredient-lines');
+const VOCAB = loadVocab();
+
 (async () => {
   const md = fs.readFileSync(srcPath, 'utf8');
   const blocks = extractBlocks(md);
@@ -94,6 +99,8 @@ function extractBlocks(md){
         imageUrl: p.imageUrl, time: p.time, servings: p.servings,
         equipment: p.equipment, tags: p.tags,
         groups: p.groups.map(g => ({ handle: g.handle, items: g.items })),
+        /* The app's own quantity split, for the line-shape check below. */
+        splits: p.groups.flatMap(g => g.items.map(line => ({ line, ...splitQty(line) }))),
         stageCount: p.stages.length,
         merges,
         columnErrors: cols.errors,
@@ -164,7 +171,23 @@ function extractBlocks(md){
     if(!r.equipment) warnings.push('no EQUIPMENT: (fine unless it needs size-specific bakeware)');
     if(!r.tags.course) warnings.push('no course= in TAGS:');
 
-    results.push({ line: b.line, ...r, blockers, warnings, bareMerges: bare.length, mergeCount: r.merges.length });
+    /* Ingredient lines outside the standard shape (conversion-instructions.md §1,
+       docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md §4.2). Warnings, not blockers: the
+       recipe still renders and scales; what suffers is the shopping list, which totals
+       lines by their wording. The quantity comes from the app's own splitQty. */
+    const shapeFaults = [];
+    const newNames = [];
+    r.splits.forEach(split => {
+      const { why, name, isNew } = checkLine(split, VOCAB);
+      if(why.length) shapeFaults.push(`"${split.line.slice(0,64)}" — ${why.join('; ')}`);
+      else if(isNew && !newNames.includes(name)) newNames.push(name);
+    });
+    if(shapeFaults.length){
+      warnings.push(`${shapeFaults.length} ingredient line(s) outside the standard shape:`);
+      shapeFaults.forEach(f => warnings.push('    ' + f));
+    }
+
+    results.push({ line: b.line, ...r, blockers, warnings, newNames, bareMerges: bare.length, mergeCount: r.merges.length });
   }
 
   await browser.close();
@@ -180,6 +203,7 @@ function extractBlocks(md){
     console.log(`        serves ${r.servings || '—'} · ${r.groups.length} groups · ${r.stageCount} stages · ${r.mergeCount} merges (${r.bareMerges} untimed) · ${r.rowCount} rows`);
     r.blockers.forEach(x => console.log(`        BLOCKER: ${x}`));
     r.warnings.forEach(x => console.log(`        warn:    ${x}`));
+    if(r.newNames.length) console.log(`        new to ingredient-names.md (add one if it turns up in a second recipe): ${r.newNames.join(', ')}`);
   }
   if(pageErrors.length){
     console.log('\nPAGE ERRORS:');

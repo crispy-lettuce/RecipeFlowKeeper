@@ -1,13 +1,14 @@
 # Converter test set
 
-Five deliberately awkward recipes for checking `conversion-instructions.md` still
+Eight deliberately awkward recipes for checking `conversion-instructions.md` still
 produces the right shape. Run them whenever those instructions change: paste each
 source into a fresh conversion chat and compare the output against the notes here.
 
 These are synthetic — written to isolate one failure mode each, not to be cooked.
 They check structure, not wording: handle names and phrasing will vary, and that's
 fine. What must match is which ingredients sit in which group, where each group joins,
-and that every MERGE carries a duration.
+and that every MERGE carries a duration. Tests 6 to 8 are the exception: they check the ingredient lines
+themselves, because the shopping list totals lines by their wording.
 
 ---
 
@@ -105,6 +106,138 @@ syntax is presented. `SERVINGS:` must be present in the output, carrying the ans
 
 **Fails if:** the `SERVINGS:` line is omitted, or a number is invented from the
 quantities without asking.
+
+---
+
+## 6. Ingredient lines
+
+**Why:** added 23 Sep 2026. The shopping list reads ingredient lines mechanically, so every
+line has to be in the standard shape (`conversion-instructions.md` §1). Measured on the
+library, the lines that broke it were the ones below: fractions it couldn't read, ranges,
+multipliers, two ingredients on a line, alternatives, size words and preparation in the name.
+
+**Source:**
+
+> **Store-Cupboard Tomato Stew** — Serves 4. You'll need 1½ tsp ground cumin, 2-3 tbsp
+> olive oil, 1 large onion, diced, 2 x 400g tins chopped tomatoes, 1 cup plain flour, 4 tbsp
+> butter, melted, a knob of butter to finish, juice of 1 lemon, golden syrup or honey
+> (2 tbsp) and salt and freshly ground pepper to taste. Soften the onion in the oil for
+> 8 minutes, add the cumin, then the tomatoes, and simmer for 20 minutes. Stir in the rest
+> and season.
+
+**Must produce** lines in this shape (wording of the preparation may vary):
+
+```
+1 1/2 tsp ground cumin
+2-3 tbsp olive oil
+1 onion (large), diced
+800 g chopped tomatoes (2 tins)
+120 g plain flour
+60 g butter, melted
+1 knob butter, to finish        (or a weight, e.g. 15 g butter, to finish)
+1 lemon, juiced
+2 tbsp golden syrup (or honey)
+salt, to taste
+black pepper, to taste
+```
+
+**Fails if** any line:
+- holds two ingredients;
+- contains `½` or `x`;
+- has a size word ("large") between the quantity and the name;
+- puts preparation before the name ("juice of", "melted butter");
+- measures more than 1 tbsp of butter in spoons;
+- or uses an alternative ("or") outside brackets.
+
+---
+
+**Run 1, 23 Sep 2026: failed on one line, two softer misses.** The converter wrote
+`1 large onion, diced`, with the size word before the name. It also collapsed the range to
+`2 tbsp olive oil`, with the range in NOTES, and moved "or honey" to VARIATIONS. Everything
+else matched. The instructions were tightened on all three points the same day, and the test
+needs running again.
+
+**Run 2, 23 Sep 2026: passed.** Every line in the standard shape: the range kept
+(`2-3 tbsp olive oil`), `1 onion (large), diced`, `30 ml golden syrup (or honey)` on its own
+line, and butter by weight. The converter also noticed that this test's "bean stew" had no
+beans, so the test recipe was renamed *Tomato Stew*.
+
+---
+
+## 7. Vocabulary
+
+**Why:** added 23 Sep 2026. Lines only total when their names agree, and a converter that
+copies each source's wording writes the same ingredient several ways. `ingredient-names.md`
+is the list it must use.
+
+**Source:**
+
+> **Weeknight Noodle Bowl** — Serves 2. 2 scallions, sliced; a handful of cilantro; 1 red
+> bell pepper, sliced; 2 tbsp neutral oil; 150 ml heavy cream; 3 tbsp plain yogurt; 1 tbsp
+> all-purpose flour; 2 tbsp soy sauce. Fry the pepper in the oil for 4 minutes, stir in the
+> flour, then the soy sauce, cream and yogurt, and warm through for 2 minutes. Top with the
+> scallions and cilantro.
+
+**Must produce** the listed names: *spring onions, fresh coriander, red pepper, vegetable oil,
+double cream, natural yoghurt, plain flour, light soy sauce*.
+
+**Fails if** any source synonym survives into the output (scallions, cilantro, bell pepper,
+neutral oil, heavy cream, yogurt, all-purpose flour, or a bare "soy sauce").
+
+**Run 1, 23 Sep 2026: failed on one name.** The converter wrote `3 tbsp plain yogurt`;
+the other seven names matched. The instructions now tell it to look up every name in the
+"Also written as" column before presenting, and `test/validate-recipes.js` warns on any
+listed synonym, so this failure is now caught on the app's side too. The test needs running
+again.
+
+**Run 2, 23 Sep 2026: one name short.** `natural yoghurt` came through, but the converter
+wrote `1 handful coriander`, not `fresh coriander`. Bare "coriander" had not been listed as a
+synonym, because the ground-coriander row qualified it. It is now listed under *fresh
+coriander*, and the validator strips a leading count word ("handful") before looking a name
+up. The validator now flags this line; the test needs one more run.
+
+---
+
+## 8. Ingredients the list has never seen
+
+**Why:** added 23 Sep 2026, so the converter is not only tested on the vocabulary it was given.
+`ingredient-names.md` was built from the library's own recipes, and each new recipe brings
+about four ingredients the library hasn't met. This test uses **none of the listed
+ingredients**, so it checks the general rule: name each thing as a UK supermarket shelf
+labels it, in the standard line shape.
+
+**Source:**
+
+> **Green Curry Traybake** — Serves 4. 1 large eggplant, cubed; 1 can (400g) garbanzo beans,
+> drained; 250g ground beef; 1 stalk lemongrass, bruised; 2 kaffir lime leaves; 1 tbsp Thai
+> green curry paste; 1 can (400 ml) coconut milk; 1 tbsp fish sauce; a big handful of arugula
+> to serve. Roast the eggplant for 20 minutes at 200°C. Brown the beef for 6 minutes, stir in
+> the curry paste, lemongrass and lime leaves, then the coconut milk, fish sauce and
+> chickpeas, and simmer for 10 minutes. Pour over the eggplant and top with the arugula.
+
+**Must produce** these names, in the standard shape:
+
+- *aubergine*
+- *chickpeas*, e.g. `400 g chickpeas (1 tin), drained`
+- *beef mince*
+- *lemongrass*
+- *lime leaves* (the shelf name; "kaffir" is no longer used on UK labels)
+- *green curry paste*
+- *coconut milk*, e.g. `400 ml coconut milk (1 tin)`, **in ml**, as the tin is labelled
+- *fish sauce*
+- *rocket*
+
+**Fails if:**
+
+- an American or source-only word survives: eggplant, garbanzo, ground beef, arugula, can;
+- a size word leads a name ("large", "big");
+- the container is in the name ("1 can coconut milk");
+- or "stalk" and "handful" lines lack a number.
+
+**Worth knowing:** whoever maintains the vocabulary also wrote this test, so it is only partly
+independent. The strongest version of this test is the next real recipe from a site the
+library hasn't used before: convert it, run `validate-recipes.js`, and read the "new to
+ingredient-names.md" line it prints.
 
 ---
 

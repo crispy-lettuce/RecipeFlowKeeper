@@ -1,6 +1,6 @@
 # Recipe Conversion — Project Instructions
 
-*Revised 13 Sep 2026 — see the note at the end for what changed and why.*
+*Revised 23 Sep 2026 — see the notes at the end for what changed and why.*
 
 Whenever a recipe is given here — a photo, a URL, or pasted text — convert it into
 GROUP / STAGE / MERGE syntax for the recipe merge-flow tool. Work through these
@@ -42,16 +42,72 @@ stages in order every time; don't skip Check even for a simple recipe.
   silently blank — e.g. "I can't tell where this one's from — what should I record as
   the source?" If they say it's their own or a family recipe, record that answer as the
   source (e.g. "Personal recipe") rather than omitting the field.
-- **Standardise every quantity to these units only: `g`, `kg`, `ml`, `L`, `tbsp`,
-  `tsp`, `pinch`, `°C`.** If the source uses cups, oz, lb, °F, or anything else,
-  convert it at this stage — don't leave the source's original unit in the output. Use
-  standard cooking conversions (e.g. 1 cup plain flour ≈ 120g, 1 cup granulated sugar ≈
-  200g, 350°F = 180°C); where a cup-to-gram conversion genuinely depends on how the
+- **Convert every quantity to metric at this stage.** If the source uses cups, oz, lb, °F,
+  or anything else, convert it now; don't leave the source's original unit in the output.
+  Use standard cooking conversions (e.g. 1 cup plain flour ≈ 120g, 1 cup granulated sugar ≈
+  200g, 350°F = 180°C). Where a cup-to-gram conversion genuinely depends on how the
   ingredient settles (flour scooped vs. spooned, packed vs. loose brown sugar), use the
-  commonly accepted approximate figure rather than refusing to convert — this app has
-  no use for imperial units downstream, so an approximate metric figure is more useful
-  than an exact imperial one. Whole/countable items (2 eggs, 3 garlic cloves) aren't a
-  "unit" in this sense and don't need converting.
+  commonly accepted approximate figure rather than refusing to convert. This app has no use
+  for imperial units downstream, so an approximate metric figure is more useful than an
+  exact imperial one.
+- **Write every ingredient line in one shape: `<quantity> <unit> <name>, <preparation> (<note>)`.**
+  The shopping list reads these lines mechanically and totals two lines only when their
+  names agree, so the shape matters more than the wording. Examples:
+  ```
+  4 tbsp olive oil
+  1 onion, finely chopped
+  3 garlic cloves, crushed
+  400 g chopped tomatoes (1 tin)
+  375 g tinned tuna (3 × 125 g tins), drained
+  100 ml golden syrup (or honey)
+  1/2 orange, zest only
+  1 pinch nutmeg
+  black pepper, to taste
+  3 eggs (large)
+  ```
+  - **One ingredient per line.** "Salt and pepper to taste" is two lines: `salt, to taste`
+    and `black pepper, to taste`. A free choice ("any nuts or dried fruit") is one line with
+    a single name and the choices in brackets.
+  - **Quantity first**: a whole number, a decimal with a point (`1.5`), a fraction (`1/2`),
+    or a mixed number with a space (`1 1/2`). A range uses a hyphen (`2-3 tbsp`) and stays
+    in the line as the source gives it: don't pick one end or move the range to NOTES. Never
+    `½`, never "a" or "an", never a multiplier like `3 x 125 g`: write the total and put the
+    pack in the note, as in `375 g tinned tuna (3 × 125 g tins)`. Leave the quantity out
+    only for a line that ends `, to taste` or `, to serve`.
+  - **Unit**: `g`, `kg`, `ml`, `L`, `tsp`, `tbsp`, or one count word: `pinch`, `bunch`,
+    `handful`, `sprig`, `slice`, `rasher`, `piece`, `tin`. Countable things need no unit
+    (`2 onions`, `3 eggs`). Garlic and celery keep their natural form: `3 garlic cloves`,
+    `2 celery sticks`. Nothing else goes between the number and the name, so no "large",
+    "heaped" or "thumb-sized": write `1 onion (large), diced`, not "1 large onion, diced".
+  - **Weigh solids, measure liquids.** Above 1 tbsp, butter, sugar, flour, cocoa and nut
+    butters go in grams, not spoons: spoons of a solid can't be added to grams of the same
+    thing on the shopping list. **Tins and packs:** use the unit printed on them, with the
+    container in the note: `400 g chopped tomatoes (1 tin)`, `400 ml coconut milk (1 tin)`.
+    The container word never goes in the name ("400 g tin chopped tomatoes").
+  - **Name**: what you buy, **as a UK supermarket labels it on the shelf**, in plain British
+    English: *aubergine*, not eggplant; *beef mince*, not ground beef. Where
+    `ingredient-names.md` lists the ingredient, use its spelling exactly: that list records
+    the household's own choices and settles ambiguous words. Keep the words that change
+    what you buy: ground, dried, frozen, cooked, raw, smoked, double/single,
+    plain/self-raising, baby, spring, red/green/yellow, light/dark, unsalted, whole, bone-in.
+    Leave out the ones that don't: large, small, medium, ripe, fresh, free-range, pure,
+    extra. If a size matters, it goes in the note: `3 eggs (large)`.
+    **Before presenting, look up every name in the "Also written as" column of
+    `ingredient-names.md`.** If it appears there, replace it with the name in the "Write"
+    column: "plain yogurt" becomes `natural yoghurt`, "neutral oil" becomes `vegetable oil`.
+  - **Preparation after the first comma**, never before the name: `cheddar, grated`, not
+    "grated cheddar". The exception is when the prepared form is what you buy: *chopped
+    tomatoes, ground cumin, minced beef, flaked almonds*.
+  - **Part of an ingredient** is preparation, not a quantity: `1/2 orange, zest only`,
+    `1 lemon, juiced`, `1/2 bunch coriander, leaves only`, never "zest of 1/2 orange".
+    Written that way, the number comes first and scales.
+  - **Alternatives and notes in brackets**, with the first choice as the name:
+    `100 ml golden syrup (or honey)`, `600 ml chicken stock (or vegetable stock)`. The
+    first name is the one on the shopping list. Keep the alternative on the line itself:
+    VARIATIONS is for changes to the whole dish, not a swap for one ingredient.
+  - **The amount you buy, not the amount after cooking**:
+    `200 g long-grain rice, cooked and cooled`, not "600 g cooked rice". The shopping list
+    adds up what you buy.
 - **Pick one base unit per ingredient and stay with it.** Don't write one quantity of
   an ingredient in grams and another in kilograms within the same recipe. Prefer the
   smaller unit (`g`, `ml`) unless the quantity is naturally large enough to read oddly
@@ -208,9 +264,14 @@ Before presenting, compare the structured version against what was extracted, li
 line:
 
 - Every ingredient present once, with the right quantity, in a standardised unit
-  (`g`/`kg`/`ml`/`L`/`tbsp`/`tsp`/`pinch`/`°C` — no cups, oz, lb, or °F left over from
+  (`g`/`kg`/`ml`/`L`/`tbsp`/`tsp`, a count word such as `pinch` or `bunch`, `°C` — no cups, oz, lb, or °F left over from
   the source), using one consistent base unit per ingredient.
 - Every quantity phrased so it survives scaling — "1/2 lemon", not "1/2 a lemon".
+- **Every ingredient line in the standard shape**: one ingredient each, quantity and unit
+  first, no size word before the name, ranges kept as ranges, preparation after the first
+  comma, and alternatives in brackets on the line.
+- **Every name checked against `ingredient-names.md`**: none of the "Also written as"
+  phrases survives.
 - Every method step represented somewhere — STEPS, a STAGE, or NOTES.
 - **Every ingredient joins at the point the method actually adds it** — anything added
   off the heat, at the end, or after a cooking step sits in its own group merging in at
@@ -240,6 +301,21 @@ Report gaps as a short list (found → fixed), not a long essay.
   and when.
 
 ---
+
+## Revision note (23 Sep 2026)
+
+Changed from the previous version, following `docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md`:
+
+- **A standard shape for every ingredient line**, and a **shared vocabulary**
+  (`ingredient-names.md`) to take names from. Measured on the library, the converter copied
+  each source's wording, so the shopping list could not total the same ingredient written
+  different ways: 274 rows for 168 things to buy. 24 lines could only ever be fixed here,
+  among them "X or Y" alternatives, lines holding two ingredients, a tin in ml and a
+  cooked weight for something bought uncooked.
+- **Count words** (`pinch`, `bunch`, `clove`…) are now allowed as units, and the old units
+  bullet keeps only the metric conversion guidance.
+- **Weigh solids above 1 tbsp; tins in grams; the amount you buy, not the cooked amount.**
+- Tests 6 and 7 in `test-set.md` check the new rules.
 
 ## Revision note (13 Sep 2026)
 

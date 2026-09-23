@@ -125,6 +125,43 @@ reverts after an unrelated save is the feature failing in a way that looks exact
 
 ---
 
+### `docs/REVIEW-INGREDIENT-MATCHING.md` — brief for reviewing the shopping list's matching
+**What:** A self-contained brief for a separate review session. It covers how ingredient lines
+become shopping-list items today, the faults already found by running the real functions, what
+makes changes expensive, the questions to answer, and how to measure against the real library.
+It ends with the prompt that starts the session.
+
+**Use it when:** starting that review, or before touching `splitQty`, `normalizeIngredientName`,
+word matches or the converter's ingredient rules.
+
+**Don't:** commit library data while following it. Its examples are made up on purpose; the repo
+is public.
+
+---
+
+### `docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md` — what that review found, and what to do
+**What:** The answer to the brief above, measured against the real library on 22 Sep 2026: 34
+recipes and 463 lines, scored with the app's own functions against a hand-labelled answer key of
+168 items. It covers:
+
+- the fault classes and how often each occurs;
+- every idea tested, one at a time and combined;
+- two real weeks rebuilt before and after;
+- ranked recommendations;
+- the proposed ingredient-line format and converter wording;
+- a migration plan for recipes, word matches and ticks;
+- a test plan in which every check names the mutation that must fail it.
+
+It ends with twelve decisions for the household.
+
+**Use it when:** deciding what to build for the shopping list, or before changing `splitQty`,
+the converter's ingredient rules or word matches. **Nothing in it has been implemented.**
+
+**Don't:** look for the real lines here. They are in a private appendix that was handed to the
+household and is not in this repo.
+
+---
+
 ### `docs/NEXT-SESSION.md` — the order of work, and how to start
 **What:** **The definitive sequence for what happens next**, with the reasoning behind the three
 places where order genuinely matters. Plus a complete, ready-to-paste prompt for the next session
@@ -148,6 +185,9 @@ own group.
 **Use it when:** adding any recipe. Paste it, or its contents, into a conversation along with the
 source recipe.
 
+**Give it, with `converter/ingredient-names.md`,** to the conversion project. That file is the
+shared vocabulary ingredient names are taken from, so the shopping list can total them.
+
 **Keep in step with:** the app's parser. The two must agree — a mismatch between what this asks
 for and what `parseRecipe` understands caused a real bug (`[instant]` durations the app didn't
 recognise, leaving raw bracket text visible in the diagram).
@@ -155,13 +195,14 @@ recognise, leaving raw bracket text visible in the diagram).
 ---
 
 ### `converter/test-set.md` — the converter's regression tests
-**What:** Five deliberately awkward recipes, each isolating one failure mode — a late addition, a
-split ingredient, parallel prep, a zero-length step, a missing yield — with what a correct
+**What:** Eight deliberately awkward recipes, each isolating one failure mode — a late addition, a
+split ingredient, parallel prep, a zero-length step, a missing yield, and (since 23 Sep) the
+shape and vocabulary of ingredient lines, including ingredients the vocabulary has never seen — with what a correct
 conversion must produce and what counts as a failure. Plus three audits of the real library. The
 first two (13 and 14 Sep) describe the pre-reprocess library and are history now; the third
 (20 Sep) re-runs all five tests against what's actually in the database.
 
-**Use it when:** you change `conversion-instructions.md`. Run all five through the revised
+**Use it when:** you change `conversion-instructions.md`. Run all eight through the revised
 instructions and compare. Also the record of which library faults have been fixed and when.
 
 **Worth knowing:** these tests check what the *converter* writes, not what the app's parser
@@ -184,6 +225,27 @@ repo — recipe data must never be committed here.
 ```sh
 node test/build.js && node test/validate-recipes.js ~/recipes.md
 ```
+
+Since 23 Sep it also warns on ingredient lines outside the standard shape, and lists names that
+`converter/ingredient-names.md` doesn't know. Those checks live in **`test/ingredient-lines.js`**,
+shared with **`test/ingredient-survey.js`**. The survey reads a bulk extraction made with
+`converter/ingredient-extraction-prompt.md`, again from outside the repo, and reports names and
+spellings worth adding to the vocabulary.
+
+```sh
+node test/build.js && node test/ingredient-survey.js ~/kitchen-survey/*.md --out ~/kitchen-survey/report.md
+```
+
+---
+
+### `converter/ingredient-extraction-prompt.md` — surveying recipes in bulk
+**What:** A prompt that pulls only the ingredient lines out of a batch of recipes, each in the
+standard shape and in the source's own words. Used with `test/ingredient-survey.js` to grow
+`ingredient-names.md` from recipes it was not built from.
+
+**Use it when:** before adding the vocabulary rows by hand, or every so often as the library
+grows. **Don't** commit the extractions or the report: they are recipe text, and this repo is
+public.
 
 ---
 
