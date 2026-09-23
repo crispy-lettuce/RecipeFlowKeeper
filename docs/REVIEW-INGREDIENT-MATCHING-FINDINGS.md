@@ -2,8 +2,15 @@
 
 **Written 22 Sep 2026**, answering the brief in `docs/REVIEW-INGREDIENT-MATCHING.md`. Every number
 here was measured against the real library: 34 recipes and 463 ingredient lines, read from Supabase
-and scored with the app's own functions. **Nothing has been changed.** This is a review; it stops
-for your decisions (§9).
+and scored with the app's own functions. It stopped for the household's decisions (§9).
+
+**Decided 23 Sep 2026: all twelve as recommended.** Progress against the ranked list:
+
+| # | Status |
+| --- | --- |
+| 1 | **Built on branch `claude/intelligent-feynman-1i4fwp`, not yet on `main`.** `splitQty`, `parseFraction`, `parseIngredientAmount` and `scaleRecipeSyntax` now read mixed numbers, `1½`, ranges, "up to" and `3 x 400 g`. On the real library exactly the 7 predicted lines change, and all 6 scaling faults are gone. Smoke 191 → 197; mutation-testing of the new checks in progress |
+| 2 | **For the household**, in Settings → Word Matches: delete the inverted match and the orphaned one (the private appendix, section A, names them) |
+| 3–8 | Not started |
 
 **No library data is in this file.** The repo is public, so every example line below is made up to
 show the same fault. The real lines, word matches and weeks behind each number are in a private

@@ -153,7 +153,7 @@ Some context worth having:
     the branch and I'll decide when to merge.
   - index.html is the whole app. One file, no build step, no framework.
     Run `node test/build.js && node test/smoke.js` after any code change.
-    191 checks. Run both — smoke.js loads what build.js wrote, so skipping
+    197 checks. Run both — smoke.js loads what build.js wrote, so skipping
     the build tests your previous edit. It stubs Supabase, so it proves
     nothing about sign-in.
   - Several columns already exist for these features (recipe_logs.meal_type,

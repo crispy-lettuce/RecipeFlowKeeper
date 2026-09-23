@@ -592,6 +592,37 @@ const path = require('path');
   check('a URL below a group is left alone', headerSafe.includes('https://example.com/2-of-these'),
         headerSafe.replace(/\n/g, ' | '));
 
+  /* The quantity reader (docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md §4.6).
+     Before 22 Sep, "1 3/4 tbsp" read as 1 and doubled to "2 3/4"; ranges,
+     "up to" and "3 x 400 g" were no quantity at all, so never scaled. Each
+     check below was run against the mutation named beside it and failed. */
+  const qtyRead = await page.evaluate(() => {
+    const x2 = l => scaleRecipeSyntax('GROUP a:\n' + l, 2).split('\n')[1];
+    const amt = l => { const a = parseIngredientAmount(splitQty(l).qty); return a && a.amount; };
+    return {
+      mixed: [amt('1 1/2 tsp ground mace'), x2('1 1/2 tsp ground mace')],       // mutation: drop the mixed-number branch
+      vulgar: [amt('1½ tsp ground mace'), amt('1 ½ tsp ground mace')],         // mutation: drop the attached-fraction branch
+      range: [x2('2-3 tbsp capers'), x2('2–3 tbsp capers'), amt('2-3 tbsp capers')], // mutation: drop the range branch / buy the lower figure
+      pack: [x2('3 x 400 g tins butter beans'), amt('3 x 400 g tins butter beans')],  // mutation: scale the pack size instead
+      upTo: x2('up to 300 ml cider'),                                          // mutation: drop the "up to" branch
+      display: splitQty('1 3/4 tbsp fish sauce'),                              // mutation: revert splitQty
+      longUnit: splitQty('500 grams strong flour')
+    };
+  });
+  check('a mixed number reads whole and scales', qtyRead.mixed[0] === 1.5 && qtyRead.mixed[1] === '3 tsp ground mace',
+        JSON.stringify(qtyRead.mixed));
+  check('"1½" and "1 ½" read as 1.5', qtyRead.vulgar[0] === 1.5 && qtyRead.vulgar[1] === 1.5, JSON.stringify(qtyRead.vulgar));
+  check('a range scales at both ends and buys the upper figure',
+        qtyRead.range[0] === '4-6 tbsp capers' && qtyRead.range[1] === '4–6 tbsp capers' && qtyRead.range[2] === 3,
+        JSON.stringify(qtyRead.range));
+  check('"3 x 400 g" scales the count, not the tin, and totals 1.2 kg',
+        qtyRead.pack[0] === '6 x 400 g tins butter beans' && qtyRead.pack[1] === 1200, JSON.stringify(qtyRead.pack));
+  check('"up to" scales and keeps its words', qtyRead.upTo === 'up to 600 ml cider', qtyRead.upTo);
+  check('the flow table shows the whole quantity',
+        qtyRead.display.qty === '1 3/4 tbsp' && qtyRead.display.rest === 'fish sauce'
+        && qtyRead.longUnit.qty === '500 grams' && qtyRead.longUnit.rest === 'strong flour',
+        JSON.stringify([qtyRead.display, qtyRead.longUnit]));
+
   // The form scales to a headcount too, working the multiplier out of SERVINGS.
   await page.fill('#importInput', 'TITLE: Scale Test\nSOURCE: Somewhere\nSERVINGS: 4\n\nGROUP a:\n300 g pasta\n\nSTAGE:\nMERGE a -> done: Cook [5 min]');
   await page.click('#parseBtn');

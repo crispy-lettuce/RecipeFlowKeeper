@@ -1714,8 +1714,33 @@ function escapeHtml(s){
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+/* The leading quantity of an ingredient line, split from the rest.
+
+   A NUMBER is a whole number or decimal ("2", "1.5"), a fraction ("1/2"),
+   a mixed number ("1 1/2"), or a digit with a vulgar fraction ("1½",
+   "1 ½", "½"). The mixed forms are tried first: before 22 Sep the pattern
+   stopped at the first space, so "1 3/4 tbsp" was read as 1 and scaled to
+   "2 3/4 tbsp" instead of "3 1/2 tbsp" — a wrong amount in front of the
+   cook, measured on 3 lines of the real library.
+
+   Around the number it also takes "up to", a range ("3-4", "3–4",
+   "3 to 4") and a pack count ("3 x 125 g"), which before were no
+   quantity at all, so those lines were never scaled or totalled
+   (docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md §2.2).
+
+   DELIBERATELY NUMBERS AND MEASURES ONLY. Count words (pinch, clove, bunch)
+   are a shopping-list matter: taught here, scaling would write
+   "2 pinch salt", and every name that changes re-keys a tick. The unit
+   list gains only the long spellings normalizeUnit already maps
+   ("grams", "litre"), which were unreachable before. */
+const QTY_NUM = '(?:\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+(?:\\.\\d+)?\\s?[¼½¾⅓⅔]|\\d+(?:\\.\\d+)?|[¼½¾⅓⅔])';
+const QTY_UNIT = '(?:g|kg|ml|l|cups?|tsp|tbsp|teaspoons?|tablespoons?|oz|lb|grams?|grammes?|kilos?|kgs|kilograms?|millilitres?|milliliters?|litres?|liters?)';
+const QTY_RE = new RegExp('^((?:up to\\s+)?' + QTY_NUM +
+  '(?:\\s*(?:-|–|—|\\s+to\\s+)\\s*' + QTY_NUM + ')?' +
+  '(?:\\s*x\\s*' + QTY_NUM + ')?' +
+  '(?:\\s?' + QTY_UNIT + ')?)\\s+(.*)$', 'i');
 function splitQty(line){
-  const m = line.match(/^([\d¼½¾⅓⅔.\/]+\s?(?:g|kg|ml|l|cup|cups|tsp|tbsp|teaspoon|teaspoons|tablespoon|tablespoons|oz|lb)?)\s+(.*)$/i);
+  const m = line.match(QTY_RE);
   if(m && m[2]) return {qty:m[1].trim(), rest:m[2].trim()};
   return {qty:'', rest:line};
 }
@@ -2212,13 +2237,19 @@ function scaleRecipeSyntax(syntaxText, multiplier){
     if(!qty) return line; // no recognisable leading quantity at all — a bare "salt to taste" style line, left as-is
     const parsed = parseIngredientAmount(qty);
     if(!parsed) return line; // quantity present but not a form we can scale confidently (e.g. "a pinch")
-    const scaledAmount = parsed.amount * multiplier;
-    // preserve a space between amount and unit only if the original had one (e.g. "3 tbsp" vs "500g")
-    const hadSpace = /^\S+\s+\S/.test(qty);
-    const rebuiltQty = parsed.unit
-      ? `${formatAmount(scaledAmount)}${hadSpace ? ' ' : ''}${parsed.unit}`
-      : formatAmount(scaledAmount);
-    return rebuiltQty + ' ' + rest;
+    // keep a space between amount and unit only if the original had one ("3 tbsp" vs "500g")
+    const unitText = parsed.unit ? `${parsed.space ? ' ' : ''}${parsed.unit}` : '';
+    let rebuiltQty;
+    if(parsed.count !== undefined){
+      /* "3 x 125 g tins": more people means more tins, not bigger ones. */
+      rebuiltQty = `${formatAmount(parsed.count * multiplier)} x ${formatAmount(parsed.each)}${unitText}`;
+    } else if(parsed.low !== undefined){
+      const dash = /to/i.test(parsed.dash) ? ' to ' : parsed.dash;
+      rebuiltQty = `${formatAmount(parsed.low * multiplier)}${dash}${formatAmount(parsed.high * multiplier)}${unitText}`;
+    } else {
+      rebuiltQty = `${formatAmount(parsed.amount * multiplier)}${unitText}`;
+    }
+    return (parsed.upTo ? 'up to ' : '') + rebuiltQty + ' ' + rest;
   });
 
   let result = scaledLines.join('\n');
@@ -5043,7 +5074,11 @@ function weekStartIsoOf(days){
 /* ------------------------------- Amount parsing ------------------------------- */
 function parseFraction(s){
   const fracMap = {'¼':0.25,'½':0.5,'¾':0.75,'⅓':1/3,'⅔':2/3};
+  s = String(s).trim();
   if(fracMap[s] !== undefined) return fracMap[s];
+  let m;
+  if(m = s.match(/^(\d+)\s+(\d+)\/(\d+)$/)) return +m[3] ? +m[1] + (+m[2])/(+m[3]) : null;  // "1 1/2"
+  if(m = s.match(/^(\d+(?:\.\d+)?)\s?([¼½¾⅓⅔])$/)) return +m[1] + fracMap[m[2]];               // "1½", "1 ½"
   if(s.indexOf('/') !== -1){
     const parts = s.split('/');
     const n = parseFloat(parts[0]), d = parseFloat(parts[1]);
@@ -5082,12 +5117,33 @@ function formatShoppingQty(amount, unit){
    into {amount, unit}. Returns null when it doesn't reduce to a clean
    number — those ingredients still appear, just without a combined total,
    per the deliberate no-AI-guessing rule for this app. */
+/* Beyond {amount, unit} it reports the shape, so scaling can rewrite each
+   number where it stands: `low`/`high` for a range, `count` for "3 x 125 g"
+   (amount is then the whole, 375 g), `upTo` for "up to 500 ml". A range
+   buys its upper figure — the shopping list should never leave you short. */
+const QTY_PARTS_RE = new RegExp('^(up to\\s+)?(' + QTY_NUM + ')' +
+  '(?:\\s*(-|–|—|\\s+to\\s+)\\s*(' + QTY_NUM + '))?' +
+  '(?:\\s*x\\s*(' + QTY_NUM + '))?' +
+  '(\\s?)([a-zA-Z]*)$', 'i');
 function parseIngredientAmount(qtyStr){
   if(!qtyStr) return null;
-  const m = qtyStr.match(/^([\d¼½¾⅓⅔.\/]+)\s*([a-zA-Z]*)$/);
+  const m = String(qtyStr).trim().match(QTY_PARTS_RE);
   if(!m) return null;
-  const amount = parseFraction(m[1]);
-  return amount === null ? null : { amount, unit: normalizeUnit(m[2]) };
+  const first = parseFraction(m[2]);
+  if(first === null) return null;
+  const unit = normalizeUnit(m[7]);
+  const base = { unit, upTo: !!m[1], space: m[6] };
+  if(m[5] !== undefined){
+    const each = parseFraction(m[5]);
+    if(each === null) return null;
+    return { ...base, amount: first * each, count: first, each };
+  }
+  if(m[4] !== undefined){
+    const high = parseFraction(m[4]);
+    if(high === null) return null;
+    return { ...base, amount: high, low: first, high, dash: m[3] };
+  }
+  return { ...base, amount: first };
 }
 /* What two ingredient lines have to agree on to be totalled together.
    Prep words are noise here: "2 cloves garlic" and "1 clove garlic, minced"
