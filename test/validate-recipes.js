@@ -56,6 +56,26 @@ function extractBlocks(md){
   return out;
 }
 
+/* The converter's shared vocabulary, read from converter/ingredient-names.md
+   so there is one list, not two. Each "Also written as" phrase maps to the name
+   to write instead. Only plain phrases are taken: anything with brackets or a
+   qualifier ("when a powder") needs judgement, and a warning that fires on a
+   correct line is worse than one that stays quiet. Exact matches only, so
+   "olive oil" is never mistaken for "oil". */
+const VOCAB = new Map();
+try {
+  const md = fs.readFileSync(path.join(__dirname, '..', 'converter', 'ingredient-names.md'), 'utf8');
+  md.split('\n').forEach(row => {
+    const cells = row.split('|').map(c => c.trim());
+    if(cells.length < 4 || !cells[1] || /^(write|-+)$/i.test(cells[1])) return;
+    const canonical = cells[1].toLowerCase();
+    cells[2].split(',').map(x => x.trim().toLowerCase()).forEach(syn => {
+      if(!syn || /[()*"'`]|\b(when|not|is|plain "sugar")\b/.test(syn) || syn === canonical) return;
+      VOCAB.set(syn, canonical);
+    });
+  });
+} catch(e){ /* no vocabulary file: the shape check still runs, just without names */ }
+
 (async () => {
   const md = fs.readFileSync(srcPath, 'utf8');
   const blocks = extractBlocks(md);
@@ -181,8 +201,13 @@ function extractBlocks(md){
       if(/\band\b|&/.test(name) || (segments.length >= 3 && /\band\b/.test(segments[1]))) why.push('two ingredients on one line?');
       if(/\s(or|and\/or)\s/.test(name)) why.push('alternative outside brackets');
       if(/^(large|small|medium|big|heaped|level|generous|thumb-sized)\b/.test(name)) why.push('size word before the name');
-      if(/^(minced|grated|chopped|diced|sliced|crushed|melted|softened|beaten)\b/.test(name)
-         || /^(juice|zest|leaves|stalks)\s+(of|from)\b/.test(name)) why.push('preparation before the name');
+      /* Where the prepared form is what you buy, it is the name, not preparation
+         (conversion-instructions.md: "chopped tomatoes, ground cumin, minced beef"). */
+      const productForm = /^(chopped tomatoes|minced (beef|pork|lamb|turkey|chicken)|flaked almonds)\b/.test(name);
+      if(!productForm && (/^(minced|grated|chopped|diced|sliced|crushed|melted|softened|beaten)\b/.test(name)
+         || /^(juice|zest|leaves|stalks)\s+(of|from)\b/.test(name))) why.push('preparation before the name');
+      const listed = VOCAB.get(name.replace(/^(\d[\d\s\/.-]*)?\s*(g|kg|ml|l|tsp|tbsp)?\s+/i, '').trim());
+      if(listed) why.push(`use the listed name "${listed}"`);
       if(/\bml\b/.test(qty) && /^(tins?|cans?)\b/.test(name)) why.push('tin measured in ml');
       if(!qty && !/,.*\bto (taste|serve|glaze|finish)\b/i.test(line) && !/^(pinch|handful|squeeze|knob)\b/i.test(line)) why.push('no quantity');
       if(why.length) shapeFaults.push(`"${line.slice(0,64)}" — ${why.join('; ')}`);

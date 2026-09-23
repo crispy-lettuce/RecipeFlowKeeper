@@ -134,7 +134,7 @@ multipliers, two ingredients on a line, alternatives, size words and preparation
 800 g chopped tomatoes (2 tins)
 120 g plain flour
 60 g butter, melted
-1 knob butter, to finish
+1 knob butter, to finish        (or a weight, e.g. 15 g butter, to finish)
 1 lemon, juiced
 2 tbsp golden syrup (or honey)
 salt, to taste
@@ -148,6 +148,14 @@ black pepper, to taste
 - puts preparation before the name ("juice of", "melted butter");
 - measures more than 1 tbsp of butter in spoons;
 - or uses an alternative ("or") outside brackets.
+
+---
+
+**Run 1, 23 Sep 2026: failed on one line, two softer misses.** The converter wrote
+`1 large onion, diced`, with the size word before the name. It also collapsed the range to
+`2 tbsp olive oil`, with the range in NOTES, and moved "or honey" to VARIATIONS. Everything
+else matched. The instructions were tightened on all three points the same day, and the test
+needs running again.
 
 ---
 
@@ -170,6 +178,12 @@ double cream, natural yoghurt, plain flour, light soy sauce*.
 
 **Fails if** any source synonym survives into the output (scallions, cilantro, bell pepper,
 neutral oil, heavy cream, yogurt, all-purpose flour, or a bare "soy sauce").
+
+**Run 1, 23 Sep 2026: failed on one name.** The converter wrote `3 tbsp plain yogurt`;
+the other seven names matched. The instructions now tell it to look up every name in the
+"Also written as" column before presenting, and `test/validate-recipes.js` warns on any
+listed synonym, so this failure is now caught on the app's side too. The test needs running
+again.
 
 ---
 

@@ -69,7 +69,8 @@ stages in order every time; don't skip Check even for a simple recipe.
     and `black pepper, to taste`. A free choice ("any nuts or dried fruit") is one line with
     a single name and the choices in brackets.
   - **Quantity first**: a whole number, a decimal with a point (`1.5`), a fraction (`1/2`),
-    or a mixed number with a space (`1 1/2`). A range uses a hyphen (`2-3 tbsp`). Never
+    or a mixed number with a space (`1 1/2`). A range uses a hyphen (`2-3 tbsp`) and stays
+    in the line as the source gives it: don't pick one end or move the range to NOTES. Never
     `½`, never "a" or "an", never a multiplier like `3 x 125 g`: write the total and put the
     pack in the note, as in `375 g tinned tuna (3 × 125 g tins)`. Leave the quantity out
     only for a line that ends `, to taste` or `, to serve`.
@@ -77,7 +78,7 @@ stages in order every time; don't skip Check even for a simple recipe.
     `handful`, `sprig`, `slice`, `rasher`, `piece`, `tin`. Countable things need no unit
     (`2 onions`, `3 eggs`). Garlic and celery keep their natural form: `3 garlic cloves`,
     `2 celery sticks`. Nothing else goes between the number and the name, so no "large",
-    "heaped" or "thumb-sized".
+    "heaped" or "thumb-sized": write `1 onion (large), diced`, not "1 large onion, diced".
   - **Weigh solids, measure liquids.** Above 1 tbsp, butter, sugar, flour, cocoa and nut
     butters go in grams, not spoons: spoons of a solid can't be added to grams of the same
     thing on the shopping list. Tinned goods go in grams (`400 g chopped tomatoes (1 tin)`),
@@ -88,6 +89,9 @@ stages in order every time; don't skip Check even for a simple recipe.
     plain/self-raising, baby, spring, red/green/yellow, light/dark, unsalted, whole, bone-in.
     Leave out the ones that don't: large, small, medium, ripe, fresh, free-range, pure,
     extra. If a size matters, it goes in the note: `3 eggs (large)`.
+    **Before presenting, look up every name in the "Also written as" column of
+    `ingredient-names.md`.** If it appears there, replace it with the name in the "Write"
+    column: "plain yogurt" becomes `natural yoghurt`, "neutral oil" becomes `vegetable oil`.
   - **Preparation after the first comma**, never before the name: `cheddar, grated`, not
     "grated cheddar". The exception is when the prepared form is what you buy: *chopped
     tomatoes, ground cumin, minced beef, flaked almonds*.
@@ -96,7 +100,8 @@ stages in order every time; don't skip Check even for a simple recipe.
     Written that way, the number comes first and scales.
   - **Alternatives and notes in brackets**, with the first choice as the name:
     `100 ml golden syrup (or honey)`, `600 ml chicken stock (or vegetable stock)`. The
-    first name is the one on the shopping list.
+    first name is the one on the shopping list. Keep the alternative on the line itself:
+    VARIATIONS is for changes to the whole dish, not a swap for one ingredient.
   - **The amount you buy, not the amount after cooking**:
     `200 g long-grain rice, cooked and cooled`, not "600 g cooked rice". The shopping list
     adds up what you buy.
@@ -260,8 +265,10 @@ line:
   the source), using one consistent base unit per ingredient.
 - Every quantity phrased so it survives scaling — "1/2 lemon", not "1/2 a lemon".
 - **Every ingredient line in the standard shape**: one ingredient each, quantity and unit
-  first, preparation after the first comma, alternatives in brackets, and names from
-  `ingredient-names.md` wherever one fits.
+  first, no size word before the name, ranges kept as ranges, preparation after the first
+  comma, and alternatives in brackets on the line.
+- **Every name checked against `ingredient-names.md`**: none of the "Also written as"
+  phrases survives.
 - Every method step represented somewhere — STEPS, a STAGE, or NOTES.
 - **Every ingredient joins at the point the method actually adds it** — anything added
   off the heat, at the end, or after a cooking step sits in its own group merging in at
