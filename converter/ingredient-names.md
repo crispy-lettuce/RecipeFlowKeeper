@@ -33,8 +33,14 @@ anything, so a row for it is upkeep with no benefit.
 copy of this list moves into the app, this file is generated from it, and a test fails if the two
 differ, so there is only ever one list to edit. Until then, this file is the only copy.
 
-**Where the rows came from.** The rows below are the 79 ingredients shared by two or more recipes in
-September 2026, which covered 80% of all ingredient lines.
+**Where the rows came from.** 78 rows are the 79 ingredients the review found shared by two or
+more recipes in September 2026, which covered 80% of all ingredient lines. (The review scored 79;
+two of its items share a row here. Counted, not reconciled: the gap was found on 23 Sep.) The
+other 12 came from the first ingredient survey on 23 Sep 2026: 17 recipes from two sites the
+library hadn't used, one British and one American. Each turned up in two or more of them.
+*Italian seasoning* was deliberately **not** added as a spelling of dried oregano: it is a
+different product, and the survey only offered it because the extractor had swapped one for the
+other.
 
 **Decided by the household, 23 Sep 2026, and reflected below:**
 
@@ -52,7 +58,8 @@ September 2026, which covered 80% of all ingredient lines.
 | --- | --- | --- |
 | garlic | garlic clove(s) | `3 garlic cloves` |
 | onion | white onion, brown onion, yellow onion | `2 onions` |
-| spring onions | scallions, green onions | `1 bunch spring onions` |
+| red onion | | `1 red onion` |
+| spring onions | scallions, scallion, green onions | `1 bunch spring onions` |
 | red pepper | red bell pepper | `1 red pepper` |
 | green pepper | green bell pepper | `1 green pepper` |
 | red chilli | red chile, fresh red chilli | `2 red chillies` |
@@ -62,6 +69,9 @@ September 2026, which covered 80% of all ingredient lines.
 | celery | celery stick(s) | `2 celery sticks` |
 | cherry tomatoes | | weight |
 | baby spinach | spinach leaves (when baby) | weight |
+| cucumber | | `1 cucumber` |
+| potatoes | | weight |
+| romaine lettuce | | `1 romaine lettuce` |
 | lemon juice | fresh lemon juice | ml or spoons; whole lemons: `1 lemon, juiced` |
 
 ## Meat & Fish
@@ -72,6 +82,7 @@ September 2026, which covered 80% of all ingredient lines.
 | chorizo | cooking chorizo (when the source means it) |
 | raw king prawns | king prawns (when cooked in the dish), jumbo shrimp |
 | salmon fillets | tail-end salmon fillets |
+| streaky bacon | bacon (in US recipes; in a British one it usually means back bacon, so check) |
 
 ## Dairy & Eggs
 
@@ -115,10 +126,15 @@ September 2026, which covered 80% of all ingredient lines.
 | raspberry jam | seedless raspberry jam, soft-set raspberry jam |
 | long grain rice | long-grain rice (write the **uncooked** amount, D4) |
 | rigatoni | pasta shapes (when rigatoni) |
+| spaghetti | dried spaghetti |
 | orzo | |
 | chopped tomatoes | tinned chopped tomatoes (write `400 g chopped tomatoes (1 tin)`, as the tin is labelled) |
 | tomato purée | tomato paste |
 | sun-dried tomatoes | |
+| tomato ketchup | ketchup |
+| mayonnaise | mayo |
+| gherkins | dill pickles |
+| panko breadcrumbs | |
 | chicken stock | chicken broth, hot chicken stock |
 | light soy sauce | soy sauce |
 | dark soy sauce | |
@@ -134,13 +150,15 @@ September 2026, which covered 80% of all ingredient lines.
 | salt | table salt, fine salt |
 | sea salt | fine sea salt, flaky sea salt |
 | black pepper | pepper, ground black pepper, freshly ground black pepper |
+| white pepper | ground white pepper |
 | garlic salt | |
 | garlic powder | |
 | paprika | sweet paprika (not smoked, which is its own item) |
+| smoked paprika | |
 | chilli flakes | crushed chillies, red pepper flakes |
 | chilli powder | mild chilli powder, hot chilli powder |
 | cajun seasoning | cajun spice mix, cajun spice |
-| dried oregano | oregano (when dried) |
+| dried oregano | oregano, *fresh oregano is its own item* |
 | ground cumin | cumin (when a powder) |
 | ground coriander | coriander powder (bare "coriander" means the leaf, so write *fresh coriander* for that) |
 | ground cinnamon | cinnamon (when a powder) |
