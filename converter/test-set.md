@@ -118,7 +118,7 @@ multipliers, two ingredients on a line, alternatives, size words and preparation
 
 **Source:**
 
-> **Store-Cupboard Bean Stew** — Serves 4. You'll need 1½ tsp ground cumin, 2-3 tbsp
+> **Store-Cupboard Tomato Stew** — Serves 4. You'll need 1½ tsp ground cumin, 2-3 tbsp
 > olive oil, 1 large onion, diced, 2 x 400g tins chopped tomatoes, 1 cup plain flour, 4 tbsp
 > butter, melted, a knob of butter to finish, juice of 1 lemon, golden syrup or honey
 > (2 tbsp) and salt and freshly ground pepper to taste. Soften the onion in the oil for
@@ -157,6 +157,11 @@ black pepper, to taste
 else matched. The instructions were tightened on all three points the same day, and the test
 needs running again.
 
+**Run 2, 23 Sep 2026: passed.** Every line in the standard shape: the range kept
+(`2-3 tbsp olive oil`), `1 onion (large), diced`, `30 ml golden syrup (or honey)` on its own
+line, and butter by weight. The converter also noticed that this test's "bean stew" had no
+beans, so the test recipe was renamed *Tomato Stew*.
+
 ---
 
 ## 7. Vocabulary
@@ -184,6 +189,12 @@ the other seven names matched. The instructions now tell it to look up every nam
 "Also written as" column before presenting, and `test/validate-recipes.js` warns on any
 listed synonym, so this failure is now caught on the app's side too. The test needs running
 again.
+
+**Run 2, 23 Sep 2026: one name short.** `natural yoghurt` came through, but the converter
+wrote `1 handful coriander`, not `fresh coriander`. Bare "coriander" had not been listed as a
+synonym, because the ground-coriander row qualified it. It is now listed under *fresh
+coriander*, and the validator strips a leading count word ("handful") before looking a name
+up. The validator now flags this line; the test needs one more run.
 
 ---
 

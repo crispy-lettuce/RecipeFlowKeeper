@@ -41,7 +41,7 @@ second recipe.
 | green pepper | green bell pepper | `1 green pepper` |
 | red chilli | red chile, fresh red chilli | `2 red chillies` |
 | fresh ginger | ginger, root ginger, ginger root | weight, or `1 piece fresh ginger (5 cm)` |
-| fresh coriander | coriander leaves, cilantro | `1 bunch fresh coriander` |
+| fresh coriander | coriander, coriander leaves, cilantro | `1 bunch fresh coriander` |
 | parsley | curly parsley, flat-leaf parsley, fresh parsley | `1 bunch parsley` |
 | celery | celery stick(s) | `2 celery sticks` |
 | cherry tomatoes | | weight |
@@ -126,7 +126,7 @@ second recipe.
 | cajun seasoning | cajun spice mix, cajun spice |
 | dried oregano | oregano (when dried) |
 | ground cumin | cumin (when a powder) |
-| ground coriander | coriander (when a powder, **never** the leaf) |
+| ground coriander | coriander powder (bare "coriander" means the leaf, so write *fresh coriander* for that) |
 | ground cinnamon | cinnamon (when a powder) |
 | ground turmeric | turmeric |
 | cardamom pods | green cardamom pods |

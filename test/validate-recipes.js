@@ -206,7 +206,10 @@ try {
       const productForm = /^(chopped tomatoes|minced (beef|pork|lamb|turkey|chicken)|flaked almonds)\b/.test(name);
       if(!productForm && (/^(minced|grated|chopped|diced|sliced|crushed|melted|softened|beaten)\b/.test(name)
          || /^(juice|zest|leaves|stalks)\s+(of|from)\b/.test(name))) why.push('preparation before the name');
-      const listed = VOCAB.get(name.replace(/^(\d[\d\s\/.-]*)?\s*(g|kg|ml|l|tsp|tbsp)?\s+/i, '').trim());
+      /* A count word may still lead the name ("handful coriander"): splitQty leaves
+         count words in place on purpose, so drop one before looking the name up. */
+      const bareName = name.replace(/^(pinch(es)?|bunch(es)?|handfuls?|sprigs?|slices?|rashers?|pieces?|tins?|knobs?)\s+(of\s+)?/, '').trim();
+      const listed = VOCAB.get(bareName);
       if(listed) why.push(`use the listed name "${listed}"`);
       if(/\bml\b/.test(qty) && /^(tins?|cans?)\b/.test(name)) why.push('tin measured in ml');
       if(!qty && !/,.*\bto (taste|serve|glaze|finish)\b/i.test(line) && !/^(pinch|handful|squeeze|knob)\b/i.test(line)) why.push('no quantity');
