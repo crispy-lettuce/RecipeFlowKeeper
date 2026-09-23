@@ -162,6 +162,22 @@ household and is not in this repo.
 
 ---
 
+### `docs/REVIEW-ARCHITECTURE.md` — brief for an independent review of the app's structure
+**What:** Nine questions for a separate session on a different model, written 23 Sep 2026 after
+the ingredient review's design was found to have scored itself by a measure that rewarded it. It
+covers the data model, where the ingestion pipeline can silently change a recipe, the runtime
+pattern, sharing with family, testing, the single file, backups, whether the documents are
+honest, and whether the planned shopping-list release should go ahead. It ends with the prompt
+that starts the session.
+
+**Use it when:** starting that review. Its findings land in `docs/REVIEW-ARCHITECTURE-FINDINGS.md`,
+which does not exist yet.
+
+**Don't:** let the reviewer read the ingredient review's conclusions before answering question 2;
+the brief says why.
+
+---
+
 ### `docs/NEXT-SESSION.md` — the order of work, and how to start
 **What:** **The definitive sequence for what happens next**, with the reasoning behind the three
 places where order genuinely matters. Plus a complete, ready-to-paste prompt for the next session
