@@ -29,11 +29,11 @@ function fold(name){
   }).join(' ');
 }
 
-/* The converter's shared vocabulary, read from converter/ingredient-names.md so
-   there is one list, not two. Each "Also written as" phrase maps to the name to
-   write instead. Only plain phrases are taken: anything with brackets or a
-   qualifier ("when a powder") needs judgement, and a warning that fires on a
-   correct line is worse than one that stays quiet. Exact matches only, so
+/* The app's dictionary, read from converter/ingredient-names.md so there is one
+   list, not two. Each "Also written as" phrase maps to the name the shopping
+   list will total it under. Only plain phrases are taken: anything with
+   brackets or a qualifier ("when a powder") needs judgement, and a report that
+   is wrong is worse than one that stays quiet. Exact matches only, so
    "olive oil" is never mistaken for "oil". */
 function loadVocab(file){
   /* synonyms: wording to replace -> listed name
@@ -68,8 +68,13 @@ const PRODUCT_FORM = /^(chopped tomatoes|minced (beef|pork|lamb|turkey|chicken)|
 /* One line, already split by splitQty. Returns:
      why      — the faults, empty for a line in the standard shape
      name     — the name as the shopping list will first see it (lower case)
-     listed   — the vocabulary name, when `name` is one of its "also written as" spellings
-     isNew    — a clean name the vocabulary doesn't know yet */
+     listed   — the dictionary name it will total under, when `name` is one of
+                that name's "also written as" spellings. Information, not a
+                fault: since the 23 Sep architecture review the converter keeps
+                the source's wording on purpose, and the app does the naming
+                (docs/REVIEW-ARCHITECTURE-FINDINGS.md §4). Until that morning a
+                listed spelling in a converted line was reported as a fault here.
+     isNew    — a clean name the dictionary doesn't know yet */
 function checkLine({ line, qty, rest }, vocab){
   const why = [];
   const noBrackets = rest.replace(/\([^)]*\)/g, ' ');
@@ -88,7 +93,6 @@ function checkLine({ line, qty, rest }, vocab){
 
   const name = first.replace(COUNT_WORD, '').trim();
   const listed = vocab.synonyms.get(name) || null;
-  if(listed) why.push(`use the listed name "${listed}"`);
   /* Not a fault: the vocabulary only lists ingredients shared by two or more
      recipes. Reported only from otherwise clean lines, because a faulty line is
      fixed first and its name may change when it is. */

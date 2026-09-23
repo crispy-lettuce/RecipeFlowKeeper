@@ -3,182 +3,121 @@
 Two things live here: **the order work should happen in**, with the reasoning, and a
 **ready-to-paste prompt** for starting the next session.
 
-For repo URLs, the Supabase project and where secrets live, see `docs/INFRASTRUCTURE.md` —
-that document assumes no prior context at all, including no Claude Code session.
+**Rewritten 23 Sep 2026.** Until then this document narrated steps 0–4 of the original build
+(reprocess, ingest, test pass, merge, images), all done by 22 Sep and recorded in
+`docs/HANDOVER.md` §2–§3. What replaced them is a seven-PR plan agreed after two reviews:
+`docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md` (the shopping list) and
+`docs/REVIEW-ARCHITECTURE-FINDINGS.md` (the structure). Read the second one's §0 first; it is
+two paragraphs and it decides the order below.
+
+For repo URLs, the Supabase project and where secrets live, see `docs/INFRASTRUCTURE.md`.
+
+**`main` is production.** GitHub Pages serves it, and every merge deploys to the tablet within a
+minute. Work on a branch, open a pull request, let `.github/workflows/tests.yml` run, and the
+household decides when to merge.
 
 ---
 
-## The order
+## The plan: seven pull requests
 
-The sequence matters in three places. Everything else is preference.
+The rule behind the order: **mechanism before change, data safety before features, one behaviour
+change per PR.** Each PR ends the same way: tests green in CI, the findings it closes ticked in
+`docs/REVIEW-ARCHITECTURE-FINDINGS.md`, and one line in `docs/HANDOVER.md` saying what was
+verified and how.
 
-### 0. Reprocess the recipes — **done, 20 Sep**
+| # | PR | What it does | Closes | Status |
+| --- | --- | --- | --- | --- |
+| 1 | **Safety net** | Tests run in GitHub Actions on every PR and push to `main`; `smoke.js` prints as it goes and names a crash; supabase-js pinned; `rehost-images` source matches what is deployed; nine documents corrected in place | F4 F6 F7 F9 F10 | **Done**, PR #11, 23 Sep |
+| 2 | **Close the review loop** | The converter no longer renames ingredients to a list (it keeps the source's product, in British English); `ingredient-names.md` becomes the app's dictionary; the findings and this plan land in the repo | §4, §9 of the architecture review; F12 | **This PR** (#10, reworked) |
+| 3 | **Backups** | In `PrivateBackup`: dump the `private` schema too, so the policies' helper function travels with them; a weekly photo backup; a restore runbook written from a rehearsal, including the fresh-project steps | F2 F3 | Not started |
+| 4 | **Faithful save** | Reconcile all eight header lines on save, not just `TITLE:` and `IMAGE:`; re-save the two drifted recipes; add the three missing checks (`pushList`'s delete, the `TITLE:` line, the non-adjacent-merge error) | F5 F7 | Not started |
+| 5 | **Row-scoped writes** | One row per save and an explicit delete, for recipes, plan days, groups, shortlist, aliases, swaps and ticks; whole-table replace kept for import only; deleting a recipe also cleans plan days and groups. Then the two-device pass from `docs/TEST-PLAN.md` | F1 F11 | Not started |
+| 6 | **Shopping list release** | Steps 4–8 of the ingredient review as written, plus: the ⅛ fraction; the source-fidelity check in `validate-recipes.js` *before* the 24-line rewrite (D12 waits on it); the pure functions extracted to one `core` script so their tests run in Node; the dictionary's master copy in the app with `ingredient-names.md` generated from it. Ship on a Friday morning, before shopping | §9 of the architecture review; the ingredient review's status rows 4–8 | Not started |
+| 7 | **Sharing** | When wanted: a JSON-LD Edge Function (which also gives the preview its source lines); the onboarding runbook; RLS belt and braces and leaked-password protection; a weekly Playwright test against the live app. A model-backed converter only if the family actually adds recipes | F8 F13, answer 4 | Not started |
 
-Ran the library back through `converter/conversion-instructions.md`. It took two attempts: the
-first produced no durations, no source URLs and no equipment at all, because it hadn't been run
-against the current instructions. That was caught before anything was written, by validating
-the batch with the app's own parser. The second attempt delivered all four.
+### Why this order
 
-### 1. Ingest the reprocessed recipes — **done, 20 Sep**
+- **PR 1 first** so that every later PR is checked by a machine, not a habit.
+- **PR 3 is the highest severity** and lives mostly outside this repo, so it can run alongside
+  PRs 2 and 4. It needs access to `PrivateBackup` and a Postgres 17 for the rehearsal.
+- **PR 4 before PR 5** because PR 5's tests build on PR 4's.
+- **PR 5 before PR 6.** The household uses more than one device, so the whole-table save is a
+  live risk today, and the shopping-list release rewrites 24 recipe lines and re-keys every tick:
+  a second device with a stale cache could push the old lines straight back over the migration.
+- **PR 6 on a Friday morning**, as the ingredient review's §5 says, so the tick re-key lands
+  before the week's shopping rather than in the middle of it.
+- **PR 7 has no date** until the household wants it.
 
-33 recipes in, 27 updated in place, 5 inserted, 12 deleted, 114 of 126 cooking logs kept.
-Outcome and the two deliberate deviations from the agreed column list are in
-`docs/HANDOVER.md` §3; the re-run of the converter tests is the third scan in
-`converter/test-set.md`.
+### Things that are the household's to do
 
-### 2. The browser test pass — **done, 21 Sep**
-
-All 20 steps of `docs/TEST-PLAN.md` run against the real backend by a human in a browser, for
-the first time. **Nothing in the Supabase rewrite is unverified any more.** Sign-in, hydration,
-row-level security and the background write queue all worked; export and import round-tripped
-with every table count intact.
-
-Worth recording what the pass actually proved, since the offline harness can prove none of it:
-
-- `hydrate()` completes without throwing, and signing out and back in survives it. That was the
-  single riskiest path — any exception there signs the user out, so the failure mode is a login
-  screen you cannot get past.
-- One favourite toggle rewrites the **whole** library: `saveRecipesList` → `pushList` upserts
-  all 33 rows and then deletes anything not in the list. It behaved correctly, but it means a
-  hydration that silently returned a partial library would have the next favourite delete the
-  rest. Nothing to fix today; worth knowing before anything is changed in `hydrate()`.
-- `shopping_checked.item_key` is the aggregation string itself, so the 20 Sep ingest re-keyed
-  every possible tick. It happened to be empty, so nothing broke. **The next reprocess will not
-  be so lucky** — clear the ticked list first, or expect orphaned keys.
-  **As of 22 Sep there are 9 ticked items**, so this has stopped being hypothetical. Check with
-  `select count(*) from shopping_checked` before any reprocess; `docs/TEST-PLAN.md` recorded it
-  as 0 for a day after it stopped being 0.
-
-Two findings came out of it, both fixed the same day — see step 2a.
-
-### 2a. What the test pass found
-
-- **PNG export truncated to one screenful.** `.app` is `height:100vh; overflow:hidden`, so
-  expanding the scrolling pane was never enough; the shell still cropped. Print was unaffected
-  because the print stylesheet already unclips `.app` — the PNG path simply never learned to.
-  Affected the Recipe Viewer and Shopping List exports too, not just the Group Viewer where it
-  was spotted. Fixed by unclipping the shell during capture, the same way print does.
-- **Keep Awake now collapses the sidebar at any width.** Previously only 861–1180px did that,
-  on the theory that width implies a cramped device. Keep Awake being on is a much better
-  signal — it is a statement that cooking is happening now, not a guess about the screen. The
-  peek tab stays available and leaving the recipe restores the sidebar, so it cannot strand you.
-
-### 3. Merge to `main` and go live — **done, 21 Sep**
-
-PR #2, merged. `main` now holds the build the test pass verified, and Pages redeployed itself
-within a couple of minutes of the merge.
-
-**The thing this step actually taught:** Pages serves from `main`, so **every merge to `main`
-redeploys the live app immediately**, with no staging step and no approval. That was never
-written down before. Treat `main` as production from here on — which is the opposite of the
-assumption the earlier notes carried, that nothing was deployed and nothing could break.
-
-The related correction, recorded in `docs/INFRASTRUCTURE.md` §2: `main` was never the
-pre-Supabase app during this project. It had been serving an older build of the Supabase rewrite
-since PR #1, and four documents said otherwise.
-
-Also the moment the documentation becomes visible on the repo's default branch. Everything
-currently lives only on `claude/recipe-app-supabase-0z139o`.
-
-### 4. Image re-hosting (R7) — **done, 21 Sep**
-
-All 29 images self-hosted, 4,426 kB. Built as an Edge Function sweep, with the app untouched
-because it renders whatever is in `image_url`. **On 22 Sep the app was touched after all** — it
-now calls that function itself after a save, so a new recipe's photo becomes ours without anyone
-opening the console. `docs/HANDOVER.md` §2d.
-
-**The verification in the original version of this line was worthless and has been replaced.** It
-compared each stored file's byte count against the dry run's — but both reads fetch the same
-source, so a file broken at source produces two identical counts and a clean pass. Two images were
-in fact broken. Integrity is now checked on the way in, and
-`{"verify": true}` re-checks the stored library; see `docs/IMAGES.md` §2.
-Full account, including three things that cost time and would cost them again, in
-`docs/HANDOVER.md` §2.
-
-### 4a. The original reasoning, kept because it still holds *(written before the sweep ran)*
-
-`docs/HANDOVER.md` §2. An Edge Function, run as a decoupled sweep.
-
-**Why after ingestion:** re-hosting images beforehand would have done the work against recipes
-about to be replaced. *(What follows describes how things stood BEFORE the sweep ran on 21 Sep
-— all 29 are now self-hosted, 4,426 kB. Kept because the reasoning still explains why the step
-sits where it does.)* At the time: **29 of the 33 recipes had an image and every one of them
-was hosted on the source website**, with the `recipe-images` bucket holding zero objects. It's server-side work that doesn't need the
-app merged, so it can equally happen alongside step 3.
-
-### 5. Phase 3, and anything left ← **start here**
-
-No dependencies between these; pick by appetite.
-
-- ~~**H1–H3** — meal type at logging, ad-hoc diary entries, CSV export~~ — **done, 22 Sep**
-- **R4** — dated cooking notes (the `recipe_notes` table already exists for it)
-- **P3** — automatic calendar push, needing a one-off Google consent
-- ~~**S2** — dark mode~~ — **done, 22 Sep**
+- After PR 2 merges: reload `converter/conversion-instructions.md` into the conversion project
+  and **remove `ingredient-names.md` from it**; reload the survey project's instructions from
+  `converter/ingredient-extraction-prompt.md`, likewise without `ingredient-names.md`.
+- Make the `offline-harness` check **required** on `main` (Settings → Branches). PR 1 could not
+  do that from a workflow file.
+- Delete the unused second account in the Supabase dashboard (Authentication → Users).
+- For PR 3: give the session access to `PrivateBackup`, and be ready to run the restore
+  rehearsal in Docker if the session cannot get Postgres 17.
+- Before PR 6: a fresh export from the app's sidebar, kept outside the repo, for the re-measure.
 
 ---
 
 ## The prompt for the next session
 
-Copy everything in the block below.
+Copy everything in the block below, and change the PR number to the one you are starting.
 
 ```
 I'm continuing work on my Kitchen recipe app, in the repo
-crispy-lettuce/RecipeFlowKeeper. main is production; work on a new branch and open a PR.
+crispy-lettuce/RecipeFlowKeeper. main is production; work on a new branch
+and open a pull request when the work is tested.
+
 Please read these first, in this order:
 
-  docs/DOCUMENT-INDEX.md   — the map of all documentation
-  docs/HANDOVER.md         — verified status
-  docs/ARCHITECTURE.md     — how the app and its recipe format work
-  docs/BUILD-BRIEF.md      — the original spec, for the reference codes
-  docs/NEXT-SESSION.md     — the order of work; we are at step 5
+  docs/DOCUMENT-INDEX.md                  — the map of all documentation
+  docs/NEXT-SESSION.md                    — the seven-PR plan; we are at PR 3
+  docs/REVIEW-ARCHITECTURE-FINDINGS.md    — §0 and the findings the PR closes
+  docs/HANDOVER.md                        — verified status
+  docs/ARCHITECTURE.md                    — how the app and its recipe format work
+  CLAUDE.md                               — applies in full
 
-Steps 1 to 4 are all done: the library was reprocessed and ingested
-(33 recipes), the full browser test pass was run against the real backend,
-the app was merged to main and is live on GitHub Pages, and all 29 recipe
-images are now self-hosted in Supabase Storage.
-
-THE TASK: Phase 3. Nothing here has been started, and none of it has
-dependencies on the others, so tell me what you'd do first and why before
-building anything.
-
-  (H1, H2 and H3 are done, 22 Sep — the food diary is built.)
-  R4  dated cooking notes (the recipe_notes table already exists, empty)
-  P3  automatic calendar push, needing a one-off Google consent
-  (S2 dark mode is done, 22 Sep.)
+THE TASK: PR 3 from the plan. Tell me what you'd do and what you need from
+me before building anything, then build it, run the tests, and open the PR.
 
 Some context worth having:
 
   - MAIN IS PRODUCTION. Pages serves from main, and every merge deploys to
-    the tablet I cook from immediately. There is no staging step. Work on
-    the branch and I'll decide when to merge.
+    the tablet I cook from immediately. There is no staging step.
   - index.html is the whole app. One file, no build step, no framework.
-    Run `node test/build.js && node test/smoke.js` after any code change.
-    197 checks. Run both — smoke.js loads what build.js wrote, so skipping
-    the build tests your previous edit. It stubs Supabase, so it proves
-    nothing about sign-in.
-  - Several columns already exist for these features (recipe_logs.meal_type,
-    recipe_logs.note). A column existing does
-    not mean the feature does — docs/ARCHITECTURE.md §4 lists them.
-  - The repo is public. Recipe data must never be committed to it.
+    Run `node test/build.js && node test/smoke.js` after any code change,
+    and `node test/image-integrity.js` after any change to the Edge
+    Functions. Run both smoke commands, always: smoke.js loads what build.js
+    wrote. The suite stubs Supabase, so it proves nothing about sign-in.
+  - The repo is public. Recipe, plan and diary data must never be committed
+    to it. Anything exported stays in scratch outside the repo.
   - Don't trust status notes, mine included, where you can check the real
-    thing instead. Repeatedly now — the corrections table in docs/HANDOVER.md
-    keeps growing — something recorded as true
-    wasn't.
+    thing instead. The corrections table in docs/HANDOVER.md §6 has
+    twenty-three rows now.
+  - When the PR is done: tick the findings it closes in
+    docs/REVIEW-ARCHITECTURE-FINDINGS.md, update the status column in
+    docs/NEXT-SESSION.md, and add one line to docs/HANDOVER.md saying what
+    was verified and how.
 ```
+
+---
 
 ## Alternative starting points
 
-If you want to do something other than the current step, swap the task section of the prompt
-above.
+If you want to do something other than the next PR, swap the task section of the prompt above.
 
 ### B. Ingesting more recipes
 
 > I've got more recipes converted with `converter/conversion-instructions.md`. Ingest them the
 > same way as the 20 Sep batch — the method, and the two deviations from it that turned out to be
 > necessary, are in `docs/HANDOVER.md` §3. Validate them first with
-> `node test/build.js && node test/validate-recipes.js <file>`, which runs the app's own parser,
-> and show me the title mapping before writing. Take a fresh backup first if any existing recipe
-> is going to be deleted.
+> `node test/build.js && node test/validate-recipes.js <file>`, which runs the app's own parser
+> and prints what each ingredient will total as on the shopping list; show me the title mapping
+> before writing. Take a fresh backup first if any existing recipe is going to be deleted, and
+> check `select count(*) from shopping_checked` first: a reprocess re-keys every tick.
 
 ### C. Re-running the browser test pass
 
@@ -199,13 +138,18 @@ cannot see.
 > byte counts for outliers, because one Contentful image was 7.7 MB until it was asked to resize,
 > which was more than the rest of the library put together.
 
-### E. Phase 3 (step 5)
+### E. A growing dictionary
 
-> Let's carry on with Phase 3. The food diary (H1, H2, H3) and dark mode (S2) are done — what's
-> left is dated cooking notes (R4) and the calendar push (P3). Both are in
-> `docs/BUILD-BRIEF.md` with reference codes. R4 needs a decision before any code: `recipe_notes`
-> exists but has no user-settable date column, and `recipe_logs.note` is also free. §1 and §4 of
-> the handover cover what's decided.
+> Run the ingredient survey on a new batch of recipes (`converter/ingredient-extraction-prompt.md`
+> says how) and tell me which rows and spellings to add to `converter/ingredient-names.md`. Keep
+> the batches and the report outside the repo.
+
+### F. Phase 3, after the plan
+
+> The food diary (H1, H2, H3) and dark mode (S2) are done. What's left of Phase 3 is dated
+> cooking notes (R4) and the calendar push (P3), both in `docs/BUILD-BRIEF.md` with reference
+> codes. R4 needs a decision before any code: `recipe_notes` exists but has no user-settable date
+> column, and `recipe_logs.note` is also free. §1 and §4 of the handover cover what's decided.
 
 ---
 
@@ -223,10 +167,12 @@ cannot see.
 ## The recipe conversion prompt
 
 `converter/conversion-instructions.md` was reviewed on 14 Sep against the app's real parser and
-**revised on 23 Sep** (a standard shape for ingredient lines, and a vocabulary in
-`converter/ingredient-names.md`). Reload it into the conversion project after any change; the
-file's own revision note says what changed. *(This paragraph said "unchanged, needs no edits"
-until 23 Sep.)*
+**revised twice on 23 Sep**: first to add a standard shape for ingredient lines and a vocabulary
+to take names from, then, after the architecture review, to withdraw the vocabulary half. The
+converter now keeps the source's product words in British English and never makes a name more
+specific than the source; the app's dictionary does the naming at list time. Reload the file
+into the conversion project after any change, and give it **on its own**: `ingredient-names.md`
+is no longer a converter file. Its revision notes say what changed and why.
 
 **One thing worth adding to your conversion chat**, since the output now goes straight into the
 database rather than being pasted through the app's form one at a time:

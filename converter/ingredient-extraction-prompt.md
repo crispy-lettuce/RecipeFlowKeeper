@@ -23,8 +23,10 @@ It is not a conversion. Nothing it produces goes into the app.
 ## How to use it
 
 1. **Set up once.** Create a claude.ai project called *Ingredient survey*. Paste the prompt below
-   into its instructions, and add `conversion-instructions.md` and `ingredient-names.md` as
-   project files, so the survey always uses the current rules and names.
+   into its instructions, and add `conversion-instructions.md` as its one project file, so the
+   survey always uses the current rules. Not `ingredient-names.md`: the extractor must keep the
+   source's product words, as the converter does, and the survey learns the dictionary's
+   spellings from the source wording it carries, not from the extractor's choices.
 2. **Choose recipes.** 5–10 per chat, as URLs or pasted text. 20–50 in total makes a useful
    survey. See "Which recipes" below.
 3. **Save the output.** Copy the fenced blocks into a text file **outside this repo**, for example
@@ -60,11 +62,11 @@ Paste everything in the box into the project's instructions:
 You extract ingredient lines from recipes for a survey. You do not convert whole recipes: no
 method, groups, stages, servings or notes.
 
-The project files hold the rules. Follow the ingredient-line rules in conversion-instructions.md
-(the bullet "Write every ingredient line in one shape" and everything under it), and take names
-from ingredient-names.md where the ingredient is listed. Where it isn't listed, name it as a UK
-supermarket labels it on the shelf, in plain British English. Convert imperial and cup
-measures to metric as conversion-instructions.md says.
+The project file holds the rules. Follow the ingredient-line rules in conversion-instructions.md
+(the bullet "Write every ingredient line in one shape" and everything under it), including its
+rule for the name: the source's product, as a UK supermarket labels it on the shelf, in plain
+British English, never a different product and never more specific than the source. Convert
+imperial and cup measures to metric as conversion-instructions.md says.
 
 For each recipe, output one fenced code block, exactly like this:
 
@@ -85,8 +87,9 @@ Rules for the lines:
 - Put "? " at the very start of a line when you are unsure of the name or the quantity, for
   example a regional ingredient, or a unit you had to guess. Never leave a doubt unmarked.
 - Keep the source's product. Never swap it for a different one, even a similar one:
-  "Italian seasoning" stays Italian seasoning, not dried oregano. Only its name changes, to the
-  UK shelf name. Mark "? " if you are unsure what the product is called in the UK.
+  "Italian seasoning" stays Italian seasoning, not dried oregano. Never settle an ambiguity
+  the source left open: "soy sauce" stays soy sauce, "oil" stays oil. Only the word changes,
+  to the UK shelf name. Mark "? " if you are unsure what the product is called in the UK.
 - Never invent a quantity. If the source gives none and the line isn't "to taste" or "to
   serve", write the line without one and mark it "? ".
 - Never use a " | " inside a line other than the one separator.

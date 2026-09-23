@@ -124,7 +124,7 @@ function strictPairs(names, protectedToo){
   await browser.close();
 
   const byName = new Map();          // folded name -> {spellings, recipes, originals}
-  const faults = [], survivors = [], unsure = [], spellingsToAdd = new Map();
+  const faults = [], unsure = [], spellingsToAdd = new Map();
   let cleanListed = 0, cleanNew = 0;
   flat.forEach((l, i) => {
     const r = recipes[l.ri];
@@ -133,11 +133,14 @@ function strictPairs(names, protectedToo){
     if(l.unsure) unsure.push(`\`${l.std}\` ← "${l.orig}" — ${where}`);
     if(c.why.length){
       faults.push(`\`${l.std}\` — ${c.why.join('; ')} — ${where}`);
-      if(c.listed) survivors.push(c.name);
       return;
     }
     if(c.isNew) cleanNew++; else cleanListed++;
-    const key = fold(c.name);
+    /* A line written in one of a dictionary name's spellings ("scallions") counts
+       under that name, as the shopping list will count it. The extractor keeps the
+       source's wording on purpose since 23 Sep, so this is the common case, not a
+       fault. */
+    const key = fold(c.listed || c.name);
     if(!byName.has(key)) byName.set(key, { spellings: new Map(), recipes: new Set(), originals: new Set(), listed: !c.isNew });
     const e = byName.get(key);
     e.spellings.set(c.name, (e.spellings.get(c.name) || 0) + 1);
@@ -198,7 +201,7 @@ function strictPairs(names, protectedToo){
   L.push('');
 
   L.push('## 2. Spellings to add under names already listed', '');
-  L.push('The extractor chose a listed name, but the source called it something the "Also written as" column doesn\'t have yet. Adding them lets `validate-recipes.js` catch those wordings when a conversion lets one through.', '');
+  L.push('The source called a dictionary ingredient something the "Also written as" column doesn\'t have yet. Adding them lets the shopping list total that wording with the rest.', '');
   if(spellingsToAdd.size){
     L.push('| Listed name | Add these spellings |', '| --- | --- |');
     [...spellingsToAdd].sort().forEach(([n, s]) => L.push(`| ${n} | ${[...s].join(', ')} |`));
@@ -213,7 +216,7 @@ function strictPairs(names, protectedToo){
   L.push('');
 
   L.push('## 4. Lines outside the standard shape', '');
-  L.push(`The extractor broke a rule the converter must follow${survivors.length ? `, including ${survivors.length} listed synonym(s) that survived` : ''}. Worth reading as a test of the instructions: a rule broken often here will be broken in conversions too.`, '');
+  L.push('The extractor broke a rule the converter must follow. Worth reading as a test of the instructions: a rule broken often here will be broken in conversions too.', '');
   L.push(faults.length ? faults.map(f => '- ' + f).join('\n') : 'None.');
   L.push('');
 

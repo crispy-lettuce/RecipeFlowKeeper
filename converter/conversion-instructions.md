@@ -84,19 +84,19 @@ stages in order every time; don't skip Check even for a simple recipe.
     thing on the shopping list. **Tins and packs:** use the unit printed on them, with the
     container in the note: `400 g chopped tomatoes (1 tin)`, `400 ml coconut milk (1 tin)`.
     The container word never goes in the name ("400 g tin chopped tomatoes").
-  - **Name**: what you buy, **as a UK supermarket labels it on the shelf**, in plain British
-    English: *aubergine*, not eggplant; *beef mince*, not ground beef. Where
-    `ingredient-names.md` lists the ingredient, use its spelling exactly: that list records
-    the household's own choices and settles ambiguous words. Rename, never replace: the
-    product stays the one the source asks for ("Italian seasoning" stays Italian seasoning,
-    not dried oregano). Keep the words that change
-    what you buy: ground, dried, frozen, cooked, raw, smoked, double/single,
-    plain/self-raising, baby, spring, red/green/yellow, light/dark, unsalted, whole, bone-in.
-    Leave out the ones that don't: large, small, medium, ripe, fresh, free-range, pure,
-    extra. If a size matters, it goes in the note: `3 eggs (large)`.
-    **Before presenting, look up every name in the "Also written as" column of
-    `ingredient-names.md`.** If it appears there, replace it with the name in the "Write"
-    column: "plain yogurt" becomes `natural yoghurt`, "neutral oil" becomes `vegetable oil`.
+  - **Name**: the product the source asks for, written **as a UK supermarket labels it on the
+    shelf**, in plain British English: *aubergine*, not eggplant; *beef mince*, not ground
+    beef; *coriander*, not cilantro; *yoghurt*, not yogurt. That is a translation of the same
+    product, and it is the only renaming allowed. **Never choose a different product**, even a
+    close one: "Italian seasoning" stays Italian seasoning, not dried oregano. **Never settle
+    an ambiguity**: where the source says "soy sauce", "oil", "cream" or "flour" without
+    saying which, write exactly that. The app decides what those total as on the shopping
+    list, where a wrong guess is visible and reversible; a guess written here is baked into
+    the recipe and nothing downstream can see it. There is no list of names to match against.
+    Keep the words that change what you buy: ground, dried, frozen, cooked, raw, smoked,
+    double/single, plain/self-raising, baby, spring, red/green/yellow, light/dark, unsalted,
+    whole, bone-in. Leave out the ones that don't: large, small, medium, ripe, free-range,
+    pure, extra. If a size matters, it goes in the note: `3 eggs (large)`.
   - **Preparation after the first comma**, never before the name: `cheddar, grated`, not
     "grated cheddar". The exception is when the prepared form is what you buy: *chopped
     tomatoes, ground cumin, minced beef, flaked almonds*.
@@ -272,8 +272,8 @@ line:
 - **Every ingredient line in the standard shape**: one ingredient each, quantity and unit
   first, no size word before the name, ranges kept as ranges, preparation after the first
   comma, and alternatives in brackets on the line.
-- **Every name checked against `ingredient-names.md`**: none of the "Also written as"
-  phrases survives.
+- **Every name is the source's product**, translated into British English where the word
+  differs, and never swapped for a similar product or made more specific than the source was.
 - Every method step represented somewhere — STEPS, a STAGE, or NOTES.
 - **Every ingredient joins at the point the method actually adds it** — anything added
   off the heat, at the end, or after a cooking step sits in its own group merging in at
@@ -304,12 +304,33 @@ Report gaps as a short list (found → fixed), not a long essay.
 
 ---
 
+## Revision note (23 Sep 2026, later the same day)
+
+Changed following `docs/REVIEW-ARCHITECTURE-FINDINGS.md` §4 and F12:
+
+- **The converter no longer renames ingredients to a list.** The morning's version said to
+  spell every listed ingredient exactly as `ingredient-names.md` has it and to replace every
+  "Also written as" phrase before presenting. On its first outing on an unfamiliar site the
+  converter obliged by writing *dried oregano* for a recipe's *Italian seasoning*: a
+  different product, silently, and permanently once saved. The review found the renaming rule
+  had never earned its keep either: every gain the ingredient review measured came from the
+  line shape and from app-side rules, and all 24 lines "only the converter could fix" were
+  shape faults, not naming ones. So the converter now owns the **shape** of a line and
+  **British English**, and keeps the source's product and the source's ambiguities. The
+  app's dictionary, which `ingredient-names.md` is the seed of, does the naming at list time,
+  where a wrong match costs one shopping trip and is undone in Settings.
+- `ingredient-names.md` is **no longer a project file** for the converter. Remove it from the
+  conversion project.
+- Test 7 in `test-set.md` is reframed to check this, and now fails on the opposite of what it
+  failed on this morning: a converter that makes a name *more* specific than the source.
+
 ## Revision note (23 Sep 2026)
 
 Changed from the previous version, following `docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md`:
 
 - **A standard shape for every ingredient line**, and a **shared vocabulary**
-  (`ingredient-names.md`) to take names from. Measured on the library, the converter copied
+  (`ingredient-names.md`) to take names from *(the vocabulary half was withdrawn later the
+  same day; see the note above)*. Measured on the library, the converter copied
   each source's wording, so the shopping list could not total the same ingredient written
   different ways: 274 rows for 168 things to buy. 24 lines could only ever be fixed here,
   among them "X or Y" alternatives, lines holding two ingredients, a tin in ml and a

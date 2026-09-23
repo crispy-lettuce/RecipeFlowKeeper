@@ -8,7 +8,8 @@ These are synthetic — written to isolate one failure mode each, not to be cook
 They check structure, not wording: handle names and phrasing will vary, and that's
 fine. What must match is which ingredients sit in which group, where each group joins,
 and that every MERGE carries a duration. Tests 6 to 8 are the exception: they check the ingredient lines
-themselves, because the shopping list totals lines by their wording.
+themselves, because the shopping list reads their shape, and because a renamed ingredient is a
+changed recipe.
 
 ---
 
@@ -164,11 +165,15 @@ beans, so the test recipe was renamed *Tomato Stew*.
 
 ---
 
-## 7. Vocabulary
+## 7. British English, and nothing more specific than the source
 
-**Why:** added 23 Sep 2026. Lines only total when their names agree, and a converter that
-copies each source's wording writes the same ingredient several ways. `ingredient-names.md`
-is the list it must use.
+**Why:** added 23 Sep 2026 as "Vocabulary", and **reframed later the same day** after
+`docs/REVIEW-ARCHITECTURE-FINDINGS.md` §4. The morning's version required the converter to
+replace every source wording with the name from `ingredient-names.md`; the review showed that
+rule buys nothing the app's own dictionary doesn't, and that a converter told to canonicalise
+will canonicalise the cases the list never meant (it wrote *dried oregano* for *Italian
+seasoning*). The rule is now the opposite: translate the word into British English, keep the
+product, and keep the source's ambiguities. The app's dictionary totals them at list time.
 
 **Source:**
 
@@ -178,29 +183,35 @@ is the list it must use.
 > flour, then the soy sauce, cream and yogurt, and warm through for 2 minutes. Top with the
 > scallions and cilantro.
 
-**Must produce** the listed names: *spring onions, fresh coriander, red pepper, vegetable oil,
-double cream, natural yoghurt, plain flour, light soy sauce*.
+**Must produce** these names: *spring onions, coriander, red pepper, neutral oil, double cream,
+plain yoghurt, plain flour, soy sauce*. The first five and *plain flour* are the same product
+under its UK name; *neutral oil*, *plain yoghurt* and *soy sauce* are what the source said,
+British-spelt, and no more specific.
 
-**Fails if** any source synonym survives into the output (scallions, cilantro, bell pepper,
-neutral oil, heavy cream, yogurt, all-purpose flour, or a bare "soy sauce").
+**Fails if:**
+- an American word survives: scallion, cilantro, bell pepper, all-purpose, heavy cream, or the
+  spelling "yogurt";
+- **or the converter settles what the source left open**: `vegetable oil` for "neutral oil",
+  `natural yoghurt` for "plain yogurt", `light soy sauce` for "soy sauce". That is the
+  Italian-seasoning fault in miniature, and the one this test now exists to catch.
 
-**Run 1, 23 Sep 2026: failed on one name.** The converter wrote `3 tbsp plain yogurt`;
-the other seven names matched. The instructions now tell it to look up every name in the
-"Also written as" column before presenting, and `test/validate-recipes.js` warns on any
-listed synonym, so this failure is now caught on the app's side too. The test needs running
-again.
+Run `test/validate-recipes.js` on the output: it should report no faults and print
+`totals on the shopping list as: neutral oil → vegetable oil, plain yoghurt → natural yoghurt,
+soy sauce → light soy sauce`, which is the app doing the job the converter no longer does.
 
-**Run 2, 23 Sep 2026: one name short.** `natural yoghurt` came through, but the converter
-wrote `1 handful coriander`, not `fresh coriander`. Bare "coriander" had not been listed as a
-synonym, because the ground-coriander row qualified it. It is now listed under *fresh
-coriander*, and the validator strips a leading count word ("handful") before looking a name
-up. The validator now flags this line; the test needs one more run.
+**Run 1, 23 Sep 2026 (as "Vocabulary"): failed on one name.** The converter wrote
+`3 tbsp plain yogurt`; the other seven listed names matched.
+
+**Run 2, 23 Sep 2026 (as "Vocabulary"): one name short.** `natural yoghurt` came through, but
+the converter wrote `1 handful coriander`, not `fresh coriander`. Under the reframed test
+that line is correct: "coriander" is the shelf name, and *fresh coriander* is what the app
+totals it under. **The test needs a run under its new wording.**
 
 ---
 
 ## 8. Ingredients the list has never seen
 
-**Why:** added 23 Sep 2026, so the converter is not only tested on the vocabulary it was given.
+**Why:** added 23 Sep 2026, so the converter is not only tested on ingredients the dictionary already lists.
 `ingredient-names.md` was built from the library's own recipes, and each new recipe brings
 about four ingredients the library hasn't met. This test uses **none of the listed
 ingredients**, so it checks the general rule: name each thing as a UK supermarket shelf
@@ -234,7 +245,7 @@ labels it, in the standard line shape.
 - the container is in the name ("1 can coconut milk");
 - or "stalk" and "handful" lines lack a number.
 
-**Worth knowing:** whoever maintains the vocabulary also wrote this test, so it is only partly
+**Worth knowing:** whoever maintains the dictionary also wrote this test, so it is only partly
 independent. The strongest version of this test is the next real recipe from a site the
 library hasn't used before: convert it, run `validate-recipes.js`, and read the "new to
 ingredient-names.md" line it prints.
