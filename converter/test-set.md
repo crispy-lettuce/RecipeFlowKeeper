@@ -205,7 +205,13 @@ soy sauce → light soy sauce`, which is the app doing the job the converter no 
 **Run 2, 23 Sep 2026 (as "Vocabulary"): one name short.** `natural yoghurt` came through, but
 the converter wrote `1 handful coriander`, not `fresh coriander`. Under the reframed test
 that line is correct: "coriander" is the shelf name, and *fresh coriander* is what the app
-totals it under. **The test needs a run under its new wording.**
+totals it under.
+
+**Run 3, 23 Sep 2026, the first under the reframed wording: passed.** All eight names correct,
+and the three that matter most came through unspecified, as the source had them: `2 tbsp neutral
+oil`, `3 tbsp plain yoghurt`, `2 tbsp soy sauce`. Under the morning's rule those would have been
+"corrected" to vegetable oil, natural yoghurt and light soy sauce. The converter had the revised
+instructions and no `ingredient-names.md`. First evidence that the reversal works.
 
 ---
 
@@ -244,6 +250,14 @@ labels it, in the standard line shape.
 - a size word leads a name ("large", "big");
 - the container is in the name ("1 can coconut milk");
 - or "stalk" and "handful" lines lack a number.
+
+**Run 1, 23 Sep 2026: passed on every fail criterion, one soft miss.** `1 aubergine (large),
+cubed`, `400 g chickpeas (1 tin), drained`, `250 g beef mince`, `400 ml coconut milk (1 tin)`,
+`1 tbsp fish sauce`, `1 handful rocket, to serve`; no American word, no container in a name, the
+stalk and handful lines numbered. The miss: `2 kaffir lime leaves`, where the shelf name is
+*lime leaves*. Same product, a translation not made rather than a swap, so not a failure; if it
+turns up in a second recipe, "kaffir lime leaves" becomes a spelling under *lime leaves* in the
+dictionary. "Thai green curry paste" is what the jar says, and fine.
 
 **Worth knowing:** whoever maintains the dictionary also wrote this test, so it is only partly
 independent. The strongest version of this test is the next real recipe from a site the
