@@ -170,11 +170,27 @@ pattern, sharing with family, testing, the single file, backups, whether the doc
 honest, and whether the planned shopping-list release should go ahead. It ends with the prompt
 that starts the session.
 
-**Use it when:** starting that review. Its findings land in `docs/REVIEW-ARCHITECTURE-FINDINGS.md`,
-which does not exist yet.
+**Use it when:** starting that review. Its findings are in `docs/REVIEW-ARCHITECTURE-FINDINGS.md`.
 
 **Don't:** let the reviewer read the ingredient review's conclusions before answering question 2;
 the brief says why.
+
+---
+
+### `docs/REVIEW-ARCHITECTURE-FINDINGS.md` — what that review found, and what to do
+**What:** The answer to the brief above, written 23 Sep 2026 against the code on `main`, the live
+database, the backup dumps and GitHub. It opens with the verdict and one paragraph per question,
+then findings with evidence and severity, recommendations in three lists (change now; change
+before sharing with family; leave alone, with the reason), the question 2 answer as written
+before and after reading the ingredient review, what it could not verify, and a corrections
+table for the other documents.
+
+**Use it when:** deciding what to do before the shopping-list release or before sharing the app,
+or updating any document it corrects. **Nothing in it has been implemented**, and it stops for the
+household's decision.
+
+**Don't:** take its restore finding as tested — it predicts what the documented restore would do
+from the dump's contents and the live grants; the recommendation is to rehearse one.
 
 ---
 
