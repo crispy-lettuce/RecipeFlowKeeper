@@ -63,12 +63,14 @@ function extractBlocks(md){
    correct line is worse than one that stays quiet. Exact matches only, so
    "olive oil" is never mistaken for "oil". */
 const VOCAB = new Map();
+const CANON = new Set();
 try {
   const md = fs.readFileSync(path.join(__dirname, '..', 'converter', 'ingredient-names.md'), 'utf8');
   md.split('\n').forEach(row => {
     const cells = row.split('|').map(c => c.trim());
     if(cells.length < 4 || !cells[1] || /^(write|-+)$/i.test(cells[1])) return;
     const canonical = cells[1].toLowerCase();
+    CANON.add(canonical);
     cells[2].split(',').map(x => x.trim().toLowerCase()).forEach(syn => {
       if(!syn || /[()*"'`]|\b(when|not|is|plain "sugar")\b/.test(syn) || syn === canonical) return;
       VOCAB.set(syn, canonical);
@@ -191,6 +193,7 @@ try {
        recipe still renders and scales; what suffers is the shopping list, which totals
        lines by their wording. The quantity comes from the app's own splitQty. */
     const shapeFaults = [];
+    const newNames = [];
     r.splits.forEach(({ line, qty, rest }) => {
       const why = [];
       const noBrackets = rest.replace(/\([^)]*\)/g, ' ');
@@ -211,16 +214,24 @@ try {
       const bareName = name.replace(/^(pinch(es)?|bunch(es)?|handfuls?|sprigs?|slices?|rashers?|pieces?|tins?|knobs?)\s+(of\s+)?/, '').trim();
       const listed = VOCAB.get(bareName);
       if(listed) why.push(`use the listed name "${listed}"`);
-      if(/\bml\b/.test(qty) && /^(tins?|cans?)\b/.test(name)) why.push('tin measured in ml');
+      /* Not a fault: the vocabulary only lists ingredients shared by two or more
+         recipes. Reported so a name can be added when it turns up a second time. */
+      const known = n => CANON.has(n) || VOCAB.has(n);
+      const isNew = CANON.size && bareName && !listed && !known(bareName) && !known(bareName + 's')
+         && !known(bareName.replace(/e?s$/, ''));
+      if(qty && /^(tins?|cans?|jars?|packs?|packets?)\b/.test(name)) why.push('container word in the name (put "(1 tin)" in brackets)');
       if(!qty && !/,.*\bto (taste|serve|glaze|finish)\b/i.test(line) && !/^(pinch|handful|squeeze|knob)\b/i.test(line)) why.push('no quantity');
       if(why.length) shapeFaults.push(`"${line.slice(0,64)}" — ${why.join('; ')}`);
+      /* Only from lines that are otherwise clean: a faulty line is fixed first, and
+         its name may change when it is. */
+      else if(isNew && !newNames.includes(bareName)) newNames.push(bareName);
     });
     if(shapeFaults.length){
       warnings.push(`${shapeFaults.length} ingredient line(s) outside the standard shape:`);
       shapeFaults.forEach(f => warnings.push('    ' + f));
     }
 
-    results.push({ line: b.line, ...r, blockers, warnings, bareMerges: bare.length, mergeCount: r.merges.length });
+    results.push({ line: b.line, ...r, blockers, warnings, newNames, bareMerges: bare.length, mergeCount: r.merges.length });
   }
 
   await browser.close();
@@ -236,6 +247,7 @@ try {
     console.log(`        serves ${r.servings || '—'} · ${r.groups.length} groups · ${r.stageCount} stages · ${r.mergeCount} merges (${r.bareMerges} untimed) · ${r.rowCount} rows`);
     r.blockers.forEach(x => console.log(`        BLOCKER: ${x}`));
     r.warnings.forEach(x => console.log(`        warn:    ${x}`));
+    if(r.newNames.length) console.log(`        new to ingredient-names.md (add one if it turns up in a second recipe): ${r.newNames.join(', ')}`);
   }
   if(pageErrors.length){
     console.log('\nPAGE ERRORS:');

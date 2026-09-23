@@ -195,14 +195,14 @@ recognise, leaving raw bracket text visible in the diagram).
 ---
 
 ### `converter/test-set.md` — the converter's regression tests
-**What:** Seven deliberately awkward recipes, each isolating one failure mode — a late addition, a
+**What:** Eight deliberately awkward recipes, each isolating one failure mode — a late addition, a
 split ingredient, parallel prep, a zero-length step, a missing yield, and (since 23 Sep) the
-shape and vocabulary of ingredient lines — with what a correct
+shape and vocabulary of ingredient lines, including ingredients the vocabulary has never seen — with what a correct
 conversion must produce and what counts as a failure. Plus three audits of the real library. The
 first two (13 and 14 Sep) describe the pre-reprocess library and are history now; the third
 (20 Sep) re-runs all five tests against what's actually in the database.
 
-**Use it when:** you change `conversion-instructions.md`. Run all seven through the revised
+**Use it when:** you change `conversion-instructions.md`. Run all eight through the revised
 instructions and compare. Also the record of which library faults have been fixed and when.
 
 **Worth knowing:** these tests check what the *converter* writes, not what the app's parser

@@ -2,23 +2,39 @@
 
 *Created 23 Sep 2026, from `docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md` §4.2.*
 
-**Give this file to the conversion project alongside `conversion-instructions.md`.** When a
-recipe's ingredient is the same thing you'd buy as a name listed here, write the listed name,
-**exactly as spelled**. If it isn't listed, write the plain everyday British name.
+**Give this file to the conversion project alongside `conversion-instructions.md`.**
 
-The shopping list totals two lines only when their names agree. One batch of recipes converted
-in one day still produced the same oil four ways and the same yoghurt three ways, because the
-converter copied each source's wording. This list is what makes them agree.
+## The rule, before the list
 
-**Why these names.** The list covers the ingredients that appear in two or more recipes, since
-only those ever need to total. In September 2026 those 79 ingredients accounted for 80% of all
-ingredient lines. The "also written as" column shows the wording to replace. The aisle is where
-the shopping list files the ingredient.
+**Name every ingredient as a UK supermarket labels it on the shelf**: the thing you'd pick up,
+in plain British English. *Aubergine*, not eggplant; *beef mince*, not ground beef; *chickpeas*,
+not garbanzo beans; *rocket*, not arugula. The rule works for ingredients no list has ever seen,
+which is most of what a growing library will bring: each new recipe has added about four
+ingredients the library hadn't met before.
 
-**Where it's heading.** When the shopping-list release lands (step 4 of the review), this list
-becomes a dictionary inside `index.html`, and a test will check that the two agree (review §6,
-check 22). Until then, this file is the only copy. Add an ingredient here when it turns up in a
-second recipe.
+**The list below does two narrower jobs** (revised 23 Sep 2026, to avoid fitting it to the
+recipes it was built from):
+
+1. **It records the household's own decisions**, where the shelf rule alone would allow either
+   answer: one vegetable oil, "soy sauce" meaning light, butter and unsalted butter kept apart.
+2. **It settles words the shelf rule can't**: regional or ambiguous ones such as "coriander"
+   (leaf or seed?), "cilantro" and "heavy cream".
+
+The "Also written as" spellings are **examples, not the whole vocabulary**. They are there
+because `test/validate-recipes.js` reads them and warns when one turns up in a converted
+recipe. A name missing from the list is not wrong; it just hasn't come up twice yet.
+
+**When to add a row:** when an ingredient turns up in a **second** recipe under a different
+name. `validate-recipes.js` lists every name the vocabulary doesn't know, so you'll see
+candidates at the moment a recipe is added. An ingredient used once never needs to total with
+anything, so a row for it is upkeep with no benefit.
+
+**Where it's heading.** When the shopping-list release lands (step 4 of the review), the master
+copy of this list moves into the app, this file is generated from it, and a test fails if the two
+differ, so there is only ever one list to edit. Until then, this file is the only copy.
+
+**Where the rows came from.** The rows below are the 79 ingredients shared by two or more recipes in
+September 2026, which covered 80% of all ingredient lines.
 
 **Decided by the household, 23 Sep 2026, and reflected below:**
 
@@ -100,7 +116,7 @@ second recipe.
 | long grain rice | long-grain rice (write the **uncooked** amount, D4) |
 | rigatoni | pasta shapes (when rigatoni) |
 | orzo | |
-| chopped tomatoes | tinned chopped tomatoes (write `400 g chopped tomatoes (1 tin)`) |
+| chopped tomatoes | tinned chopped tomatoes (write `400 g chopped tomatoes (1 tin)`, as the tin is labelled) |
 | tomato purée | tomato paste |
 | sun-dried tomatoes | |
 | chicken stock | chicken broth, hot chicken stock |

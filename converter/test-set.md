@@ -1,13 +1,13 @@
 # Converter test set
 
-Seven deliberately awkward recipes for checking `conversion-instructions.md` still
+Eight deliberately awkward recipes for checking `conversion-instructions.md` still
 produces the right shape. Run them whenever those instructions change: paste each
 source into a fresh conversion chat and compare the output against the notes here.
 
 These are synthetic — written to isolate one failure mode each, not to be cooked.
 They check structure, not wording: handle names and phrasing will vary, and that's
 fine. What must match is which ingredients sit in which group, where each group joins,
-and that every MERGE carries a duration. Tests 6 and 7 are the exception: they check the ingredient lines
+and that every MERGE carries a duration. Tests 6 to 8 are the exception: they check the ingredient lines
 themselves, because the shopping list totals lines by their wording.
 
 ---
@@ -195,6 +195,49 @@ wrote `1 handful coriander`, not `fresh coriander`. Bare "coriander" had not bee
 synonym, because the ground-coriander row qualified it. It is now listed under *fresh
 coriander*, and the validator strips a leading count word ("handful") before looking a name
 up. The validator now flags this line; the test needs one more run.
+
+---
+
+## 8. Ingredients the list has never seen
+
+**Why:** added 23 Sep 2026, so the converter is not only tested on the vocabulary it was given.
+`ingredient-names.md` was built from the library's own recipes, and each new recipe brings
+about four ingredients the library hasn't met. This test uses **none of the listed
+ingredients**, so it checks the general rule: name each thing as a UK supermarket shelf
+labels it, in the standard line shape.
+
+**Source:**
+
+> **Green Curry Traybake** — Serves 4. 1 large eggplant, cubed; 1 can (400g) garbanzo beans,
+> drained; 250g ground beef; 1 stalk lemongrass, bruised; 2 kaffir lime leaves; 1 tbsp Thai
+> green curry paste; 1 can (400 ml) coconut milk; 1 tbsp fish sauce; a big handful of arugula
+> to serve. Roast the eggplant for 20 minutes at 200°C. Brown the beef for 6 minutes, stir in
+> the curry paste, lemongrass and lime leaves, then the coconut milk, fish sauce and
+> chickpeas, and simmer for 10 minutes. Pour over the eggplant and top with the arugula.
+
+**Must produce** these names, in the standard shape:
+
+- *aubergine*
+- *chickpeas*, e.g. `400 g chickpeas (1 tin), drained`
+- *beef mince*
+- *lemongrass*
+- *lime leaves* (the shelf name; "kaffir" is no longer used on UK labels)
+- *green curry paste*
+- *coconut milk*, e.g. `400 ml coconut milk (1 tin)`, **in ml**, as the tin is labelled
+- *fish sauce*
+- *rocket*
+
+**Fails if:**
+
+- an American or source-only word survives: eggplant, garbanzo, ground beef, arugula, can;
+- a size word leads a name ("large", "big");
+- the container is in the name ("1 can coconut milk");
+- or "stalk" and "handful" lines lack a number.
+
+**Worth knowing:** whoever maintains the vocabulary also wrote this test, so it is only partly
+independent. The strongest version of this test is the next real recipe from a site the
+library hasn't used before: convert it, run `validate-recipes.js`, and read the "new to
+ingredient-names.md" line it prints.
 
 ---
 

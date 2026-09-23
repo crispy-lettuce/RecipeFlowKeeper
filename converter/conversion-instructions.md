@@ -81,10 +81,13 @@ stages in order every time; don't skip Check even for a simple recipe.
     "heaped" or "thumb-sized": write `1 onion (large), diced`, not "1 large onion, diced".
   - **Weigh solids, measure liquids.** Above 1 tbsp, butter, sugar, flour, cocoa and nut
     butters go in grams, not spoons: spoons of a solid can't be added to grams of the same
-    thing on the shopping list. Tinned goods go in grams (`400 g chopped tomatoes (1 tin)`),
-    never ml.
-  - **Name**: what you buy, spelled exactly as in `ingredient-names.md` when the ingredient
-    is on it. If it isn't, use the plain everyday British name. Keep the words that change
+    thing on the shopping list. **Tins and packs:** use the unit printed on them, with the
+    container in the note: `400 g chopped tomatoes (1 tin)`, `400 ml coconut milk (1 tin)`.
+    The container word never goes in the name ("400 g tin chopped tomatoes").
+  - **Name**: what you buy, **as a UK supermarket labels it on the shelf**, in plain British
+    English: *aubergine*, not eggplant; *beef mince*, not ground beef. Where
+    `ingredient-names.md` lists the ingredient, use its spelling exactly: that list records
+    the household's own choices and settles ambiguous words. Keep the words that change
     what you buy: ground, dried, frozen, cooked, raw, smoked, double/single,
     plain/self-raising, baby, spring, red/green/yellow, light/dark, unsalted, whole, bone-in.
     Leave out the ones that don't: large, small, medium, ripe, fresh, free-range, pure,
