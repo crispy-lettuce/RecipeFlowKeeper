@@ -1,40 +1,44 @@
-# Ingredient names — the shared vocabulary
+# Ingredient names — the app's dictionary
 
-*Created 23 Sep 2026, from `docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md` §4.2.*
+*Created 23 Sep 2026, from `docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md` §4.2. Reframed the same
+day, after `docs/REVIEW-ARCHITECTURE-FINDINGS.md` §4.*
 
-**Give this file to the conversion project alongside `conversion-instructions.md`.**
+**This file is not for the converter.** It is the seed of the dictionary the app will use to
+total the shopping list, and until that release it is read only by `test/validate-recipes.js`
+and `test/ingredient-survey.js`, to report. Do not add it to the conversion project.
 
-## The rule, before the list
+## What it is for
 
-**Name every ingredient as a UK supermarket labels it on the shelf**: the thing you'd pick up,
-in plain British English. *Aubergine*, not eggplant; *beef mince*, not ground beef; *chickpeas*,
-not garbanzo beans; *rocket*, not arugula. The rule works for ingredients no list has ever seen,
-which is most of what a growing library will bring: each new recipe has added about four
-ingredients the library hadn't met before.
+The converter writes each ingredient as the source's product, in British English, and keeps the
+source's ambiguities ("soy sauce", "oil", "cream"). It never chooses a name from a list; the
+morning this list was a converter instruction, the converter used it to swap *Italian seasoning*
+for *dried oregano*, a different product, silently. So the two jobs this list does are done by
+the **app, at list time**, where a wrong match is visible and undone in Settings:
 
-**The list below does two narrower jobs** (revised 23 Sep 2026, to avoid fitting it to the
-recipes it was built from):
+1. **The household's own decisions**, where two wordings should total as one thing: one
+   vegetable oil, "soy sauce" meaning light, butter and unsalted butter kept apart.
+2. **Ambiguous and regional words**: "coriander" (leaf or seed?), "cilantro", "heavy cream".
 
-1. **It records the household's own decisions**, where the shelf rule alone would allow either
-   answer: one vegetable oil, "soy sauce" meaning light, butter and unsalted butter kept apart.
-2. **It settles words the shelf rule can't**: regional or ambiguous ones such as "coriander"
-   (leaf or seed?), "cilantro" and "heavy cream".
-
-The "Also written as" spellings are **examples, not the whole vocabulary**. They are there
-because `test/validate-recipes.js` reads them and warns when one turns up in a converted
-recipe. A name missing from the list is not wrong; it just hasn't come up twice yet.
+Each row says: lines whose name is in **Write** or **Also written as** total together, under the
+**Write** name. Nothing here changes a recipe.
 
 **When to add a row:** when an ingredient turns up in a **second** recipe under a different
-name. `validate-recipes.js` lists every name the vocabulary doesn't know, so you'll see
-candidates at the moment a recipe is added. An ingredient used once never needs to total with
-anything, so a row for it is upkeep with no benefit.
+wording. `validate-recipes.js` prints every name the dictionary doesn't know and what each known
+one will total as, so candidates appear the moment a recipe is added. An ingredient used once
+never needs to total with anything, so a row for it is upkeep with no benefit.
 
-**Where it's heading.** When the shopping-list release lands (step 4 of the review), the master
-copy of this list moves into the app, this file is generated from it, and a test fails if the two
+**Where it's heading.** The shopping-list release (PR 6 in `docs/NEXT-SESSION.md`) moves the
+master copy into `index.html`, generates this file from it, and adds a test that fails if the two
 differ, so there is only ever one list to edit. Until then, this file is the only copy.
 
-**Where the rows came from.** The rows below are the 79 ingredients shared by two or more recipes in
-September 2026, which covered 80% of all ingredient lines.
+**Where the rows came from.** 78 rows are the 79 ingredients the review found shared by two or
+more recipes in September 2026, which covered 80% of all ingredient lines. (The review scored 79;
+two of its items share a row here. Counted, not reconciled: the gap was found on 23 Sep.) The
+other 12 came from the first ingredient survey on 23 Sep 2026: 17 recipes from two sites the
+library hadn't used, one British and one American. Each turned up in two or more of them.
+*Italian seasoning* was deliberately **not** added as a spelling of dried oregano: it is a
+different product, and the survey only offered it because the extractor had swapped one for the
+other.
 
 **Decided by the household, 23 Sep 2026, and reflected below:**
 
@@ -52,7 +56,8 @@ September 2026, which covered 80% of all ingredient lines.
 | --- | --- | --- |
 | garlic | garlic clove(s) | `3 garlic cloves` |
 | onion | white onion, brown onion, yellow onion | `2 onions` |
-| spring onions | scallions, green onions | `1 bunch spring onions` |
+| red onion | | `1 red onion` |
+| spring onions | scallions, scallion, green onions | `1 bunch spring onions` |
 | red pepper | red bell pepper | `1 red pepper` |
 | green pepper | green bell pepper | `1 green pepper` |
 | red chilli | red chile, fresh red chilli | `2 red chillies` |
@@ -62,6 +67,9 @@ September 2026, which covered 80% of all ingredient lines.
 | celery | celery stick(s) | `2 celery sticks` |
 | cherry tomatoes | | weight |
 | baby spinach | spinach leaves (when baby) | weight |
+| cucumber | | `1 cucumber` |
+| potatoes | | weight |
+| romaine lettuce | | `1 romaine lettuce` |
 | lemon juice | fresh lemon juice | ml or spoons; whole lemons: `1 lemon, juiced` |
 
 ## Meat & Fish
@@ -72,6 +80,7 @@ September 2026, which covered 80% of all ingredient lines.
 | chorizo | cooking chorizo (when the source means it) |
 | raw king prawns | king prawns (when cooked in the dish), jumbo shrimp |
 | salmon fillets | tail-end salmon fillets |
+| streaky bacon | bacon (in US recipes; in a British one it usually means back bacon, so check) |
 
 ## Dairy & Eggs
 
@@ -115,10 +124,15 @@ September 2026, which covered 80% of all ingredient lines.
 | raspberry jam | seedless raspberry jam, soft-set raspberry jam |
 | long grain rice | long-grain rice (write the **uncooked** amount, D4) |
 | rigatoni | pasta shapes (when rigatoni) |
+| spaghetti | dried spaghetti |
 | orzo | |
 | chopped tomatoes | tinned chopped tomatoes (write `400 g chopped tomatoes (1 tin)`, as the tin is labelled) |
 | tomato purée | tomato paste |
 | sun-dried tomatoes | |
+| tomato ketchup | ketchup |
+| mayonnaise | mayo |
+| gherkins | dill pickles |
+| panko breadcrumbs | |
 | chicken stock | chicken broth, hot chicken stock |
 | light soy sauce | soy sauce |
 | dark soy sauce | |
@@ -134,13 +148,15 @@ September 2026, which covered 80% of all ingredient lines.
 | salt | table salt, fine salt |
 | sea salt | fine sea salt, flaky sea salt |
 | black pepper | pepper, ground black pepper, freshly ground black pepper |
+| white pepper | ground white pepper |
 | garlic salt | |
 | garlic powder | |
 | paprika | sweet paprika (not smoked, which is its own item) |
+| smoked paprika | |
 | chilli flakes | crushed chillies, red pepper flakes |
 | chilli powder | mild chilli powder, hot chilli powder |
 | cajun seasoning | cajun spice mix, cajun spice |
-| dried oregano | oregano (when dried) |
+| dried oregano | oregano, *fresh oregano is its own item* |
 | ground cumin | cumin (when a powder) |
 | ground coriander | coriander powder (bare "coriander" means the leaf, so write *fresh coriander* for that) |
 | ground cinnamon | cinnamon (when a powder) |

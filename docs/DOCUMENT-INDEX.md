@@ -17,10 +17,10 @@ GitHub at the time of writing.
    button pressed.
 
 Then pick up work from **`docs/NEXT-SESSION.md`**, which sets out the order things should
-happen in. As of 21 Sep 2026 **steps 1 to 4 are done** — the library was reprocessed and ingested
-(33 recipes), the full browser test pass was run against the real backend, the app was merged to
-`main` and is live, and all 29 recipe images are self-hosted. The project is at **step 5:
-Phase 3**, none of which has been started.
+happen in. As of 23 Sep 2026 the app is live and in daily use, and the work is a **seven-PR plan**
+agreed after two reviews: a safety net (PR 1, done), closing the review loop (PR 2), backups,
+a faithful save, row-scoped writes, the shopping-list release, and sharing with family.
+Phase 3's last two items (R4, P3) follow it.
 
 **One thing to absorb before changing anything: `main` is production.** GitHub Pages serves from
 `main`, and every merge deploys straight to the tablet. There is no staging step. This was
@@ -165,14 +165,46 @@ household and is not in this repo.
 
 ---
 
+### `docs/REVIEW-ARCHITECTURE.md` — brief for an independent review of the app's structure
+**What:** Nine questions for a separate session on a different model, written 23 Sep 2026 after
+the ingredient review's design was found to have scored itself by a measure that rewarded it. It
+covers the data model, where the ingestion pipeline can silently change a recipe, the runtime
+pattern, sharing with family, testing, the single file, backups, whether the documents are
+honest, and whether the planned shopping-list release should go ahead. It ends with the prompt
+that starts the session.
+
+**Use it when:** starting that review. Its findings are in `docs/REVIEW-ARCHITECTURE-FINDINGS.md`.
+
+**Don't:** let the reviewer read the ingredient review's conclusions before answering question 2;
+the brief says why.
+
+---
+
+### `docs/REVIEW-ARCHITECTURE-FINDINGS.md` — what that review found, and what to do
+**What:** The answer to the brief above, written 23 Sep 2026 against the code on `main`, the live
+database, the backup dumps and GitHub. It opens with the verdict and one paragraph per question,
+then findings with evidence and severity, recommendations in three lists (change now; change
+before sharing with family; leave alone, with the reason), the question 2 answer as written
+before and after reading the ingredient review, what it could not verify, and a corrections
+table for the other documents.
+
+**Use it when:** deciding what to do before the shopping-list release or before sharing the app,
+or updating any document it corrects. The household accepted it on 23 Sep; `docs/NEXT-SESSION.md`
+holds the seven-PR plan that carries it out, and each PR ticks the findings it closes.
+
+**Don't:** take its restore finding as tested — it predicts what the documented restore would do
+from the dump's contents and the live grants; the recommendation is to rehearse one.
+
+---
+
 ### `docs/NEXT-SESSION.md` — the order of work, and how to start
 **What:** **The definitive sequence for what happens next**, with the reasoning behind the three
 places where order genuinely matters. Plus a complete, ready-to-paste prompt for the next session
 and alternative starting points if you want to work out of sequence.
 
 **Use it when:** starting a new session, or whenever you're unsure what should happen next.
-Currently at **step 5: Phase 3** — steps 1 to 4 are done, and within Phase 3 the food diary
-(H1–H3) and dark mode (S2) have shipped. R4 and P3 remain.
+Rewritten 23 Sep around the **seven-PR plan** from the two reviews, with a starting prompt per
+PR. Phase 3's R4 and P3 wait until the plan is done.
 
 **Contains one warning worth not missing:** the test plan's export/import step rewrites
 everything, so that export must be taken *after* recipe ingestion, never before.
@@ -188,8 +220,9 @@ own group.
 **Use it when:** adding any recipe. Paste it, or its contents, into a conversation along with the
 source recipe.
 
-**Give it, with `converter/ingredient-names.md`,** to the conversion project. That file is the
-shared vocabulary ingredient names are taken from, so the shopping list can total them.
+**Give it, on its own,** to the conversion project. `converter/ingredient-names.md` is **not** a
+converter file any more: since the 23 Sep architecture review the converter keeps the source's
+product words in British English, and that list is the app's dictionary for totalling them.
 
 **Keep in step with:** the app's parser. The two must agree — a mismatch between what this asks
 for and what `parseRecipe` understands caused a real bug (`[instant]` durations the app didn't
@@ -200,7 +233,7 @@ recognise, leaving raw bracket text visible in the diagram).
 ### `converter/test-set.md` — the converter's regression tests
 **What:** Eight deliberately awkward recipes, each isolating one failure mode — a late addition, a
 split ingredient, parallel prep, a zero-length step, a missing yield, and (since 23 Sep) the
-shape and vocabulary of ingredient lines, including ingredients the vocabulary has never seen — with what a correct
+shape of ingredient lines, British English without over-specifying, and ingredients no list has seen — with what a correct
 conversion must produce and what counts as a failure. Plus three audits of the real library. The
 first two (13 and 14 Sep) describe the pre-reprocess library and are history now; the third
 (20 Sep) re-runs all five tests against what's actually in the database.
@@ -233,7 +266,7 @@ Since 23 Sep it also warns on ingredient lines outside the standard shape, and l
 `converter/ingredient-names.md` doesn't know. Those checks live in **`test/ingredient-lines.js`**,
 shared with **`test/ingredient-survey.js`**. The survey reads a bulk extraction made with
 `converter/ingredient-extraction-prompt.md`, again from outside the repo, and reports names and
-spellings worth adding to the vocabulary.
+spellings worth adding to the app's dictionary, `converter/ingredient-names.md`.
 
 ```sh
 node test/build.js && node test/ingredient-survey.js ~/kitchen-survey/*.md --out ~/kitchen-survey/report.md
@@ -246,7 +279,7 @@ node test/build.js && node test/ingredient-survey.js ~/kitchen-survey/*.md --out
 standard shape and in the source's own words. Used with `test/ingredient-survey.js` to grow
 `ingredient-names.md` from recipes it was not built from.
 
-**Use it when:** before adding the vocabulary rows by hand, or every so often as the library
+**Use it when:** before adding dictionary rows by hand, or every so often as the library
 grows. **Don't** commit the extractions or the report: they are recipe text, and this repo is
 public.
 

@@ -176,18 +176,21 @@ const VOCAB = loadVocab();
        recipe still renders and scales; what suffers is the shopping list, which totals
        lines by their wording. The quantity comes from the app's own splitQty. */
     const shapeFaults = [];
-    const newNames = [];
+    const newNames = [], totalsAs = [];
     r.splits.forEach(split => {
-      const { why, name, isNew } = checkLine(split, VOCAB);
+      const { why, name, listed, isNew } = checkLine(split, VOCAB);
       if(why.length) shapeFaults.push(`"${split.line.slice(0,64)}" — ${why.join('; ')}`);
       else if(isNew && !newNames.includes(name)) newNames.push(name);
+      /* Not a fault: the converter keeps the source's wording on purpose. Shown so
+         a wrong dictionary entry is seen here rather than on the shopping list. */
+      else if(listed && !totalsAs.includes(`${name} → ${listed}`)) totalsAs.push(`${name} → ${listed}`);
     });
     if(shapeFaults.length){
       warnings.push(`${shapeFaults.length} ingredient line(s) outside the standard shape:`);
       shapeFaults.forEach(f => warnings.push('    ' + f));
     }
 
-    results.push({ line: b.line, ...r, blockers, warnings, newNames, bareMerges: bare.length, mergeCount: r.merges.length });
+    results.push({ line: b.line, ...r, blockers, warnings, newNames, totalsAs, bareMerges: bare.length, mergeCount: r.merges.length });
   }
 
   await browser.close();
@@ -204,6 +207,7 @@ const VOCAB = loadVocab();
     r.blockers.forEach(x => console.log(`        BLOCKER: ${x}`));
     r.warnings.forEach(x => console.log(`        warn:    ${x}`));
     if(r.newNames.length) console.log(`        new to ingredient-names.md (add one if it turns up in a second recipe): ${r.newNames.join(', ')}`);
+    if(r.totalsAs.length) console.log(`        totals on the shopping list as: ${r.totalsAs.join(', ')}`);
   }
   if(pageErrors.length){
     console.log('\nPAGE ERRORS:');

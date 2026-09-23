@@ -28,7 +28,7 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
-const { loadVocab, checkLine } = require('./ingredient-lines');
+const { loadVocab, checkLine, fold } = require('./ingredient-lines');
 
 const launchOpts = process.env.PLAYWRIGHT_CHROMIUM ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM } : {};
 const args = process.argv.slice(2);
@@ -64,31 +64,27 @@ function readRecipes(md, file){
   return recipes;
 }
 
-/* For grouping only: "spring onion" and "spring onions" are one name. The report
-   shows the spelling seen most often. */
-function fold(name){
-  return name.split(' ').map((w, i, a) => {
-    if(i !== a.length - 1 || w.length < 4 || /(ss|us|is)$/.test(w)) return w;
-    if(/chillies$/.test(w)) return w.slice(0, -2);
-    if(/ies$/.test(w)) return w.slice(0, -3) + 'y';
-    if(/(oes|ches|shes)$/.test(w)) return w.slice(0, -2);
-    return w.replace(/s$/, '');
-  }).join(' ');
-}
-
 /* The source's own name for an ingredient, stripped of the words a standard line
    leaves out ("a big handful of", "1 can", "large"), so "1 can (400g) garbanzo
    beans" reads as "garbanzo beans". Stripped repeatedly, because sources stack
    them. */
-function sourceName(name){
-  let n = name.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim(), prev;
+function sourceName(line){
+  let n = line.toLowerCase()
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[\[\]]/g, '')      // shop links: "[paprika](http://…)"
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/^.*:\s*/, '')                                             // "optional for garnish: chopped scallion"
+    .split(/\s[–—-]\s|,|\/|\s+or\s+|\s+i\s+(use|like)\b/)[0]            // alternatives, asides
+    .replace(/\s+/g, ' ').trim(), prev;
   do {
     prev = n;
-    n = n.replace(/^(a|an|x|big|large|small|medium|heaped|level|generous|thumb-sized|fresh|freshly)\s+/, '')
-         .replace(/^(cans?|tins?|jars?|packs?|packets?|pinch(es)?|bunch(es)?|handfuls?|sprigs?|slices?|rashers?|pieces?|knobs?|stalks?)\s+(of\s+)?/, '')
+    n = n.replace(/^[\d¼½¾⅓⅔⅛.\/\s-]+/, '')
+         .replace(/^(g|kg|ml|l|oz|ounces?|lbs?|pounds?|cups?|tsp|tbsp|teaspoons?|tablespoons?)\b\.?\s*/, '')
+         .replace(/^(a|an|x|big|good|large|small|medium|heaped|level|generous|thumb-sized|fresh|freshly|finely|thinly|roughly|chopped|sliced|diced|minced|grated|shredded|chilled|boneless|skinless|optional)\s+/, '')
+         .replace(/^(cans?|tins?|jars?|packs?|packets?|pinch(es)?|bunch(es)?|handfuls?|sprigs?|slices?|strips?|rashers?|pieces?|knobs?|stalks?|sticks?|cloves?)\s+(of\s+)?(?=\S)/, '')
          .trim();
   } while(n !== prev);
-  return n;
+  /* Preparation written without a comma: "onion peeled and thinly sliced". */
+  return n.replace(/\s+(peeled|chopped|sliced|diced|minced|grated|shredded|trimmed|deseeded|de-stoned|cut|finely|thinly|roughly|lightly|chilled|divided|for|to|defrosted|rinsed|drained|halved|quartered|whisked|beaten|melted|softened|the|with|if|once|about|approx)\b.*$/, '').trim();
 }
 
 /* The strict pair rule from the review (§2.6): same last word, exactly one extra
@@ -100,7 +96,7 @@ const PROTECT = new Set(('ground smoked spring red green yellow white black swee
   + 'cream salted unsalted whole frozen dried cooked raw tinned canned streaky back basmati jasmine arborio long-grain '
   + 'wholemeal granulated demerara muscovado mixed bone-in boneless skinless egg rice wine cider malt balsamic tomato '
   + 'powder seed flake paste sauce juice zest stock cube leaf oil salt sugar curry').split(/\s+/));
-function strictPairs(names){
+function strictPairs(names, protectedToo){
   const out = [];
   for(const a of names) for(const b of names){
     if(a >= b) continue;
@@ -108,7 +104,7 @@ function strictPairs(names){
     const [S, L] = A.length < B.length ? [A, B] : [B, A];
     if(L.length !== S.length + 1 || S[S.length - 1] !== L[L.length - 1]) continue;
     const extra = L.filter(w => !S.includes(w));
-    if(extra.length === 1 && S.every(w => L.includes(w)) && !PROTECT.has(extra[0])) out.push([a, b, extra[0]]);
+    if(extra.length === 1 && S.every(w => L.includes(w)) && PROTECT.has(extra[0]) === !!protectedToo) out.push([a, b, extra[0]]);
   }
   return out;
 }
@@ -128,7 +124,7 @@ function strictPairs(names){
   await browser.close();
 
   const byName = new Map();          // folded name -> {spellings, recipes, originals}
-  const faults = [], survivors = [], unsure = [], spellingsToAdd = new Map();
+  const faults = [], unsure = [], spellingsToAdd = new Map();
   let cleanListed = 0, cleanNew = 0;
   flat.forEach((l, i) => {
     const r = recipes[l.ri];
@@ -137,11 +133,14 @@ function strictPairs(names){
     if(l.unsure) unsure.push(`\`${l.std}\` ← "${l.orig}" — ${where}`);
     if(c.why.length){
       faults.push(`\`${l.std}\` — ${c.why.join('; ')} — ${where}`);
-      if(c.listed) survivors.push(c.name);
       return;
     }
     if(c.isNew) cleanNew++; else cleanListed++;
-    const key = fold(c.name);
+    /* A line written in one of a dictionary name's spellings ("scallions") counts
+       under that name, as the shopping list will count it. The extractor keeps the
+       source's wording on purpose since 23 Sep, so this is the common case, not a
+       fault. */
+    const key = fold(c.listed || c.name);
     if(!byName.has(key)) byName.set(key, { spellings: new Map(), recipes: new Set(), originals: new Set(), listed: !c.isNew });
     const e = byName.get(key);
     e.spellings.set(c.name, (e.spellings.get(c.name) || 0) + 1);
@@ -150,12 +149,26 @@ function strictPairs(names){
        preparation are stripped the same way. Where it differs, it is a real-world
        synonym: a spelling to add under a listed name, or a note on a new one. */
     if(splits[i].orig){
-      const o = sourceName(checkLine({ line: l.orig, ...splits[i].orig }, { synonyms: new Map(), names: new Set() }).name);
+      /* A source line holding two things ("salt and pepper") names neither. */
+      /* A source line naming two things ("salt and pepper") or offering a choice
+         ("vegetable or sunflower oil") is not a synonym for either. */
+      let o = (/ and /.test(l.orig) && !/ and \w+ (seeds|cheese|sausages?)\b/.test(l.orig)) || / or /i.test(l.orig.replace(/\([^)]*\)/g, '')) ? '' : sourceName(l.orig);
+      /* "spring onions scallions": the source glossed its own name. The gloss is
+         the synonym. */
+      if(o.startsWith(c.name + ' ')) o = o.slice(c.name.length + 1);
+      const known = x => vocab.names.has(fold(x)) || vocab.synonyms.has(x);
+      /* "coriander cilantro", "tomato puree paste": a known name glossed with
+         another word. Which word is the synonym can't be told apart safely, so
+         neither is proposed. */
+      const words = o.split(' ');
+      if(words.slice(1).some((_, k) => known(words.slice(0, k + 1).join(' ')))) o = '';
+      if(known(o) || o.length < 3) o = '';
       if(o && fold(o) !== key){
         e.originals.add(o);
         if(e.listed && !vocab.synonyms.has(o)){
-          if(!spellingsToAdd.has(c.name)) spellingsToAdd.set(c.name, new Set());
-          spellingsToAdd.get(c.name).add(o);
+          const listedAs = vocab.listedAs.get(key) || c.name;
+          if(!spellingsToAdd.has(listedAs)) spellingsToAdd.set(listedAs, new Set());
+          spellingsToAdd.get(listedAs).add(o);
         }
       }
     }
@@ -166,6 +179,7 @@ function strictPairs(names){
   const candidates = entries.filter(e => !e.listed && e.recipes.size >= 2).sort((a, b) => b.recipes.size - a.recipes.size);
   const onceOnly = entries.filter(e => !e.listed && e.recipes.size < 2);
   const pairs = strictPairs(entries.map(shown));
+  const lookPairs = strictPairs(entries.map(shown), true);
   const sources = new Set(recipes.map(r => r.source).filter(Boolean));
 
   const L = [];
@@ -187,7 +201,7 @@ function strictPairs(names){
   L.push('');
 
   L.push('## 2. Spellings to add under names already listed', '');
-  L.push('The extractor chose a listed name, but the source called it something the "Also written as" column doesn\'t have yet. Adding them lets `validate-recipes.js` catch those wordings when a conversion lets one through.', '');
+  L.push('The source called a dictionary ingredient something the "Also written as" column doesn\'t have yet. Adding them lets the shopping list total that wording with the rest.', '');
   if(spellingsToAdd.size){
     L.push('| Listed name | Add these spellings |', '| --- | --- |');
     [...spellingsToAdd].sort().forEach(([n, s]) => L.push(`| ${n} | ${[...s].join(', ')} |`));
@@ -197,10 +211,12 @@ function strictPairs(names){
   L.push('## 3. Possible duplicates', '');
   L.push('Pairs of names that differ by one word which does not change what you buy (the review\'s strict rule, §2.6). Either they are the same thing and one spelling should win, or the extra word matters and belongs on the never-ignore list.', '');
   L.push(pairs.length ? pairs.map(([a, b, x]) => `- *${a}* ~ *${b}* (extra word: "${x}")`).join('\n') : 'None.');
+  L.push('', '**Worth a look:** the extra word is one that usually changes what you buy, so these are usually different things. Sometimes they are not (*ketchup* ~ *tomato ketchup*); decide by eye.', '');
+  L.push(lookPairs.length ? lookPairs.map(([a, b, x]) => `- *${a}* ~ *${b}* (extra word: "${x}")`).join('\n') : 'None.');
   L.push('');
 
   L.push('## 4. Lines outside the standard shape', '');
-  L.push(`The extractor broke a rule the converter must follow${survivors.length ? `, including ${survivors.length} listed synonym(s) that survived` : ''}. Worth reading as a test of the instructions: a rule broken often here will be broken in conversions too.`, '');
+  L.push('The extractor broke a rule the converter must follow. Worth reading as a test of the instructions: a rule broken often here will be broken in conversions too.', '');
   L.push(faults.length ? faults.map(f => '- ' + f).join('\n') : 'None.');
   L.push('');
 
