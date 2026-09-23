@@ -295,12 +295,9 @@ claude.ai chat, which can read the public raw files by URL.
 I'd like an extensive review of how my Kitchen recipe app matches ingredients on the shopping
 list. It works, but it still doesn't feel slick.
 
-Start by reading the brief, then CLAUDE.md, which applies in full. Both are on the branch
-claude/recipe-app-supabase-0z139o (the brief may not be on main yet):
-  https://raw.githubusercontent.com/crispy-lettuce/RecipeFlowKeeper/refs/heads/claude/recipe-app-supabase-0z139o/docs/REVIEW-INGREDIENT-MATCHING.md
-  https://raw.githubusercontent.com/crispy-lettuce/RecipeFlowKeeper/refs/heads/claude/recipe-app-supabase-0z139o/CLAUDE.md
-In a Claude Code session: git fetch origin claude/recipe-app-supabase-0z139o, then
-git show FETCH_HEAD:docs/REVIEW-INGREDIENT-MATCHING.md
+Start by reading the brief, then CLAUDE.md, which applies in full. Both are on main:
+  https://raw.githubusercontent.com/crispy-lettuce/RecipeFlowKeeper/refs/heads/main/docs/REVIEW-INGREDIENT-MATCHING.md
+  https://raw.githubusercontent.com/crispy-lettuce/RecipeFlowKeeper/refs/heads/main/CLAUDE.md
 The repo is github.com/crispy-lettuce/RecipeFlowKeeper; the app is the single file index.html.
 
 My questions:

@@ -12,6 +12,11 @@ node test/build.js       # bake a runnable copy against the stub
 node test/smoke.js       # walk it; exits non-zero on any failure
 ```
 
+Since 23 Sep the same three commands run in GitHub Actions on every pull request and every push
+to `main` (`.github/workflows/tests.yml`), so the gate no longer depends on anyone remembering.
+Results print as each check runs; a crash prints `CRASH after N checks` and the last `ok` line
+names where it died.
+
 `build.js` writes `test/app-under-test.html` — a copy of the app with the two
 CDN `<script>` tags swapped for `stub.js` and a set of canned rows injected.
 Re-run it after every change to `index.html`; `smoke.js` reads only that copy,

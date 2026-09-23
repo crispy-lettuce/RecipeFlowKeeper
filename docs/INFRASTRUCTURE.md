@@ -20,7 +20,7 @@ project's own rule, restated in §4) or a plain identifier that grants nothing o
 | GitHub account | `crispy-lettuce` (personal account, not an organisation) |
 | App repo | `crispy-lettuce/RecipeFlowKeeper` — **public** |
 | Backup repo | `crispy-lettuce/PrivateBackup` — **private** |
-| Shared working branch | `claude/recipe-app-supabase-0z139o`, on both repos |
+| How work flows | `main` is the trunk and production. Changes go on a short-lived branch and merge by pull request, which runs the tests (`.github/workflows/tests.yml`). `PrivateBackup` still lives on its one branch — see §2 |
 | Supabase organisation | CrispyLettuce (`kvfcdgzdurwcqftttukd`) |
 | Supabase project | **RecipeWrangler** (`mhkayefzrtceesgizkjs`), region `eu-west-1`, Postgres 17 |
 | Supabase project URL | `https://mhkayefzrtceesgizkjs.supabase.co` |
@@ -33,8 +33,10 @@ project's own rule, restated in §4) or a plain identifier that grants nothing o
 ### `crispy-lettuce/RecipeFlowKeeper` — the app
 
 - **Public.** https://github.com/crispy-lettuce/RecipeFlowKeeper
-- Default branch: `main`. Work happens on `claude/recipe-app-supabase-0z139o`, currently ahead
-  of `main` and unmerged.
+- Default branch: `main`, which is production. `claude/recipe-app-supabase-0z139o` was the
+  working branch until 22 Sep; it is fully merged and behind `main` now, and nothing should be
+  built on it. *(Corrected 23 Sep: this line said "ahead of `main` and unmerged" for a day
+  after the last merge.)*
 - One file, `index.html` — no build step, no framework. `converter/` holds the conversion
   instructions and standing test set. `test/` holds an offline Playwright harness. `docs/` holds
   this document and its companions.
@@ -167,8 +169,12 @@ the public URL prefix it compares against, to decide whether a photo is already 
 
 ### Edge Functions
 
-**Two deployed**, both `verify_jwt: true`, both with source in this repo under
-`supabase/functions/`:
+**Two deployed**, both `verify_jwt: true`, with source in this repo under
+`supabase/functions/`. The 23 Sep review diffed both against what is running: `find-recipe-image`
+was identical; `rehost-images` v8 had been deployed from an uncommitted copy, and the repo was
+brought into step on 23 Sep (`docs/REVIEW-ARCHITECTURE-FINDINGS.md` F4, Appendix D). **A deploy
+is a commit**: change the file, commit, then deploy. The next deploy from the repo (v9) makes
+the two byte-identical again; until then the only difference is the header comment.
 
 | Function | Version | What it does |
 | --- | --- | --- |
@@ -241,8 +247,8 @@ screen — never into a conversation, a file in either repo, or this document.
 
 1. Clone whichever repo you need:
    ```sh
-   git clone -b claude/recipe-app-supabase-0z139o https://github.com/crispy-lettuce/RecipeFlowKeeper.git
-   git clone -b claude/recipe-app-supabase-0z139o https://github.com/crispy-lettuce/PrivateBackup.git
+   git clone https://github.com/crispy-lettuce/RecipeFlowKeeper.git
+   git clone https://github.com/crispy-lettuce/PrivateBackup.git   # its default branch is the odd one; see §2
    ```
 2. Read `docs/HANDOVER.md` for what's actually built and verified, and `docs/NEXT-SESSION.md`
    for how to start the next piece of work.
