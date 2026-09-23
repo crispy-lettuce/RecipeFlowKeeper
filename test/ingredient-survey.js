@@ -28,7 +28,7 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
-const { loadVocab, checkLine } = require('./ingredient-lines');
+const { loadVocab, checkLine, fold } = require('./ingredient-lines');
 
 const launchOpts = process.env.PLAYWRIGHT_CHROMIUM ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM } : {};
 const args = process.argv.slice(2);
@@ -64,31 +64,26 @@ function readRecipes(md, file){
   return recipes;
 }
 
-/* For grouping only: "spring onion" and "spring onions" are one name. The report
-   shows the spelling seen most often. */
-function fold(name){
-  return name.split(' ').map((w, i, a) => {
-    if(i !== a.length - 1 || w.length < 4 || /(ss|us|is)$/.test(w)) return w;
-    if(/chillies$/.test(w)) return w.slice(0, -2);
-    if(/ies$/.test(w)) return w.slice(0, -3) + 'y';
-    if(/(oes|ches|shes)$/.test(w)) return w.slice(0, -2);
-    return w.replace(/s$/, '');
-  }).join(' ');
-}
-
 /* The source's own name for an ingredient, stripped of the words a standard line
    leaves out ("a big handful of", "1 can", "large"), so "1 can (400g) garbanzo
    beans" reads as "garbanzo beans". Stripped repeatedly, because sources stack
    them. */
-function sourceName(name){
-  let n = name.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim(), prev;
+function sourceName(line){
+  let n = line.toLowerCase()
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[\[\]]/g, '')      // shop links: "[paprika](http://…)"
+    .replace(/\([^)]*\)/g, ' ')
+    .split(/\s[–—-]\s|,|\/|\s+or\s+|\s+i\s+(use|like)\b/)[0]            // alternatives, asides
+    .replace(/\s+/g, ' ').trim(), prev;
   do {
     prev = n;
-    n = n.replace(/^(a|an|x|big|large|small|medium|heaped|level|generous|thumb-sized|fresh|freshly)\s+/, '')
-         .replace(/^(cans?|tins?|jars?|packs?|packets?|pinch(es)?|bunch(es)?|handfuls?|sprigs?|slices?|rashers?|pieces?|knobs?|stalks?)\s+(of\s+)?/, '')
+    n = n.replace(/^[\d¼½¾⅓⅔⅛.\/\s-]+/, '')
+         .replace(/^(g|kg|ml|l|oz|lbs?|cups?|tsp|tbsp|teaspoons?|tablespoons?)\b\s*/, '')
+         .replace(/^(a|an|x|big|good|large|small|medium|heaped|level|generous|thumb-sized|fresh|freshly|finely|thinly|roughly|chopped|sliced|diced|minced|grated|shredded|chilled)\s+/, '')
+         .replace(/^(cans?|tins?|jars?|packs?|packets?|pinch(es)?|bunch(es)?|handfuls?|sprigs?|slices?|strips?|rashers?|pieces?|knobs?|stalks?|sticks?|cloves?)\s+(of\s+)?(?=\S)/, '')
          .trim();
   } while(n !== prev);
-  return n;
+  /* Preparation written without a comma: "onion peeled and thinly sliced". */
+  return n.replace(/\s+(peeled|chopped|sliced|diced|minced|grated|shredded|trimmed|deseeded|de-stoned|cut|finely|thinly|roughly|lightly|chilled|divided|for|to|defrosted|rinsed|drained|halved|quartered|whisked|beaten|melted|softened|the|with|if|once|about|approx)\b.*$/, '').trim();
 }
 
 /* The strict pair rule from the review (§2.6): same last word, exactly one extra
@@ -150,12 +145,26 @@ function strictPairs(names){
        preparation are stripped the same way. Where it differs, it is a real-world
        synonym: a spelling to add under a listed name, or a note on a new one. */
     if(splits[i].orig){
-      const o = sourceName(checkLine({ line: l.orig, ...splits[i].orig }, { synonyms: new Map(), names: new Set() }).name);
+      /* A source line holding two things ("salt and pepper") names neither. */
+      /* A source line naming two things ("salt and pepper") or offering a choice
+         ("vegetable or sunflower oil") is not a synonym for either. */
+      let o = (/ and /.test(l.orig) && !/ and \w+ (seeds|cheese|sausages?)\b/.test(l.orig)) || / or /i.test(l.orig.replace(/\([^)]*\)/g, '')) ? '' : sourceName(l.orig);
+      /* "spring onions scallions": the source glossed its own name. The gloss is
+         the synonym. */
+      if(o.startsWith(c.name + ' ')) o = o.slice(c.name.length + 1);
+      const known = x => vocab.names.has(fold(x)) || vocab.synonyms.has(x);
+      /* "coriander cilantro", "tomato puree paste": a known name glossed with
+         another word. Which word is the synonym can't be told apart safely, so
+         neither is proposed. */
+      const words = o.split(' ');
+      if(words.slice(1).some((_, k) => known(words.slice(0, k + 1).join(' ')))) o = '';
+      if(known(o) || o.length < 3) o = '';
       if(o && fold(o) !== key){
         e.originals.add(o);
         if(e.listed && !vocab.synonyms.has(o)){
-          if(!spellingsToAdd.has(c.name)) spellingsToAdd.set(c.name, new Set());
-          spellingsToAdd.get(c.name).add(o);
+          const listedAs = vocab.listedAs.get(key) || c.name;
+          if(!spellingsToAdd.has(listedAs)) spellingsToAdd.set(listedAs, new Set());
+          spellingsToAdd.get(listedAs).add(o);
         }
       }
     }

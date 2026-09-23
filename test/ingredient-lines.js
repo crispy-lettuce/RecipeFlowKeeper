@@ -12,6 +12,23 @@
 const fs = require('fs');
 const path = require('path');
 
+/* splitQty leaves count words in place on purpose, so one may still lead the
+   name ("handful coriander"); it is dropped before the name is looked up. */
+const COUNT_WORD = /^(pinch(es)?|bunch(es)?|handfuls?|sprigs?|slices?|rashers?|pieces?|tins?|knobs?|stalks?)\s+(of\s+)?/;
+
+/* Singular and plural are one name: "1 egg" and "3 eggs" both write *eggs*
+   correctly, so neither may be reported as a synonym of the other. */
+function fold(name){
+  /* "purée" and "puree" are one spelling too. */
+  return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(' ').map((w, i, a) => {
+    if(i !== a.length - 1 || w.length < 4 || /(ss|us|is)$/.test(w)) return w;
+    if(/chillies$/.test(w)) return w.slice(0, -2);
+    if(/ies$/.test(w)) return w.slice(0, -3) + 'y';
+    if(/(oes|ches|shes)$/.test(w)) return w.slice(0, -2);
+    return w.replace(/s$/, '');
+  }).join(' ');
+}
+
 /* The converter's shared vocabulary, read from converter/ingredient-names.md so
    there is one list, not two. Each "Also written as" phrase maps to the name to
    write instead. Only plain phrases are taken: anything with brackets or a
@@ -19,7 +36,11 @@ const path = require('path');
    correct line is worse than one that stays quiet. Exact matches only, so
    "olive oil" is never mistaken for "oil". */
 function loadVocab(file){
-  const vocab = { synonyms: new Map(), names: new Set() };
+  /* synonyms: wording to replace -> listed name
+     names:    folded listed names, plus the count forms the list itself uses
+               ("3 garlic cloves" in the "Count as" column), which are correct
+     listedAs: folded name or count form -> the row's own name, for reports */
+  const vocab = { synonyms: new Map(), names: new Set(), listedAs: new Map() };
   let md;
   try { md = fs.readFileSync(file || path.join(__dirname, '..', 'converter', 'ingredient-names.md'), 'utf8'); }
   catch(e){ return vocab; }   /* no vocabulary file: the shape checks still run, just without names */
@@ -27,9 +48,14 @@ function loadVocab(file){
     const cells = row.split('|').map(c => c.trim());
     if(cells.length < 4 || !cells[1] || /^(write|-+)$/i.test(cells[1])) return;
     const canonical = cells[1].toLowerCase();
-    vocab.names.add(canonical);
+    vocab.names.add(fold(canonical));
+    vocab.listedAs.set(fold(canonical), canonical);
+    (cells[3] || '').match(/`[^`]+`/g)?.forEach(ex => {
+      const n = ex.replace(/`/g, '').replace(/^[\d\/.\s]+/, '').replace(COUNT_WORD, '').split(/[,(]/)[0].trim().toLowerCase();
+      if(n){ vocab.names.add(fold(n)); vocab.listedAs.set(fold(n), canonical); }
+    });
     cells[2].split(',').map(x => x.trim().toLowerCase()).forEach(syn => {
-      if(!syn || /[()*"'`]|\b(when|not|is)\b/.test(syn) || syn === canonical) return;
+      if(!syn || /[()*"'`]|\b(when|not|is)\b/.test(syn) || fold(syn) === fold(canonical)) return;
       vocab.synonyms.set(syn, canonical);
     });
   });
@@ -39,10 +65,6 @@ function loadVocab(file){
 /* Where the prepared form is what you buy, it is the name, not preparation
    ("chopped tomatoes, ground cumin, minced beef"). */
 const PRODUCT_FORM = /^(chopped tomatoes|minced (beef|pork|lamb|turkey|chicken)|flaked almonds)\b/;
-/* splitQty leaves count words in place on purpose, so one may still lead the
-   name ("handful coriander"); it is dropped before the name is looked up. */
-const COUNT_WORD = /^(pinch(es)?|bunch(es)?|handfuls?|sprigs?|slices?|rashers?|pieces?|tins?|knobs?|stalks?)\s+(of\s+)?/;
-
 /* One line, already split by splitQty. Returns:
      why      — the faults, empty for a line in the standard shape
      name     — the name as the shopping list will first see it (lower case)
@@ -66,13 +88,11 @@ function checkLine({ line, qty, rest }, vocab){
   const name = first.replace(COUNT_WORD, '').trim();
   const listed = vocab.synonyms.get(name) || null;
   if(listed) why.push(`use the listed name "${listed}"`);
-  const known = n => vocab.names.has(n) || vocab.synonyms.has(n);
   /* Not a fault: the vocabulary only lists ingredients shared by two or more
      recipes. Reported only from otherwise clean lines, because a faulty line is
      fixed first and its name may change when it is. */
-  const isNew = !!(vocab.names.size && name && !why.length && !known(name)
-    && !known(name + 's') && !known(name.replace(/e?s$/, '')));
+  const isNew = !!(vocab.names.size && name && !why.length && !vocab.names.has(fold(name)) && !vocab.synonyms.has(name));
   return { why, name, listed, isNew };
 }
 
-module.exports = { loadVocab, checkLine };
+module.exports = { loadVocab, checkLine, fold };
