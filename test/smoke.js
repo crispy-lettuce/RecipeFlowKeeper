@@ -38,8 +38,12 @@ const check = (name, pass, detail) => {
              self-hosted" is the whole state it exists to represent.
        The browser's message for these carries neither the URL nor the other
        tokens, so each needs naming or the suite can never go green here.
+         ERR_NAME_NOT_RESOLVED  the same two fetches on a GitHub Actions
+             runner, which has no route to the fonts or to the fixture's
+             made-up host and says so by failing DNS. Found by the first CI
+             run, 23 Sep: 197 checks passed and the job still exited 1.
        Everything else still fails the run. */
-    if (m.type() === 'error' && !/ERR_CONNECTION_RESET|ERR_BLOCKED|ERR_CERT_AUTHORITY_INVALID|ERR_TUNNEL_CONNECTION_FAILED|fonts\.googleapis/.test(m.text())) {
+    if (m.type() === 'error' && !/ERR_CONNECTION_RESET|ERR_BLOCKED|ERR_CERT_AUTHORITY_INVALID|ERR_TUNNEL_CONNECTION_FAILED|ERR_NAME_NOT_RESOLVED|fonts\.googleapis/.test(m.text())) {
       errors.push('CONSOLE: ' + m.text());
     }
   });
