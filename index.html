@@ -10,7 +10,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Pinned to an exact version, not @2: an unpinned tag took the newest 2.x on
+     every page load, so the auth behaviour docs/HANDOVER.md §2e depends on
+     (SIGNED_IN on every hidden → visible change) could change under the app
+     overnight with no commit. Bump deliberately, and re-run TEST-IMAGES.md §9. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
 <script>
 /* Resolve the theme before the first paint (S2).
  *

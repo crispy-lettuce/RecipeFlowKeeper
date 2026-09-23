@@ -92,7 +92,7 @@ Recipes are written by pasting a source into a conversion prompt; see
 
 ## 3. The app's shape
 
-One file, `index.html` — about 7,078 lines, no build step, no framework, no dependencies
+One file, `index.html` — about 7,270 lines, no build step, no framework, no dependencies
 beyond two CDN scripts (supabase-js and html2canvas). Screens are `<section class="view">`
 elements toggled by `showView(name)`.
 
@@ -165,7 +165,7 @@ was a deliberate call in the brief: retrofitting it later, once data exists, is 
 | `shopping_checked` | Ticked items, keyed by `week_start` + `item_key`. **`item_key` is the aggregation string itself**, so anything that changes how items are named or combined re-keys them. |
 | `aliases` | Word matches. `kind` is `source`, `ingredient`, `source_distinct` or `ingredient_distinct` — the `_distinct` kinds record "these are *not* the same" so the app stops asking. |
 | `household_settings` | One row. `week_start_day` (0=Sunday, default 5=Friday). |
-| `households`, `household_members` | Identity. Not queried directly by the app; the household id is a constant in `index.html`. |
+| `households`, `household_members` | Identity. `hydrate()` reads the signed-in user's first `household_members` row to set `HOUSEHOLD_ID`, so the app carries no household constant. *(Corrected 23 Sep; this row said it was a constant.)* |
 
 ### Schema that exists but nothing uses yet
 
@@ -182,7 +182,7 @@ mistake that made the image work look finished):
 | `meal_groups.name` | Written as `''`; no UI ever names a group |
 | `households.name`, `household_members.role` | Multi-household support, deliberately anticipated |
 
-Storage has one bucket, `recipe-images` — **public, 29 objects, 4,426 kB** as of 22 Sep. Public
+Storage has one bucket, `recipe-images` — **public, 30 objects** as of 23 Sep (29 and 4,426 kB on 22 Sep). Public
 affects only the `/object/public/` read endpoint; writes, deletes and listing still go through
 four RLS policies keyed on household membership, so it is readable-if-you-know-the-path rather
 than browsable.

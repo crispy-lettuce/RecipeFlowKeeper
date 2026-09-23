@@ -11,8 +11,9 @@
 
 ## Context
 
-Phases 1 and 2 are built and pushed to `claude/recipe-app-supabase-0z139o` (21 commits ahead of
-`main`), and 102 automated checks pass. But those checks run against a **stubbed** Supabase: every
+Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
+story that used to open this paragraph is history. 197 automated checks pass (102 when this was
+written). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
 security, and the background write queue.
@@ -29,8 +30,7 @@ The tablet-only checks are listed but explicitly deferred to after the merge.
 ## Getting it running
 
 ```sh
-git clone -b claude/recipe-app-supabase-0z139o \
-  https://github.com/crispy-lettuce/RecipeFlowKeeper.git kitchen-test
+git clone https://github.com/crispy-lettuce/RecipeFlowKeeper.git kitchen-test
 cd kitchen-test
 python3 -m http.server 8080      # or: npx http-server -p 8080
 ```
@@ -82,7 +82,7 @@ being sparse. Any recipe is now a fair choice for the scaling checks.
 
 Some things that *will* still look wrong and aren't:
 
-1. **8 planner slots and 2 meal-group entries show "Recipe removed".** They point at recipes
+1. **Some planner slots and meal-group entries show "Recipe removed"** (8 and 2 on 21 Sep; 7 and 1 on 23 Sep). They point at recipes
    deleted during ingestion. `planner_days.recipe_ids` and `meal_groups.recipe_ids` are plain
    `uuid[]` with no foreign key, so nothing cleaned them up. Expected. Clear them from the
    Planner when convenient — but check they render as placeholders rather than throwing first,

@@ -123,7 +123,7 @@ Copy everything in the block below.
 
 ```
 I'm continuing work on my Kitchen recipe app, in the repo
-crispy-lettuce/RecipeFlowKeeper, on branch claude/recipe-app-supabase-0z139o.
+crispy-lettuce/RecipeFlowKeeper. main is production; work on a new branch and open a PR.
 Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md   — the map of all documentation
@@ -222,8 +222,11 @@ cannot see.
 
 ## The recipe conversion prompt
 
-Unchanged — keep using `converter/conversion-instructions.md` as it stands. It was reviewed on
-14 Sep against the app's real parser and needs no edits.
+`converter/conversion-instructions.md` was reviewed on 14 Sep against the app's real parser and
+**revised on 23 Sep** (a standard shape for ingredient lines, and a vocabulary in
+`converter/ingredient-names.md`). Reload it into the conversion project after any change; the
+file's own revision note says what changed. *(This paragraph said "unchanged, needs no edits"
+until 23 Sep.)*
 
 **One thing worth adding to your conversion chat**, since the output now goes straight into the
 database rather than being pasted through the app's form one at a time:

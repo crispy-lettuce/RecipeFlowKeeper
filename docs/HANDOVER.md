@@ -5,7 +5,8 @@ database, or GitHub Actions at the time of writing — not copied from an earlie
 That distinction matters: an earlier task list recorded two things as "completed" that turned
 out not to be, which is what prompted this audit.
 
-Work lives on branch `claude/recipe-app-supabase-0z139o` in both repos.
+`main` is production; work goes on short-lived branches merged by pull request. *(This line named
+a shared working branch until 23 Sep; that branch is merged and finished.)*
 
 Repo URLs, the Supabase project/org, connection details and the secrets policy all live in
 `docs/INFRASTRUCTURE.md` — read that first if you're picking this up without prior context.
@@ -50,7 +51,7 @@ verified status. **Nothing here is inferred from a previous summary.**
 | | Item | Status |
 | --- | --- | --- |
 | SL1 | Unit handling | **Done.** Totals in a base unit, displayed as g/ml under 1000 and kg/L at 1000+. Metric only, never mixed systems. |
-| SL2 | Ingredient name matching | **Done.** Prep words ignored when matching (with `ground` deliberately excluded — ground coriander is seed, coriander is leaf). Prompts capped at 3 per visit, both answers remembered. **Reviewed 22 Sep against the real library** (`docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md`): works, but 274 rows for 168 real items; the household chose the review's full plan on 23 Sep. Step 1, the quantity reader (mixed numbers, ranges, `up to`, `3 x 400 g`), is built on a branch; the rest is not started. |
+| SL2 | Ingredient name matching | **Done.** Prep words ignored when matching (with `ground` deliberately excluded — ground coriander is seed, coriander is leaf). Prompts capped at 3 per visit, both answers remembered. **Reviewed 22 Sep against the real library** (`docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md`): works, but 274 rows for 168 real items; the household chose the review's full plan on 23 Sep. Step 1, the quantity reader (mixed numbers, ranges, `up to`, `3 x 400 g`), merged as PR #9 on 23 Sep; step 3 is on PR #10; the plan for the rest was revised by `docs/REVIEW-ARCHITECTURE-FINDINGS.md` §9. |
 | SL3 | Show/hide checked items | **Done.** |
 | SL4 | Reset ticks | **Done.** Scoped per mode, so clearing one list doesn't clear the other. |
 | SL5 | Week selection | **Done.** This Week / Next Week / Both Weeks, with combined-mode ticks stored separately. |
@@ -545,8 +546,9 @@ durations, 8 carry equipment, 29 have an image. The single gap in each case is
   (different source, image, and yield), not a new version of the same one — so it was not
   ingested and the existing row was not deleted. That row therefore still has no source URL
   and no step timings. Reconverting the River Cottage page would close both.
-- **8 planner slots and 2 meal groups now point at deleted recipes** and will render as
-  "Recipe removed". Expected and accepted; clear them from the Planner when convenient.
+- **8 planner slots and 2 meal groups pointed at deleted recipes** after the ingestion and render
+  as "Recipe removed". 7 days and 1 group still do as of 23 Sep (`docs/REVIEW-ARCHITECTURE-FINDINGS.md`
+  F11). Expected; a delete that also cleans the plan is planned for the row-scoped-writes PR.
 
 **Two conversions carry a `⚠️ Source note` in their own syntax**, written by the converter
 rather than by this ingestion: *No-Bake Chocolate Oat Bars* (allrecipes.com couldn't be
@@ -623,8 +625,10 @@ This explicitly **supersedes** the earlier downloadable `.ics` idea, which is in
 ## 5. Backups — working, with one fragility
 
 **Verified working.** `.github/workflows/backup-supabase.yml` in `PrivateBackup` runs daily at
-04:00 UTC. The scheduled run on 14 Sep at 04:07 completed successfully on its own. Two real
-dumps are committed, ~87 KB each.
+04:00 UTC. The scheduled run on 14 Sep at 04:07 completed successfully on its own. As of 23 Sep,
+13 runs, 12 successful, 12 dumps of 81–88 kB in the tree. **A restore has never been rehearsed**,
+and the 23 Sep review found the documented one would misfire (`docs/REVIEW-ARCHITECTURE-FINDINGS.md`
+F2); that is the next piece of backup work.
 
 Getting there took three goes — the direct connection is IPv6-only and GitHub runners have no
 IPv6 route (fixed by using the **Session pooler**), and the runner's own `pg_dump` is older than
@@ -640,7 +644,7 @@ point, and confirming the schedule still fires afterwards.
 
 ## 6. Corrections to the earlier record
 
-Sixteen times now, something recorded as true wasn't. The pattern is worth more than the individual
+Twenty-three times now, something recorded as true wasn't. The pattern is worth more than the individual
 corrections: **every one was found by checking the real thing, and none by reading more carefully.**
 
 | Recorded | Actually | Found |
@@ -660,6 +664,13 @@ corrections: **every one was found by checking the real thing, and none by readi
 | `IMAGES.md`: "the card, the Viewer and the Group Viewer all render that external URL" | Only the card. `r.imageUrl` is read in exactly one render path | 22 Sep, by grepping for the field rather than re-reading the sentence |
 | "The new checks pass; the mutations prove nothing" — briefly believed of §2d's tests | The artifact had not been rebuilt, so three runs in a row tested the wrong file. Rebuilt, the baseline was green and both mutations failed by name | 22 Sep, by noticing a debug probe that could not possibly be missing was missing |
 | `TEST-IMAGES.md` step 9: "go back online, hard-reload, expect 1 copied in" | Impossible. An offline save never reaches the database, so the reload discards it and there is nothing left to copy | 22 Sep, by running it on the live app |
+| `README.md`, `INFRASTRUCTURE.md`, this file, `NEXT-SESSION.md`, `TEST-PLAN.md`: work lives on a shared branch "ahead of `main` and unmerged" | Merged and finished; `main` is the trunk and production | 23 Sep review, `git log` and the PR list |
+| `README.md` "102 checks", `DOCUMENT-INDEX.md` "157-check" | 197 | 23 Sep review, by running it |
+| `ARCHITECTURE.md` §4: the household id "is a constant in `index.html`" | Resolved at sign-in from `household_members` | 23 Sep review, by reading `hydrate()` |
+| `INFRASTRUCTURE.md` §3: both Edge Functions "with source in this repo" | `rehost-images` v8 was deployed from an uncommitted copy; six hunks differed | 23 Sep review, by diffing the deployed source |
+| `HANDOVER.md` §5: "Two real dumps are committed" | Twelve; and no restore has ever been tried | 23 Sep review, from the private repo and its Actions |
+| `NEXT-SESSION.md`: the conversion prompt "needs no edits" | Revised 23 Sep (standard ingredient line, vocabulary) | 23 Sep review |
+| `DOCUMENT-INDEX.md` on the ingredient review: "Nothing in it has been implemented" | Step 1 merged the same day as PR #9 | 23 Sep review, PR list |
 | `ARCHITECTURE.md`: two tabs "won't see each other's changes until reloaded" | Coming back to a tab has always re-downloaded the whole library, and that was what kept a long-open tablet from overwriting the desktop | 22 Sep, while tracing the sign-out in §2e |
 
 **The last one is the most instructive, because the verification itself was the thing that was

@@ -155,7 +155,10 @@ recipes and 463 lines, scored with the app's own functions against a hand-labell
 It ends with twelve decisions for the household.
 
 **Use it when:** deciding what to build for the shopping list, or before changing `splitQty`,
-the converter's ingredient rules or word matches. **Nothing in it has been implemented.**
+the converter's ingredient rules or word matches. Step 1 (the quantity reader) merged as PR #9 on
+23 Sep; step 3 is on PR #10; the rest waits on `docs/REVIEW-ARCHITECTURE-FINDINGS.md`, which
+changes the plan for the converter's naming rule. *(This line said "nothing implemented" until
+23 Sep.)*
 
 **Don't:** look for the real lines here. They are in a private appendix that was handed to the
 household and is not in this repo.
@@ -244,7 +247,7 @@ on 20 Sep. `test/validate-recipes.js` covers the other half.
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 157-check test suite, and an honest account of what it can't tell you
+**What:** How to run the 197-check test suite, and an honest account of what it can't tell you
 (everything about the real backend).
 
 **Use it when:** making any code change.

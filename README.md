@@ -10,9 +10,10 @@ was cooked when.
 
 Single HTML file, no build step, no framework. Data lives in Supabase.
 
-> **Status, September 2026:** mid-migration. The Supabase rewrite lives on the branch
-> `claude/recipe-app-supabase-0z139o` and has **not** been merged — `main` still holds the older
-> browser-storage version. Start with [`docs/DOCUMENT-INDEX.md`](docs/DOCUMENT-INDEX.md).
+> **Status, September 2026:** live. `main` is the Supabase app and is production: GitHub Pages
+> serves it, and every merge deploys. Work happens on short-lived branches merged by pull request.
+> Start with [`docs/DOCUMENT-INDEX.md`](docs/DOCUMENT-INDEX.md). *(Corrected 23 Sep 2026 — this
+> paragraph said "mid-migration, not merged" for ten days after it stopped being true.)*
 
 ## Start here
 
@@ -31,7 +32,7 @@ Single HTML file, no build step, no framework. Data lives in Supabase.
 No build step — it's one file. To run the current branch locally:
 
 ```sh
-git clone -b claude/recipe-app-supabase-0z139o https://github.com/crispy-lettuce/RecipeFlowKeeper.git
+git clone https://github.com/crispy-lettuce/RecipeFlowKeeper.git
 cd RecipeFlowKeeper
 python3 -m http.server 8080
 ```
@@ -49,5 +50,5 @@ npm install playwright
 node test/build.js && node test/smoke.js
 ```
 
-102 checks against a stubbed backend. See [`test/README.md`](test/README.md) for what it does and
+197 checks against a stubbed backend, run by GitHub Actions on every pull request. See [`test/README.md`](test/README.md) for what it does and
 doesn't prove.

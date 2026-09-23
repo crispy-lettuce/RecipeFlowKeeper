@@ -5,11 +5,13 @@
  * read the bytes. An Edge Function has its own egress and no CORS rules
  * apply to it, which is the whole reason this isn't done in the app.
  *
- * WHY A SWEEP, NOT THE SAVE PATH: recipes save with whatever image_url
- * they arrive with, and this walks the table separately. That treats the
- * existing library and every future recipe identically with no
- * special-casing, and it keeps "did my recipe save" from depending on a
- * third party's server answering.
+ * WHY A SWEEP AS WELL AS A SAVE-TIME CALL: the app asks for one recipe
+ * immediately after saving it (docs/IMAGES.md §5 Option A), and this also
+ * walks the whole table on request. The sweep treats the existing library
+ * and every future recipe identically with no special-casing, and covers
+ * the two cases the save-time call cannot reach — a restore, and a save
+ * made offline. Either way "did my recipe save" never depends on a third
+ * party's server answering: the save completes first, the copy follows.
  *
  * WHY A PUBLIC BUCKET: the alternative, signed URLs, expires. image_url
  * is written verbatim into the app's JSON export AND into the nightly
@@ -20,9 +22,16 @@
  * convenience one.
  *
  * Idempotent: anything already pointing at our own storage is skipped, so
- * re-running is safe and cheap. Call with {"dryRun": true} to see what it
- * would do without writing anything, or {"verify": true} to re-read what
- * is already stored and check every file is whole.
+ * re-running is safe and cheap. Body options: {"dryRun": true} to see what
+ * it would do without writing anything; {"verify": true} to re-read what is
+ * already stored and check every file is whole; {"recipeId": "..."} to do
+ * one recipe, which is what the app sends after a save.
+ *
+ * THIS FILE IS WHAT IS DEPLOYED. v8 went live from an uncommitted working
+ * copy on 22 Sep and the repo carried an older comment and a verify report
+ * without recipe ids until the 23 Sep review diffed the two
+ * (docs/REVIEW-ARCHITECTURE-FINDINGS.md, F4). A deploy is a commit: change
+ * this file, commit it, then deploy it, in that order.
  */
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -321,8 +330,8 @@ Deno.serve(async (req: Request) => {
     for (const r of recipes ?? []) {
       const src = (r.image_url ?? '').trim();
       if (!src.startsWith(selfHost)) {
-        const row = { title: r.title, problem: 'not self-hosted', image_url: src || null };
-        broken.push(row); all.push({ title: r.title, ok: false, problem: row.problem });
+        const row = { id: r.id, title: r.title, problem: 'not self-hosted', image_url: src || null };
+        broken.push(row); all.push({ id: r.id, title: r.title, ok: false, problem: row.problem });
         continue;
       }
       try {
@@ -332,8 +341,8 @@ Deno.serve(async (req: Request) => {
           .finally(() => clearTimeout(timer));
         if (!res.ok) {
           const problem = `stored object returned ${res.status}`;
-          broken.push({ title: r.title, problem, image_url: src });
-          all.push({ title: r.title, ok: false, problem });
+          broken.push({ id: r.id, title: r.title, problem, image_url: src });
+          all.push({ id: r.id, title: r.title, ok: false, problem });
           continue;
         }
         const declared = res.headers.get('content-length');
@@ -349,12 +358,12 @@ Deno.serve(async (req: Request) => {
           ok: !problem,
           problem: problem ?? undefined,
         });
-        if (problem) broken.push({ title: r.title, problem, bytes: bytes.byteLength, image_url: src });
+        if (problem) broken.push({ id: r.id, title: r.title, problem, bytes: bytes.byteLength, image_url: src });
         else whole++;
       } catch (e) {
         const problem = String((e as Error).message ?? e);
-        broken.push({ title: r.title, problem, image_url: src });
-        all.push({ title: r.title, ok: false, problem });
+        broken.push({ id: r.id, title: r.title, problem, image_url: src });
+        all.push({ id: r.id, title: r.title, ok: false, problem });
       }
     }
     return json({ verify: true, checked: recipes?.length ?? 0, whole, broken: broken.length, report: broken, all });
