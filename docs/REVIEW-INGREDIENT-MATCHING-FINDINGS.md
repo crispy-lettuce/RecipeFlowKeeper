@@ -8,7 +8,7 @@ and scored with the app's own functions. It stopped for the household's decision
 
 | # | Status |
 | --- | --- |
-| 1 | **Built on branch `claude/intelligent-feynman-1i4fwp`, not yet on `main`.** `splitQty`, `parseFraction`, `parseIngredientAmount` and `scaleRecipeSyntax` now read mixed numbers, `1½`, ranges, "up to" and `3 x 400 g`. On the real library exactly the 7 predicted lines change, and all 6 scaling faults are gone. Smoke 191 → 197; mutation-testing of the new checks in progress |
+| 1 | **Built on branch `claude/intelligent-feynman-1i4fwp`, not yet on `main`.** `splitQty`, `parseFraction`, `parseIngredientAmount` and `scaleRecipeSyntax` now read mixed numbers, `1½`, ranges, "up to" and `3 x 400 g`. On the real library exactly the 7 predicted lines change, and all 6 scaling faults are gone. Smoke 191 → 197. All seven mutations named in `test/smoke.js` (dropping each branch, buying the lower figure of a range, scaling the pack size, reverting `splitQty`) fail their check by name |
 | 2 | **For the household**, in Settings → Word Matches: delete the inverted match and the orphaned one (the private appendix, section A, names them) |
 | 3–8 | Not started |
 
