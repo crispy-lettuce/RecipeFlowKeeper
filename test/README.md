@@ -35,7 +35,7 @@ Both scripts use whichever Chromium Playwright installs. Set
 
 ## What it can and can't tell you
 
-**197 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
+**213 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, the automatic image
 re-host on save, what happens when you come back to the tab (online, offline, mid-save, after a
@@ -62,3 +62,16 @@ once. **Keep Awake** can't be tested here either; it needs a real tablet.
 Two recipes, two planned days, one meal group, a shortlist item and a
 handful of keywords — all invented, in `build.js`. Deliberately no real recipes:
 this repo is public.
+
+**The suite runs on one fixed date.** `test/fixture-time.js` holds it (a Tuesday in September
+2026); `build.js` dates every fixture row from it and `smoke.js` pins the page's clock to it, so
+"today", "tomorrow" and "this week" mean the same thing in the data and in the app whatever day
+the suite is run. Until 24 Sep the fixture used the real clock, and two shopping-list checks
+failed every Thursday, when "tomorrow" fell into the next Friday-start week. If you add a
+fixture row with a date, use `iso(n)`; if you add a check that reasons about days, reason from
+`FIXTURE_NOW`, never from `new Date()`.
+
+**The stub records what a delete was aimed at.** `.eq()`, `.not()` and `.in()` on a delete are
+written onto the recorded write (`match`, `not`, `in`), so a check can assert that `pushList`
+excluded exactly the rows still in the list. Before 24 Sep the filters were discarded and the
+delete step, the most dangerous line in the app, had no test that could see it.

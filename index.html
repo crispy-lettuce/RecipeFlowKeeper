@@ -2139,49 +2139,112 @@ function parseRecipe(text){
   return {title, source, sourceUrl, imageUrl, time, servings, equipment, tags: parseTags(tagsRaw), setup, notes, groups, stages};
 }
 
-/* The Title field and the syntax's own TITLE: line are two copies of the
-   same fact, so they can drift — e.g. editing the Title field doesn't
-   touch the pasted syntax underneath it. The flow table always renders
-   from a fresh parse of the syntax, so without this, a retitled recipe
-   would show the new name on its card but the old one in its own flow
-   table. Called on every save (add and edit) to keep them identical. */
-function withUpdatedTitleLine(syntaxText, newTitle){
-  if(/^TITLE:\s*.*$/im.test(syntaxText)){
-    return syntaxText.replace(/^TITLE:\s*.*$/im, `TITLE: ${newTitle}`);
-  }
-  return syntaxText;
-}
+/* The header lines and the form are two copies of the same eight facts —
+   title, source, source URL, image, time, servings, equipment, tags — so
+   they can drift: editing a field doesn't touch the pasted syntax beneath
+   it. docs/ARCHITECTURE.md §2 makes the text the source of truth, and
+   parseAndPreview refills the form from a parse, so a line left stale is
+   not cosmetic: the next PARSE & PREVIEW reads the old value back over the
+   field and silently undoes the edit. Until 23 Sep only TITLE: and IMAGE:
+   were reconciled (docs/REVIEW-ARCHITECTURE-FINDINGS.md F5); the live
+   library had a SOURCE: line, a SERVINGS: line and two TAGS: lines that
+   disagreed with their columns, each left by a save through the form.
 
-/* The same job for IMAGE:, which had no equivalent until 22 Sep.
- *
- * WHY THIS MATTERS MORE THAN IT LOOKS. docs/ARCHITECTURE.md §2 makes the
- * recipe text the source of truth, and parseAndPreview repopulates the
- * form from a parse. So a save that changed `image_url` but left the old
- * IMAGE: line behind produced two things that disagree — and the
- * disagreement is self-reverting: the next PARSE & PREVIEW reads the stale
- * line back over the field, undoing the change. docs/IMAGES.md §7 has a
- * SQL check asserting the two never diverge, and it only ever passed
- * because the image sweep rewrites both.
- *
- * Inserted after SOURCE_URL:/SOURCE: rather than appended, because the
- * header block is read by a person and IMAGE: belongs with its neighbours.
- * A cleared URL removes the line rather than writing an empty one, so
- * "no image" is expressed the same way a converter would write it. */
-function withUpdatedImageLine(syntaxText, url){
+   One function for all eight, called on every save (add and edit):
+
+   - an existing line is rewritten in place, whatever its position;
+   - a missing line is inserted where the converter would have put it,
+     after the nearest header that precedes it in HEADER_ORDER;
+   - an empty value removes the line, so "no image" or "no equipment" is
+     written the way a converter writes it — by leaving the line out —
+     rather than as an empty `EQUIPMENT:`. TITLE: is never empty (the save
+     handler substitutes 'Untitled recipe') so it is never removed.
+
+   Matching mirrors parseRecipe: case-insensitive, and SOURCE_URL accepts
+   the bare URL: spelling the parser also accepts. */
+const HEADER_ORDER = ['TITLE', 'SOURCE', 'SOURCE_URL', 'IMAGE', 'TIME', 'SERVINGS', 'EQUIPMENT', 'TAGS'];
+const HEADER_MATCH = {
+  TITLE: /^TITLE:\s*.*$/im,
+  SOURCE: /^SOURCE:\s*.*$/im,
+  SOURCE_URL: /^(?:SOURCE_URL|URL):\s*.*$/im,
+  IMAGE: /^IMAGE:\s*.*$/im,
+  TIME: /^TIME:\s*.*$/im,
+  SERVINGS: /^SERVINGS:\s*.*$/im,
+  EQUIPMENT: /^EQUIPMENT:\s*.*$/im,
+  TAGS: /^TAGS:\s*.*$/im,
+};
+function withUpdatedHeaderLine(syntaxText, key, value){
   const text = String(syntaxText || '');
-  const clean = (url || '').trim();
-  if(/^IMAGE:\s*.*$/im.test(text)){
+  const clean = (value === null || value === undefined) ? '' : String(value).trim();
+  const re = HEADER_MATCH[key];
+  const line = `${key}: ${clean}`;
+  if(re.test(text)){
+    /* A function, not a string, as the replacement: a title containing `$&`
+       or `$1` would otherwise be read as a back-reference. The `\n?` on
+       removal takes the line's own newline with it, so a dropped header
+       leaves no blank line behind in the block. */
     return clean
-      ? text.replace(/^IMAGE:\s*.*$/im, `IMAGE: ${clean}`)
-      : text.replace(/^IMAGE:\s*.*$\n?/im, '');
+      ? text.replace(re, () => line)
+      : text.replace(new RegExp(re.source + '\\n?', 'im'), '');
   }
   if(!clean) return text;
-  const after = text.match(/^(?:SOURCE_URL|URL):\s*.*$/im) || text.match(/^SOURCE:\s*.*$/im);
-  if(after){
-    return text.replace(after[0], `${after[0]}\nIMAGE: ${clean}`);
+  /* Insert after the closest header that should precede this one. Splicing
+     by index rather than replacing the matched string, so a header whose
+     text also occurs earlier in the recipe cannot be mistaken for it. */
+  const idx = HEADER_ORDER.indexOf(key);
+  for(let i = idx - 1; i >= 0; i--){
+    const m = text.match(HEADER_MATCH[HEADER_ORDER[i]]);
+    if(m){
+      const end = m.index + m[0].length;
+      return text.slice(0, end) + `\n${line}` + text.slice(end);
+    }
   }
-  /* No header to anchor to — put it first rather than lose it. */
-  return `IMAGE: ${clean}\n${text}`;
+  /* Nothing precedes it: put it before the first header that follows, or
+     first of all rather than lose it. */
+  for(let i = idx + 1; i < HEADER_ORDER.length; i++){
+    const m = text.match(HEADER_MATCH[HEADER_ORDER[i]]);
+    if(m) return text.slice(0, m.index) + `${line}\n` + text.slice(m.index);
+  }
+  return `${line}\n${text}`;
+}
+
+/* The TAGS: line as the converter writes it and parseTags reads it:
+   `course=Main, keyword, keyword`. parseTags folds any other `key=` pair
+   into a plain keyword, so a rewritten line carries the same information
+   the parse did, spelled the one way the app now writes. */
+function tagsToLine(tags){
+  const t = tags || {};
+  const parts = [];
+  if(t.course) parts.push(`course=${t.course}`);
+  (t.keywords || []).forEach(k => { if(k) parts.push(k); });
+  return parts.join(', ');
+}
+
+/* Every header line from the form's fields, in one pass. `fields` is the
+   object the save handler builds, so the row and the text are written
+   from the same values and cannot disagree. */
+function withUpdatedHeaderLines(syntaxText, fields){
+  let text = String(syntaxText || '');
+  text = withUpdatedHeaderLine(text, 'TITLE', fields.title);
+  text = withUpdatedHeaderLine(text, 'SOURCE', fields.source);
+  text = withUpdatedHeaderLine(text, 'SOURCE_URL', fields.sourceUrl);
+  text = withUpdatedHeaderLine(text, 'IMAGE', fields.imageUrl);
+  text = withUpdatedHeaderLine(text, 'TIME', fields.time);
+  text = withUpdatedHeaderLine(text, 'SERVINGS', fields.servings);
+  text = withUpdatedHeaderLine(text, 'EQUIPMENT', fields.equipment);
+  text = withUpdatedHeaderLine(text, 'TAGS', tagsToLine(fields.tags));
+  return text;
+}
+
+/* The two original single-line helpers, kept as names because the image
+   sweep's write-back (applyRehostedUrl, runImageSweep) still reconciles
+   IMAGE: on its own, and because the general function above grew out of
+   them. Behaviourally they are the general function with the key fixed. */
+function withUpdatedTitleLine(syntaxText, newTitle){
+  return withUpdatedHeaderLine(syntaxText, 'TITLE', newTitle);
+}
+function withUpdatedImageLine(syntaxText, url){
+  return withUpdatedHeaderLine(syntaxText, 'IMAGE', url);
 }
 
 /* ------------------------------- Scaling -------------------------------
@@ -6814,11 +6877,11 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
       course: document.getElementById('f-course').value,
       keywords
     },
-    /* Both header lines are reconciled with the form. IMAGE: was not,
-       until 22 Sep — see withUpdatedImageLine for what that cost. */
-    syntax: withUpdatedImageLine(withUpdatedTitleLine(text, finalTitle),
-                                 document.getElementById('f-image').value.trim())
   };
+  /* Every header line is reconciled with the form, from the same values
+     the row is built from. Until 22 Sep only TITLE: was; until 23 Sep only
+     TITLE: and IMAGE: — see withUpdatedHeaderLines for what that cost. */
+  fields.syntax = withUpdatedHeaderLines(text, fields);
 
   const recipes = loadRecipes();
   mergeKeywordVocab(keywords);

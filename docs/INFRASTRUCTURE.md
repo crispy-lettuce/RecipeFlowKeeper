@@ -159,7 +159,7 @@ ad-hoc SQL scoped to it.
 
 ### Storage
 
-One bucket, `recipe-images` — **public, 29 objects, 4,426 kB** (verified 22 Sep 2026). Built
+One bucket, `recipe-images` — **public, 30 objects, 4,603 kB** (verified 23 Sep 2026; 29 and 4,426 kB on 22 Sep). Built
 21 Sep; this section described it as private and empty until an audit on 22 Sep caught that.
 
 **Public means the `/object/public/` read endpoint serves bytes without auth, and nothing

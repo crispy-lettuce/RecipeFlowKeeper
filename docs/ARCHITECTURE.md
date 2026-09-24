@@ -209,7 +209,7 @@ a URL is already ours. See `docs/IMAGES.md` §5.
 ```sh
 npm install playwright
 node test/build.js    # bake index.html against the stub
-node test/smoke.js    # 197 checks; exits non-zero on failure
+node test/smoke.js    # 213 checks; exits non-zero on failure
 ```
 
 **`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,

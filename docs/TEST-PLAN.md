@@ -12,7 +12,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 197 automated checks pass (102 when this was
+story that used to open this paragraph is history. 213 automated checks pass (102 when this was
 written). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -232,3 +232,42 @@ select (select count(*) from recipes)          as recipes,
 **Read the last two.** If `newest_planner_day` is in the past, an empty Planner is correct. If
 it is in the future, an empty Planner is a bug. That one distinction is what the 21 Sep version
 of this document got wrong for a day.
+
+**Then the header drift.** `docs/ARCHITECTURE.md` §2 makes the recipe text the truth and the
+columns a parse of it, and since 24 Sep (PR 4) the save rewrites every header line from the
+form. This counts the recipes where a line and its column still disagree. Every column should
+be 0; a non-zero count names a recipe that is one PARSE & PREVIEW away from reverting an edit.
+On 23 Sep, before PR 4, it found 3 recipes: a `SOURCE:` line, a missing `SERVINGS:` line, and
+two `TAGS:` lines (one of them on the servings recipe) — the review had counted two, because its
+query never compared `TAGS:`.
+
+```sql
+with h as (
+  select id,
+    substring(syntax from '(?m)^TITLE:[ \t]*(.*)$')              as l_title,
+    substring(syntax from '(?m)^SOURCE:[ \t]*(.*)$')             as l_source,
+    substring(syntax from '(?m)^(?:SOURCE_URL|URL):[ \t]*(.*)$') as l_url,
+    substring(syntax from '(?m)^IMAGE:[ \t]*(.*)$')              as l_image,
+    substring(syntax from '(?m)^TIME:[ \t]*(.*)$')               as l_time,
+    substring(syntax from '(?m)^SERVINGS:[ \t]*(.*)$')           as l_serv,
+    substring(syntax from '(?m)^EQUIPMENT:[ \t]*(.*)$')          as l_equip,
+    substring(syntax from '(?m)^TAGS:[ \t]*(.*)$')               as l_tags,
+    trim(both ', ' from concat_ws(', ',
+      case when coalesce(tags->>'course','') <> '' then 'course=' || (tags->>'course') end,
+      (select string_agg(k, ', ') from jsonb_array_elements_text(coalesce(tags->'keywords','[]'::jsonb)) k)
+    )) as col_tags,
+    title, source, source_url, image_url, time_text, servings, equipment
+  from recipes)
+select count(*) filter (where coalesce(l_title,'')  <> coalesce(title,''))            as title_drift,
+       count(*) filter (where coalesce(l_source,'') <> coalesce(source,''))           as source_drift,
+       count(*) filter (where coalesce(l_url,'')    <> coalesce(source_url,''))       as url_drift,
+       count(*) filter (where coalesce(l_image,'')  <> coalesce(image_url,''))        as image_drift,
+       count(*) filter (where coalesce(l_time,'')   <> coalesce(time_text,''))        as time_drift,
+       count(*) filter (where coalesce(l_serv,'')   <> coalesce(servings::text,''))   as servings_drift,
+       count(*) filter (where coalesce(l_equip,'')  <> coalesce(equipment,''))        as equipment_drift,
+       count(*) filter (where coalesce(l_tags,'')   <> coalesce(col_tags,''))         as tags_drift
+from h;
+```
+
+A recipe this names is fixed by opening it, pressing EDIT and then SAVE RECIPE with nothing
+changed: the save rewrites its header lines from the form.

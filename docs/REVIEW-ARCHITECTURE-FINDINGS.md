@@ -322,6 +322,9 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
 
 ### F4 — The deployed `rehost-images` does not match the source in the repo (Medium)
 
+- ✅ **Closed 23 Sep 2026, PR #11**, in substance: the repo carries all six hunks. The deployed
+  copy is still v8 and differs in comment wording only; the next deploy from the repo makes the
+  two identical. *(Ticked 24 Sep, after checking both copies again; PR #11 did not tick it.)*
 - Deployed v8 (updated 2026-09-22 16:42 UTC) was read through the connector and diffed against
   `supabase/functions/rehost-images/index.ts` (last committed 2026-09-22 17:09 UTC, in
   `bcd1362`, whose message says the function was deployed ahead of the commit). Six hunks,
@@ -339,6 +342,14 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
 
 ### F5 — "The text is the source of truth" is enforced for two of eight header fields (Medium)
 
+- ✅ **Closed 24 Sep 2026, PR #14.** One function now writes all eight header lines from the
+  form on every save: an existing line is rewritten in place, a missing one is inserted in the
+  converter's order, an empty value removes the line. Nine smoke checks assert on the pushed
+  row, one per field plus the order and a re-parse. The drift query is in `docs/TEST-PLAN.md`.
+  The count below was two recipes; the review's query never compared `TAGS:`, and that line
+  disagreed with its column on two more (one of them the servings recipe), so it was three. The
+  three are re-saved through the app after the merge, which is also the feature's only
+  real-backend run — the query then reads 0 on every column.
 - The save handler reconciles `TITLE:` and `IMAGE:` into the syntax (`index.html:6815`) and
   writes `source`, `source_url`, `time_text`, `servings`, `equipment` and `tags` to columns from
   the form without touching the corresponding lines. The source-alias prompt (`:6772`) renames
@@ -353,6 +364,9 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
 
 ### F6 — No CI, no branch protection, deploy on push (Medium)
 
+- ✅ **Closed 23 Sep 2026, PR #11.** `.github/workflows/tests.yml` runs on every pull request
+  and push to `main`; `main` is protected (checked 24 Sep; whether the check is *required* is
+  a setting the API used could not read). *(Ticked 24 Sep; PR #11 did not tick it.)*
 - The app repo has no `.github` directory; its only workflow is GitHub's own `pages build and
   deployment`, which has run once per commit to `main` (runs 18–26 cover PRs #1–#9). `main` is
   not protected. So a mistaken push deploys to the tablet within a minute, and the 197 checks
@@ -362,6 +376,14 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
 
 ### F7 — Three load-bearing mechanisms have no test; two mutations are caught only by a crash (Medium)
 
+- ✅ **Closed in two parts.** Printing as the run goes and naming a crash: PR #11, 23 Sep. The
+  three missing checks: PR #14, 24 Sep — the stub now records a delete's filters, so "deletes
+  exactly the rows not in the list" is asserted on what was sent; the `TITLE:` line is one of
+  the nine header checks; a merge across a gap is asserted on the preview's error text. M4, M5
+  and M6 were re-run against the new checks and each fails by name (PR #14's description has
+  the runs). Not changed: the two checks weak by construction, which PR 6 rewrites anyway.
+  Found on the way: the fixture used the real clock, so two shopping-list checks failed every
+  Thursday; the harness now runs on one fixed date (`test/fixture-time.js`).
 - Appendix B. Not caught: `pushList`'s delete (M4); `withUpdatedTitleLine` returning its input
   unchanged (M5); the non-adjacent-merge error in `computeColumns` (M6, `index.html:2300`), the
   rule `CLAUDE.md` calls load-bearing. Caught by a timeout crash rather than a named failure:
@@ -391,12 +413,17 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
 
 ### F9 — supabase-js is loaded unpinned (Low)
 
+- ✅ **Closed 23 Sep 2026, PR #11.** Pinned to 2.117.1. *(Ticked 24 Sep.)*
 - `index.html:13` loads `@supabase/supabase-js@2` from jsdelivr: every page load takes the
   newest 2.x. `docs/HANDOVER.md` §2e depends on a behaviour verified in auth-js 2.117.0. The
   html2canvas tag (`:12`) is pinned to 1.4.1.
 
 ### F10 — Specific claims the code, database or GitHub do not bear out (Low)
 
+- ✅ **Closed 23 Sep 2026, PR #11**, for everything a newcomer would act on. Left as dated
+  figures then, corrected by PR #14: the storage counts in `docs/INFRASTRUCTURE.md` §3 and
+  `docs/HANDOVER.md` §1. The test plan's count block still lists the 20 Sep numbers because the
+  document says to re-read them before every pass. *(Ticked 24 Sep.)*
 - Appendix C lists each with what was checked. The ones a newcomer would act on wrongly:
   `README.md` ("mid-migration … has not been merged"; "102 checks"), `docs/INFRASTRUCTURE.md`
   §1–§2 and §5 (the working branch "ahead of `main` and unmerged"; clone that branch),
@@ -450,21 +477,21 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
    commits changed objects only. (F3) *✅ Done 23 Sep, `PrivateBackup` PR #1; first run after
    the merge.*
 3. **Add a workflow that runs `node test/build.js && node test/smoke.js` and
-   `node test/image-integrity.js` on every pull request, and require it on `main`.** (F6)
-4. **Pin supabase-js to an exact version.** (F9)
+   `node test/image-integrity.js` on every pull request, and require it on `main`.** (F6) *✅ Done 23 Sep, PR #11.*
+4. **Pin supabase-js to an exact version.** (F9) *✅ Done 23 Sep, PR #11.*
 5. **Bring the deployed `rehost-images` and the repo copy back into step** — commit the deployed
    source or redeploy the repo's — and add one line to `docs/IMAGES.md`: a deploy is a commit.
-   (F4)
+   (F4) *✅ Done 23 Sep, PR #11; deployed copy differs in comments only until the next deploy.*
 6. **Reconcile every header line on save**, generalising `withUpdatedTitleLine` /
    `withUpdatedImageLine` to `SOURCE`, `SOURCE_URL`, `TIME`, `SERVINGS`, `EQUIPMENT` and `TAGS`;
    re-save the two drifted recipes; add the drift query from F5 to `docs/TEST-PLAN.md`'s count
-   block; add a smoke check that mutates one header field and asserts on the pushed row. (F5)
+   block; add a smoke check that mutates one header field and asserts on the pushed row. (F5) *✅ Done 24 Sep, PR #14.*
 7. **Add the three missing checks** — `pushList` deletes exactly the rows not in the list;
    the `TITLE:` line follows the form; a non-adjacent merge produces an error the preview shows —
    and make `test/smoke.js` print results as it goes, or wrap each block, so a crash names the
-   check it was in. (F7)
+   check it was in. (F7) *✅ Done: printing in PR #11, the three checks in PR #14.*
 8. **Correct the record** per Appendix C, in place, saying so — the repo's own convention.
-   (F10)
+   (F10) *✅ Done 23 Sep, PR #11.*
 
 ### Change before sharing with family
 
