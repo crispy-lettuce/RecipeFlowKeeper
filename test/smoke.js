@@ -8,6 +8,7 @@ const launchOpts = process.env.PLAYWRIGHT_CHROMIUM
   ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM }
   : {};
 const path = require('path');
+const { FIXTURE_NOW } = require('./fixture-time');
 
 /* Results print the moment they are recorded, not at the end. Until 23 Sep
    they were held and printed after the last step, so a crash anywhere in the
@@ -48,6 +49,10 @@ const check = (name, pass, detail) => {
     }
   });
 
+  /* The page's Date is pinned to the fixture's date (timers keep running).
+     Without this the suite's meaning changed with the weekday — see
+     fixture-time.js. */
+  await page.clock.setFixedTime(FIXTURE_NOW);
   await page.goto('file://' + path.join(__dirname, 'app-under-test.html'));
   await page.waitForTimeout(1200);
 
@@ -1223,11 +1228,161 @@ const check = (name, pass, detail) => {
         await hasTitle('Test Pasta, edited while a save was failing'));
   await setServerTitle('Test Pasta');
 
+  /* ---------------------------------------------------------------------
+     F5 / F7 (23 Sep): the header lines follow the form on save, the delete
+     step of pushList is aimed at exactly the right rows, and a non-adjacent
+     merge is reported in the preview. Each of these was a mutation the
+     architecture review ran against the suite and got 197 green for
+     (docs/REVIEW-ARCHITECTURE-FINDINGS.md, Appendix B: M4, M5, M6). Every
+     assertion below is on the ROW THAT WAS SENT, not on the cache, because
+     the cache is updated before the write is queued and would pass with
+     the write missing.
+     ------------------------------------------------------------------- */
+  const lastRecipeUpsertRow = (title) => page.evaluate((t) => {
+    const last = (window.__WRITES__ || []).filter(w => w.table === 'recipes' && w.op === 'upsert').pop();
+    return last ? ((last.rows || []).find(r => r.title === t) || null) : null;
+  }, title);
+  const headerLine = (syntax, key) => ((syntax || '').match(new RegExp('^' + key + ':.*$', 'm')) || [null])[0];
+
+  // Edit every header field of Test Soup at once.
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+  await page.locator('.rcard', { hasText: 'Test Soup' }).first().click();
+  await page.waitForTimeout(400);
+  await page.click('#editRecipeBtn');
+  await page.waitForTimeout(400);
+  await page.fill('#f-title', 'Test Soup Renamed');
+  /* Nothing like an existing source, so the similar-source prompt stays
+     out of it — this block is about the lines, not the alias flow. */
+  await page.fill('#f-source', 'Blue Door Bakery');
+  await page.fill('#f-source-url', 'https://example.com/soup');
+  await page.fill('#f-time', '1 hr 5');
+  await page.fill('#f-servings', '6');
+  await page.fill('#f-equipment', '24cm casserole');
+  /* A course the vocabulary has not seen, added the way parseAndPreview
+     adds one from a pasted recipe. */
+  await page.evaluate(() => {
+    const sel = document.getElementById('f-course');
+    sel.insertAdjacentHTML('beforeend', '<option>Side</option>');
+    sel.value = 'Side';
+  });
+  await page.fill('#f-keywords', 'Veg, Winter');
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const hdr = await lastRecipeUpsertRow('Test Soup Renamed');
+  const hs = hdr ? hdr.syntax : '';
+  check('the TITLE line follows the form', headerLine(hs, 'TITLE') === 'TITLE: Test Soup Renamed', headerLine(hs, 'TITLE'));
+  check('the SOURCE line follows the form', hdr && hdr.source === 'Blue Door Bakery' && headerLine(hs, 'SOURCE') === 'SOURCE: Blue Door Bakery',
+        headerLine(hs, 'SOURCE'));
+  check('a SOURCE_URL line is written when the text had none',
+        hdr && hdr.source_url === 'https://example.com/soup' && headerLine(hs, 'SOURCE_URL') === 'SOURCE_URL: https://example.com/soup',
+        headerLine(hs, 'SOURCE_URL'));
+  check('the TIME line follows the form', hdr && hdr.time_text === '1 hr 5' && headerLine(hs, 'TIME') === 'TIME: 1 hr 5', headerLine(hs, 'TIME'));
+  check('the SERVINGS line follows the form', hdr && hdr.servings === 6 && headerLine(hs, 'SERVINGS') === 'SERVINGS: 6', headerLine(hs, 'SERVINGS'));
+  check('an EQUIPMENT line is written when the text had none',
+        hdr && hdr.equipment === '24cm casserole' && headerLine(hs, 'EQUIPMENT') === 'EQUIPMENT: 24cm casserole', headerLine(hs, 'EQUIPMENT'));
+  check('the TAGS line follows the form, course first',
+        hdr && hdr.tags && hdr.tags.course === 'Side' && headerLine(hs, 'TAGS') === 'TAGS: course=Side, Veg, Winter', headerLine(hs, 'TAGS'));
+  const hdrOrder = ['TITLE','SOURCE','SOURCE_URL','TIME','SERVINGS','EQUIPMENT','TAGS'].map(k => hs.search(new RegExp('^' + k + ':', 'm')));
+  check('inserted lines land in the converter\'s header order',
+        hdrOrder.every((pos, i) => pos >= 0 && (i === 0 || pos > hdrOrder[i - 1])), hdrOrder.join(','));
+  const reparsed = await page.evaluate((text) => {
+    const p = parseRecipe(text);
+    return { title: p.title, source: p.source, sourceUrl: p.sourceUrl, time: p.time, servings: p.servings,
+             equipment: p.equipment, course: p.tags.course, keywords: p.tags.keywords.join(','), groups: p.groups.length, stages: p.stages.length };
+  }, hs);
+  check('and the rewritten text parses back to the form\'s values',
+        reparsed.title === 'Test Soup Renamed' && reparsed.source === 'Blue Door Bakery' && reparsed.sourceUrl === 'https://example.com/soup'
+        && reparsed.time === '1 hr 5' && reparsed.servings === '6' && reparsed.equipment === '24cm casserole'
+        && reparsed.course === 'Side' && reparsed.keywords === 'Veg,Winter' && reparsed.groups === 2 && reparsed.stages === 2,
+        JSON.stringify(reparsed));
+
+  // Clearing a field removes its line, the way a converter leaves one out.
+  await page.click('#editRecipeBtn');
+  await page.waitForTimeout(400);
+  await page.fill('#f-equipment', '');
+  await page.fill('#f-source-url', '');
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const cleared = await lastRecipeUpsertRow('Test Soup Renamed');
+  const cs = cleared ? cleared.syntax : '';
+  check('clearing a field removes its line rather than leaving an empty one',
+        cleared && cleared.equipment === '' && cleared.source_url === null && !/^EQUIPMENT:/m.test(cs) && !/^SOURCE_URL:/m.test(cs)
+        && !/\n\n\n/.test(cs.split('GROUP')[0]),
+        JSON.stringify(cs.split('\n').slice(0, 7)));
+
+  // The live drift case: a SERVINGS line missing from the text is written on save.
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+  await page.fill('#importInput', 'TITLE: Header Insert Test\nSOURCE: Blue Door Bakery\nTIME: 20 min\n\nGROUP a:\n1 onion\n\nSTAGE:\nMERGE a -> done: Cook [5 min]');
+  await page.click('#parseBtn');
+  await page.waitForTimeout(300);
+  await page.fill('#f-servings', '3');
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const inserted = await lastRecipeUpsertRow('Header Insert Test');
+  const is = inserted ? inserted.syntax : '';
+  check('a SERVINGS line missing from the text is written on save, after TIME',
+        inserted && inserted.servings === 3 && /^TIME: 20 min\nSERVINGS: 3$/m.test(is), JSON.stringify(is.split('\n').slice(0, 5)));
+
+  // A non-adjacent merge is an error the preview shows, naming the stage (M6).
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+  await page.fill('#importInput', 'TITLE: Gap Test\nSOURCE: Blue Door Bakery\nSERVINGS: 2\n\nGROUP a:\n1 onion\n\nGROUP b:\n1 carrot\n\nGROUP c:\n1 leek\n\nSTAGE:\nMERGE a, c -> ac: Combine across the gap [instant]');
+  await page.click('#parseBtn');
+  await page.waitForTimeout(300);
+  const gapErr = (await page.locator('#addPreview .errors').count()) ? await page.locator('#addPreview .errors').textContent() : '';
+  check('a merge across non-adjacent rows is reported in the preview, by stage',
+        /Stage 1/.test(gapErr) && /aren't adjacent rows/.test(gapErr), gapErr.trim().slice(0, 90));
+  const gapOk = await page.evaluate(() => computeColumns(parseRecipe('GROUP a:\n1 x\n\nGROUP b:\n1 y\n\nSTAGE:\nMERGE a, b -> ab: Fine [instant]').groups,
+                                                         parseRecipe('GROUP a:\n1 x\n\nGROUP b:\n1 y\n\nSTAGE:\nMERGE a, b -> ab: Fine [instant]').stages).errors.length);
+  check('while adjacent rows merge without complaint', gapOk === 0, gapOk + ' errors');
+  await page.click('#closeAddModal');
+  await page.waitForTimeout(300);
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+
+  // pushList's delete is aimed at exactly the rows no longer in the list (M4).
+  await page.locator('.rcard', { hasText: 'Header Insert Test' }).first().click();
+  await page.waitForTimeout(400);
+  const doomedId = await page.evaluate(() => state.selectedRecipeId);
+  page.once('dialog', d => d.accept());
+  await page.click('#deleteBtn');
+  await page.waitForTimeout(600);
+  const del = await page.evaluate((gone) => {
+    const writes = (window.__WRITES__ || []);
+    const idx = writes.map((w, i) => w.table === 'recipes' && w.op === 'delete' ? i : -1).filter(i => i >= 0).pop();
+    if (idx === undefined) return { found: false };
+    const d = writes[idx];
+    const excluded = d.not && d.not.op === 'in' ? String(d.not.value).replace(/^\(|\)$/g, '').split(',').filter(Boolean).sort() : null;
+    const remaining = loadRecipes().map(r => r.id).sort();
+    const priorUpsert = writes.slice(0, idx).map((w, i) => w.table === 'recipes' && w.op === 'upsert' ? i : -1).filter(i => i >= 0).pop();
+    return {
+      found: true,
+      household: d.match && d.match.column === 'household_id' && d.match.value === HOUSEHOLD_ID,
+      notColumn: d.not && d.not.column,
+      excludedMatchesLibrary: !!excluded && JSON.stringify(excluded) === JSON.stringify(remaining),
+      excludesDeleted: !!excluded && !excluded.includes(gone),
+      upsertBefore: priorUpsert !== undefined && writes[priorUpsert].rows.length === remaining.length,
+      excludedCount: excluded ? excluded.length : null, remaining: remaining.length
+    };
+  }, doomedId);
+  check('deleting a recipe sends a delete scoped to the household', del.found && del.household, JSON.stringify(del));
+  check('that excludes exactly the recipes still in the library',
+        del.found && del.notColumn === 'id' && del.excludedMatchesLibrary && del.excludesDeleted,
+        del.excludedCount + ' excluded, ' + del.remaining + ' remaining');
+  check('and follows the upsert of the surviving rows', del.found && del.upsertBefore, JSON.stringify(del));
+
   // Starting up offline: explain, keep the session, and recover without a password.
   const cold = await browser.newPage();
   const coldErrors = [];
   cold.on('pageerror', e => coldErrors.push(e.message));
   await cold.addInitScript(() => { window.__READ_FAIL__ = true; });
+  await cold.clock.setFixedTime(FIXTURE_NOW);
   await cold.goto('file://' + path.join(__dirname, 'app-under-test.html'));
   await cold.waitForTimeout(1200);
   const coldMsg = (await cold.textContent('#loginError')) || '';

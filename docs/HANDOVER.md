@@ -88,7 +88,7 @@ hasn't caught up yet.
 | Backend (Supabase) | **Done.** 13 tables, RLS enabled with policies on every one. |
 | Household id on every table from day one | **Done, verified.** |
 | Backup to a separate private repo | **Done and genuinely working.** See §5. |
-| Images in Supabase Storage | **Done, 21 Sep** — 29 objects, 4,426 kB. See §2. |
+| Images in Supabase Storage | **Done, 21 Sep** — 30 objects, 4,603 kB as of 23 Sep (29 on 22 Sep). See §2. Mirrored weekly to `PrivateBackup` since 23 Sep. |
 | Calendar reminders | **Not done** — P3, see §4. |
 
 ### Brief's own open items
@@ -654,7 +654,7 @@ point, and confirming the schedule still fires afterwards.
 
 ## 6. Corrections to the earlier record
 
-Twenty-three times now, something recorded as true wasn't. The pattern is worth more than the individual
+Twenty-five times now, something recorded as true wasn't. The pattern is worth more than the individual
 corrections: **every one was found by checking the real thing, and none by reading more carefully.**
 
 | Recorded | Actually | Found |
@@ -682,6 +682,8 @@ corrections: **every one was found by checking the real thing, and none by readi
 | `NEXT-SESSION.md`: the conversion prompt "needs no edits" | Revised 23 Sep (standard ingredient line, vocabulary) | 23 Sep review |
 | `DOCUMENT-INDEX.md` on the ingredient review: "Nothing in it has been implemented" | Step 1 merged the same day as PR #9 | 23 Sep review, PR list |
 | `ARCHITECTURE.md`: two tabs "won't see each other's changes until reloaded" | Coming back to a tab has always re-downloaded the whole library, and that was what kept a long-open tablet from overwriting the desktop | 22 Sep, while tracing the sign-out in §2e |
+| Architecture review F5: "1 whose `SOURCE:` line differs … 1 with a `servings` column and no `SERVINGS:` line; 0 drift on title, image, URL, time or equipment" | Three recipes, not two: `TAGS:` disagreed with its column on two, one of them the servings recipe. The review's query never compared `TAGS:` | 23 Sep, by writing the query for all eight lines before building PR 4 |
+| "197 checks pass" as a statement about the code | True on six days of the week. The fixture planned "today" and "tomorrow" from the real clock, and on a Thursday tomorrow is a new Friday-start week, so two shopping-list checks failed with the code untouched | 24 Sep, four minutes past midnight, when a green run went red on its own |
 
 **The last one is the most instructive, because the verification itself was the thing that was
 wrong.** Every "the tests pass" statement in this repo was false for a day, and the reason it went
@@ -707,8 +709,20 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **197 checks** across every screen, `shots.js` captures screenshots. Run
-`build.js` first, every time — see §2d.
+`smoke.js` runs **213 checks** across every screen, `shots.js` captures screenshots. Run
+`build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
+(`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
+Thursday.
+
+**PR 4, the faithful save (24 Sep 2026, PR #14, closing F5 and F7).** Verified by: 213 checks
+green locally and in CI; sixteen new checks assert on the row the app sent, not the cache; five
+mutations run against them (the delete removed, its exclusion list removed, the header rewrite
+made a no-op, the rewrite cut back to title and image only, the adjacency error dropped) each
+fail by name; and the live drift query, run before the change, found three recipes where a
+header line and its column disagree — the two the review counted, plus `TAGS:`, which its query
+never compared. Those three are re-saved through the app after the merge, and the query in
+`docs/TEST-PLAN.md` then reads 0 on every column; until that is done the feature has run only
+against the stub.
 
 ```sh
 npm install playwright

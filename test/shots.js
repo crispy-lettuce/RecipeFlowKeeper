@@ -6,9 +6,11 @@ const launchOpts = process.env.PLAYWRIGHT_CHROMIUM
   ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM }
   : {};
 const path = require('path');
+const { FIXTURE_NOW } = require('./fixture-time');
 (async () => {
   const b = await chromium.launch(launchOpts);
   const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
+  await p.clock.setFixedTime(FIXTURE_NOW);   // the fixture's dates are relative to this day
   await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
   await p.waitForTimeout(1200);
   const shots = [

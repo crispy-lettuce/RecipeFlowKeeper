@@ -53,7 +53,7 @@
         return { then(res, rej){ return done.then(res, rej); } };
       },
       insert(rows){ window.__WRITES__.push({table, op:'insert', rows}); return thenable({error:null}); },
-      delete(){ window.__WRITES__.push({table, op:'delete'}); return deleteChain(); },
+      delete(){ const w = {table, op:'delete'}; window.__WRITES__.push(w); return deleteChain(w); },
       /* Added 22 Sep. Its absence made the food diary's only update path
          throw a TypeError that queueWrite swallowed, so the check on the
          meal-type prompt passed by asserting the in-memory cache while the
@@ -81,9 +81,16 @@
     };
     return api;
   }
-  function deleteChain(){
+  /* The delete's filters are recorded on the write, not dropped. pushList
+     deletes every row of the household NOT in the list it was handed — the
+     most dangerous line in the app — and until 23 Sep a mutation that
+     removed the delete entirely left all 197 checks green (F7, M4), because
+     nothing could see what the delete was aimed at. */
+  function deleteChain(write){
     const api = {
-      eq(){ return api; }, not(){ return api; }, in(){ return api; },
+      eq(column, value){ write.match = {column, value}; return api; },
+      not(column, op, value){ write.not = {column, op, value}; return api; },
+      in(column, values){ write.in = {column, values}; return api; },
       then(res, rej){ return Promise.resolve({error:null}).then(res, rej); }
     };
     return api;

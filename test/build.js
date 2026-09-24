@@ -11,8 +11,11 @@ const R1 = '11111111-1111-4111-8111-111111111111';
 const R2 = '22222222-2222-4222-8222-222222222222';
 const R3 = '33333333-3333-4333-8333-333333333334';
 
+const { FIXTURE_NOW } = require('./fixture-time');
+/* Dates come from the frozen fixture clock, never from the real one — see
+   fixture-time.js for the Thursday that made this necessary. */
 function iso(offsetDays){
-  const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + offsetDays);
+  const d = new Date(FIXTURE_NOW); d.setHours(0,0,0,0); d.setDate(d.getDate() + offsetDays);
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
