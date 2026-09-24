@@ -12,7 +12,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 213 automated checks pass (102 when this was
+story that used to open this paragraph is history. 228 automated checks pass (102 when this was
 written). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -109,7 +109,8 @@ Some things that *will* still look wrong and aren't:
    reached the database, because the page rebuilds entirely from Supabase on load. This is the only
    way to see the write queue working.
 6. **Open a second tab** and confirm the change is there too. There is no live sync by design, so a
-   reload is required — that is expected, not a fault.
+   reload is required — that is expected, not a fault. *(Since 22 Sep, coming back to a tab
+   re-reads the library, so a tab switch is usually enough.)*
 
 ## B — Phase 2, the nine changes
 
@@ -161,6 +162,40 @@ feature is undoing itself silently and nothing on screen looks wrong.
 
 **Keep that export file.** It is your undo for this whole session. The nightly backup in
 `PrivateBackup` is the other one.
+
+## D — Two devices at once (new 24 Sep, PR 5; never yet run)
+
+Until PR 5 every save pushed the whole cached table and deleted what it didn't hold, so a device
+whose cache was behind could delete another device's new recipe on its next favourite toggle.
+Since PR 5 every ordinary save is one row. These steps are the proof, and they are the first time
+the app has been tested from two devices at all. **Reload the app on both devices before
+starting**: a tab opened before the merge still runs the old code, and its saves are the ones
+this pass exists to rule out. Call them **A** (the desktop) and **B** (the phone or tablet).
+
+21. **A stale device must not delete a new recipe.** On A, add a recipe (any short one; the
+    converter's test set has several). On B, *without switching tabs or reloading*, favourite any
+    recipe. Now reload A: the new recipe must still be there. Then switch to B's tab and back, or
+    reload B: the new recipe appears there too. *Before PR 5 this step deleted the recipe and its
+    cooking history.*
+22. **A stale device must not undo an edit.** On A, edit a recipe's text — add a word to a step —
+    and save. On B, still stale, favourite *that same recipe*. Reload A: the edit must survive and
+    the favourite must show. Check the database if in doubt: the recipe's `updated_at` moves
+    twice, and `syntax` keeps the word.
+23. **A delete tidies up.** On A, plan a recipe on some day, group it with another, and shortlist
+    it. Then delete it. The Planner must show the day without it and without a group; the
+    shortlist must not show "Recipe removed". Reload B: the same.
+24. **Ticks from two devices add up.** Both on the Shopping List for the same week: tick one item
+    on A, a different item on B, then switch tabs on each. Both ticks should show on both. Press
+    UNTICK ALL on A: both go, on both.
+25. **A failed save is sent again.** On B, turn the network off (aeroplane mode, or devtools →
+    Network → Offline), favourite a recipe: expect the "Couldn't save" toast. Turn the network
+    on, favourite a *different* recipe. Reload B: both favourites must show. The first one was
+    kept and re-sent ahead of the second.
+26. **Import still replaces everything.** Optional, and destructive by design — do it only with a
+    fresh export in hand: import that export on A, then reload B. Counts unchanged everywhere.
+
+Then run the header-drift query and the count query below; nothing should have changed but
+what you changed. Record the date and the result in `docs/HANDOVER.md` §7.
 
 ## Deferred to the tablet, after merging
 

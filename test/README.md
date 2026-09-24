@@ -35,7 +35,7 @@ Both scripts use whichever Chromium Playwright installs. Set
 
 ## What it can and can't tell you
 
-**213 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
+**228 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, the automatic image
 re-host on save, what happens when you come back to the tab (online, offline, mid-save, after a
@@ -71,7 +71,16 @@ failed every Thursday, when "tomorrow" fell into the next Friday-start week. If 
 fixture row with a date, use `iso(n)`; if you add a check that reasons about days, reason from
 `FIXTURE_NOW`, never from `new Date()`.
 
-**The stub records what a delete was aimed at.** `.eq()`, `.not()` and `.in()` on a delete are
-written onto the recorded write (`match`, `not`, `in`), so a check can assert that `pushList`
-excluded exactly the rows still in the list. Before 24 Sep the filters were discarded and the
-delete step, the most dangerous line in the app, had no test that could see it.
+**The stub records what an update or a delete was aimed at.** `.eq()`, `.not()` and `.in()` are
+written onto the recorded write (`match` for the last `.eq()`, `eqs` for all of them, `not`,
+`in`), so a check can assert that a favourite toggle updated one row of one household, or that
+the import's delete excluded exactly the rows in the file. Before 24 Sep the filters were
+discarded and the delete step had no test that could see it.
+
+**Every stub write can fail.** `__WRITE_FAIL__` and `__WRITE_DELAY__` apply to upserts, inserts,
+updates and deletes alike, and each logs `write-done:<table>`. Since PR 5 an ordinary save is a
+single-row update or delete, so the refresh-rule checks need those to be able to fail too.
+
+**Writes are queued, not sent on the spot.** A check that calls a save function inside
+`page.evaluate` and reads `__WRITES__` in the same breath sees nothing: wait a moment (the new
+row-scoped checks `await` a short timer) before sampling the log.

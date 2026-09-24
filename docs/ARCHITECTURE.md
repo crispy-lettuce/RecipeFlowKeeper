@@ -104,15 +104,25 @@ Consequently:
   object.
 - Saving queues a background push via `queueWrite(label, fn)`, which **always returns `true`
   immediately**. Callers never await a write.
+- **Every ordinary save is one row** (since 24 Sep, PR 5): a favourite toggle is an `update` of
+  that column on that recipe, a save from the form upserts that recipe's row, a removal deletes
+  that row; a plan change writes that day, a tick inserts or deletes that key, and so on for
+  groups, shortlist, word matches, swaps and keywords. Deleting a recipe also tidies the plan
+  days, group and shortlist entry that pointed at it. The **whole-table replace** (`pushList`
+  and the `replace*` functions, which upsert every row and delete the rest) is used by **import
+  only**, where "this file is the truth" is what the person means.
+- A write that fails is kept and re-sent at the head of the queue the next time anything is
+  written; the refresh below stands down until it lands.
 - Because writes are fire-and-forget, the way to prove something persisted is to **reload** —
   the page rebuilds entirely from Supabase.
 - There is no live sync between devices — but **coming back to a tab re-reads the library**
   (`refreshLibrary`). supabase-js emits `SIGNED_IN` on every hidden → visible change of the tab,
   and the app answers the second and later ones with a refresh. This document used to say two
   tabs never saw each other's changes until reloaded; they always did, by accident, from the day
-  the Supabase rewrite shipped. It matters more than it looks: `pushList` pushes the whole cached
-  table and deletes what it doesn't hold, so a long-open tab that never refreshed would overwrite
-  another device's work on its next save.
+  the Supabase rewrite shipped. It mattered more than it looked until PR 5: every save pushed
+  the whole cached table and deleted what it didn't hold, so a long-open tab that never
+  refreshed would overwrite another device's work on its next save. Row-scoped writes make the
+  refresh a convenience rather than the last line of defence.
 - A refresh can never lose anything. It waits for the write queue to empty, stands down while any
   save has failed, and discards what it fetched if anything changed mid-fetch. Any failure
   leaves everything as it was. Offline use is still not a requirement; not being thrown out by a
@@ -196,8 +206,9 @@ to re-upload them; that is what forces the work into an Edge Function rather tha
 `index.html` — `functions.invoke` appears nowhere else — and there are two call sites:
 `rehostImageFor`, queued after a save when the recipe's image URL is not already ours, and
 `runImageSweep`, behind the two Settings buttons. Both write the returned URL back into
-`cache.recipes`, which is not optional: `pushList` upserts every cached recipe on every save, so a
-cache left holding the old URL would push it back over the row on the next favourite toggle. The
+`cache.recipes`, which is not optional: the next save of that recipe from the edit form upserts
+its whole row from the cache, so a cache left holding the old URL would push it back over the row
+*(until PR 5 any favourite toggle rewrote every recipe and was enough to do it)*. The
 one string the app knows about Storage is the public prefix it compares against to decide whether
 a URL is already ours. See `docs/IMAGES.md` §5.
 
@@ -209,7 +220,7 @@ a URL is already ours. See `docs/IMAGES.md` §5.
 ```sh
 npm install playwright
 node test/build.js    # bake index.html against the stub
-node test/smoke.js    # 213 checks; exits non-zero on failure
+node test/smoke.js    # 228 checks; exits non-zero on failure
 ```
 
 **`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,

@@ -20,7 +20,7 @@ check the code, the database or GitHub Actions directly, do that instead of beli
 node test/build.js && node test/smoke.js
 ```
 
-213 checks. **Run both, always** — `smoke.js` loads what `build.js` wrote, so skipping the build
+228 checks. **Run both, always** — `smoke.js` loads what `build.js` wrote, so skipping the build
 tests your previous edit and reports a pass or a failure that belongs to code you have changed.
 
 It stubs Supabase entirely, so it proves nothing about sign-in, hydration, RLS or the write
@@ -58,10 +58,15 @@ throw rather than pass vacuously.
   rows. See `docs/ARCHITECTURE.md` §2.
 - **A schema column existing does not mean the feature exists.** Several columns are Phase 3
   scaffolding; `docs/ARCHITECTURE.md` §4 lists them.
-- **Anything the app learns from the server must be written back into `cache`.** `pushList`
-  upserts *every* cached recipe on every save, so a value the cache doesn't know about is
-  overwritten by the next favourite toggle. This is why `rehostImageFor` writes its answer back
-  rather than trusting the row.
+- **Anything the app learns from the server must be written back into `cache`.** A save from
+  the edit form upserts that recipe's whole row from the cache, so a value the cache doesn't
+  know about is overwritten the next time that recipe is saved. This is why `rehostImageFor`
+  writes its answer back rather than trusting the row. *(Until 24 Sep every save rewrote every
+  recipe and a favourite toggle was enough to lose it.)*
+- **Ordinary saves write one row; `pushList` and the `replace*` functions are for import only.**
+  A favourite is an `update` of that column; a save is an upsert of that row; a removal is a
+  delete of that row. Never route a normal action through a whole-table replace again — it is
+  what let a stale tab overwrite another device's work and delete its recipes (F1).
 
 ## Style
 

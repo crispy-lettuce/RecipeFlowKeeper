@@ -128,10 +128,11 @@ needed, and no need to track which recipes are outstanding.
 hazard the Settings buttons were added to remove, and it is worth understanding because it explains
 a design decision in §5.
 
-**The sweep changes the database; the open page does not know.** `saveRecipesList` goes through
-`pushList`, which upserts *every* recipe from the in-memory cache — and after a console sweep that
-cache still holds the old external URLs. So the next save of **any** recipe, including toggling one
-favourite, writes all 29 stale `image_url` and `IMAGE:` values back over what the sweep just did.
+**The sweep changes the database; the open page does not know.** A save from the edit form
+upserts that recipe's whole row from the in-memory cache — and after a console sweep that cache
+still holds the old external URL. So the next edit-save of a swept recipe writes its stale
+`image_url` and `IMAGE:` back over what the sweep just did. *(Until 24 Sep, PR 5, every save went
+through `pushList` and rewrote every recipe, so toggling one favourite un-hosted all 29 at once.)*
 The library silently un-self-hosts itself, and nothing looks wrong, because the external URLs still
 load.
 
@@ -340,7 +341,7 @@ them. Immediately after a save, the app queues a call for that recipe — but on
 is set and does not already point at our own storage:
 
 ```js
-saveRecipesList(recipes);                     // the row goes first
+saveRecipe(recipe);                           // the row goes first
 rehostImageFor(recipe.id, fields.imageUrl);   // then the re-host, behind it in the queue
 ```
 
@@ -368,10 +369,11 @@ different kind of change entirely.
 ### Why the response has to be written back
 
 The function returns the new public URL, and the app writes it into the cached recipe —
-`applyRehostedUrl`. **This is load-bearing, not polish.** `pushList` upserts *every* recipe from
-the in-memory cache on every save, and nothing refreshes that cache after `hydrate()`. Leave the
-cache holding the old external URL and the very next save of **any** recipe — toggling one
-favourite is enough — pushes it back over the row the function just fixed. The feature would undo
+`applyRehostedUrl`. **This is load-bearing, not polish.** The edit form's save upserts that
+recipe's whole row from the in-memory cache, and nothing refreshes that cache after `hydrate()`
+but a tab return. Leave the cache holding the old external URL and the next edit-save of that
+recipe pushes it back over the row the function just fixed *(until PR 5, any save of any recipe
+did)*. The feature would undo
 itself, silently, and nothing would look wrong because the external URL still loads.
 
 So the write-back sets **both** the column and the `IMAGE:` line, for the reason in §3: the text
@@ -393,7 +395,7 @@ the function now returns on every report row, rather than by position or title.
 
 ### What it deliberately does not cover
 
-- **A restore from backup** calls `saveRecipesList` with the whole library at once and never goes
+- **A restore from backup** calls `replaceRecipesList` with the whole library at once and never goes
   near the save handler, so nothing fires. Run the sweep afterwards. Having a restore fire thirty
   calls at once would be a worse trade than pressing one button.
 - **A save made offline** never reaches the function — nor the database. The change is kept in

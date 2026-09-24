@@ -862,7 +862,7 @@ const check = (name, pass, detail) => {
     const group = loadGroups().find(g => g.id === state.selectedGroupId);
     const p = loadPlan();
     p[group.dateIso] = { recipeIds: group.recipeIds.slice(), servings: [8, 0] };
-    savePlan(p);
+    savePlanDay(group.dateIso);
     renderGroupViewer();
     return group.recipeIds.map(id => {
       const r = loadRecipes().find(x => x.id === id);
@@ -966,32 +966,38 @@ const check = (name, pass, detail) => {
   check('and into the IMAGE line, not just the column',
         applied.syntaxHasNew && !applied.syntaxHasOld, JSON.stringify(applied));
 
-  /* THE REGRESSION TEST. pushList upserts every cached recipe, so if the
-     write-back above had not happened, this next save would push the stale
-     external URL straight back over the row. Assert on what was SENT. */
+  /* THE REGRESSION TEST, in two halves since PR 5.
+
+     A favourite toggle is now an UPDATE of that one column on that one
+     row — it cannot carry a stale image URL anywhere, and it must not, so
+     the first half asserts on the shape of what was sent. The save from the
+     edit form still writes the whole row from the cache, so if the write-back
+     above had not happened, THAT save would push the stale external URL
+     straight back over the row: the second half asserts on the row it sent. */
   const beforeToggle = await page.evaluate(() =>
-    (window.__WRITES__ || []).filter(w => w.table === 'recipes' && w.op === 'upsert').length);
+    (window.__WRITES__ || []).filter(w => w.table === 'recipes').length);
   await page.click('.navlink[data-view="recipes"]');
   await page.waitForTimeout(300);
   await page.locator('.rcard', { hasText: 'Test Traybake' }).first().locator('.rcard-favourite').click();
   await page.waitForTimeout(500);
-  const afterToggle = await page.evaluate(() =>
-    (window.__WRITES__ || []).filter(w => w.table === 'recipes' && w.op === 'upsert').length);
-  /* Companion assertion: without this, "the URL did not revert" would pass
-     just as well if no save had happened at all. */
-  check('a later save really did write the whole library', afterToggle > beforeToggle,
-        beforeToggle + ' -> ' + afterToggle);
-  const pushed = await page.evaluate(() => {
-    const last = (window.__WRITES__ || []).filter(w => w.table === 'recipes' && w.op === 'upsert').pop();
-    const row = (last.rows || []).find(r => r.title === 'Test Traybake');
-    return row ? { image_url: row.image_url, syntax_has_cdn: /cdn\.example\.com/.test(row.syntax || '') } : null;
-  });
-  check('a later save does NOT revert the re-hosted URL',
-        pushed && pushed.image_url === REHOSTED, JSON.stringify(pushed));
-  check('nor revert the IMAGE line', pushed && !pushed.syntax_has_cdn, JSON.stringify(pushed));
+  const toggleWrites = await page.evaluate((n) => {
+    const ws = (window.__WRITES__ || []).filter(w => w.table === 'recipes').slice(n);
+    const id = loadRecipes().find(r => r.title === 'Test Traybake').id;
+    return ws.map(w => ({ op: w.op, keys: w.patch ? Object.keys(w.patch).sort() : null,
+                          onId: !!(w.eqs && w.eqs.some(e => e.column === 'id' && e.value === id)),
+                          onHousehold: !!(w.eqs && w.eqs.some(e => e.column === 'household_id' && e.value === HOUSEHOLD_ID)) }));
+  }, beforeToggle);
+  check('a favourite toggle sends exactly one write', toggleWrites.length === 1, JSON.stringify(toggleWrites));
+  check('an update of that recipe, scoped to the household',
+        toggleWrites.length === 1 && toggleWrites[0].op === 'update' && toggleWrites[0].onId && toggleWrites[0].onHousehold,
+        JSON.stringify(toggleWrites));
+  check('carrying only the favourite (and the timestamp), never the row',
+        toggleWrites.length === 1 && JSON.stringify(toggleWrites[0].keys) === JSON.stringify(['favourite', 'updated_at']),
+        JSON.stringify(toggleWrites[0] && toggleWrites[0].keys));
 
   /* A recipe already self-hosted must not ask again — this is what makes
-     the trigger self-limiting rather than needing a flag. */
+     the trigger self-limiting rather than needing a flag. And this save is
+     the whole-row write the re-hosted URL has to survive. */
   await page.evaluate(() => { window.__INVOKES__.length = 0; });
   await page.click('.navlink[data-view="recipes"]');
   await page.waitForTimeout(300);
@@ -1003,6 +1009,14 @@ const check = (name, pass, detail) => {
   await page.waitForTimeout(600);
   check('saving an already self-hosted recipe asks for nothing',
         (await page.evaluate(() => window.__INVOKES__.length)) === 0);
+  const pushed = await page.evaluate(() => {
+    const last = (window.__WRITES__ || []).filter(w => w.table === 'recipes' && w.op === 'upsert').pop();
+    const row = (last.rows || []).find(r => r.title === 'Test Traybake');
+    return row ? { rows: last.rows.length, image_url: row.image_url, syntax_has_cdn: /cdn\.example\.com/.test(row.syntax || '') } : null;
+  });
+  check('the edit save writes that one row', pushed && pushed.rows === 1, JSON.stringify(pushed));
+  check('and does NOT revert the re-hosted URL', pushed && pushed.image_url === REHOSTED, JSON.stringify(pushed));
+  check('nor revert the IMAGE line', pushed && !pushed.syntax_has_cdn, JSON.stringify(pushed));
 
   /* The save path's own IMAGE: line update.
      Until 22 Sep nothing wrote that line — only TITLE: was reconciled with
@@ -1219,12 +1233,21 @@ const check = (name, pass, detail) => {
         !(await hasTitle('Test Pasta, edited while a save was failing')));
   check('so the unsaved change is still there to be sent',
         (await page.evaluate((id) => !!loadRecipes().find(r => r.id === id).favourite, unsentBefore.id)) === !unsentBefore.favourite);
-  // The next save of the whole table carries it, and then refreshing may resume.
+  /* The next write of anything re-runs the failed one first (PR 5: saves are
+     single rows, so nothing later can vouch for an earlier failure — it has
+     to be sent again). Then refreshing may resume. */
+  const updatesBeforeRetry = await page.evaluate(() =>
+    (window.__WRITES__ || []).filter(w => w.table === 'recipes' && w.op === 'update').length);
   await page.locator('.rcard-favourite').first().click();
   await page.waitForTimeout(300);
+  const retried = await page.evaluate((n) =>
+    (window.__WRITES__ || []).filter(w => w.table === 'recipes' && w.op === 'update').slice(n).map(w => w.patch.favourite), updatesBeforeRetry);
+  check('the failed write is sent again ahead of the next one',
+        retried.length === 2 && retried[0] === !unsentBefore.favourite && retried[1] === unsentBefore.favourite,
+        JSON.stringify(retried));
   await fireSignedIn();
   await page.waitForTimeout(400);
-  check('once a later save of the whole table succeeds, refreshing resumes',
+  check('once the retried write lands, refreshing resumes',
         await hasTitle('Test Pasta, edited while a save was failing'));
   await setServerTitle('Test Pasta');
 
@@ -1326,6 +1349,12 @@ const check = (name, pass, detail) => {
   const is = inserted ? inserted.syntax : '';
   check('a SERVINGS line missing from the text is written on save, after TIME',
         inserted && inserted.servings === 3 && /^TIME: 20 min\nSERVINGS: 3$/m.test(is), JSON.stringify(is.split('\n').slice(0, 5)));
+  const newRecipeWrite = await page.evaluate(() => {
+    const last = (window.__WRITES__ || []).filter(w => w.table === 'recipes').pop();
+    return { op: last.op, rows: last.rows ? last.rows.length : null, title: last.rows && last.rows[0].title };
+  });
+  check('a new recipe is one upsert of one row', newRecipeWrite.op === 'upsert' && newRecipeWrite.rows === 1 && newRecipeWrite.title === 'Header Insert Test',
+        JSON.stringify(newRecipeWrite));
 
   // A non-adjacent merge is an error the preview shows, naming the stage (M6).
   await page.click('.navlink[data-view="recipes"]');
@@ -1346,36 +1375,157 @@ const check = (name, pass, detail) => {
   await page.click('.navlink[data-view="recipes"]');
   await page.waitForTimeout(300);
 
-  // pushList's delete is aimed at exactly the rows no longer in the list (M4).
+  /* Deleting a recipe (PR 5, F1 and F11). One delete, of that row; and every
+     reference to it tidied as its own row write: the plan day it was on
+     (servings kept in lockstep), the group it was in (dissolved, one recipe
+     is not a group), the shortlist entry for it. Set those references up
+     first, through the app's own functions, so there is something to tidy. */
   await page.locator('.rcard', { hasText: 'Header Insert Test' }).first().click();
   await page.waitForTimeout(400);
-  const doomedId = await page.evaluate(() => state.selectedRecipeId);
+  const setup = await page.evaluate(async () => {
+    const doomed = state.selectedRecipeId;
+    const other = loadRecipes().find(r => r.title.startsWith('Test Pasta')).id;
+    const date = '2026-09-25';
+    delete loadPlan()[date];
+    addPlanRecipe(date, other); setPlanServingsAt(date, 0, 6);
+    addPlanRecipe(date, doomed); setPlanServingsAt(date, 1, 3);
+    createGroup(date, [other, doomed]);
+    addShortlistRecipe(doomed);
+    const group = loadGroups().find(g => g.dateIso === date);
+    const item = loadShortlist().find(i => i.recipeId === doomed);
+    /* Writes are queued, not sent on the spot: let the setup's own land
+       before clearing the log, or they would be counted as the delete's. */
+    await new Promise(r => setTimeout(r, 100));
+    window.__WRITES__.length = 0;   // only the delete's own writes from here
+    return { doomed, other, date, groupId: group && group.id, itemId: item && item.id };
+  });
   page.once('dialog', d => d.accept());
   await page.click('#deleteBtn');
   await page.waitForTimeout(600);
-  const del = await page.evaluate((gone) => {
-    const writes = (window.__WRITES__ || []);
-    const idx = writes.map((w, i) => w.table === 'recipes' && w.op === 'delete' ? i : -1).filter(i => i >= 0).pop();
-    if (idx === undefined) return { found: false };
-    const d = writes[idx];
-    const excluded = d.not && d.not.op === 'in' ? String(d.not.value).replace(/^\(|\)$/g, '').split(',').filter(Boolean).sort() : null;
-    const remaining = loadRecipes().map(r => r.id).sort();
-    const priorUpsert = writes.slice(0, idx).map((w, i) => w.table === 'recipes' && w.op === 'upsert' ? i : -1).filter(i => i >= 0).pop();
+  const del = await page.evaluate((s) => {
+    const ws = window.__WRITES__ || [];
+    const eq = (w, col) => (w.eqs || []).find(e => e.column === col);
+    const recipeDeletes = ws.filter(w => w.table === 'recipes' && w.op === 'delete');
+    const d = recipeDeletes[0];
+    const planUpserts = ws.filter(w => w.table === 'planner_days' && w.op === 'upsert').flatMap(w => w.rows);
+    const day = planUpserts.find(r => r.plan_date === s.date);
+    const groupDeletes = ws.filter(w => w.table === 'meal_groups' && w.op === 'delete');
+    const shortDeletes = ws.filter(w => w.table === 'shortlist_items' && w.op === 'delete');
     return {
-      found: true,
-      household: d.match && d.match.column === 'household_id' && d.match.value === HOUSEHOLD_ID,
-      notColumn: d.not && d.not.column,
-      excludedMatchesLibrary: !!excluded && JSON.stringify(excluded) === JSON.stringify(remaining),
-      excludesDeleted: !!excluded && !excluded.includes(gone),
-      upsertBefore: priorUpsert !== undefined && writes[priorUpsert].rows.length === remaining.length,
-      excludedCount: excluded ? excluded.length : null, remaining: remaining.length
+      recipeDeletes: recipeDeletes.length,
+      onId: !!(d && eq(d, 'id') && eq(d, 'id').value === s.doomed),
+      onHousehold: !!(d && eq(d, 'household_id') && eq(d, 'household_id').value === HOUSEHOLD_ID),
+      noNotIn: !!(d && !d.not),
+      recipeUpserts: ws.filter(w => w.table === 'recipes' && w.op === 'upsert').length,
+      dayRow: day ? { ids: day.recipe_ids, servings: day.servings } : null,
+      dayOk: !!(day && JSON.stringify(day.recipe_ids) === JSON.stringify([s.other]) && JSON.stringify(day.servings) === JSON.stringify([6])),
+      cacheDay: loadPlan()[s.date],
+      groupDeleted: groupDeletes.some(w => eq(w, 'id') && eq(w, 'id').value === s.groupId),
+      groupGone: !loadGroups().some(g => g.id === s.groupId),
+      shortDeleted: shortDeletes.some(w => eq(w, 'id') && eq(w, 'id').value === s.itemId),
+      shortGone: !loadShortlist().some(i => i.id === s.itemId),
+      stillThere: loadRecipes().some(r => r.id === s.doomed)
     };
-  }, doomedId);
-  check('deleting a recipe sends a delete scoped to the household', del.found && del.household, JSON.stringify(del));
-  check('that excludes exactly the recipes still in the library',
-        del.found && del.notColumn === 'id' && del.excludedMatchesLibrary && del.excludesDeleted,
-        del.excludedCount + ' excluded, ' + del.remaining + ' remaining');
-  check('and follows the upsert of the surviving rows', del.found && del.upsertBefore, JSON.stringify(del));
+  }, setup);
+  check('deleting a recipe sends one delete, of that row, scoped to the household',
+        del.recipeDeletes === 1 && del.onId && del.onHousehold && del.noNotIn, JSON.stringify(del));
+  check('and no rewrite of the rest of the library', del.recipeUpserts === 0 && !del.stillThere, del.recipeUpserts + ' upserts');
+  check('its plan day is rewritten without it, servings in lockstep', del.dayOk, JSON.stringify(del.dayRow));
+  check('the group it left with one recipe is dissolved', del.groupDeleted && del.groupGone, JSON.stringify(del));
+  check('and its shortlist entry is removed', del.shortDeleted && del.shortGone, JSON.stringify(del));
+
+  /* ---- Every other save is one row too (F1) ---- */
+  const rowWrites = await page.evaluate(async () => {
+    const out = {};
+    const since = () => (window.__WRITES__ || []).slice(mark);
+    let mark;
+    const eq = (w, col) => ((w.eqs || []).find(e => e.column === col) || {}).value;
+    /* Each save queues its write; nothing is in the log until the queue has
+       run. Drain it before reading. */
+    const drain = () => new Promise(r => setTimeout(r, 60));
+
+    // Plan: adding to a day writes that day; emptying it deletes that day.
+    mark = window.__WRITES__.length;
+    const date = '2026-09-26';
+    const r1 = loadRecipes().find(r => r.title.startsWith('Test Pasta')).id;
+    addPlanRecipe(date, r1);
+    await drain();
+    out.planAdd = since().map(w => ({ table: w.table, op: w.op, rows: w.rows && w.rows.map(r => r.plan_date) }));
+    mark = window.__WRITES__.length;
+    removePlanRecipeAt(date, 0);
+    await drain();
+    out.planEmpty = since().map(w => ({ table: w.table, op: w.op, date: eq(w, 'plan_date') }));
+
+    // Ticks: on inserts one row, off deletes one row, UNTICK ALL deletes those keys.
+    mark = window.__WRITES__.length;
+    toggleShoppingChecked('2026-09-18', 'k|one');
+    toggleShoppingChecked('2026-09-18', 'k|one');
+    clearTicks('2026-09-18', ['k|two', 'k|three']);
+    await drain();
+    out.ticks = since().map(w => ({ op: w.op, rows: w.rows && w.rows.map(r => r.item_key), key: eq(w, 'item_key'), week: eq(w, 'week_start'), in: w.in && w.in.values }));
+
+    // Word matches: keyed by the word, not the id, on the way in and out.
+    mark = window.__WRITES__.length;
+    addAlias('ingredient', 'Zucchini', 'courgette');
+    const alias = loadAliases().find(a => a.alias === 'Zucchini');
+    removeAlias(alias.id);
+    await drain();
+    out.aliases = since().map(w => ({ op: w.op, rows: w.rows && w.rows.length, onConflict: w.opts && w.opts.onConflict, kind: eq(w, 'kind'), alias: eq(w, 'alias') }));
+
+    // Swaps and keywords: one row each way.
+    mark = window.__WRITES__.length;
+    saveSwap({ id: uid(), original: 'butter', replacement: 'oil', ratio: '', notes: '' });
+    deleteSwap(loadSwaps().find(s => s.original === 'butter').id);
+    mergeKeywordVocab(['Brand New']);
+    removeKeywordFromVocab('Brand New');
+    await drain();
+    out.rest = since().map(w => ({ table: w.table, op: w.op, rows: w.rows && w.rows.length, name: eq(w, 'name'), id: !!eq(w, 'id') }));
+    out.noDeleteNotIn = since().every(w => !w.not);
+    return out;
+  });
+  check('adding to a plan day writes only that day',
+        rowWrites.planAdd.length === 1 && rowWrites.planAdd[0].op === 'upsert' && JSON.stringify(rowWrites.planAdd[0].rows) === '["2026-09-26"]',
+        JSON.stringify(rowWrites.planAdd));
+  check('emptying a plan day deletes only that day',
+        rowWrites.planEmpty.length === 1 && rowWrites.planEmpty[0].op === 'delete' && rowWrites.planEmpty[0].date === '2026-09-26',
+        JSON.stringify(rowWrites.planEmpty));
+  check('a tick on is one row in, a tick off is one row out, untick-all names its keys',
+        rowWrites.ticks.length === 3 && rowWrites.ticks[0].op === 'upsert' && JSON.stringify(rowWrites.ticks[0].rows) === '["k|one"]'
+        && rowWrites.ticks[1].op === 'delete' && rowWrites.ticks[1].key === 'k|one' && rowWrites.ticks[1].week === '2026-09-18'
+        && rowWrites.ticks[2].op === 'delete' && JSON.stringify(rowWrites.ticks[2].in) === '["k|two","k|three"]',
+        JSON.stringify(rowWrites.ticks));
+  check('a word match is upserted on its word and deleted by its word',
+        rowWrites.aliases.length === 2 && rowWrites.aliases[0].op === 'upsert' && rowWrites.aliases[0].rows === 1 && rowWrites.aliases[0].onConflict === 'household_id,kind,alias'
+        && rowWrites.aliases[1].op === 'delete' && rowWrites.aliases[1].kind === 'ingredient' && rowWrites.aliases[1].alias === 'Zucchini',
+        JSON.stringify(rowWrites.aliases));
+  check('a swap and a keyword go in and out as single rows',
+        rowWrites.rest.length === 4 && rowWrites.rest[0].op === 'upsert' && rowWrites.rest[0].rows === 1 && rowWrites.rest[1].op === 'delete' && rowWrites.rest[1].id
+        && rowWrites.rest[2].op === 'upsert' && rowWrites.rest[2].rows === 1 && rowWrites.rest[3].op === 'delete' && rowWrites.rest[3].name === 'Brand New',
+        JSON.stringify(rowWrites.rest));
+  check('and none of them deletes "everything not in my list"', rowWrites.noDeleteNotIn);
+
+  /* ---- Import is the one whole-table replace left, and it must still be one ---- */
+  const backupJson = await page.evaluate(() => JSON.stringify({
+    app: 'Kitchen', version: 3, recipes: loadRecipes(), diary: loadDiary(), plan: loadPlan(), shortlist: loadShortlist(),
+    keywordVocab: loadKeywordVocab(), shoppingChecked: loadShoppingChecked(), swaps: loadSwaps(), groups: loadGroups(),
+    settings: loadSettings(), aliases: loadAliases()
+  }));
+  const recipeCount = JSON.parse(backupJson).recipes.length;
+  await page.evaluate(() => { window.__WRITES__.length = 0; });
+  page.once('dialog', d => d.accept());
+  await page.setInputFiles('#importFileInput', { name: 'kitchen-backup-test.json', mimeType: 'application/json', buffer: Buffer.from(backupJson) });
+  await page.waitForTimeout(1200);
+  const imp = await page.evaluate(() => {
+    const ws = window.__WRITES__ || [];
+    const byTable = (t) => ws.filter(w => w.table === t).map(w => ({ op: w.op, rows: w.rows ? w.rows.length : null, notIn: !!(w.not && w.not.op === 'in') }));
+    return { recipes: byTable('recipes'), plan: byTable('planner_days'), groups: byTable('meal_groups'), shortlist: byTable('shortlist_items') };
+  });
+  check('import upserts every recipe in the file and deletes what is not in it',
+        imp.recipes.length === 2 && imp.recipes[0].op === 'upsert' && imp.recipes[0].rows === recipeCount && imp.recipes[1].op === 'delete' && imp.recipes[1].notIn,
+        JSON.stringify(imp.recipes) + ' for ' + recipeCount + ' recipes');
+  check('and replaces the plan, groups and shortlist the same way',
+        [imp.plan, imp.groups, imp.shortlist].every(t => t.some(w => w.op === 'delete')),
+        JSON.stringify({ plan: imp.plan, groups: imp.groups, shortlist: imp.shortlist }));
 
   // Starting up offline: explain, keep the session, and recover without a password.
   const cold = await browser.newPage();

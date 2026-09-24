@@ -256,6 +256,15 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
 
 ### F1 — Every save replaces a whole table from a cache that only a tab switch refreshes (High)
 
+- ✅ **Closed 24 Sep 2026, PR #15.** Every ordinary save is one row: a favourite is an `update`
+  of that column, a form save upserts that recipe, a removal deletes that row, and the same for
+  a plan day, group, shortlist item, word match, swap, keyword and tick. `pushList` and the
+  `replace*` functions survive for import only. A failed write is re-sent ahead of the next one,
+  since no later row write can vouch for it; the four refresh rules are unchanged. The stub now
+  fails and records every write kind, and fifteen checks assert on what each action sends. What
+  is left: two people editing the *same recipe's text* at once is still last-writer-wins on that
+  one row, which is the accepted shape. The two-device pass (`docs/TEST-PLAN.md` §D) is still to
+  be run by the household.
 - `pushList` (`index.html:2776-2785`) upserts every cached row, then deletes every row of the
   household whose id is not in the cache. `saveRecipesList` (`:3181`) routes through it and is
   called from the card favourite (`:4076`), the group viewer favourite (`:4256`), the viewer
@@ -433,6 +442,11 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
 
 ### F11 — Deleting a recipe leaves references behind (Low)
 
+- ✅ **Closed 24 Sep 2026, PR #15.** `deleteRecipe` rewrites each plan day that held the recipe
+  (servings kept in lockstep, the day cleared if it held nothing else), dissolves a group left
+  with one recipe, and removes the shortlist entry for it — each as its own row write, asserted
+  by three checks. The 7 days and 1 group already dangling are not touched by this; they render
+  as "Recipe removed" until the household clears them.
 - 7 of 18 planner days and 1 of 4 meal groups hold ids of deleted recipes (from the 20 Sep
   ingestion; `docs/HANDOVER.md` §3 said 8 and 2). The delete handler leaves them "on purpose"
   (`index.html:4633`) so nothing looks unplanned; they render as "Recipe removed". Reasonable
@@ -499,7 +513,7 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
    row explicitly; the same for one plan day, one group, one shortlist item, one alias, one
    swap, one tick. Whole-table replace stays for import only. The tests already assert on what
    is *sent* (`window.__WRITES__`), so each change can be pinned. Keep the refresh and its four
-   rules unchanged. (F1)
+   rules unchanged. (F1) *✅ Done 24 Sep, PR #15.*
 10. **Write the onboarding runbook**: create the account, insert the `household_members` row,
     what the person sees if it is missing. Decide whether public sign-up should be on and set it
     accordingly. Enable leaked-password protection. (F8)
@@ -512,7 +526,7 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
     then by anyone who wants a plain recipe without a converter. The model-backed function only
     if the family actually adds recipes, with the key in Supabase secrets, a membership check
     and a daily cap.
-14. **Clean up on delete** — remove the id from plan days and groups. (F11)
+14. **Clean up on delete** — remove the id from plan days and groups. (F11) *✅ Done 24 Sep, PR #15.*
 
 ### Leave alone, and why
 
