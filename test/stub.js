@@ -12,8 +12,10 @@
 
        __READ_FAIL__     reads fail the way supabase-js reports a dead network
        __READ_DELAY__    ms before a read answers, to open a mid-fetch window
-       __WRITE_FAIL__    upserts fail the same way
-       __WRITE_DELAY__   ms before an upsert answers, to hold the queue open
+       __WRITE_FAIL__    writes fail the same way (every kind — upsert, insert,
+                         update, delete — since 24 Sep, when ordinary saves
+                         became single-row updates and deletes)
+       __WRITE_DELAY__   ms before a write answers, to hold the queue open
        __LOG__           'read:<table>' and 'write-done:<table>', in order,
                          so a test can prove what happened before what
        __AUTH_CB__       the app's onAuthStateChange listener, so a test can
@@ -48,12 +50,10 @@
       single(){ single = true; return api; },
       upsert(rows, opts){
         window.__WRITES__.push({table, op:'upsert', rows, opts});
-        const outcome = window.__WRITE_FAIL__ ? { error: NETWORK_ERROR } : { error: null };
-        const done = later(outcome, window.__WRITE_DELAY__).then(v => { window.__LOG__.push('write-done:' + table); return v; });
-        return { then(res, rej){ return done.then(res, rej); } };
+        return settle(table);
       },
-      insert(rows){ window.__WRITES__.push({table, op:'insert', rows}); return thenable({error:null}); },
-      delete(){ const w = {table, op:'delete'}; window.__WRITES__.push(w); return deleteChain(w); },
+      insert(rows){ window.__WRITES__.push({table, op:'insert', rows}); return settle(table); },
+      delete(){ const w = {table, op:'delete'}; window.__WRITES__.push(w); return deleteChain(w, table); },
       /* Added 22 Sep. Its absence made the food diary's only update path
          throw a TypeError that queueWrite swallowed, so the check on the
          meal-type prompt passed by asserting the in-memory cache while the
@@ -61,7 +61,7 @@
          noticing, because it was being read by counting 'ok' lines rather
          than by its exit code. Records like the others so a test can assert
          on the patch actually sent, not just on what the cache believes. */
-      update(patch){ window.__WRITES__.push({table, op:'update', patch}); return updateChain(table, patch); },
+      update(patch){ const w = {table, op:'update', patch}; window.__WRITES__.push(w); return filterChain(w, table); },
       then(res, rej){
         window.__LOG__.push('read:' + table);
         const r = result(table);
@@ -71,30 +71,34 @@
     };
     return api;
   }
-  function updateChain(table, patch){
-    const api = {
-      /* .eq() is recorded rather than ignored: a patch aimed at the wrong
-         row is a real bug the tests should be able to see. */
-      eq(column, value){ window.__WRITES__[window.__WRITES__.length-1].match = {column, value}; return api; },
-      not(){ return api; }, in(){ return api; },
-      then(res, rej){ return Promise.resolve({error:null}).then(res, rej); }
-    };
-    return api;
+  /* Every write answers the same way: failing when __WRITE_FAIL__ is set,
+     after __WRITE_DELAY__ if set, and logging when it is done. Until 24 Sep
+     only upserts did, because only upserts mattered — every save was one.
+     Now a favourite is an update and a removal is a delete, and a check on
+     "a refresh stands down while a save has failed" needs those to be able
+     to fail too, or it would pass against a save that never ran. */
+  function settle(table){
+    const outcome = window.__WRITE_FAIL__ ? { error: NETWORK_ERROR } : { error: null };
+    const done = later(outcome, window.__WRITE_DELAY__).then(v => { window.__LOG__.push('write-done:' + table); return v; });
+    return { then(res, rej){ return done.then(res, rej); } };
   }
-  /* The delete's filters are recorded on the write, not dropped. pushList
-     deletes every row of the household NOT in the list it was handed — the
-     most dangerous line in the app — and until 23 Sep a mutation that
-     removed the delete entirely left all 197 checks green (F7, M4), because
-     nothing could see what the delete was aimed at. */
-  function deleteChain(write){
+  /* The filters on an update or a delete are recorded on the write, not
+     dropped. `match` is the last .eq() (what the older checks read); `eqs`
+     is every .eq() in order, so a check can see a delete aimed at one row
+     of one household — and would see one aimed at the whole household. A
+     mutation that removed pushList's delete entirely once left all 197
+     checks green (F7, M4) because nothing could see what it was aimed at. */
+  function filterChain(write, table){
+    write.eqs = [];
     const api = {
-      eq(column, value){ write.match = {column, value}; return api; },
+      eq(column, value){ write.match = {column, value}; write.eqs.push({column, value}); return api; },
       not(column, op, value){ write.not = {column, op, value}; return api; },
       in(column, values){ write.in = {column, values}; return api; },
-      then(res, rej){ return Promise.resolve({error:null}).then(res, rej); }
+      then(res, rej){ return settle(table).then(res, rej); }
     };
     return api;
   }
+  function deleteChain(write, table){ return filterChain(write, table); }
   function thenable(v){ return { then(res, rej){ return Promise.resolve(v).then(res, rej); } }; }
 
   /* Edge Function calls.

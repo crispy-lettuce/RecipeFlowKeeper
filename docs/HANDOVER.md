@@ -401,13 +401,15 @@ the reference does not say.
 after `hydrate()`. So a value the server knows and the cache does not is overwritten by the next
 save of *any* recipe — toggling one favourite is enough. A re-host that did not write its answer
 back into the cache would therefore undo itself, silently, and look fine, because the external URL
-still loads.
+still loads. *(Narrowed 24 Sep by PR 5: only an edit-save of that recipe rewrites its row now, and
+a favourite toggle updates one column. The write-back is still required.)*
 
 That is why `applyRehostedUrl` exists, why `runImageSweep` reconciles from the function's report
 rather than just printing it, and why the end-to-end check below is "toggle a favourite and
 reload" rather than "look at the card". **The same hazard is still live for the console sweep** —
 hard-reload after running one — and `pushList`'s habit of also *deleting* rows absent from the
-cache is untouched and still wants its own piece of work.
+cache is untouched and still wants its own piece of work. *(That piece of work was PR 5, 24 Sep:
+`pushList` is import-only now.)*
 
 ### A pre-existing defect this had to fix first
 
@@ -436,7 +438,7 @@ looks exactly like a real finding. `node test/build.js && node test/smoke.js`, a
 
 ### Not covered, deliberately
 
-A restore from backup calls `saveRecipesList` with the whole library and never touches the save
+A restore from backup calls `replaceRecipesList` with the whole library and never touches the save
 handler, so nothing fires; a save made offline never reaches the function. Both are what the sweep
 is now for, and the sweep has moved out of the console into **Settings → RECIPE PHOTOS**.
 
@@ -709,7 +711,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **213 checks** across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **228 checks** across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday.
@@ -720,9 +722,22 @@ mutations run against them (the delete removed, its exclusion list removed, the 
 made a no-op, the rewrite cut back to title and image only, the adjacency error dropped) each
 fail by name; and the live drift query, run before the change, found three recipes where a
 header line and its column disagree — the two the review counted, plus `TAGS:`, which its query
-never compared. Those three are re-saved through the app after the merge, and the query in
-`docs/TEST-PLAN.md` then reads 0 on every column; until that is done the feature has run only
-against the stub.
+never compared. The three were re-saved through the app on 24 Sep at 18:15 UTC, from a phone that
+had loaded the merged build, and the query read 0 on every column: the feature's first and only
+run against the real backend so far. *(A first attempt two minutes after the merge, from a tab
+opened before it, wrote the old shape — a live example of the stale-tab hazard PR 5 removes.)*
+
+**PR 5, row-scoped writes (24 Sep 2026, PR #15, closing F1 and F11).** Every ordinary save is
+one row and `pushList` is import-only. Verified by: 228 checks green locally and in CI, fifteen of
+them new, each asserting on the write that was sent — a favourite is an update of one column of
+one row; a new recipe is one upsert of one row; deleting a recipe is one delete of that row plus
+the row writes that tidy its plan day, group and shortlist entry; a plan day, a tick, a word match,
+a swap and a keyword each go in and out as single rows; nothing but the import sends a delete of
+"everything not in my list", and the import still does. Five mutations (a favourite that writes
+the whole row, a delete that skips the plan cleanup, a delete through the whole-table push, the
+retry removed, an import without its delete) each fail by name. **Not yet run against the real
+backend**: the two-device pass, section D of `docs/TEST-PLAN.md`, is the household's to do after
+the merge.
 
 ```sh
 npm install playwright
@@ -752,10 +767,11 @@ and import round-tripped with every table count intact.
 
 **Two things the pass established that are worth not rediscovering:**
 
-- A single favourite toggle rewrites the entire library. `saveRecipesList` → `pushList` upserts
-  every recipe and then deletes any row not in the list. It behaved correctly against 33 rows,
-  but it means a `hydrate()` that ever returned a partial library would have the next favourite
-  delete the remainder. Worth remembering before changing anything in `hydrate()`.
+- *(Until 24 Sep.)* A single favourite toggle rewrote the entire library: `saveRecipesList` →
+  `pushList` upserted every recipe and then deleted any row not in the list. It behaved correctly
+  against 33 rows, but it meant a `hydrate()` that ever returned a partial library would have had
+  the next favourite delete the remainder. PR 5 made a favourite an update of one column and every
+  other ordinary save a single row; `pushList` survives for import only.
 - `shopping_checked.item_key` is the aggregation string, so the 20 Sep ingest re-keyed every
   possible tick. The ticked list was empty, so nothing broke — luck, not design. Clear the ticks
   before the next reprocess.

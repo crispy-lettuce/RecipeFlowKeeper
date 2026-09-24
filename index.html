@@ -2809,37 +2809,62 @@ let writeQueue = Promise.resolve();
 
    unsentLabels holds writes whose last attempt failed. The cache has those
    changes and the server does not, so a refresh would silently undo them.
-   A later success clears the label only where that write carries the WHOLE
-   table or row — then the server provably matches the cache again. The
-   diary writes one row at a time, so a later success says nothing about
-   the failed one; its label stays until a reload. Listed as an allowlist
-   so a label added later defaults to the safe side: it blocks. */
+
+   Since 24 Sep (PR 5) every ordinary save writes ONE ROW, so no later
+   success can prove an earlier failed write landed — the old rule, "a
+   later save of the whole table clears the label", has nothing to attach
+   to. Instead a failed write is kept, and re-run at the head of the queue
+   the next time anything is written. If it lands, its label clears (unless
+   another write under the same label is still outstanding); if it fails
+   again it goes back on the pile and the refresh stays blocked, which is
+   what the diary always did. The one write that does carry a whole table
+   is the import, which passes {whole: true} and clears everything under
+   its label when it succeeds — the server then provably matches the cache.
+   Writes are re-run in the order they were queued, before the new one, so
+   a retried toggle can never overtake the toggle that followed it. */
 let localChanges = 0;
 const unsentLabels = new Set();
-const WHOLE_STATE_LABELS = new Set([
-  'recipes', 'the plan', 'the shortlist', 'meal groups', 'swaps',
-  'word matches', 'keywords', 'your settings', 'ticked items'
-]);
+const failedWrites = [];
 /* A failed re-host loses nothing: the recipe row keeps the URL it had,
    which still displays, and the sweep or the next save tries again. */
 const NOTHING_LOST_LABELS = new Set(['the recipe image']);
 
-function queueWrite(label, fn){
+async function runWrite(w){
+  try{
+    await w.fn();
+    if(w.whole){
+      for(let i = failedWrites.length - 1; i >= 0; i--) if(failedWrites[i].label === w.label) failedWrites.splice(i, 1);
+    }
+    if(!failedWrites.some(f => f.label === w.label)) unsentLabels.delete(w.label);
+  }catch(err){
+    console.error('Sync failed:', w.label, err);
+    if(!NOTHING_LOST_LABELS.has(w.label)){
+      unsentLabels.add(w.label);
+      failedWrites.push(w);
+    }
+    showToast(`Couldn't save ${w.label} — check your connection`);
+  }
+}
+function queueWrite(label, fn, opts){
   localChanges++;
-  writeQueue = writeQueue.then(fn).then(()=>{
-    if(WHOLE_STATE_LABELS.has(label)) unsentLabels.delete(label);
-  }, err=>{
-    console.error('Sync failed:', label, err);
-    if(!NOTHING_LOST_LABELS.has(label)) unsentLabels.add(label);
-    showToast(`Couldn't save ${label} — check your connection`);
+  const w = { label, fn, whole: !!(opts && opts.whole) };
+  const retries = failedWrites.splice(0);
+  writeQueue = writeQueue.then(async ()=>{
+    for(const r of retries) await runWrite(r);
+    await runWrite(w);
   });
   return true;
 }
 
-/* Replace-the-whole-list push, mirroring what the old localStorage writes
-   did: whatever list the caller hands over becomes the truth. Rows present
-   are upserted; rows the caller dropped are deleted. Fine at this library's
-   scale — worth revisiting only if the row counts grow by an order or two. */
+/* Replace-the-whole-list push: whatever list the caller hands over becomes
+   the truth. Rows present are upserted; rows the caller dropped are deleted.
+
+   IMPORT ONLY, since 24 Sep. Until then every save went through here, and a
+   tab whose cache was behind the server — a tablet kept awake on a recipe
+   all day — would push its stale library over another device's work and
+   delete any recipe it had never seen, cascading that recipe's cooking
+   history (docs/REVIEW-ARCHITECTURE-FINDINGS.md F1). A restore from backup
+   is the one place "this list is the truth" is what the person means. */
 async function pushList(table, rows){
   if(rows.length){
     const { error } = await sb.from(table).upsert(rows);
@@ -3128,6 +3153,7 @@ function adHocTitleSuggestions(){
 function loadSettings(){ return cache.settings; }
 function saveSettings(next){
   cache.settings = next;
+  /* One row is the whole table, so a success here proves the server matches. */
   return queueWrite('your settings', async ()=>{
     const { error } = await sb.from('household_settings').upsert({
       household_id: HOUSEHOLD_ID,
@@ -3136,7 +3162,7 @@ function saveSettings(next){
       updated_at: new Date().toISOString()
     }, { onConflict: 'household_id' });
     if(error) throw error;
-  });
+  }, { whole: true });
 }
 function setSetting(key, value){
   return saveSettings({ ...loadSettings(), [key]: value });
@@ -3160,20 +3186,43 @@ function rebuildAliasMaps(){
   aliasMaps = maps;
 }
 function loadAliases(){ return cache.aliases; }
-function saveAliases(list){
+function aliasToRow(a){
+  return { id: a.id, household_id: HOUSEHOLD_ID, kind: a.kind, alias: a.alias, canonical: a.canonical || '' };
+}
+/* Whole-table replace. Import only — see pushList. */
+function replaceAliases(list){
   cache.aliases = list;
   rebuildAliasMaps();
-  return queueWrite('word matches', ()=> pushList('aliases', list.map(a=>({
-    id: a.id, household_id: HOUSEHOLD_ID,
-    kind: a.kind, alias: a.alias, canonical: a.canonical || ''
-  }))));
+  return queueWrite('word matches', ()=> pushList('aliases', list.map(aliasToRow)), { whole: true });
 }
+/* The table's real key is (kind, alias) — a word means one thing — so the
+   upsert resolves on that, and a match already settled on another device
+   is replaced rather than colliding. The cache keeps the id it had for the
+   same word, so the two never disagree about which row this is. */
 function addAlias(kind, alias, canonical){
-  const list = loadAliases().filter(a=> !(a.kind === kind && a.alias === alias));
-  list.push({ id: uid(), kind, alias, canonical: canonical || '' });
-  return saveAliases(list);
+  const prior = loadAliases().find(a=> a.kind === kind && a.alias === alias);
+  const entry = { id: prior ? prior.id : uid(), kind, alias, canonical: canonical || '' };
+  cache.aliases = loadAliases().filter(a=> !(a.kind === kind && a.alias === alias)).concat([entry]);
+  rebuildAliasMaps();
+  const row = aliasToRow(entry);
+  return queueWrite('word matches', async ()=>{
+    const { error } = await sb.from('aliases').upsert([row], { onConflict: 'household_id,kind,alias' });
+    if(error) throw error;
+  });
 }
-function removeAlias(id){ return saveAliases(loadAliases().filter(a=>a.id !== id)); }
+/* Removed by the word, not the id, for the same reason: the id in the cache
+   may not be the one the server ended up keeping. */
+function removeAlias(id){
+  const entry = loadAliases().find(a=>a.id === id);
+  cache.aliases = loadAliases().filter(a=>a.id !== id);
+  rebuildAliasMaps();
+  if(!entry) return true;
+  return queueWrite('word matches', async ()=>{
+    const { error } = await sb.from('aliases').delete()
+      .eq('household_id', HOUSEHOLD_ID).eq('kind', entry.kind).eq('alias', entry.alias);
+    if(error) throw error;
+  });
+}
 /* A pair key is order-independent, so "is this pair settled?" gives the same
    answer whichever of the two names the shopping list happens to see first. */
 function pairKeyFor(a, b){ return [a, b].sort().join(' || '); }
@@ -3245,9 +3294,81 @@ function applyRehostedUrl(recipeId, sentUrl, newUrl){
 }
 
 function loadRecipes(){ return cache.recipes; }
-function saveRecipesList(list){
+/* Whole-library replace. Import only — see pushList. */
+function replaceRecipesList(list){
   cache.recipes = list;
-  return queueWrite('recipes', ()=> pushList('recipes', list.map(recipeToRow)));
+  return queueWrite('recipes', ()=> pushList('recipes', list.map(recipeToRow)), { whole: true });
+}
+/* One recipe, the whole row. For the save from the Add/Edit form, where the
+   person has just looked at every field: the row is what they confirmed.
+   The row is built NOW, from the recipe as it is at the moment of saving,
+   so a later edit to the cache cannot change what this write sends. */
+function saveRecipe(recipe){
+  const list = cache.recipes;
+  const idx = list.findIndex(r => r.id === recipe.id);
+  if(idx === -1) list.push(recipe); else list[idx] = recipe;
+  const row = recipeToRow(recipe);
+  return queueWrite('recipes', async ()=>{
+    const { error } = await sb.from('recipes').upsert([row]);
+    if(error) throw error;
+  });
+}
+/* Several recipes, whole rows: the source merge and the keyword edits,
+   which touch a field and its header line on every recipe that carries the
+   old value, and nothing else. */
+function saveRecipes(recipes){
+  if(!recipes.length) return true;
+  const rows = recipes.map(recipeToRow);
+  return queueWrite('recipes', async ()=>{
+    const { error } = await sb.from('recipes').upsert(rows);
+    if(error) throw error;
+  });
+}
+/* Some columns of one recipe — the favourite toggle. An UPDATE of just
+   those columns, not an upsert of the row, so a tablet whose cache is a day
+   old can star a recipe without writing its day-old text over an edit made
+   elsewhere since. The caller has already changed the cache. */
+function patchRecipe(id, patch){
+  const row = { ...patch, updated_at: new Date().toISOString() };
+  return queueWrite('recipes', async ()=>{
+    const { error } = await sb.from('recipes').update(row).eq('household_id', HOUSEHOLD_ID).eq('id', id);
+    if(error) throw error;
+  });
+}
+/* One recipe gone, and everything that pointed at it tidied — each as its
+   own row write. Until 24 Sep the plan days and groups were left pointing
+   at the deleted id "on purpose", to render as "Recipe removed" rather than
+   look unplanned; 7 planner days and a meal group had accumulated them
+   (F11). A day that held only this recipe is cleared; a group left with one
+   recipe is dissolved, because one recipe is not a group; a shortlist entry
+   for it goes (the server would null its recipe_id anyway, leaving a blank
+   row). recipe_logs cascade on the server, and the diary in the cache
+   already renders a missing recipe as "(deleted recipe)". */
+function deleteRecipe(id){
+  cache.recipes = cache.recipes.filter(r => r.id !== id);
+  queueWrite('recipes', async ()=>{
+    const { error } = await sb.from('recipes').delete().eq('household_id', HOUSEHOLD_ID).eq('id', id);
+    if(error) throw error;
+  });
+  const p = loadPlan();
+  Object.keys(p).forEach(date => {
+    const entry = p[date];
+    if(!entry || entry.blank) return;
+    const ids = planRecipeIds(entry);
+    if(!ids.includes(id)) return;
+    const servings = planServings(entry);
+    const keepIds = [], keepServings = [];
+    ids.forEach((rid, i) => { if(rid !== id){ keepIds.push(rid); keepServings.push(servings[i]); } });
+    if(keepIds.length) p[date] = { recipeIds: keepIds, servings: keepServings }; else delete p[date];
+    savePlanDay(date);
+  });
+  loadGroups().filter(g => g.recipeIds.includes(id)).forEach(g => {
+    const rest = g.recipeIds.filter(x => x !== id);
+    if(rest.length < 2) deleteGroup(g.id);
+    else { g.recipeIds = rest; saveGroup(g); }
+  });
+  loadShortlist().filter(i => i.recipeId === id).forEach(i => removeShortlistItem(i.id));
+  return true;
 }
 /* Only used by a restore-from-backup. Normal logs go through
    addDiaryEntry, one row at a time, rather than rewriting every log.
@@ -3348,16 +3469,25 @@ async function pushKeywords(list){
   const { error } = await q;
   if(error) throw error;
 }
-function saveKeywordVocab(list){
+/* Whole-vocabulary replace. Import only — see pushList. */
+function replaceKeywordVocab(list){
   cache.keywords = list;
-  return queueWrite('keywords', ()=> pushKeywords(list));
+  return queueWrite('keywords', ()=> pushKeywords(list), { whole: true });
 }
+/* New words are appended: their rows are inserted at the end of the order
+   and nothing already there is touched. */
 function mergeKeywordVocab(newKeywords){
   const existing = new Set(loadKeywordVocab());
-  const before = existing.size;
-  (newKeywords||[]).forEach(k=>{ if(k) existing.add(k); });
-  if(existing.size === before) return;
-  saveKeywordVocab(Array.from(existing));
+  const added = [];
+  (newKeywords||[]).forEach(k=>{ if(k && !existing.has(k)){ existing.add(k); added.push(k); } });
+  if(!added.length) return;
+  const start = cache.keywords.length;
+  cache.keywords = Array.from(existing);
+  const rows = added.map((name, i)=>({ household_id: HOUSEHOLD_ID, name, sort_order: start + i }));
+  queueWrite('keywords', async ()=>{
+    const { error } = await sb.from('keywords').upsert(rows, { onConflict: 'household_id,name' });
+    if(error) throw error;
+  });
 }
 /* Every keyword worth suggesting: the persisted vocab plus anything a
    recipe is currently tagged with (covers the rare case where a keyword
@@ -3370,7 +3500,11 @@ function fullKeywordVocab(recipes){
   ]));
 }
 function removeKeywordFromVocab(keyword){
-  saveKeywordVocab(loadKeywordVocab().filter(k=>k!==keyword));
+  cache.keywords = loadKeywordVocab().filter(k=>k!==keyword);
+  queueWrite('keywords', async ()=>{
+    const { error } = await sb.from('keywords').delete().eq('household_id', HOUSEHOLD_ID).eq('name', keyword);
+    if(error) throw error;
+  });
 }
 /* Occasion used to be its own small dropdown (Weeknight/Sunday/Guests),
    kept separate from keywords on the theory that it described a different
@@ -3400,9 +3534,31 @@ async function pushPlan(p){
   const { error } = await q;
   if(error) throw error;
 }
-function savePlan(p){
+/* Whole-plan replace. Import only — see pushList. */
+function replacePlan(p){
   cache.plan = p;
-  return queueWrite('the plan', ()=> pushPlan(p));
+  return queueWrite('the plan', ()=> pushPlan(p), { whole: true });
+}
+/* One day, as the cache now holds it: upserted if it has an entry, deleted
+   if the entry is gone. planner_days is keyed by (household, date), so a day
+   is its own row and nothing about any other day is sent. */
+function savePlanDay(dateStr){
+  const entry = cache.plan[dateStr];
+  if(entry){
+    const row = {
+      household_id: HOUSEHOLD_ID, plan_date: dateStr, is_blank: !!entry.blank,
+      recipe_ids: planRecipeIds(entry), servings: planServings(entry),
+      updated_at: new Date().toISOString()
+    };
+    return queueWrite('the plan', async ()=>{
+      const { error } = await sb.from('planner_days').upsert([row], { onConflict: 'household_id,plan_date' });
+      if(error) throw error;
+    });
+  }
+  return queueWrite('the plan', async ()=>{
+    const { error } = await sb.from('planner_days').delete().eq('household_id', HOUSEHOLD_ID).eq('plan_date', dateStr);
+    if(error) throw error;
+  });
 }
 /* A day can hold more than one recipe now (a main, a side, and a dessert;
    or a main plus an unrelated batch of biscuits) — see the findings doc.
@@ -3432,8 +3588,8 @@ function planEntries(entry){
   const servings = planServings(entry);
   return planRecipeIds(entry).map((recipeId, i)=> ({ recipeId, servings: servings[i] }));
 }
-function setPlanBlank(dateStr){ const p = loadPlan(); p[dateStr] = {blank:true}; return savePlan(p); }
-function clearPlanDay(dateStr){ const p = loadPlan(); delete p[dateStr]; return savePlan(p); }
+function setPlanBlank(dateStr){ const p = loadPlan(); p[dateStr] = {blank:true}; return savePlanDay(dateStr); }
+function clearPlanDay(dateStr){ const p = loadPlan(); delete p[dateStr]; return savePlanDay(dateStr); }
 function addPlanRecipe(dateStr, recipeId){
   const p = loadPlan();
   const ids = planRecipeIds(p[dateStr]);
@@ -3441,7 +3597,7 @@ function addPlanRecipe(dateStr, recipeId){
   ids.push(recipeId);
   servings.push(0); // as written, until someone says otherwise
   p[dateStr] = {recipeIds: ids, servings};
-  return savePlan(p);
+  return savePlanDay(dateStr);
 }
 /* 0 clears the override and falls back to the recipe's own servings. */
 function setPlanServingsAt(dateStr, index, people){
@@ -3453,7 +3609,7 @@ function setPlanServingsAt(dateStr, index, people){
   const servings = planServings(entry);
   servings[index] = parseInt(people, 10) || 0;
   p[dateStr] = {recipeIds: ids, servings};
-  return savePlan(p);
+  return savePlanDay(dateStr);
 }
 /* Removes by list position, not by id — if the same recipe is assigned
    to a day twice on purpose (e.g. a doubled batch), removing "the one you
@@ -3467,7 +3623,7 @@ function removePlanRecipeAt(dateStr, index){
   ids.splice(index, 1);
   servings.splice(index, 1); // in lockstep, or every later entry's servings shift up one
   if(ids.length) p[dateStr] = {recipeIds: ids, servings}; else delete p[dateStr];
-  return savePlan(p);
+  return savePlanDay(dateStr);
 }
 
 /* ------------------------------- Meal groups -------------------------------
@@ -3483,12 +3639,31 @@ function removePlanRecipeAt(dateStr, index){
    Scoped per dateIso so the same recipe grouped on two different days (or
    assigned twice the same day) doesn't create cross-day ambiguity. */
 function loadGroups(){ return cache.groups; }
-function saveGroups(list){
+function groupToRow(g){
+  return { id: g.id, household_id: HOUSEHOLD_ID, date_iso: g.dateIso,
+           recipe_ids: g.recipeIds || [], name: g.name || '' };
+}
+/* Whole-table replace. Import only — see pushList. */
+function replaceGroups(list){
   cache.groups = list;
-  return queueWrite('meal groups', ()=> pushList('meal_groups', list.map(g=>({
-    id: g.id, household_id: HOUSEHOLD_ID, date_iso: g.dateIso,
-    recipe_ids: g.recipeIds || [], name: g.name || ''
-  }))));
+  return queueWrite('meal groups', ()=> pushList('meal_groups', list.map(groupToRow)), { whole: true });
+}
+function saveGroup(g){
+  const list = cache.groups;
+  const idx = list.findIndex(x => x.id === g.id);
+  if(idx === -1) list.push(g); else list[idx] = g;
+  const row = groupToRow(g);
+  return queueWrite('meal groups', async ()=>{
+    const { error } = await sb.from('meal_groups').upsert([row]);
+    if(error) throw error;
+  });
+}
+function deleteGroup(groupId){
+  cache.groups = cache.groups.filter(g => g.id !== groupId);
+  return queueWrite('meal groups', async ()=>{
+    const { error } = await sb.from('meal_groups').delete().eq('household_id', HOUSEHOLD_ID).eq('id', groupId);
+    if(error) throw error;
+  });
 }
 function groupsForDate(dateIso){
   return loadGroups().filter(g=>g.dateIso===dateIso);
@@ -3501,48 +3676,57 @@ function groupContaining(dateIso, recipeId){
 }
 function createGroup(dateIso, recipeIds, name){
   if(!recipeIds || recipeIds.length < 2) return false; // grouping only means something for 2+
-  const groups = loadGroups().filter(g=>
-    !(g.dateIso===dateIso && g.recipeIds.some(id=>recipeIds.includes(id)))
-  ); // ungroup anything already grouped that's being re-grouped
-  groups.push({ id: uid(), dateIso, recipeIds: [...recipeIds], name: name || '' });
-  return saveGroups(groups);
-}
-function deleteGroup(groupId){
-  return saveGroups(loadGroups().filter(g=>g.id!==groupId));
+  // ungroup anything already grouped that's being re-grouped
+  loadGroups().filter(g=> g.dateIso===dateIso && g.recipeIds.some(id=>recipeIds.includes(id)))
+    .forEach(g=> deleteGroup(g.id));
+  return saveGroup({ id: uid(), dateIso, recipeIds: [...recipeIds], name: name || '' });
 }
 /* Called when a recipe is removed from a day entirely (removeOne/clear) —
    a group missing one of its members no longer makes sense as a group.
    Simplest correct behaviour: dissolve it rather than leave a dangling
    reference to a recipe that's no longer on that day. */
 function dissolveGroupsContainingOnDate(dateIso, recipeId){
-  const groups = loadGroups().filter(g=> !(g.dateIso===dateIso && g.recipeIds.includes(recipeId)));
-  saveGroups(groups);
+  loadGroups().filter(g=> g.dateIso===dateIso && g.recipeIds.includes(recipeId))
+    .forEach(g=> deleteGroup(g.id));
 }
 function clearGroupsForDate(dateIso){
-  saveGroups(loadGroups().filter(g=>g.dateIso!==dateIso));
+  loadGroups().filter(g=>g.dateIso===dateIso).forEach(g=> deleteGroup(g.id));
 }
 
 function loadShortlist(){ return cache.shortlist; }
-function saveShortlist(list){
+function shortlistToRow(i){
+  return { id: i.id, household_id: HOUSEHOLD_ID, text: i.text || '',
+           recipe_id: i.recipeId || null, date_added: i.dateAdded || todayStr() };
+}
+/* Whole-table replace. Import only — see pushList. */
+function replaceShortlist(list){
   cache.shortlist = list;
-  return queueWrite('the shortlist', ()=> pushList('shortlist_items', list.map(i=>({
-    id: i.id, household_id: HOUSEHOLD_ID, text: i.text || '',
-    recipe_id: i.recipeId || null, date_added: i.dateAdded || todayStr()
-  }))));
+  return queueWrite('the shortlist', ()=> pushList('shortlist_items', list.map(shortlistToRow)), { whole: true });
+}
+function addShortlistItem(item){
+  cache.shortlist.unshift(item);
+  const row = shortlistToRow(item);
+  return queueWrite('the shortlist', async ()=>{
+    const { error } = await sb.from('shortlist_items').upsert([row]);
+    if(error) throw error;
+  });
 }
 function addShortlistNote(text){
-  const list = loadShortlist();
-  list.unshift({id:uid(), text, dateAdded:todayStr(), recipeId:null});
-  return saveShortlist(list);
+  return addShortlistItem({id:uid(), text, dateAdded:todayStr(), recipeId:null});
 }
 /* Returns false without adding if this recipe is already shortlisted. */
 function addShortlistRecipe(recipeId){
   const list = loadShortlist();
   if(list.some(i=>i.recipeId===recipeId)) return false;
-  list.unshift({id:uid(), text:'', dateAdded:todayStr(), recipeId});
-  return saveShortlist(list);
+  return addShortlistItem({id:uid(), text:'', dateAdded:todayStr(), recipeId});
 }
-function removeShortlistItem(id){ return saveShortlist(loadShortlist().filter(i=>i.id!==id)); }
+function removeShortlistItem(id){
+  cache.shortlist = cache.shortlist.filter(i=>i.id!==id);
+  return queueWrite('the shortlist', async ()=>{
+    const { error } = await sb.from('shortlist_items').delete().eq('household_id', HOUSEHOLD_ID).eq('id', id);
+    if(error) throw error;
+  });
+}
 
 /* Every id this returns is stored in a Postgres `uuid` column, so the
    fallback has to BE a uuid, not merely be unique. The previous fallback
@@ -4140,7 +4324,7 @@ function initHomeListeners(){
       const idx = recipes.findIndex(r=>r.id === favBtn.dataset.favourite);
       if(idx !== -1){
         recipes[idx].favourite = !recipes[idx].favourite;
-        if(saveRecipesList(recipes)) renderHome();
+        if(patchRecipe(recipes[idx].id, { favourite: recipes[idx].favourite })) renderHome();
       }
       return;
     }
@@ -4320,7 +4504,7 @@ document.getElementById('groupFlowMount').addEventListener('click', e=>{
     const idx = recipes.findIndex(r=>r.id === id);
     if(idx === -1) return;
     recipes[idx].favourite = !recipes[idx].favourite;
-    if(!saveRecipesList(recipes)) return;
+    if(!patchRecipe(recipes[idx].id, { favourite: recipes[idx].favourite })) return;
     renderGroupViewer();
   }
 });
@@ -4678,7 +4862,7 @@ document.getElementById('favouriteBtn').addEventListener('click', ()=>{
   const idx = recipes.findIndex(r=>r.id === state.selectedRecipeId);
   if(idx === -1) return;
   recipes[idx].favourite = !recipes[idx].favourite;
-  if(!saveRecipesList(recipes)) return;
+  if(!patchRecipe(recipes[idx].id, { favourite: recipes[idx].favourite })) return;
   renderViewer();
 });
 
@@ -4695,11 +4879,10 @@ document.getElementById('deleteBtn').addEventListener('click', ()=>{
   const recipe = loadRecipes().find(r=>r.id === state.selectedRecipeId);
   if(!recipe) return;
   if(!confirm(`Delete "${recipe.title}"? This can't be undone.`)) return;
-  if(!saveRecipesList(loadRecipes().filter(r=>r.id !== recipe.id))) return;
-  /* Any plan days or shortlist entries pointing at this recipe are left as
-     dangling references on purpose — they degrade to a "recipe removed"
-     state rather than silently vanishing, so nothing looks like it was
-     never planned in the first place. */
+  /* Plan days, groups and shortlist entries pointing at it are tidied by
+     deleteRecipe. They used to be left dangling on purpose, to render as
+     "Recipe removed" rather than look unplanned; the count only ever grew. */
+  if(!deleteRecipe(recipe.id)) return;
   const returnTo = state.viewerReturnTo;
   state.selectedRecipeId = null;
   showView(returnTo);
@@ -5097,15 +5280,35 @@ function initPlannerListeners(){
    against ingredient lines normalises both sides at match time rather
    than at save time, so the list stays readable in Manage/Swaps UI. */
 function loadSwaps(){ return cache.swaps; }
-function saveSwaps(list){
+function swapToRow(s){
+  return { id: s.id, household_id: HOUSEHOLD_ID, original: s.original,
+           replacement: s.replacement, ratio: s.ratio || null, notes: s.notes || null };
+}
+/* Whole-table replace. Import only — see pushList. */
+function replaceSwaps(list){
   cache.swaps = list;
-  return queueWrite('swaps', ()=> pushList('ingredient_swaps', list.map(s=>({
-    id: s.id, household_id: HOUSEHOLD_ID, original: s.original,
-    replacement: s.replacement, ratio: s.ratio || null, notes: s.notes || null
-  }))));
+  return queueWrite('swaps', ()=> pushList('ingredient_swaps', list.map(swapToRow)), { whole: true });
+}
+function saveSwap(swap){
+  const list = cache.swaps;
+  const idx = list.findIndex(s => s.id === swap.id);
+  if(idx === -1) list.push(swap); else list[idx] = swap;
+  const row = swapToRow(swap);
+  return queueWrite('swaps', async ()=>{
+    const { error } = await sb.from('ingredient_swaps').upsert([row]);
+    if(error) throw error;
+  });
+}
+function deleteSwap(id){
+  cache.swaps = cache.swaps.filter(s => s.id !== id);
+  return queueWrite('swaps', async ()=>{
+    const { error } = await sb.from('ingredient_swaps').delete().eq('household_id', HOUSEHOLD_ID).eq('id', id);
+    if(error) throw error;
+  });
 }
 function loadShoppingChecked(){ return cache.shoppingChecked; }
-function saveShoppingChecked(all){
+/* Whole-table replace. Import only — see pushList. */
+function replaceShoppingChecked(all){
   cache.shoppingChecked = all;
   return queueWrite('ticked items', async ()=>{
     const del = await sb.from('shopping_checked').delete().eq('household_id', HOUSEHOLD_ID);
@@ -5119,6 +5322,27 @@ function saveShoppingChecked(all){
       const { error } = await sb.from('shopping_checked').insert(rows);
       if(error) throw error;
     }
+  }, { whole: true });
+}
+/* One tick on, one tick off: a row inserted or a row deleted, by the key the
+   table already has (household, week, item). */
+function saveTick(weekStartIso, itemKey, on){
+  const row = { household_id: HOUSEHOLD_ID, week_start: weekStartIso, item_key: itemKey };
+  return queueWrite('ticked items', async ()=>{
+    const { error } = on
+      ? await sb.from('shopping_checked').upsert([row], { onConflict: 'household_id,week_start,item_key' })
+      : await sb.from('shopping_checked').delete().eq('household_id', HOUSEHOLD_ID).eq('week_start', weekStartIso).eq('item_key', itemKey);
+    if(error) throw error;
+  });
+}
+/* Several ticks off at once — the UNTICK ALL button — as one delete naming
+   exactly those keys, so a tick made on another device in the meantime,
+   which this device has never seen, is not swept away with them. */
+function clearTicks(weekStartIso, itemKeys){
+  return queueWrite('ticked items', async ()=>{
+    const { error } = await sb.from('shopping_checked').delete()
+      .eq('household_id', HOUSEHOLD_ID).eq('week_start', weekStartIso).in('item_key', itemKeys);
+    if(error) throw error;
   });
 }
 /* Checked-off items are keyed by the ISO date of the day that starts their
@@ -5129,9 +5353,9 @@ function saveShoppingChecked(all){
 function toggleShoppingChecked(weekStartIso, itemKey){
   const all = loadShoppingChecked();
   if(!all[weekStartIso]) all[weekStartIso] = {};
-  if(all[weekStartIso][itemKey]) delete all[weekStartIso][itemKey];
-  else all[weekStartIso][itemKey] = true;
-  saveShoppingChecked(all);
+  const on = !all[weekStartIso][itemKey];
+  if(on) all[weekStartIso][itemKey] = true; else delete all[weekStartIso][itemKey];
+  saveTick(weekStartIso, itemKey, on);
 }
 function weekStartIsoOf(days){
   if(!days.length) return todayStr();
@@ -5618,7 +5842,7 @@ function initShoppingListeners(){
     if(!confirm(`Untick all ${keys.length} item${keys.length===1?'':'s'} on this list?`)) return;
     keys.forEach(k=> delete all[weekStart][k]);
     if(!Object.keys(all[weekStart]).length) delete all[weekStart];
-    saveShoppingChecked(all);
+    clearTicks(weekStart, keys);
     renderShopping();
   });
 
@@ -6312,9 +6536,11 @@ function renderSourcesList(){
         sel.value = '';
         return;
       }
-      const recipes2 = loadRecipes();
-      recipes2.forEach(r=>{ if(r.source === from) r.source = to; });
-      if(!saveRecipesList(recipes2)) return;
+      /* The column and the SOURCE: line together — the line left behind
+         here was one of the three drifts PR 4 found in the live library. */
+      const changed = loadRecipes().filter(r=> r.source === from);
+      changed.forEach(r=>{ r.source = to; r.syntax = withUpdatedHeaderLine(r.syntax, 'SOURCE', to); });
+      if(!saveRecipes(changed)) return;
       /* Record the decision, so typing the old spelling on the next recipe
          quietly lands on the merged one instead of recreating the split. */
       addAlias('source', from, to);
@@ -6334,24 +6560,32 @@ function keywordCounts(recipes){
   });
   return counts;
 }
+/* Both rewrite the TAGS: line with the tags, as the save does, so the text
+   stays the truth (docs/ARCHITECTURE.md §2); and both send only the
+   recipes that carried the word. */
 function mergeKeywordInto(from, to){
-  const recipes = loadRecipes();
-  recipes.forEach(r=>{
+  const changed = [];
+  loadRecipes().forEach(r=>{
     if(!r.tags || !Array.isArray(r.tags.keywords)) return;
     const idx = r.tags.keywords.indexOf(from);
     if(idx === -1) return;
     if(r.tags.keywords.includes(to)) r.tags.keywords.splice(idx, 1); // already has target — drop the duplicate
     else r.tags.keywords[idx] = to;
+    r.syntax = withUpdatedHeaderLine(r.syntax, 'TAGS', tagsToLine(r.tags));
+    changed.push(r);
   });
-  saveRecipesList(recipes);
+  saveRecipes(changed);
   removeKeywordFromVocab(from);
 }
 function deleteKeywordEverywhere(keyword){
-  const recipes = loadRecipes();
-  recipes.forEach(r=>{
-    if(r.tags && Array.isArray(r.tags.keywords)) r.tags.keywords = r.tags.keywords.filter(k=>k!==keyword);
+  const changed = [];
+  loadRecipes().forEach(r=>{
+    if(!(r.tags && Array.isArray(r.tags.keywords) && r.tags.keywords.includes(keyword))) return;
+    r.tags.keywords = r.tags.keywords.filter(k=>k!==keyword);
+    r.syntax = withUpdatedHeaderLine(r.syntax, 'TAGS', tagsToLine(r.tags));
+    changed.push(r);
   });
-  saveRecipesList(recipes);
+  saveRecipes(changed);
   removeKeywordFromVocab(keyword);
 }
 function renderKeywordsList(){
@@ -6637,7 +6871,7 @@ function renderSwaps(){
       const swap = swaps.find(s=>s.id===id);
       if(!swap) return;
       if(!confirm(`Delete the swap "${swap.original} → ${swap.replacement}"? This can't be undone.`)) return;
-      saveSwaps(swaps.filter(s=>s.id!==id));
+      deleteSwap(id);
       showToast('Deleted swap');
       renderSwaps();
     });
@@ -6697,12 +6931,11 @@ document.getElementById('swapAddBtn').addEventListener('click', ()=>{
     if(swap){
       swap.original = original; swap.replacement = replacement;
       swap.ratio = ratio; swap.notes = notes || '';
+      saveSwap(swap);
     }
-    saveSwaps(swaps);
     showToast('Swap updated');
   } else {
-    swaps.push({ id: uid(), original, replacement, ratio, notes: notes || '' });
-    saveSwaps(swaps);
+    saveSwap({ id: uid(), original, replacement, ratio, notes: notes || '' });
     showToast('Swap added');
   }
   clearSwapForm();
@@ -6892,7 +7125,7 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     // id, history, and dateAdded survive an edit untouched — editing is
     // about the recipe's details, not a new entry replacing its record.
     recipes[idx] = { ...recipes[idx], ...fields };
-    saveRecipesList(recipes);
+    saveRecipe(recipes[idx]);
     /* Before closeAddModal() below, which nulls state.editingRecipeId. */
     rehostImageFor(state.editingRecipeId, fields.imageUrl || '');
     /* An edit can move the groups and stages around, and a tick is a
@@ -6907,8 +7140,7 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     showToast(`Saved changes to "${fields.title}"`);
   } else {
     const recipe = { id: uid(), ...fields, history: [], dateAdded: todayStr() };
-    recipes.push(recipe);
-    saveRecipesList(recipes);
+    saveRecipe(recipe);
     rehostImageFor(recipe.id, fields.imageUrl || '');
     closeAddModal();
     showView('recipes');
@@ -7113,9 +7345,11 @@ function importAllData(file){
     const n = data.recipes.length;
     if(!confirm(`Import ${n} recipe${n===1?'':'s'}? This replaces everything currently in your library — your existing recipes, plan, and shortlist will be gone, on every device. This can't be undone.`)) return;
 
-    saveRecipesList(data.recipes);
+    /* The one place the whole-table replace is still used: every table
+       below becomes what the file says, on every device — see pushList. */
+    replaceRecipesList(data.recipes);
     /* The cache is set here, synchronously, as well as inside the queued
-       write. saveRecipesList above updates cache.recipes immediately, so
+       write. replaceRecipesList above updates cache.recipes immediately, so
        without this there is a window where the new library is paired with
        the OLD diary: History renders every entry as "(deleted recipe)", and
        an export taken in that window writes a version 3 backup whose diary
@@ -7131,19 +7365,19 @@ function importAllData(file){
           note: e.note || ''
         }));
     }
-    queueWrite('cooking history', ()=> replaceAllDiary(data.recipes, Array.isArray(data.diary) ? data.diary : null));
-    savePlan(data.plan || {});
-    saveShortlist(data.shortlist || []);
+    queueWrite('cooking history', ()=> replaceAllDiary(data.recipes, Array.isArray(data.diary) ? data.diary : null), { whole: true });
+    replacePlan(data.plan || {});
+    replaceShortlist(data.shortlist || []);
     if(Array.isArray(data.keywordVocab)){
-      saveKeywordVocab(data.keywordVocab);
+      replaceKeywordVocab(data.keywordVocab);
     }
-    saveShoppingChecked(data.shoppingChecked || {});
-    saveSwaps(Array.isArray(data.swaps) ? data.swaps : []);
-    saveGroups(Array.isArray(data.groups) ? data.groups : []);
+    replaceShoppingChecked(data.shoppingChecked || {});
+    replaceSwaps(Array.isArray(data.swaps) ? data.swaps : []);
+    replaceGroups(Array.isArray(data.groups) ? data.groups : []);
     /* Both absent from version 1 backups — restoring one of those keeps
        whatever's already set rather than wiping it. */
     if(data.settings) saveSettings({ ...loadSettings(), ...data.settings });
-    if(Array.isArray(data.aliases)) saveAliases(data.aliases);
+    if(Array.isArray(data.aliases)) replaceAliases(data.aliases);
 
     state.selectedRecipeId = null;
     state.editingRecipeId = null;
