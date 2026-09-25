@@ -99,5 +99,16 @@ html = html.replace(/<script src="https:\/\/cdn\.jsdelivr[^"]*"><\/script>\s*/g,
   `<script>window.__STUB_DATA__ = ${JSON.stringify(data)};</script>\n` +
   `<script src="stub.js"></script>\n`);
 
+/* core.js is inlined rather than referenced: the built page lives in test/,
+   and a relative src would miss the file. Inlining the real file, not a
+   copy, is what makes the smoke suite a test of what Pages serves. The tag
+   must exist — if index.html stopped loading core.js, that is a failure to
+   report, not a step to skip. */
+const CORE_TAG = /<script src="core\.js\?v=[^"]*"><\/script>/;
+if(!CORE_TAG.test(html)) throw new Error('index.html no longer loads core.js');
+const core = fs.readFileSync(path.join(__dirname, '..', 'core.js'), 'utf8');
+if(/<\/script/i.test(core)) throw new Error('core.js contains "</script", which would end the inlined tag early');
+html = html.replace(CORE_TAG, () => '<script>\n' + core + '\n</script>');
+
 fs.writeFileSync(OUT, html);
 console.log('built', OUT, html.length, 'bytes');

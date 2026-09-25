@@ -14,13 +14,16 @@ password — the publishable/anon key in `index.html` is meant to be public and 
 behind it, and a servings backfill had never run. Both had been reported as done. If you can
 check the code, the database or GitHub Actions directly, do that instead of believing a summary.
 
-**Run the tests after any change to `index.html`:**
+**Run the tests after any change to `index.html` or `core.js`:**
 
 ```sh
+node test/core.test.js
 node test/build.js && node test/smoke.js
 ```
 
-236 checks. **Run both, always** — `smoke.js` loads what `build.js` wrote, so skipping the build
+`core.test.js` is 29 checks in Node, in under a second: the pure functions, the dictionary, and
+the rules that keep `core.js` and `index.html` apart. The smoke suite is 237 checks. **Run both,
+always** — `smoke.js` loads what `build.js` wrote, so skipping the build
 tests your previous edit and reports a pass or a failure that belongs to code you have changed.
 
 It stubs Supabase entirely, so it proves nothing about sign-in, hydration, RLS or the write
@@ -63,6 +66,14 @@ throw rather than pass vacuously.
   know about is overwritten the next time that recipe is saved. This is why `rehostImageFor`
   writes its answer back rather than trusting the row. *(Until 24 Sep every save rewrote every
   recipe and a favourite toggle was enough to lose it.)*
+- **The app is two files since 25 Sep: `index.html` and `core.js`.** `core.js` holds the pure
+  functions (parsing, layout, quantities, scaling, naming) and the ingredient dictionary; nothing
+  in it may touch the page, and nothing it defines may also be defined in `index.html`.
+  **Bump `KITCHEN_CORE_VERSION` in `core.js` and `EXPECTED_CORE_VERSION` in `index.html`
+  together** whenever `core.js` changes: Pages caches the two separately, and the page asks for a
+  reload when they disagree. `test/core.test.js` fails if they differ.
+- **The ingredient dictionary is edited in `core.js`, never in `converter/ingredient-names.md`.**
+  That file is generated: `node tools/generate-ingredient-names.js`, then commit both.
 - **Ordinary saves write one row; `pushList` and the `replace*` functions are for import only.**
   A favourite is an `update` of that column; a save is an upsert of that row; a removal is a
   delete of that row. Never route a normal action through a whole-table replace again — it is

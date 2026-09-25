@@ -248,8 +248,19 @@ on 20 Sep. `test/validate-recipes.js` covers the other half.
 
 ---
 
+### `core.js` — the pure core (not a document, but read this entry)
+**What:** Since 25 Sep 2026, the second of the app's two files: the parser, layout, quantity,
+scaling and naming functions, and the ingredient dictionary's master copy. It touches nothing on
+the page. `test/core.test.js` tests it in Node, and `tools/generate-ingredient-names.js` writes
+`converter/ingredient-names.md` from its dictionary.
+
+**Use it when:** changing how recipes are read, laid out, scaled or totalled, or adding a word
+to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.md` says why).
+
+---
+
 ### `test/README.md` — the offline harness
-**What:** How to run the 236-check test suite, and an honest account of what it can't tell you
+**What:** How to run the 237-check test suite, and an honest account of what it can't tell you
 (everything about the real backend).
 
 **Use it when:** making any code change.

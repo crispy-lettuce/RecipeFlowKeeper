@@ -28,6 +28,9 @@ jobs:
       # and no package.json, so there is nothing to `npm ci` against.
       - run: npm install playwright
       - run: npx playwright install --with-deps chromium
+      # The pure core in Node first: seconds, and a failure here names the
+      # function before the browser suite has started (PR 6a, 25 Sep).
+      - run: node test/core.test.js
       # Always both — smoke.js reads what build.js wrote (CLAUDE.md).
       - run: node test/build.js && node test/smoke.js
       - run: node test/image-integrity.js

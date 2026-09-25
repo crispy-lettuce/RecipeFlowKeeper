@@ -29,7 +29,7 @@ Single HTML file, no build step, no framework. Data lives in Supabase.
 
 ## Running it
 
-No build step — it's one file. To run the current branch locally:
+No build step — two files, `index.html` and `core.js` (the pure functions, since 25 Sep 2026). To run the current branch locally:
 
 ```sh
 git clone https://github.com/crispy-lettuce/RecipeFlowKeeper.git
@@ -50,5 +50,5 @@ npm install playwright
 node test/build.js && node test/smoke.js
 ```
 
-236 checks against a stubbed backend, run by GitHub Actions on every pull request. See [`test/README.md`](test/README.md) for what it does and
+237 checks against a stubbed backend, run by GitHub Actions on every pull request. See [`test/README.md`](test/README.md) for what it does and
 doesn't prove.

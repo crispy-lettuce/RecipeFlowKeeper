@@ -334,6 +334,8 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
 - ✅ **Closed 23 Sep 2026, PR #11**, in substance: the repo carries all six hunks. The deployed
   copy is still v8 and differs in comment wording only; the next deploy from the repo makes the
   two identical. *(Ticked 24 Sep, after checking both copies again; PR #11 did not tick it.)*
+  **Closed in full 25 Sep:** the household redeployed from the repo (v10), and the running copy
+  matches `main` but for the trailing newline the dashboard editor drops.
 - Deployed v8 (updated 2026-09-22 16:42 UTC) was read through the connector and diffed against
   `supabase/functions/rehost-images/index.ts` (last committed 2026-09-22 17:09 UTC, in
   `bcd1362`, whose message says the function was deployed ahead of the commit). Six hunks,
@@ -544,7 +546,8 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
 - **The Edge Functions' authentication and CORS design.** `verify_jwt`, `getUser`, the
   membership filter that only narrows, and an origin allowlist: sound. (Answer 4)
 - **One deployable file.** Extract the pure logic when the shopping-list release rewrites it,
-  not before. (Answer 6)
+  not before. (Answer 6) *Done as planned, 25 Sep, PR #18 (6a): `core.js`, just ahead of the
+  release that rewrites it.*
 - **`shopping_checked.item_key`** until the shopping-list release re-keys it anyway. (Answer 1)
 - **Daily backups at 04:00 UTC, 30 in the tree, all in history.** Right cadence for this data.
 - **`index-old.html`.** Referenced once, honestly, in `docs/ARCHITECTURE.md`; harmless.

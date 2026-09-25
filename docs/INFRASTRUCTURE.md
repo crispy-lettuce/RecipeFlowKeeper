@@ -37,7 +37,7 @@ project's own rule, restated in §4) or a plain identifier that grants nothing o
   working branch until 22 Sep; it is fully merged and behind `main` now, and nothing should be
   built on it. *(Corrected 23 Sep: this line said "ahead of `main` and unmerged" for a day
   after the last merge.)*
-- One file, `index.html` — no build step, no framework. `converter/` holds the conversion
+- Two files, `index.html` and `core.js` (the pure functions, since 25 Sep 2026) — no build step, no framework. `converter/` holds the conversion
   instructions and standing test set. `test/` holds an offline Playwright harness. `docs/` holds
   this document and its companions.
 - **`.mcp.json` at the repo root already wires up the Supabase connector** — this is the
@@ -182,12 +182,15 @@ the public URL prefix it compares against, to decide whether a photo is already 
 `supabase/functions/`. The 23 Sep review diffed both against what is running: `find-recipe-image`
 was identical; `rehost-images` v8 had been deployed from an uncommitted copy, and the repo was
 brought into step on 23 Sep (`docs/REVIEW-ARCHITECTURE-FINDINGS.md` F4, Appendix D). **A deploy
-is a commit**: change the file, commit, then deploy. The next deploy from the repo (v9) makes
-the two byte-identical again; until then the only difference is the header comment.
+is a commit**: change the file, commit, then deploy. **Redeployed from the repo on 25 Sep 2026**
+through the dashboard editor, twice in a row, so it is v10; checked the same day against
+`main`, it carries the repo's header, the same twelve `id: r.id` report fields and the same final
+lines. The one difference is a missing newline at the end of the file, which the dashboard editor
+drops. *(Until 25 Sep this paragraph said the next deploy would be v9.)*
 
 | Function | Version | What it does |
 | --- | --- | --- |
-| `rehost-images` | v8 | Copies external images into Storage. `{"recipeId": "…"}` for one recipe — what the app sends after a save, added in v8; omit it for the full sweep, which is what v7 and earlier always did. `{"dryRun": true}` to preview, `{"verify": true}` to re-check what is already stored |
+| `rehost-images` | v10 | Copies external images into Storage. `{"recipeId": "…"}` for one recipe — what the app sends after a save, added in v8; omit it for the full sweep, which is what v7 and earlier always did. `{"dryRun": true}` to preview, `{"verify": true}` to re-check what is already stored |
 | `find-recipe-image` | v4 | Read-only. Finds and measures candidate hero images for a recipe |
 
 P3's calendar push would be a third; that one does not exist yet.

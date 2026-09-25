@@ -12,7 +12,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 236 automated checks pass (102 when this was
+story that used to open this paragraph is history. 237 automated checks pass (102 when this was
 written). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
