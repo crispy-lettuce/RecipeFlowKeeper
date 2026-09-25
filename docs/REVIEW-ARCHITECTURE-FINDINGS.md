@@ -247,7 +247,7 @@ preview and in `validate-recipes.js`, before any bulk re-conversion — so D12 w
 the 24-line rewrite (step 7) is validated against the source lines, not only the parser. Do F1
 first if the release will be tested from two devices; otherwise the two are independent.
 
-*Steps 4–6 built 25 Sep as PR 6b, for Friday 2 Oct: dictionary aisles, one row per ingredient,
+*Steps 4–6 done as PR 6b, #19, merged Friday 25 Sep: dictionary aisles, one row per ingredient,
 ticks keyed by name, strict inline suggestions. Step 7 and the fidelity check are 6c.*
 
 ---
