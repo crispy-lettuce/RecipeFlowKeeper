@@ -711,7 +711,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **228 checks** across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **233 checks** across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday.
@@ -737,7 +737,14 @@ a swap and a keyword each go in and out as single rows; nothing but the import s
 the whole row, a delete that skips the plan cleanup, a delete through the whole-table push, the
 retry removed, an import without its delete) each fail by name. **Not yet run against the real
 backend**: the two-device pass, section D of `docs/TEST-PLAN.md`, is the household's to do after
-the merge.
+the merge. **Run 24 Sep 2026 by the household, on an Android tablet and a Windows machine, after
+the merge: steps 21–24 and 26 as expected.** Step 25 was the one surprise: no "Couldn't save"
+toast appeared offline on either device, yet both favourites landed. Reading the pinned
+supabase-js showed why — an offline request waits behind the session-refresh retry (up to 30 s)
+and then lands if the network is back, so the write never failed and there was nothing to report.
+Step 25 was rewritten to expect that, and PR #16 (25 Sep) makes the app say it is offline at the
+moment of saving and re-send failed writes the moment the browser is back online; five checks
+cover it in the stub, none against the live app.
 
 ```sh
 npm install playwright
