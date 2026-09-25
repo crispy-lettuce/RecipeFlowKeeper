@@ -741,6 +741,18 @@
   }
   .shop-item.checked .shop-item-name{ text-decoration:line-through; color:var(--ink-faint); }
   .shop-item.checked .shop-item-recipes{ opacity:.6; }
+  /* A row is the tick (the label) plus its quiet tools underneath: the
+     inline "same as…?" and MERGE WITH…, kept outside the label so a tap on
+     them never ticks the item. */
+  .shop-row{ border-bottom:1px solid var(--line-soft); }
+  .shop-row .shop-item{ border-bottom:none; }
+  .shop-tools{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:0 4px 8px 34px;
+    font-size:12.5px; color:var(--ink-soft); }
+  .shop-tools button{ background:none; border:none; cursor:pointer; padding:0; color:var(--plum);
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; text-decoration:underline; }
+  .shop-tools .shop-merge-with{ color:var(--ink-faint); }
+  .shop-suggest b{ font-weight:500; color:var(--ink); }
+  .shop-merge-select{ font-size:12.5px; }
 
   /* ============================= HISTORY ============================= */
   .history-wrap{ flex:1; display:flex; min-height:0; }
@@ -1160,6 +1172,7 @@
     }
     .tablewrap table{ page-break-inside:auto; }
     .tablewrap tr, .shop-item, .shop-category{ page-break-inside:avoid; }
+    .shop-tools{ display:none !important; }
     @page{ size:A4; margin:14mm; }
   }
 
@@ -1608,7 +1621,7 @@
   </div>
 </div>
 
-<script src="core.js?v=2026-09-25.1"></script>
+<script src="core.js?v=2026-10-02.1"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -1616,7 +1629,7 @@
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-09-25.1';
+const EXPECTED_CORE_VERSION = '2026-10-02.1';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -2729,8 +2742,24 @@ let aliasMaps = { source: new Map(), ingredient: new Map(), distinct: new Set() 
 function rebuildAliasMaps(){
   const maps = { source: new Map(), ingredient: new Map(), distinct: new Set() };
   cache.aliases.forEach(a=>{
-    if(a.kind === 'source' || a.kind === 'ingredient') maps[a.kind].set(a.alias, a.canonical);
-    else if(a.kind === 'source_distinct' || a.kind === 'ingredient_distinct') maps.distinct.add(a.kind + '|' + a.alias);
+    if(a.kind === 'source') maps.source.set(a.alias, a.canonical);
+    else if(a.kind === 'source_distinct') maps.distinct.add(a.kind + '|' + a.alias);
+    /* Ingredient matches are stored in the words the shopping list used
+       when they were made, and since 2 Oct 2026 (PR 6b) it names things
+       differently. Each side goes back through today's rules, so a match
+       made for "onion and" still means the onion — and one the rules now
+       make anyway ("large onion" = "onion") simply falls away. Nothing
+       stored is rewritten; Settings still shows what was saved. Measured
+       on the live library, 25 Sep: all six stored "same" matches fall away
+       like this, and none of the ten "not the same" is offered again. */
+    else if(a.kind === 'ingredient'){
+      const from = shoppingKeyForName(a.alias), to = shoppingKeyForName(a.canonical);
+      if(from && to && from !== to) maps.ingredient.set(from, to);
+    }
+    else if(a.kind === 'ingredient_distinct'){
+      const [x, y] = String(a.alias).split(' || ');
+      maps.distinct.add('ingredient_distinct|' + pairKeyFor(shoppingKeyForName(x || ''), shoppingKeyForName(y || '')));
+    }
   });
   aliasMaps = maps;
 }
@@ -3489,7 +3518,6 @@ const state = {
   shoppingWeekIndex: 0,        // which week-bucket the Shopping List is currently showing
   shoppingBothWeeks: false,    // showing this week and next as one combined list
   shoppingHideChecked: false,  // hide items already ticked off, for shopping with
-  aliasPrompting: false,       // guards the ingredient-match prompt against re-entering its own re-render
   viewerTicks: {},             // recipeId -> Set of ticked flow cells, session-only and cleared on reload
   editingRecipeId: null,       // recipe id currently open in the Add/Edit modal, if editing rather than adding
   historyMonth: null,          // {year, month(0-indexed)} the History calendar is currently showing
@@ -4967,11 +4995,11 @@ function findSwapMatchesForRecipe(groups, swaps){
 }
 
 /* ------------------------------- Aggregation -------------------------------
-   Totals only combine lines with an identical normalized name AND unit —
-   "2 cloves garlic" and "4 cloves minced garlic" won't merge, same as the
-   spec's own example. That's a deliberate limit, not a bug: reliably
-   recognizing they're "the same ingredient" needs the AI step this app is
-   built without. */
+   Since 2 Oct 2026 (PR 6b) one row per thing to buy, by the rules and the
+   dictionary in core.js. Until then totals only combined lines with an
+   identical normalised name AND unit, which put 278 rows on a list of the
+   whole library for 168 things to buy
+   (docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md). */
 function buildShoppingList(weekDays){
   const plan = loadPlan();
   const recipes = loadRecipes();
@@ -4995,44 +5023,10 @@ function buildShoppingList(weekDays){
     });
   });
 
-  const combined = new Map();
-  lineItems.forEach(({recipeTitle, raw})=>{
-    const {qty, rest} = splitQty(raw);
-    const parsedQty = parseIngredientAmount(qty);
-    const normName = applyIngredientAlias(normalizeIngredientName(rest));
-    /* Key on the base unit, not the written one — otherwise kg and g are
-       two different shelves for the same ingredient. */
-    const based = parsedQty ? toBaseUnit(parsedQty.amount, parsedQty.unit) : null;
-    const unit = based ? based.unit : '';
-    const key = normName + '|' + unit;
-    if(!combined.has(key)){
-      combined.set(key, {
-        key, name: rest.trim(),
-        unit, amount: based ? based.amount : 0,
-        hasQty: !!based, count: 1,
-        /* Lines with no readable quantity at all, counted separately so a
-           total can say "and one more of these" rather than swallowing it. */
-        unqtyCount: based ? 0 : 1,
-        recipes: new Set([recipeTitle]),
-        category: categorizeIngredient(normName)
-      });
-    } else {
-      const e = combined.get(key);
-      e.count += 1;
-      e.recipes.add(recipeTitle);
-      if(based){
-        e.amount += based.amount;
-        /* Not first-wins: a quantity anywhere in the group is a quantity to
-           show. Before this, "garlic" followed by "2 garlic" displayed as
-           "×2" and quietly dropped the 2. */
-        e.hasQty = true;
-      } else {
-        e.unqtyCount += 1;
-      }
-    }
-  });
-
-  const items = Array.from(combined.values());
+  /* The totalling is in core.js (aggregateShoppingLines), pure and tested
+     in Node: rules, dictionary, one row per ingredient. The household's word
+     matches go in as an override. */
+  const items = aggregateShoppingLines(lineItems, applyIngredientAlias);
   const byCategory = {};
   items.forEach(it=>{ (byCategory[it.category] = byCategory[it.category] || []).push(it); });
   const order = [...SHOPPING_CATEGORIES.map(c=>c.name), 'Other'];
@@ -5042,37 +5036,12 @@ function buildShoppingList(weekDays){
 
   return {
     categories, totalItems: items.length, recipeCount: recipeTitles.size,
-    suggestions: findIngredientMatchSuggestions(items)
+    /* Reported, never asked: this runs on every planner change via
+       updateSidebarCounts, so it must stay free of side effects. The strict
+       rule (core.js) replaced the old substring one, which was wrong 35
+       times in 103 on the real library. */
+    suggestions: strictMatchSuggestions(items, (a, b)=> isPairDistinct('ingredient', a, b))
   };
-}
-
-/* Names on this list that look like they might be the same ingredient.
-   buildShoppingList only ever *reports* these — it runs on every planner
-   change via updateSidebarCounts, so it must stay free of side effects and
-   must never put a dialog in front of anyone. renderShopping does the
-   asking. */
-function findIngredientMatchSuggestions(items){
-  const counts = new Map();
-  items.forEach(it=>{
-    const name = it.key.split('|')[0];
-    if(name) counts.set(name, (counts.get(name) || 0) + it.count);
-  });
-
-  const seen = new Set();
-  const out = [];
-  counts.forEach((count, name)=>{
-    const match = findSimilarTerm(name, counts);
-    if(!match) return;
-    const pair = pairKeyFor(name, match.term);
-    if(seen.has(pair)) return;
-    seen.add(pair);
-    if(isPairDistinct('ingredient', name, match.term)) return;
-    /* Fold the rarer spelling into the commoner one, so the name that
-       survives is the one the library already mostly uses. */
-    const [from, to] = count <= match.count ? [name, match.term] : [match.term, name];
-    out.push({ from, to });
-  });
-  return out;
 }
 
 /* ------------------------------- Rendering ------------------------------- */
@@ -5157,21 +5126,37 @@ function renderShopping(){
     return;
   }
 
+  /* One suggestion per row at most, shown on the rarer spelling, asked in
+     place and answered when convenient — never a dialog (D10). */
+  const namesByKey = new Map(allCategories.flatMap(c=> c.items.map(it=> [it.key, it.name])));
+  const suggestionFor = new Map();
+  (suggestions || []).forEach(sg=>{
+    if(namesByKey.has(sg.from) && namesByKey.has(sg.to) && !suggestionFor.has(sg.from)) suggestionFor.set(sg.from, sg);
+  });
   body.innerHTML = categories.map(cat=>{
     const rows = cat.items.map(it=>{
       const storedKey = keyPrefix + it.key;
       const isChecked = !!checkedForWeek[storedKey];
-      const qtyText = it.hasQty
-        ? formatShoppingQty(it.amount, it.unit) + (it.unqtyCount ? ` + ${it.unqtyCount} more` : '')
-        : (it.count > 1 ? `×${it.count}` : '');
+      /* Every part the recipes asked for, in one place: "2 + 400 g". */
+      const qtyText = it.qtyText;
       const recipeList = escapeHtml(Array.from(it.recipes).join(', '));
-      return `<label class="shop-item${isChecked?' checked':''}" data-key="${escapeHtml(storedKey)}">
+      const sg = suggestionFor.get(it.key);
+      const k = escapeHtml(it.key);
+      return `<div class="shop-row">
+      <label class="shop-item${isChecked?' checked':''}" data-key="${escapeHtml(storedKey)}" data-name="${escapeHtml(it.name)}">
         <input type="checkbox" ${isChecked?'checked':''}>
         <span class="shop-item-main">
           <span class="shop-item-name">${qtyText?`<span class="qty">${escapeHtml(qtyText)}</span>`:''}${escapeHtml(it.name)}</span>
           <span class="shop-item-recipes">${recipeList}</span>
         </span>
-      </label>`;
+      </label>
+      <div class="shop-tools">
+        ${sg ? `<span class="shop-suggest">Same as <b>${escapeHtml(namesByKey.get(sg.to))}</b>?
+          <button data-merge-from="${k}" data-merge-to="${escapeHtml(sg.to)}">MERGE</button> ·
+          <button data-keep-from="${k}" data-keep-to="${escapeHtml(sg.to)}">KEEP APART</button></span>` : ''}
+        <button class="shop-merge-with" data-merge-with="${k}">MERGE WITH…</button>
+      </div>
+    </div>`;
     }).join('');
     return `<div class="shop-category">
       <div class="shop-category-title">${escapeHtml(cat.name.toUpperCase())}</div>
@@ -5179,40 +5164,6 @@ function renderShopping(){
     </div>`;
   }).join('');
 
-  /* Asked last, with the list already on screen behind the dialog, so the
-     question has visible context. Any answer changes the totals, so the
-     list is rebuilt once afterwards rather than per answer. */
-  if(promptIngredientMatches(suggestions)) renderShopping();
-}
-
-/* At most three questions per visit — enough to tidy up a list over a few
-   weeks, few enough that opening the Shopping List never turns into an
-   interrogation. Both answers are remembered: "yes" as a match, "no" as a
-   pair to stop asking about. */
-const MAX_MATCH_PROMPTS = 3;
-function promptIngredientMatches(suggestions){
-  if(!suggestions || !suggestions.length) return false;
-  if(state.aliasPrompting) return false; // re-entrancy: renderShopping calls this, and this calls renderShopping
-  state.aliasPrompting = true;
-  let changed = false;
-  try{
-    suggestions.slice(0, MAX_MATCH_PROMPTS).forEach(({from, to})=>{
-      if(isPairDistinct('ingredient', from, to)) return; // settled by an earlier answer in this same run
-      const same = confirm(
-        `Are these the same ingredient?\n\n` +
-        `    ${from}\n    ${to}\n\n` +
-        `OK to add them together on the shopping list from now on, ` +
-        `Cancel to keep them as two separate items.`
-      );
-      if(same) addAlias('ingredient', from, to);
-      else addAlias('ingredient_distinct', pairKeyFor(from, to), '');
-      changed = true;
-    });
-  } finally {
-    state.aliasPrompting = false;
-  }
-  if(changed) renderAliasesList();
-  return changed;
 }
 
 /* ------------------------------- One-time listeners ------------------------------- */
@@ -5245,7 +5196,48 @@ function initShoppingListeners(){
     renderShopping();
   });
 
+  /* The inline answers. Both are remembered exactly as the dialogs'
+     answers were — "same" as a word match, "not the same" as a pair to stop
+     suggesting — and both are reversible in Settings → Word Matches. */
+  document.getElementById('shopBody').addEventListener('click', e=>{
+    const merge = e.target.closest('[data-merge-from]');
+    const keep = e.target.closest('[data-keep-from]');
+    const withBtn = e.target.closest('[data-merge-with]');
+    if(merge){
+      addAlias('ingredient', merge.dataset.mergeFrom, merge.dataset.mergeTo);
+      renderAliasesList();
+      renderShopping();
+    } else if(keep){
+      addAlias('ingredient_distinct', pairKeyFor(keep.dataset.keepFrom, keep.dataset.keepTo), '');
+      renderAliasesList();
+      renderShopping();
+    } else if(withBtn){
+      /* For the pairs no rule will find: pick the other row from this list. */
+      const from = withBtn.dataset.mergeWith;
+      const rows = [...document.querySelectorAll('#shopBody .shop-item')]
+        .map(el=> ({ key: el.dataset.key.replace(/^both\|/, ''), name: el.dataset.name }))
+        .filter(r=> r.key !== from)
+        .sort((a,b)=> a.name.localeCompare(b.name));
+      const sel = document.createElement('select');
+      sel.className = 'shop-merge-select';
+      sel.dataset.mergeFrom = from;
+      sel.innerHTML = '<option value="">Merge with…</option>' +
+        rows.map(r=> `<option value="${escapeHtml(r.key)}">${escapeHtml(r.name)}</option>`).join('');
+      withBtn.replaceWith(sel);
+      sel.focus();
+    }
+  });
+
   document.getElementById('shopBody').addEventListener('change', e=>{
+    if(e.target.classList.contains('shop-merge-select')){
+      const to = e.target.value;
+      if(to){
+        addAlias('ingredient', e.target.dataset.mergeFrom, to);
+        renderAliasesList();
+        renderShopping();
+      }
+      return;
+    }
     const label = e.target.closest('.shop-item');
     if(!label) return;
     toggleShoppingChecked(document.getElementById('shopBody').dataset.weekStart, label.dataset.key);
@@ -6212,9 +6204,9 @@ document.getElementById('aliasAddBtn').addEventListener('click', ()=>{
   const toEl = document.getElementById('alias-to');
   const errorEl = document.getElementById('aliasError');
   const kind = document.getElementById('alias-kind').value;
-  /* Ingredient aliases are looked up against the shopping list's normalised
-     name, so they have to be stored in that same form or they'd never match. */
-  const norm = v => kind === 'ingredient' ? normalizeIngredientName(v) : v.trim();
+  /* Ingredient matches are looked up by the shopping list's key for a name
+     (core.js, shoppingKeyForName), so they are stored in that form. */
+  const norm = v => kind === 'ingredient' ? shoppingKeyForName(v) : v.trim();
   const from = norm(fromEl.value);
   const to = norm(toEl.value);
 
@@ -6641,7 +6633,7 @@ function tidyIngredientName(name){
      keeps a name. */
   while(words.length > 1){
     const first = words[0].toLowerCase().replace(/[^a-z]/g, '');
-    const isNumber = /^[\d¼½¾⅓⅔./]+$/.test(words[0]);
+    const isNumber = /^[\d¼½¾⅓⅔⅛⅜⅝⅞./]+$/.test(words[0]);
     if(isNumber || NAME_NOISE.has(first)) words = words.slice(1);
     else break;
   }
@@ -6841,6 +6833,24 @@ function isNetworkFailure(err){
    later one is a refresh — see onSignedIn. */
 let appStarted = false;
 
+/* Ticks stored before 2 Oct 2026 (PR 6b) are keyed "name|unit"; since then a
+   tick is keyed by the ingredient alone, so a recipe that changes tbsp to g
+   keeps its tick. The old ones can never match a row again, and since PR 5
+   no whole-table save will sweep them away, so they are deleted here, by
+   their exact keys. Run after every load: a tab still on the old code may
+   write one more. On 25 Sep the nine stored were all for the week of
+   18 Sep, so shipping on a Friday morning loses nothing current. */
+function purgeOldFormatTicks(){
+  const all = loadShoppingChecked();
+  Object.keys(all).forEach(week=>{
+    const old = Object.keys(all[week] || {}).filter(k=> k.replace(/^both\|/, '').includes('|'));
+    if(!old.length) return;
+    old.forEach(k=> delete all[week][k]);
+    if(!Object.keys(all[week]).length) delete all[week];
+    clearTicks(week, old);
+  });
+}
+
 async function startApp(){
   try{
     await hydrate();
@@ -6861,6 +6871,7 @@ async function startApp(){
   }
   appStarted = true;
   loginGate.hidden = true;
+  purgeOldFormatTicks();
   updateSidebarCounts();
   renderHome();
 }
@@ -6902,6 +6913,7 @@ async function refreshLibrary(){
     return false;
   }
   if(!applied) return false;
+  purgeOldFormatTicks();
   updateSidebarCounts();
   renderHome();
   return true;

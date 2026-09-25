@@ -247,6 +247,9 @@ preview and in `validate-recipes.js`, before any bulk re-conversion — so D12 w
 the 24-line rewrite (step 7) is validated against the source lines, not only the parser. Do F1
 first if the release will be tested from two devices; otherwise the two are independent.
 
+*Steps 4–6 built 25 Sep as PR 6b, for Friday 2 Oct: dictionary aisles, one row per ingredient,
+ticks keyed by name, strict inline suggestions. Step 7 and the fidelity check are 6c.*
+
 ---
 
 ## 2. Findings
@@ -393,6 +396,8 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
   the nine header checks; a merge across a gap is asserted on the preview's error text. M4, M5
   and M6 were re-run against the new checks and each fails by name (PR #14's description has
   the runs). Not changed: the two checks weak by construction, which PR 6 rewrites anyway.
+  *(Both strengthened in PR 6b: the Friday-bucket check now needs two buckets to pass, and the
+  tick checks start from a ticked count above zero.)*
   Found on the way: the fixture used the real clock, so two shopping-list checks failed every
   Thursday; the harness now runs on one fixed date (`test/fixture-time.js`).
 - Appendix B. Not caught: `pushList`'s delete (M4); `withUpdatedTitleLine` returning its input
@@ -549,6 +554,10 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
   not before. (Answer 6) *Done as planned, 25 Sep, PR #18 (6a): `core.js`, just ahead of the
   release that rewrites it.*
 - **`shopping_checked.item_key`** until the shopping-list release re-keys it anyway. (Answer 1)
+  *Re-keyed in PR 6b, to the ingredient's name alone. No display label is stored beside it: the
+  row's name is derived at list time from the dictionary or the recipes' wording, so the key can
+  stay a readable name rather than become opaque. The old `name|unit` rows are deleted at
+  start-up.*
 - **Daily backups at 04:00 UTC, 30 in the tree, all in history.** Right cadence for this data.
 - **`index-old.html`.** Referenced once, honestly, in `docs/ARCHITECTURE.md`; harmless.
 - **The free tier.** Nothing here is near a limit.

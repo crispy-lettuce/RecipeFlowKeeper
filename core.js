@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-25.1';
+const KITCHEN_CORE_VERSION = '2026-10-02.1';
 
 
 /* ======================= quantity split ======================= */
@@ -49,7 +49,7 @@ const KITCHEN_CORE_VERSION = '2026-09-25.1';
    "2 pinch salt", and every name that changes re-keys a tick. The unit
    list gains only the long spellings normalizeUnit already maps
    ("grams", "litre"), which were unreachable before. */
-const QTY_NUM = '(?:\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+(?:\\.\\d+)?\\s?[¼½¾⅓⅔]|\\d+(?:\\.\\d+)?|[¼½¾⅓⅔])';
+const QTY_NUM = '(?:\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+(?:\\.\\d+)?\\s?[¼½¾⅓⅔⅛⅜⅝⅞]|\\d+(?:\\.\\d+)?|[¼½¾⅓⅔⅛⅜⅝⅞])';
 const QTY_UNIT = '(?:g|kg|ml|l|cups?|tsp|tbsp|teaspoons?|tablespoons?|oz|lb|grams?|grammes?|kilos?|kgs|kilograms?|millilitres?|milliliters?|litres?|liters?)';
 const QTY_RE = new RegExp('^((?:up to\\s+)?' + QTY_NUM +
   '(?:\\s*(?:-|–|—|\\s+to\\s+)\\s*' + QTY_NUM + ')?' +
@@ -575,12 +575,13 @@ function computeTimeline(groups, stages){
 
 /* ------------------------------- Amount parsing ------------------------------- */
 function parseFraction(s){
-  const fracMap = {'¼':0.25,'½':0.5,'¾':0.75,'⅓':1/3,'⅔':2/3};
+  /* Eighths since 2 Oct 2026 (PR 6b): a source's "⅛ tsp" was no quantity at all. */
+  const fracMap = {'¼':0.25,'½':0.5,'¾':0.75,'⅓':1/3,'⅔':2/3,'⅛':0.125,'⅜':0.375,'⅝':0.625,'⅞':0.875};
   s = String(s).trim();
   if(fracMap[s] !== undefined) return fracMap[s];
   let m;
   if(m = s.match(/^(\d+)\s+(\d+)\/(\d+)$/)) return +m[3] ? +m[1] + (+m[2])/(+m[3]) : null;  // "1 1/2"
-  if(m = s.match(/^(\d+(?:\.\d+)?)\s?([¼½¾⅓⅔])$/)) return +m[1] + fracMap[m[2]];               // "1½", "1 ½"
+  if(m = s.match(/^(\d+(?:\.\d+)?)\s?([¼½¾⅓⅔⅛⅜⅝⅞])$/)) return +m[1] + fracMap[m[2]];               // "1½", "1 ½"
   if(s.indexOf('/') !== -1){
     const parts = s.split('/');
     const n = parseFloat(parts[0]), d = parseFloat(parts[1]);
@@ -647,13 +648,6 @@ function parseIngredientAmount(qtyStr){
   }
   return { ...base, amount: first };
 }
-/* What two ingredient lines have to agree on to be totalled together.
-   Prep words are noise here: "2 cloves garlic" and "1 clove garlic, minced"
-   are one entry on a shopping list, however differently the two recipes
-   wrote them. */
-function normalizeIngredientName(rest){
-  return stripPrepWords(rest, AGGREGATION_PREP_WORDS).replace(/\s+/g,' ').trim();
-}
 /* Reverses a decimal back to the kind of fraction these recipes are
    written in (0.75 -> "3/4"), since that's the notation the ingredient
    lines themselves use. Falls back to 2 decimal places for anything that
@@ -662,7 +656,7 @@ function formatAmount(n){
   if(Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
   const whole = Math.floor(n);
   const frac = n - whole;
-  const common = [[0.25,'1/4'],[1/3,'1/3'],[0.5,'1/2'],[2/3,'2/3'],[0.75,'3/4']];
+  const common = [[0.125,'1/8'],[0.25,'1/4'],[1/3,'1/3'],[0.5,'1/2'],[2/3,'2/3'],[0.75,'3/4']];
   let best = null, bestDiff = Infinity;
   common.forEach(([val,label])=>{
     const diff = Math.abs(frac - val);
@@ -800,9 +794,9 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Pantry", name: "raisins", also: "" },
   { aisle: "Pantry", name: "raspberry jam", also: "seedless raspberry jam, soft-set raspberry jam" },
   { aisle: "Pantry", name: "long grain rice", also: "long-grain rice (write the **uncooked** amount, D4)" },
-  { aisle: "Pantry", name: "rigatoni", also: "pasta shapes (when rigatoni)" },
+  { aisle: "Pantry", name: "rigatoni", also: "dried rigatoni, pasta shapes (when rigatoni)" },
   { aisle: "Pantry", name: "spaghetti", also: "dried spaghetti" },
-  { aisle: "Pantry", name: "orzo", also: "" },
+  { aisle: "Pantry", name: "orzo", also: "dried orzo" },
   { aisle: "Pantry", name: "chopped tomatoes", also: "tinned chopped tomatoes (write `400 g chopped tomatoes (1 tin)`, as the tin is labelled)" },
   { aisle: "Pantry", name: "tomato purée", also: "tomato paste" },
   { aisle: "Pantry", name: "sun-dried tomatoes", also: "" },
@@ -838,6 +832,298 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Spices & Seasoning", name: "sesame seeds", also: "" },
 ];
 
+/* ======================= the shopping list (PR 6b) ======================= */
+
+/* How an ingredient line becomes a row on the shopping list, since 2 Oct 2026.
+   docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md is the evidence for every rule
+   here; its §3 table is what each was measured against. In short: until this
+   release two lines totalled only when their text reduced to the same
+   name AND unit, so the whole library planned at once came to 278 rows for
+   168 things to buy. These rules, the dictionary above and one row per
+   ingredient bring it to the review's recommended shape.
+
+   The pipeline, in order, for the part of a line after its quantity:
+     1. brackets go, and the name ENDS AT THE FIRST COMMA: words before it
+        describe the product ("chopped tomatoes"), words after it the
+        preparation ("tomatoes, chopped");
+     2. tail notes go ("to taste", "plus extra for dusting", "optional");
+     3. a leading article, size word or COUNT UNIT ("pinch of", "2 cloves",
+        "1 small bunch") becomes the unit rather than part of the name;
+     4. descriptor words go ("large", "fresh", "ripe") — but NEVER the words
+        that change what you buy (NEVER_IGNORE: ground, dried, red, baby…);
+     5. singular and plural fold together, on the last word only;
+     6. garlic and celery take a trailing count as the unit ("3 garlic
+        cloves"); bare "pepper" is black pepper by the spoon, the pinch or to
+        taste, and the vegetable when counted, which the dictionary is then
+        not asked about (it lists "pepper" as black pepper);
+     7. the dictionary is asked; if it knows the name, its name wins;
+     8. otherwise preparation words go too ("grated", "finely"), a dangling
+        "and"/"or" is dropped, and the dictionary is asked again.
+   What is left is the KEY: one per thing to buy, and — since this release —
+   what a tick is stored under (shopping_checked.item_key), so a recipe that
+   changes tbsp to g keeps its tick.
+
+   Deliberately NOT done, each measured and rejected in the review: guessing
+   at "X or Y" lines (invents names), a generic trailing-unit rule (merges
+   cinnamon sticks with ground cinnamon), fuzzy matching. Those lines are the
+   converter's to fix (PR 6c). No AI at runtime, as always. */
+
+const NEVER_IGNORE = new Set(['ground', 'red', 'green', 'yellow', 'dried', 'dark', 'light', 'unsalted',
+  'double', 'single', 'baby', 'plain', 'self-raising', 'spring', 'sea', 'whole', 'frozen', 'cooked',
+  'raw', 'full-fat', 'bone-in', 'smoked', 'white', 'black', 'brown', 'sweet', 'hot', 'mild']);
+const DESCRIPTOR_WORDS = new Set(['large', 'small', 'medium', 'big', 'extra-large', 'heaped', 'level',
+  'generous', 'thumb-sized', 'fresh', 'ripe', 'pure', 'free-range', 'organic', 'good-quality', 'good', 'quality']);
+/* Count words that are a unit when they lead the name. Plural forms fold to
+   the singular. Garlic and celery carry theirs at the END ("3 garlic
+   cloves"), which is named below rather than made a general rule. */
+const COUNT_UNITS = { pinch:'pinch', pinches:'pinch', bunch:'bunch', bunches:'bunch', handful:'handful',
+  handfuls:'handful', sprig:'sprig', sprigs:'sprig', slice:'slice', slices:'slice', rasher:'rasher',
+  rashers:'rasher', piece:'piece', pieces:'piece', chunk:'chunk', chunks:'chunk', head:'head', heads:'head',
+  squeeze:'squeeze', squeezes:'squeeze', clove:'clove', cloves:'clove', stick:'stick', sticks:'stick',
+  cube:'cube', cubes:'cube', knob:'knob', knobs:'knob', jar:'jar', jars:'jar', pack:'pack', packs:'pack',
+  packet:'pack', packets:'pack', tin:'tin', tins:'tin', can:'tin', cans:'tin', dash:'dash', dashes:'dash',
+  splash:'splash', splashes:'splash', cm:'cm', sheet:'sheet', sheets:'sheet', stalk:'stalk', stalks:'stalk' };
+const TRAILING_COUNT = [[/^garlic cloves?$/, 'garlic', 'clove'], [/^celery (sticks?|stalks?)$/, 'celery', 'stick']];
+const TAIL_NOTES = /\b(to taste|to serve|to garnish|to glaze|to finish|for (greasing|brushing|dusting|flaming|frying|the tin)|plus (extra|more)\b.*|optional|if needed|as needed)\b.*$/;
+const SPOON_ML = { tsp: 5, tbsp: 15 };
+
+/* Singular and plural are one name — on the last word, so "chilli flakes"
+   and "chilli flake" meet but "peas" never becomes "pea s". The same rule
+   test/ingredient-lines.js uses, so the validator and the list agree. */
+function foldPlural(name){
+  return name.split(' ').map((w, i, a) => {
+    if(i !== a.length - 1 || w.length < 4 || /(ss|us|is)$/.test(w)) return w;
+    if(/chillies$/.test(w)) return w.slice(0, -2);
+    if(/(leaves|loaves|halves)$/.test(w)) return w.slice(0, -3) + 'f';    // bay leaves, not "bay leave"
+    if(/ies$/.test(w)) return w.slice(0, -3) + 'y';
+    if(/(oes|ches|shes)$/.test(w)) return w.slice(0, -2);
+    return w.replace(/s$/, '');
+  }).join(' ');
+}
+/* Accents fold ("purée"), and stray punctuation goes: a "/" or "&" left
+   between two words made a name of its own (one word match patched exactly
+   that before this release). Hyphens and apostrophes are part of words. */
+const squash = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s'-]/g, ' ').replace(/\s+/g, ' ').trim();
+/* Preparation the older list did not know, from the review's §4.3 table. */
+const LEFTOVER_PREP = ['lightly', 'bashed', 'defrosted', 'cored', 'deveined', 'de-veined', 'tail-on', 'tails-on', 'cooled', 'warmed', 'room-temperature'];
+const dropWords = (name, set) => { const w = name.split(' ').filter(x => !set.has(x)); return w.length ? w.join(' ') : name; };
+
+/* The dictionary, indexed. Every "Also written as" spelling that is a plain
+   phrase — not a note in brackets, not "(when …)" — points at its row. Built
+   through the same steps 1–5 a recipe line goes through, so the two meet. */
+function dictionaryKey(phrase){ return foldPlural(dropWords(squash(String(phrase).toLowerCase()), DESCRIPTOR_WORDS)); }
+const DICTIONARY_INDEX = new Map();
+INGREDIENT_DICTIONARY.forEach(row => {
+  const add = (phrase) => { const k = dictionaryKey(phrase); if(k && !DICTIONARY_INDEX.has(k)) DICTIONARY_INDEX.set(k, row); };
+  add(row.name);
+  String(row.also || '').split(/[,;]/).map(x => x.trim()).forEach(p => {
+    if(!p || /[()*"'`]|\b(when|not|is|its own|check)\b/i.test(p)) return;
+    add(p);
+  });
+});
+function dictionaryRow(key){ return DICTIONARY_INDEX.get(key) || null; }
+
+/* One line → { key, display, unit, amount, spoon, tail }. `qty` is what
+   splitQty took off the front; `parsed` its reading (or null). */
+function shoppingLine(rest, parsed){
+  let text = String(rest || '').toLowerCase().replace(/\([^)]*\)/g, ' ');
+  const tailMatch = text.match(TAIL_NOTES);
+  const tail = tailMatch ? tailMatch[1].replace(/^(plus|for)\b.*/, '').trim() : '';
+  text = text.split(',')[0];
+  text = squash(text.replace(TAIL_NOTES, ' '));
+  let unit = parsed ? parsed.unit : '';
+  let amount = parsed ? parsed.amount : null;
+  /* "a pinch of salt", "1 small bunch dill", "2 tins chopped tomatoes" */
+  let words = text.split(' ').filter(Boolean);
+  if(amount === null && /^(a|an|one)$/.test(words[0] || '') && COUNT_UNITS[words[1]]) { amount = 1; words = words.slice(1); }
+  while(words.length > 1 && DESCRIPTOR_WORDS.has(words[0])) words = words.slice(1);
+  /* "1 heaped tbsp crème fraîche": splitQty took the 1, the size word stood
+     between it and the unit, so the unit is still here. */
+  if(amount !== null && !unit && words.length > 1 && ['tsp', 'tbsp', 'g', 'kg', 'ml', 'l'].includes(normalizeUnit(words[0]))){
+    const u = normalizeUnit(words[0]);
+    const b = toBaseUnit(amount, u);
+    unit = u; words = words.slice(1);
+    if(!SPOON_ML[u]){ amount = b.amount; unit = b.unit; }
+  }
+  if(words.length > 1 && COUNT_UNITS[words[0]]){
+    const cu = COUNT_UNITS[words[0]];
+    words = words.slice(1);
+    if(words[0] === 'of' && words.length > 1) words = words.slice(1);
+    /* A container after a weight ("400 g tin chopped tomatoes") is just the
+       container; after a bare number, or on its own, it is the unit. */
+    if(!unit){ unit = cu; if(amount === null) amount = 1; }
+  }
+  let name = foldPlural(dropWords(words.join(' '), DESCRIPTOR_WORDS));
+  for(const [re, base, cu] of TRAILING_COUNT){
+    if(re.test(name)){ name = base; if(!unit) unit = cu; }
+  }
+  /* The one context rule the review kept (check 13): bare "pepper" in
+     spoons, a pinch or to taste is the seasoning; counted, it is the
+     vegetable. */
+  /* Counted, it must also stay out of the dictionary, which lists bare
+     "pepper" as black pepper: until 25 Sep "2 peppers" totalled as two
+     black pepper, under Spices. */
+  const vegetable = name === 'pepper' && !(unit === 'tsp' || unit === 'tbsp' || unit === 'pinch' || amount === null);
+  if(name === 'pepper' && !vegetable) name = 'black pepper';
+  let row = vegetable ? null : dictionaryRow(name);
+  if(!row && !vegetable){
+    const stripped = squash(dropWords(name, new Set(AGGREGATION_PREP_WORDS.concat(LEFTOVER_PREP))).replace(/\s(and|or|with)$/, '').replace(/^(and|or|with)\s/, ''));
+    const folded = foldPlural(stripped);
+    row = dictionaryRow(folded);
+    if(!row) name = folded;
+  }
+  const key = row ? dictionaryKey(row.name) : name;
+  /* What to show for a name the dictionary doesn't know: the line's own
+     wording before its first comma, never the folded key ("chilli flake"). */
+  const display = row ? row.name : squash(dropWords(words.join(' '), DESCRIPTOR_WORDS));
+  const base = amount !== null ? toBaseUnit(amount, unit) : null;
+  const spoon = SPOON_ML[unit] ? unit : null;
+  return {
+    key, display, dictionary: !!row,
+    unit: base ? (spoon ? 'ml' : base.unit) : '',
+    amount: base ? (spoon ? amount * SPOON_ML[unit] : base.amount) : null,
+    spoon, tail
+  };
+}
+
+/* Everything the list knows about one row. `parts` holds one total per unit
+   family: grams (kg folded in), ml (litres AND spoons folded in), each count
+   unit, and bare counts ('' — "2 chicken breasts"). A row shows every part
+   it has, so nothing that cannot honestly be added is lost:
+   "Chicken breast — 2 + 400 g". */
+function aisleFor(key, display, row){
+  if(row) return row.aisle;
+  /* The vegetable (see shoppingLine), and the colours the dictionary has no
+     row for; categorizeIngredient would call any "pepper" a spice. */
+  if(key === 'pepper' || /^(yellow|orange|mixed|romano|bell) pepper$/.test(key)) return 'Produce';
+  /* The wording first, since the keyword lists are written in plurals
+     ("chili flakes"; the folded "chili flake" misses), then the folded key,
+     which finds what a plural hides ("bay leaves" -> "bay leaf"). */
+  const byDisplay = categorizeIngredient(display);
+  return byDisplay !== 'Other' ? byDisplay : categorizeIngredient(key);
+}
+const plural = (unit, n) => (n === 1 || !unit || unit === 'cm') ? unit : (/(ch|sh)$/.test(unit) ? unit + 'es' : unit + 's');
+function formatShoppingParts(item){
+  const out = [];
+  const order = ['', 'g', 'ml'].concat(Object.keys(item.parts).filter(u => !['', 'g', 'ml'].includes(u)));
+  order.forEach(u => {
+    const p = item.parts[u];
+    if(!p) return;
+    if(u === 'ml' && p.onlySpoons){
+      out.push(p.allTbsp ? `${formatAmount(p.amount / 15)} tbsp` : `${formatAmount(p.amount / 5)} tsp`);
+    } else if(u === 'g' || u === 'ml'){
+      out.push(formatShoppingQty(p.amount, u));
+    } else {
+      out.push(`${formatAmount(p.amount)}${u ? ' ' + plural(u, p.amount) : ''}`);
+    }
+  });
+  if(item.tails.size) out.push(Array.from(item.tails).join(', '));
+  else if(item.unqtyCount && out.length) out.push(`${item.unqtyCount} more`);
+  else if(item.unqtyCount > 1) out.push(`×${item.unqtyCount}`);
+  return out.join(' + ');
+}
+
+/* The list itself, from `lines` = [{ recipeTitle, raw }]. `alias(key)` is the
+   household's word matches (Settings → Word Matches), applied after the rules
+   and the dictionary, so a match is an override, never the mechanism.
+   Pure: it reads only its arguments. buildShoppingList in index.html gathers
+   the lines from the plan and calls this. */
+function aggregateShoppingLines(lines, alias){
+  const byKey = new Map();
+  (lines || []).forEach(({ recipeTitle, raw }) => {
+    const { qty, rest } = splitQty(raw);
+    const line = shoppingLine(rest, parseIngredientAmount(qty));
+    let key = line.key;
+    const aliased = alias ? alias(key) : key;
+    let row = line.dictionary ? dictionaryRow(key) : null;
+    /* A matched line is shown under the name it was matched to: the
+       household said "curly kale" is kale, so the row reads Kale, whichever
+       recipe happened to be listed first. */
+    let shown = line.display;
+    if(aliased && aliased !== key){ key = aliased; row = dictionaryRow(key); shown = key; }
+    if(!byKey.has(key)){
+      byKey.set(key, { key, row, displays: new Map(), parts: {}, tails: new Set(), unqtyCount: 0, count: 0, recipes: new Set() });
+    }
+    const it = byKey.get(key);
+    it.count += 1;
+    it.recipes.add(recipeTitle);
+    it.displays.set(shown, (it.displays.get(shown) || 0) + 1);
+    if(line.amount === null){
+      it.unqtyCount += 1;
+      if(line.tail) it.tails.add(line.tail);
+      return;
+    }
+    const p = it.parts[line.unit] || (it.parts[line.unit] = { amount: 0, onlySpoons: true, allTbsp: true });
+    p.amount += line.amount;
+    if(line.unit === 'ml'){
+      if(!line.spoon) p.onlySpoons = false;
+      if(line.spoon !== 'tbsp') p.allTbsp = false;
+    }
+  });
+  return Array.from(byKey.values()).map(it => {
+    /* The most common spelling wins for a name the dictionary doesn't know;
+       on a tie the longer, which is the plural ("3 Carrots", not "3 Carrot"). */
+    const display = it.row ? it.row.name : Array.from(it.displays.entries())
+      .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length || a[0].localeCompare(b[0]))[0][0];
+    const item = {
+      key: it.key, name: display.charAt(0).toUpperCase() + display.slice(1),
+      category: aisleFor(it.key, display, it.row), parts: it.parts, tails: it.tails,
+      unqtyCount: it.unqtyCount, count: it.count, recipes: it.recipes
+    };
+    item.qtyText = formatShoppingParts(item);
+    return item;
+  });
+}
+
+/* The words a household's word match (stored before this release, keyed by
+   the old normaliser's output) means now: the same pipeline, so a match made
+   for "carrot and" still applies to the carrot. Settings shows what was
+   stored; the list uses this. No data is rewritten. */
+function shoppingKeyForName(name){ return shoppingLine(name, null).key; }
+
+/* Pairs worth asking about, strictly (review §2.6): the two names share
+   their last word, one has exactly one word more, and that word is not one
+   that changes what you buy. Measured: none wrong, where the old substring
+   rule was wrong 35 times in 103. `isSettled(a, b)` says whether the
+   household has already answered. */
+function strictMatchSuggestions(items, isSettled){
+  const keys = items.map(i => i.key);
+  const counts = new Map(items.map(i => [i.key, i.count]));
+  const out = [];
+  const seen = new Set();
+  keys.forEach(a => {
+    const aw = a.split(' ');
+    keys.forEach(b => {
+      if(a === b) return;
+      const bw = b.split(' ');
+      if(bw.length !== aw.length + 1) return;
+      if(aw[aw.length - 1] !== bw[bw.length - 1]) return;
+      const extra = bw.filter(w => !aw.includes(w));
+      if(extra.length !== 1 || !aw.every(w => bw.includes(w)) || NEVER_IGNORE.has(extra[0])) return;
+      /* The dictionary has already answered any pair it knows a name of: a
+         row names one product, so it is asked about only when both names
+         are that row. Without this, 5 of the 7 pairs the live library was
+         offered were wrong (measured 25 Sep), all of one shape: a product
+         the dictionary lists against a bare word ("raspberry jam ~ jam"),
+         as was the review's "peanut butter ~ butter". An extra word that is an ingredient in its own right makes
+         a different product too ("celery salt"); neither word belongs on
+         NEVER_IGNORE, which is about words, not products. */
+      const rowA = dictionaryRow(a), rowB = dictionaryRow(b);
+      if(((rowA || rowB) && rowA !== rowB) || dictionaryRow(foldPlural(extra[0]))) return;
+      const pair = [a, b].sort().join(' || ');
+      if(seen.has(pair) || (isSettled && isSettled(a, b))) return;
+      seen.add(pair);
+      /* The rarer spelling folds into the commoner. On a tie the plainer
+         name (b is always the one with the extra word) is kept, so a list
+         with one of each never offers to turn "kale" into "curly kale". */
+      const ca = counts.get(a) || 0, cb = counts.get(b) || 0;
+      const [from, to] = ca < cb ? [a, b] : [b, a];
+      out.push({ from, to });
+    });
+  });
+  return out;
+}
+
 /* So Node can load this file too (test/core.test.js, the validators). In the
    page there is no `module`, and everything above is simply global, as it was
    when it lived in index.html. */
@@ -848,7 +1134,9 @@ if(typeof module !== 'undefined' && module.exports){
     withUpdatedHeaderLine, withUpdatedHeaderLines, tagsToLine, withUpdatedTitleLine, withUpdatedImageLine,
     scaleRecipeSyntax, buildRows, computeColumns, computeTimeline,
     parseFraction, normalizeUnit, toBaseUnit, formatShoppingQty, parseIngredientAmount,
-    normalizeIngredientName, formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,
-    SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS
+    formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,
+    SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,
+    NEVER_IGNORE, foldPlural, dictionaryRow, shoppingLine, formatShoppingParts, aggregateShoppingLines,
+    shoppingKeyForName, strictMatchSuggestions
   };
 }

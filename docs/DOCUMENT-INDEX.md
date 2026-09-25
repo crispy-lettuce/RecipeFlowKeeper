@@ -96,7 +96,7 @@ useful with no Claude Code session and no prior context at all.
 
 ### `docs/TEST-PLAN.md` — the browser checklist
 **What:** A step-by-step verification pass against the real backend: sign-in, hydration, the
-write queue, then every Phase 2 feature, then export/import. Includes expected row counts to
+write queue, then every Phase 2 feature, then export/import, two devices at once (D) and the shopping list release (E, PR 6b). Includes expected row counts to
 check against and flags which failures would be serious.
 
 **Use it when:** running a regression pass. The full 20-step pass **was completed on 21 Sep
@@ -260,7 +260,7 @@ to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.m
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 237-check test suite, and an honest account of what it can't tell you
+**What:** How to run the 246-check smoke suite and the 52 Node checks, and an honest account of what it can't tell you
 (everything about the real backend).
 
 **Use it when:** making any code change.

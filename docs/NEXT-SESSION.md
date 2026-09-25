@@ -34,7 +34,7 @@ verified and how.
 | 5 | **Row-scoped writes** | One row per save and an explicit delete, for recipes, plan days, groups, shortlist, aliases, swaps and ticks; whole-table replace kept for import only; deleting a recipe also cleans plan days and groups. Then the two-device pass from `docs/TEST-PLAN.md` | F1 F11 | **Done**, PR #15, 24 Sep. The two-device pass (`docs/TEST-PLAN.md` §D) is the household's to run after the merge |
 | 6 | **Shopping list release** | Steps 4–8 of the ingredient review as written, plus: the ⅛ fraction; the source-fidelity check in `validate-recipes.js` *before* the 24-line rewrite (D12 waits on it); the pure functions extracted to one `core` script so their tests run in Node; the dictionary's master copy in the app with `ingredient-names.md` generated from it. Ship on a Friday morning, before shopping. **Split on 25 Sep into three**, after reviewing the plan against PRs 3–5, 16 and 17 (below) | §9 of the architecture review; the ingredient review's status rows 4–8 | See 6a–6c |
 | 6a | **Core extraction** | The pure functions moved verbatim to `core.js`, loaded before the page script with a shared version stamp; the dictionary's master copy in `core.js`, `converter/ingredient-names.md` generated from it; `test/core.test.js`, 29 checks in Node, run first in CI. No behaviour change | Answer 6 of the architecture review; check 22 of the ingredient review | **Done**, PR #18, 25 Sep |
-| 6b | **The release** | Steps 4–6 of the ingredient review: naming rules, the dictionary with aisles, one row per ingredient, ticks keyed by name (keeping the both-weeks prefix), spoons totalled as ml, the ⅛ fraction, strict inline suggestions instead of the `confirm()` questions, word matches re-normalised at load (no data write), old-key ticks deleted. Re-measured against the review's anchors from the live library. Friday 2 Oct, morning | The ingredient review's status rows 4–6 | Not started |
+| 6b | **The release** | Steps 4–6 of the ingredient review: naming rules, the dictionary with aisles, one row per ingredient, ticks keyed by name (keeping the both-weeks prefix), spoons totalled as ml, the ⅛ fraction, strict inline suggestions instead of the `confirm()` questions, word matches re-normalised at load (no data write), old-key ticks deleted. Re-measured against the review's anchors from the live library. Friday 2 Oct, morning | The ingredient review's status rows 4–6 | **Built**, PR #19, 25 Sep; merge on the morning of Fri 2 Oct |
 | 6c | **The 24-line rewrite** | Step 7, in place, after the source-fidelity check in `validate-recipes.js`; the lines are in the household's private appendix, or re-derived and approved before any write. With the household present | Row 7; D12 waits on it | Not started |
 | 7 | **Sharing** | When wanted: a JSON-LD Edge Function (which also gives the preview its source lines); the onboarding runbook; RLS belt and braces and leaked-password protection; a weekly Playwright test against the live app. A model-backed converter only if the family actually adds recipes | F8 F13, answer 4 | Not started |
 
@@ -79,6 +79,10 @@ verified and how.
   release. (The re-measure itself reads the library straight from the database, read-only.)
 - **For 6c:** the private appendix to the ingredient review, which names the 24 lines; or be ready
   to approve a re-derived list before any line is rewritten.
+- **When PR #19 (6b) merges**, on the morning of Friday 2 Oct: reload the app on every device (a
+  second reload if the gold UPDATE bar shows), then run section E of `docs/TEST-PLAN.md` on the
+  week you are about to shop for. When convenient, delete the six "same" word matches in
+  Settings → Word Matches; the rules now make all six, so they do nothing (M4).
 - After PR #15 merges: **reload the app on every device first** (a tab opened before the merge
   runs the old code, and the old code's saves are the ones this PR removes), then run the
   two-device pass, section D of `docs/TEST-PLAN.md`. It is the only run row-scoped writes get
@@ -102,13 +106,13 @@ and open a pull request when the work is tested.
 Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md                  — the map of all documentation
-  docs/NEXT-SESSION.md                    — the seven-PR plan; we are at PR 6b
+  docs/NEXT-SESSION.md                    — the seven-PR plan; we are at PR 6c
   docs/REVIEW-ARCHITECTURE-FINDINGS.md    — §0 and the findings the PR closes
   docs/HANDOVER.md                        — verified status
   docs/ARCHITECTURE.md                    — how the app and its recipe format work
   CLAUDE.md                               — applies in full
 
-THE TASK: PR 6b from the plan. Tell me what you'd do and what you need from
+THE TASK: PR 6c from the plan. Tell me what you'd do and what you need from
 me before building anything, then build it, run the tests, and open the PR.
 
 Some context worth having:

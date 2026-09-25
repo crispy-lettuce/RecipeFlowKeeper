@@ -93,10 +93,10 @@ Recipes are written by pasting a source into a conversion prompt; see
 ## 3. The app's shape
 
 Two files, no build step, no framework, no dependencies beyond two CDN scripts (supabase-js and
-html2canvas). **`index.html`** (about 6,960 lines) is the page: markup, styles, the data layer and
-every screen. **`core.js`** (about 850 lines, since 25 Sep 2026) holds the pure functions —
+html2canvas). **`index.html`** (about 6,980 lines) is the page: markup, styles, the data layer and
+every screen. **`core.js`** (about 1,140 lines since PR 6b; 850 when it was split out on 25 Sep 2026) holds the pure functions —
 `parseRecipe`, `computeColumns`, `splitQty`, `scaleRecipeSyntax`, the quantity and naming helpers,
-the header-line writers — and the ingredient dictionary. It touches nothing on the page, so it
+the header-line writers, and since PR 6b the shopping list's naming and totalling — and the ingredient dictionary. It touches nothing on the page, so it
 loads in Node for testing as well as in the browser. The page loads it first and checks a shared
 version stamp, asking for a reload if the two files ever arrive at different versions. *(Until
 25 Sep this paragraph said "one file"; the split is PR 6a, made because the shopping-list release
@@ -152,7 +152,9 @@ refresh lands whole or not at all.
 | `computeTimeline(groups, stages)` | Derives each step's start/end from stage order plus durations. Returns `null` if no step has a real duration — which is why the timeline strip auto-hides. |
 | `mountFlow(container, parsed, opts)` | Renders the diagram and wires tick-to-complete. `opts.tickKey` makes ticks survive a re-render. |
 | `scaleRecipeSyntax(text, multiplier)` | Rewrites quantities in the raw text. Callers compute `multiplier = target ÷ base`; nothing scales by a raw multiplier any more. |
-| `buildShoppingList(weekDays)` | Aggregates the plan into a shopping list. **Must stay side-effect free** — it runs on every planner change via `updateSidebarCounts()`. |
+| `buildShoppingList(weekDays)` | Aggregates the plan into a shopping list. **Must stay side-effect free** — it runs on every planner change via `updateSidebarCounts()`. The naming and totalling are `aggregateShoppingLines` in `core.js` (since PR 6b); the page adds the week, the headcount and the household's word matches. |
+| `shoppingLine(rest, parsed)` (`core.js`) | One ingredient line → its key, the name to show, its aisle's dictionary row and its amount in a base unit. The rules, in order, are in its comment: brackets and the first comma go, then tail notes, size words and a leading count unit ("pinch of", "2 tins"); garlic and celery carry their count at the end; bare "pepper" is black pepper by the spoon and the vegetable when counted; then the dictionary, then prep words. **One row per key**, whatever the units: parts that can't be added are shown side by side, `2 + 400 g`. |
+| `strictMatchSuggestions(items, isSettled)` (`core.js`) | The pairs the list offers to merge, in place, never in a dialog: two names that share a last word and differ by one word not on `NEVER_IGNORE`, neither known to the dictionary as a different product. |
 | `queueWrite(label, fn)` | Background write queue. Returns `true` synchronously. |
 | `rehostImageFor(id, sentUrl)` | Queued after a save. Asks `rehost-images` to copy one recipe's photo into our own Storage, if it is not there already. Never awaited by the save. |
 | `applyRehostedUrl(id, sentUrl, newUrl)` | Writes the re-hosted URL back into the cached recipe — both `imageUrl` and the `IMAGE:` line — and discards a reply whose `sentUrl` is no longer current. |
@@ -179,8 +181,8 @@ was a deliberate call in the brief: retrofitting it later, once data exists, is 
 | `meal_groups` | Recipes cooked together on a day. `recipe_ids uuid[]`, no foreign key. |
 | `shortlist_items` | Ideas not yet planned. `recipe_id` is `ON DELETE SET NULL`. |
 | `ingredient_swaps` | Personal substitutions with a scaling ratio. |
-| `shopping_checked` | Ticked items, keyed by `week_start` + `item_key`. **`item_key` is the aggregation string itself**, so anything that changes how items are named or combined re-keys them. |
-| `aliases` | Word matches. `kind` is `source`, `ingredient`, `source_distinct` or `ingredient_distinct` — the `_distinct` kinds record "these are *not* the same" so the app stops asking. |
+| `shopping_checked` | Ticked items, keyed by `week_start` + `item_key`. **`item_key` is the row's key**, the ingredient's name alone since PR 6b (with a `both\|` prefix for the both-weeks list), so a recipe changing its unit keeps the tick but anything that changes how items are *named* re-keys them. Until 2 Oct it was `name\|unit`; those rows are deleted at start-up by `purgeOldFormatTicks`. |
+| `aliases` | Word matches. `kind` is `source`, `ingredient`, `source_distinct` or `ingredient_distinct` — the `_distinct` kinds record "these are *not* the same" so the app stops asking. Ingredient matches are re-normalised through `shoppingKeyForName` as they load, so a match stored in the old normaliser's words still applies; the stored rows are never rewritten. |
 | `household_settings` | One row. `week_start_day` (0=Sunday, default 5=Friday). |
 | `households`, `household_members` | Identity. `hydrate()` reads the signed-in user's first `household_members` row to set `HOUSEHOLD_ID`, so the app carries no household constant. *(Corrected 23 Sep; this row said it was a constant.)* |
 
@@ -225,10 +227,10 @@ a URL is already ours. See `docs/IMAGES.md` §5.
 (`test/stub.js`) and walks every screen.
 
 ```sh
-node test/core.test.js   # 29 checks on core.js in Node, under a second, no browser
+node test/core.test.js   # 52 checks on core.js in Node, under a second, no browser
 npm install playwright
 node test/build.js       # bake index.html (with core.js inlined) against the stub
-node test/smoke.js       # 237 checks; exits non-zero on failure
+node test/smoke.js       # 246 checks; exits non-zero on failure
 ```
 
 **`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,

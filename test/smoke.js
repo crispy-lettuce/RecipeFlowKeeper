@@ -70,6 +70,22 @@ const check = (name, pass, detail) => {
     check(`${view} view opens`, await page.isVisible(`#view-${target}`));
   }
 
+  /* PR 6b: a tick is keyed by the ingredient's name alone. Ticks in the old
+     "name|unit" keys can never match a row again, so they are deleted at
+     start-up, by name, and the new ones are left alone. */
+  const purge = await page.evaluate(() => {
+    const week = weekStartIsoOf(groupDaysByWeek(dayList())[0]);
+    const del = (window.__WRITES__ || []).filter(w => w.table === 'shopping_checked' && w.op === 'delete');
+    return { week, weeks: Object.keys(cache.shoppingChecked), kept: Object.keys(cache.shoppingChecked[week] || {}).sort(),
+             deleted: del.map(w => (w.in && w.in.values || []).slice().sort()) };
+  });
+  check('old-format ticks are purged at start-up, new ones kept',
+        purge.weeks.length === 1 && purge.weeks[0] === purge.week && JSON.stringify(purge.kept) === '["basil","both|basil"]',
+        JSON.stringify(purge));
+  check('and deleted on the server by name, in one write',
+        purge.deleted.length === 1 && JSON.stringify(purge.deleted[0]) === '["both|chopped tomatoes|g","garlic|clove"]',
+        JSON.stringify(purge.deleted));
+
   // Settings specifics.
   await page.click('.navlink[data-view="settings"]');
   await page.waitForTimeout(350);
@@ -405,7 +421,8 @@ const check = (name, pass, detail) => {
       });
     return out;
   });
-  check('planner groups days into week buckets', bucketOpeners.length > 0, bucketOpeners.join(' | '));
+  /* At least two, or "every bucket after the first" is true of nothing. */
+  check('planner groups days into week buckets', bucketOpeners.length >= 2, bucketOpeners.join(' | '));
   check('every bucket after the first opens on the configured day (Friday)',
         bucketOpeners.slice(1).every(t => /\bFRI\b/i.test(t)),
         bucketOpeners.join(' | '));
@@ -424,8 +441,11 @@ const check = (name, pass, detail) => {
   check('500 g + 1 kg tomatoes make one line', tomato.length === 1, tomato.join(' // ') || 'none');
   // 500 g (x2 days) + 1 kg = 2000 g, which should read as kilograms.
   check('and 1000+ g reads in kilograms', /^2 kg/.test(tomato[0] || ''), tomato[0] || '');
+  /* By the row's own name, not its whole text: since PR 6b a row lists its
+     recipes underneath, and "Test Pasta" is one of them on the tomato row. */
   const pasta = await page.evaluate(() => [...document.querySelectorAll('.shop-item')]
-    .map(el => el.textContent.replace(/\s+/g, ' ').trim()).filter(t => /pasta/i.test(t)));
+    .filter(el => /pasta/i.test(el.dataset.name || ''))
+    .map(el => el.textContent.replace(/\s+/g, ' ').trim()));
   check('and under 1000 g stays in grams', /^600 g/.test(pasta[0] || ''), pasta[0] || '');
 
   await page.locator('.shop-item', { hasText: /tomato/i }).first().locator('input').check();
@@ -672,7 +692,7 @@ const check = (name, pass, detail) => {
   const before = await page.evaluate(() => {
     const list = buildShoppingList(groupDaysByWeek(dayList())[0]);
     let out = null;
-    list.categories.forEach(c => c.items.forEach(i => { if (/pasta/i.test(i.name)) out = i.amount + ' ' + i.unit; }));
+    list.categories.forEach(c => c.items.forEach(i => { if (/pasta/i.test(i.name)) out = i.qtyText; }));
     return out;
   }).catch(() => null);
 
@@ -692,7 +712,7 @@ const check = (name, pass, detail) => {
   const after = await page.evaluate(() => {
     const list = buildShoppingList(groupDaysByWeek(dayList())[0]);
     let out = null;
-    list.categories.forEach(c => c.items.forEach(i => { if (/pasta/i.test(i.name)) out = i.amount + ' ' + i.unit; }));
+    list.categories.forEach(c => c.items.forEach(i => { if (/pasta/i.test(i.name)) out = i.qtyText; }));
     return out;
   }).catch(() => null);
   check('shopping quantities follow the headcount', before && after && before !== after,
@@ -711,54 +731,132 @@ const check = (name, pass, detail) => {
   });
   check('removing an entry keeps the others in lockstep', lockstep === 'ok', lockstep);
 
-  // SL2: ingredient name matching.
+  /* SL2, since PR 6b (2 Oct): the names come from the rules and dictionary
+     in core.js (tested in Node, test/core.test.js); what is checked here is
+     the page around them. No dialogs any more — a likely pair is offered in
+     place, under the row, and answered when convenient. */
   const norm = await page.evaluate(() => ({
-    prepIgnored: normalizeIngredientName('garlic, minced') === normalizeIngredientName('garlic'),
-    groundKept: normalizeIngredientName('ground coriander') !== normalizeIngredientName('coriander'),
-    groundValue: normalizeIngredientName('ground coriander')
+    prepIgnored: shoppingKeyForName('garlic, minced') === shoppingKeyForName('garlic'),
+    groundKept: shoppingKeyForName('ground coriander') !== shoppingKeyForName('coriander'),
+    groundValue: shoppingKeyForName('ground coriander')
   }));
   check('prep words do not split an ingredient', norm.prepIgnored);
   check('"ground coriander" stays apart from "coriander"', norm.groundKept, norm.groundValue);
 
-  const sugg = await page.evaluate(() => findIngredientMatchSuggestions([
-    { key: 'spring onion|', count: 1 },
-    { key: 'spring onions|', count: 4 },
-    { key: 'butter|g', count: 2 }
-  ]));
-  check('suggests the one similar pair', sugg.length === 1, JSON.stringify(sugg));
+  const strict = await page.evaluate(() => strictMatchSuggestions([
+    { key: 'curly kale', count: 1 }, { key: 'kale', count: 3 },
+    { key: 'unsalted butter', count: 2 }, { key: 'butter', count: 5 },
+    { key: 'spring onion', count: 2 }, { key: 'onion', count: 6 }
+  ], null));
+  check('the strict rule offers the one plain pair', strict.length === 1, JSON.stringify(strict));
   check('and folds the rarer name into the commoner one',
-        sugg[0] && sugg[0].from === 'spring onion' && sugg[0].to === 'spring onions', JSON.stringify(sugg[0]));
+        strict[0] && strict[0].from === 'curly kale' && strict[0].to === 'kale', JSON.stringify(strict[0]));
 
-  // The prompt is capped, and both answers are remembered.
-  let asked = 0;
-  const onDialog = d => { asked++; d.dismiss(); }; // dismiss = "keep them separate"
-  page.on('dialog', onDialog);
-  const capped = await page.evaluate(() => {
-    const many = [];
-    for (let i = 0; i < 6; i++) many.push({ from: 'thing ' + i, to: 'things ' + i });
-    return promptIngredientMatches(many);
+  /* On the list itself: two recipes that differ only by a word the rules
+     keep, planned on one day, so the suggestion has something to show. */
+  const planned = await page.evaluate(() => {
+    const list = loadRecipes();
+    const a = { id: uid(), title: 'Kale One', source: 'Blue Door Bakery', servings: 2, tags: { course: '', keywords: [] }, history: [],
+                syntax: 'TITLE: Kale One\nSERVINGS: 2\n\nGROUP a:\n200 g curly kale\n\nSTAGE:\nMERGE a -> b: Cook [5 min]' };
+    const b = { ...a, id: uid(), title: 'Kale Two', syntax: 'TITLE: Kale Two\nSERVINGS: 2\n\nGROUP a:\n100 g kale\n\nSTAGE:\nMERGE a -> b: Cook [5 min]' };
+    list.push(a, b);
+    const day = isoLocal(new Date());
+    addPlanRecipe(day, a.id); addPlanRecipe(day, b.id);
+    return { day, a: a.id, b: b.id };
   });
-  page.off('dialog', onDialog);
-  check('prompts are capped at three', asked === 3, asked + ' asked');
-  check('answering reports a change', capped === true);
-
-  const remembered = await page.evaluate(() => ({
-    distinct: isPairDistinct('ingredient', 'thing 0', 'things 0'),
-    stillSuggested: findIngredientMatchSuggestions([
-      { key: 'thing 0|', count: 1 }, { key: 'things 0|', count: 2 }
-    ]).length,
-    stored: loadAliases().filter(a => a.kind === 'ingredient_distinct').length
+  let shopDialogs = 0;
+  const countShopDialog = d => { shopDialogs++; d.dismiss(); };
+  page.on('dialog', countShopDialog);
+  await page.click('.navlink[data-view="shopping"]');
+  await page.waitForTimeout(500);
+  page.off('dialog', countShopDialog);
+  check('opening the shopping list asks nothing', shopDialogs === 0, shopDialogs + ' dialogs');
+  const inline = await page.evaluate(() => {
+    const row = [...document.querySelectorAll('#shopBody .shop-row')].find(r => r.querySelector('[data-merge-from="curly kale"]'));
+    return row ? row.querySelector('.shop-suggest').textContent.replace(/\s+/g, ' ').trim()
+               : 'rows: ' + [...document.querySelectorAll('#shopBody .shop-item')].map(el => el.dataset.name).join(', ');
+  });
+  check('a likely pair is offered in place, under the rarer row', /Same as Kale\?/.test(inline || ''), inline);
+  await page.click('[data-keep-from="curly kale"]');
+  await page.waitForTimeout(300);
+  const kept = await page.evaluate(() => ({
+    distinct: isPairDistinct('ingredient', 'curly kale', 'kale'),
+    offered: !!document.querySelector('[data-merge-from="curly kale"]'),
+    stored: loadAliases().some(a => a.kind === 'ingredient_distinct' && a.alias === pairKeyFor('curly kale', 'kale'))
   }));
-  check('a "no" is remembered', remembered.distinct);
-  check('and stops the pair being suggested again', remembered.stillSuggested === 0);
-  check('and is stored to sync', remembered.stored === 3, remembered.stored + ' stored');
-
-  // A "yes" must actually combine the two on the list.
-  const yesWorks = await page.evaluate(() => {
-    addAlias('ingredient', 'spring onion', 'spring onions');
-    return applyIngredientAlias('spring onion');
+  check('"keep apart" is remembered and stored to sync', kept.distinct && kept.stored, JSON.stringify(kept));
+  check('and the pair is not offered again', !kept.offered);
+  // Undo the "no" so the "yes" path can be exercised on the same pair.
+  await page.evaluate(() => { const a = loadAliases().find(x => x.kind === 'ingredient_distinct' && x.alias === pairKeyFor('curly kale', 'kale')); removeAlias(a.id); renderShopping(); });
+  await page.waitForTimeout(200);
+  await page.click('[data-merge-from="curly kale"]');
+  await page.waitForTimeout(300);
+  const merged = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('#shopBody .shop-item')].filter(el => /kale/i.test(el.dataset.name));
+    return { rows: rows.length, text: rows.map(r => r.querySelector('.shop-item-name').textContent.trim()), redirect: applyIngredientAlias('curly kale') };
   });
-  check('a "yes" redirects the name', yesWorks === 'spring onions', yesWorks);
+  check('"merge" puts the two on one row, and totals them', merged.rows === 1 && /300 g/.test(merged.text[0] || ''), JSON.stringify(merged));
+  check('under the name it was merged into', /^300 g\s*Kale$/.test(merged.text[0] || ''), merged.text[0]);
+  check('and redirects the name from now on', merged.redirect === 'kale', merged.redirect);
+
+  /* A tick is keyed by the name alone, so changing how a recipe measures
+     it (200 g -> 1 bunch here; tbsp -> g in the review) keeps the tick. */
+  await page.locator('#shopBody .shop-item[data-name="Kale"] input').check({ timeout: 5000 });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => { const r = loadRecipes().find(x => x.title === 'Kale One'); r.syntax = r.syntax.replace('200 g curly kale', '1 bunch curly kale'); renderShopping(); });
+  await page.waitForTimeout(200);
+  const kaleTick = await page.evaluate(() => {
+    const el = document.querySelector('#shopBody .shop-item[data-name="Kale"]');
+    return el && { checked: el.classList.contains('checked'), text: el.querySelector('.shop-item-name').textContent.trim() };
+  });
+  check('a tick survives the recipe changing its unit', kaleTick && kaleTick.checked && /1 bunch/.test(kaleTick.text), JSON.stringify(kaleTick));
+  await page.locator('#shopBody .shop-item[data-name="Kale"] input').uncheck({ timeout: 5000 });
+  await page.evaluate(() => { const r = loadRecipes().find(x => x.title === 'Kale One'); r.syntax = r.syntax.replace('1 bunch curly kale', '200 g curly kale'); });
+
+  /* buildShoppingList runs on every planner change: with a suggestion
+     pending and nothing answered, building it must write nothing and ask
+     nothing, however many times it runs. */
+  let pureDialogs = 0;
+  const countPureDialog = d => { pureDialogs++; d.dismiss(); };
+  page.on('dialog', countPureDialog);
+  const pure = await page.evaluate(async () => {
+    const before = { writes: (window.__WRITES__ || []).length, aliases: JSON.stringify(cache.aliases), ticks: JSON.stringify(cache.shoppingChecked) };
+    cache.aliases = cache.aliases.filter(a => !(a.kind === 'ingredient' && a.alias === 'curly kale'));
+    rebuildAliasMaps();
+    const aliasesNow = JSON.stringify(cache.aliases);
+    const buckets = groupDaysByWeek(dayList());
+    let offered = 0;
+    for(let i = 0; i < 5; i++) buckets.forEach(b => { offered += buildShoppingList(b).suggestions.length; });
+    /* Writes are queued, so a write made in there lands a moment later:
+       counted straight away, the check passed with one in it. */
+    await new Promise(r => setTimeout(r, 400));
+    const out = { offered, writes: (window.__WRITES__ || []).length - before.writes,
+                  aliasesSame: JSON.stringify(cache.aliases) === aliasesNow, ticksSame: JSON.stringify(cache.shoppingChecked) === before.ticks };
+    cache.aliases = JSON.parse(before.aliases); rebuildAliasMaps();
+    return out;
+  });
+  page.off('dialog', countPureDialog);
+  check('building the list with a suggestion pending writes, asks and changes nothing',
+        pure.offered > 0 && pure.writes === 0 && pureDialogs === 0 && pure.aliasesSame && pure.ticksSame, JSON.stringify(pure) + ', ' + pureDialogs + ' dialogs');
+
+  // MERGE WITH… joins any two rows, for pairs no rule would offer.
+  await page.evaluate(() => { const r = loadRecipes().find(x => x.title === 'Kale Two'); r.syntax = r.syntax.replace('100 g kale', '1 bunch cavolo nero'); renderShopping(); });
+  await page.waitForTimeout(200);
+  await page.click('[data-merge-with="cavolo nero"]');
+  await page.waitForTimeout(150);
+  await page.selectOption('.shop-merge-select', 'kale');
+  await page.waitForTimeout(300);
+  const joined = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('#shopBody .shop-item')].filter(el => /kale|cavolo/i.test(el.dataset.name));
+    return rows.map(r => r.querySelector('.shop-item-name').textContent.trim());
+  });
+  check('MERGE WITH… joins two rows the rules keep apart, keeping both parts', joined.length === 1 && /200 g \+ 1 bunch/.test(joined[0]), JSON.stringify(joined));
+  // Tidy away the kale recipes, their plan entries and the matches.
+  await page.evaluate((p) => {
+    [p.a, p.b].forEach(id => deleteRecipe(id));
+    loadAliases().filter(a => /kale|cavolo/.test(a.alias)).forEach(a => removeAlias(a.id));
+  }, planned);
+  await page.waitForTimeout(300);
 
   // The prompt must never fire from the planner.
   let plannerDialogs = 0;
@@ -768,6 +866,34 @@ const check = (name, pass, detail) => {
   await page.waitForTimeout(400);
   page.off('dialog', countDialog);
   check('building a list from the planner asks nothing', plannerDialogs === 0, plannerDialogs + ' dialogs');
+
+  /* Word matches stored before the release, in the old normaliser's words,
+     still mean the same thing: re-normalised as they load, never rewritten. */
+  const legacy = await page.evaluate(() => {
+    cache.aliases.push({ id: uid(), kind: 'ingredient', alias: 'shallot and', canonical: 'banana shallots' });
+    cache.aliases.push({ id: uid(), kind: 'ingredient', alias: 'large onion', canonical: 'onion' });
+    rebuildAliasMaps();
+    const out = { redirect: applyIngredientAlias('shallot'), redundantDropped: applyIngredientAlias('onion') === 'onion' };
+    cache.aliases = cache.aliases.filter(a => !['shallot and', 'large onion'].includes(a.alias));
+    rebuildAliasMaps();
+    return out;
+  });
+  check('an old word match still applies, in today\'s words', legacy.redirect === 'banana shallot', legacy.redirect);
+  check('and one the rules now make anyway falls away', legacy.redundantDropped);
+
+  // Settings still has its add form, which stores in the list's own words.
+  await page.click('.navlink[data-view="settings"]');
+  await page.waitForTimeout(300);
+  await page.selectOption('#alias-kind', 'ingredient').catch(() => {});
+  await page.fill('#alias-from', 'Courgettes, sliced');
+  await page.fill('#alias-to', 'zucchini');
+  await page.click('#aliasAddBtn');
+  await page.waitForTimeout(300);
+  const formAlias = await page.evaluate(() => loadAliases().find(a => a.kind === 'ingredient' && /courgette/.test(a.alias)));
+  check('Settings stores a new match in the list\'s own words', formAlias && formAlias.alias === 'courgette' && formAlias.canonical === 'zucchini', JSON.stringify(formAlias));
+  await page.evaluate(() => loadAliases().filter(a => /courgette/.test(a.alias)).forEach(a => removeAlias(a.id)));
+  await page.evaluate(() => { addAlias('ingredient', 'thing 0', 'things 0'); addAlias('ingredient_distinct', pairKeyFor('thing 1', 'things 1'), ''); addAlias('ingredient_distinct', pairKeyFor('thing 2', 'things 2'), ''); addAlias('ingredient_distinct', pairKeyFor('thing 3', 'things 3'), ''); renderAliasesList(); });
+  await page.waitForTimeout(200);
 
   // And the answers are visible and reversible in Settings.
   await page.click('.navlink[data-view="settings"]');

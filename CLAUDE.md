@@ -21,8 +21,9 @@ node test/core.test.js
 node test/build.js && node test/smoke.js
 ```
 
-`core.test.js` is 29 checks in Node, in under a second: the pure functions, the dictionary, and
-the rules that keep `core.js` and `index.html` apart. The smoke suite is 237 checks. **Run both,
+`core.test.js` is 52 checks in Node, in under a second: the pure functions, the dictionary, the
+shopping list's naming rules, and the rules that keep `core.js` and `index.html` apart. The smoke
+suite is 246 checks. **Run both,
 always** — `smoke.js` loads what `build.js` wrote, so skipping the build
 tests your previous edit and reports a pass or a failure that belongs to code you have changed.
 
@@ -52,11 +53,14 @@ throw rather than pass vacuously.
   another device's work — so don't remove it. It must never replace the cache while the cache
   holds something the server doesn't; `docs/HANDOVER.md` §2e has the four rules it follows.
 - **`buildShoppingList()` must stay side-effect free** — it runs on every planner mutation via
-  `updateSidebarCounts()`. Never put a prompt or a write in it.
+  `updateSidebarCounts()`. Never put a prompt or a write in it. Since PR 6b it only *returns*
+  suggestions; `renderShopping` shows them in place and the buttons do the writing.
 - **`recipe_logs` cascades on delete from `recipes`.** Deleting a recipe destroys its cooking
   history. Prefer updating a recipe row in place over delete-and-reinsert.
-- **`shopping_checked.item_key` is the aggregation string itself**, so any change to how
-  ingredients are named or combined silently re-keys every tick.
+- **`shopping_checked.item_key` is the shopping row's key: the ingredient's name alone** since
+  PR 6b (plus a `both|` prefix on the both-weeks list). A recipe changing its unit keeps the tick,
+  but any change to how ingredients are *named* — a rule in `shoppingLine`, a dictionary row —
+  silently re-keys every tick for that ingredient. Measure against the library before shipping one.
 - **Group order in recipe syntax is load-bearing** — MERGE only combines handles on adjacent
   rows. See `docs/ARCHITECTURE.md` §2.
 - **A schema column existing does not mean the feature exists.** Several columns are Phase 3

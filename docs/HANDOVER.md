@@ -51,7 +51,7 @@ verified status. **Nothing here is inferred from a previous summary.**
 | | Item | Status |
 | --- | --- | --- |
 | SL1 | Unit handling | **Done.** Totals in a base unit, displayed as g/ml under 1000 and kg/L at 1000+. Metric only, never mixed systems. |
-| SL2 | Ingredient name matching | **Done.** Prep words ignored when matching (with `ground` deliberately excluded — ground coriander is seed, coriander is leaf). Prompts capped at 3 per visit, both answers remembered. **Reviewed 22 Sep against the real library** (`docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md`): works, but 274 rows for 168 real items; the household chose the review's full plan on 23 Sep. Step 1, the quantity reader (mixed numbers, ranges, `up to`, `3 x 400 g`), merged as PR #9 on 23 Sep; step 3 (line shape, dictionary, survey tooling) is PR #10, revised the same day so the converter no longer renames to the dictionary (`docs/REVIEW-ARCHITECTURE-FINDINGS.md` §4); the rest is PR 6 in `docs/NEXT-SESSION.md`. |
+| SL2 | Ingredient name matching | **Done.** Prep words ignored when matching (with `ground` deliberately excluded — ground coriander is seed, coriander is leaf). Prompts capped at 3 per visit, both answers remembered. **Reviewed 22 Sep against the real library** (`docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md`): works, but 274 rows for 168 real items; the household chose the review's full plan on 23 Sep. Step 1, the quantity reader (mixed numbers, ranges, `up to`, `3 x 400 g`), merged as PR #9 on 23 Sep; step 3 (line shape, dictionary, survey tooling) is PR #10, revised the same day so the converter no longer renames to the dictionary (`docs/REVIEW-ARCHITECTURE-FINDINGS.md` §4); the rest is PR 6 in `docs/NEXT-SESSION.md`. **Steps 4–6 are PR 6b** (built 25 Sep, merging 2 Oct): no more prompts; a likely pair is offered in place under the row, and MERGE WITH… joins any two. |
 | SL3 | Show/hide checked items | **Done.** |
 | SL4 | Reset ticks | **Done.** Scoped per mode, so clearing one list doesn't clear the other. |
 | SL5 | Week selection | **Done.** This Week / Next Week / Both Weeks, with combined-mode ticks stored separately. |
@@ -711,7 +711,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **237 checks** across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **246 checks** (at PR 6b; `core.test.js` adds 52 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday.
@@ -760,7 +760,20 @@ against the mutation it exists for (a second copy of a function left in `index.h
 stamp bumped on one side only, a dictionary row edited without regenerating, `core.js` reaching
 for `document`), each failing by name; and `validate-recipes.js` and `ingredient-survey.js` both
 run on made-up batches. **Not run against the live site**: the first load after the merge is the
-test that Pages serves `core.js` and the version check stays quiet.
+test that Pages serves `core.js` and the version check stays quiet. *(That load was done by the
+household on the tablet on 25 Sep, after the merge: the app loaded and no UPDATE bar showed.)*
+
+**PR 6b, the shopping list release (built 25 Sep 2026, PR #19; to merge the morning of Fri 2
+Oct).** One row per ingredient, named by the rules and the dictionary in `core.js`, ticks keyed by
+name, strict inline suggestions instead of dialogs. Verified by: 27 mutations, each turning a named check red — every one §6 of the ingredient review names, plus the start-up tick purge, the three inline buttons, re-normalising word matches, the suggester's dictionary rule and tie-break, and the merged row's name (three first ran green, and their checks were fixed until they didn't: one counted queued writes before they were sent, one looped over the very list it was guarding); the smoke suite at 246 and
+`core.test.js` at 52, green; and a read-only re-measure of the live library (34 recipes, from
+the database into scratch outside the repo) — 185 rows against 278 before, Week A 79 → 60 and
+Week B 61 → 54, no false merges on reading every merged row, and 1 suggestion library-wide. That
+re-measure found three faults the made-up checks had not: the suggester offering five pairs the
+dictionary already answers (a listed product against a bare word, *raspberry jam ~ jam* in shape), "2 peppers" totalling as black pepper, and a
+merged row keeping the name it was merged *from*; all three fixed and checked before commit.
+**Not verified:** anything against the real backend — the purge of old-key ticks deleting
+server rows, and ticks syncing under the new keys, are section E of `docs/TEST-PLAN.md`.
 
 ```sh
 npm install playwright
