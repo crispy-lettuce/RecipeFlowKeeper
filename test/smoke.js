@@ -1530,18 +1530,27 @@ const check = (name, pass, detail) => {
   /* ---- Offline notice (25 Sep). The two-device pass found step 25's toast
      never came: an offline write can sit for up to 30 s behind supabase-js's
      session-refresh retry, then land or fail. The browser knows it is offline
-     at once, so the app now says so at the moment of saving, and sends any
-     failed write the moment the browser is back online. ---- */
+     at once, so the app says so — as a bar across the top that stays for as
+     long as it is true, at the household's request — and sends any failed
+     write the moment the browser is back online. ---- */
   const toastText = () => page.evaluate(() => { const t = document.querySelector('.toast.show'); return t ? t.textContent : ''; });
+  const barShown = () => page.isVisible('#offlineBar');
+  check('the offline bar is hidden while online', !(await barShown()));
   await page.evaluate(() => { Object.defineProperty(navigator, 'onLine', { get: () => false, configurable: true }); });
   await page.click('.navlink[data-view="recipes"]');
   await page.waitForTimeout(300);
   await page.locator('.rcard-favourite').first().click();
   await page.waitForTimeout(150);
-  check('a save made while offline says so at once', /offline/i.test(await toastText()), await toastText());
-  await page.evaluate(() => { document.querySelector('.toast').classList.remove('show'); window.dispatchEvent(new Event('offline')); });
+  check('a save made while offline shows the offline bar at once', await barShown());
+  await page.evaluate(() => { document.getElementById('offlineBar').hidden = true; window.dispatchEvent(new Event('offline')); });
   await page.waitForTimeout(100);
-  check('going offline is announced', /offline/i.test(await toastText()), await toastText());
+  check('going offline shows the bar', await barShown());
+  const barBox = await page.evaluate(() => {
+    const bar = document.getElementById('offlineBar').getBoundingClientRect();
+    const view = document.querySelector('.view.active').getBoundingClientRect();
+    return { barBottom: Math.round(bar.bottom), viewTop: Math.round(view.top), text: document.getElementById('offlineBar').textContent.replace(/\s+/g, ' ').trim() };
+  });
+  check('the bar sits above the page rather than over it', barBox.viewTop >= barBox.barBottom, JSON.stringify(barBox));
   // A write that fails while offline is sent again the moment the browser is back, without a tap.
   await allowSyncFailures(async () => {
     await page.evaluate(() => { window.__WRITE_FAIL__ = true; });
@@ -1562,6 +1571,7 @@ const check = (name, pass, detail) => {
   check('coming back online re-sends the failed write by itself', updatesAfterOnline === updatesBeforeOnline + 1,
         updatesBeforeOnline + ' -> ' + updatesAfterOnline);
   check('and says so', /back online/i.test(await toastText()), await toastText());
+  check('and the offline bar goes', !(await barShown()));
   await fireSignedIn();
   await page.waitForTimeout(400);
   check('so a refresh is no longer held back', (await page.evaluate(() => window.__LOG__.filter(e => e.startsWith('read:')).length)) > 0);

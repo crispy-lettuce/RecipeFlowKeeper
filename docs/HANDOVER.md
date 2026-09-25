@@ -711,7 +711,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **233 checks** across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **236 checks** across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday.
@@ -744,7 +744,10 @@ supabase-js showed why — an offline request waits behind the session-refresh r
 and then lands if the network is back, so the write never failed and there was nothing to report.
 Step 25 was rewritten to expect that, and PR #16 (25 Sep) makes the app say it is offline at the
 moment of saving and re-send failed writes the moment the browser is back online; five checks
-cover it in the stub, none against the live app.
+cover it in the stub, none against the live app. The household re-ran step 25 on 25 Sep and saw
+the offline message, then asked for a bar rather than a toast, since being offline lasts: PR #17
+shows a gold OFFLINE bar across the top of the page for as long as the browser is offline, in both
+themes, and keeps the "Back online — sending your changes" toast for the moment it ends.
 
 ```sh
 npm install playwright

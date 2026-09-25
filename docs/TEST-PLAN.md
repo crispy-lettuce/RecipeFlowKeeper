@@ -12,7 +12,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 233 automated checks pass (102 when this was
+story that used to open this paragraph is history. 236 automated checks pass (102 when this was
 written). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -188,7 +188,8 @@ this pass exists to rule out. Call them **A** (the desktop) and **B** (the phone
     on A, a different item on B, then switch tabs on each. Both ticks should show on both. Press
     UNTICK ALL on A: both go, on both.
 25. **A save made offline is kept and sent.** On B, turn the network off (aeroplane mode, or
-    devtools → Network → Offline), favourite a recipe: expect a toast saying you are offline.
+    devtools → Network → Offline), favourite a recipe: expect a gold **OFFLINE** bar across the
+    top of the page (since PR #17; a toast until then), staying there until you are back.
     Turn the network on: expect "Back online — sending your changes" if the write had failed by
     then (it may not have — see below). Reload B: the favourite must show.
     *Do not expect a "Couldn't save" toast.* That one appears only when a write actually fails,

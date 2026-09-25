@@ -20,7 +20,7 @@ check the code, the database or GitHub Actions directly, do that instead of beli
 node test/build.js && node test/smoke.js
 ```
 
-233 checks. **Run both, always** — `smoke.js` loads what `build.js` wrote, so skipping the build
+236 checks. **Run both, always** — `smoke.js` loads what `build.js` wrote, so skipping the build
 tests your previous edit and reports a pass or a failure that belongs to code you have changed.
 
 It stubs Supabase entirely, so it proves nothing about sign-in, hydration, RLS or the write

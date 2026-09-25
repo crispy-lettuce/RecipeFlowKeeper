@@ -50,5 +50,5 @@ npm install playwright
 node test/build.js && node test/smoke.js
 ```
 
-233 checks against a stubbed backend, run by GitHub Actions on every pull request. See [`test/README.md`](test/README.md) for what it does and
+236 checks against a stubbed backend, run by GitHub Actions on every pull request. See [`test/README.md`](test/README.md) for what it does and
 doesn't prove.
