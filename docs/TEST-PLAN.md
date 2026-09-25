@@ -12,7 +12,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 237 automated checks pass (102 when this was
+story that used to open this paragraph is history. 246 automated checks pass, plus 52 in Node (102 when this was
 written). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -125,14 +125,16 @@ Some things that *will* still look wrong and aren't:
 11. **Planner servings.** Tap a **SERVES** pill, set 6. The pill lights up, survives a reload, and the
     Shopping List quantities for that recipe change to match.
 12. **Shopping list totals.** Find an ingredient two planned recipes share. Expect one line, in one
-    unit — 500 g and 1 kg should read as a single 1.5 kg.
+    unit — 500 g and 1 kg should read as a single 1.5 kg. Since PR 6b one ingredient is always
+    one line, even in two units: *Chicken breast — 2 + 400 g* (section E has the rest).
 13. **Hide ticked / clear ticks.** Tick a few, hide them, show them again, clear them.
 14. **Both Weeks.** Switch to it, tick something, switch back to a single week. That tick must **not**
     appear there; the two lists keep their ticks separately on purpose.
-15. **Word matches.** If the list offers to combine two ingredient names, answer one "yes" and one
-    "no". Both should appear in Settings → Word Matches, and neither should be asked again. At most
-    three questions per visit. You may get none — that is fine, the prep-word change already merges
-    most variants without asking.
+15. **Word matches.** Since PR 6b the list never asks in a dialog. A likely pair shows *Same as
+    X? MERGE · KEEP APART* under the rarer row; answer one each way if you get two. Both should
+    appear in Settings → Word Matches, and neither should be offered again. You will probably get
+    none — the rules and the dictionary total most variants without asking — so **MERGE WITH…**
+    on any row, joining it to another, exercises the same path.
 16. **Viewer ticks.** Tick three steps, then change COOK FOR. The ticks must survive. **RESET TICKS**
     clears them without moving you off the recipe.
 17. **Sidebar.** Narrow the window to roughly 1000px and open a recipe. The sidebar slides shut, the
@@ -202,6 +204,32 @@ this pass exists to rule out. Call them **A** (the desktop) and **B** (the phone
 
 Then run the header-drift query and the count query below; nothing should have changed but
 what you changed. Record the date and the result in `docs/HANDOVER.md` §7.
+
+## E — The shopping list release (new 25 Sep, PR 6b; run on the Friday it merges)
+
+PR 6b changes how every line on the shopping list is named and totalled, and re-keys every tick.
+**Reload the app on every device first**: a tab opened before the merge runs the old code, and
+Pages can serve the old `core.js` for a few minutes (the gold UPDATE bar says so; reload again).
+Use the week you are about to shop for.
+
+27. **Fewer, fuller rows.** Open the Shopping List. Against the list you had before, expect
+    visibly fewer rows, and an ingredient two recipes share on one row, listing both recipes. A
+    count and a weight share a row: `2 + 400 g`. Spoons of one thing add up: 1 tsp and 1 tbsp read
+    `4 tsp`.
+28. **Nothing wrongly joined.** Read every row once. Garlic cloves and cloves (the spice),
+    cinnamon sticks and ground cinnamon, coriander and ground coriander, spring onions and
+    onions, butter and unsalted butter must each still be separate. A wrong join is the one fault
+    that costs a missed ingredient at the shop, so note any, with both recipe names.
+29. **Aisles.** Red pepper, onions and garlic under Produce; chicken stock under Pantry; black
+    pepper under Spices. A few things still land in Other — that is known (45 of 185 across the
+    whole library); note any you'd expect elsewhere.
+30. **Ticks start fresh, and stick.** Last week's ticks are gone (they were keyed the old way and
+    are deleted at start-up). Tick three rows, reload: still ticked. Tick one on the tablet and
+    switch tabs on the other device: it shows there too.
+31. **No questions.** Opening the list, changing the week, and planning a recipe must never show
+    a dialog. If a *Same as…?* line appears, KEEP APART on it, reload: not offered again.
+32. **Settings still lists every word match**, including the six "same" answers the rules now make
+    anyway. They are harmless; delete them there when convenient (M4 of the ingredient review).
 
 ## Deferred to the tablet, after merging
 

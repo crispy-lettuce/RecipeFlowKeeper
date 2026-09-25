@@ -130,9 +130,9 @@ other.
 | raisins | |
 | raspberry jam | seedless raspberry jam, soft-set raspberry jam |
 | long grain rice | long-grain rice (write the **uncooked** amount, D4) |
-| rigatoni | pasta shapes (when rigatoni) |
+| rigatoni | dried rigatoni, pasta shapes (when rigatoni) |
 | spaghetti | dried spaghetti |
-| orzo | |
+| orzo | dried orzo |
 | chopped tomatoes | tinned chopped tomatoes (write `400 g chopped tomatoes (1 tin)`, as the tin is labelled) |
 | tomato purée | tomato paste |
 | sun-dried tomatoes | |

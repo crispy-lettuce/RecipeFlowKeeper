@@ -87,7 +87,15 @@ const data = {
   meal_groups: [{ id: '44444444-4444-4444-8444-444444444444', household_id: HOUSE,
                   date_iso: iso(1), recipe_ids: [R1, R2], name: '' }],
   ingredient_swaps: [],
-  shopping_checked: []
+  /* Two ticks in the name-only keys PR 6b introduced, and two in the old
+     "name|unit" ones it retired: the old ones are purged at start-up. The
+     kept ones name nothing on the list, so the tick checks start clean. */
+  shopping_checked: [
+    { household_id: HOUSE, week_start: iso(-4), item_key: 'basil' },
+    { household_id: HOUSE, week_start: iso(-4), item_key: 'both|basil' },
+    { household_id: HOUSE, week_start: iso(-4), item_key: 'garlic|clove' },
+    { household_id: HOUSE, week_start: iso(-4), item_key: 'both|chopped tomatoes|g' }
+  ]
 };
 
 let html = fs.readFileSync(SRC, 'utf8');

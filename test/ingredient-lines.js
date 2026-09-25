@@ -80,7 +80,7 @@ function checkLine({ line, qty, rest }, vocab){
   const noBrackets = rest.replace(/\([^)]*\)/g, ' ');
   const segments = noBrackets.split(',').map(x => x.trim());
   const first = segments[0].toLowerCase();
-  if(/[¼½¾⅓⅔]/.test(line)) why.push('uses ½-style fraction');
+  if(/[¼½¾⅓⅔⅛⅜⅝⅞]/.test(line)) why.push('uses ½-style fraction');
   if(/^\s*[\d.\/\s]+\s*x\s*\d/i.test(line)) why.push('multiplier ("3 x …")');
   if(/\band\b|&/.test(first) || (segments.length >= 3 && /\band\b/.test(segments[1]))) why.push('two ingredients on one line?');
   if(/\s(or|and\/or)\s/.test(first)) why.push('alternative outside brackets');
