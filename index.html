@@ -61,6 +61,7 @@
     --plum-wash:rgba(91,42,74,.06);
     --sage:#7C9473;
     --gold:#B08A2E;
+    --gold-wash:rgba(176,138,46,.10);
     --danger:#8C3A34;
     /* A foreground that sits ON an accent fill. White works in the light
        theme because every accent is dark; in the dark theme the accents are
@@ -112,6 +113,7 @@
     --plum-wash:rgba(201,143,180,.10);
     --sage:#9DBE92;
     --gold:#D9B463;
+    --gold-wash:rgba(217,180,99,.12);
     --danger:#E08A82;
     --on-accent:#1C1915;
     --card-veil:rgba(35,32,25,.92);
@@ -533,6 +535,23 @@
     margin:14px 0 4px; padding:11px 16px;
     background:var(--plum-wash); border:1px solid var(--plum); border-radius:var(--r);
     font-size:13.5px; color:var(--plum);
+  }
+  /* The offline bar (25 Sep). A banner rather than a toast, at the
+     household's request after the two-device pass: being offline is a state
+     that lasts, not an event, so it stays on screen for as long as it is
+     true and goes when it stops. Gold, not plum — plum is "you are choosing
+     something", gold is the app's word for "take note". In the flow of the
+     page rather than fixed over it, so it never covers a recipe step. */
+  .offline-bar{
+    flex:none; display:flex; align-items:center; gap:10px;
+    padding:9px 30px; background:var(--gold-wash);
+    border-bottom:1px solid var(--gold); color:var(--ink);
+    font-size:13px;
+  }
+  .offline-bar[hidden]{ display:none; }
+  .offline-bar b{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; font-weight:500;
+    letter-spacing:.1em; color:var(--gold);
   }
   .assign-banner button{
     background:none; border:none; color:var(--plum); cursor:pointer;
@@ -1129,7 +1148,7 @@
     body{ overflow:visible !important; }
     .sidebar, .navlink, .btn, .backlink, .toggle-switch,
     .keep-awake-status, #keepAwakeVideo,
-    .filter-head, .assign-banner,
+    .filter-head, .assign-banner, .offline-bar,
     .shop-head-right, #shopWeekSelect,
     #shopHideCheckedBtn, #shopClearBtn,
     .sidebar-peek-btn{ display:none !important; }
@@ -1243,6 +1262,9 @@
   </video>
 
   <main class="stage">
+    <div id="offlineBar" class="offline-bar" role="status" aria-live="polite" hidden>
+      <b>OFFLINE</b><span>Changes you make are kept and sent when you're back.</span>
+    </div>
     <!-- ================= HOME / SEARCH ================= -->
     <section id="view-recipes" class="view active">
       <div class="filter-head">
@@ -2858,10 +2880,9 @@ function queueWrite(label, fn, opts){
      to 30 s behind a lock every request waits on, so an offline save can sit
      silently and then either land or fail. The two-device pass (24 Sep,
      step 25) saw exactly that — no toast, both favourites saved. The
-     browser knows it is offline now, so tell the person now. */
-  if(typeof navigator !== 'undefined' && navigator.onLine === false){
-    showToast("You're offline — this will be sent when you're back.");
-  }
+     browser knows it is offline now, so the bar is shown now, in case the
+     'offline' event was missed (it does not fire for a page opened offline). */
+  if(isOffline()) setOfflineBar(true);
   return true;
 }
 
@@ -2874,10 +2895,19 @@ function flushFailedWrites(){
   writeQueue = writeQueue.then(async ()=>{ for(const r of retries) await runWrite(r); });
   return true;
 }
-window.addEventListener('offline', ()=> showToast("You're offline — changes are kept and sent when you're back."));
+function isOffline(){ return typeof navigator !== 'undefined' && navigator.onLine === false; }
+function setOfflineBar(on){
+  const bar = document.getElementById('offlineBar');
+  if(bar) bar.hidden = !on;
+}
+window.addEventListener('offline', ()=> setOfflineBar(true));
 window.addEventListener('online', ()=>{
+  setOfflineBar(false);
+  /* A toast here, not the bar: coming back is a moment, not a state. Only
+     when something is actually being sent, so it never says so for nothing. */
   if(flushFailedWrites()) showToast('Back online — sending your changes.');
 });
+setOfflineBar(isOffline());
 
 /* Replace-the-whole-list push: whatever list the caller hands over becomes
    the truth. Rows present are upserted; rows the caller dropped are deleted.
