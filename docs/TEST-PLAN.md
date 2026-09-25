@@ -12,7 +12,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 228 automated checks pass (102 when this was
+story that used to open this paragraph is history. 233 automated checks pass (102 when this was
 written). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -187,10 +187,15 @@ this pass exists to rule out. Call them **A** (the desktop) and **B** (the phone
 24. **Ticks from two devices add up.** Both on the Shopping List for the same week: tick one item
     on A, a different item on B, then switch tabs on each. Both ticks should show on both. Press
     UNTICK ALL on A: both go, on both.
-25. **A failed save is sent again.** On B, turn the network off (aeroplane mode, or devtools →
-    Network → Offline), favourite a recipe: expect the "Couldn't save" toast. Turn the network
-    on, favourite a *different* recipe. Reload B: both favourites must show. The first one was
-    kept and re-sent ahead of the second.
+25. **A save made offline is kept and sent.** On B, turn the network off (aeroplane mode, or
+    devtools → Network → Offline), favourite a recipe: expect a toast saying you are offline.
+    Turn the network on: expect "Back online — sending your changes" if the write had failed by
+    then (it may not have — see below). Reload B: the favourite must show.
+    *Do not expect a "Couldn't save" toast.* That one appears only when a write actually fails,
+    and an offline write can wait up to about 30 seconds first: supabase-js retries its session
+    refresh behind a lock that every request waits on. In the 24 Sep run the network was back
+    inside that window, both favourites landed, and no failure was ever reported — which is why
+    the app now announces being offline at the moment of saving instead (PR #16).
 26. **Import still replaces everything.** Optional, and destructive by design — do it only with a
     fresh export in hand: import that export on A, then reload B. Counts unchanged everywhere.
 

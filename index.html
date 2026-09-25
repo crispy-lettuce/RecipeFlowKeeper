@@ -2853,8 +2853,31 @@ function queueWrite(label, fn, opts){
     for(const r of retries) await runWrite(r);
     await runWrite(w);
   });
+  /* Say so at the moment of saving, not a minute later. The write itself
+     may not fail for a while: supabase-js retries a session refresh for up
+     to 30 s behind a lock every request waits on, so an offline save can sit
+     silently and then either land or fail. The two-device pass (24 Sep,
+     step 25) saw exactly that — no toast, both favourites saved. The
+     browser knows it is offline now, so tell the person now. */
+  if(typeof navigator !== 'undefined' && navigator.onLine === false){
+    showToast("You're offline — this will be sent when you're back.");
+  }
   return true;
 }
+
+/* The browser's own word for it. Going offline is announced once; coming
+   back sends anything that failed in the meantime without waiting for the
+   next tap, which is also what lets the refresh on tab return go ahead. */
+function flushFailedWrites(){
+  if(!failedWrites.length) return false;
+  const retries = failedWrites.splice(0);
+  writeQueue = writeQueue.then(async ()=>{ for(const r of retries) await runWrite(r); });
+  return true;
+}
+window.addEventListener('offline', ()=> showToast("You're offline — changes are kept and sent when you're back."));
+window.addEventListener('online', ()=>{
+  if(flushFailedWrites()) showToast('Back online — sending your changes.');
+});
 
 /* Replace-the-whole-list push: whatever list the caller hands over becomes
    the truth. Rows present are upserted; rows the caller dropped are deleted.
