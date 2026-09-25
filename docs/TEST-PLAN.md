@@ -12,7 +12,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 246 automated checks pass, plus 52 in Node (102 when this was
+story that used to open this paragraph is history. 247 automated checks pass, plus 59 in Node (102 when this was
 written). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -215,13 +215,14 @@ Use the week you are about to shop for.
 27. **Fewer, fuller rows.** Open the Shopping List. Against the list you had before, expect
     visibly fewer rows, and an ingredient two recipes share on one row, listing both recipes. A
     count and a weight share a row: `2 + 400 g`. Spoons of one thing add up: 1 tsp and 1 tbsp read
-    `4 tsp`.
+    `1 tbsp + 1 tsp` (`4 tsp` until PR #20). A line with no amount says what it is for:
+    `125 g + extra to serve (2 recipes)`.
 28. **Nothing wrongly joined.** Read every row once. Garlic cloves and cloves (the spice),
     cinnamon sticks and ground cinnamon, coriander and ground coriander, spring onions and
     onions, butter and unsalted butter must each still be separate. A wrong join is the one fault
     that costs a missed ingredient at the shop, so note any, with both recipe names.
 29. **Aisles.** Red pepper, onions and garlic under Produce; chicken stock under Pantry; black
-    pepper under Spices. A few things still land in Other — that is known (45 of 185 across the
+    pepper under Spices. A few things still land in Other — that is known (36 of 185 across the
     whole library); note any you'd expect elsewhere.
 30. **Ticks start fresh, and stick.** Last week's ticks are gone (they were keyed the old way and
     are deleted at start-up). Tick three rows, reload: still ticked. Tick one on the tablet and

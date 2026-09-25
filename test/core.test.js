@@ -157,7 +157,9 @@ check('13: pepper by the spoon, the pinch or to taste is black pepper; counted, 
       pepperRow('red pepper').category === 'Produce' && pepperRow('pepper').qtyText === '2' && pepperRow('pepper').category === 'Produce' &&
       pepperRow('yellow pepper').category === 'Produce',
       JSON.stringify(peppers.map(i => [i.key, i.category, i.qtyText])));
-check('14: 1 tsp + 1 tbsp of one thing is 4 tsp', only('1 tsp cumin', '1 tbsp cumin').qtyText === '4 tsp', only('1 tsp cumin', '1 tbsp cumin').qtyText);
+/* The review wrote this one as "4 tsp". The total is the check; since 25 Sep
+   a mix of the two spoons is shown as both, "1 tbsp + 1 tsp" (see below). */
+check('14: 1 tsp + 1 tbsp of one thing totals 20 ml, shown as 1 tbsp + 1 tsp', only('1 tsp cumin', '1 tbsp cumin').qtyText === '1 tbsp + 1 tsp', only('1 tsp cumin', '1 tbsp cumin').qtyText);
 check('    and with 10 ml as well, 30 ml', only('1 tsp cumin', '1 tbsp cumin', '10 ml cumin').qtyText === '30 ml', only('1 tsp cumin', '1 tbsp cumin', '10 ml cumin').qtyText);
 check('15: a count and a weight are one row, "2 + 400 g"', only('2 chicken breasts', '400 g chicken breast').qtyText === '2 + 400 g', only('2 chicken breasts', '400 g chicken breast').qtyText);
 /* 16: a tick is stored under the key, so a key that ignores the unit keeps
@@ -192,6 +194,37 @@ check('24: validate-recipes warns on a two-ingredient line and on "3 x"',
       shape('1 onion and 1 carrot') + ' | ' + shape('3 x 400 g tins chopped tomatoes'));
 check('eighths read, total and print', only('⅛ tsp salt', '1/8 tsp salt').qtyText === '1/4 tsp' && core.formatAmount(0.125) === '1/8',
       only('⅛ tsp salt', '1/8 tsp salt').qtyText + ', ' + core.formatAmount(0.125));
+/* ---- The follow-up to 6b, 25 Sep: what the first live list showed ---- */
+const aisleOf = raw => only(raw).category;
+const aisleCases = [['400 g cooked egg noodles', 'Pantry'], ['3 tbsp hot pepper sauce', 'Pantry'], ['200 ml full-fat coconut milk', 'Pantry'],
+  ['300 g dried linguine', 'Pantry'], ['400 ml passata', 'Pantry'], ['500 g gnocchi', 'Pantry'], ['4 cloves', 'Spices & Seasoning'],
+  ['1 tbsp curry powder', 'Spices & Seasoning'], ['1 1/2 tbsp harissa paste', 'Spices & Seasoning'], ['1 tbsp crème fraîche', 'Dairy & Eggs'],
+  ['1 jalapeño', 'Produce'], ['1 red or green chilli', 'Produce'],
+  /* and the ones those words must not pull away */
+  ['2 eggs', 'Dairy & Eggs'], ['1/2 tsp black pepper', 'Spices & Seasoning'], ['200 ml milk', 'Dairy & Eggs'], ['1 tsp chilli flakes', 'Spices & Seasoning'],
+  ['3 garlic cloves', 'Produce'], ['1 tsp chilli powder', 'Spices & Seasoning']];
+const misfiled = aisleCases.filter(([raw, aisle]) => aisleOf(raw) !== aisle);
+check('the aisles the first live list had wrong are right, and nothing they touch moved', misfiled.length === 0,
+      misfiled.map(([raw, aisle]) => `${raw}: ${aisleOf(raw)}, not ${aisle}`).join('; '));
+check('a mix of spoons reads as both, largest first', only('3 tbsp vegetable oil', '2 tsp vegetable oil').qtyText === '3 tbsp + 2 tsp',
+      only('3 tbsp vegetable oil', '2 tsp vegetable oil').qtyText);
+check('    but teaspoons alone stay teaspoons, and a mix under a tablespoon too',
+      only('4 tsp cumin', '2 tsp cumin').qtyText === '6 tsp' && only('1/2 tbsp cumin', '1 tsp cumin').qtyText === '2 1/2 tsp',
+      only('4 tsp cumin', '2 tsp cumin').qtyText + ', ' + only('1/2 tbsp cumin', '1 tsp cumin').qtyText);
+const grouped = (...ls) => core.aggregateShoppingLines(ls.map(([recipeTitle, group, raw]) => ({ recipeTitle, group, raw })), null);
+const parm = grouped(['A', 'cheese', '75 g grated parmesan'], ['A', 'garnish', 'grated parmesan'], ['B', 'sauce', '50 g grated parmesan'], ['C', 'garnish', 'grated parmesan']);
+check('lines with no amount in a garnish group read "extra to serve", counting recipes', parm.length === 1 && parm[0].qtyText === '125 g + extra to serve (2 recipes)',
+      parm.map(i => i.qtyText).join(' // '));
+const one = grouped(['A', 'garnish', 'grated parmesan'], ['A', 'cheese', '75 g grated parmesan']);
+check('    with no count for one recipe', one[0].qtyText === '75 g + extra to serve', one[0].qtyText);
+const said = grouped(['A', 'base', 'salt, to taste'], ['B', 'base', 'salt, to taste'], ['B', 'base', '1 tsp salt'], ['C', 'base', '2 eggs'], ['C', 'top', 'beaten egg, to glaze'],
+  ['D', 'base', '100 ml maple syrup'], ['D', 'brushing', 'maple syrup, extra for brushing'], ['E', 'garnish', 'parsley, chopped']);
+const qtyOf = key => (said.find(i => i.key === key) || {}).qtyText;
+check('    and a line\'s own note wins: to taste, to glaze, or plain extra; alone, no "extra"',
+      qtyOf('salt') === '1 tsp + to taste (2 recipes)' && qtyOf('egg') === '2 + extra to glaze' && qtyOf('maple syrup') === '100 ml + extra' && qtyOf('parsley') === 'to serve',
+      ['salt', 'egg', 'maple syrup', 'parsley'].map(k => k + ': ' + qtyOf(k)).join('; '));
+check('    and never "N more", which read as N more of the same amount', !/\bmore\b/.test(said.concat(parm).map(i => i.qtyText).join(' ')));
+
 check('stock files under Pantry before chicken can claim it', only('500 ml chicken stock').category === 'Pantry', only('500 ml chicken stock').category);
 
 const failed = checks.filter(c => !c.pass).length;

@@ -1621,7 +1621,7 @@
   </div>
 </div>
 
-<script src="core.js?v=2026-10-02.1"></script>
+<script src="core.js?v=2026-09-26.1"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -1629,7 +1629,7 @@
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-02.1';
+const EXPECTED_CORE_VERSION = '2026-09-26.1';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -2745,7 +2745,7 @@ function rebuildAliasMaps(){
     if(a.kind === 'source') maps.source.set(a.alias, a.canonical);
     else if(a.kind === 'source_distinct') maps.distinct.add(a.kind + '|' + a.alias);
     /* Ingredient matches are stored in the words the shopping list used
-       when they were made, and since 2 Oct 2026 (PR 6b) it names things
+       when they were made, and since 25 Sep 2026 (PR 6b) it names things
        differently. Each side goes back through today's rules, so a match
        made for "onion and" still means the onion — and one the rules now
        make anyway ("large onion" = "onion") simply falls away. Nothing
@@ -4995,7 +4995,7 @@ function findSwapMatchesForRecipe(groups, swaps){
 }
 
 /* ------------------------------- Aggregation -------------------------------
-   Since 2 Oct 2026 (PR 6b) one row per thing to buy, by the rules and the
+   Since 25 Sep 2026 (PR 6b) one row per thing to buy, by the rules and the
    dictionary in core.js. Until then totals only combined lines with an
    identical normalised name AND unit, which put 278 rows on a list of the
    whole library for 168 things to buy
@@ -5018,7 +5018,7 @@ function buildShoppingList(weekDays){
       const multiplier = (base && servings && servings !== base) ? servings / base : 1;
       const syntax = multiplier !== 1 ? scaleRecipeSyntax(recipe.syntax, multiplier) : recipe.syntax;
       parseRecipe(syntax).groups.forEach(g=>{
-        g.items.forEach(item=> lineItems.push({ recipeTitle: recipe.title, raw: item }));
+        g.items.forEach(item=> lineItems.push({ recipeTitle: recipe.title, raw: item, group: g.handle }));
       });
     });
   });
@@ -6833,7 +6833,7 @@ function isNetworkFailure(err){
    later one is a refresh — see onSignedIn. */
 let appStarted = false;
 
-/* Ticks stored before 2 Oct 2026 (PR 6b) are keyed "name|unit"; since then a
+/* Ticks stored before 25 Sep 2026 (PR 6b) are keyed "name|unit"; since then a
    tick is keyed by the ingredient alone, so a recipe that changes tbsp to g
    keeps its tick. The old ones can never match a row again, and since PR 5
    no whole-table save will sweep them away, so they are deleted here, by

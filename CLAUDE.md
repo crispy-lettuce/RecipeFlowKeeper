@@ -21,9 +21,9 @@ node test/core.test.js
 node test/build.js && node test/smoke.js
 ```
 
-`core.test.js` is 52 checks in Node, in under a second: the pure functions, the dictionary, the
+`core.test.js` is 59 checks in Node, in under a second: the pure functions, the dictionary, the
 shopping list's naming rules, and the rules that keep `core.js` and `index.html` apart. The smoke
-suite is 246 checks. **Run both,
+suite is 247 checks. **Run both,
 always** — `smoke.js` loads what `build.js` wrote, so skipping the build
 tests your previous edit and reports a pass or a failure that belongs to code you have changed.
 

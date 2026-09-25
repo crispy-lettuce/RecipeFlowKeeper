@@ -731,7 +731,7 @@ const check = (name, pass, detail) => {
   });
   check('removing an entry keeps the others in lockstep', lockstep === 'ok', lockstep);
 
-  /* SL2, since PR 6b (2 Oct): the names come from the rules and dictionary
+  /* SL2, since PR 6b (25 Sep): the names come from the rules and dictionary
      in core.js (tested in Node, test/core.test.js); what is checked here is
      the page around them. No dialogs any more — a likely pair is offered in
      place, under the row, and answered when convenient. */
@@ -857,6 +857,21 @@ const check = (name, pass, detail) => {
     loadAliases().filter(a => /kale|cavolo/.test(a.alias)).forEach(a => removeAlias(a.id));
   }, planned);
   await page.waitForTimeout(300);
+
+  /* The page hands each line's group to the list, which is how an unmeasured
+     line in a "garnish" group reads "extra to serve" rather than "N more". */
+  const served = await page.evaluate(() => {
+    const r = { id: uid(), title: 'Garnish Test', source: 'Blue Door Bakery', servings: 2, tags: { course: '', keywords: [] }, history: [],
+                syntax: 'TITLE: Garnish Test\nSERVINGS: 2\n\nGROUP cheese:\n40 g grated parmesan\n\nGROUP garnish:\ngrated parmesan\n\nSTAGE:\nMERGE cheese, garnish -> done: Scatter over [instant]' };
+    loadRecipes().push(r);
+    addPlanRecipe(isoLocal(new Date()), r.id);
+    const list = buildShoppingList(groupDaysByWeek(dayList())[0]);
+    let text = null;
+    list.categories.forEach(c => c.items.forEach(i => { if(i.key === 'parmesan') text = i.qtyText; }));
+    deleteRecipe(r.id);
+    return text;
+  });
+  check('an unmeasured garnish line reads "extra to serve" on the list', served === '40 g + extra to serve', served);
 
   // The prompt must never fire from the planner.
   let plannerDialogs = 0;

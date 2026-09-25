@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-02.1';
+const KITCHEN_CORE_VERSION = '2026-09-26.1';
 
 
 /* ======================= quantity split ======================= */
@@ -575,7 +575,7 @@ function computeTimeline(groups, stages){
 
 /* ------------------------------- Amount parsing ------------------------------- */
 function parseFraction(s){
-  /* Eighths since 2 Oct 2026 (PR 6b): a source's "⅛ tsp" was no quantity at all. */
+  /* Eighths since 25 Sep 2026 (PR 6b): a source's "⅛ tsp" was no quantity at all. */
   const fracMap = {'¼':0.25,'½':0.5,'¾':0.75,'⅓':1/3,'⅔':2/3,'⅛':0.125,'⅜':0.375,'⅝':0.625,'⅞':0.875};
   s = String(s).trim();
   if(fracMap[s] !== undefined) return fracMap[s];
@@ -705,14 +705,27 @@ function stripPrepWordsForCategorizing(name){
    both belong under Produce either way. */
 const AGGREGATION_PREP_WORDS = PREP_WORDS.filter(w=> w !== 'ground');
 const SHOPPING_CATEGORIES = [
-  { name:'Spices & Seasoning', keywords:['salt','pepper','oregano','cumin','paprika','cinnamon','chilli flakes','chili flakes','cayenne','turmeric','nutmeg','dried thyme','dried rosemary','dried basil','bay leaf','seasoning','garam masala','chilli powder','chili powder','spice'] },
-  { name:'Dairy & Eggs', keywords:['cheese','parmesan','feta','cheddar','mozzarella','butter','milk','cream','yogurt','yoghurt','egg'] },
-  { name:'Pantry', keywords:['oil','flour','cornflour','cornstarch','sugar','honey','vinegar','sauce','stock','rice','pasta','noodle','bread','tin of','can of'] },
+  { name:'Spices & Seasoning', keywords:['salt','pepper','oregano','cumin','paprika','cinnamon','chilli flakes','chili flakes','cayenne','turmeric','nutmeg','dried thyme','dried rosemary','dried basil','bay leaf','seasoning','garam masala','chilli powder','chili powder','spice','clove','curry powder','harissa'] },
+  { name:'Dairy & Eggs', keywords:['cheese','parmesan','feta','cheddar','mozzarella','butter','milk','cream','yogurt','yoghurt','egg','creme fraiche'] },
+  { name:'Pantry', keywords:['oil','flour','cornflour','cornstarch','sugar','honey','vinegar','sauce','stock','rice','pasta','noodle','bread','tin of','can of',
+    'passata','gnocchi','linguine','spaghetti','penne','tagliatelle','fusilli','orzo','rigatoni','lasagne'] },
   { name:'Meat & Fish', keywords:['chicken','beef','pork','lamb','turkey','bacon','sausage','mince','fish','salmon','cod','tuna','prawn','shrimp'] },
-  { name:'Produce', keywords:['onion','garlic','potato','tomato','lemon','lime','parsley','coriander','cilantro','mint','basil','cucumber','carrot','celery','broccoli','spinach','lettuce','ginger','courgette','aubergine','mushroom'] }
+  { name:'Produce', keywords:['onion','garlic','potato','tomato','lemon','lime','parsley','coriander','cilantro','mint','basil','cucumber','carrot','celery','broccoli','spinach','lettuce','ginger','courgette','aubergine','mushroom','jalapeno','chilli','chili'] }
+];
+/* Products whose name holds another aisle's keyword, asked before the
+   keyword lists because those stop at the first aisle that matches: "egg"
+   put egg noodles with the eggs, "pepper" put hot pepper sauce with the
+   spices, "milk" put coconut milk in the fridge. Seen on the live list,
+   25 Sep. The names arrive with their accents already folded by
+   shoppingLine, so "crème fraîche" is matched as "creme fraiche". */
+const AISLE_FIRST = [
+  [/\begg noodles?\b/, 'Pantry'],
+  [/\b(pepper|hot|chilli|chili) sauces?\b/, 'Pantry'],
+  [/\bcoconut (milk|cream)\b/, 'Pantry']
 ];
 function categorizeIngredient(rawName){
   const stripped = stripPrepWordsForCategorizing(rawName);
+  for(const [re, aisle] of AISLE_FIRST){ if(re.test(stripped.toLowerCase())) return aisle; }
   for(const cat of SHOPPING_CATEGORIES){
     if(cat.keywords.some(k=> new RegExp('\\b'+k+'(?:e?s)?\\b','i').test(stripped))) return cat.name;
   }
@@ -735,9 +748,10 @@ function categorizeIngredient(rawName){
    they came from, so the generated file is byte-identical to the one the
    household decided on 23 Sep (D7, D8, D9).
 
-   NOT YET USED BY THE SHOPPING LIST. PR 6b is the release that totals by it.
-   Until then test/validate-recipes.js and test/ingredient-survey.js read it,
-   through the generated file, to report. */
+   The shopping list totals by it since PR 6b (25 Sep 2026): shoppingLine
+   below. test/validate-recipes.js and test/ingredient-survey.js read it too,
+   through the generated file, to report. *(Until that release this comment
+   said the list did not use it yet.)* */
 const INGREDIENT_AISLES = ["Produce", "Meat & Fish", "Dairy & Eggs", "Pantry", "Spices & Seasoning"];
 const INGREDIENT_DICTIONARY = [
   { aisle: "Produce", name: "garlic", also: "garlic clove(s)", countAs: "`3 garlic cloves`" },
@@ -834,7 +848,7 @@ const INGREDIENT_DICTIONARY = [
 
 /* ======================= the shopping list (PR 6b) ======================= */
 
-/* How an ingredient line becomes a row on the shopping list, since 2 Oct 2026.
+/* How an ingredient line becomes a row on the shopping list, since 25 Sep 2026.
    docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md is the evidence for every rule
    here; its §3 table is what each was measured against. In short: until this
    release two lines totalled only when their text reduced to the same
@@ -1002,7 +1016,27 @@ function aisleFor(key, display, row){
   const byDisplay = categorizeIngredient(display);
   return byDisplay !== 'Other' ? byDisplay : categorizeIngredient(key);
 }
+/* Tablespoons and teaspoons together read as both, largest first: "3 tbsp
+   + 2 tsp", where one number of teaspoons ("11 tsp") meant counting them out
+   (asked for 25 Sep). Under one tablespoon it stays in teaspoons. */
+function spoonsMixed(ml){
+  const tbsp = Math.floor(ml / 15 + 1e-9);
+  const rest = ml - tbsp * 15;
+  if(!tbsp) return `${formatAmount(ml / 5)} tsp`;
+  return rest < 1e-6 ? `${tbsp} tbsp` : `${tbsp} tbsp + ${formatAmount(rest / 5)} tsp`;
+}
 const plural = (unit, n) => (n === 1 || !unit || unit === 'cm') ? unit : (/(ch|sh)$/.test(unit) ? unit + 'es' : unit + 's');
+/* What a line with no amount is for, from its own note ("to taste",
+   "extra to serve") or, failing that, from the group it sits in: a recipe's
+   "garnish" group holds the parmesan and parsley scattered on at the end,
+   which is 12 of the library's 20 such lines. */
+function unmeasuredPurpose(tail, group){
+  if(/\btaste\b/.test(tail)) return 'to taste';
+  if(/\b(serve|serving|garnish|finish|top)\b/.test(tail)) return 'to serve';
+  if(/\bglaze\b/.test(tail)) return 'to glaze';
+  if(!tail && /(serv|garnish|topping|finish|decorat)/i.test(group || '')) return 'to serve';
+  return 'extra';
+}
 function formatShoppingParts(item){
   const out = [];
   const order = ['', 'g', 'ml'].concat(Object.keys(item.parts).filter(u => !['', 'g', 'ml'].includes(u)));
@@ -1010,27 +1044,39 @@ function formatShoppingParts(item){
     const p = item.parts[u];
     if(!p) return;
     if(u === 'ml' && p.onlySpoons){
-      out.push(p.allTbsp ? `${formatAmount(p.amount / 15)} tbsp` : `${formatAmount(p.amount / 5)} tsp`);
+      out.push(p.allTbsp ? `${formatAmount(p.amount / 15)} tbsp` : p.anyTbsp ? spoonsMixed(p.amount) : `${formatAmount(p.amount / 5)} tsp`);
     } else if(u === 'g' || u === 'ml'){
       out.push(formatShoppingQty(p.amount, u));
     } else {
       out.push(`${formatAmount(p.amount)}${u ? ' ' + plural(u, p.amount) : ''}`);
     }
   });
-  if(item.tails.size) out.push(Array.from(item.tails).join(', '));
-  else if(item.unqtyCount && out.length) out.push(`${item.unqtyCount} more`);
-  else if(item.unqtyCount > 1) out.push(`×${item.unqtyCount}`);
+  /* Lines with no amount say what they are for, and in how many recipes:
+     "125 g + extra to serve (2 recipes)". Until 25 Sep this read "125 g + 2
+     more", which looked like two more of the same 125 g. Measured on the
+     whole library that day: 19 of the 20 such lines were to serve, to
+     garnish or to taste; the twentieth was an amount written mid-line. */
+  const n = recipes => recipes.size > 1 ? ` (${recipes.size} recipes)` : '';
+  const measured = out.length > 0;
+  ['to serve', 'to glaze', 'to taste', 'extra'].forEach(purpose => {
+    const recipes = item.unmeasured && item.unmeasured.get(purpose);
+    if(!recipes) return;
+    if(purpose === 'extra') { if(measured) out.push('extra' + n(recipes)); }
+    else out.push((measured && purpose !== 'to taste' ? 'extra ' + purpose : purpose) + n(recipes));
+  });
   return out.join(' + ');
 }
 
-/* The list itself, from `lines` = [{ recipeTitle, raw }]. `alias(key)` is the
+/* The list itself, from `lines` = [{ recipeTitle, raw, group }], `group`
+   being the recipe group's handle (optional; it says what an unmeasured
+   line is for). `alias(key)` is the
    household's word matches (Settings → Word Matches), applied after the rules
    and the dictionary, so a match is an override, never the mechanism.
    Pure: it reads only its arguments. buildShoppingList in index.html gathers
    the lines from the plan and calls this. */
 function aggregateShoppingLines(lines, alias){
   const byKey = new Map();
-  (lines || []).forEach(({ recipeTitle, raw }) => {
+  (lines || []).forEach(({ recipeTitle, raw, group }) => {
     const { qty, rest } = splitQty(raw);
     const line = shoppingLine(rest, parseIngredientAmount(qty));
     let key = line.key;
@@ -1042,7 +1088,7 @@ function aggregateShoppingLines(lines, alias){
     let shown = line.display;
     if(aliased && aliased !== key){ key = aliased; row = dictionaryRow(key); shown = key; }
     if(!byKey.has(key)){
-      byKey.set(key, { key, row, displays: new Map(), parts: {}, tails: new Set(), unqtyCount: 0, count: 0, recipes: new Set() });
+      byKey.set(key, { key, row, displays: new Map(), parts: {}, unmeasured: new Map(), unqtyCount: 0, count: 0, recipes: new Set() });
     }
     const it = byKey.get(key);
     it.count += 1;
@@ -1050,14 +1096,16 @@ function aggregateShoppingLines(lines, alias){
     it.displays.set(shown, (it.displays.get(shown) || 0) + 1);
     if(line.amount === null){
       it.unqtyCount += 1;
-      if(line.tail) it.tails.add(line.tail);
+      const purpose = unmeasuredPurpose(line.tail, group);
+      (it.unmeasured.get(purpose) || it.unmeasured.set(purpose, new Set()).get(purpose)).add(recipeTitle);
       return;
     }
-    const p = it.parts[line.unit] || (it.parts[line.unit] = { amount: 0, onlySpoons: true, allTbsp: true });
+    const p = it.parts[line.unit] || (it.parts[line.unit] = { amount: 0, onlySpoons: true, allTbsp: true, anyTbsp: false });
     p.amount += line.amount;
     if(line.unit === 'ml'){
       if(!line.spoon) p.onlySpoons = false;
       if(line.spoon !== 'tbsp') p.allTbsp = false;
+      if(line.spoon === 'tbsp') p.anyTbsp = true;
     }
   });
   return Array.from(byKey.values()).map(it => {
@@ -1067,7 +1115,7 @@ function aggregateShoppingLines(lines, alias){
       .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length || a[0].localeCompare(b[0]))[0][0];
     const item = {
       key: it.key, name: display.charAt(0).toUpperCase() + display.slice(1),
-      category: aisleFor(it.key, display, it.row), parts: it.parts, tails: it.tails,
+      category: aisleFor(it.key, display, it.row), parts: it.parts, unmeasured: it.unmeasured,
       unqtyCount: it.unqtyCount, count: it.count, recipes: it.recipes
     };
     item.qtyText = formatShoppingParts(item);
