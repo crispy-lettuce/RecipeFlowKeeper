@@ -57,6 +57,8 @@ const check = (name, pass, detail) => {
   await page.waitForTimeout(1200);
 
   check('signed in past the login gate', !(await page.isVisible('#loginGate')));
+  /* core.js and the page agree on their version, so no reload notice (PR 6a). */
+  check('the page and core.js match, so no update notice shows', !(await page.isVisible('#coreBar')));
   check('recipe library rendered', (await page.locator('.rcard').count()) > 0,
         (await page.locator('.rcard').count()) + ' cards');
 

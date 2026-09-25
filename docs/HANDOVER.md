@@ -711,7 +711,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **236 checks** across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **237 checks** across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday.
@@ -747,7 +747,20 @@ moment of saving and re-send failed writes the moment the browser is back online
 cover it in the stub, none against the live app. The household re-ran step 25 on 25 Sep and saw
 the offline message, then asked for a bar rather than a toast, since being offline lasts: PR #17
 shows a gold OFFLINE bar across the top of the page for as long as the browser is offline, in both
-themes, and keeps the "Back online — sending your changes" toast for the moment it ends.
+themes, and keeps the "Back online — sending your changes" toast for the moment it ends. **Seen
+working on the tablet by the household on 25 Sep**, after the merge.
+
+**PR 6a, the core extraction (25 Sep 2026, PR #18).** The pure functions moved verbatim from
+`index.html` to `core.js` (678 lines in five blocks), and the ingredient dictionary's master copy
+with them; `converter/ingredient-names.md` is generated from it. Verified by: the 237-check smoke
+suite green with `core.js` inlined by `build.js` from the real file — the move changed nothing it
+can see; the generator's first run reproducing the hand-written file byte for byte before its
+prose was touched; 29 new Node checks in `test/core.test.js`, including four guards each run
+against the mutation it exists for (a second copy of a function left in `index.html`, a version
+stamp bumped on one side only, a dictionary row edited without regenerating, `core.js` reaching
+for `document`), each failing by name; and `validate-recipes.js` and `ingredient-survey.js` both
+run on made-up batches. **Not run against the live site**: the first load after the merge is the
+test that Pages serves `core.js` and the version check stays quiet.
 
 ```sh
 npm install playwright

@@ -92,9 +92,16 @@ Recipes are written by pasting a source into a conversion prompt; see
 
 ## 3. The app's shape
 
-One file, `index.html` — about 7,270 lines, no build step, no framework, no dependencies
-beyond two CDN scripts (supabase-js and html2canvas). Screens are `<section class="view">`
-elements toggled by `showView(name)`.
+Two files, no build step, no framework, no dependencies beyond two CDN scripts (supabase-js and
+html2canvas). **`index.html`** (about 6,960 lines) is the page: markup, styles, the data layer and
+every screen. **`core.js`** (about 850 lines, since 25 Sep 2026) holds the pure functions —
+`parseRecipe`, `computeColumns`, `splitQty`, `scaleRecipeSyntax`, the quantity and naming helpers,
+the header-line writers — and the ingredient dictionary. It touches nothing on the page, so it
+loads in Node for testing as well as in the browser. The page loads it first and checks a shared
+version stamp, asking for a reload if the two files ever arrive at different versions. *(Until
+25 Sep this paragraph said "one file"; the split is PR 6a, made because the shopping-list release
+rewrites exactly these functions and their tests should not need a browser.)* Screens are
+`<section class="view">` elements toggled by `showView(name)`.
 
 **The data pattern is deliberate and worth understanding before changing anything.** The whole
 library loads into memory once at sign-in (`hydrate()`), and everything afterwards is instant.
@@ -218,9 +225,10 @@ a URL is already ours. See `docs/IMAGES.md` §5.
 (`test/stub.js`) and walks every screen.
 
 ```sh
+node test/core.test.js   # 29 checks on core.js in Node, under a second, no browser
 npm install playwright
-node test/build.js    # bake index.html against the stub
-node test/smoke.js    # 236 checks; exits non-zero on failure
+node test/build.js       # bake index.html (with core.js inlined) against the stub
+node test/smoke.js       # 237 checks; exits non-zero on failure
 ```
 
 **`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,
@@ -237,7 +245,9 @@ Keep Awake can only be tested on a real tablet.
 
 | Path | What it is |
 | --- | --- |
-| `index.html` | **The app.** Everything lives here. |
+| `index.html` | **The app**: markup, styles, data layer, every screen. |
+| `core.js` | The pure functions and the ingredient dictionary's master copy, loaded by `index.html` (since 25 Sep 2026). |
+| `tools/generate-ingredient-names.js` | Writes `converter/ingredient-names.md` from the dictionary in `core.js`; `--check` fails if they differ. |
 | `supabase/functions/` | Edge Functions. `rehost-images` is the image re-hosting sweep (R7); `find-recipe-image` reports a page's candidate hero images and their real sizes, read-only. Both need a signed-in caller. See `docs/IMAGES.md`. |
 | `index-old.html` | The pre-Supabase version, kept for reference. **Not used, not served, not maintained** — don't edit it thinking it's live. |
 | `converter/` | Conversion instructions and the standing test set for writing recipes. |

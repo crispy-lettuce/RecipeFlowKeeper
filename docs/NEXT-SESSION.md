@@ -32,8 +32,27 @@ verified and how.
 | 3 | **Backups** | In `PrivateBackup`: dump the `private` schema too, so the policies' helper function travels with them; a weekly photo backup; a restore runbook written from a rehearsal, including the fresh-project steps | F2 F3 | **Done**, `PrivateBackup` PR #1, 23 Sep. The photo workflow's first run is the one after the merge |
 | 4 | **Faithful save** | Reconcile all eight header lines on save, not just `TITLE:` and `IMAGE:`; re-save the drifted recipes (three, not two — `TAGS:` drifted too); add the three missing checks (`pushList`'s delete, the `TITLE:` line, the non-adjacent-merge error); pin the harness to one date | F5 F7 | **Done**, PR #14, 24 Sep. The three re-saves happen in the app after the merge |
 | 5 | **Row-scoped writes** | One row per save and an explicit delete, for recipes, plan days, groups, shortlist, aliases, swaps and ticks; whole-table replace kept for import only; deleting a recipe also cleans plan days and groups. Then the two-device pass from `docs/TEST-PLAN.md` | F1 F11 | **Done**, PR #15, 24 Sep. The two-device pass (`docs/TEST-PLAN.md` §D) is the household's to run after the merge |
-| 6 | **Shopping list release** | Steps 4–8 of the ingredient review as written, plus: the ⅛ fraction; the source-fidelity check in `validate-recipes.js` *before* the 24-line rewrite (D12 waits on it); the pure functions extracted to one `core` script so their tests run in Node; the dictionary's master copy in the app with `ingredient-names.md` generated from it. Ship on a Friday morning, before shopping | §9 of the architecture review; the ingredient review's status rows 4–8 | Not started |
+| 6 | **Shopping list release** | Steps 4–8 of the ingredient review as written, plus: the ⅛ fraction; the source-fidelity check in `validate-recipes.js` *before* the 24-line rewrite (D12 waits on it); the pure functions extracted to one `core` script so their tests run in Node; the dictionary's master copy in the app with `ingredient-names.md` generated from it. Ship on a Friday morning, before shopping. **Split on 25 Sep into three**, after reviewing the plan against PRs 3–5, 16 and 17 (below) | §9 of the architecture review; the ingredient review's status rows 4–8 | See 6a–6c |
+| 6a | **Core extraction** | The pure functions moved verbatim to `core.js`, loaded before the page script with a shared version stamp; the dictionary's master copy in `core.js`, `converter/ingredient-names.md` generated from it; `test/core.test.js`, 29 checks in Node, run first in CI. No behaviour change | Answer 6 of the architecture review; check 22 of the ingredient review | **Done**, PR #18, 25 Sep |
+| 6b | **The release** | Steps 4–6 of the ingredient review: naming rules, the dictionary with aisles, one row per ingredient, ticks keyed by name (keeping the both-weeks prefix), spoons totalled as ml, the ⅛ fraction, strict inline suggestions instead of the `confirm()` questions, word matches re-normalised at load (no data write), old-key ticks deleted. Re-measured against the review's anchors from the live library. Friday 2 Oct, morning | The ingredient review's status rows 4–6 | Not started |
+| 6c | **The 24-line rewrite** | Step 7, in place, after the source-fidelity check in `validate-recipes.js`; the lines are in the household's private appendix, or re-derived and approved before any write. With the household present | Row 7; D12 waits on it | Not started |
 | 7 | **Sharing** | When wanted: a JSON-LD Edge Function (which also gives the preview its source lines); the onboarding runbook; RLS belt and braces and leaked-password protection; a weekly Playwright test against the live app. A model-backed converter only if the family actually adds recipes | F8 F13, answer 4 | Not started |
+
+### PR 6 reviewed against what came after it (25 Sep)
+
+- **Ticks are single rows since PR 5**, so ticks under the old names would never be swept away by a
+  whole-table save again. 6b deletes them. On 25 Sep all 9 live ticks were for the week of 18 Sep,
+  so nothing current is lost.
+- **Word matches are keyed by their word since PR 5**, and the words are the old normaliser's
+  output. 6b re-normalises them as they load, so they keep applying without a write. On 25 Sep
+  there were 17: 6 "same", 10 "not the same", 1 source; the review had counted 20.
+- **The converter no longer renames to the list** (PR 2), which is exactly the arrangement the
+  review measured: 210 rows and 178 names library-wide, 60 and 52 rows for the two busy weeks. The
+  library is still 34 recipes, none added since 22 Sep, so those anchors still hold for 6b.
+- **Two files can be cached at different versions** for a few minutes after a deploy. 6a added the
+  version stamp and a reload notice.
+- **The 24-line rewrite is a production data job** that needs the source check and the private
+  appendix, so it is 6c, not part of the Friday release.
 
 ### Why this order
 
@@ -56,6 +75,10 @@ verified and how.
 - Make the `offline-harness` check **required** on `main` (Settings → Branches). PR 1 could not
   do that from a workflow file.
 - Delete the unused second account in the Supabase dashboard (Authentication → Users).
+- **Before 6b:** a fresh export from the app's sidebar, kept outside the repo — the undo for the
+  release. (The re-measure itself reads the library straight from the database, read-only.)
+- **For 6c:** the private appendix to the ingredient review, which names the 24 lines; or be ready
+  to approve a re-derived list before any line is rewritten.
 - After PR #15 merges: **reload the app on every device first** (a tab opened before the merge
   runs the old code, and the old code's saves are the ones this PR removes), then run the
   two-device pass, section D of `docs/TEST-PLAN.md`. It is the only run row-scoped writes get
@@ -79,21 +102,23 @@ and open a pull request when the work is tested.
 Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md                  — the map of all documentation
-  docs/NEXT-SESSION.md                    — the seven-PR plan; we are at PR 6
+  docs/NEXT-SESSION.md                    — the seven-PR plan; we are at PR 6b
   docs/REVIEW-ARCHITECTURE-FINDINGS.md    — §0 and the findings the PR closes
   docs/HANDOVER.md                        — verified status
   docs/ARCHITECTURE.md                    — how the app and its recipe format work
   CLAUDE.md                               — applies in full
 
-THE TASK: PR 6 from the plan. Tell me what you'd do and what you need from
+THE TASK: PR 6b from the plan. Tell me what you'd do and what you need from
 me before building anything, then build it, run the tests, and open the PR.
 
 Some context worth having:
 
   - MAIN IS PRODUCTION. Pages serves from main, and every merge deploys to
     the tablet I cook from immediately. There is no staging step.
-  - index.html is the whole app. One file, no build step, no framework.
-    Run `node test/build.js && node test/smoke.js` after any code change,
+  - index.html and core.js are the whole app. No build step, no framework;
+    core.js holds the pure functions and the ingredient dictionary.
+    Run `node test/core.test.js`, then `node test/build.js && node test/smoke.js`,
+    after any code change,
     and `node test/image-integrity.js` after any change to the Edge
     Functions. Run both smoke commands, always: smoke.js loads what build.js
     wrote. The suite stubs Supabase, so it proves nothing about sign-in.
