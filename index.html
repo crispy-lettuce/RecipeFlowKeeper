@@ -740,6 +740,8 @@
     font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.04em; color:var(--ink-mute);
   }
   .shop-item.checked .shop-item-name{ text-decoration:line-through; color:var(--ink-faint); }
+  /* The other choice a recipe offers ("or honey"), quieter than the name. */
+  .shop-item-alt{ color:var(--ink-mute); font-size:13.5px; margin-left:6px; }
   .shop-item.checked .shop-item-recipes{ opacity:.6; }
   /* A row is the tick (the label) plus its quiet tools underneath: the
      inline "same as…?" and MERGE WITH…, kept outside the label so a tap on
@@ -964,6 +966,23 @@
     color:var(--danger); font-size:14px; line-height:1.5;
   }
   #addPreview{ margin:18px 0 20px; }
+  /* The checks above the preview (PR 6c-1). Advice, never a gate: a save
+     goes through whatever they say. */
+  #addChecks{ margin:18px 0 0; }
+  .line-checks{ padding:12px 14px; margin-bottom:12px; background:var(--gold-wash);
+    border:1px solid var(--line); border-radius:var(--r); font-size:14px; line-height:1.5; color:var(--ink); }
+  .line-checks h4{ margin:0 0 6px; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.08em; font-weight:500; color:var(--ink-soft); }
+  .line-check{ padding:6px 0; border-top:1px solid var(--line-soft); }
+  .line-check:first-of-type{ border-top:none; }
+  .line-check code{ font-family:'IBM Plex Mono', monospace; font-size:13px; }
+  .line-check .hint{ color:var(--ink-soft); font-size:13px; }
+  .line-check button{ margin-left:6px; background:none; border:none; padding:0; cursor:pointer; color:var(--plum);
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; text-decoration:underline; }
+  .line-checks.unread{ background:rgba(140,58,52,.08); border-color:rgba(140,58,52,.28); }
+  .source-compare{ width:100%; border-collapse:collapse; font-size:13.5px; margin-top:6px; }
+  .source-compare td{ padding:4px 6px; border-top:1px solid var(--line-soft); vertical-align:top; width:50%; }
+  .source-compare tr.miss td{ background:rgba(140,58,52,.08); }
+  .source-compare th{ text-align:left; font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.08em; font-weight:500; color:var(--ink-soft); padding:4px 6px; }
   #viewerEquipmentWarning{ margin:0; border-radius:0; border-left:none; border-right:none; padding-left:30px; padding-right:30px; }
 
   .sources-list{ display:flex; flex-direction:column; gap:8px; max-height:60vh; overflow-y:auto; }
@@ -1613,6 +1632,7 @@
         </label>
       </div>
 
+      <div id="addChecks"></div>
       <div id="addPreview"></div>
 
       <button class="btn primary" id="saveBtn">SAVE RECIPE</button>
@@ -1621,7 +1641,7 @@
   </div>
 </div>
 
-<script src="core.js?v=2026-09-26.1"></script>
+<script src="core.js?v=2026-09-28.1"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -1629,7 +1649,7 @@
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-09-26.1';
+const EXPECTED_CORE_VERSION = '2026-09-28.1';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -2751,16 +2771,15 @@ function rebuildAliasMaps(){
        make anyway ("large onion" = "onion") simply falls away. Nothing
        stored is rewritten; Settings still shows what was saved. Measured
        on the live library, 25 Sep: all six stored "same" matches fall away
-       like this, and none of the ten "not the same" is offered again. */
-    else if(a.kind === 'ingredient'){
-      const from = shoppingKeyForName(a.alias), to = shoppingKeyForName(a.canonical);
-      if(from && to && from !== to) maps.ingredient.set(from, to);
-    }
+       like this, and none of the ten "not the same" is offered again.
+       The re-normalising is ingredientMatchMap in core.js, shared with
+       tools/remeasure.js so the two cannot total differently. */
     else if(a.kind === 'ingredient_distinct'){
       const [x, y] = String(a.alias).split(' || ');
       maps.distinct.add('ingredient_distinct|' + pairKeyFor(shoppingKeyForName(x || ''), shoppingKeyForName(y || '')));
     }
   });
+  maps.ingredient = ingredientMatchMap(cache.aliases);
   aliasMaps = maps;
 }
 function loadAliases(){ return cache.aliases; }
@@ -5146,7 +5165,7 @@ function renderShopping(){
       <label class="shop-item${isChecked?' checked':''}" data-key="${escapeHtml(storedKey)}" data-name="${escapeHtml(it.name)}">
         <input type="checkbox" ${isChecked?'checked':''}>
         <span class="shop-item-main">
-          <span class="shop-item-name">${qtyText?`<span class="qty">${escapeHtml(qtyText)}</span>`:''}${escapeHtml(it.name)}</span>
+          <span class="shop-item-name">${qtyText?`<span class="qty">${escapeHtml(qtyText)}</span>`:''}${escapeHtml(it.name)}${(it.alts || []).length ? `<span class="shop-item-alt">(${escapeHtml(it.alts.join('; '))})</span>` : ''}</span>
           <span class="shop-item-recipes">${recipeList}</span>
         </span>
       </label>
@@ -5851,7 +5870,9 @@ function openEditModal(recipeId){
   document.getElementById('f-keywords').value = (tags.keywords || []).join(', ');
   document.getElementById('saveError').style.display = 'none';
 
-  mountFlow(document.getElementById('addPreview'), parseRecipe(recipe.syntax), {});
+  const parsedForEdit = parseRecipe(recipe.syntax);
+  renderLineChecks(parsedForEdit);
+  mountFlow(document.getElementById('addPreview'), parsedForEdit, {});
 
   const overlay = document.getElementById('addModalOverlay');
   overlay.classList.add('open');
@@ -5865,6 +5886,7 @@ function closeAddModal(){
   document.getElementById('importInput').value = '';
   document.getElementById('addForm').style.display = 'none';
   document.getElementById('addPreview').innerHTML = '';
+  document.getElementById('addChecks').innerHTML = '';
   document.getElementById('saveError').style.display = 'none';
   state.editingRecipeId = null;
   document.getElementById('modalTitle').textContent = 'Add a recipe';
@@ -6371,9 +6393,97 @@ function parseAndPreview(){
   document.getElementById('f-keywords').value = (parsed.tags.keywords || []).join(', ');
   document.getElementById('saveError').style.display = 'none';
 
+  renderLineChecks(parsed);
   mountFlow(document.getElementById('addPreview'), parsed, {});
 }
 document.getElementById('parseBtn').addEventListener('click', parseAndPreview);
+
+/* ---- Checks where recipes come in (PR 6c-1, 28 Sep) ----
+   Until this release nothing in the app looked at an ingredient line: the
+   converter's instructions were the only guard, and a slip surfaced weeks
+   later as an odd row on the shopping list (21 lines had built up by 27
+   Sep). Three things are shown here, all advice, none a gate:
+     - lines the parser read past (a GROUP with a hyphen in its handle);
+     - ingredient lines the shopping list cannot total properly, with a
+       suggested line where there is one right answer (USE THIS puts it in
+       the text above and re-parses) and a hint where the choice is the
+       household's;
+     - on request, the recipe's lines beside its source's, with anything on
+       one side only highlighted, so a swapped ingredient is seen before it
+       is saved. */
+function renderLineChecks(parsed){
+  const box = document.getElementById('addChecks');
+  const unread = parsed.unread || [];
+  const faulty = [];
+  parsed.groups.forEach(g=> g.items.forEach(line=>{
+    const faults = ingredientLineFaults(line).filter(f=> f.affectsList);
+    if(faults.length) faulty.push({ line, faults, suggestion: suggestIngredientLine(line) });
+  }));
+  let html = '';
+  if(unread.length){
+    html += `<div class="line-checks unread"><h4>NOT READ — THESE LINES ARE MISSING FROM THE RECIPE</h4>` +
+      unread.map(u=> `<div class="line-check"><code>${escapeHtml(u.line)}</code><div class="hint">${escapeHtml(u.why)}</div></div>`).join('') +
+      `</div>`;
+  }
+  if(faulty.length){
+    html += `<div class="line-checks"><h4>THE SHOPPING LIST CAN'T TOTAL ${faulty.length === 1 ? 'THIS LINE' : 'THESE ' + faulty.length + ' LINES'} — SAVING IS STILL FINE</h4>` +
+      faulty.map(f=> `<div class="line-check"><code>${escapeHtml(f.line)}</code> — ${escapeHtml(f.faults.map(x=> x.text).join('; '))}` +
+        (f.suggestion
+          ? `<div class="hint">Suggest: <code>${escapeHtml(f.suggestion)}</code><button type="button" data-use-line="${escapeHtml(f.line)}" data-use-with="${escapeHtml(f.suggestion)}">USE THIS</button></div>`
+          : `<div class="hint">${escapeHtml(LINE_HINTS[f.faults[0].code] || '')}</div>`) +
+        `</div>`).join('') + `</div>`;
+  }
+  html += `<div class="line-checks" id="sourceCheck"><h4>AGAINST THE SOURCE</h4>` +
+    `<div class="hint">Compare these ingredients with the source page's own list, to catch one swapped or left out. <button type="button" id="compareSourceBtn">COMPARE WITH SOURCE</button></div>` +
+    `<div id="sourceCompareOut"></div></div>`;
+  box.innerHTML = html;
+}
+
+/* A misspelt GROUP line lands inside the group above it, as an item (the
+   parser has always done this; renderLineChecks now reports it), so it is
+   left out here: it is not an ingredient to look for in the source. */
+function recipeIngredientLines(){
+  const parsed = parseRecipe(document.getElementById('importInput').value);
+  const unread = new Set((parsed.unread || []).map(u=> u.line));
+  return parsed.groups.flatMap(g=> g.items).filter(line=> !unread.has(line));
+}
+async function compareWithSource(){
+  const out = document.getElementById('sourceCompareOut');
+  const pageUrl = document.getElementById('f-source-url').value.trim();
+  if(!/^https:\/\//i.test(pageUrl)){ out.innerHTML = `<div class="hint">Needs a SOURCE URL starting https:// — there is nothing to compare against without one.</div>`; return; }
+  out.innerHTML = `<div class="hint">Reading the source page…</div>`;
+  let data = null, error = null;
+  try { ({ data, error } = await sb.functions.invoke('source-ingredients', { body: { pageUrl } })); }
+  catch(e){ error = e; }
+  if(error || !data){
+    out.innerHTML = `<div class="hint">Couldn't reach the source check${error && error.message ? ' (' + escapeHtml(error.message) + ')' : ''}. Is the source-ingredients function deployed?</div>`;
+    return;
+  }
+  if(!data.ingredients || !data.ingredients.length){
+    out.innerHTML = `<div class="hint">${escapeHtml(data.error || 'The source page carries no ingredient list the check can read')} — compare by eye this time.</div>`;
+    return;
+  }
+  const f = sourceFidelity(data.ingredients, recipeIngredientLines());
+  const misses = f.sourceOnly.length + f.recipeOnly.length;
+  const row = (a, b, miss)=> `<tr class="${miss ? 'miss' : ''}"><td>${escapeHtml(a || '—')}</td><td>${escapeHtml(b || '—')}</td></tr>`;
+  out.innerHTML =
+    `<div class="hint">${misses ? `${misses} to look at, highlighted: on one side only. A different word can be fine (a US name made British); a different ingredient is not.` : `Every ingredient matched one on the other side. Check the amounts by eye.`}</div>` +
+    `<table class="source-compare"><tr><th>SOURCE (${data.ingredients.length})</th><th>THIS RECIPE</th></tr>` +
+    f.sourceOnly.map(l=> row(l, '', true)).join('') +
+    f.recipeOnly.map(l=> row('', l, true)).join('') +
+    f.matched.map(m=> row(m.source, m.recipe, false)).join('') +
+    `</table>`;
+}
+document.getElementById('addChecks').addEventListener('click', e=>{
+  const use = e.target.closest('[data-use-line]');
+  if(use){
+    const ta = document.getElementById('importInput');
+    ta.value = ta.value.split('\n').map(l=> l.trim() === use.dataset.useLine ? l.replace(use.dataset.useLine, ()=> use.dataset.useWith) : l).join('\n');
+    parseAndPreview();
+    return;
+  }
+  if(e.target.closest('#compareSourceBtn')) compareWithSource();
+});
 
 /* Permanent scaling — rewrites the raw syntax text in the textarea itself
    (via scaleRecipeSyntax), then re-runs the exact same parse-and-preview

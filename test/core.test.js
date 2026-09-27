@@ -225,6 +225,59 @@ check('    and a line\'s own note wins: to taste, to glaze, or plain extra; alon
       ['salt', 'egg', 'maple syrup', 'parsley'].map(k => k + ': ' + qtyOf(k)).join('; '));
 check('    and never "N more", which read as N more of the same amount', !/\bmore\b/.test(said.concat(parm).map(i => i.qtyText).join(' ')));
 
+/* ---- 6c-1, 28 Sep: checks where recipes come in ---- */
+const faultCodes = line => core.ingredientLineFaults(line).map(f => f.code + (f.affectsList ? '!' : '')).join(',');
+const shapeCases = [
+  ['3 tbsp honey or golden syrup', 'alternative!'], ['salt and pepper, to taste', 'two!'], ['1 cup rice', 'metric!'],
+  ['400 ml tin plum tomatoes', 'container,tinMl!'], ['zest of 1/2 lemon', 'prep,amountInName!,noqty'],
+  ['1 large onion, chopped', 'size'], ['75 g grated parmesan', 'prep'], ['grated parmesan', 'prep,noqty'],
+  ['400 g plum tomatoes (1 tin)', ''], ['3 tbsp golden syrup (or honey)', ''], ['1 onion', '']];
+const shapeWrong = shapeCases.filter(([l, want]) => faultCodes(l) !== want);
+check('each line fault is found, and marked ! only where the shopping list cannot cope', shapeWrong.length === 0,
+      shapeWrong.map(([l, w]) => `${l}: ${faultCodes(l)} (want ${w})`).join('; '));
+const sug = l => core.suggestIngredientLine(l);
+check('a rewrite is offered where there is one right answer',
+      sug('400 ml tin plum tomatoes') === '400 g plum tomatoes (1 tin)' && sug('zest of 1/2 lemon') === '1/2 lemon, zested'
+      && sug('juice of 1 lemon') === '1 lemon, juiced', [sug('400 ml tin plum tomatoes'), sug('zest of 1/2 lemon'), sug('juice of 1 lemon')].join(' | '));
+check('    and none where the choice is the household\'s', sug('3 tbsp honey or golden syrup') === null && sug('salt and pepper, to taste') === null
+      && core.LINE_HINTS.alternative && core.LINE_HINTS.two);
+check('    and every suggestion passes its own check',
+      ['400 ml tin plum tomatoes', 'zest of 1/2 lemon', 'juice of 1 lemon'].every(l => !core.ingredientLineFaults(sug(l)).some(f => f.affectsList)));
+const unreadOf = t => core.parseRecipe(t).unread.map(u => u.line).join('|');
+/* The onion is lost with its misspelt GROUP: no group was open to take it. */
+check('the parser reports the lines it reads past, and nothing it reads',
+      unreadOf('Ingredients\nTITLE: X\nGROUP a-b:\n1 onion\nGROUP ok:\n1 leek\nSTAGE:\nMERGE ok -> done: Cook [5 min]\nStir\nMERGE ok → x: y') === 'Ingredients|GROUP a-b:|1 onion|Stir|MERGE ok → x: y'
+      && unreadOf('TITLE: X\nGROUP a:\n1 onion\nSTAGE:\nMERGE a -> done: Cook [5 min]\nNOTES:\nKeeps a week') === '',
+      unreadOf('Ingredients\nTITLE: X\nGROUP a-b:\n1 onion\nGROUP ok:\n1 leek\nSTAGE:\nMERGE ok -> done: Cook [5 min]\nStir\nMERGE ok → x: y'));
+check('    including a misspelt GROUP inside a group, the commonest case, which fell in as an ingredient',
+      unreadOf('TITLE: X\nGROUP a:\n1 onion\nGROUP b-c:\n1 leek\nSTAGE:\nMERGE a -> done: Cook [5 min]') === 'GROUP b-c:',
+      unreadOf('TITLE: X\nGROUP a:\n1 onion\nGROUP b-c:\n1 leek\nSTAGE:\nMERGE a -> done: Cook [5 min]'));
+check('    without changing what it parses: a misspelt GROUP still lands where it always did',
+      JSON.stringify(core.parseRecipe('GROUP a:\n1 onion\nGROUP b-c:\n1 leek').groups) === JSON.stringify([{ handle: 'a', items: ['1 onion', 'GROUP b-c:', '1 leek'] }]));
+const alts = core.aggregateShoppingLines([{ recipeTitle: 'A', raw: '3 tbsp golden syrup (or honey)' }, { recipeTitle: 'B', raw: '1 tbsp golden syrup' },
+  { recipeTitle: 'C', raw: '200 ml milk (whole or semi-skimmed)' }, { recipeTitle: 'D', raw: '400 g plum tomatoes (1 tin)' }], null);
+const altOf = k => (alts.find(i => i.key === k) || {}).alts;
+check('a bracketed choice travels with its row, and never splits it',
+      alts.length === 3 && JSON.stringify(altOf('golden syrup')) === '["or honey"]' && JSON.stringify(altOf('milk')) === '["whole or semi-skimmed"]'
+      && JSON.stringify(altOf('plum tomato')) === '[]', JSON.stringify(alts.map(i => [i.key, i.alts])));
+check('ghee goes with the dairy', only('2 tbsp ghee').category === 'Dairy & Eggs', only('2 tbsp ghee').category);
+const wm = core.ingredientMatchMap([{ kind: 'ingredient', alias: 'Curly Kale', canonical: 'kale' }, { kind: 'ingredient', alias: 'large onion', canonical: 'onion' },
+  { kind: 'source', alias: 'x', canonical: 'y' }]);
+check('word matches are applied in today\'s words, and one the rules make anyway falls away',
+      wm.size === 1 && wm.get('curly kale') === 'kale', JSON.stringify([...wm]));
+
+/* Six rows, not five: the leek under the misspelt GROUP x-y is still read, into
+   the group above; only the GROUP line itself is reported as read past. */
+const { remeasure } = require(path.join(ROOT, 'tools', 'remeasure.js'));
+const rm = remeasure({ recipes: [
+  { title: 'A', syntax: 'TITLE: A\nGROUP a:\n200 g curly kale\n3 tbsp honey or golden syrup\n1 tsp za\'atar\nSTAGE:\nMERGE a -> b: Cook [5 min]' },
+  { title: 'B', syntax: 'TITLE: B\nGROUP a:\n100 g kale\n2 onions\nGROUP x-y:\n1 leek\nSTAGE:\nMERGE a -> b: Cook [5 min]' }],
+  aliases: [{ kind: 'ingredient', alias: 'large onions', canonical: 'onion' }] });
+check('tools/remeasure.js totals an export as the list does, and reports what to look at',
+      rm.recipes === 2 && rm.rows === 6 && rm.wordMatches === 0 && JSON.stringify(rm.splits) === '[{"from":"curly kale","to":"kale"}]'
+      && rm.shape.length === 1 && rm.shape[0].line === '3 tbsp honey or golden syrup' && rm.unread.map(u => u.line).join('|') === 'GROUP x-y:'
+      && rm.other.includes("Za'atar"), JSON.stringify(rm));
+
 check('stock files under Pantry before chicken can claim it', only('500 ml chicken stock').category === 'Pantry', only('500 ml chicken stock').category);
 
 const failed = checks.filter(c => !c.pass).length;

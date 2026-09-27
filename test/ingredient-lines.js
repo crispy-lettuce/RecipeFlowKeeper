@@ -5,7 +5,7 @@
    The rules are the ones in converter/conversion-instructions.md §1 ("Write every
    ingredient line in one shape") and docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md
    §4.2. Every check here answers "is this line in the standard shape?". None of
-   them decides what the shopping list does with it; that stays in index.html.
+   them decides what the shopping list does with it; that is core.js.
 
    The quantity split is NOT done here: callers pass in what the app's own
    splitQty returned, so "what counts as a quantity" cannot drift from the app. */
@@ -62,10 +62,12 @@ function loadVocab(file){
   return vocab;
 }
 
-/* Where the prepared form is what you buy, it is the name, not preparation
-   ("chopped tomatoes, ground cumin, minced beef"). */
-const PRODUCT_FORM = /^(chopped tomatoes|minced (beef|pork|lamb|turkey|chicken)|flaked almonds)\b/;
-/* One line, already split by splitQty. Returns:
+/* The shape checks themselves live in core.js since 28 Sep (PR 6c-1), so the
+   app's preview and these reports cannot disagree; core.js marks which
+   faults the shopping list cannot cope with, and only those are shown in
+   the app. Here every fault is reported, as before.
+
+   Returns:
      why      — the faults, empty for a line in the standard shape
      name     — the name as the shopping list will first see it (lower case)
      listed   — the dictionary name it will total under, when `name` is one of
@@ -75,22 +77,10 @@ const PRODUCT_FORM = /^(chopped tomatoes|minced (beef|pork|lamb|turkey|chicken)|
                 (docs/REVIEW-ARCHITECTURE-FINDINGS.md §4). Until that morning a
                 listed spelling in a converted line was reported as a fault here.
      isNew    — a clean name the dictionary doesn't know yet */
+const { ingredientLineFaults } = require(path.join(__dirname, '..', 'core.js'));
 function checkLine({ line, qty, rest }, vocab){
-  const why = [];
-  const noBrackets = rest.replace(/\([^)]*\)/g, ' ');
-  const segments = noBrackets.split(',').map(x => x.trim());
-  const first = segments[0].toLowerCase();
-  if(/[¼½¾⅓⅔⅛⅜⅝⅞]/.test(line)) why.push('uses ½-style fraction');
-  if(/^\s*[\d.\/\s]+\s*x\s*\d/i.test(line)) why.push('multiplier ("3 x …")');
-  if(/\band\b|&/.test(first) || (segments.length >= 3 && /\band\b/.test(segments[1]))) why.push('two ingredients on one line?');
-  if(/\s(or|and\/or)\s/.test(first)) why.push('alternative outside brackets');
-  if(/^(large|small|medium|big|heaped|level|generous|thumb-sized)\b/.test(first)) why.push('size word before the name');
-  if(!PRODUCT_FORM.test(first) && (/^(minced|grated|chopped|diced|sliced|crushed|melted|softened|beaten)\b/.test(first)
-     || /^(juice|zest|leaves|stalks)\s+(of|from)\b/.test(first))) why.push('preparation before the name');
-  if(/\b(cups?|oz|ounces?|lbs?|pounds?|quarts?|pints?|sticks? of butter)\b/i.test(qty)) why.push('not metric (convert cups, oz and lb)');
-  if(qty && /^(tins?|cans?|jars?|packs?|packets?)\b/.test(first)) why.push('container word in the name (put "(1 tin)" in brackets)');
-  if(!qty && !/,.*\bto (taste|serve|glaze|finish)\b/i.test(line) && !/^(pinch|handful|squeeze|knob)\b/i.test(line)) why.push('no quantity');
-
+  const why = ingredientLineFaults(line, qty, rest).map(f => f.text);
+  const first = rest.replace(/\([^)]*\)/g, ' ').split(',')[0].trim().toLowerCase();
   const name = first.replace(COUNT_WORD, '').trim();
   const listed = vocab.synonyms.get(name) || null;
   /* Not a fault: the vocabulary only lists ingredients shared by two or more

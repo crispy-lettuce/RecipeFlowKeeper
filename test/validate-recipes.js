@@ -100,14 +100,16 @@ const VOCAB = loadVocab();
         equipment: p.equipment, tags: p.tags,
         groups: p.groups.map(g => ({ handle: g.handle, items: g.items })),
         /* The app's own quantity split, for the line-shape check below. */
-        splits: p.groups.flatMap(g => g.items.map(line => ({ line, ...splitQty(line) }))),
+        splits: p.groups.flatMap(g => g.items.filter(line => !(p.unread || []).some(u => u.line === line))
+          .map(line => ({ line, ...splitQty(line) }))),
         stageCount: p.stages.length,
         merges,
         columnErrors: cols.errors,
         rowCount: cols.rows.length,
         columnCount: cols.columns.length,
         timelineNull: timeline === null,
-        setupCount: p.setup.length
+        setupCount: p.setup.length,
+        unread: p.unread || []
       };
     }, b.text);
 
@@ -123,26 +125,17 @@ const VOCAB = loadVocab();
     if(!r.stageCount) blockers.push('no STAGE blocks');
     if(b.unterminated) blockers.push('code fence never closed');
 
-    /* A line the parser doesn't recognise is not an error anywhere — it
-       simply falls through and is discarded, silently. A GROUP whose
-       handle has a hyphen in it, or a MERGE written with a Unicode arrow,
-       vanishes and the recipe renders as though those ingredients were
-       never written. That is worse than a loud failure, so it is a
-       blocker.
-
-       These patterns mirror parseRecipe's own and must be kept in step
-       with it — they answer only "would the parser recognise this line",
-       never what it means. */
-    const KEYWORD = /^(GROUP|STAGE|MERGE)\b/i;
-    const RECOGNISED = [
-      /^GROUP\s+(\w+)\s*:\s*$/i,
-      /^STAGE:\s*$/i,
-      /^MERGE\s+(.+?)\s*->\s*(\w+)\s*:\s*(.+)$/i
-    ];
-    b.text.split('\n').map(l => l.trim()).forEach(line => {
-      if(!KEYWORD.test(line)) return;
-      if(RECOGNISED.some(re => re.test(line))) return;
-      blockers.push(`line silently ignored by the parser: "${line.slice(0,72)}"`);
+    /* A line the parser reads past used to be an error nowhere — it was
+       simply discarded. A GROUP whose handle has a hyphen in it, or a MERGE
+       written with a Unicode arrow, vanished and the recipe rendered as
+       though those ingredients were never written. That is worse than a
+       loud failure, so a GROUP/STAGE/MERGE line it could not read is a
+       blocker. Since 28 Sep (PR 6c-1) the parser reports these itself
+       (parseRecipe(...).unread), and the app's preview shows them; until
+       then this file kept its own copy of the parser's patterns. Other
+       lines it reads past (stray text under a STAGE) are warnings. */
+    r.unread.forEach(u => {
+      if(/^(GROUP|STAGE|MERGE)\b/i.test(u.line)) blockers.push(`line silently ignored by the parser: "${u.line.slice(0,72)}"`);
     });
 
     /* Warnings do not hold a recipe back — they are library-quality facts
@@ -170,6 +163,8 @@ const VOCAB = loadVocab();
     if(!r.time) warnings.push('no TIME:');
     if(!r.equipment) warnings.push('no EQUIPMENT: (fine unless it needs size-specific bakeware)');
     if(!r.tags.course) warnings.push('no course= in TAGS:');
+    r.unread.filter(u => !/^(GROUP|STAGE|MERGE)\b/i.test(u.line))
+      .forEach(u => warnings.push(`line not read: "${u.line.slice(0,64)}" — ${u.why}`));
 
     /* Ingredient lines outside the standard shape (conversion-instructions.md §1,
        docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md §4.2). Warnings, not blockers: the

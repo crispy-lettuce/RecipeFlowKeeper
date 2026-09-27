@@ -34,3 +34,6 @@ jobs:
       # Always both — smoke.js reads what build.js wrote (CLAUDE.md).
       - run: node test/build.js && node test/smoke.js
       - run: node test/image-integrity.js
+      # The source-ingredients function's page reading, lifted from its source,
+      # and the source check it feeds (PR 6c-1, 28 Sep).
+      - run: node test/source-ingredients.js
