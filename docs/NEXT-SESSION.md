@@ -55,7 +55,8 @@ offers only the rows on this week's list. On 27 Sep that saved a wrong match, an
 couldn't be made at all.
 
 - Picking a name shows "Merge *X* with *Y*? MERGE · CANCEL", and only MERGE saves.
-- A filter box narrows the names as you type.
+- A filter box narrows the names as you type. **Only names already in the library can be
+  picked**: the household decided on 27 Sep that typing a new name is not allowed.
 - Names come from the whole library, not just this week. A word match is keyed by name, so
   joining two names that aren't on this week's list is fine.
 
@@ -82,8 +83,6 @@ Make each check fail once against the fault it guards.
 
 **Ask the household before building:**
 
-- *6d-1:* should the filter box also accept a new name typed in, or only names already in the
-  library?
 - *6d-2:* what should the panel show for each swap?
 - *Either:* should the PASTE box for COMPARE WITH SOURCE, the answer to the two sites that refuse
   the function, be its own small PR, or come later?
