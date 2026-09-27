@@ -109,3 +109,46 @@ single-row update or delete, so the refresh-rule checks need those to be able to
 **Writes are queued, not sent on the spot.** A check that calls a save function inside
 `page.evaluate` and reads `__WRITES__` in the same breath sees nothing: wait a moment (the new
 row-scoped checks `await` a short timer) before sampling the log.
+
+## Re-measuring the live library
+
+Do this before shipping any change to how ingredients are named or totalled, after a rewrite
+of recipe text, and every ten or so new recipes. It reads the live library and changes nothing.
+The copy it reads is library data, so it lives in the session's scratch directory, **never in
+this repo**. `tools/remeasure.js` refuses a file inside the repo.
+
+1. **Read the library** with the Supabase `execute_sql` tool:
+
+   ```sql
+   select json_build_object(
+     'recipes', (select json_agg(json_build_object('title', title, 'syntax', syntax) order by title) from public.recipes),
+     'aliases', (select json_agg(to_json(a)) from public.aliases a)
+   )::text as exp;
+   ```
+
+   The result is too large to show, so the tool saves it to a file and prints the path.
+2. **Unwrap it into scratch.** `$S` is the session's scratchpad directory and `$F` is the path the
+   tool printed:
+
+   ```sh
+   node -e '
+   const fs=require("fs"); let t=fs.readFileSync(process.argv[1],"utf8");
+   try{ const o=JSON.parse(t); if(o.result) t=o.result; }catch(e){}
+   const m=t.match(/\[\{"exp":"([\s\S]*)"\}\]/);
+   fs.writeFileSync(process.argv[2], JSON.parse("\""+m[1]+"\""));
+   ' "$F" "$S/export.json"
+   ```
+
+3. **Measure:** `node tools/remeasure.js "$S/export.json"`. It prints:
+   - how many rows the list comes to with every recipe planned;
+   - pairs the list would offer to merge;
+   - rows filed under "Other";
+   - lines the list can't total;
+   - lines the parser reads past.
+
+   Before a naming change, run it on `main` and on your branch, and compare. Every changed row
+   key is a tick the household loses.
+
+On 27 Sep 2026, after 6c-2 and the household's word matches: 34 recipes, 169 rows, no line the
+list can't total, and none the parser reads past. A change that moves those numbers must say
+why.

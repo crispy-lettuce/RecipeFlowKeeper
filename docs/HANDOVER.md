@@ -851,6 +851,19 @@ neighbouring name in MERGE WITH…'s dropdown, which saves on the first pick and
 on the tablet; caught by reading the `aliases` table, not the screen, and redone. That dropdown is
 in 6d.
 
+**Rules any model can follow (27 Sep 2026, documentation only).** The household expects to use
+a less capable model for some sessions. So `CLAUDE.md` now opens with three short sections:
+
+- a checklist before every push, where each point is something that went wrong at least once;
+- where a session stops and hands back;
+- the one way to change recipe text in the live database, which was only written down here and
+  in `PrivateBackup` before.
+
+`test/README.md` gains the re-measure as a recipe: the query, the unwrap, the tool. The unwrap
+was run against a real saved result before it was written down. 6d is split into 6d-1
+(MERGE WITH…) and 6d-2 (swaps), one behaviour each. The household made `offline-harness` a
+required check on `main`, read back from GitHub's API; it is enforced for everyone but admins.
+
 ```sh
 npm install playwright
 node test/build.js && node test/smoke.js

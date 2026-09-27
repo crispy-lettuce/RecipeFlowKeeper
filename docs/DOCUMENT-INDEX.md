@@ -261,7 +261,7 @@ to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.m
 
 ### `test/README.md` — the offline harness
 **What:** How to run the 257-check smoke suite, the 72 Node checks and the Edge Function checks, and an honest account of what it can't tell you
-(everything about the real backend).
+(everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 
 **Use it when:** making any code change.
 
@@ -298,7 +298,11 @@ public.
 ---
 
 ### `CLAUDE.md` — guidance for AI sessions
-**What:** Ground rules and the specific traps in this codebase — the synchronous save pattern,
+**What:** Since 27 Sep it opens with three short sections that any model follows to the letter: a
+six-point checklist before every push; where a session stops and hands back (no merging, no
+Edge Function deploys, no naming changes without a re-measure); and the only way to change
+recipe text in the live database. Then the ground rules and the specific traps in this
+codebase — the synchronous save pattern,
 the hydrate-throws-signs-you-out trap, the cascade on recipe deletion, and the standing
 instruction to verify rather than trust status notes.
 

@@ -3,6 +3,66 @@
 Read `docs/DOCUMENT-INDEX.md` first — it maps every document. `docs/ARCHITECTURE.md` explains
 the app and its recipe format; `docs/HANDOVER.md` is the verified status.
 
+## Every session, before you push
+
+Nobody else checks these. Each one is here because it went wrong at least once.
+
+1. **Tests.** `node test/core.test.js`, then `node test/build.js && node test/smoke.js`. Read the
+   exit code (`echo $?`), not the number of `ok` lines. Run `core.test.js` even for a
+   documentation change, since it also checks the generated dictionary. The smoke suite needs
+   `npm install playwright` once; `.gitignore` keeps what that writes out of the repo. If it can't
+   find a browser in a cloud session, set `PLAYWRIGHT_CHROMIUM` to the `chrome` under
+   `/opt/pw-browsers/chromium-*/chrome-linux/`.
+2. **`core.js` changed → bump its version in all three places at once:** `KITCHEN_CORE_VERSION`
+   in `core.js`, and `core.js?v=` and `EXPECTED_CORE_VERSION` in `index.html`. Use today's date
+   plus `.1`, or the next number if today already has one. `core.test.js` fails if the three
+   disagree.
+3. **Make every new check fail once.** Break the code it guards, see the check fail by name, then
+   restore the code (`git diff` shows nothing). A check you have never seen fail proves nothing.
+4. **Take dates from `git log`, the database's timestamps or `date -u`**, never from memory or the
+   version stamp. On 27 Sep a wrong date reached nine documents.
+5. **Read your diff for private data** (`git diff origin/main`). Leave out real recipe lines, the
+   household's word matches, and plan or diary rows. Examples must be made up, and checked
+   against the library so they aren't real lines by accident.
+6. **"Done" means seen.** That means the database row, the log line or the green CI run. Write
+   down what you checked, and write "not verified" where you couldn't check.
+
+## Where a session stops and hands back
+
+- **Open the PR; the household merges.** Merge only when asked, and only on green CI.
+  `offline-harness` is a required check on `main`.
+- **Don't deploy Edge Functions.** The household deploys them from the dashboard, pasting the
+  file from its raw GitHub URL.
+- **A change to how ingredients are named re-keys the household's ticks.** This means `shoppingLine`
+  or a dictionary row. Re-measure the library first ("Re-measuring the live library" in
+  `test/README.md`), then ask before shipping.
+- **The only production writes a session makes** are single rows the household asks for, and
+  recipe text changed as described below. Anything else, ask. A smaller PR is always fine.
+
+## Changing recipe text in the live database
+
+Change recipe text only this way, with the household present:
+
+1. The household approves the exact new lines, then takes a fresh export from the app.
+2. Save the approved lines and every recipe's text before and after in `PrivateBackup`
+   (`migrations/<job>/`), never here. That file is the undo.
+3. Write one statement per recipe, guarded both ways. Generate it from the saved file; never
+   retype the text by hand.
+
+   ```sql
+   with v(s) as (select $t$<new text>$t$::text)
+   update public.recipes r set syntax = v.s, updated_at = now() from v
+   where r.id = '<id>' and md5(r.syntax) = '<md5 before>' and md5(v.s) = '<md5 after>'
+   returning r.title;
+   ```
+
+   If it returns no row, nothing changed: stop and find out why.
+4. Write the first recipe alone. The household opens it in the app before you write the rest.
+5. Afterwards, compare every stored md5 in one query, then re-measure.
+
+Never delete and re-insert a recipe: its cooking history cascades with it.
+`migrations/6c-2-line-rewrite/` in `PrivateBackup` is the worked example.
+
 ## Ground rules
 
 **This repo is public.** Recipe, planner and diary data must never be committed here. Backups go
