@@ -232,7 +232,7 @@ Use the week you are about to shop for.
 32. **Settings still lists every word match**, including the six "same" answers the rules now make
     anyway. They are harmless; delete them there when convenient (M4 of the ingredient review).
 
-## F — Checks where recipes come in (new 28 Sep, PR 6c-1)
+## F — Checks where recipes come in (new 27 Sep, PR 6c-1)
 
 Deploy `source-ingredients` first (`docs/INFRASTRUCTURE.md`, Edge Functions: dashboard → Edge
 Functions → deploy a new function named exactly `source-ingredients`, paste
@@ -247,17 +247,17 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
 34. **What the comparison shows.** On a recipe that came back: every highlighted row is on one
     side only. A US name made British can show there and is fine; a different ingredient is not.
     Note anything the check pairs wrongly.
-35. **Warnings, never a gate.** EDIT a recipe that still has an "X or Y" line (before 6c-2 runs
-    there are 22 such lines across 13 recipes). The preview names the line and says what to do.
-    Close without saving. Add a made-up recipe with `400 ml tin plum tomatoes`: USE THIS
-    rewrites it to `400 g plum tomatoes (1 tin)`. Save it anyway with another warning showing:
-    it saves. Delete it.
+35. **Warnings, never a gate.** Since 6c-2 (27 Sep) no recipe in the library has a line the
+    preview warns about, so this step uses a made-up recipe. Add one with two lines,
+    `400 ml tin plum tomatoes` and `1 lemon or lime`. The preview names both and says what to
+    do; USE THIS rewrites the first to `400 g plum tomatoes (1 tin)`. Save it with the second
+    warning still showing: it saves. Delete it.
 36. **The other choice on the list.** Plan two or three recipes and read the list. A recipe's
     choice in brackets — anything with "or" in it — shows in grey **beside that recipe's name**
     on the row, so it reads as that recipe's advice and no other's: a frying recipe's "(or oil)"
     beside butter must not appear against a cake. Only when every recipe on the row offers the same choice
     (a row with one recipe, usually) does it show beside the ingredient's name instead. A bracket
-    with no "or" ("(1 tin)", "(rigatoni)") must not show anywhere. Measured on 28 Sep: 4 rows
+    with no "or" ("(1 tin)", "(rigatoni)") must not show anywhere. Measured on 27 Sep: 4 rows
     show a choice by the name and 3 beside a recipe today; after 6c-2, 9 and 11.
 
 ## Deferred to the tablet, after merging
