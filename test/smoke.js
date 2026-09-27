@@ -943,23 +943,31 @@ const check = (name, pass, detail) => {
   });
   check('an unmeasured garnish line reads "extra to serve" on the list', served === '40 g + extra to serve', served);
 
-  /* A bracketed choice shows beside the row (asked for 27 Sep: honey in the
-     cupboard, maple syrup in the recipe), and never splits it. */
+  /* A recipe's bracketed choice shows beside that recipe on the row (asked for
+     27 Sep: honey in the cupboard, golden syrup in the recipe; attributed to
+     its recipe on 28 Sep, so a stir-fry's "or oil" is not read as advice for a
+     cake), and never splits the row. */
   const alt = await page.evaluate(() => {
     const mk = (title, line) => ({ id: uid(), title, source: 'Blue Door Bakery', servings: 2, tags: { course: '', keywords: [] }, history: [],
       syntax: `TITLE: ${title}\nSERVINGS: 2\n\nGROUP a:\n${line}\n\nSTAGE:\nMERGE a -> done: Mix [instant]` });
-    const a = mk('Alt One', '3 tbsp golden syrup (or honey)'), b = mk('Alt Two', '1 tbsp golden syrup');
-    loadRecipes().push(a, b);
+    const made = [mk('Alt One', '3 tbsp golden syrup (or honey)'), mk('Alt Two', '1 tbsp golden syrup'),
+                  mk('Alt Three', '100 g plain yoghurt (or kefir)')];
+    loadRecipes().push(...made);
     const day = isoLocal(new Date());
-    addPlanRecipe(day, a.id); addPlanRecipe(day, b.id);
+    made.forEach(r => addPlanRecipe(day, r.id));
     renderShopping();
-    const rows = [...document.querySelectorAll('#shopBody .shop-item')].filter(el => /golden syrup/i.test(el.dataset.name));
-    const out = rows.map(r => r.querySelector('.shop-item-name').textContent.replace(/\s+/g, ' ').trim());
-    deleteRecipe(a.id); deleteRecipe(b.id);
+    const read = re => [...document.querySelectorAll('#shopBody .shop-item')].filter(el => re.test(el.dataset.name)).map(r => ({
+      name: r.querySelector('.shop-item-name').textContent.replace(/\s+/g, ' ').trim(),
+      recipes: r.querySelector('.shop-item-recipes').textContent.replace(/\s+/g, ' ').trim() }));
+    const out = { shared: read(/golden syrup/i), single: read(/yoghurt/i) };
+    made.forEach(r => deleteRecipe(r.id));
     return out;
   });
-  check('the other choice shows beside the row, which still totals both recipes',
-        alt.length === 1 && /^4 tbsp\s*Golden syrup\s*\(or honey\)$/.test(alt[0]), JSON.stringify(alt));
+  check('a choice from one recipe of two shows beside that recipe, and the row still totals both',
+        alt.shared.length === 1 && /^4 tbsp\s*Golden syrup$/.test(alt.shared[0].name) && alt.shared[0].recipes === 'Alt One (or honey), Alt Two',
+        JSON.stringify(alt.shared));
+  check('    and beside the name when the row has only the one recipe',
+        alt.single.length === 1 && /\(or kefir\)$/.test(alt.single[0].name) && alt.single[0].recipes === 'Alt Three', JSON.stringify(alt.single));
 
   // The prompt must never fire from the planner.
   let plannerDialogs = 0;

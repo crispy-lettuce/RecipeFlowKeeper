@@ -254,12 +254,20 @@ check('    including a misspelt GROUP inside a group, the commonest case, which 
       unreadOf('TITLE: X\nGROUP a:\n1 onion\nGROUP b-c:\n1 leek\nSTAGE:\nMERGE a -> done: Cook [5 min]'));
 check('    without changing what it parses: a misspelt GROUP still lands where it always did',
       JSON.stringify(core.parseRecipe('GROUP a:\n1 onion\nGROUP b-c:\n1 leek').groups) === JSON.stringify([{ handle: 'a', items: ['1 onion', 'GROUP b-c:', '1 leek'] }]));
+/* A recipe's choice belongs to that recipe (decided 28 Sep): by the row's name
+   only when every recipe on the row offers it, else beside the recipe. */
 const alts = core.aggregateShoppingLines([{ recipeTitle: 'A', raw: '3 tbsp golden syrup (or honey)' }, { recipeTitle: 'B', raw: '1 tbsp golden syrup' },
-  { recipeTitle: 'C', raw: '200 ml milk (whole or semi-skimmed)' }, { recipeTitle: 'D', raw: '400 g plum tomatoes (1 tin)' }], null);
-const altOf = k => (alts.find(i => i.key === k) || {}).alts;
-check('a bracketed choice travels with its row, and never splits it',
-      alts.length === 3 && JSON.stringify(altOf('golden syrup')) === '["or honey"]' && JSON.stringify(altOf('milk')) === '["whole or semi-skimmed"]'
-      && JSON.stringify(altOf('plum tomato')) === '[]', JSON.stringify(alts.map(i => [i.key, i.alts])));
+  { recipeTitle: 'C', raw: '200 ml milk (whole or semi-skimmed)' }, { recipeTitle: 'D', raw: '400 g plum tomatoes (1 tin)' },
+  { recipeTitle: 'E', raw: '10 g butter (or oil)' }, { recipeTitle: 'F', raw: '20 g butter (or oil)' }], null);
+const rowOf = k => alts.find(i => i.key === k) || {};
+check('a choice from one recipe of several sits beside that recipe, not the row',
+      JSON.stringify(rowOf('golden syrup').alts) === '[]' && JSON.stringify(rowOf('golden syrup').recipeAlts) === '[{"recipe":"A","alts":["or honey"]}]',
+      JSON.stringify(rowOf('golden syrup')));
+check('    beside the name when every recipe on the row offers it, a single recipe included',
+      JSON.stringify(rowOf('milk').alts) === '["whole or semi-skimmed"]' && JSON.stringify(rowOf('butter').alts) === '["or oil"]'
+      && !rowOf('milk').recipeAlts.length && !rowOf('butter').recipeAlts.length, JSON.stringify([rowOf('milk'), rowOf('butter')]));
+check('    and a bracket with no choice in it shows nowhere, and never splits a row',
+      alts.length === 4 && JSON.stringify(rowOf('plum tomato').alts) === '[]' && !rowOf('plum tomato').recipeAlts.length, JSON.stringify(alts.map(i => i.key)));
 check('ghee goes with the dairy', only('2 tbsp ghee').category === 'Dairy & Eggs', only('2 tbsp ghee').category);
 const wm = core.ingredientMatchMap([{ kind: 'ingredient', alias: 'Curly Kale', canonical: 'kale' }, { kind: 'ingredient', alias: 'large onion', canonical: 'onion' },
   { kind: 'source', alias: 'x', canonical: 'y' }]);

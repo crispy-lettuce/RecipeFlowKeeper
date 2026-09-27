@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-28.1';
+const KITCHEN_CORE_VERSION = '2026-09-28.2';
 
 
 /* ======================= quantity split ======================= */
@@ -1104,13 +1104,16 @@ function aggregateShoppingLines(lines, alias){
     let shown = line.display;
     if(aliased && aliased !== key){ key = aliased; row = dictionaryRow(key); shown = key; }
     if(!byKey.has(key)){
-      byKey.set(key, { key, row, displays: new Map(), parts: {}, unmeasured: new Map(), unqtyCount: 0, count: 0, recipes: new Set(), alts: new Set() });
+      byKey.set(key, { key, row, displays: new Map(), parts: {}, unmeasured: new Map(), unqtyCount: 0, count: 0, recipes: new Set(), altsBy: new Map() });
     }
     const it = byKey.get(key);
     it.count += 1;
     it.recipes.add(recipeTitle);
     it.displays.set(shown, (it.displays.get(shown) || 0) + 1);
-    (line.alts || []).forEach(a => it.alts.add(a));
+    if((line.alts || []).length){
+      const own = it.altsBy.get(recipeTitle) || it.altsBy.set(recipeTitle, new Set()).get(recipeTitle);
+      line.alts.forEach(a => own.add(a));
+    }
     if(line.amount === null){
       it.unqtyCount += 1;
       const purpose = unmeasuredPurpose(line.tail, group);
@@ -1132,12 +1135,30 @@ function aggregateShoppingLines(lines, alias){
       .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length || a[0].localeCompare(b[0]))[0][0];
     const item = {
       key: it.key, name: display.charAt(0).toUpperCase() + display.slice(1),
-      category: aisleFor(it.key, display, it.row), parts: it.parts, unmeasured: it.unmeasured, alts: Array.from(it.alts),
+      category: aisleFor(it.key, display, it.row), parts: it.parts, unmeasured: it.unmeasured, ...rowAlternatives(it),
       unqtyCount: it.unqtyCount, count: it.count, recipes: it.recipes
     };
     item.qtyText = formatShoppingParts(item);
     return item;
   });
+}
+
+/* A recipe's choice belongs to that recipe (decided 28 Sep). "Butter (or
+   oil)" in a stir-fry says oil will do in the stir-fry, and nothing about
+   the cake on the same row; shown against the whole row it
+   read as advice for all six recipes. So `alts` holds only what EVERY
+   recipe on the row offers, shown beside the name, and `recipeAlts` the
+   rest, shown beside the recipe that offered it. Measured that day on the
+   planned 6c-2 library: 11 of the 20 rows with a choice were shared with
+   recipes that never offered it. */
+function rowAlternatives(it){
+  const offers = Array.from(it.altsBy.values());
+  const everyone = offers.length === it.recipes.size
+    ? Array.from(offers[0] || []).filter(a => offers.every(s => s.has(a)))
+    : [];
+  const recipeAlts = Array.from(it.altsBy, ([recipe, set]) => ({ recipe, alts: Array.from(set).filter(a => !everyone.includes(a)) }))
+    .filter(r => r.alts.length);
+  return { alts: everyone, recipeAlts };
 }
 
 /* The words a household's word match (stored before this release, keyed by

@@ -12,7 +12,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 256 automated checks pass, plus 70 in Node (102 when this was
+story that used to open this paragraph is history. 257 automated checks pass, plus 72 in Node (102 when this was
 written). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -252,12 +252,13 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     Close without saving. Add a made-up recipe with `400 ml tin plum tomatoes`: USE THIS
     rewrites it to `400 g plum tomatoes (1 tin)`. Save it anyway with another warning showing:
     it saves. Delete it.
-36. **The other choice on the list.** Plan two or three recipes and read the list: a row whose
-    recipe line carries a choice in brackets — anything with "or" in it — shows that bracket in
-    grey after the name. Measured on 28 Sep, seven rows across the library already do, from
-    brackets written before this existed; after 6c-2, about twenty more. A bracket with no "or"
-    ("(1 tin)", "(rigatoni)") must *not* show. A note from one recipe shows on a row shared with
-    others, so read it as "one recipe says".
+36. **The other choice on the list.** Plan two or three recipes and read the list. A recipe's
+    choice in brackets — anything with "or" in it — shows in grey **beside that recipe's name**
+    on the row, so it reads as that recipe's advice and no other's: a frying recipe's "(or oil)"
+    beside butter must not appear against a cake. Only when every recipe on the row offers the same choice
+    (a row with one recipe, usually) does it show beside the ingredient's name instead. A bracket
+    with no "or" ("(1 tin)", "(rigatoni)") must not show anywhere. Measured on 28 Sep: 4 rows
+    show a choice by the name and 3 beside a recipe today; after 6c-2, 9 and 11.
 
 ## Deferred to the tablet, after merging
 

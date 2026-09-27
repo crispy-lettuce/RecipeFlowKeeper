@@ -260,7 +260,7 @@ to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.m
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 256-check smoke suite, the 70 Node checks and the Edge Function checks, and an honest account of what it can't tell you
+**What:** How to run the 257-check smoke suite, the 72 Node checks and the Edge Function checks, and an honest account of what it can't tell you
 (everything about the real backend).
 
 **Use it when:** making any code change.
