@@ -178,7 +178,7 @@ the public URL prefix it compares against, to decide whether a photo is already 
 
 ### Edge Functions
 
-**Two deployed**, both `verify_jwt: true`, with source in this repo under
+**Two deployed, a third in the repo to deploy** (`source-ingredients`, 28 Sep), all `verify_jwt: true`, with source in this repo under
 `supabase/functions/`. The 23 Sep review diffed both against what is running: `find-recipe-image`
 was identical; `rehost-images` v8 had been deployed from an uncommitted copy, and the repo was
 brought into step on 23 Sep (`docs/REVIEW-ARCHITECTURE-FINDINGS.md` F4, Appendix D). **A deploy
@@ -192,6 +192,7 @@ drops. *(Until 25 Sep this paragraph said the next deploy would be v9.)*
 | --- | --- | --- |
 | `rehost-images` | v10 | Copies external images into Storage. `{"recipeId": "…"}` for one recipe — what the app sends after a save, added in v8; omit it for the full sweep, which is what v7 and earlier always did. `{"dryRun": true}` to preview, `{"verify": true}` to re-check what is already stored |
 | `find-recipe-image` | v4 | Read-only. Finds and measures candidate hero images for a recipe |
+| `source-ingredients` | **not yet deployed** (added to the repo 28 Sep, PR #22) | Read-only. Reads the Schema.org recipe block at a `SOURCE_URL` and returns the source's ingredient strings, for the preview's COMPARE WITH SOURCE. `{"pageUrl": "https://…"}` or `{"recipeId": "…"}`. Fetches public https pages only, re-checking every redirect. Deploy with JWT verification on, like the other two; it needs no secrets beyond the ones Supabase provides |
 
 P3's calendar push would be a third; that one does not exist yet.
 

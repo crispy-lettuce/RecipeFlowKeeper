@@ -12,7 +12,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 247 automated checks pass, plus 59 in Node (102 when this was
+story that used to open this paragraph is history. 257 automated checks pass, plus 72 in Node (102 when this was
 written). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -231,6 +231,34 @@ Use the week you are about to shop for.
     a dialog. If a *Same as…?* line appears, KEEP APART on it, reload: not offered again.
 32. **Settings still lists every word match**, including the six "same" answers the rules now make
     anyway. They are harmless; delete them there when convenient (M4 of the ingredient review).
+
+## F — Checks where recipes come in (new 28 Sep, PR 6c-1)
+
+Deploy `source-ingredients` first (`docs/INFRASTRUCTURE.md`, Edge Functions: dashboard → Edge
+Functions → deploy a new function named exactly `source-ingredients`, paste
+`supabase/functions/source-ingredients/index.ts`, JWT verification **on**). Reload every device.
+
+33. **The source's own list.** Open one recipe from each site the library uses (twelve, per the
+    architecture review; the 14 recipes 6c-2 rewrites are on seven of them), EDIT, then COMPARE
+    WITH SOURCE. Note for each
+    site whether a list comes back at all. *This is the measurement the architecture review could
+    not make: whether these sites carry the Schema.org block.* A site that doesn't gets "no
+    ingredient list the check can read", and that recipe is compared by eye.
+34. **What the comparison shows.** On a recipe that came back: every highlighted row is on one
+    side only. A US name made British can show there and is fine; a different ingredient is not.
+    Note anything the check pairs wrongly.
+35. **Warnings, never a gate.** EDIT a recipe that still has an "X or Y" line (before 6c-2 runs
+    there are 22 such lines across 13 recipes). The preview names the line and says what to do.
+    Close without saving. Add a made-up recipe with `400 ml tin plum tomatoes`: USE THIS
+    rewrites it to `400 g plum tomatoes (1 tin)`. Save it anyway with another warning showing:
+    it saves. Delete it.
+36. **The other choice on the list.** Plan two or three recipes and read the list. A recipe's
+    choice in brackets — anything with "or" in it — shows in grey **beside that recipe's name**
+    on the row, so it reads as that recipe's advice and no other's: a frying recipe's "(or oil)"
+    beside butter must not appear against a cake. Only when every recipe on the row offers the same choice
+    (a row with one recipe, usually) does it show beside the ingredient's name instead. A bracket
+    with no "or" ("(1 tin)", "(rigatoni)") must not show anywhere. Measured on 28 Sep: 4 rows
+    show a choice by the name and 3 beside a recipe today; after 6c-2, 9 and 11.
 
 ## Deferred to the tablet, after merging
 

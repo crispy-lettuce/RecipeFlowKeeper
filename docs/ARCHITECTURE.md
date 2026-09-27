@@ -147,13 +147,15 @@ refresh lands whole or not at all.
 
 | Function | What it does |
 | --- | --- |
-| `parseRecipe(text)` | Turns recipe syntax into `{title, source, sourceUrl, servings, groups, stages, notes, ...}`. The single source of truth for the format. |
+| `parseRecipe(text)` | Turns recipe syntax into `{title, source, sourceUrl, servings, groups, stages, notes, unread, ...}`. The single source of truth for the format. `unread` lists the lines it read past (a GROUP with a hyphen, a stray line under a STAGE), shown in the preview since 28 Sep; it changes nothing about what is parsed. |
 | `computeColumns(groups, stages)` | Lays the flow out into rows and columns, returning `errors[]` for unknown handles or non-adjacent merges. |
 | `computeTimeline(groups, stages)` | Derives each step's start/end from stage order plus durations. Returns `null` if no step has a real duration — which is why the timeline strip auto-hides. |
 | `mountFlow(container, parsed, opts)` | Renders the diagram and wires tick-to-complete. `opts.tickKey` makes ticks survive a re-render. |
 | `scaleRecipeSyntax(text, multiplier)` | Rewrites quantities in the raw text. Callers compute `multiplier = target ÷ base`; nothing scales by a raw multiplier any more. |
 | `buildShoppingList(weekDays)` | Aggregates the plan into a shopping list. **Must stay side-effect free** — it runs on every planner change via `updateSidebarCounts()`. The naming and totalling are `aggregateShoppingLines` in `core.js` (since PR 6b); the page adds the week, the headcount, the household's word matches and each line's group, which says what a line with no amount is for ("+ extra to serve"). |
 | `shoppingLine(rest, parsed)` (`core.js`) | One ingredient line → its key, the name to show, its aisle's dictionary row and its amount in a base unit. The rules, in order, are in its comment: brackets and the first comma go, then tail notes, size words and a leading count unit ("pinch of", "2 tins"); garlic and celery carry their count at the end; bare "pepper" is black pepper by the spoon and the vegetable when counted; then the dictionary, then prep words. **One row per key**, whatever the units: parts that can't be added are shown side by side, `2 + 400 g`. |
+| `ingredientLineFaults(line)` (`core.js`) | The standard-shape checks for one ingredient line, each marked `affectsList` when the shopping list can't total it (an alternative outside brackets, two ingredients on a line, cups or oz, a tin in ml, an amount inside the name). The add/edit preview shows only those, as warnings that never block a save; `validate-recipes.js` reports all (28 Sep, PR 6c-1). `suggestIngredientLine` offers a rewrite where there is one right answer. |
+| `sourceFidelity(sourceLines, recipeLines)` (`core.js`) | Pairs a source's ingredient list with the recipe's lines — a shared content word, or the same dictionary name — and returns what is on one side only. Words, never amounts. Fed by the `source-ingredients` Edge Function from the preview's COMPARE WITH SOURCE. |
 | `strictMatchSuggestions(items, isSettled)` (`core.js`) | The pairs the list offers to merge, in place, never in a dialog: two names that share a last word and differ by one word not on `NEVER_IGNORE`, neither known to the dictionary as a different product. |
 | `queueWrite(label, fn)` | Background write queue. Returns `true` synchronously. |
 | `rehostImageFor(id, sentUrl)` | Queued after a save. Asks `rehost-images` to copy one recipe's photo into our own Storage, if it is not there already. Never awaited by the save. |
@@ -227,10 +229,10 @@ a URL is already ours. See `docs/IMAGES.md` §5.
 (`test/stub.js`) and walks every screen.
 
 ```sh
-node test/core.test.js   # 59 checks on core.js in Node, under a second, no browser
+node test/core.test.js   # 72 checks on core.js in Node, under a second, no browser
 npm install playwright
 node test/build.js       # bake index.html (with core.js inlined) against the stub
-node test/smoke.js       # 247 checks; exits non-zero on failure
+node test/smoke.js       # 257 checks; exits non-zero on failure
 ```
 
 **`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,
@@ -250,7 +252,8 @@ Keep Awake can only be tested on a real tablet.
 | `index.html` | **The app**: markup, styles, data layer, every screen. |
 | `core.js` | The pure functions and the ingredient dictionary's master copy, loaded by `index.html` (since 25 Sep 2026). |
 | `tools/generate-ingredient-names.js` | Writes `converter/ingredient-names.md` from the dictionary in `core.js`; `--check` fails if they differ. |
-| `supabase/functions/` | Edge Functions. `rehost-images` is the image re-hosting sweep (R7); `find-recipe-image` reports a page's candidate hero images and their real sizes, read-only. Both need a signed-in caller. See `docs/IMAGES.md`. |
+| `tools/remeasure.js` | Totals an app export (kept **outside** the repo) with the app's own `core.js` and reports rows, likely splits, "Other" rows, lines the list can't total and lines the parser reads past. Refuses a file inside the repo. Run every ten or so new recipes (28 Sep). |
+| `supabase/functions/` | Edge Functions. `rehost-images` is the image re-hosting sweep (R7); `find-recipe-image` reports a page's candidate hero images and their real sizes, read-only; `source-ingredients` (28 Sep) returns a source page's own ingredient list, read-only, for the preview's source check. All need a signed-in caller. See `docs/IMAGES.md` and `docs/INFRASTRUCTURE.md`. |
 | `index-old.html` | The pre-Supabase version, kept for reference. **Not used, not served, not maintained** — don't edit it thinking it's live. |
 | `converter/` | Conversion instructions and the standing test set for writing recipes. |
 | `test/` | Offline test harness. |

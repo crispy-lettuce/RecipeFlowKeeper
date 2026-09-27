@@ -664,6 +664,76 @@ const check = (name, pass, detail) => {
         && qtyRead.longUnit.qty === '500 grams' && qtyRead.longUnit.rest === 'strong flour',
         JSON.stringify([qtyRead.display, qtyRead.longUnit]));
 
+  /* 6c-1 (28 Sep): the preview checks what comes in. Lines the parser reads
+     past, ingredient lines the shopping list can't total, and on request
+     the source's list beside the recipe's. Advice only: a save goes
+     through whatever they say. */
+  await page.fill('#importInput', ['TITLE: Checks Test', 'SOURCE: Blue Door Bakery', 'SOURCE_URL: https://example.com/checks', 'SERVINGS: 2', '',
+    'GROUP a:', '3 tbsp honey or golden syrup', '400 ml tin plum tomatoes', '1 large onion, chopped', 'grated parmesan', '',
+    'GROUP b-c:', '1 carrot', '',
+    'STAGE:', 'MERGE a -> done: Cook [5 min]', 'Stir well'].join('\n'));
+  await page.click('#parseBtn');
+  await page.waitForTimeout(300);
+  const checksShown = await page.evaluate(() => {
+    const box = document.getElementById('addChecks');
+    return { unread: [...box.querySelectorAll('.line-checks.unread code')].map(c => c.textContent),
+             faulty: [...box.querySelectorAll('.line-checks:not(.unread) .line-check > code')].map(c => c.textContent),
+             useButtons: box.querySelectorAll('[data-use-line]').length };
+  });
+  check('the preview lists the lines the parser read past',
+        checksShown.unread.join('|') === 'GROUP b-c:|Stir well', JSON.stringify(checksShown.unread));
+  check('and the lines the shopping list cannot total, not the ones it copes with',
+        checksShown.faulty.join('|') === '3 tbsp honey or golden syrup|400 ml tin plum tomatoes', JSON.stringify(checksShown.faulty));
+  check('with a one-tap rewrite only where there is one right answer', checksShown.useButtons === 1, checksShown.useButtons + ' buttons');
+  await page.click('[data-use-line="400 ml tin plum tomatoes"]');
+  await page.waitForTimeout(300);
+  const afterUse = await page.evaluate(() => ({
+    text: document.getElementById('importInput').value,
+    still: [...document.querySelectorAll('#addChecks .line-checks:not(.unread) .line-check > code')].map(c => c.textContent)
+  }));
+  check('USE THIS rewrites the line in place and re-checks',
+        afterUse.text.includes('\n400 g plum tomatoes (1 tin)\n') && !afterUse.text.includes('400 ml tin') && afterUse.still.join('|') === '3 tbsp honey or golden syrup',
+        JSON.stringify(afterUse.still));
+
+  // The source comparison, against a made-up reply from the function.
+  await page.evaluate(() => {
+    window.__INVOKES__.length = 0;
+    window.__INVOKE_REPLY__ = call => call.name === 'source-ingredients'
+      ? { data: { pageUrl: call.body.pageUrl, name: 'Checks', ingredients: ['1/2 cup honey', '1 (14 oz) can crushed tomatoes', '1 large onion', '1 carrot', '1 tsp Italian seasoning'] }, error: null }
+      : { data: null, error: null };
+  });
+  await page.click('#compareSourceBtn');
+  await page.waitForTimeout(300);
+  const compared = await page.evaluate(() => ({
+    call: window.__INVOKES__.find(c => c.name === 'source-ingredients') || null,
+    misses: [...document.querySelectorAll('#sourceCompareOut tr.miss td')].map(td => td.textContent).filter(t => t !== '—'),
+    rows: document.querySelectorAll('#sourceCompareOut tr').length
+  }));
+  check('COMPARE WITH SOURCE asks the function for this recipe\'s source page',
+        compared.call && compared.call.body.pageUrl === 'https://example.com/checks', JSON.stringify(compared.call));
+  check('and highlights what is on one side only: here the dropped seasoning and the unmatched parmesan',
+        compared.misses.slice().sort().join('|') === '1 tsp Italian seasoning|grated parmesan', JSON.stringify(compared.misses));
+  await page.evaluate(() => { window.__INVOKE_REPLY__ = { data: null, error: { message: 'Function not found' } }; });
+  await page.click('#compareSourceBtn');
+  await page.waitForTimeout(300);
+  const notDeployed = await page.locator('#sourceCompareOut').textContent();
+  check('a function that is not there says so, rather than failing silently', /Couldn't reach the source check.*Function not found/.test(notDeployed), notDeployed.trim().slice(0, 90));
+  await page.evaluate(() => { window.__INVOKE_REPLY__ = null; });
+
+  // Advice, never a gate: the recipe saves with warnings still showing.
+  const recipeWritesBefore = await page.evaluate(() => (window.__WRITES__ || []).filter(w => w.table === 'recipes').length);
+  await page.click('#saveBtn');
+  await page.waitForTimeout(400);
+  const savedWithWarnings = await page.evaluate(() => ({
+    writes: (window.__WRITES__ || []).filter(w => w.table === 'recipes').length,
+    id: (loadRecipes().find(r => r.title === 'Checks Test') || {}).id || null
+  }));
+  check('a recipe with warnings still saves', savedWithWarnings.id && savedWithWarnings.writes > recipeWritesBefore, JSON.stringify(savedWithWarnings));
+  await page.evaluate(id => deleteRecipe(id), savedWithWarnings.id);
+  await page.waitForTimeout(300);
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+
   // The form scales to a headcount too, working the multiplier out of SERVINGS.
   await page.fill('#importInput', 'TITLE: Scale Test\nSOURCE: Somewhere\nSERVINGS: 4\n\nGROUP a:\n300 g pasta\n\nSTAGE:\nMERGE a -> done: Cook [5 min]');
   await page.click('#parseBtn');
@@ -872,6 +942,32 @@ const check = (name, pass, detail) => {
     return text;
   });
   check('an unmeasured garnish line reads "extra to serve" on the list', served === '40 g + extra to serve', served);
+
+  /* A recipe's bracketed choice shows beside that recipe on the row (asked for
+     27 Sep: honey in the cupboard, golden syrup in the recipe; attributed to
+     its recipe on 28 Sep, so a stir-fry's "or oil" is not read as advice for a
+     cake), and never splits the row. */
+  const alt = await page.evaluate(() => {
+    const mk = (title, line) => ({ id: uid(), title, source: 'Blue Door Bakery', servings: 2, tags: { course: '', keywords: [] }, history: [],
+      syntax: `TITLE: ${title}\nSERVINGS: 2\n\nGROUP a:\n${line}\n\nSTAGE:\nMERGE a -> done: Mix [instant]` });
+    const made = [mk('Alt One', '3 tbsp golden syrup (or honey)'), mk('Alt Two', '1 tbsp golden syrup'),
+                  mk('Alt Three', '100 g plain yoghurt (or kefir)')];
+    loadRecipes().push(...made);
+    const day = isoLocal(new Date());
+    made.forEach(r => addPlanRecipe(day, r.id));
+    renderShopping();
+    const read = re => [...document.querySelectorAll('#shopBody .shop-item')].filter(el => re.test(el.dataset.name)).map(r => ({
+      name: r.querySelector('.shop-item-name').textContent.replace(/\s+/g, ' ').trim(),
+      recipes: r.querySelector('.shop-item-recipes').textContent.replace(/\s+/g, ' ').trim() }));
+    const out = { shared: read(/golden syrup/i), single: read(/yoghurt/i) };
+    made.forEach(r => deleteRecipe(r.id));
+    return out;
+  });
+  check('a choice from one recipe of two shows beside that recipe, and the row still totals both',
+        alt.shared.length === 1 && /^4 tbsp\s*Golden syrup$/.test(alt.shared[0].name) && alt.shared[0].recipes === 'Alt One (or honey), Alt Two',
+        JSON.stringify(alt.shared));
+  check('    and beside the name when the row has only the one recipe',
+        alt.single.length === 1 && /\(or kefir\)$/.test(alt.single[0].name) && alt.single[0].recipes === 'Alt Three', JSON.stringify(alt.single));
 
   // The prompt must never fire from the planner.
   let plannerDialogs = 0;

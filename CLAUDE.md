@@ -21,9 +21,9 @@ node test/core.test.js
 node test/build.js && node test/smoke.js
 ```
 
-`core.test.js` is 59 checks in Node, in under a second: the pure functions, the dictionary, the
+`core.test.js` is 72 checks in Node, in under a second: the pure functions, the dictionary, the
 shopping list's naming rules, and the rules that keep `core.js` and `index.html` apart. The smoke
-suite is 247 checks. **Run both,
+suite is 257 checks. **Run both,
 always** — `smoke.js` loads what `build.js` wrote, so skipping the build
 tests your previous edit and reports a pass or a failure that belongs to code you have changed.
 
@@ -38,7 +38,8 @@ node test/image-integrity.js
 
 31 checks over the integrity checker and `parseRecipeFilter` in `supabase/functions/*/index.ts`.
 It lifts the code out of the real source rather than copying it, so a signature change makes it
-throw rather than pass vacuously.
+throw rather than pass vacuously. After a change to `source-ingredients`, or to `sourceFidelity`
+in `core.js`, run `node test/source-ingredients.js` (12 checks, lifted the same way).
 
 ## Things that will bite
 
@@ -76,6 +77,10 @@ throw rather than pass vacuously.
   **Bump `KITCHEN_CORE_VERSION` in `core.js` and `EXPECTED_CORE_VERSION` in `index.html`
   together** whenever `core.js` changes: Pages caches the two separately, and the page asks for a
   reload when they disagree. `test/core.test.js` fails if they differ.
+- **The ingredient-line checks live in `core.js` (`ingredientLineFaults`) since 28 Sep**, shared by the
+  app's preview and `validate-recipes.js`. A fault marked `affectsList` is shown in the preview;
+  mark one only when the shopping list genuinely can't cope, or the preview nags about lines that
+  are fine. The preview's checks are advice: never make one block a save.
 - **The ingredient dictionary is edited in `core.js`, never in `converter/ingredient-names.md`.**
   That file is generated: `node tools/generate-ingredient-names.js`, then commit both.
 - **Ordinary saves write one row; `pushList` and the `replace*` functions are for import only.**

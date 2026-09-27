@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-26.1';
+const KITCHEN_CORE_VERSION = '2026-09-28.2';
 
 
 /* ======================= quantity split ======================= */
@@ -210,6 +210,14 @@ function parseRecipe(text){
      migrating — it's additive, not a replacement for the old format. */
   let notes = {general:[], variations:[], storing:[], freezing:[], tips:[]};
   let mode='', currentGroup=null, currentStage=null;
+  /* Lines the parser reads past, reported rather than lost (since 28 Sep,
+     PR 6c-1; docs/REVIEW-ARCHITECTURE-FINDINGS.md §2). A GROUP with a
+     hyphen in its handle or a MERGE with a Unicode arrow used to vanish
+     and the recipe rendered as though it had never been written; only
+     validate-recipes.js, run on a batch, could see it. Nothing here changes
+     what is parsed: a line that fell into a group before still does. */
+  const unread = [];
+  const KEYWORD_LINE = /^(GROUP|STAGE|MERGE)\b/i;
   for(const raw of rawLines){
     const line = raw.trim();
     if(line==='') continue;
@@ -261,8 +269,10 @@ function parseRecipe(text){
     else if(mode==='notes-freezing') notes.freezing.push(line);
     else if(mode==='notes-tips') notes.tips.push(line);
     else if(mode==='group' && currentGroup) currentGroup.items.push(line);
+    if(KEYWORD_LINE.test(line)) unread.push({ line, why: 'looks like a GROUP, STAGE or MERGE line but is not written as one (a handle is letters, digits and _ only; the arrow is ->)' });
+    else if(mode === '' || mode === 'stage') unread.push({ line, why: mode === 'stage' ? 'inside a STAGE, but not a MERGE line' : 'not under any heading' });
   }
-  return {title, source, sourceUrl, imageUrl, time, servings, equipment, tags: parseTags(tagsRaw), setup, notes, groups, stages};
+  return {title, source, sourceUrl, imageUrl, time, servings, equipment, tags: parseTags(tagsRaw), setup, notes, groups, stages, unread};
 }
 
 /* The header lines and the form are two copies of the same eight facts —
@@ -706,7 +716,7 @@ function stripPrepWordsForCategorizing(name){
 const AGGREGATION_PREP_WORDS = PREP_WORDS.filter(w=> w !== 'ground');
 const SHOPPING_CATEGORIES = [
   { name:'Spices & Seasoning', keywords:['salt','pepper','oregano','cumin','paprika','cinnamon','chilli flakes','chili flakes','cayenne','turmeric','nutmeg','dried thyme','dried rosemary','dried basil','bay leaf','seasoning','garam masala','chilli powder','chili powder','spice','clove','curry powder','harissa'] },
-  { name:'Dairy & Eggs', keywords:['cheese','parmesan','feta','cheddar','mozzarella','butter','milk','cream','yogurt','yoghurt','egg','creme fraiche'] },
+  { name:'Dairy & Eggs', keywords:['cheese','parmesan','feta','cheddar','mozzarella','butter','milk','cream','yogurt','yoghurt','egg','creme fraiche','ghee'] },
   { name:'Pantry', keywords:['oil','flour','cornflour','cornstarch','sugar','honey','vinegar','sauce','stock','rice','pasta','noodle','bread','tin of','can of',
     'passata','gnocchi','linguine','spaghetti','penne','tagliatelle','fusilli','orzo','rigatoni','lasagne'] },
   { name:'Meat & Fish', keywords:['chicken','beef','pork','lamb','turkey','bacon','sausage','mince','fish','salmon','cod','tuna','prawn','shrimp'] },
@@ -940,6 +950,12 @@ function dictionaryRow(key){ return DICTIONARY_INDEX.get(key) || null; }
 /* One line → { key, display, unit, amount, spoon, tail }. `qty` is what
    splitQty took off the front; `parsed` its reading (or null). */
 function shoppingLine(rest, parsed){
+  /* A bracket that offers a choice ("(or honey)", "(full-fat or
+     semi-skimmed)") is kept to show beside the row, so the shopper knows
+     the other will do (asked for 27 Sep: honey in the cupboard, maple syrup
+     in the recipe). It is never part of the name, so it never splits a row
+     or re-keys a tick. */
+  const alts = (String(rest || '').match(/\([^)]*\bor\b[^)]*\)/gi) || []).map(b => b.slice(1, -1).trim());
   let text = String(rest || '').toLowerCase().replace(/\([^)]*\)/g, ' ');
   const tailMatch = text.match(TAIL_NOTES);
   const tail = tailMatch ? tailMatch[1].replace(/^(plus|for)\b.*/, '').trim() : '';
@@ -993,7 +1009,7 @@ function shoppingLine(rest, parsed){
   const base = amount !== null ? toBaseUnit(amount, unit) : null;
   const spoon = SPOON_ML[unit] ? unit : null;
   return {
-    key, display, dictionary: !!row,
+    key, display, dictionary: !!row, alts,
     unit: base ? (spoon ? 'ml' : base.unit) : '',
     amount: base ? (spoon ? amount * SPOON_ML[unit] : base.amount) : null,
     spoon, tail
@@ -1088,12 +1104,16 @@ function aggregateShoppingLines(lines, alias){
     let shown = line.display;
     if(aliased && aliased !== key){ key = aliased; row = dictionaryRow(key); shown = key; }
     if(!byKey.has(key)){
-      byKey.set(key, { key, row, displays: new Map(), parts: {}, unmeasured: new Map(), unqtyCount: 0, count: 0, recipes: new Set() });
+      byKey.set(key, { key, row, displays: new Map(), parts: {}, unmeasured: new Map(), unqtyCount: 0, count: 0, recipes: new Set(), altsBy: new Map() });
     }
     const it = byKey.get(key);
     it.count += 1;
     it.recipes.add(recipeTitle);
     it.displays.set(shown, (it.displays.get(shown) || 0) + 1);
+    if((line.alts || []).length){
+      const own = it.altsBy.get(recipeTitle) || it.altsBy.set(recipeTitle, new Set()).get(recipeTitle);
+      line.alts.forEach(a => own.add(a));
+    }
     if(line.amount === null){
       it.unqtyCount += 1;
       const purpose = unmeasuredPurpose(line.tail, group);
@@ -1115,12 +1135,30 @@ function aggregateShoppingLines(lines, alias){
       .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length || a[0].localeCompare(b[0]))[0][0];
     const item = {
       key: it.key, name: display.charAt(0).toUpperCase() + display.slice(1),
-      category: aisleFor(it.key, display, it.row), parts: it.parts, unmeasured: it.unmeasured,
+      category: aisleFor(it.key, display, it.row), parts: it.parts, unmeasured: it.unmeasured, ...rowAlternatives(it),
       unqtyCount: it.unqtyCount, count: it.count, recipes: it.recipes
     };
     item.qtyText = formatShoppingParts(item);
     return item;
   });
+}
+
+/* A recipe's choice belongs to that recipe (decided 28 Sep). "Butter (or
+   oil)" in a stir-fry says oil will do in the stir-fry, and nothing about
+   the cake on the same row; shown against the whole row it
+   read as advice for all six recipes. So `alts` holds only what EVERY
+   recipe on the row offers, shown beside the name, and `recipeAlts` the
+   rest, shown beside the recipe that offered it. Measured that day on the
+   planned 6c-2 library: 11 of the 20 rows with a choice were shared with
+   recipes that never offered it. */
+function rowAlternatives(it){
+  const offers = Array.from(it.altsBy.values());
+  const everyone = offers.length === it.recipes.size
+    ? Array.from(offers[0] || []).filter(a => offers.every(s => s.has(a)))
+    : [];
+  const recipeAlts = Array.from(it.altsBy, ([recipe, set]) => ({ recipe, alts: Array.from(set).filter(a => !everyone.includes(a)) }))
+    .filter(r => r.alts.length);
+  return { alts: everyone, recipeAlts };
 }
 
 /* The words a household's word match (stored before this release, keyed by
@@ -1172,6 +1210,133 @@ function strictMatchSuggestions(items, isSettled){
   return out;
 }
 
+/* ================= checks where recipes come in (PR 6c-1) ================= */
+
+/* The standard ingredient line: converter/conversion-instructions.md §1 and
+   docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md §4.2. Until 28 Sep these
+   checks lived in test/ingredient-lines.js and ran only in a developer
+   session; nothing in the app looked at a line, so a converter slip
+   reached the library unseen and surfaced weeks later as an odd row on the
+   shopping list. They live here now so the app's preview and the
+   validators share one copy.
+
+   Each fault says whether the SHOPPING LIST can cope with it. Since PR 6b
+   the list drops size words and preparation, and reads a line with no
+   amount as "extra to serve", so those are style: the validators report
+   them, the preview doesn't nag. The ones it cannot cope with are shown
+   in the preview, as warnings that never block a save. */
+const PRODUCT_FORM = /^(chopped tomatoes|minced (beef|pork|lamb|turkey|chicken)|flaked almonds)\b/;
+const LINE_HINTS = {
+  alternative: 'Write the one you usually buy, with the other in brackets: “3 tbsp golden syrup (or honey)”. The list totals the first and shows the other beside it.',
+  two: 'One ingredient per line, so each is totalled: “salt, to taste” and “black pepper, to taste” as two lines, in the same group.',
+  metric: 'Convert to grams or millilitres, so it totals with the rest of the list.',
+  tinMl: 'Tins are weighed in grams, as the label says: “400 g plum tomatoes (1 tin)”.',
+  amountInName: 'Put the amount first: “1/2 lemon, zested”.'
+};
+function ingredientLineFaults(line, qty, rest){
+  if(qty === undefined){ const q = splitQty(line); qty = q.qty; rest = q.rest; }
+  const out = [];
+  const add = (code, text, affectsList) => out.push({ code, text, affectsList });
+  const noBrackets = String(rest || '').replace(/\([^)]*\)/g, ' ');
+  const segments = noBrackets.split(',').map(x => x.trim());
+  const first = segments[0].toLowerCase();
+  if(/[¼½¾⅓⅔⅛⅜⅝⅞]/.test(line)) add('fraction', 'uses ½-style fraction', false);
+  if(/^\s*[\d.\/\s]+\s*x\s*\d/i.test(line)) add('multiplier', 'multiplier ("3 x …")', false);
+  if(/\band\b|&/.test(first) || (segments.length >= 3 && /\band\b/.test(segments[1]))) add('two', 'two ingredients on one line?', true);
+  if(/\s(or|and\/or)\s/.test(first)) add('alternative', 'alternative outside brackets', true);
+  if(/^(large|small|medium|big|heaped|level|generous|thumb-sized)\b/.test(first)) add('size', 'size word before the name', false);
+  if(!PRODUCT_FORM.test(first) && (/^(minced|grated|chopped|diced|sliced|crushed|melted|softened|beaten)\b/.test(first)
+     || /^(juice|zest|leaves|stalks)\s+(of|from)\b/.test(first))) add('prep', 'preparation before the name', false);
+  if(/\b(cups?|oz|ounces?|lbs?|pounds?|quarts?|pints?|sticks? of butter)\b/i.test(qty)) add('metric', 'not metric (convert cups, oz and lb)', true);
+  if(qty && /^(tins?|cans?|jars?|packs?|packets?)\b/.test(first)) add('container', 'container word in the name (put "(1 tin)" in brackets)', false);
+  /* New with the move: the two shapes the 6c-2 rewrite found that the list
+     gets wrong, where the older checks only called them style. */
+  if(/\bml\b/i.test(qty) && /^(tins?|cans?)\b/.test(first)) add('tinMl', 'tin measured in ml', true);
+  if(/^(juice|zest|leaves|stalks)\s+(of|from)\s+[\d¼½¾⅓⅔⅛⅜⅝⅞]/.test(first)) add('amountInName', 'amount written inside the name', true);
+  if(!qty && !/,.*\bto (taste|serve|glaze|finish)\b/i.test(line) && !/^(pinch|handful|squeeze|knob)\b/i.test(line)) add('noqty', 'no quantity', false);
+  return out;
+}
+/* A rewrite the app can offer with confidence, or null. Only for shapes
+   that have one right answer; an alternative or a doubled line needs the
+   household's choice, so those get a hint instead (LINE_HINTS). */
+function suggestIngredientLine(line){
+  const { qty, rest } = splitQty(line);
+  const faults = ingredientLineFaults(line, qty, rest).map(f => f.code);
+  let m;
+  if(faults.includes('tinMl') && (m = String(qty).match(/^([\d.\/\s]+?)\s*ml$/i))){
+    const [name, ...after] = String(rest).replace(/^(tins?|cans?)\s+(of\s+)?/i, '').split(',');
+    return `${m[1].trim()} g ${name.trim()} (1 tin)${after.length ? ',' + after.join(',') : ''}`;
+  }
+  if(faults.includes('amountInName') && (m = String(rest).match(/^(juice|zest|leaves|stalks)\s+(?:of|from)\s+(\S+)\s+([^,(]+?)\s*(\([^)]*\))?\s*(,.*)?$/i))){
+    const how = { juice: 'juiced', zest: 'zested', leaves: 'leaves only', stalks: 'stalks only' }[m[1].toLowerCase()];
+    return `${m[2]} ${m[3].trim()}${m[4] ? ' ' + m[4] : ''}, ${how}${m[5] ? m[5].replace(/^,\s*/, ', ') : ''}`;
+  }
+  return null;
+}
+
+/* Checking a recipe against its source (docs/REVIEW-ARCHITECTURE-FINDINGS.md
+   §2 and §4): the converter once swapped Italian seasoning for dried
+   oregano, and nothing downstream could see it, because every check looked
+   at the shape of a line and none at what it said. This pairs the source's
+   ingredient list with the recipe's lines and shows what is on one side
+   only. It judges words, never quantities: a cup becoming grams is the
+   converter's job, so amounts are shown side by side for a person to read.
+
+   Two lines are the same ingredient when they share a content word, or
+   when the dictionary names them the same thing (cilantro → fresh
+   coriander, heavy cream → double cream). Pass one pairs them one to one,
+   best overlap first; pass two lets a line left over attach to one already
+   paired, which is what a line split in two ("salt and pepper" becoming two
+   lines) looks like. What is left on either side is the warning. */
+const FIDELITY_NOISE = new Set(['a','an','the','of','and','or','to','for','into','about','plus','extra','taste','serve',
+  'serving','garnish','optional','g','kg','ml','l','tsp','tbsp','cup','cups','oz','lb','lbs','pound','pounds','ounce','ounces',
+  'teaspoon','teaspoons','tablespoon','tablespoons','x','can','tin','jar','pack','packet','inch','cm','at','room','temperature',
+  'large','small','medium','heaped','level','fresh','good','quality','whole','piece','pieces','bunch','handful','pinch',
+  'clove','cloves','sprig','sprigs','slice','slices','stick','sticks','dash','splash','cut','into','in','on','with','such','as']);
+function fidelityWords(line){
+  const text = String(line || '').toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[\d¼½¾⅓⅔⅛⅜⅝⅞./-]+/g, ' ');
+  const prep = new Set(PREP_WORDS.concat(LEFTOVER_PREP));
+  return new Set(squash(text).split(' ').filter(w => w.length > 1 && !FIDELITY_NOISE.has(w) && !prep.has(w)).map(w => foldPlural(w)));
+}
+function sourceFidelity(sourceLines, recipeLines){
+  const src = (sourceLines || []).map((line, i) => ({ i, line, words: fidelityWords(line), key: shoppingKeyForName(splitQty(line).rest) }));
+  const rec = (recipeLines || []).map((line, i) => ({ i, line, words: fidelityWords(line), key: shoppingKeyForName(splitQty(line).rest) }));
+  const score = (a, b) => {
+    let n = 0; a.words.forEach(w => { if(b.words.has(w)) n++; });
+    return a.key && a.key === b.key ? Math.max(n, 1) + 1 : n;
+  };
+  const pairs = [];
+  src.forEach(a => rec.forEach(b => { const n = score(a, b); if(n > 0) pairs.push({ a, b, n }); }));
+  pairs.sort((x, y) => y.n - x.n || x.a.i - y.a.i || x.b.i - y.b.i);
+  const srcTo = new Map(), recTo = new Map();
+  pairs.forEach(({ a, b }) => { if(!srcTo.has(a.i) && !recTo.has(b.i)){ srcTo.set(a.i, b.i); recTo.set(b.i, a.i); } });
+  const matched = Array.from(srcTo, ([si, ri]) => ({ source: src[si].line, recipe: rec[ri].line, split: false }));
+  pairs.forEach(({ a, b }) => {
+    if(!recTo.has(b.i) && srcTo.has(a.i)){ recTo.set(b.i, a.i); matched.push({ source: a.line, recipe: b.line, split: true }); }
+    else if(!srcTo.has(a.i) && recTo.has(b.i)){ srcTo.set(a.i, b.i); matched.push({ source: a.line, recipe: b.line, split: true }); }
+  });
+  return {
+    matched,
+    sourceOnly: src.filter(a => !srcTo.has(a.i)).map(a => a.line),
+    recipeOnly: rec.filter(b => !recTo.has(b.i)).map(b => b.line)
+  };
+}
+
+/* The household's word matches as the shopping list applies them: each
+   side re-normalised through today's rules (so a match stored in older
+   words still means the same thing), and one the rules now make anyway
+   dropped. Here rather than in the page so tools/remeasure.js applies
+   them exactly as the list does. */
+function ingredientMatchMap(aliases){
+  const map = new Map();
+  (aliases || []).forEach(a => {
+    if(a.kind !== 'ingredient') return;
+    const from = shoppingKeyForName(a.alias), to = shoppingKeyForName(a.canonical);
+    if(from && to && from !== to) map.set(from, to);
+  });
+  return map;
+}
+
 /* So Node can load this file too (test/core.test.js, the validators). In the
    page there is no `module`, and everything above is simply global, as it was
    when it lived in index.html. */
@@ -1185,6 +1350,7 @@ if(typeof module !== 'undefined' && module.exports){
     formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,
     NEVER_IGNORE, foldPlural, dictionaryRow, shoppingLine, formatShoppingParts, aggregateShoppingLines,
-    shoppingKeyForName, strictMatchSuggestions
+    shoppingKeyForName, strictMatchSuggestions,
+    ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, ingredientMatchMap
   };
 }

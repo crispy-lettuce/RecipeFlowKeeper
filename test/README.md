@@ -25,7 +25,16 @@ never the original.
 `node test/validate-recipes.js <file>` checks a converted batch against the app's own parser,
 and `node test/ingredient-survey.js <files> [--out report.md]` surveys bulk ingredient
 extractions (`converter/ingredient-extraction-prompt.md`). Both read their input from outside
-this repo, and share the ingredient-line checks in `ingredient-lines.js`.
+this repo, and share the ingredient-line checks, which since 28 Sep live in `core.js`
+(`ingredientLineFaults`, the same copy the app's preview uses) and are reported through
+`ingredient-lines.js`.
+
+`node test/source-ingredients.js` (12 checks, no browser) tests the `source-ingredients` Edge
+Function's page reading — which addresses it refuses, and what it makes of a recipe page's
+Schema.org block — lifted from the real function source, and the source check in `core.js` it
+feeds. Every page in it is made up; it proves nothing about whether a real site carries the
+block. `node tools/remeasure.js <export>` re-measures the whole library from an export kept
+outside the repo.
 
 `node test/shots.js` writes a PNG of each main screen, for eyeballing a layout
 change without a browser to hand.
@@ -37,7 +46,7 @@ Both scripts use whichever Chromium Playwright installs. Set
 
 **`test/core.test.js` — the pure core, in Node.** Since 25 Sep (PR 6a) the parser, layout,
 quantity, scaling and naming functions live in `core.js`, which loads in Node as well as the page.
-59 checks, under a second, no browser: the behaviour the app relies on, the shopping list's naming
+72 checks, under a second, no browser: the behaviour the app relies on, the shopping list's naming
 and totalling (since PR 6b: the ingredient review's §6 checks, numbered as they are there, each run
 once against the mutation it names), the dictionary's master
 copy against the generated `converter/ingredient-names.md`, and three rules about the split —
@@ -51,7 +60,7 @@ node test/core.test.js
 `build.js` inlines the real `core.js` into the built page, so the smoke suite below tests exactly
 what Pages serves.
 
-**247 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
+**257 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, the automatic image
 re-host on save, what happens when you come back to the tab (online, offline, mid-save, after a

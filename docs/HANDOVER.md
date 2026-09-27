@@ -711,7 +711,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **247 checks** (since the 6b follow-up; `core.test.js` adds 59 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **257 checks** (since 6c-1; `core.test.js` adds 72 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday.
@@ -799,6 +799,29 @@ whole library listed before and after, **keys identical in all 185**, and only t
 rows changing aisle; `core.test.js` 52 → 59 and smoke 246 → 247, green; 11 mutations each
 failing a named check, and a twelfth (an accent fold) not failing because the fold was
 redundant — removed rather than kept.
+
+**6c-1, checks where recipes come in (28 Sep 2026, PR #22).** Planned after the household asked
+how the line shape is kept up once the old lines are fixed; the honest answer was that nothing in
+the app looked at a line. Now: the line checks live in `core.js` and the add/edit preview shows
+the ones the shopping list can't cope with (22 lines in the library today), with a one-tap
+rewrite where there is one right answer — advice, never a gate; the parser reports what it reads
+past, and the preview shows it; COMPARE WITH SOURCE pairs the recipe with the source page's own
+ingredient list from a new `source-ingredients` Edge Function; the list shows a recipe's
+bracketed choice ("(or honey)", asked for by the household) beside the recipe that offered it —
+beside the row's name only when every recipe on the row offers it, after the household saw a
+frying recipe's "(or oil)" would otherwise read as advice for a cake on the same row (11 of the
+20 rows with a choice after 6c-2 are shared like that); ghee files under
+Dairy; `tools/remeasure.js` re-measures from an export. Verified by: `core.test.js` 59 → 72,
+smoke 247 → 257 and a new `test/source-ingredients.js` (12), all green; Deno's own `check` and
+`lint` on the function (strict type check, clean); the whole library listed before and after,
+**keys identical in all 185 rows**, the one aisle move the intended ghee; the validators' output
+unchanged but for the two new checks; 25 mutations, each failing a named check once one gap was
+closed (a misspelt GROUP *inside* a group was reported by nothing but the re-measure check, so
+a check for it was added and the mutation re-run). **Not verified:** the function is not
+deployed, and whether the library's source sites carry the Schema.org block is unmeasured —
+this sandbox cannot reach them. That is `docs/TEST-PLAN.md` section F, step 33. *Found on the
+way:* `find-recipe-image` fails Deno's strict type check (two errors) yet runs, so Supabase
+deploys do not type-check; the new function passes it anyway.
 
 ```sh
 npm install playwright
