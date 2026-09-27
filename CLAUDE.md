@@ -77,7 +77,7 @@ in `core.js`, run `node test/source-ingredients.js` (12 checks, lifted the same 
   **Bump `KITCHEN_CORE_VERSION` in `core.js` and `EXPECTED_CORE_VERSION` in `index.html`
   together** whenever `core.js` changes: Pages caches the two separately, and the page asks for a
   reload when they disagree. `test/core.test.js` fails if they differ.
-- **The ingredient-line checks live in `core.js` (`ingredientLineFaults`) since 28 Sep**, shared by the
+- **The ingredient-line checks live in `core.js` (`ingredientLineFaults`) since 27 Sep**, shared by the
   app's preview and `validate-recipes.js`. A fault marked `affectsList` is shown in the preview;
   mark one only when the shopping list genuinely can't cope, or the preview nags about lines that
   are fine. The preview's checks are advice: never make one block a save.

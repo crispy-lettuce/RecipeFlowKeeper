@@ -94,7 +94,7 @@ belong with it: `parseRecipe` should report lines it drops (today a `GROUP` hand
 or a malformed `MERGE` arrow vanishes silently, `index.html:2117-2133`; `validate-recipes.js`
 already flags this for batches but the in-app preview does not), and the save should reconcile
 every header line (F5). §4 has the answer as written before reading the ingredient review, and
-where it moved afterwards. *(28 Sep, PR #22: `parseRecipe` reports what it reads past as `unread`,
+where it moved afterwards. *(27 Sep, PR #22: `parseRecipe` reports what it reads past as `unread`,
 and the preview shows it; the source list reaches the preview from a `source-ingredients` Edge
 Function reading the JSON-LD, the model-independent route recommended here. F5 was done on 24 Sep.)*
 
@@ -532,10 +532,11 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
 12. **The real-backend test** from Answer 5: test household, test user, Playwright against the
     live app, weekly from the private repo. (F13)
 13. **The JSON-LD Edge Function** from Answer 4, used first by the preview's source check and
-    then by anyone who wants a plain recipe without a converter. *The first half built 28 Sep,
+    then by anyone who wants a plain recipe without a converter. *The first half built 27 Sep,
     PR #22: `source-ingredients` returns a page's ingredient list, and the preview's COMPARE WITH
-    SOURCE pairs it with the recipe (`sourceFidelity` in `core.js`). Not yet deployed; the sites'
-    JSON-LD is measured on the first live run.* The model-backed function only
+    SOURCE pairs it with the recipe (`sourceFidelity` in `core.js`). Deployed 27 Sep (v1).
+    Measured the same day: two of the twelve sites refuse it with a 403, one of them the source
+    of half the library, so a pasted source list is the likely next step.* The model-backed function only
     if the family actually adds recipes, with the key in Supabase secrets, a membership check
     and a daily cap.
 14. **Clean up on delete** — remove the id from plan days and groups. (F11) *✅ Done 24 Sep, PR #15.*

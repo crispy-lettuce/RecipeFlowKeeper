@@ -25,7 +25,7 @@ never the original.
 `node test/validate-recipes.js <file>` checks a converted batch against the app's own parser,
 and `node test/ingredient-survey.js <files> [--out report.md]` surveys bulk ingredient
 extractions (`converter/ingredient-extraction-prompt.md`). Both read their input from outside
-this repo, and share the ingredient-line checks, which since 28 Sep live in `core.js`
+this repo, and share the ingredient-line checks, which since 27 Sep live in `core.js`
 (`ingredientLineFaults`, the same copy the app's preview uses) and are reported through
 `ingredient-lines.js`.
 

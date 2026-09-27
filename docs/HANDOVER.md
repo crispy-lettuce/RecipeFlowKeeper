@@ -656,7 +656,7 @@ point, and confirming the schedule still fires afterwards.
 
 ## 6. Corrections to the earlier record
 
-Twenty-five times now, something recorded as true wasn't. The pattern is worth more than the individual
+Twenty-six times now, something recorded as true wasn't. The pattern is worth more than the individual
 corrections: **every one was found by checking the real thing, and none by reading more carefully.**
 
 | Recorded | Actually | Found |
@@ -685,6 +685,7 @@ corrections: **every one was found by checking the real thing, and none by readi
 | `DOCUMENT-INDEX.md` on the ingredient review: "Nothing in it has been implemented" | Step 1 merged the same day as PR #9 | 23 Sep review, PR list |
 | `ARCHITECTURE.md`: two tabs "won't see each other's changes until reloaded" | Coming back to a tab has always re-downloaded the whole library, and that was what kept a long-open tablet from overwriting the desktop | 22 Sep, while tracing the sign-out in §2e |
 | Architecture review F5: "1 whose `SOURCE:` line differs … 1 with a `servings` column and no `SERVINGS:` line; 0 drift on title, image, URL, time or equipment" | Three recipes, not two: `TAGS:` disagreed with its column on two, one of them the servings recipe. The review's query never compared `TAGS:` | 23 Sep, by writing the query for all eight lines before building PR 4 |
+| 6c-1 "built 28 Sep" — in nine documents and fourteen code comments | Built, merged and deployed on 27 Sep; `git log` and the database agree. The Markdown is corrected; the comments wait for the next code change (one is in the deployed `source-ingredients`, which would stop matching the repo) | 27 Sep, when dating 6c-2 against the database's own timestamps |
 | "197 checks pass" as a statement about the code | True on six days of the week. The fixture planned "today" and "tomorrow" from the real clock, and on a Thursday tomorrow is a new Friday-start week, so two shopping-list checks failed with the code untouched | 24 Sep, four minutes past midnight, when a green run went red on its own |
 
 **The last one is the most instructive, because the verification itself was the thing that was
@@ -800,7 +801,7 @@ rows changing aisle; `core.test.js` 52 → 59 and smoke 246 → 247, green; 11 m
 failing a named check, and a twelfth (an accent fold) not failing because the fold was
 redundant — removed rather than kept.
 
-**6c-1, checks where recipes come in (28 Sep 2026, PR #22).** Planned after the household asked
+**6c-1, checks where recipes come in (27 Sep 2026, PR #22).** Planned after the household asked
 how the line shape is kept up once the old lines are fixed; the honest answer was that nothing in
 the app looked at a line. Now: the line checks live in `core.js` and the add/edit preview shows
 the ones the shopping list can't cope with (22 lines in the library today), with a one-tap
@@ -817,11 +818,38 @@ smoke 247 → 257 and a new `test/source-ingredients.js` (12), all green; Deno's
 **keys identical in all 185 rows**, the one aisle move the intended ghee; the validators' output
 unchanged but for the two new checks; 25 mutations, each failing a named check once one gap was
 closed (a misspelt GROUP *inside* a group was reported by nothing but the re-measure check, so
-a check for it was added and the mutation re-run). **Not verified:** the function is not
-deployed, and whether the library's source sites carry the Schema.org block is unmeasured —
-this sandbox cannot reach them. That is `docs/TEST-PLAN.md` section F, step 33. *Found on the
+a check for it was added and the mutation re-run). *Found on the
 way:* `find-recipe-image` fails Deno's strict type check (two errors) yet runs, so Supabase
-deploys do not type-check; the new function passes it anyway.
+deploys do not type-check; the new function passes it anyway. **Deployed the same evening** (v1,
+checked against the repo with `get_edge_function`), and section F passed by the household:
+bracketed choices sit beside the right recipes (step 36), the warnings never block a save (35),
+and the comparison pairs lines sensibly (34). **Step 33**, one recipe per source site, run by the
+household the same evening: **two of the twelve sites refuse the function with a 403** —
+Kitchen Sanctuary, which is 17 of the 34 recipes, and Allrecipes (1) — and no other failure was
+reported. So for half the library the check says "compare by eye". All three functions send the
+same self-identifying user agent; whether the refusal is of that or of Supabase's addresses is
+not known, since this sandbox cannot reach either site. The function's log had caught up with
+only one of the evening's calls when this was written, so the tally is the household's, not the
+log's. Earlier, a comparison on a site outside the library's usual ones showed the household a
+line its own copy had got wrong, fixed by hand.
+
+**6c-2, the line rewrite (27 Sep 2026, a data job, no PR).** 27 ingredient lines in 14 recipes
+rewritten in the standard shape, in place in the production database, with the household present;
+the lines and both texts of every recipe are in `PrivateBackup`
+(`migrations/6c-2-line-rewrite/`, the undo), never here. Each recipe was one `UPDATE … WHERE id =`
+guarded twice: on the md5 of the text in the export taken for the job, so a recipe changed since
+could not be overwritten, and on the md5 of the new text as validated, so a mistyped statement
+could not be stored. The first went alone and the household opened it before the other 13.
+**Verified by:** every statement returning its row (none did not); one query afterwards comparing
+all 14 stored texts with the validated ones (14 of 14); then the library re-measured from the
+database with `tools/remeasure.js`: **172 rows**, as simulated, from 185 before 6c; no line the
+list can't total; none the parser reads past; 21 rows showing a choice — the 20 simulated plus
+one from a line the household had edited by hand that evening. Word matches: of the five
+proposed, the household kept three and kept two pairs apart as different things to buy: **169
+rows**, with no further merge offered. *Found on the way:* one match was saved against the
+neighbouring name in MERGE WITH…'s dropdown, which saves on the first pick and felt unresponsive
+on the tablet; caught by reading the `aliases` table, not the screen, and redone. That dropdown is
+in 6d.
 
 ```sh
 npm install playwright
