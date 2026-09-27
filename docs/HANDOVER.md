@@ -781,8 +781,12 @@ load, though the table alone can't rule out hand-unticking); all 17 word matches
 Section E, **steps 27–29 passed**: the household planned Week A's recipes into the live app and
 sent the list; it matched, row for row and quantity for quantity, what `core.js` computes in Node
 from the export for the same plan — 59 rows with one recipe swapped, then **60** with Week A's
-own six, the review's figure — and reading every row found no wrong join. Steps 30–32 (ticks
-syncing, MERGE WITH… live, Settings) were still to run.
+own six, the review's figure — and reading every row found no wrong join. **Steps 30–32 passed
+on 27 Sep:** three rows ticked on one device stayed ticked after a reload and showed on the
+tablet, and `shopping_checked` held exactly those three, under name-only keys for the week of
+25 Sep, and nothing else; MERGE WITH… joined
+two rows and was undone in Settings; Settings still listed every word match. **Section E is
+complete.**
 
 **The follow-up to 6b (25 Sep 2026, PR #20).** What that first live list showed, fixed without
 touching a key: 12 rows in the wrong aisle (egg noodles with the eggs, hot pepper sauce with the
