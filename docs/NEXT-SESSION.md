@@ -18,6 +18,54 @@ household decides when to merge.
 
 ---
 
+## Start here: where things stand (27 Sep 2026, evening)
+
+Each fact below was checked against the database, the deployed functions or `git log` when it
+was written. Check again before relying on one.
+
+**Done.** PRs 1–6c are merged and live. The last code change was PR #22, 6c-1, and `core.js`
+carries `2026-09-28.2`. That stamp is a label, and PR #22 was really merged on 27 Sep. 6c-2 was
+a data job, not a PR. PR #23 is its documentation.
+
+**The live app:**
+
+- **Library:** 34 recipes.
+- **Shopping list:** planned all at once, the recipes come to **169 rows**. Every ingredient
+  line fits the standard shape, and the parser skips none.
+- **Word matches:** 3 "same" (added 27 Sep), 10 "not the same" and 1 source.
+- **Household swaps:** 2 stored.
+- **Edge Functions:** `rehost-images` v10, `find-recipe-image` v4 and `source-ingredients` v1.
+  `source-ingredients` gets a 403 from Kitchen Sanctuary (17 recipes) and Allrecipes (1), so
+  COMPARE WITH SOURCE says "compare by eye" for half the library.
+
+**Next: 6d**, three parts that all touch the shopping list. The table below has the reasoning.
+
+1. **Match swaps by the list's names.** `findSwapMatchesForIngredient` (`index.html` ~4978)
+   matches by substring, so a swap for "butter" fires on "peanut butter". The recipe viewer uses
+   it too: its swap icons (~2031) and its swap list (~2076). The fix changes what the viewer shows
+   as well as feeding the panel. Compare the two stored swaps' matches across the whole library
+   before and after.
+2. **A "possible swaps" panel at the bottom of the shopping list** (`renderShopping` ~5074). It
+   lists the household's swaps that apply to rows on the list, each with its ratio and note.
+   `buildShoppingList` (~5022) must stay free of side effects (`CLAUDE.md`). A recipe's own
+   bracketed choices are not in the panel: they already show on the row.
+3. **MERGE WITH…** (~5237). Today it saves on the first pick, with no confirm step, and offers
+   only this week's rows. On 27 Sep that saved a wrong match, and two matches couldn't be made
+   at all. Add a confirm step and a filter box, and offer names from the whole library.
+
+**Ask the household before building:**
+
+- what the panel shows for each swap;
+- whether MERGE WITH… should offer names from the whole library;
+- whether the PASTE box for COMPARE WITH SOURCE, the answer to the two sites that refuse the
+  function, belongs in 6d or later.
+
+**Not to redo:** 6c-2's recipe text, its undo and the word matches as made are in
+`PrivateBackup`, `migrations/6c-2-line-rewrite/`. Nothing about the library's lines needs doing
+before 6d.
+
+---
+
 ## The plan: seven pull requests
 
 The rule behind the order: **mechanism before change, data safety before features, one behaviour
@@ -72,25 +120,19 @@ verified and how.
 
 ### Things that are the household's to do
 
-- After PR 2 merges: reload `converter/conversion-instructions.md` into the conversion project
-  and **remove `ingredient-names.md` from it**; reload the survey project's instructions from
-  `converter/ingredient-extraction-prompt.md`, likewise without `ingredient-names.md`.
-- Make the `offline-harness` check **required** on `main` (Settings → Branches). PR 1 could not
-  do that from a workflow file.
-- Delete the unused second account in the Supabase dashboard (Authentication → Users).
-- **Before 6b:** a fresh export from the app's sidebar, kept outside the repo — the undo for the
-  release. (The re-measure itself reads the library straight from the database, read-only.)
-- **6b merged on Friday 25 Sep; section E passed in full by 27 Sep.** When convenient, delete the
-  six "same" word matches in Settings → Word Matches; the rules now make all six, so they do
-  nothing (M4).
-- After PR #15 merges: **reload the app on every device first** (a tab opened before the merge
-  runs the old code, and the old code's saves are the ones this PR removes), then run the
-  two-device pass, section D of `docs/TEST-PLAN.md`. It is the only run row-scoped writes get
-  against the real backend, and the first time the app has been tested from two devices at all.
-- Deploy `rehost-images` from the repo (v9) when next in the Supabase dashboard or CLI, so the
-  deployed copy and `supabase/functions/rehost-images/index.ts` are byte-identical again
-  (F4; the difference is comment wording only).
-- Before PR 6: a fresh export from the app's sidebar, kept outside the repo, for the re-measure.
+Checked 27 Sep. Four items that used to be here are done: the two-device pass (24 Sep),
+`rehost-images` redeployed as v10 (25 Sep), the six redundant "same" word matches deleted, and
+the unused second account deleted (the project has one user). The two exports asked for
+before 6b and PR 6 were taken, and 6c-2 is done.
+
+- **Not verifiable from a session, so still listed:**
+  - Make the `offline-harness` check **required** on `main` (Settings → Branches). PR 1 could
+    not do that from a workflow file.
+  - After PR 2: reload `converter/conversion-instructions.md` into the conversion project, and
+    remove `ingredient-names.md` from it. Then reload the survey project's instructions from
+    `converter/ingredient-extraction-prompt.md`, likewise without `ingredient-names.md`.
+- **Before any job that rewrites recipe text:** a fresh export from the app's sidebar, kept
+  outside the repo.
 
 ---
 
@@ -106,14 +148,16 @@ and open a pull request when the work is tested.
 Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md                  — the map of all documentation
-  docs/NEXT-SESSION.md                    — the seven-PR plan; we are at PR 6d
+  docs/NEXT-SESSION.md                    — "Start here" first; we are at PR 6d
   docs/REVIEW-ARCHITECTURE-FINDINGS.md    — §0 and the findings the PR closes
   docs/HANDOVER.md                        — verified status
   docs/ARCHITECTURE.md                    — how the app and its recipe format work
   CLAUDE.md                               — applies in full
 
-THE TASK: PR 6d from the plan. Tell me what you'd do and what you need from
-me before building anything, then build it, run the tests, and open the PR.
+THE TASK: PR 6d from the plan: household swaps on the shopping list, and
+MERGE WITH… made safe. Tell me what you'd do and what you need from me
+before building anything ("Start here" lists three questions), then build
+it, run the tests, and open the PR.
 
 Some context worth having:
 
