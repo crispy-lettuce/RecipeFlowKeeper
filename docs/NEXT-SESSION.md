@@ -36,7 +36,8 @@ verified and how.
 | 6a | **Core extraction** | The pure functions moved verbatim to `core.js`, loaded before the page script with a shared version stamp; the dictionary's master copy in `core.js`, `converter/ingredient-names.md` generated from it; `test/core.test.js`, 29 checks in Node, run first in CI. No behaviour change | Answer 6 of the architecture review; check 22 of the ingredient review | **Done**, PR #18, 25 Sep |
 | 6b | **The release** | Steps 4–6 of the ingredient review: naming rules, the dictionary with aisles, one row per ingredient, ticks keyed by name (keeping the both-weeks prefix), spoons totalled as ml, the ⅛ fraction, strict inline suggestions instead of the `confirm()` questions, word matches re-normalised at load (no data write), old-key ticks deleted. Re-measured against the review's anchors from the live library. Friday 2 Oct, morning | The ingredient review's status rows 4–6 | **Done**, PR #19, merged Fri 25 Sep. Section E steps 27–29 passed live |
 | 6b+ | **What the first live list showed** | Aisles for 12 rows (egg noodles, hot pepper sauce, coconut milk and nine in Other); mixed spoons as "3 tbsp + 2 tsp"; unmeasured lines as "+ extra to serve (2 recipes)" rather than "+ 2 more". No key changes | Found by the household on the release day | **Built**, PR #20, 25 Sep |
-| 6c | **The 24-line rewrite** | Step 7, in place, after the source-fidelity check in `validate-recipes.js`; the lines are in the household's private appendix, or re-derived and approved before any write. With the household present | Row 7; D12 waits on it | Not started |
+| 6c-1 | **Checks where recipes come in** | Re-planned 27 Sep, after the household asked how the line shape is kept up once the 24 lines are fixed: nothing in the app checked it. (1) The ingredient-line checks move from `test/ingredient-lines.js` into `core.js`, so the app and `validate-recipes.js` share one copy. (2) The add/edit preview shows them as warnings with a suggested line — never blocking a save. (3) A `source-ingredients` Edge Function reads the Schema.org JSON-LD at `SOURCE_URL` (as `find-recipe-image` already does for images) and returns the source's ingredient strings. (4) The source-fidelity check in `core.js`: each source ingredient matched to one recipe line sharing a content word, misses on either side shown side by side in the preview and reported by `validate-recipes.js`. (5) `parseRecipe` reports the lines it drops, shown in the preview (the review's cheaper fix, §2). (6) `tools/remeasure.js`: reads an export from outside the repo and reports rows, likely splits, "Other" rows and lines outside the shape — run by a developer session every ten or so new recipes. First job once the function is deployed: measure how many of the library's source sites carry JSON-LD (unverified; 12 of the 13 recipes 6c-2 touches have a `SOURCE_URL`, on five sites) | Row 7's prerequisite; §2 and answer 4 of the architecture review; the ingredient review's §6 library regression | Not started |
+| 6c-2 | **The line rewrite** | Step 7 as a production data job, with the household present. Re-derived 27 Sep from the live library: **21 lines in 13 recipes** (the review counted 24 in 13; the list is private, never committed). Simulated: 185 rows → 172, and → 167 with five word matches made in the app afterwards, against the review's ideal of 168; no group, stage or layout change in any recipe; every new line passes the shape check. Each recipe: the fidelity check against its source (Victoria Sandwich has none, D6: checked by eye), the shape check, parse, columns and timeline; then `UPDATE … WHERE id = …` in place, never delete and re-insert; then md5 against the validated text and the household opens the flow table. Five choices are the household's first (which of two alternatives is bought, and D4's uncooked rice weight) | Row 7; D12 waits on it | Not started; list approved in part |
 | 7 | **Sharing** | When wanted: a JSON-LD Edge Function (which also gives the preview its source lines); the onboarding runbook; RLS belt and braces and leaked-password protection; a weekly Playwright test against the live app. A model-backed converter only if the family actually adds recipes | F8 F13, answer 4 | Not started |
 
 ### PR 6 reviewed against what came after it (25 Sep)
@@ -78,12 +79,14 @@ verified and how.
 - Delete the unused second account in the Supabase dashboard (Authentication → Users).
 - **Before 6b:** a fresh export from the app's sidebar, kept outside the repo — the undo for the
   release. (The re-measure itself reads the library straight from the database, read-only.)
-- **For 6c:** the private appendix to the ingredient review, which names the 24 lines; or be ready
-  to approve a re-derived list before any line is rewritten.
-- **6b merged on Friday 25 Sep.** Steps 27–29 of section E passed that day; steps 30–32 (ticks
-  on two devices, MERGE WITH… live, Settings) are still to run. After PR #20 merges, reload every
-  device again (it bumps `core.js`). When convenient, delete the six "same" word matches in
-  Settings → Word Matches; the rules now make all six, so they do nothing (M4).
+- **For 6c-1:** deploy the new `source-ingredients` Edge Function from the repo when the PR says,
+  the same way as `rehost-images`.
+- **For 6c-2:** answer the five choices on the re-derived list (27 Sep, in the session, not in the
+  repo); take a fresh export on the day; be there when the lines are written. Afterwards make the
+  five word matches with MERGE WITH… on the shopping list.
+- **6b merged on Friday 25 Sep; section E passed in full by 27 Sep.** When convenient, delete the
+  six "same" word matches in Settings → Word Matches; the rules now make all six, so they do
+  nothing (M4).
 - After PR #15 merges: **reload the app on every device first** (a tab opened before the merge
   runs the old code, and the old code's saves are the ones this PR removes), then run the
   two-device pass, section D of `docs/TEST-PLAN.md`. It is the only run row-scoped writes get
@@ -107,13 +110,13 @@ and open a pull request when the work is tested.
 Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md                  — the map of all documentation
-  docs/NEXT-SESSION.md                    — the seven-PR plan; we are at PR 6c
+  docs/NEXT-SESSION.md                    — the seven-PR plan; we are at PR 6c-1
   docs/REVIEW-ARCHITECTURE-FINDINGS.md    — §0 and the findings the PR closes
   docs/HANDOVER.md                        — verified status
   docs/ARCHITECTURE.md                    — how the app and its recipe format work
   CLAUDE.md                               — applies in full
 
-THE TASK: PR 6c from the plan. Tell me what you'd do and what you need from
+THE TASK: PR 6c-1 from the plan. Tell me what you'd do and what you need from
 me before building anything, then build it, run the tests, and open the PR.
 
 Some context worth having:
