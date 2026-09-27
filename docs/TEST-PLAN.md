@@ -243,7 +243,8 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     WITH SOURCE. Note for each
     site whether a list comes back at all. *This is the measurement the architecture review could
     not make: whether these sites carry the Schema.org block.* A site that doesn't gets "no
-    ingredient list the check can read", and that recipe is compared by eye.
+    ingredient list the check can read", and that recipe is compared by eye. *Run 27 Sep: two
+    sites refused with a 403 (`docs/HANDOVER.md`, 6c-1).*
 34. **What the comparison shows.** On a recipe that came back: every highlighted row is on one
     side only. A US name made British can show there and is fine; a different ingredient is not.
     Note anything the check pairs wrongly.

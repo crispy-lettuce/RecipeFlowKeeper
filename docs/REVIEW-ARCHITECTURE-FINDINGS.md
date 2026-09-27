@@ -534,8 +534,9 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
 13. **The JSON-LD Edge Function** from Answer 4, used first by the preview's source check and
     then by anyone who wants a plain recipe without a converter. *The first half built 27 Sep,
     PR #22: `source-ingredients` returns a page's ingredient list, and the preview's COMPARE WITH
-    SOURCE pairs it with the recipe (`sourceFidelity` in `core.js`). Deployed 27 Sep (v1). Which
-    of the twelve sites carry the JSON-LD is still to be measured: `docs/TEST-PLAN.md` step 33.* The model-backed function only
+    SOURCE pairs it with the recipe (`sourceFidelity` in `core.js`). Deployed 27 Sep (v1).
+    Measured the same day: two of the twelve sites refuse it with a 403, one of them the source
+    of half the library, so a pasted source list is the likely next step.* The model-backed function only
     if the family actually adds recipes, with the key in Supabase secrets, a membership check
     and a daily cap.
 14. **Clean up on delete** — remove the id from plan days and groups. (F11) *✅ Done 24 Sep, PR #15.*

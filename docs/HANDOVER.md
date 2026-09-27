@@ -823,10 +823,15 @@ way:* `find-recipe-image` fails Deno's strict type check (two errors) yet runs, 
 deploys do not type-check; the new function passes it anyway. **Deployed the same evening** (v1,
 checked against the repo with `get_edge_function`), and section F passed by the household:
 bracketed choices sit beside the right recipes (step 36), the warnings never block a save (35),
-and the comparison pairs lines sensibly (34). **Still unmeasured:** which of the library's twelve
-source sites carry the Schema.org block (step 33). The function's log shows five comparisons in
-all, not one per site. Known: one site gave no list, and another site's copy of the same recipe
-did — which also showed the household a line its own copy had got wrong, fixed by hand.
+and the comparison pairs lines sensibly (34). **Step 33**, one recipe per source site, run by the
+household the same evening: **two of the twelve sites refuse the function with a 403** —
+Kitchen Sanctuary, which is 17 of the 34 recipes, and Allrecipes (1) — and no other failure was
+reported. So for half the library the check says "compare by eye". All three functions send the
+same self-identifying user agent; whether the refusal is of that or of Supabase's addresses is
+not known, since this sandbox cannot reach either site. The function's log had caught up with
+only one of the evening's calls when this was written, so the tally is the household's, not the
+log's. Earlier, a comparison on a site outside the library's usual ones showed the household a
+line its own copy had got wrong, fixed by hand.
 
 **6c-2, the line rewrite (27 Sep 2026, a data job, no PR).** 27 ingredient lines in 14 recipes
 rewritten in the standard shape, in place in the production database, with the household present;
