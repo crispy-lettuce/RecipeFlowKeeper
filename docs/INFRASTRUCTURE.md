@@ -20,7 +20,7 @@ project's own rule, restated in §4) or a plain identifier that grants nothing o
 | GitHub account | `crispy-lettuce` (personal account, not an organisation) |
 | App repo | `crispy-lettuce/RecipeFlowKeeper` — **public** |
 | Backup repo | `crispy-lettuce/PrivateBackup` — **private** |
-| How work flows | `main` is the trunk and production. Changes go on a short-lived branch and merge by pull request, which runs the tests (`.github/workflows/tests.yml`). `PrivateBackup` still lives on its one branch — see §2 |
+| How work flows | `main` is the trunk and production. Changes go on a short-lived branch and merge by pull request, which runs the tests (`.github/workflows/tests.yml`); `offline-harness` has been a required check on `main` since 27 Sep, enforced for everyone but admins. `PrivateBackup` still lives on its one branch — see §2 |
 | Supabase organisation | CrispyLettuce (`kvfcdgzdurwcqftttukd`) |
 | Supabase project | **RecipeWrangler** (`mhkayefzrtceesgizkjs`), region `eu-west-1`, Postgres 17 |
 | Supabase project URL | `https://mhkayefzrtceesgizkjs.supabase.co` |

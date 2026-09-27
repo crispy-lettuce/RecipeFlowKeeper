@@ -381,8 +381,9 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
 ### F6 — No CI, no branch protection, deploy on push (Medium)
 
 - ✅ **Closed 23 Sep 2026, PR #11.** `.github/workflows/tests.yml` runs on every pull request
-  and push to `main`; `main` is protected (checked 24 Sep; whether the check is *required* is
-  a setting the API used could not read). *(Ticked 24 Sep; PR #11 did not tick it.)*
+  and push to `main`; `main` is protected (checked 24 Sep), and since 27 Sep `offline-harness`
+  is a required check (read back from GitHub's API; enforced for everyone but admins). *(Ticked
+  24 Sep; PR #11 did not tick it.)*
 - The app repo has no `.github` directory; its only workflow is GitHub's own `pages build and
   deployment`, which has run once per commit to `main` (runs 18–26 cover PRs #1–#9). `main` is
   not protected. So a mistaken push deploys to the tablet within a minute, and the 197 checks
