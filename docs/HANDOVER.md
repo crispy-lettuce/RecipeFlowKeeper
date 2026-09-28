@@ -916,7 +916,7 @@ missed. Neither swap's own text appears here, per `CLAUDE.md`. **Not verified:**
 the real backend or on the tablet — that's still the household's own pass; CI went green and the
 PR merged the same session.
 
-**7a, the onboarding runbook (28 Sep 2026, documentation only, no PR yet).** `docs/ONBOARDING.md`:
+**7a, the onboarding runbook (28 Sep 2026, PR #27, open).** `docs/ONBOARDING.md`:
 the three steps to add a family member (create their account in the dashboard, one guarded SQL
 statement to link them to the household, give them the app's address), what `hydrate()`'s real
 error looks like if the link is missing, why the app has no sign-up form of its own to do any of
@@ -934,6 +934,29 @@ tables; leaked-password protection still off, per the security advisor. `node te
 procedure itself against a real second account — nobody has been added yet, so the SQL is
 checked against the schema's real constraints (the unique index, the two `ON DELETE CASCADE`
 foreign keys) but not run.
+
+**7b, RLS belt and braces (28 Sep 2026, migration `rls_belt_and_braces_restrict_to_authenticated`,
+no PR — a database migration, not app code).** Run against production with the household's
+explicit go-ahead, after the exact SQL was written out and checked here first. Every policy that
+was `TO public` — the 46 on the app's own 13 tables, plus 4 on `storage.objects` found the same
+day, none of them named in F8 but the identical shape — is now `TO authenticated`; `anon`'s
+blanket `DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE` on all 13 `public` tables
+is revoked. Deliberately left alone: `storage`'s table-level grants (the public bucket's own read
+path is a Storage-service setting, not a table grant or a policy, and this pass doesn't touch
+it — not tested directly, so left as a precaution rather than assumed safe); `pg_default_acl` for
+`public` was checked first and found empty, so a future table is not protected by this and the
+same check is worth repeating after any migration that adds one; leaked-password protection,
+which is a dashboard toggle, not SQL. **Verified by:** re-reading the database straight after —
+0 policies left with `roles = '{public}'` in `public` or `storage`; 0 rows for `anon` in
+`information_schema.role_table_grants` on `public`; the security advisor shows the same one
+warning as before (leaked-password protection) and nothing new. The policies' own `USING`/`WITH
+CHECK` clauses were untouched — `ALTER POLICY … TO authenticated` changes who a policy applies to,
+never the logic — so this is a narrowing of *who*, not a change in *what's allowed once
+signed in*. **Not verified:** the app itself, signed in, after this change — nobody has tried
+it against the live app yet, which is the same "not a substitute for opening the real app" gap
+`test/README.md` already names for the offline harness. `docs/REVIEW-ARCHITECTURE-FINDINGS.md`
+F8 is annotated as partially closed, with what's still open (leaked-password protection; whether
+public sign-up is enabled, still uncheckable from a session).
 
 **What it does not cover:** sign-in, hydration, row-level security and the background write
 queue are all stubbed. A green run is not a substitute for opening the real app. Keep Awake

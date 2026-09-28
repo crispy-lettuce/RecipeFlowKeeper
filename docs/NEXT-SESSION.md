@@ -38,7 +38,8 @@ needed. 6c-2 was a data job, not a PR; PR #23 is its documentation.
   `source-ingredients` gets a 403 from Kitchen Sanctuary (17 recipes) and Allrecipes (1), so
   COMPARE WITH SOURCE says "compare by eye" for half the library.
 - **Sharing:** one account, one household, one membership row (verified 28 Sep) —
-  `docs/ONBOARDING.md` is the runbook for adding a second.
+  `docs/ONBOARDING.md` is the runbook for adding a second. `anon` now holds no table access and
+  every policy is `authenticated`-only (28 Sep); leaked-password protection is still off.
 
 **Before anything else, read the first three sections of `CLAUDE.md`:**
 
@@ -52,11 +53,13 @@ They were added on 27 Sep so that any model can hold the line. `main` is protect
 **Done since the last rewrite.** 6d-1 (PR #25) and 6d-2 (PR #26) are both merged —
 `docs/HANDOVER.md` §7 has what was verified and how for each.
 
-**Next: 7b, RLS belt and braces and leaked-password protection.** 7a (the onboarding runbook) is
-built, documentation only — `docs/ONBOARDING.md`, `docs/HANDOVER.md` §7. 7b is a migration to
-*prepare* for the household's go-ahead, not to run unasked: revoke `anon`'s blanket grants,
-restrict the 46 policies to `authenticated`, enable leaked-password protection. 7c (the weekly
-live test) waits on the household wanting a real test account created; not started.
+**7a and 7b are both done.** 7a (the onboarding runbook) is documentation only —
+`docs/ONBOARDING.md`, `docs/HANDOVER.md` §7. 7b ran 28 Sep, with the household's explicit
+go-ahead: `anon`'s blanket grants revoked, every `TO public` policy restricted to
+`authenticated` — `docs/HANDOVER.md` §7 has the verification. Leaked-password protection is
+still off; it's a dashboard toggle, not something a session can do. **Next: 7c**, the weekly
+live test, waits on the household wanting a real test account created in production; not
+started, and not urgent.
 
 **Still open:** should the PASTE box for COMPARE WITH SOURCE, the answer to the two sites that
 refuse the function, be its own small PR, or come later?
@@ -90,7 +93,7 @@ verified and how.
 | 6d-2 | **Household swaps on the shopping list** | Decided 27 Sep. First, match a swap by the list's own names (`shoppingKeyForName`) rather than by substring, which today lets a swap for "butter" fire on "peanut butter"; this changes the recipe viewer too. Then a "possible swaps" panel at the **bottom** of the shopping list, listing the household's own swaps (Settings → Swaps) that apply to this week's rows, with ratio and note. A recipe's own alternatives are not in it: since 6c-1 they show on the row, beside the recipe that offered them. Scoping a swap to some recipes or courses (a schema change) only if the panel shows it is needed. Advisory, as the recipe viewer's list already is | The household's review of 6c-1, 27 Sep | **Built**, PR #26, 28 Sep. Waiting for the household to merge on green CI. Scoping a swap to specific recipes/courses not needed — the panel didn't ask for it |
 | 7 | **Sharing** | Started 28 Sep, split into one PR per piece rather than built as one, the same habit as 6d. The JSON-LD "plain recipe, no flow" extraction and the model-backed converter are both deferred until a family member is actually adding a recipe — asked and answered 28 Sep, not assumed | F8 F13, answer 4 | See 7a–7c |
 | 7a | **The onboarding runbook** | Documentation only, no code, no production write: the three steps to add someone (create their account, one guarded SQL statement to link them, give them the address), what `hydrate()`'s real error looks like if the link is missing, why the app has no sign-up form of its own, and that `household_members.role` is unused (verified: `grep -rn "\.role\b" index.html` finds nothing) | F8 (part) | **Built**, `docs/ONBOARDING.md` |
-| 7b | **RLS belt and braces, leaked-password protection** | Revoke `anon`'s blanket grants (still present on all 13 `public` tables and four `storage` tables, verified 28 Sep — F8's finding hasn't drifted) and restrict the 46 policies to `authenticated`; enable leaked-password protection (still off, verified via the security advisor). A migration, prepared for the household's go-ahead before it runs against production | F8 (part) | Not started |
+| 7b | **RLS belt and braces, leaked-password protection** | Revoke `anon`'s blanket grants and restrict every `TO public` policy to `authenticated` — done. Leaked-password protection is a dashboard toggle, not SQL, and is still off | F8 (part) | **Done**, 28 Sep, migration `rls_belt_and_braces_restrict_to_authenticated` (no PR — a database migration, not app code). Leaked-password protection is the household's own click, whenever wanted |
 | 7c | **The weekly live-backend test** | A test household, a test user, a Playwright script against the *live* app, credentials in `PrivateBackup`'s secrets. Needs a real account created in production, which the household asked to hold off on for now | F13 | Not started |
 
 ### PR 6 reviewed against what came after it (25 Sep)
@@ -151,18 +154,18 @@ and open a pull request when the work is tested.
 Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md                  — the map of all documentation
-  docs/NEXT-SESSION.md                    — "Start here" first; we are at PR 7b
+  docs/NEXT-SESSION.md                    — "Start here" first; 7a and 7b are both done
   docs/REVIEW-ARCHITECTURE-FINDINGS.md    — §0 and the findings the PR closes
   docs/HANDOVER.md                        — verified status
   docs/ARCHITECTURE.md                    — how the app and its recipe format work
   CLAUDE.md                               — applies in full
 
-THE TASK: PR 7b from the plan: RLS belt and braces and leaked-password
-protection. This changes production security settings, not just app
-code, so prepare it as a migration and tell me exactly what it does
-before running anything against the live project — I decide when it
-runs, the same way I decide when a PR merges. Follow the first three
-sections of CLAUDE.md to the letter.
+THE TASK: check whether PR #27 (7a) has merged, then ask whether 7c
+(the weekly live-backend test) is actually wanted yet — it needs a
+real test account created in production, and the household held off
+on that once already. If not, ask what to work on instead. Follow the
+first three sections of CLAUDE.md to the letter, and don't merge or
+touch production without asking first.
 
 Some context worth having:
 

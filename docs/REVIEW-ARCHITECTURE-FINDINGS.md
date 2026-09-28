@@ -418,6 +418,18 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
 
 ### F8 — Access control rests on one grant; hygiene items (Low)
 
+- ✅ **Partially closed 28 Sep 2026, migration `rls_belt_and_braces_restrict_to_authenticated`
+  (`docs/INFRASTRUCTURE.md` migration history).** The first bullet is fixed: every policy that
+  was `TO public` (46 on the app's tables, plus 4 on `storage.objects` found the same day) is now
+  `TO authenticated`, and `anon`'s blanket table privileges on all 13 `public` tables are
+  revoked. Verified straight after: 0 policies left with `roles = '{public}'` in `public` or
+  `storage`; 0 rows for `anon` in `information_schema.role_table_grants` on `public`; the security
+  advisor shows no new finding. The fourth bullet is closed a different way: the second, unused
+  account was deleted before 27 Sep (`docs/NEXT-SESSION.md`), and "undocumented" no longer applies
+  — `docs/ONBOARDING.md` (28 Sep) is the SQL statement, written down. **Still open:** leaked-
+  password protection (a dashboard toggle, not SQL — nothing here can flip it); whether public
+  sign-up is enabled could still not be checked from a session, and is now `docs/ONBOARDING.md`'s
+  standing item to check in the dashboard rather than this review's.
 - All 46 policies are `TO public`; `anon` and `authenticated` hold `DELETE, INSERT, REFERENCES,
   SELECT, TRIGGER, TRUNCATE, UPDATE` on all 13 tables. An anonymous request is refused because
   `private.household_ids_for_user()` is executable by `authenticated` only (verified with
