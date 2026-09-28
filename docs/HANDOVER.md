@@ -869,8 +869,8 @@ npm install playwright
 node test/build.js && node test/smoke.js
 ```
 
-**6d-1, MERGE WITH… made safe (28 Sep 2026, PR #25, open).** The dropdown that wrote the moment a
-name was picked, from only this week's rows, is now a filter box over the whole library
+**6d-1, MERGE WITH… made safe (28 Sep 2026, PR #25, merged).** The dropdown that wrote the moment
+a name was picked, from only this week's rows, is now a filter box over the whole library
 (`allLibraryIngredientNames()`, the same aggregation the shopping list itself uses, unscaled) with
 a confirm step — "Merge X with Y? MERGE · CANCEL" — before anything is written. The confirm's
 MERGE button reuses the same `addAlias` call the inline "Same as X?" suggestion already uses, so
@@ -881,8 +881,40 @@ version bump); smoke 257 → 261, the four new checks — a pick alone writes no
 nothing, MERGE writes exactly one `aliases` row, a name from a recipe never planned is offered by
 the filter — each mutation-tested to fail by name (not a crash) before being restored, per
 `CLAUDE.md`. `docs/TEST-PLAN.md` step 15 is rewritten for the new flow. **Not verified:** anything
-against the real backend or on the tablet — that is the household's own pass, and the PR is not
-merged yet, waiting on green CI and the household's look.
+against the real backend or on the tablet — that is still the household's own pass; CI went green
+and the PR was merged the same session.
+
+**6d-2, household swaps on the shopping list (28 Sep 2026, PR #26, open).** Two changes. First,
+`findSwapMatchesForIngredient` (used by the recipe viewer's ⇄ icon and its own Substitution
+Recommendations box) and a new `findSwapMatchesForKey(key, swaps)` (used by the panel below) both
+now match by running the swap's `original` and the ingredient through `shoppingKeyForName` — the
+same normalisation the shopping list itself uses — rather than checking whether `original` is a
+raw substring of the ingredient text. That old rule let a swap for "butter" also fire on "peanut
+butter"; the smoke suite proves this with invented names, since the repo is public. Second, a
+"possible swaps" panel at the bottom of the shopping list lists, for each swap that matches a row
+on the list, the row's name, the swap's ratio and its note — decided 28 Sep, no attempt to scale
+a row's aggregated total, which can be in mixed units or partly unmeasured. It reads every row on
+the list, not just the ones HIDE TICKED currently shows, so ticking something off doesn't hide the
+swap for it; `buildShoppingList` is untouched, so it stays free of this as `CLAUDE.md` requires.
+**Verified by:** `core.test.js` unchanged at 72 (`core.js` untouched, no version bump); smoke
+261 → 267, six new checks — the matching fix itself (a swap for "butter" excludes "peanut
+butter" but still matches "butter"), the panel absent when nothing matches, present with name/
+ratio/note when something does, unaffected by an unrelated planned ingredient, and still shown
+when its row is ticked and hidden — each mutation-tested to fail by name (not a crash) before
+being restored. One mutation (matching a swap to more than one row) was caught only because a
+defensive dedup-by-id in the panel's first draft was removed once it was found to be masking
+exactly that regression — worth recording, since a check that cannot fail proves nothing, and
+this time the mechanism supposedly making the code safer was the thing hiding the fault.
+`docs/TEST-PLAN.md` gains step 15a for the household's own pass. **Read-only against the real
+library, never committed** (`docs/TEST-PLAN.md`'s point, `tools/remeasure.js`'s method, applied
+by hand this time): of the household's 2 stored swaps, one matched the same one row under the old
+rule and the new; the other had matched **nothing** under the old rule — its wording and the
+recipe's wording put the same words in a different order, which a raw substring check missed and
+the dictionary-driven key catches. No false positive was sitting in the live library today, but
+the fix reaches further than "removes one" — it also finds a real match the old rule silently
+missed. Neither swap's own text appears here, per `CLAUDE.md`. **Not verified:** anything against
+the real backend or on the tablet, and the PR is not merged yet, waiting on green CI and the
+household's look.
 
 **What it does not cover:** sign-in, hydration, row-level security and the background write
 queue are all stubbed. A green run is not a substitute for opening the real app. Keep Awake

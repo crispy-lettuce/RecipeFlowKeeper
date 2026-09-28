@@ -4972,26 +4972,23 @@ function weekStartIsoOf(days){
 /* Amounts, names, categories: moved to core.js on 25 Sep 2026 (PR 6a). */
 
 /* ------------------------------- Swaps matching -------------------------------
-   Deliberately fuzzy, per the "something fuzzier" decision (14 Aug): a swap's
-   `original` just needs to appear as a substring of the stripped ingredient
-   line, not match it exactly. Reuses stripPrepWordsForCategorizing so
-   "2 cloves garlic, minced" still matches a swap on "garlic" the same way
-   the shopping-list categorizer already treats prep words as noise. This
-   is intentionally looser than the shopping list's own matching (which
-   needs a name+unit match to total two lines) — a swap suggestion is just
-   a nudge to consider, not a data-integrity concern, so a false positive
-   here is low-cost and a missed one is the worse failure mode.
+   Matched by the list's own names since 6d-2: a swap's `original` and the
+   ingredient it might apply to are both run through shoppingKeyForName, the
+   same normalisation the shopping list itself uses to decide two lines are
+   the same thing to buy. Until 6d-2 this matched by substring on the raw
+   ingredient text (the "something fuzzier" decision, 14 Aug), so a swap for
+   "butter" fired on "peanut butter" too — measured on the whole library
+   before shipping the fix (6d-2's PR has the before/after).
 
-   Multiple swaps can match the same ingredient line (e.g. both a
-   "brown rice syrup -> maple syrup" and a "sugar -> honey" swap present) —
-   all matches are returned, not just the first, so nothing gets silently
-   hidden by another entry happening to match first. */
+   Multiple swaps can share a key (two different notes on the same
+   ingredient) — all matches are returned, not just the first, so nothing
+   gets silently hidden by another entry happening to match first. */
+function findSwapMatchesForKey(key, swaps){
+  if(!key || !swaps || !swaps.length) return [];
+  return swaps.filter(s=> shoppingKeyForName(s.original||'') === key);
+}
 function findSwapMatchesForIngredient(rawName, swaps){
-  const stripped = stripPrepWordsForCategorizing(rawName).toLowerCase();
-  return swaps.filter(s=>{
-    const needle = String(s.original||'').trim().toLowerCase();
-    return needle && stripped.includes(needle);
-  });
+  return findSwapMatchesForKey(shoppingKeyForName(rawName), swaps);
 }
 
 /* Scans every ingredient line across all of a recipe's GROUPs and returns
@@ -5214,6 +5211,38 @@ function renderShopping(){
     </div>`;
   }).join('');
 
+  /* A "possible swaps" panel at the bottom (6d-2): the household's own
+     swaps (Settings → Swaps) that apply to something on this list, matched
+     by the list's own key (findSwapMatchesForKey) rather than the old
+     substring rule, so a swap for "butter" no longer flags "peanut butter".
+     No dedup by swap id: every row is a distinct key, so a correctly
+     matched swap can only ever land against one of them — if it ever landed
+     against two, that would mean matching had regressed, and the point is
+     to show that, not hide it. Read from allCategories, not the
+     ticked-filtered categories, so hiding ticked items doesn't hide a swap
+     for one of them — the same rows totalItems and recipeCount are read
+     from. A recipe's own bracketed choice is not here: since 6c-1 it
+     already shows on the row. Decided 28 Sep: name, ratio and note only —
+     no attempt to scale a row's aggregated total, which can be in mixed
+     units or partly unmeasured ("2 + 400 g", "+ extra to serve").
+     buildShoppingList stays free of this — it only reads the categories it
+     already returned. */
+  const swapRows = [];
+  allCategories.forEach(cat=> cat.items.forEach(it=>{
+    findSwapMatchesForKey(it.key, loadSwaps()).forEach(swap=> swapRows.push({ name: it.name, swap }));
+  }));
+  if(swapRows.length){
+    body.innerHTML += `<div class="swap-suggestions shop-swap-panel">
+      <div class="swap-suggestions-title">⇄ POSSIBLE SWAPS</div>
+      <ul class="notes swap-list">` +
+      swapRows.map(({name, swap})=>{
+        const ratio = Number(swap.ratio) || 1;
+        const noteBit = swap.notes ? ` — <span class="swap-note">${escapeHtml(swap.notes)}</span>` : '';
+        return `<li><span class="swap-for">${escapeHtml(name)}</span> → try ${escapeHtml(swap.replacement)} (ratio ${formatAmount(ratio)})${noteBit}</li>`;
+      }).join('') +
+      `</ul>
+    </div>`;
+  }
 }
 
 /* ------------------------------- One-time listeners ------------------------------- */

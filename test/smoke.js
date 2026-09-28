@@ -1025,6 +1025,69 @@ const check = (name, pass, detail) => {
   check('    and beside the name when the row has only the one recipe',
         alt.single.length === 1 && /\(or kefir\)$/.test(alt.single[0].name) && alt.single[0].recipes === 'Alt Three', JSON.stringify(alt.single));
 
+  /* 6d-2: swaps matched by the list's own name (findSwapMatchesForKey), not
+     a substring on the raw ingredient text — the "something fuzzier"
+     decision (14 Aug) let a swap for "butter" fire on "peanut butter" too.
+     The "possible swaps" panel at the bottom of the list shows name, ratio
+     and note only, for whatever it actually matches on this list (28 Sep). */
+  const swap = await page.evaluate(() => {
+    const day = isoLocal(new Date());
+    const mk = (title, line) => ({ id: uid(), title, source: 'Blue Door Bakery', servings: 2, tags: { course: '', keywords: [] }, history: [],
+      syntax: `TITLE: ${title}\nSERVINGS: 2\n\nGROUP a:\n${line}\n\nSTAGE:\nMERGE a -> done: Mix [instant]` });
+    const butterRecipe = mk('Swap Butter Test', '100 g butter');
+    const peanutRecipe = mk('Swap Peanut Butter Test', '30 g peanut butter');
+    loadRecipes().push(butterRecipe, peanutRecipe);
+    const butterSwap = { id: uid(), original: 'butter', replacement: 'margarine', ratio: 1, notes: 'dairy-free' };
+
+    // The matching function itself: the regression this PR fixes.
+    const unit = {
+      peanutExcluded: findSwapMatchesForIngredient('peanut butter', [butterSwap]).length === 0,
+      butterIncluded: findSwapMatchesForIngredient('butter', [butterSwap]).length === 1,
+      byKey: findSwapMatchesForKey('butter', [butterSwap]).length === 1
+    };
+
+    addPlanRecipe(day, butterRecipe.id);
+    renderShopping();
+    const beforeSwap = !document.querySelector('.shop-swap-panel');
+
+    cache.swaps.push(butterSwap);
+    renderShopping();
+    const panelText = (document.querySelector('.shop-swap-panel') || {}).textContent || '';
+
+    addPlanRecipe(day, peanutRecipe.id);
+    renderShopping();
+    const withPeanut = (document.querySelector('.shop-swap-panel') || {}).textContent || '';
+    const entries = document.querySelectorAll('.shop-swap-panel .swap-list li').length;
+
+    // Ticking the butter row off and hiding ticked items must not hide the
+    // swap for it — the panel reads every row on the list, not just the
+    // ones HIDE TICKED currently shows.
+    const butterRow = [...document.querySelectorAll('#shopBody .shop-item')].find(el => el.dataset.name === 'Butter');
+    const weekStart = document.getElementById('shopBody').dataset.weekStart;
+    toggleShoppingChecked(weekStart, butterRow.dataset.key);
+    state.shoppingHideChecked = true;
+    renderShopping();
+    const afterTick = { hidden: !document.querySelector('#shopBody .shop-item[data-name="Butter"]'),
+                         panel: (document.querySelector('.shop-swap-panel') || {}).textContent || '' };
+    state.shoppingHideChecked = false;
+    toggleShoppingChecked(weekStart, butterRow.dataset.key);
+
+    deleteRecipe(butterRecipe.id); deleteRecipe(peanutRecipe.id);
+    cache.swaps = cache.swaps.filter(s => s.id !== butterSwap.id);
+    renderShopping();
+    return { unit, beforeSwap, panelText, withPeanut, entries, afterTick };
+  });
+  check('a swap for "butter" does not fire on "peanut butter"', swap.unit.peanutExcluded, JSON.stringify(swap.unit));
+  check('    but still fires on "butter" itself, by key as well as by the old raw-name call', swap.unit.butterIncluded && swap.unit.byKey);
+  check('no swap panel when nothing on the list matches a stored swap', swap.beforeSwap, swap.panelText);
+  check('a matching swap shows name, ratio and note in the panel',
+        /Butter/.test(swap.panelText) && /margarine/.test(swap.panelText) && /ratio 1/.test(swap.panelText) && /dairy-free/.test(swap.panelText),
+        swap.panelText);
+  check('planning an unrelated "peanut butter" line adds nothing to the panel',
+        swap.entries === 1 && !/peanut/i.test(swap.withPeanut), JSON.stringify({entries: swap.entries, withPeanut: swap.withPeanut}));
+  check('hiding a ticked row does not hide its swap',
+        swap.afterTick.hidden && /margarine/.test(swap.afterTick.panel), JSON.stringify(swap.afterTick));
+
   // The prompt must never fire from the planner.
   let plannerDialogs = 0;
   const countDialog = d => { plannerDialogs++; d.dismiss(); };
