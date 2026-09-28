@@ -155,7 +155,8 @@ refresh lands whole or not at all.
 | `buildShoppingList(weekDays)` | Aggregates the plan into a shopping list. **Must stay side-effect free** — it runs on every planner change via `updateSidebarCounts()`. The naming and totalling are `aggregateShoppingLines` in `core.js` (since PR 6b); the page adds the week, the headcount, the household's word matches and each line's group, which says what a line with no amount is for ("+ extra to serve"). |
 | `shoppingLine(rest, parsed)` (`core.js`) | One ingredient line → its key, the name to show, its aisle's dictionary row and its amount in a base unit. The rules, in order, are in its comment: brackets and the first comma go, then tail notes, size words and a leading count unit ("pinch of", "2 tins"); garlic and celery carry their count at the end; bare "pepper" is black pepper by the spoon and the vegetable when counted; then the dictionary, then prep words. **One row per key**, whatever the units: parts that can't be added are shown side by side, `2 + 400 g`. |
 | `ingredientLineFaults(line)` (`core.js`) | The standard-shape checks for one ingredient line, each marked `affectsList` when the shopping list can't total it (an alternative outside brackets, two ingredients on a line, cups or oz, a tin in ml, an amount inside the name). The add/edit preview shows only those, as warnings that never block a save; `validate-recipes.js` reports all (27 Sep, PR 6c-1). `suggestIngredientLine` offers a rewrite where there is one right answer. |
-| `sourceFidelity(sourceLines, recipeLines)` (`core.js`) | Pairs a source's ingredient list with the recipe's lines — a shared content word, or the same dictionary name — and returns what is on one side only. Words, never amounts. Fed by the `source-ingredients` Edge Function from the preview's COMPARE WITH SOURCE. |
+| `sourceFidelity(sourceLines, recipeLines)` (`core.js`) | Pairs a source's ingredient list with the recipe's lines — a shared content word, or the same dictionary name — and returns what is on one side only. Words, never amounts. Fed by the `source-ingredients` Edge Function from the preview's COMPARE WITH SOURCE, or by a list pasted into the box beneath it (COMPARE PASTED LIST). |
+| `pastedIngredientLines(text)` (`core.js`) | A source's ingredient list as pasted into the preview's box, one line each: tick boxes, bullets and blank lines stripped, and a heading dropped only when it certainly is one (no digit, and a colon, "For the…" or a section word). Narrow on purpose: a heading left in is a row to read past, an ingredient dropped is a line never checked. It feeds the same `sourceFidelity` as the function's list, for the sites that refuse the function (PR 7d, 28 Sep). |
 | `strictMatchSuggestions(items, isSettled)` (`core.js`) | The pairs the list offers to merge, in place, never in a dialog: two names that share a last word and differ by one word not on `NEVER_IGNORE`, neither known to the dictionary as a different product. |
 | `queueWrite(label, fn)` | Background write queue. Returns `true` synchronously. |
 | `rehostImageFor(id, sentUrl)` | Queued after a save. Asks `rehost-images` to copy one recipe's photo into our own Storage, if it is not there already. Never awaited by the save. |
@@ -229,10 +230,10 @@ a URL is already ours. See `docs/IMAGES.md` §5.
 (`test/stub.js`) and walks every screen.
 
 ```sh
-node test/core.test.js   # 72 checks on core.js in Node, under a second, no browser
+node test/core.test.js   # 77 checks on core.js in Node, under a second, no browser
 npm install playwright
 node test/build.js       # bake index.html (with core.js inlined) against the stub
-node test/smoke.js       # 257 checks; exits non-zero on failure
+node test/smoke.js       # 275 checks; exits non-zero on failure
 ```
 
 **`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,

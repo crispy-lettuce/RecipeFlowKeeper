@@ -12,7 +12,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 257 automated checks pass, plus 72 in Node (102 when this was
+story that used to open this paragraph is history. 275 automated checks pass, plus 77 in Node (102 when this was
 written). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -270,6 +270,20 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     (a row with one recipe, usually) does it show beside the ingredient's name instead. A bracket
     with no "or" ("(1 tin)", "(rigatoni)") must not show anywhere. Measured on 27 Sep: 4 rows
     show a choice by the name and 3 beside a recipe today; after 6c-2, 9 and 11.
+36a. **A pasted list, for the sites that refuse (new 28 Sep, PR 7d).** Open a Kitchen Sanctuary
+    recipe (17 of the 34; the function gets a 403 there), EDIT, then COMPARE WITH SOURCE: it names
+    the 403 and points at the box below. On the recipe's own page, select the ingredient list
+    only, copy it, paste it into the box under AGAINST THE SOURCE, and press COMPARE PASTED LIST.
+    Expect the recipe's lines to pair with the page's, and highlighted rows only where there is a
+    real difference — or something the copy brought along that the tidy-up did not know. **Note
+    what a real copy looks like.** `pastedIngredientLines` was written for tick-box glyphs,
+    bullets, blank lines and section headings, from a general idea of what copying a recipe page
+    gives — not from a real page, which no session can reach. A unit toggle, an amount on a line
+    of its own or a note under the list would show as a row here, and is worth telling me about.
+    Then press PARSE: the pasted list is still in the box and the table is cleared. Close the form
+    and open Add: the box is empty. Nothing is saved and no request is made (the offline suite
+    checks that nothing is sent), so with the connection off it should still work — not yet
+    tried on a real device.
 
 ## Deferred to the tablet, after merging
 

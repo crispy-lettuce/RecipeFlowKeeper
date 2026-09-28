@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-28.2';
+const KITCHEN_CORE_VERSION = '2026-09-28.3';
 
 
 /* ======================= quantity split ======================= */
@@ -1322,6 +1322,28 @@ function sourceFidelity(sourceLines, recipeLines){
   };
 }
 
+/* A source's ingredient list as copied from its page and pasted into the
+   preview's box (PR 7d) — the answer to the sites that turn the
+   source-ingredients function away with a 403, which is half the library. The
+   function fetches; this only reads what a person has already put there, so
+   it works for any page and needs no network.
+
+   Copying from a page brings the page's furniture with it: tick-box glyphs,
+   bullets, blank lines, and section headings ("For the sauce"). The first
+   three go without a second thought. A heading goes only when it is certainly
+   not an ingredient — no digit anywhere in it, and it ends in a colon, opens
+   "For the/a", or is one of the section words. That is narrow on purpose: a
+   heading left in shows as a highlighted row the household reads past, while
+   an ingredient dropped is a line the check never looked at, and a check that
+   quietly loses ingredients is the very fault it exists to catch. */
+function pastedIngredientLines(text){
+  return String(text || '').split(/\r?\n/)
+    .map(l => l.replace(/\u200b/g, '')   // \s already covers a non-breaking space; a zero-width one it does not
+      .replace(/^\s*(?:[▢☐☑□◻○●•▪◦‣·]|[-*–—]\s|\[[ xX]?\])\s*/, '').replace(/\s+/g, ' ').trim())
+    .filter(l => l && !(!/\d/.test(l) && (/:$/.test(l) || /^for (the|a|an)\b/i.test(l)
+      || /^(ingredients?|method|instructions?|directions?|equipment)$/i.test(l))));
+}
+
 /* The household's word matches as the shopping list applies them: each
    side re-normalised through today's rules (so a match stored in older
    words still means the same thing), and one the rules now make anyway
@@ -1351,6 +1373,6 @@ if(typeof module !== 'undefined' && module.exports){
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,
     NEVER_IGNORE, foldPlural, dictionaryRow, shoppingLine, formatShoppingParts, aggregateShoppingLines,
     shoppingKeyForName, strictMatchSuggestions,
-    ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, ingredientMatchMap
+    ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, pastedIngredientLines, ingredientMatchMap
   };
 }
