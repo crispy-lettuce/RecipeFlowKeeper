@@ -82,6 +82,11 @@ runs itself every Monday at 06:00 UTC; nothing further is owed unless a future r
 **Still open:** should the PASTE box for COMPARE WITH SOURCE, the answer to the two sites that
 refuse the function, be its own small PR, or come later?
 
+**Proposed, not started:** a household-editable aisle override in Settings — so moving something
+like "Sirloin Steak" out of Other is a form entry, not a code change and a PR. Raised 28 Sep after
+that exact case; the design is written up in `docs/PROPOSAL-AISLE-OVERRIDES.md`, checked against
+the running code, waiting to be picked up.
+
 **Not to redo:** 6c-2's recipe text, its undo and the word matches as made are in
 `PrivateBackup`, `migrations/6c-2-line-rewrite/`. Nothing about the library's lines needs doing.
 
