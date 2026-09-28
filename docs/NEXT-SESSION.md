@@ -92,6 +92,11 @@ page, and the one thing no session could check: **what a real copy from that pag
 **Still open:** nothing is waiting on a decision. The household merges 7d (or doesn't) and does
 step 36a.
 
+**Proposed, not started:** a household-editable aisle override in Settings — so moving something
+like "Sirloin Steak" out of Other is a form entry, not a code change and a PR. Raised 28 Sep after
+that exact case; the design is written up in `docs/PROPOSAL-AISLE-OVERRIDES.md`, checked against
+the running code, waiting to be picked up.
+
 **Not to redo:** 6c-2's recipe text, its undo and the word matches as made are in
 `PrivateBackup`, `migrations/6c-2-line-rewrite/`. Nothing about the library's lines needs doing.
 

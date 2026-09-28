@@ -212,6 +212,21 @@ which found it right and incomplete (the default privileges went too).
 
 ---
 
+### `docs/PROPOSAL-AISLE-OVERRIDES.md` — a household-editable aisle override, not started
+**What:** A design, checked against the running code, for letting the household move an
+ingredient into the right shopping-list aisle themselves from Settings — a form entry, not a code
+change and a PR — for the recurring case of something landing under Other or in the wrong aisle.
+Raised 28 Sep 2026 after "Sirloin Steak" was found under Other. Two design choices in it were
+settled with the household already; nothing else has been, and nothing has been built.
+
+**Use it when:** this is picked up. It names the exact new table, the `core.js` function to
+extend, and the existing Word Matches feature it mirrors and deliberately stays independent of.
+
+**Don't:** treat it as tracked work. `docs/NEXT-SESSION.md`'s "Still open" line points here, but
+it's outside the seven-PR plan and has no PR number yet.
+
+---
+
 ### `docs/NEXT-SESSION.md` — the order of work, and how to start
 **What:** **The definitive sequence for what happens next**, with the reasoning behind the three
 places where order genuinely matters. Plus a complete, ready-to-paste prompt for the next session
