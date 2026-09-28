@@ -23,9 +23,9 @@ household decides when to merge.
 Each fact below was checked against the database, the deployed functions or `git log` when it
 was written. Check again before relying on one.
 
-**Done.** PRs 1–6d-2 are merged and live. The last code change was PR #26, 6d-2, merged 28 Sep.
-`core.js` still carries `2026-09-28.2` — neither 6d-1 nor 6d-2 touched it, so no version bump was
-needed. 6c-2 was a data job, not a PR; PR #23 is its documentation.
+**Done.** PRs 1–7c are merged and live. The last code change to `index.html` was PR #31 (7c's own
+fix — see below), merged 28 Sep; `core.js` itself hasn't changed since 6b and still carries
+`2026-09-28.2`. 6c-2 was a data job, not a PR; PR #23 is its documentation.
 
 **The live app:**
 
@@ -37,9 +37,12 @@ needed. 6c-2 was a data job, not a PR; PR #23 is its documentation.
 - **Edge Functions:** `rehost-images` v10, `find-recipe-image` v4 and `source-ingredients` v1.
   `source-ingredients` gets a 403 from Kitchen Sanctuary (17 recipes) and Allrecipes (1), so
   COMPARE WITH SOURCE says "compare by eye" for half the library.
-- **Sharing:** one account, one household, one membership row (verified 28 Sep) —
-  `docs/ONBOARDING.md` is the runbook for adding a second. `anon` now holds no table access and
-  every policy is `authenticated`-only (28 Sep); leaked-password protection is still off.
+- **Sharing:** the family is one account, one household (verified 28 Sep) —
+  `docs/ONBOARDING.md` is the runbook for adding a second family member. A second `households` row
+  now exists too, but it is 7c's isolated test household in `PrivateBackup`
+  (`scripts/weekly-live-check.js`), never the family's — querying `households`/`household_members`
+  directly will show two rows and is not a sign anything's wrong. `anon` now holds no table access
+  and every policy is `authenticated`-only (28 Sep); leaked-password protection is still off.
 
 **Before anything else, read the first three sections of `CLAUDE.md`:**
 
