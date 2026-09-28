@@ -869,6 +869,21 @@ npm install playwright
 node test/build.js && node test/smoke.js
 ```
 
+**6d-1, MERGE WITH… made safe (28 Sep 2026, PR #25, open).** The dropdown that wrote the moment a
+name was picked, from only this week's rows, is now a filter box over the whole library
+(`allLibraryIngredientNames()`, the same aggregation the shopping list itself uses, unscaled) with
+a confirm step — "Merge X with Y? MERGE · CANCEL" — before anything is written. The confirm's
+MERGE button reuses the same `addAlias` call the inline "Same as X?" suggestion already uses, so
+there is one path that ever writes an ingredient word match; only names `allLibraryIngredientNames()`
+returns can appear as an option, so typing a new name has no effect, per the household's 27 Sep
+decision. **Verified by:** `core.test.js` unchanged at 72 checks (`core.js` untouched, so no
+version bump); smoke 257 → 261, the four new checks — a pick alone writes nothing, CANCEL writes
+nothing, MERGE writes exactly one `aliases` row, a name from a recipe never planned is offered by
+the filter — each mutation-tested to fail by name (not a crash) before being restored, per
+`CLAUDE.md`. `docs/TEST-PLAN.md` step 15 is rewritten for the new flow. **Not verified:** anything
+against the real backend or on the tablet — that is the household's own pass, and the PR is not
+merged yet, waiting on green CI and the household's look.
+
 **What it does not cover:** sign-in, hydration, row-level security and the background write
 queue are all stubbed. A green run is not a substitute for opening the real app. Keep Awake
 can't be tested outside a real tablet.
