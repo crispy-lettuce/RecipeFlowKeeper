@@ -916,7 +916,7 @@ missed. Neither swap's own text appears here, per `CLAUDE.md`. **Not verified:**
 the real backend or on the tablet — that's still the household's own pass; CI went green and the
 PR merged the same session.
 
-**7a, the onboarding runbook (28 Sep 2026, PR #27, open).** `docs/ONBOARDING.md`:
+**7a, the onboarding runbook (28 Sep 2026, PR #27, merged).** `docs/ONBOARDING.md`:
 the three steps to add a family member (create their account in the dashboard, one guarded SQL
 statement to link them to the household, give them the app's address), what `hydrate()`'s real
 error looks like if the link is missing, why the app has no sign-up form of its own to do any of
@@ -936,7 +936,8 @@ checked against the schema's real constraints (the unique index, the two `ON DEL
 foreign keys) but not run.
 
 **7b, RLS belt and braces (28 Sep 2026, migration `rls_belt_and_braces_restrict_to_authenticated`,
-no PR — a database migration, not app code).** Run against production with the household's
+documented on PR #27, merged — the migration itself is not app code, so it ran directly).**
+Run against production with the household's
 explicit go-ahead, after the exact SQL was written out and checked here first. Every policy that
 was `TO public` — the 46 on the app's own 13 tables, plus 4 on `storage.objects` found the same
 day, none of them named in F8 but the identical shape — is now `TO authenticated`; `anon`'s
@@ -957,6 +958,20 @@ it against the live app yet, which is the same "not a substitute for opening the
 `test/README.md` already names for the offline harness. `docs/REVIEW-ARCHITECTURE-FINDINGS.md`
 F8 is annotated as partially closed, with what's still open (leaked-password protection; whether
 public sign-up is enabled, still uncheckable from a session).
+
+**7c, the weekly live-backend test (28 Sep 2026, `PrivateBackup` PR #3, open — nothing in this
+repo).** `scripts/weekly-live-check.js` and `.github/workflows/weekly-live-check.yml`, in
+`PrivateBackup`: signs in to a *dedicated* test household (never the family's — this script adds
+and deletes a real recipe and two real diary entries every run), adds a recipe, favourites it,
+logs it as cooked and answers the meal-type prompt, adds an ad-hoc entry, then cleans all of it
+up — each step proven by a reload rather than trusted from the in-page cache. Answers Answer 5's
+suggested test and closes F13's specific gap (the diary's writes had never run against the real
+backend). **Verified by:** `node --check` on the script (no syntax errors) and `npm install`
+installing the same `playwright` version RecipeFlowKeeper's own harness pins. **Not verified:**
+against the live app — that needs a real test account, which no tool available to this session
+can create (it needs either the dashboard or the service-role key), so it is the household's to
+do; `PrivateBackup` PR #3's description has the exact three steps. Until that happens the
+workflow exists but has never actually run.
 
 **What it does not cover:** sign-in, hydration, row-level security and the background write
 queue are all stubbed. A green run is not a substitute for opening the real app. Keep Awake
