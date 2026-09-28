@@ -134,7 +134,9 @@ Some things that *will* still look wrong and aren't:
     X? MERGE · KEEP APART* under the rarer row; answer one each way if you get two. Both should
     appear in Settings → Word Matches, and neither should be offered again. You will probably get
     none — the rules and the dictionary total most variants without asking — so **MERGE WITH…**
-    on any row, joining it to another, exercises the same path.
+    on any row exercises the same path: type a few letters to filter (any name in the library, not
+    just this week's rows), pick one, expect *Merge X with Y? MERGE · CANCEL* — CANCEL and it is
+    unchanged; MERGE and the two rows join.
 16. **Viewer ticks.** Tick three steps, then change COOK FOR. The ticks must survive. **RESET TICKS**
     clears them without moving you off the recipe.
 17. **Sidebar.** Narrow the window to roughly 1000px and open a recipe. The sidebar slides shut, the

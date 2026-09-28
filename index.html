@@ -754,7 +754,18 @@
     font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; text-decoration:underline; }
   .shop-tools .shop-merge-with{ color:var(--ink-faint); }
   .shop-suggest b{ font-weight:500; color:var(--ink); }
-  .shop-merge-select{ font-size:12.5px; }
+  /* The filter box and its picked-but-not-yet-saved confirm step (6d-1):
+     plain text controls, not the underlined-link look of the tools around
+     them, so a box full of names doesn't read as a row of actions. */
+  .shop-merge-box{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+  .shop-merge-filter{ font:inherit; font-size:12.5px; padding:3px 7px; min-width:140px;
+    border:1px solid var(--line-soft); border-radius:5px; background:var(--paper); color:var(--ink); }
+  .shop-merge-options{ display:flex; flex-wrap:wrap; gap:4px 10px; }
+  .shop-merge-option{ text-decoration:none !important; font-family:inherit !important;
+    font-size:12.5px !important; letter-spacing:normal !important; }
+  .shop-merge-hint{ color:var(--ink-faint); }
+  .shop-merge-confirm b{ font-weight:500; color:var(--ink); }
+  .shop-merge-cancel{ color:var(--ink-soft) !important; }
 
   /* ============================= HISTORY ============================= */
   .history-wrap{ flex:1; display:flex; min-height:0; }
@@ -5063,6 +5074,22 @@ function buildShoppingList(weekDays){
   };
 }
 
+/* Every name MERGE WITH… can offer: every ingredient line in the whole
+   library, not just what's planned this week (6d-1) — a word match is
+   keyed by name, so joining two names that have never shared a week's list
+   is fine. Unscaled: only the name and key matter here, never the amount.
+   Recomputed on each keystroke of the filter box; the library is small
+   enough that this costs nothing. */
+function allLibraryIngredientNames(){
+  const lineItems = [];
+  loadRecipes().forEach(recipe=>{
+    parseRecipe(recipe.syntax).groups.forEach(g=>{
+      g.items.forEach(item=> lineItems.push({ recipeTitle: recipe.title, raw: item, group: g.handle }));
+    });
+  });
+  return aggregateShoppingLines(lineItems, applyIngredientAlias).map(it=> ({ key: it.key, name: it.name }));
+}
+
 /* ------------------------------- Rendering ------------------------------- */
 /* The tick keys belonging to one mode: combined lines are prefixed, single
    week lines are not, and neither should be able to clear the other. */
@@ -5226,7 +5253,11 @@ function initShoppingListeners(){
     const merge = e.target.closest('[data-merge-from]');
     const keep = e.target.closest('[data-keep-from]');
     const withBtn = e.target.closest('[data-merge-with]');
+    const option = e.target.closest('.shop-merge-option');
+    const cancelBtn = e.target.closest('.shop-merge-cancel');
     if(merge){
+      /* Also reached from the confirm step below, whose MERGE button carries
+         the same two data attributes — one place writes an ingredient match. */
       addAlias('ingredient', merge.dataset.mergeFrom, merge.dataset.mergeTo);
       renderAliasesList();
       renderShopping();
@@ -5235,32 +5266,60 @@ function initShoppingListeners(){
       renderAliasesList();
       renderShopping();
     } else if(withBtn){
-      /* For the pairs no rule will find: pick the other row from this list. */
+      /* For the pairs no rule will find: filter the whole library's names,
+         not just this week's rows (6d-1) — a word match is keyed by name,
+         so two names never planned together can still be joined here. */
       const from = withBtn.dataset.mergeWith;
-      const rows = [...document.querySelectorAll('#shopBody .shop-item')]
-        .map(el=> ({ key: el.dataset.key.replace(/^both\|/, ''), name: el.dataset.name }))
-        .filter(r=> r.key !== from)
-        .sort((a,b)=> a.name.localeCompare(b.name));
-      const sel = document.createElement('select');
-      sel.className = 'shop-merge-select';
-      sel.dataset.mergeFrom = from;
-      sel.innerHTML = '<option value="">Merge with…</option>' +
-        rows.map(r=> `<option value="${escapeHtml(r.key)}">${escapeHtml(r.name)}</option>`).join('');
-      withBtn.replaceWith(sel);
-      sel.focus();
+      const fromName = withBtn.closest('.shop-row').querySelector('.shop-item').dataset.name;
+      const box = document.createElement('span');
+      box.className = 'shop-merge-box';
+      box.dataset.mergeWithFrom = from;
+      box.dataset.mergeWithFromName = fromName;
+      box.innerHTML = `<input type="text" class="shop-merge-filter" autocomplete="off"
+          placeholder="Merge with…" aria-label="Filter ingredient names to merge ${escapeHtml(fromName)} with">
+        <span class="shop-merge-options"></span>`;
+      withBtn.replaceWith(box);
+      box.querySelector('.shop-merge-filter').focus();
+    } else if(option){
+      /* A name from the filtered list, picked but not yet written — only
+         MERGE below saves it (27 Sep: a slip of the finger saved the wrong
+         match, because the old dropdown wrote on the first pick). */
+      const box = option.closest('.shop-merge-box');
+      const from = box.dataset.mergeWithFrom;
+      const to = option.dataset.key;
+      const confirmBox = document.createElement('span');
+      confirmBox.className = 'shop-merge-confirm';
+      confirmBox.innerHTML = `Merge <b>${escapeHtml(box.dataset.mergeWithFromName)}</b> with <b>${escapeHtml(option.dataset.name)}</b>? `
+        + `<button data-merge-from="${escapeHtml(from)}" data-merge-to="${escapeHtml(to)}">MERGE</button> · `
+        + `<button class="shop-merge-cancel">CANCEL</button>`;
+      box.replaceWith(confirmBox);
+    } else if(cancelBtn){
+      /* Writes nothing: back to the plain button, so cancelling costs
+         nothing to undo. */
+      renderShopping();
     }
   });
 
+  document.getElementById('shopBody').addEventListener('input', e=>{
+    if(!e.target.classList.contains('shop-merge-filter')) return;
+    const box = e.target.closest('.shop-merge-box');
+    const from = box.dataset.mergeWithFrom;
+    const q = e.target.value.trim().toLowerCase();
+    const optionsEl = box.querySelector('.shop-merge-options');
+    if(!q){ optionsEl.innerHTML = ''; return; }
+    /* Only names already in the library can be picked (decided 27 Sep):
+       every option comes from allLibraryIngredientNames(), never from what
+       was typed. */
+    const matches = allLibraryIngredientNames()
+      .filter(it=> it.key !== from && it.name.toLowerCase().includes(q))
+      .sort((a,b)=> a.name.localeCompare(b.name))
+      .slice(0, 8);
+    optionsEl.innerHTML = matches.length
+      ? matches.map(it=> `<button type="button" class="shop-merge-option" data-key="${escapeHtml(it.key)}" data-name="${escapeHtml(it.name)}">${escapeHtml(it.name)}</button>`).join('')
+      : '<span class="shop-merge-hint">No match in the library</span>';
+  });
+
   document.getElementById('shopBody').addEventListener('change', e=>{
-    if(e.target.classList.contains('shop-merge-select')){
-      const to = e.target.value;
-      if(to){
-        addAlias('ingredient', e.target.dataset.mergeFrom, to);
-        renderAliasesList();
-        renderShopping();
-      }
-      return;
-    }
     const label = e.target.closest('.shop-item');
     if(!label) return;
     toggleShoppingChecked(document.getElementById('shopBody').dataset.weekStart, label.dataset.key);

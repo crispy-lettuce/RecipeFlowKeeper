@@ -823,16 +823,20 @@ const check = (name, pass, detail) => {
         strict[0] && strict[0].from === 'curly kale' && strict[0].to === 'kale', JSON.stringify(strict[0]));
 
   /* On the list itself: two recipes that differ only by a word the rules
-     keep, planned on one day, so the suggestion has something to show. */
+     keep, planned on one day, so the suggestion has something to show. A
+     third, never planned, is 6d-1's "offered from the whole library" case —
+     MERGE WITH… must reach it although it never shares a week's list. */
   const planned = await page.evaluate(() => {
     const list = loadRecipes();
     const a = { id: uid(), title: 'Kale One', source: 'Blue Door Bakery', servings: 2, tags: { course: '', keywords: [] }, history: [],
                 syntax: 'TITLE: Kale One\nSERVINGS: 2\n\nGROUP a:\n200 g curly kale\n\nSTAGE:\nMERGE a -> b: Cook [5 min]' };
     const b = { ...a, id: uid(), title: 'Kale Two', syntax: 'TITLE: Kale Two\nSERVINGS: 2\n\nGROUP a:\n100 g kale\n\nSTAGE:\nMERGE a -> b: Cook [5 min]' };
-    list.push(a, b);
+    const c = { ...a, id: uid(), title: 'Unplanned Sprinkle Test',
+                syntax: 'TITLE: Unplanned Sprinkle Test\nSERVINGS: 2\n\nGROUP a:\n50 g glitter sprinkles\n\nSTAGE:\nMERGE a -> b: Cook [5 min]' };
+    list.push(a, b, c);
     const day = isoLocal(new Date());
     addPlanRecipe(day, a.id); addPlanRecipe(day, b.id);
-    return { day, a: a.id, b: b.id };
+    return { day, a: a.id, b: b.id, c: c.id };
   });
   let shopDialogs = 0;
   const countShopDialog = d => { shopDialogs++; d.dismiss(); };
@@ -909,21 +913,73 @@ const check = (name, pass, detail) => {
   check('building the list with a suggestion pending writes, asks and changes nothing',
         pure.offered > 0 && pure.writes === 0 && pureDialogs === 0 && pure.aliasesSame && pure.ticksSame, JSON.stringify(pure) + ', ' + pureDialogs + ' dialogs');
 
-  // MERGE WITH… joins any two rows, for pairs no rule would offer.
+  /* MERGE WITH… made safe (6d-1): found 27 Sep, the old dropdown wrote the
+     moment a name was picked and offered only this week's rows, so a slip
+     of the finger saved the wrong match and two matches couldn't be made at
+     all. Now: a filter box over the whole library, a confirm step, and only
+     MERGE writes. */
   await page.evaluate(() => { const r = loadRecipes().find(x => x.title === 'Kale Two'); r.syntax = r.syntax.replace('100 g kale', '1 bunch cavolo nero'); renderShopping(); });
   await page.waitForTimeout(200);
+  const aliasesBefore = await page.evaluate(() => loadAliases().length);
+
   await page.click('[data-merge-with="cavolo nero"]');
   await page.waitForTimeout(150);
-  await page.selectOption('.shop-merge-select', 'kale');
-  await page.waitForTimeout(300);
-  const joined = await page.evaluate(() => {
-    const rows = [...document.querySelectorAll('#shopBody .shop-item')].filter(el => /kale|cavolo/i.test(el.dataset.name));
-    return rows.map(r => r.querySelector('.shop-item-name').textContent.trim());
+  await page.fill('.shop-merge-filter', 'sprinkle');
+  await page.waitForTimeout(150);
+  const offList = await page.evaluate(() => {
+    const opt = document.querySelector('.shop-merge-option');
+    return opt && { name: opt.dataset.name, key: opt.dataset.key };
   });
-  check('MERGE WITH… joins two rows the rules keep apart, keeping both parts', joined.length === 1 && /200 g \+ 1 bunch/.test(joined[0]), JSON.stringify(joined));
+  check('a name from an unplanned recipe is offered by the filter', !!offList && /sprinkle/i.test(offList.name || ''), JSON.stringify(offList));
+
+  await page.fill('.shop-merge-filter', 'kale');
+  await page.waitForTimeout(150);
+  const writesBeforePick = await page.evaluate(() => (window.__WRITES__ || []).length);
+  await page.click('.shop-merge-option[data-key="kale"]');
+  await page.waitForTimeout(250);
+  const picked = await page.evaluate((before) => ({
+    confirmText: (document.querySelector('.shop-merge-confirm') || {}).textContent || '',
+    writesSince: (window.__WRITES__ || []).length - before
+  }), writesBeforePick);
+  check('picking a name shows a confirm step, and a pick alone writes nothing',
+        /Merge/.test(picked.confirmText) && /MERGE/.test(picked.confirmText) && /CANCEL/.test(picked.confirmText) && picked.writesSince === 0,
+        JSON.stringify(picked));
+
+  const writesBeforeCancel = await page.evaluate(() => (window.__WRITES__ || []).length);
+  await page.click('.shop-merge-cancel');
+  await page.waitForTimeout(250);
+  const cancelled = await page.evaluate((before) => ({
+    writesSince: (window.__WRITES__ || []).length - before,
+    aliasCount: loadAliases().length,
+    stillApart: [...document.querySelectorAll('#shopBody .shop-item')].filter(el => /kale|cavolo/i.test(el.dataset.name)).length,
+    buttonBack: !!document.querySelector('[data-merge-with="cavolo nero"]')
+  }), writesBeforeCancel);
+  check('CANCEL writes nothing and leaves the rows apart',
+        cancelled.writesSince === 0 && cancelled.aliasCount === aliasesBefore && cancelled.stillApart === 2 && cancelled.buttonBack,
+        JSON.stringify(cancelled));
+
+  await page.click('[data-merge-with="cavolo nero"]');
+  await page.waitForTimeout(150);
+  await page.fill('.shop-merge-filter', 'kale');
+  await page.waitForTimeout(150);
+  await page.click('.shop-merge-option[data-key="kale"]');
+  await page.waitForTimeout(150);
+  const writesBeforeMerge = await page.evaluate(() => (window.__WRITES__ || []).length);
+  await page.click('.shop-merge-confirm [data-merge-from]');
+  await page.waitForTimeout(300);
+  const joined = await page.evaluate((before) => ({
+    aliasWritesSince: (window.__WRITES__ || []).slice(before).filter(w => w.table === 'aliases' && w.op === 'upsert').length,
+    aliasCount: loadAliases().length,
+    rows: [...document.querySelectorAll('#shopBody .shop-item')].filter(el => /kale|cavolo/i.test(el.dataset.name))
+      .map(el => el.querySelector('.shop-item-name').textContent.trim())
+  }), writesBeforeMerge);
+  check('MERGE writes exactly one aliases row',
+        joined.aliasWritesSince === 1 && joined.aliasCount === aliasesBefore + 1, JSON.stringify(joined));
+  check('and joins the two rows the rules keep apart, keeping both parts',
+        joined.rows.length === 1 && /200 g \+ 1 bunch/.test(joined.rows[0] || ''), JSON.stringify(joined));
   // Tidy away the kale recipes, their plan entries and the matches.
   await page.evaluate((p) => {
-    [p.a, p.b].forEach(id => deleteRecipe(id));
+    [p.a, p.b, p.c].forEach(id => deleteRecipe(id));
     loadAliases().filter(a => /kale|cavolo/.test(a.alias)).forEach(a => removeAlias(a.id));
   }, planned);
   await page.waitForTimeout(300);
