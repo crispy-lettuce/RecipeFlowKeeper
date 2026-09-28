@@ -2688,13 +2688,25 @@ const unsavedDiaryIds = new Set();
 function updateDiaryEntry(id, changes){
   const idx = cache.diary.findIndex(e=>e.id === id);
   if(idx === -1) return false;
-  if(unsavedDiaryIds.has(id)){
-    showToast("That entry didn't save — check your connection and log it again");
-    return false;
-  }
   const next = { ...cache.diary[idx], ...changes };
   cache.diary = cache.diary.map((e,i)=> i === idx ? next : e);
   queueWrite('the food diary', async ()=>{
+    /* unsavedDiaryIds is checked here, inside the queued write, not before
+       queueWrite runs — "still in flight" and "definitely failed" look
+       identical from outside (the id stays in the set either way until the
+       insert itself settles), and this write already sits behind that
+       insert in the same shared writeQueue. Checking now, once this write's
+       turn actually comes, is what lets the meal-type prompt update a row
+       whose insert was still in flight when it was tapped, exactly as the
+       comment on addDiaryEntry intends — checking before queueing (the bug
+       until 28 Sep) meant a fast tap, human or scripted, almost always found
+       the insert not yet confirmed and silently dropped the update outright,
+       while the "Tagged as X" toast fired anyway. Found live, not offline:
+       the stub resolves a write on the same tick, so this never raced there. */
+    if(unsavedDiaryIds.has(id)){
+      showToast("That entry didn't save — check your connection and log it again");
+      return;
+    }
     const patch = {};
     if('mealType' in changes) patch.meal_type = next.mealType;
     if('title' in changes)    patch.title = next.title || null;
