@@ -759,6 +759,39 @@ const check = (name, pass, detail) => {
   check('a function that is not there says so, rather than failing silently', /Couldn't reach the source check.*Function not found/.test(notDeployed), notDeployed.trim().slice(0, 90));
   await page.evaluate(() => { window.__INVOKE_REPLY__ = null; });
 
+  /* PR 7d (28 Sep): for the sites that refuse the function, a list pasted
+     from the page. It fetches nothing and writes nothing. */
+  await page.evaluate(() => { window.__INVOKE_REPLY__ = { data: { error: 'the source page returned 403', pageUrl: 'https://example.com/checks', ingredients: [] }, error: null }; });
+  await page.click('#compareSourceBtn');
+  await page.waitForTimeout(300);
+  const refusedSite = await page.locator('#sourceCompareOut').textContent();
+  check('a site that refuses the function points at the paste box, not just at "compare by eye"',
+        /returned 403.*paste its list into the box above/.test(refusedSite), refusedSite.trim().slice(0, 120));
+  await page.evaluate(() => { window.__INVOKE_REPLY__ = null; window.__INVOKES__.length = 0; });
+  const writesBeforePaste = await page.evaluate(() => (window.__WRITES__ || []).length);
+  await page.click('#comparePastedBtn');
+  await page.waitForTimeout(200);
+  const pasteEmpty = await page.evaluate(() => ({ out: document.getElementById('sourceCompareOut').textContent, rows: document.querySelectorAll('#sourceCompareOut tr').length }));
+  check('an empty paste box says there is nothing to compare, rather than drawing an empty table',
+        /Nothing to compare yet/.test(pasteEmpty.out) && pasteEmpty.rows === 0, JSON.stringify(pasteEmpty));
+  await page.fill('#sourcePasteInput', ['Ingredients', '▢ 3 tbsp honey', '▢ 1 (14 oz) can crushed tomatoes', '▢ 1 large onion', 'For the topping:', '▢ 1 carrot', '▢ 1 tsp Italian seasoning'].join('\n'));
+  await page.click('#comparePastedBtn');
+  await page.waitForTimeout(300);
+  const pasted = await page.evaluate(() => ({
+    misses: [...document.querySelectorAll('#sourceCompareOut tr.miss td')].map(td => td.textContent).filter(t => t !== '—'),
+    heading: (document.querySelector('#sourceCompareOut th') || {}).textContent,
+    invokes: window.__INVOKES__.length,
+    writes: (window.__WRITES__ || []).length
+  }));
+  check('COMPARE PASTED LIST highlights what is on one side only, the page\'s tick boxes and headings dropped first',
+        pasted.misses.slice().sort().join('|') === '1 tsp Italian seasoning|grated parmesan' && pasted.heading === 'PASTED (5)', JSON.stringify(pasted));
+  check('    and pasting fetches nothing and writes nothing', pasted.invokes === 0 && pasted.writes === writesBeforePaste, JSON.stringify(pasted));
+  await page.click('#parseBtn');
+  await page.waitForTimeout(300);
+  const afterReparse = await page.evaluate(() => ({ box: document.getElementById('sourcePasteInput').value, out: document.getElementById('sourceCompareOut').textContent.trim() }));
+  check('a re-parse (or USE THIS) keeps what was pasted, and clears the table it no longer describes',
+        afterReparse.box.includes('▢ 1 tsp Italian seasoning') && afterReparse.out === '', JSON.stringify(afterReparse));
+
   // Advice, never a gate: the recipe saves with warnings still showing.
   const recipeWritesBefore = await page.evaluate(() => (window.__WRITES__ || []).filter(w => w.table === 'recipes').length);
   await page.click('#saveBtn');
@@ -777,6 +810,7 @@ const check = (name, pass, detail) => {
   await page.fill('#importInput', 'TITLE: Scale Test\nSOURCE: Somewhere\nSERVINGS: 4\n\nGROUP a:\n300 g pasta\n\nSTAGE:\nMERGE a -> done: Cook [5 min]');
   await page.click('#parseBtn');
   await page.waitForTimeout(300);
+  check('closing the form forgets a pasted list: a new recipe starts with an empty box', (await page.inputValue('#sourcePasteInput')) === '', await page.inputValue('#sourcePasteInput'));
   await page.fill('#f-scale-servings', '6');
   await page.click('#f-scale-apply');
   await page.waitForTimeout(300);

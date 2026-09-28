@@ -656,7 +656,7 @@ point, and confirming the schedule still fires afterwards.
 
 ## 6. Corrections to the earlier record
 
-Twenty-six times now, something recorded as true wasn't. The pattern is worth more than the individual
+Twenty-seven times now, something recorded as true wasn't. The pattern is worth more than the individual
 corrections: **every one was found by checking the real thing, and none by reading more carefully.**
 
 | Recorded | Actually | Found |
@@ -687,6 +687,7 @@ corrections: **every one was found by checking the real thing, and none by readi
 | Architecture review F5: "1 whose `SOURCE:` line differs … 1 with a `servings` column and no `SERVINGS:` line; 0 drift on title, image, URL, time or equipment" | Three recipes, not two: `TAGS:` disagreed with its column on two, one of them the servings recipe. The review's query never compared `TAGS:` | 23 Sep, by writing the query for all eight lines before building PR 4 |
 | 6c-1 "built 28 Sep" — in nine documents and fourteen code comments | Built, merged and deployed on 27 Sep; `git log` and the database agree. The Markdown is corrected; the comments wait for the next code change (one is in the deployed `source-ingredients`, which would stop matching the repo) | 27 Sep, when dating 6c-2 against the database's own timestamps |
 | "197 checks pass" as a statement about the code | True on six days of the week. The fixture planned "today" and "tomorrow" from the real clock, and on a Thursday tomorrow is a new Friday-start week, so two shopping-list checks failed with the code untouched | 24 Sep, four minutes past midnight, when a green run went red on its own |
+| `CLAUDE.md`, `ARCHITECTURE.md`, `DOCUMENT-INDEX.md`, `TEST-PLAN.md`, `TEST-IMAGES.md`, `test/README.md` and this file's §7: the smoke suite has 257 checks | 269 when the PR 7d session began. §7 had logged 261, 267 and 269 as 6d-1, 6d-2 and PR #31 landed, but the pages that state the *current* size were last touched at 6c-1. (The Node suite's 72 was right.) All now say 275 and 77, after 7d | 28 Sep, by running the suite before changing anything |
 
 **The last one is the most instructive, because the verification itself was the thing that was
 wrong.** Every "the tests pass" statement in this repo was false for a day, and the reason it went
@@ -712,7 +713,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **257 checks** (since 6c-1; `core.test.js` adds 72 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **275 checks** (since PR 7d; `core.test.js` adds 77 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday.
@@ -1033,6 +1034,41 @@ every Monday at 06:00 UTC; nothing further is owed here unless a future run goes
 **What it does not cover:** sign-in, hydration, row-level security and the background write
 queue are all stubbed. A green run is not a substitute for opening the real app. Keep Awake
 can't be tested outside a real tablet.
+
+**7d, the paste box for COMPARE WITH SOURCE (28 Sep 2026, open — not merged).** Asked and answered
+at the start of the session: its own small PR. Two of the twelve source sites (Kitchen Sanctuary, 17
+of 34 recipes, and Allrecipes, 1) refuse `source-ingredients` with a 403, so half the library's
+source check ended at "compare by eye". The add/edit preview now also has a box under AGAINST THE
+SOURCE: select the ingredient list on the page, copy, paste, COMPARE PASTED LIST. The lines go
+through `pastedIngredientLines` (`core.js`) and then the same `sourceFidelity` and the same table as
+the function's list, so the two routes cannot disagree about a match. It fetches nothing, writes
+nothing, and needs no SOURCE URL; the pasted text is held in memory until the form closes (kept
+across a re-parse, since USE THIS re-parses and a list fetched from another tab is a chore to redo).
+The tidy-up is deliberately narrow: tick boxes, bullets, blank lines and headings that are
+*certainly* headings (no digit, and a colon, "For the…" or a section word) go; anything else stays
+and shows as a highlighted row, because a heading left in is a row to read past and an ingredient
+dropped is a line never checked. A refused site's message now points at the box. No schema, Edge
+Function, naming or dictionary change, so no tick is re-keyed and nothing in production was touched.
+**Verified by:** the suite run on `main` first (72 and 269, green — the documents said 257, see §6),
+then after: `core.test.js` 72 → 77 and smoke 269 → 275, both green, exit codes read; the new
+checks broken on purpose, fourteen ways, each failing the check meant to catch it *by name* (eight
+in Node: the glyph strip, the zero-width strip, each of the three heading rules, a rule that drops
+every line without a digit, the digit guard, and `null` becoming the word "null"; six in the
+browser: the 403 message, the empty-box guard, cleaning skipped, pasting that also calls the
+function, the box not restored after a re-parse, the box not cleared on close), the tree
+restored and compared byte for byte to the known-good copy after each. Two things found on the way:
+one mutation first matched nothing, because the editing tool had written the zero-width space into
+`core.js` and `core.test.js` as the literal invisible character instead of `\u200b` — one in the
+first, three in the second, fixed and counted against `HEAD`; and a non-breaking-space replacement
+was removed as redundant, since `\s` already matches it and no check could fail it. `core.js` is
+`2026-09-28.3` in all three places, which `core.test.js` checks. **Not verified:** what a real copy
+from either site looks like — no session can reach them, so the tidy-up was written from a general
+idea of what copying a recipe page gives, and `docs/TEST-PLAN.md` step 36a asks the household to
+try one and report what comes along; the first load after a merge (Pages serving the new
+`core.js`, no UPDATE bar); anything on a real device or against the real backend. The example lines
+in the new checks are generic and made up, most of them the kind the existing tests already
+commit, but **not checked against the library** — no export was to hand and the Supabase connector
+failed to connect this session, so no fact about the live database was re-verified either.
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all

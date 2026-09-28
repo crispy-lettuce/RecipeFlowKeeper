@@ -274,6 +274,24 @@ const wm = core.ingredientMatchMap([{ kind: 'ingredient', alias: 'Curly Kale', c
 check('word matches are applied in today\'s words, and one the rules make anyway falls away',
       wm.size === 1 && wm.get('curly kale') === 'kale', JSON.stringify([...wm]));
 
+/* ---- PR 7d, 28 Sep: a source's list pasted from its page ---- */
+const pastedOf = t => core.pastedIngredientLines(t);
+const furniture = '▢ 500 g chicken breast\n\n• 2 tbsp olive oil\n- 1 onion, chopped\n☐\u00a01\u00a0tsp   salt\r\n[ ] 3 eggs\n   \n▢\n\u200b▢ 4 shallots\n';
+check('a pasted list loses its tick boxes, bullets, blank lines, zero-width and odd spaces, and nothing else',
+      pastedOf(furniture).join('|') === '500 g chicken breast|2 tbsp olive oil|1 onion, chopped|1 tsp salt|3 eggs|4 shallots', JSON.stringify(pastedOf(furniture)));
+check('    a heading is dropped when it is certainly one: no digit, and a colon, "For the…" or a section word',
+      pastedOf('Ingredients\nFor the sauce\nFor a crumb topping:\nSauce:\nMethod\n2 eggs').join('|') === '2 eggs', JSON.stringify(pastedOf('Ingredients\nFor the sauce\nFor a crumb topping:\nSauce:\nMethod\n2 eggs')));
+const keptLines = ['salt', 'black pepper, to taste', 'For the sauce: 200 ml cream', 'a pinch of salt', '1–2 tbsp honey', '½ tsp cumin', '*optional: chives', 'Water'];
+check('    and anything that might be an ingredient stays, so the check never quietly loses one',
+      pastedOf(keptLines.join('\n')).join('|') === keptLines.join('|'), JSON.stringify(pastedOf(keptLines.join('\n'))));
+check('    nothing, or something that is not text, is an empty list rather than an error',
+      pastedOf('').length === 0 && pastedOf(null).length === 0 && pastedOf(undefined).length === 0 && pastedOf('  \n\n ').length === 0);
+const pastedCheck = core.sourceFidelity(pastedOf('Ingredients\n▢ 1 tsp Italian seasoning\n▢ 2 cups all-purpose flour\nFor the topping:\n▢ 1/2 cup heavy cream'),
+  ['1 tsp dried oregano', '250 g plain flour', '120 ml double cream']);
+check('    and a swapped ingredient in a pasted list shows on both sides, as it does from the function',
+      pastedCheck.sourceOnly.join('|') === '1 tsp Italian seasoning' && pastedCheck.recipeOnly.join('|') === '1 tsp dried oregano'
+      && pastedCheck.matched.length === 2, JSON.stringify(pastedCheck));
+
 /* Six rows, not five: the leek under the misspelt GROUP x-y is still read, into
    the group above; only the GROUP line itself is reported as read past. */
 const { remeasure } = require(path.join(ROOT, 'tools', 'remeasure.js'));

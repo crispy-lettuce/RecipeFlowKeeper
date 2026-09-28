@@ -990,6 +990,14 @@
   .line-check button{ margin-left:6px; background:none; border:none; padding:0; cursor:pointer; color:var(--plum);
     font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; text-decoration:underline; }
   .line-checks.unread{ background:rgba(140,58,52,.08); border-color:rgba(140,58,52,.28); }
+  textarea#sourcePasteInput{
+    width:100%; resize:vertical; box-sizing:border-box;
+    font-family:'IBM Plex Mono', monospace; font-size:13px; line-height:1.5;
+    color:var(--ink); background:var(--paper);
+    border:1px solid var(--line); border-radius:var(--r);
+    padding:10px; margin-bottom:8px; outline:none;
+  }
+  textarea#sourcePasteInput:focus{ border-color:var(--plum); }
   .source-compare{ width:100%; border-collapse:collapse; font-size:13.5px; margin-top:6px; }
   .source-compare td{ padding:4px 6px; border-top:1px solid var(--line-soft); vertical-align:top; width:50%; }
   .source-compare tr.miss td{ background:rgba(140,58,52,.08); }
@@ -1652,7 +1660,7 @@
   </div>
 </div>
 
-<script src="core.js?v=2026-09-28.2"></script>
+<script src="core.js?v=2026-09-28.3"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -1660,7 +1668,7 @@
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-09-28.2';
+const EXPECTED_CORE_VERSION = '2026-09-28.3';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -5991,6 +5999,7 @@ function closeAddModal(){
   document.getElementById('addForm').style.display = 'none';
   document.getElementById('addPreview').innerHTML = '';
   document.getElementById('addChecks').innerHTML = '';
+  pastedSourceText = '';
   document.getElementById('saveError').style.display = 'none';
   state.editingRecipeId = null;
   document.getElementById('modalTitle').textContent = 'Add a recipe';
@@ -6515,6 +6524,9 @@ document.getElementById('parseBtn').addEventListener('click', parseAndPreview);
      - on request, the recipe's lines beside its source's, with anything on
        one side only highlighted, so a swapped ingredient is seen before it
        is saved. */
+/* The pasted list lives in memory only, for as long as the form is open: it
+   is another site's text, checked and forgotten, and never sent or saved. */
+let pastedSourceText = '';
 function renderLineChecks(parsed){
   const box = document.getElementById('addChecks');
   const unread = parsed.unread || [];
@@ -6539,8 +6551,15 @@ function renderLineChecks(parsed){
   }
   html += `<div class="line-checks" id="sourceCheck"><h4>AGAINST THE SOURCE</h4>` +
     `<div class="hint">Compare these ingredients with the source page's own list, to catch one swapped or left out. <button type="button" id="compareSourceBtn">COMPARE WITH SOURCE</button></div>` +
+    `<div class="hint">Some sites turn that check away. Then select the ingredients on the page, copy them and paste them here, one to a line:</div>` +
+    `<textarea id="sourcePasteInput" rows="4" spellcheck="false" placeholder="500 g chicken breast&#10;2 tbsp olive oil&#10;…"></textarea>` +
+    `<div class="hint"><button type="button" id="comparePastedBtn">COMPARE PASTED LIST</button></div>` +
     `<div id="sourceCompareOut"></div></div>`;
   box.innerHTML = html;
+  /* Every PARSE, and every USE THIS (which re-parses), rebuilds this box, and
+     a list fetched from another tab is the one thing here that is a chore to
+     redo — so it is kept in step with what was typed and put back. */
+  document.getElementById('sourcePasteInput').value = pastedSourceText;
 }
 
 /* A misspelt GROUP line lands inside the group above it, as an item (the
@@ -6560,24 +6579,47 @@ async function compareWithSource(){
   try { ({ data, error } = await sb.functions.invoke('source-ingredients', { body: { pageUrl } })); }
   catch(e){ error = e; }
   if(error || !data){
-    out.innerHTML = `<div class="hint">Couldn't reach the source check${error && error.message ? ' (' + escapeHtml(error.message) + ')' : ''}. Is the source-ingredients function deployed?</div>`;
+    out.innerHTML = `<div class="hint">Couldn't reach the source check${error && error.message ? ' (' + escapeHtml(error.message) + ')' : ''}. Is the source-ingredients function deployed? Pasting the source's list into the box above needs no function.</div>`;
     return;
   }
   if(!data.ingredients || !data.ingredients.length){
-    out.innerHTML = `<div class="hint">${escapeHtml(data.error || 'The source page carries no ingredient list the check can read')} — compare by eye this time.</div>`;
+    out.innerHTML = `<div class="hint">${escapeHtml(data.error || 'The source page carries no ingredient list the check can read')} — paste its list into the box above, or compare by eye.</div>`;
     return;
   }
-  const f = sourceFidelity(data.ingredients, recipeIngredientLines());
+  showSourceComparison(out, data.ingredients, 'SOURCE');
+}
+/* The table both routes share: the function's list and a pasted one go
+   through the same sourceFidelity, so they can't disagree about a match. */
+function showSourceComparison(out, sourceLines, heading){
+  const f = sourceFidelity(sourceLines, recipeIngredientLines());
   const misses = f.sourceOnly.length + f.recipeOnly.length;
   const row = (a, b, miss)=> `<tr class="${miss ? 'miss' : ''}"><td>${escapeHtml(a || '—')}</td><td>${escapeHtml(b || '—')}</td></tr>`;
   out.innerHTML =
     `<div class="hint">${misses ? `${misses} to look at, highlighted: on one side only. A different word can be fine (a US name made British); a different ingredient is not.` : `Every ingredient matched one on the other side. Check the amounts by eye.`}</div>` +
-    `<table class="source-compare"><tr><th>SOURCE (${data.ingredients.length})</th><th>THIS RECIPE</th></tr>` +
+    `<table class="source-compare"><tr><th>${heading} (${sourceLines.length})</th><th>THIS RECIPE</th></tr>` +
     f.sourceOnly.map(l=> row(l, '', true)).join('') +
     f.recipeOnly.map(l=> row('', l, true)).join('') +
     f.matched.map(m=> row(m.source, m.recipe, false)).join('') +
     `</table>`;
 }
+/* The other route, for the sites that refuse the function: no fetch, no
+   SOURCE URL needed, nothing sent anywhere. What is in the box is read at the
+   click, not trusted from the last keystroke. A line that is a section
+   heading rather than an ingredient is dropped by pastedIngredientLines only
+   when it certainly is one; anything else shows as a highlighted row. */
+function comparePastedSource(){
+  const out = document.getElementById('sourceCompareOut');
+  pastedSourceText = document.getElementById('sourcePasteInput').value;
+  const lines = pastedIngredientLines(pastedSourceText);
+  if(!lines.length){
+    out.innerHTML = `<div class="hint">Nothing to compare yet. Paste the source's ingredient list into the box first.</div>`;
+    return;
+  }
+  showSourceComparison(out, lines, 'PASTED');
+}
+document.getElementById('addChecks').addEventListener('input', e=>{
+  if(e.target.id === 'sourcePasteInput') pastedSourceText = e.target.value;
+});
 document.getElementById('addChecks').addEventListener('click', e=>{
   const use = e.target.closest('[data-use-line]');
   if(use){
@@ -6587,6 +6629,7 @@ document.getElementById('addChecks').addEventListener('click', e=>{
     return;
   }
   if(e.target.closest('#compareSourceBtn')) compareWithSource();
+  if(e.target.closest('#comparePastedBtn')) comparePastedSource();
 });
 
 /* Permanent scaling — rewrites the raw syntax text in the textarea itself
