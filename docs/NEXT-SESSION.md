@@ -23,7 +23,7 @@ household decides when to merge.
 Each fact below was checked against the database, the deployed functions or `git log` when it
 was written. Check again before relying on one.
 
-**Done.** PRs 1–7c are merged and live. **7d, the paste box, is open and not merged** (below): the
+**Done.** PRs 1–7c are merged and live. **7d, the paste box, is open and not merged** (PR #35, below): the
 first change to `core.js` since 6b (`2026-09-28.3`, up from `2026-09-28.2`) and the next to
 `index.html` after PR #31 (7c's own fix — see below). 6c-2 was a data job, not a PR; PR #23 is its
 documentation.
@@ -81,7 +81,7 @@ null — consistent with this bug, but just as consistent with never having tapp
 household is the only one who can tell those apart. **7c is done.** `weekly-live-check.yml` now
 runs itself every Monday at 06:00 UTC; nothing further is owed unless a future run goes red.
 
-**7d, the paste box (28 Sep) — open, waiting for the household.** Asked and answered the same
+**7d, the paste box (28 Sep, PR #35) — open, waiting for the household.** Asked and answered the same
 session: yes, its own small PR. The two sites that refuse `source-ingredients` are half the library,
 so COMPARE WITH SOURCE could only say "compare by eye" for them; the preview now also has a box to
 paste the source's ingredient list into, copied from the page in the browser, compared by the same
@@ -123,7 +123,7 @@ verified and how.
 | 7a | **The onboarding runbook** | Documentation only, no code, no production write: the three steps to add someone (create their account, one guarded SQL statement to link them, give them the address), what `hydrate()`'s real error looks like if the link is missing, why the app has no sign-up form of its own, and that `household_members.role` is unused (verified: `grep -rn "\.role\b" index.html` finds nothing) | F8 (part) | **Done**, PR #27, merged 28 Sep |
 | 7b | **RLS belt and braces, leaked-password protection** | Revoke `anon`'s blanket grants and restrict every `TO public` policy to `authenticated` — done. Leaked-password protection is a dashboard toggle, not SQL, and is still off | F8 (part) | **Done**, 28 Sep, migration `rls_belt_and_braces_restrict_to_authenticated` (no PR — a database migration, not app code), documented on PR #27. Leaked-password protection is the household's own click, whenever wanted |
 | 7c | **The weekly live-backend test** | A test household, a test user, a Playwright script against the *live* app, credentials in `PrivateBackup`'s secrets | F13 | **Done**, 28 Sep. `PrivateBackup` PR #3 and #4 merged (a missing reload wait, the test script's own bug); this repo's PR #31 merged (a real app bug — `updateDiaryEntry` silently dropped a meal-type tag tapped before its insert confirmed). Run #5 proved both fixes live: 13 checks, 0 failed |
-| 7d | **The paste box for COMPARE WITH SOURCE** | Asked and answered 28 Sep: its own small PR. A textarea and COMPARE PASTED LIST under AGAINST THE SOURCE in the add/edit preview, for the two sites (18 of 34 recipes) that refuse the function with a 403. `pastedIngredientLines` in `core.js` strips tick boxes, bullets, blank lines and headings that are certainly headings, and the same `sourceFidelity` pairs what is left with the recipe's lines. No fetch, no write, no schema change; advice only, never a gate. The pasted text is kept only until the form closes | §2 and answer 4 of the architecture review (the source check for half the library); closes no numbered finding | **Open**, 28 Sep — awaiting the household's review and merge. `core.js` `2026-09-28.3` |
+| 7d | **The paste box for COMPARE WITH SOURCE** | Asked and answered 28 Sep: its own small PR. A textarea and COMPARE PASTED LIST under AGAINST THE SOURCE in the add/edit preview, for the two sites (18 of 34 recipes) that refuse the function with a 403. `pastedIngredientLines` in `core.js` strips tick boxes, bullets, blank lines and headings that are certainly headings, and the same `sourceFidelity` pairs what is left with the recipe's lines. No fetch, no write, no schema change; advice only, never a gate. The pasted text is kept only until the form closes | §2 and answer 4 of the architecture review (the source check for half the library); closes no numbered finding | **Open**, PR #35, 28 Sep — awaiting the household's review and merge. `core.js` `2026-09-28.3` |
 
 ### PR 6 reviewed against what came after it (25 Sep)
 
