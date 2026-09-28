@@ -959,28 +959,37 @@ it against the live app yet, which is the same "not a substitute for opening the
 F8 is annotated as partially closed, with what's still open (leaked-password protection; whether
 public sign-up is enabled, still uncheckable from a session).
 
-**7c, the weekly live-backend test (28 Sep 2026, `PrivateBackup` PR #3, open — nothing in this
-repo).** `scripts/weekly-live-check.js` and `.github/workflows/weekly-live-check.yml`, in
-`PrivateBackup`: signs in to a *dedicated* test household (never the family's — this script adds
-and deletes a real recipe and two real diary entries every run), adds a recipe, favourites it,
-logs it as cooked and answers the meal-type prompt, adds an ad-hoc entry, then cleans all of it
-up — each step proven by a reload rather than trusted from the in-page cache. Answers Answer 5's
-suggested test and closes F13's specific gap (the diary's writes had never run against the real
-backend). **Verified by:** `node --check` on the script (no syntax errors) and `npm install`
-installing the same `playwright` version RecipeFlowKeeper's own harness pins.
+**7c, the weekly live-backend test (28 Sep 2026, `PrivateBackup` PR #3, merged; fix on PR #4,
+open — nothing in this repo).** `scripts/weekly-live-check.js` and
+`.github/workflows/weekly-live-check.yml`, in `PrivateBackup`: signs in to a *dedicated* test
+household (never the family's — this script adds and deletes a real recipe and two real diary
+entries every run), adds a recipe, favourites it, logs it as cooked and answers the meal-type
+prompt, adds an ad-hoc entry, then cleans all of it up — each step proven by a reload rather than
+trusted from the in-page cache. Answers Answer 5's suggested test and closes F13's specific gap
+(the diary's writes had never run against the real backend).
 
-**Its own household is now linked (28 Sep 2026).** The household created the test account in the
-dashboard and gave back its email; from a session, that account's `auth.users` row was found, a
-fresh `households` row was inserted for it alone, and a `household_members` row linked the two —
-the same guarded-insert shape as `docs/ONBOARDING.md` §1, but into a brand-new household rather
-than the family's. Read back afterwards: two households now exist, and the test one has zero
-recipes and zero `recipe_logs` — exactly the empty starting state the script's first check
-asserts.
+**Its own household was linked first (28 Sep 2026).** The household created the test account in
+the dashboard and gave back its email; from a session, that account's `auth.users` row was found,
+a fresh `households` row was inserted for it alone, and a `household_members` row linked the
+two — the same guarded-insert shape as `docs/ONBOARDING.md` §1, but into a brand-new household
+rather than the family's.
 
-**Not verified:** against the live app — that still needs the two Actions secrets
-(`TEST_USER_EMAIL`, `TEST_USER_PASSWORD`) in `PrivateBackup`'s own repo settings, step 3 of the
-three in PR #3's description, and it's the household's own step, not something a session's
-credentials can do. Until that happens the workflow exists but has never actually run.
+**The first real run (28 Sep 2026, run #1, triggered manually right after the household added
+the two secrets and PR #3 merged) found a genuine bug — in the test script, not the app.** Sign-in,
+the household starting with zero recipes and zero diary entries (`hydrate()` and RLS both
+working), and the initial save all passed. The reload straight after that save then timed out
+after 20 s waiting for the recipe's card to reappear. Every *other* write-then-reload step in the
+script already waits 2 s first, with a comment explaining why — writes queue in the background
+(this file's own documented gotcha) and return immediately, so a reload right after a click can
+race ahead of the real network write reaching Supabase — but the very first one, straight after
+the initial save, was missing that wait. Checked the database afterwards: the test household's
+`recipes` and `recipe_logs` were both empty, which fits "the write never landed before the
+browser closed" rather than "it landed and something else failed to find it" — no manual cleanup
+was needed. Fixed on `PrivateBackup` PR #4: the same 2 s wait added before the first reload, to
+match the other three. **Verified by:** `node --check` on the fixed script (no syntax errors);
+the failing run's own logs, read directly rather than assumed; the database read back empty
+after. **Not yet verified:** the fix itself against the live app — that is what the workflow's
+next run, once PR #4 merges, actually proves.
 
 **What it does not cover:** sign-in, hydration, row-level security and the background write
 queue are all stubbed. A green run is not a substitute for opening the real app. Keep Awake
