@@ -1001,6 +1001,7 @@
   .source-compare{ width:100%; border-collapse:collapse; font-size:13.5px; margin-top:6px; }
   .source-compare td{ padding:4px 6px; border-top:1px solid var(--line-soft); vertical-align:top; width:50%; }
   .source-compare tr.miss td{ background:rgba(140,58,52,.08); }
+  .source-compare tr.soft td{ background:var(--gold-wash); }
   .source-compare .why{ margin-top:2px; font-size:12px; color:var(--ink-soft); }
   .source-compare th{ text-align:left; font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.08em; font-weight:500; color:var(--ink-soft); padding:4px 6px; }
   #viewerEquipmentWarning{ margin:0; border-radius:0; border-left:none; border-right:none; padding-left:30px; padding-right:30px; }
@@ -1661,7 +1662,7 @@
   </div>
 </div>
 
-<script src="core.js?v=2026-09-28.4"></script>
+<script src="core.js?v=2026-09-28.5"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -1669,7 +1670,7 @@
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-09-28.4';
+const EXPECTED_CORE_VERSION = '2026-09-28.5';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -6598,17 +6599,26 @@ function showSourceComparison(out, sourceLines, heading){
      are highlighted with what differs, because "matched" that hides a
      difference is worse than no check. One flagged group counts once. */
   const flagged = f.matched.filter(m=> m.check);
+  /* A softer note: the dictionary says the recipe's product and the source's are
+     one thing, but the recipe names it more specifically than the source did
+     ("light" soy sauce for soy sauce, or black pepper for pepper). Listed, shaded,
+     and counted apart, because the app cannot tell a sanctioned shorthand from a
+     guess and the household can. */
+  const soft = f.matched.filter(m=> m.note && !m.check);
   const misses = f.sourceOnly.length + f.recipeOnly.length + new Set(flagged.map(m=> m.check)).size;
-  const row = (a, b, miss, why)=> `<tr class="${miss ? 'miss' : ''}"><td>${escapeHtml(a || '—')}</td><td>${escapeHtml(b || '—')}${why ? `<div class="why">${escapeHtml(why)}</div>` : ''}</td></tr>`;
+  const softCount = new Set(f.matched.filter(m=> m.note).map(m=> m.note)).size;
+  const row = (a, b, cls, why)=> `<tr class="${cls}"><td>${escapeHtml(a || '—')}</td><td>${escapeHtml(b || '—')}${why ? `<div class="why">${escapeHtml(why)}</div>` : ''}</td></tr>`;
   out.innerHTML =
     `<div class="hint">${misses
       ? `${misses} to look at, highlighted: on one side only, or paired but different. A different word can be fine (a US name made British); a different ingredient or a different amount is not.`
-      : `Every ingredient found its match, and the amounts that can be compared agree. Amounts this check can't compare (cups against grams, a count against a weight, a range) are still yours to check by eye.`}</div>` +
+      : `Every ingredient found its match, and the amounts that can be compared agree. Amounts this check can't compare (cups against grams, a count against a weight) are still yours to check by eye.`}` +
+    `${softCount ? ` ${softCount} ${softCount === 1 ? 'line names its product' : 'lines name their product'} more specifically than the source did (shaded): the app totals them as the same product, so check the source meant it.` : ''}</div>` +
     `<table class="source-compare"><tr><th>${heading} (${sourceLines.length})</th><th>THIS RECIPE</th></tr>` +
-    f.sourceOnly.map(l=> row(l, '', true)).join('') +
-    f.recipeOnly.map(l=> row('', l, true)).join('') +
-    flagged.map(m=> row(m.source, m.recipe, true, m.check.why)).join('') +
-    f.matched.filter(m=> !m.check).map(m=> row(m.source, m.recipe, false)).join('') +
+    f.sourceOnly.map(l=> row(l, '', 'miss')).join('') +
+    f.recipeOnly.map(l=> row('', l, 'miss')).join('') +
+    flagged.map(m=> row(m.source, m.recipe, 'miss', m.check.why + (m.note ? ' · ' + m.note.why : ''))).join('') +
+    soft.map(m=> row(m.source, m.recipe, 'soft', m.note.why)).join('') +
+    f.matched.filter(m=> !m.check && !m.note).map(m=> row(m.source, m.recipe, '')).join('') +
     `</table>`;
 }
 /* The other route, for the sites that refuse the function: no fetch, no

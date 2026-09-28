@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-28.4';
+const KITCHEN_CORE_VERSION = '2026-09-28.5';
 
 
 /* ======================= quantity split ======================= */
@@ -1277,52 +1277,56 @@ function suggestIngredientLine(line){
 /* Checking a recipe against its source (docs/REVIEW-ARCHITECTURE-FINDINGS.md
    §2 and §4): the converter once swapped Italian seasoning for dried
    oregano, and nothing downstream could see it, because every check looked
-   at the shape of a line and none at what it said. This pairs the source's
-   ingredient list with the recipe's lines and shows what differs.
+   at the shape of a line and none at what it said. This sets the source's
+   ingredient list beside the recipe's and shows what differs.
 
-   REWRITTEN 28 Sep (PR 7e), after a real comparison called two different
-   things "matched". The source listed one ingredient twice, with the same
-   amount, beside a compound "salt and pepper" line; the recipe carried the
-   doubled line once and the compound line split in two. The leftover copy
-   took the recipe's "pinch pepper" for want of anything else sharing a
-   word, so the one real difference showed as a match. Probing the function then found it blind to
-   ten of the eleven faults tried: black pepper for white, garlic powder for
-   onion powder, chicken stock for beef, a dropped half of "salt and pepper",
-   2 tbsp for 1 tbsp — anything sharing one word passed. The rule that
-   follows is the one the whole check is for: never call a pair matched when
-   it cannot tell, and say why. A false alarm costs a glance; a false match
-   costs the recipe.
+   REBUILT 28 Sep (PR 7e), twice. A real comparison called two different
+   things "matched": the source listed one ingredient twice, with the same
+   amount, beside a compound "salt and pepper" line, and the recipe carried the
+   doubled line once. Probing then found the check blind to ten of eleven faults
+   tried. The first rebuild fixed the examples it was written from, and was then
+   measured against data nobody wrote for it — the converter's own specification
+   and test set, and the dictionary's vocabulary driven through mechanical
+   operators (test/core.test.js) — which showed it tailored: it false-alarmed on
+   the converter's own "1 pinch X", and on any ingredient the converter had
+   restructured across lines. What follows is the model that survived. The rule
+   for all of it: never call a pair matched when the check cannot tell, and say
+   why. A false alarm costs a glance; a false match costs the recipe.
 
-   How it decides, in order:
-   1. A compound line ("salt and pepper") becomes its parts on both sides, so
-      a pinch of each is compared with a pinch of each.
-   2. Two lines are the SAME ingredient when the dictionary gives them one
-      name (cilantro, coriander), or one's words are all in the other's —
-      brackets included, so "noodles (I use udon)" meets "udon"
-      — unless the dictionary knows them as two different products (bare
-      "pepper" is black pepper; a red bell pepper is not). Lines sharing only
-      some words are SIMILAR, never the same.
-   3. Same-ingredient lines pair one to one, best overlap first; where two
-      pairs score alike the one whose amounts agree wins, which is what stops
-      a spoon-measured line taking a "pinch" line.
-   4. A leftover line joins a group only if it is the same ingredient as
-      something already in it (a "3 tbsp" line the converter split in two, or
-      two source lines it merged). Similar-only lines do not join.
-   5. Similar lines then pair one to one among what is left, always flagged.
-   6. Each group's amounts are compared in TOTAL — 1 tbsp + 2 tbsp is 3 tbsp
-      — and only where a difference cannot be a unit conversion: grams with
-      grams and ounces, ml with spoons and cups, counts with counts, a
-      measured amount against a pinch. Cups against grams, a count against a
-      weight, a range, anything unreadable: unknown, and never a warning.
-   Whatever is left on either side is the warning, and every flagged pair
-   says what differs.
+   The model. What matters is what the source asks for of an INGREDIENT, in
+   total, against what the recipe asks for — not how the converter split or
+   merged the lines, which is how the shopping list already treats them.
+   1. A compound line ("salt and pepper") becomes its parts on both sides; the
+      converter is told to write two lines.
+   2. Two lines are the SAME ingredient in two tiers. The same name — the
+      dictionary's, or the same words — is exact. "The recipe's words are all in
+      the source's" (the recipe may say less; a source is chatty) is looser, and
+      joins only lines that have no exact partner, or a leftover "pepper" would
+      absorb a dropped "red bell pepper". The dictionary can veto the looser tier
+      where it knows the two as different products.
+   3. Every line of one ingredient, on either side, is one group. Its amounts are
+      compared as totals per kind — mass, volume, count, and a pinch as a kind of
+      its own however it is written — and a range by both ends, only where a
+      difference cannot be a unit conversion (grams with ounces, ml with spoons
+      and cups). Cups against grams, a count against a weight, "up to N", anything
+      unreadable: unknown, and unknown never warns.
+   4. A recipe that keeps everything the source said and adds a qualifier
+      ("light" soy sauce for soy sauce) has settled what the source left open,
+      which the converter's instructions forbid. Where the dictionary calls the
+      two one product that is a SOFT note, listed and counted apart, because the
+      dictionary cannot say whether a bare "pepper" (which the converter's own
+      example writes as black pepper) or a bare "oil" (which it must not settle)
+      was meant; where it does not, it is a hard difference.
+   5. Lines with no same-ingredient partner may still be SIMILAR — they share
+      words: paired last, always flagged, with what differs.
+   6. Nothing is dropped: every line is drawn in a pair or listed on its own.
 
-   It cannot make the conversion certain. It does not read the method, the
-   groups, the timings or the order things go in; it cannot tell that "1 cup"
-   became the wrong number of grams; a recipe line less specific than its
-   source ("stock" for "chicken stock") passes; and it compares only what the
-   source page or the household pasted. It narrows what a person must check by
-   eye; it does not replace the check. */
+   What it cannot do. It does not read the method, the groups, the timings or the
+   order; it cannot tell that "1 cup" became the wrong number of grams; a recipe
+   that swaps the qualifier for another the dictionary calls the same ("vegetable
+   oil" for "neutral oil") passes; and a translation the dictionary has no entry
+   for is flagged, in proportion to the dictionary's gaps. It narrows what a
+   person must check by eye; it does not replace the check. */
 const FIDELITY_NOISE = new Set(['a','an','the','of','and','or','to','for','into','about','plus','extra','taste','serve',
   'serving','garnish','optional','g','kg','ml','l','tsp','tbsp','cup','cups','oz','lb','lbs','pound','pounds','ounce','ounces',
   'teaspoon','teaspoons','tablespoon','tablespoons','x','can','tin','jar','pack','packet','inch','cm','at','room','temperature',
@@ -1342,67 +1346,98 @@ function fidelityWordsAll(line){
 }
 /* What a line says it wants, comparable only where a difference cannot be a
    unit conversion: mass with mass, volume with volume, a count with a count.
-   Spoons and cups are volume (5, 15 and 240 ml); a range or "up to" is not one
-   figure, so it is unreadable, and unreadable is never a warning. A pinch or a
-   dash is an amount of its own kind, so "1 tsp" against "a pinch" differs. */
-const FIDELITY_UNMEASURED = /^(?:(?:a|an|one)\s+)?(?:(?:small|large|good|generous)\s+)?(pinch|pinches|dash|dashes)\b/i;
+   Spoons and cups are volume (5, 15 and 240 ml). A pinch or a dash is an amount
+   of its own kind, however it is written ("a pinch of X", "1 pinch X", "pinch
+   X" — the converter's shape is the second), so "1 tsp" against "a pinch" differs.
+   A range is kept as its two ends: the converter must keep a range as the source
+   gives it, so "2-3" against "2" is a difference. "Up to N" is not one figure,
+   and unreadable is never a warning. */
+const FIDELITY_SMALL = /^(?:(?:a|an|one)\s+)?(?:(?:small|large|good|generous)\s+)?(pinch|pinches|dash|dashes)\b/i;
 const FIDELITY_UNITS = { g: ['mass', 1], kg: ['mass', 1000], oz: ['mass', 28.35], lb: ['mass', 453.6],
   ml: ['volume', 1], l: ['volume', 1000], tsp: ['volume', 5], tbsp: ['volume', 15], cup: ['volume', 240], '': ['count', 1] };
 function fidelityAmount(line){
-  const { qty } = splitQty(line);
+  const { qty, rest } = splitQty(line);
   const a = parseIngredientAmount(qty);
-  if(a){
-    const u = FIDELITY_UNITS[a.unit];
-    if(!u || a.upTo || a.low !== undefined) return null;
-    return { kind: 'measured', cls: u[0], unit: a.unit, value: a.amount * u[1], text: qty };
+  const small = String(qty ? rest : line).trim().match(FIDELITY_SMALL);
+  if(small){
+    const n = !qty ? 1 : (a && !a.unit && !a.upTo && a.low === undefined ? a.amount : null);
+    if(n === null) return null;
+    const word = small[1].toLowerCase().replace(/es$/, '');
+    return { kind: 'small', cls: 'small', unit: word, lo: n, hi: n, text: n === 1 ? `a ${word}` : `${n} ${word}es` };
   }
-  const m = !qty && String(line).trim().match(FIDELITY_UNMEASURED);
-  return m ? { kind: 'unmeasured', text: 'a ' + m[1].toLowerCase().replace(/es$/, '') } : null;
+  const u = a && FIDELITY_UNITS[a.unit];
+  if(!u || a.upTo) return null;
+  return { kind: 'measured', cls: u[0], unit: a.unit, lo: (a.low !== undefined ? a.low : a.amount) * u[1], hi: a.amount * u[1], text: qty };
 }
 /* Two groups of readings: 'agree', 'differ', or 'unknown' (which never warns).
-   Totals, so a "3 tbsp" line the converter split into 1 + 2 still agrees. */
+   Compared as TOTALS per kind of amount, so a "3 tbsp" line the converter split
+   into 1 + 2, or two lines it merged, still agrees. Where the two sides share no
+   kind, only a pinch against a weight or a volume is a difference. */
 function fidelityAgree(xs, ys){
-  const all = xs.concat(ys);
-  if(!xs.length || !ys.length || all.some(a => !a)) return 'unknown';
-  const mx = xs.filter(a => a.kind === 'measured'), my = ys.filter(a => a.kind === 'measured');
-  if(!mx.length && !my.length) return 'agree';
-  if(!mx.length || !my.length) return 'differ';
-  if(new Set(mx.concat(my).map(a => a.cls)).size > 1) return 'unknown';
-  const sum = list => list.reduce((t, a) => t + a.value, 0);
-  const sameUnit = new Set(mx.concat(my).map(a => a.unit)).size === 1;
-  const a = sum(mx), b = sum(my);
-  return Math.abs(a - b) <= (sameUnit ? 0.02 : 0.12) * Math.max(a, b) ? 'agree' : 'differ';
+  if(!xs.length || !ys.length || xs.concat(ys).some(a => !a)) return 'unknown';
+  const total = list => list.reduce((t, a) => {
+    const c = t[a.cls] || (t[a.cls] = { lo: 0, hi: 0, units: new Set() });
+    c.lo += a.lo; c.hi += a.hi; c.units.add(a.unit);
+    return t;
+  }, {});
+  const X = total(xs), Y = total(ys);
+  const shared = Object.keys(X).filter(c => Y[c]);
+  const near = (p, q, tol) => Math.abs(p - q) <= tol * Math.max(p, q);
+  if(shared.length){
+    return shared.every(c => {
+      const same = X[c].units.size === 1 && Y[c].units.size === 1 && [...X[c].units][0] === [...Y[c].units][0];
+      const tol = same ? 0.02 : 0.12;
+      return near(X[c].lo, Y[c].lo, tol) && near(X[c].hi, Y[c].hi, tol);
+    }) ? 'agree' : 'differ';
+  }
+  const weighed = o => !!(o.mass || o.volume);
+  return (X.small && !Y.small && weighed(Y)) || (Y.small && !X.small && weighed(X)) ? 'differ' : 'unknown';
 }
-/* A line as the check sees it. "salt and pepper" is two items, so that a
-   pinch of each can be set against a pinch of each; a measured amount on a
-   compound line is ambiguous (each? together?) and reads as unknown. */
+/* A line as the check sees it. The recipe's format puts the name before the first
+   comma and everything else after it or in brackets (conversion-instructions.md),
+   so `words` are the name's words and `all` are every word on the line. "salt and
+   pepper" is two items, so that a pinch of each is set against a pinch of each; a
+   measured amount on a compound line is ambiguous (each? together?) and reads as
+   unknown. */
+const fidelityName = text => String(text).replace(/\([^)]*\)/g, ' ').split(',')[0];
 function fidelityItems(lines){
   const items = [];
   (lines || []).forEach((line, i) => {
     const { rest } = splitQty(line);
-    const first = String(rest).replace(/\([^)]*\)/g, ' ').split(',')[0];
     /* "salt and pepper" is two ingredients; "peeled and sliced" is one, and
-       "sliced" alone is no ingredient at all — every part must name something. */
-    const parts = first.split(/\s+(?:and|&)\s+/i).map(x => x.trim()).filter(Boolean);
-    const compound = parts.length > 1 && parts.every(x => fidelityWords(x).size > 0);
+       "sliced" alone is no ingredient at all — every part must name something:
+       a content word, or a name the dictionary knows (its own words may all be
+       count words, as in "whole cloves"). */
+    const parts = fidelityName(rest).split(/\s+(?:and|&)\s+/i).map(x => x.trim()).filter(Boolean);
+    const names = x => fidelityWords(x).size > 0 || !!dictionaryRow(shoppingKeyForName(fidelityName(x)));
+    const compound = parts.length > 1 && parts.every(names);
     const make = (text, part, amount) => {
-      const words = fidelityWords(text);
+      const words = fidelityWords(fidelityName(text));
       return { i, line, part, label: part ? `${line} (the "${part}" part)` : line, words,
-        all: part ? words : fidelityWordsAll(text), key: shoppingKeyForName(splitQty(text).rest), amount };
+        all: part ? words : fidelityWordsAll(text), key: shoppingKeyForName(fidelityName(splitQty(text).rest)), amount };
     };
     if(compound){
       const amt = fidelityAmount(line);
-      parts.forEach(p => items.push(make(p, p, amt && amt.kind === 'unmeasured' ? amt : null)));
+      parts.forEach(p => items.push(make(p, p, amt && amt.kind === 'small' ? amt : null)));
     } else items.push(make(line, null, fidelityAmount(line)));
   });
   return items;
 }
 const fidelitySubset = (small, big) => small.size > 0 && [...small].every(w => big.has(w));
 /* `a` is a source item, `b` a recipe item — always that way round, because the
-   test is one-way: the recipe may say less than its source (a source is chatty)
-   and never more. A recipe naming a product the source did not ("skimmed" milk
-   for milk, "dried" oregano for oregano) is the converter guessing, which its
-   instructions forbid, so it is similar, not the same. */
+   tests are one-way. The recipe may say less than its source (a source is chatty),
+   and the converter's instructions forbid it saying more: a recipe that keeps
+   everything the source said and adds a qualifier ("light" soy sauce for soy
+   sauce, "olive" oil for oil) has settled something the source left open.
+   Whether that is a difference depends on the dictionary: where it names the two
+   as one product they are the SAME ingredient — totalled together, as the shopping
+   list totals them — but the recipe is flagged as more specific than its source,
+   softly, because the dictionary cannot say whether a bare "pepper" (which the
+   converter's own example writes as black pepper) or a bare "oil" (which it must
+   not settle) was meant. Where the dictionary does not know them, an addition is
+   a hard difference. Translation is different again: "heavy" becomes "double"
+   without the source's words surviving, and there the dictionary's name decides. */
+const fidelitySpecifies = (a, b) => fidelitySubset(a.words, b.words) && !fidelitySubset(b.words, a.all);
 function fidelitySame(a, b){
   if(a.key && a.key === b.key) return true;
   const ra = dictionaryRow(a.key), rb = dictionaryRow(b.key);
@@ -1410,7 +1445,7 @@ function fidelitySame(a, b){
   return fidelitySubset(b.words, a.all);
 }
 function sourceFidelity(sourceLines, recipeLines){
-  const src = fidelityItems(sourceLines), rec = fidelityItems(recipeLines);
+  const src = fidelityItems(sourceLines), rec = fidelityItems(recipeLines), isSrc = new Set(src);
   const overlap = (a, b) => [...a.all].filter(w => b.all.has(w)).length;
   const score = (a, b) => a.key && a.key === b.key ? Math.max(overlap(a, b), 1) + 1 : overlap(a, b);
   const rank = (a, b) => ({ agree: 0, unknown: 1, differ: 2 })[fidelityAgree(a.amount ? [a.amount] : [], b.amount ? [b.amount] : [])];
@@ -1421,44 +1456,59 @@ function sourceFidelity(sourceLines, recipeLines){
   }));
   const order = (x, y) => y.n - x.n || x.r - y.r || x.a.i - y.a.i || x.b.i - y.b.i;
 
-  /* Groups: one or more source items with one or more recipe items. */
-  const groups = [], groupOfS = new Map(), groupOfR = new Map();
-  const join = (g, a, b) => {
-    if(a && !groupOfS.has(a)){ g.S.push(a); groupOfS.set(a, g); }
-    if(b && !groupOfR.has(b)){ g.R.push(b); groupOfR.set(b, g); }
-  };
-  const pairUp = list => list.sort(order).forEach(({ a, b, same }) => {
-    if(groupOfS.has(a) || groupOfR.has(b)) return;
-    const g = { S: [], R: [], similar: !same };
-    groups.push(g); join(g, a, b);
+  /* An ingredient is every line, on either side, joined by a same-ingredient
+     pair. What matters is what the source asks for in TOTAL against what the
+     recipe asks for — how the converter split or merged the lines does not — as
+     the shopping list already treats it. Which line stands beside which is only
+     how the table is drawn. */
+  const parent = new Map(src.concat(rec).map(x => [x, x]));
+  const find = x => { while(parent.get(x) !== x){ parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+  /* Two tiers of "same". A shared name (the dictionary's, or the same words) is
+     exact. "The recipe says less than the source" is looser, and joins only lines
+     that have no exact partner: a line already matched by name is spoken for, or
+     a leftover "pepper" would absorb a dropped "red bell pepper". */
+  const exact = p => p.a.key && p.a.key === p.b.key;
+  const spoken = new Set();
+  pairs.forEach(p => { if(p.same && exact(p)){ spoken.add(p.a); spoken.add(p.b); } });
+  const same = pairs.filter(p => p.same && (exact(p) || (!spoken.has(p.a) && !spoken.has(p.b)))).sort(order);
+  same.forEach(p => parent.set(find(p.a), find(p.b)));
+  const groups = new Map();
+  src.concat(rec).forEach(x => {
+    const g = groups.get(find(x)) || groups.set(find(x), { S: [], R: [] }).get(find(x));
+    (isSrc.has(x) ? g.S : g.R).push(x);
   });
-  pairUp(pairs.filter(p => p.same));
-  /* A leftover joins a group only through a same-ingredient pair. */
-  pairs.filter(p => p.same).sort(order).forEach(({ a, b }) => {
-    const ga = groupOfS.get(a), gb = groupOfR.get(b);
-    if(ga && !gb) join(ga, null, b);
-    else if(gb && !ga) join(gb, a, null);
-  });
-  pairUp(pairs.filter(p => !p.same));
+  const matchedGroups = [...groups.values()].filter(g => g.S.length && g.R.length);
+  const inGroup = new Set(matchedGroups.flatMap(g => g.S.concat(g.R)));
 
-  const matched = [];
-  groups.forEach(g => {
-    let check = null;
-    const gone = (x, y) => [...x].filter(w => !y.has(w));
-    if(g.similar){
-      const sw = new Set(g.S.flatMap(a => [...a.all])), rw = new Set(g.R.flatMap(b => [...b.all]));
-      const said = [gone(rw, sw).length ? `the recipe adds ${gone(rw, sw).join(', ')}` : '', gone(sw, rw).length ? `the source has ${gone(sw, rw).join(', ')}` : ''].filter(Boolean);
-      check = { kind: 'wording', why: `not the same wording: ${said.join('; ') || 'different words'}` };
-    } else if(fidelityAgree(g.S.map(a => a.amount), g.R.map(b => b.amount)) === 'differ'){
-      const say = items => items.map(x => x.amount && x.amount.text).filter(Boolean).join(' + ');
-      check = { kind: 'amount', why: `amounts differ: source ${say(g.S)}; recipe ${say(g.R)}` };
-    }
-    g.S.forEach(a => g.R.forEach(b => matched.push({ source: a.line, recipe: b.line, split: g.S.length + g.R.length > 2, check })));
+  const matched = [], drawn = new Set(), taken = new Set();
+  const gone = (x, y) => [...x].filter(w => !y.has(w));
+  matchedGroups.forEach(g => {
+    const mine = same.filter(p => g.S.includes(p.a));
+    const rows = [];
+    mine.forEach(p => { if(!taken.has(p.a) && !taken.has(p.b)){ taken.add(p.a); taken.add(p.b); rows.push(p); } });
+    mine.forEach(p => { if(!taken.has(p.a)){ taken.add(p.a); rows.push(p); } else if(!taken.has(p.b)){ taken.add(p.b); rows.push(p); } });
+    const say = items => items.map(x => x.amount && x.amount.text).filter(Boolean).sort().join(' + ');
+    const check = fidelityAgree(g.S.map(a => a.amount), g.R.map(b => b.amount)) === 'differ'
+      ? { kind: 'amount', why: `amounts differ: source ${say(g.S)}; recipe ${say(g.R)}` } : null;
+    const more = new Set(); rows.filter(p => fidelitySpecifies(p.a, p.b)).forEach(p => gone(p.b.words, p.a.all).forEach(w => more.add(w)));
+    const note = more.size ? { kind: 'specific', why: `more specific than the source: the recipe adds ${[...more].sort().join(', ')}` } : null;
+    rows.forEach(p => matched.push({ source: p.a.line, recipe: p.b.line, split: g.S.length + g.R.length > 2, check, note }));
+  });
+
+  /* What has no same-ingredient partner may still be similar to something: it
+     shares words but is not the same. Paired last, and always flagged. */
+  const left = pairs.filter(p => !p.same && !inGroup.has(p.a) && !inGroup.has(p.b)).sort(order);
+  left.forEach(p => {
+    if(drawn.has(p.a) || drawn.has(p.b)) return;
+    drawn.add(p.a); drawn.add(p.b);
+    const added = gone(p.b.words, p.a.all), had = gone(p.a.words, p.b.all);
+    const said = [added.length ? `the recipe adds ${added.join(', ')}` : '', had.length ? `the source has ${had.join(', ')}` : ''].filter(Boolean);
+    matched.push({ source: p.a.line, recipe: p.b.line, split: false, note: null, check: { kind: 'wording', why: `not the same wording: ${said.join('; ') || 'different words'}` } });
   });
   return {
     matched,
-    sourceOnly: src.filter(a => !groupOfS.has(a)).map(a => a.label),
-    recipeOnly: rec.filter(b => !groupOfR.has(b)).map(b => b.label)
+    sourceOnly: src.filter(a => !inGroup.has(a) && !drawn.has(a)).map(a => a.label),
+    recipeOnly: rec.filter(b => !inGroup.has(b) && !drawn.has(b)).map(b => b.label)
   };
 }
 

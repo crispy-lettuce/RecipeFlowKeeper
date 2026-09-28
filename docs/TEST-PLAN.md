@@ -12,7 +12,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 278 automated checks pass, plus 87 in Node (102 when this was
+story that used to open this paragraph is history. 280 automated checks pass, plus 96 in Node (102 when this was
 written). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -287,13 +287,15 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     tried on a real device.
 36b. **The comparison that found the fault (new 28 Sep, PR 7e).** Re-run the Tuscan Chicken Pasta
     comparison with the same pasted list. Expect **one** flagged group: an amount mismatch on the
-    line the source lists twice and the recipe carries once, naming both source amounts. The line
-    whose product had moved into brackets, which used to show as unmatched on both sides, should now
-    be paired, and nothing else should be flagged. Then read the source's method: is that ingredient used twice? If so the
+    ingredient the source lists in more places than the recipe does, naming the source's amounts and
+    the recipe's. The line whose product had moved into brackets, which used to show as unmatched on
+    both sides, should now be paired, and nothing else should be flagged, hard or shaded. Then read the source's method: is that ingredient used twice? If so the
     recipe has lost a quantity and the check was right; if the page repeats it by mistake, the recipe
     is right and the row is the check reading the page faithfully. Repeat on two or three more recipes
-    and **write down every row that is only noise** — if there are many, say so, because the rule
-    that recipes may not add words the source lacks can be relaxed (`docs/HANDOVER.md`, 7e).
+    and **write down every row that is only noise**. Expect little on a UK source and more on a US
+    one, in proportion to the names the dictionary lacks (`docs/HANDOVER.md` §7 measures it: 58% of
+    67 US→UK pairs). A shaded row is not a fault: the recipe names a product more specifically than
+    the source did, and the dictionary calls them one product; check the source meant it.
     A recipe scaled to another number of people will flag every amount: compare before scaling.
 
 ## Deferred to the tablet, after merging

@@ -828,6 +828,28 @@ const check = (name, pass, detail) => {
   await page.click('#openAddBtn');
   await page.waitForTimeout(300);
 
+  /* PR 7e: a recipe that names its product more specifically than its source, where the
+     dictionary says the two are one product, is a soft note: shaded, listed and counted
+     apart from a hard difference, so a bare "soy sauce" made light is seen and a shorthand
+     the converter's own example uses does not read like a fault. */
+  await page.fill('#importInput', ['TITLE: Soft Note Test', 'SOURCE: Blue Door Bakery', 'SERVINGS: 2', '', 'GROUP a:', '2 tbsp light soy sauce', '1 carrot', '',
+    'STAGE:', 'MERGE a -> done: Cook [5 min]'].join('\n'));
+  await page.click('#parseBtn');
+  await page.waitForTimeout(300);
+  await page.fill('#sourcePasteInput', ['2 tbsp soy sauce', '1 carrot'].join('\n'));
+  await page.click('#comparePastedBtn');
+  await page.waitForTimeout(300);
+  const softShown = await page.evaluate(() => ({
+    hint: ((document.querySelector('#sourceCompareOut .hint') || {}).textContent || '').trim(),
+    soft: [...document.querySelectorAll('#sourceCompareOut tr.soft .why')].map(d => d.textContent),
+    hard: document.querySelectorAll('#sourceCompareOut tr.miss').length
+  }));
+  check('a recipe more specific than its source, where the dictionary calls them one product, is a shaded note and not a hard difference',
+        softShown.hard === 0 && softShown.soft.join('|') === 'more specific than the source: the recipe adds light', JSON.stringify(softShown));
+  check('    and the count says so apart from "to look at", never as though nothing were noted',
+        /^Every ingredient found its match/.test(softShown.hint) && /1 line names its product more specifically than the source did \(shaded\)/.test(softShown.hint), softShown.hint);
+  await page.fill('#sourcePasteInput', '');
+
   // The form scales to a headcount too, working the multiplier out of SERVINGS.
   await page.fill('#importInput', 'TITLE: Scale Test\nSOURCE: Somewhere\nSERVINGS: 4\n\nGROUP a:\n300 g pasta\n\nSTAGE:\nMERGE a -> done: Cook [5 min]');
   await page.click('#parseBtn');

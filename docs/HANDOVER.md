@@ -656,7 +656,7 @@ point, and confirming the schedule still fires afterwards.
 
 ## 6. Corrections to the earlier record
 
-Twenty-nine times now, something recorded as true wasn't. The pattern is worth more than the individual
+Thirty times now, something recorded as true wasn't. The pattern is worth more than the individual
 corrections: **every one was found by checking the real thing, and none by reading more carefully.**
 
 | Recorded | Actually | Found |
@@ -690,6 +690,7 @@ corrections: **every one was found by checking the real thing, and none by readi
 | `CLAUDE.md`, `ARCHITECTURE.md`, `DOCUMENT-INDEX.md`, `TEST-PLAN.md`, `TEST-IMAGES.md`, `test/README.md` and this file's §7: the smoke suite has 257 checks | 269 when the PR 7d session began. §7 had logged 261, 267 and 269 as 6d-1, 6d-2 and PR #31 landed, but the pages that state the *current* size were last touched at 6c-1. (The Node suite's 72 was right.) All now say 275 and 77, after 7d | 28 Sep, by running the suite before changing anything |
 | `NEXT-SESSION.md` rows 6 and 6c-1: the source-fidelity check is "reported by `validate-recipes.js`" | `validate-recipes.js` never calls `sourceFidelity` (no reference to it in the file); the check exists only in the browser's preview, so a batch of recipes is not checked against its sources before ingestion. Not fixed by 7e | 28 Sep, while tracing the check for 7e |
 | PR 6c-1's and 7d's description of COMPARE WITH SOURCE: it catches an ingredient "swapped or left out", and a clean result meant "every ingredient matched" | It caught only an ingredient sharing no word with anything else: **one of eleven fault types** probed on 28 Sep, and on the household's first real comparison it reported two different lines as matched. Its tests covered the one fault it could see, and its fixtures passed only because it was loose | 28 Sep, by the household reading the table, then by probing with made-up lines |
+| 7e as first built and described (in the PR and this file): "probed with 11 fault types, all caught", and tested by "an independent 50-case corpus" | Every case was written by the same hand as the fix, after seeing the failure. Run against the converter's own spec, the dictionary's vocabulary and mechanical operators, it false-alarmed on the converter's own `1 pinch X` shape every time, on an ingredient restructured across lines 53–96% of the time, and missed collapsed ranges entirely. Rebuilt around per-ingredient totals; the earlier "independent" claim was wrong | 28 Sep, when the household asked that it not be a fit to the examples |
 
 **The last one is the most instructive, because the verification itself was the thing that was
 wrong.** Every "the tests pass" statement in this repo was false for a day, and the reason it went
@@ -715,7 +716,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **278 checks** (since PR 7e; `core.test.js` adds 87 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **280 checks** (since PR 7e; `core.test.js` adds 96 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday.
@@ -1081,72 +1082,89 @@ running to fetch the live page reported "not live", and means nothing: this sand
 Found by the household on the first real use of the paste box: comparing Tuscan Chicken Pasta, two
 lines came out *matched* that were not. The source listed one ingredient twice, with the same
 amount, beside a compound "salt and pepper" line; the recipe carried the doubled line once and the
-compound line split in two. The leftover second copy took the recipe's line for the second half of
-the compound, because the two shared a word and a dictionary name, so the one real difference — a
-line the source lists that the recipe does not — was displayed as a match. Reproduced with the app's
-own `sourceFidelity` on the lines from the household's screenshot (in scratch, never committed)
-before anything was changed.
+compound line split in two. The leftover second copy took the recipe's "pinch" line, because the two
+shared a word and a dictionary name, so the one real difference — a line the source lists that the
+recipe does not — was displayed as a match. Reproduced with the app's own `sourceFidelity` on the
+lines from the household's screenshot (in scratch, never committed) before anything was changed.
 
-Then probed with made-up lines: **of eleven fault types, the check caught one**, an ingredient
-sharing no word with anything else. It passed black pepper for white, garlic powder for onion
-powder, chicken stock for beef, a dropped half of "salt and pepper", a dropped ingredient whose
-neighbour shared a word, and every wrong amount (2 tbsp for 1 tbsp, 400 g for 40 g, a teaspoon for a
-tablespoon). Three causes: it read no amounts, one shared word was enough to match, and a leftover
-line joined whatever it could. That is a larger fault than the one the household saw, and it means
-the words in PR 6c-1's and 7d's descriptions ("catches one swapped or left out") were true of much
-less than they claimed.
+Probed with made-up lines, **the check caught one of eleven fault types**: an ingredient sharing no
+word with anything else. It passed black pepper for white, garlic powder for onion powder, a dropped
+half of "salt and pepper", and every wrong amount, because it read no amounts and one shared word was
+enough to match. The words in PR 6c-1's and 7d's descriptions ("catches one swapped or left out") were
+true of much less than they claimed.
 
-**What changed** (`core.js`, `2026-09-28.4`; the long comment above `sourceFidelity` is the design):
-compound lines ("salt and pepper") become their parts on both sides; two lines are the *same*
-ingredient when the dictionary gives them one name or the recipe's words are all in the source's
-(one-way: a recipe may say less than its source, never more, which is the converter's own rule),
-unless the dictionary knows them as different products; same-ingredient lines pair first, the one
-whose amounts agree winning a tie; a leftover joins a group only as the same ingredient; similar-only
-lines pair last and are always flagged; each group's amounts are compared in total (1 tbsp + 2 tbsp
-is 3 tbsp), only where a difference cannot be a unit conversion — grams with ounces, ml with spoons
-and cups, counts with counts, a measured amount against a pinch. `index.html` shows a flagged pair
-highlighted with what differs, and counts it. No write, no schema, no dictionary or naming change,
-so no tick is re-keyed.
+**The first rebuild was itself tailored, and the household asked that it not be.** It fixed the
+examples it had been written from and was tested with cases written by the same hand. It was then
+measured against data nobody wrote for it — the converter's own specification and test set, the
+dictionary's 90 ingredients and their spellings driven through mechanical operators, and the real
+recipe — and that found six general faults, none about pepper: (1) **`a pinch of X` against the
+converter's own `1 pinch X` false-alarmed every time**, since one read as a count and the other as
+"unmeasured"; (2) **an ingredient in several lines that the converter restructures (three source
+lines as two, two as three, the same total) false-alarmed 53% and 96% of the time**, because lines
+were grouped by luck of pairing and not by ingredient; (3) a range collapsed or shifted (`2-3` as
+`2`), which the converter's own run notes record it doing, passed 100% of the time; (4) a spoon
+written as a pinch passed 100%; (5) an ingredient whose only words are count words (`whole cloves`)
+was not recognised as one, so a compound line containing it was mishandled (267 of 8,010 pairs); and
+(6) a loose "the recipe says less" match let a bare `pinch pepper` absorb a dropped `red bell pepper`
+whenever the source line had no comma, which switches the dictionary off.
 
-**Verified by:** the household's comparison reproduced on real lines before (two rows matched that
-should not have) and after (exactly one group flagged — the doubled line, with both amounts named —
-and nothing else among the recipe's other 22 lines; a line whose product had moved into brackets, a
-false alarm before, now matches); the eleven-fault probe now 11 caught, and its four fine cases
-quiet; then **an independent 50-case corpus written after the fix**, of which 46 were right first
-time. The four that were not: three dictionary gaps (zucchini and eggplant share no word with their
-British names, and were flagged before too; confectioners' sugar shared "sugar" and passed only by
-luck), and one real miss — whole milk for skimmed — which showed the "same ingredient" test was
-two-way and let a recipe be *more* specific than its source, so it was made one-way. Answers are the
-same in all 612 orderings of the doubled-line case, both variants. `core.test.js` 77 → 87 and smoke
-275 → 278, green, exit codes read. **Mutation-tested, 27 ways** (23 in Node, 4 in the browser), each ending in a named check failing: the amount tie-break, the join rule, the amount check, the
-one-way test, the dictionary veto, compound splitting and its guard, four tolerance bounds, group
-totals, the pinch rule, ranges, the cup, the similar-pair tier and its flag, the part label, both
-join directions, brackets left out of a line's words, the recipe-adds rule switched off, a dash described as a pinch, and the
-four things the page shows. **Two mutations survived at first and the tests
-were fixed until they did not:** the cross-unit tolerance (every example was within 1% of exact) and
-the amount tie-break (the order test only asserted that *something* was flagged, and with the
-tie-break removed the pepper case was still flagged in all 36 orders, but blamed on the wrong lines
-in 12; it now asserts the diagnosis in every order). **Found by the real recipe, mine to own:** my
-first compound splitter cut "peeled and sliced" into a part "sliced", making three false alarms;
-fixed with a guard that every part must name an ingredient, and pinned. **Found in the old
-tests:** two smoke fixtures had passed only because the check was loose (a source's "crushed
-tomatoes" against the recipe's "plum", a recipe line adding "golden syrup"); they now use
-consistent lines.
+**The design that replaced it** (`core.js`, `2026-09-28.5`; the comment above `sourceFidelity` is the
+full statement). What matters is what the source asks for of an *ingredient* in total against what the
+recipe asks for, not how the converter split or merged the lines — the way the shopping list already
+totals. So every line, on either side, joined by a same-ingredient pair is one group, and the group's
+amounts are compared as totals per kind (mass, volume, count, and a pinch as its own kind, however
+written), only where a difference cannot be a unit conversion; a range is compared by both ends.
+"Same ingredient" is two tiers: the same name (the dictionary's, or the same words) is exact, and
+"the recipe says less than the source" is looser and joins only lines with no exact partner. A
+compound line becomes its parts, as the converter is itself told to do. A recipe that keeps everything
+the source said and adds a qualifier is a **soft note** where the dictionary calls the two one product
+(shaded, listed, counted apart) and a hard difference where it does not. Similar-only lines pair
+last and are always flagged. Nothing may silently disappear: every line is drawn or listed. No write,
+no schema, no dictionary or naming change, so no tick is re-keyed.
 
-**What it still cannot do — do not read a clean result as more than this.** It does not read the
-method, the groups, the timings or the order things go in. Amounts in different systems (cups against
-grams, a count against a weight, a range) are *unknown*, and unknown never warns, so "1 cup" turning
-into the wrong number of grams is invisible. A recipe less specific than its source ("stock" for
-"chicken stock") passes. It compares only the lines the page or the household supplied. A recipe
-scaled to another number of people flags every amount, so compare before scaling. A US/UK name the
-dictionary lacks and that shares a word with its British name will flag ("confectioners" against
-"icing"): a false alarm, in the safe direction, and dictionary rows were deliberately left alone
-(they re-key ticks — `CLAUDE.md`). Expect some "the recipe adds ground / dried / extract" rows where
-the converter chose a product for you; its instructions say it should not, so they are worth a look.
-If they prove too noisy, the rule is one line in `fidelitySame` and can be relaxed to two-way.
-**Not verified:** anything against the real library (the connector was down and the source sites
-cannot be reached from a session), so it is calibrated on one real recipe's 22 lines and a made-up
-corpus; the household's step 36b; the live app.
+**Verified, on data that was not written for it.** *The converter test set* (`converter/test-set.md`
+tests 6–8, by earlier sessions): its recorded correct output for the vocabulary test is quiet, and the
+wrong outputs it names that a comparison can see are each flagged (range collapsed, oyster for soy
+sauce, an amount changed, a line dropped, a line added). *The dictionary, mechanically:* about 50
+operators — every way the converter is told to reshape a line, and every way it can get one wrong —
+run over all 90 ingredients and their plain spellings; scratch runs of ~4,500 cases per seed on four
+seeds found no miss and no false alarm, and the committed version (`test/core.test.js`) runs 4,854
+harmless conversions and 1,620 faults, then a spread of both again inside recipes, plus every
+sampled pair of ingredients as a compound line. Every case also checks that no line is lost. *The
+real recipe:* exactly one hard flag, on the doubled line, naming its amounts, and nothing else among
+the other 22 lines. `core.test.js` 77 → 96 and smoke 275 → 280, green, exit codes read; the Node
+suite now takes about a second. **Mutation-tested, 46 ways** (38 in Node against the final structure,
+8 in the browser), each ending in a named check failing. Survivors were found and closed rather than
+argued with: the unit factors and the tolerances (no case crossed units), unfamiliar preparation words,
+which lines are drawn beside which, a leftover line never drawn, a note drawn from an unshown edge,
+and a serving-note rule no test could tell from its absence (removed as dead code).
+
+**The price, measured, and the household's to decide.** Stricter matching stops accepting "shares a
+word", which is also what let swaps through, so a translation the dictionary has no entry for now
+flags. On 67 well-known US→UK pairs written for this check from general knowledge (not from the
+dictionary), false alarms rose **from 31% to 58%**: 18 pairs that share a word and used to pass now
+flag (`heavy whipping cream` → `double cream`, `sour cream` → `soured cream`, `beef broth` → `beef
+stock`, `confectioners sugar` → `icing sugar`…), and none improved. **The noise is proportional to the
+dictionary's gaps and lands almost entirely on US sources**; the real recipe, from a UK site, gave none.
+The remedy that fits the project is the existing one — translations added to the dictionary through the
+survey tool, which also improves the shopping list's totals — and it re-keys ticks, so it needs the
+household's go-ahead and a re-measure first (`CLAUDE.md`). The alternatives are a separate glossary used
+only by this check, or relaxing to "any shared word" and losing the swaps. Not done in this PR. The 39 pairs that flag, for whoever takes the dictionary route (some are
+loose equivalents, so each needs a decision, not a paste): eggplant → aubergine; zucchini → courgette; arugula → rocket; heavy whipping cream → double cream; half-and-half → single cream; confectioners sugar → icing sugar; granulated sugar → caster sugar; shrimp → prawns; garbanzo beans → chickpeas; rutabaga → swede; snow peas → mangetout; yogurt → yoghurt; molasses → black treacle; light corn syrup → golden syrup; canned tomatoes → tinned tomatoes; canned chickpeas → tinned chickpeas; fava beans → broad beans; romaine lettuce → cos lettuce; collard greens → spring greens; string beans → green beans; jalapeno → green chilli; chile flakes → chilli flakes; cookies → biscuits; graham crackers → digestive biscuits; pie crust → shortcrust pastry; candy → sweets; broth → stock; beef broth → beef stock; vegetable broth → vegetable stock; sour cream → soured cream; skim milk → skimmed milk; sea salt flakes → flaky sea salt; quick oats → porridge oats; raisins → sultanas; golden raisins → sultanas; shortening → vegetable shortening; endive → chicory; frisee → curly endive; mesclun → mixed salad leaves.
+
+**What it still cannot do — a clean result is not a guarantee.** It does not read the method, the
+groups, the timings or the order things go in. Amounts in different systems (cups against grams, a
+count against a weight) are *unknown*, and unknown never warns, so "1 cup" turning into the wrong number
+of grams is invisible. **A recipe that settles an ambiguity by swapping the qualifier is not caught:**
+`vegetable oil` for `neutral oil` and `natural yoghurt` for `plain yogurt`, both documented as failures
+in the test set, because the dictionary calls each pair one product and the words are substituted rather
+than added; an *addition* (`light soy sauce` for `soy sauce`) is only a soft note. A recipe scaled to
+another number of people flags every amount, so compare before scaling. The converter's own example
+writes bare `pepper` as `black pepper`, which is a soft note here, and the converter's rule against
+settling an ambiguity and that example disagree: either the converter keeps `pepper`, or the household
+accepts the note. **Not verified:** anything against the real library (the connector was down and the
+source sites cannot be reached from a session), so it is calibrated on one real recipe, the converter's
+test set and generated data; the household's step 36b; the live app.
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
