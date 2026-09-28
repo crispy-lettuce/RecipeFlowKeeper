@@ -293,6 +293,45 @@ const check = (name, pass, detail) => {
         mealWrite && mealWrite.match && mealWrite.match.column === 'id',
         mealWrite ? JSON.stringify(mealWrite.match) : '-');
 
+  /* A meal type tapped before its own insert has round-tripped must still
+     land — the exact race a live run against the real backend found on
+     28 Sep (F13): updateDiaryEntry checked unsavedDiaryIds before it ever
+     queued its own write, so "still in flight" and "genuinely failed"
+     looked identical, and a fast tap — human or scripted — almost always
+     found the insert not yet confirmed and silently dropped the update,
+     while the "Tagged as X" toast fired regardless. The stub answers a
+     write on the same tick by default, so this could never race here
+     before; __WRITE_DELAY__ holds both writes open long enough to force
+     the same window a real network round trip does. Driven through the
+     app's own functions rather than the overlay, since the race is in the
+     data layer, not the click wiring — that part is unchanged and already
+     covered above by the ordinary meal-type checks. */
+  await page.evaluate(() => {
+    loadRecipes().push({ id: uid(), title: 'Race Test', source: '', servings: 2,
+      tags: { course: '', keywords: [] }, history: [],
+      syntax: 'TITLE: Race Test\nSERVINGS: 2\n\nGROUP a:\n1 test ingredient\n\nSTAGE:\nMERGE a -> done: Mix [instant]' });
+  });
+  await page.evaluate(() => { window.__WRITE_DELAY__ = 300; });
+  const raceId = await page.evaluate(() => {
+    const r = loadRecipes().find(x => x.title === 'Race Test');
+    logRecipeUsed(r.id);
+    const entry = loadDiary().find(e => e.recipeId === r.id);
+    updateDiaryEntry(entry.id, { mealType: 'dinner' }); // tapped before the 300ms insert resolves
+    closeMealTypePrompt(); // the click handler's job, done by hand since this bypasses it
+    return entry.id;
+  });
+  await page.waitForTimeout(900); // insert + update each held open 300ms, serialised — 900ms clears both
+  await page.evaluate(() => { window.__WRITE_DELAY__ = 0; });
+  const raceMealType = await page.evaluate((id) => loadDiary().find(e => e.id === id).mealType, raceId);
+  check('a meal type tapped before its own insert is confirmed still lands',
+        raceMealType === 'dinner', String(raceMealType));
+  const raceWrite = await page.evaluate((id) =>
+    window.__WRITES__.filter(w => w.table === 'recipe_logs' && w.op === 'update' && w.match && w.match.value === id).pop() || null,
+    raceId);
+  check('and reaches the database, not just the cache',
+        raceWrite && raceWrite.patch && raceWrite.patch.meal_type === 'dinner',
+        raceWrite ? JSON.stringify(raceWrite.patch) : 'no update reached recipe_logs for this entry');
+
   /* H3: the CSV, read from the file the app actually produces.
 
      The version of this block that came before built a CSV inside the test
