@@ -1035,7 +1035,7 @@ every Monday at 06:00 UTC; nothing further is owed here unless a future run goes
 queue are all stubbed. A green run is not a substitute for opening the real app. Keep Awake
 can't be tested outside a real tablet.
 
-**7d, the paste box for COMPARE WITH SOURCE (28 Sep 2026, PR #35, open — not merged).** Asked and answered
+**7d, the paste box for COMPARE WITH SOURCE (28 Sep 2026, PR #35, merged 28 Sep 21:53 UTC).** Asked and answered
 at the start of the session: its own small PR. Two of the twelve source sites (Kitchen Sanctuary, 17
 of 34 recipes, and Allrecipes, 1) refuse `source-ingredients` with a 403, so half the library's
 source check ended at "compare by eye". The add/edit preview now also has a box under AGAINST THE
