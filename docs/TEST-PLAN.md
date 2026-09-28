@@ -137,6 +137,14 @@ Some things that *will* still look wrong and aren't:
     on any row exercises the same path: type a few letters to filter (any name in the library, not
     just this week's rows), pick one, expect *Merge X with Y? MERGE · CANCEL* — CANCEL and it is
     unchanged; MERGE and the two rows join.
+15a. **Possible swaps** (6d-2). Store a swap in Settings → Swaps for something you've planned this
+     week (say, butter → margarine). Open the Shopping List: a *POSSIBLE SWAPS* panel appears at the
+     bottom naming it, with its ratio and note. Tick that row off and hide ticked items — the panel
+     entry must stay; it lists what's on the list, not what's currently showing. A swap for a
+     general word ("butter") must not also flag a longer name that happens to contain it ("peanut
+     butter") — matched by the list's own name since 6d-2, not a substring on the raw ingredient
+     text, which is also why the recipe Viewer's ⇄ icon and Substitution Recommendations box (same
+     function) should now agree with the list rather than over-firing.
 16. **Viewer ticks.** Tick three steps, then change COOK FOR. The ticks must survive. **RESET TICKS**
     clears them without moving you off the recipe.
 17. **Sidebar.** Narrow the window to roughly 1000px and open a recipe. The sidebar slides shut, the
