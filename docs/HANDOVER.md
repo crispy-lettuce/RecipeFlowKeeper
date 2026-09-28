@@ -884,7 +884,7 @@ the filter — each mutation-tested to fail by name (not a crash) before being r
 against the real backend or on the tablet — that is still the household's own pass; CI went green
 and the PR was merged the same session.
 
-**6d-2, household swaps on the shopping list (28 Sep 2026, PR #26, open).** Two changes. First,
+**6d-2, household swaps on the shopping list (28 Sep 2026, PR #26, merged).** Two changes. First,
 `findSwapMatchesForIngredient` (used by the recipe viewer's ⇄ icon and its own Substitution
 Recommendations box) and a new `findSwapMatchesForKey(key, swaps)` (used by the panel below) both
 now match by running the swap's `original` and the ingredient through `shoppingKeyForName` — the
@@ -913,8 +913,27 @@ recipe's wording put the same words in a different order, which a raw substring 
 the dictionary-driven key catches. No false positive was sitting in the live library today, but
 the fix reaches further than "removes one" — it also finds a real match the old rule silently
 missed. Neither swap's own text appears here, per `CLAUDE.md`. **Not verified:** anything against
-the real backend or on the tablet, and the PR is not merged yet, waiting on green CI and the
-household's look.
+the real backend or on the tablet — that's still the household's own pass; CI went green and the
+PR merged the same session.
+
+**7a, the onboarding runbook (28 Sep 2026, documentation only, no PR yet).** `docs/ONBOARDING.md`:
+the three steps to add a family member (create their account in the dashboard, one guarded SQL
+statement to link them to the household, give them the app's address), what `hydrate()`'s real
+error looks like if the link is missing, why the app has no sign-up form of its own to do any of
+this, and that `household_members.role` is schema built ahead of a feature that isn't there.
+Started after checking with the household how to split "Sharing" — one PR per piece, the JSON-LD
+"plain recipe, no flow" extraction and the model-backed converter both deferred until a family
+member is actually adding a recipe. **Verified by:** reading the running code rather than
+describing it from memory — the exact error text quoted from `index.html:2520`; the login form
+checked at `index.html:1250` to have no sign-up fields; `household_members.role` confirmed unused
+by `grep -rn "\.role\b" index.html` (no hits); and the live database read read-only (never
+written to): 1 user, 1 household, 1 membership row; the anon-grants finding (F8) checked again
+and unchanged — `anon` still holds full privileges on all 13 `public` tables and four `storage`
+tables; leaked-password protection still off, per the security advisor. `node test/core.test.js`:
+72 checks, unchanged (nothing in `index.html` or `core.js` touched). **Not verified:** the
+procedure itself against a real second account — nobody has been added yet, so the SQL is
+checked against the schema's real constraints (the unique index, the two `ON DELETE CASCADE`
+foreign keys) but not run.
 
 **What it does not cover:** sign-in, hydration, row-level security and the background write
 queue are all stubbed. A green run is not a substitute for opening the real app. Keep Awake
