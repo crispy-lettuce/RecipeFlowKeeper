@@ -1077,7 +1077,7 @@ succeeded, and the household used the box on a real page that evening. A check a
 running to fetch the live page reported "not live", and means nothing: this sandbox's proxy refuses
 `github.io`, so it never saw the site.
 
-**7e, the source check that no longer calls a difference a match (28 Sep 2026, open — not merged).**
+**7e, the source check that no longer calls a difference a match (28 Sep 2026, PR #37, open — not merged).**
 Found by the household on the first real use of the paste box: comparing Tuscan Chicken Pasta, two
 lines came out *matched* that were not. The source listed one ingredient twice, with the same
 amount, beside a compound "salt and pepper" line; the recipe carried the doubled line once and the

@@ -25,7 +25,7 @@ was written. Check again before relying on one.
 
 **Done.** PRs 1–7d are merged and live: 7d, the paste box, was PR #35, merged 28 Sep at 21:53 UTC
 (`main`'s tests and the Pages deploy both succeeded; the household used the box on a real page the
-same evening). **7e is open and not merged** (below): it rewrites the source check the paste box
+same evening). **7e is open and not merged** (PR #37, below): it rewrites the source check the paste box
 feeds, after that first real use showed the check calling a difference a match. It is the second
 change to `core.js` since 6b (`2026-09-28.4`; 7d made `.3`). 6c-2 was a data job, not a PR; PR #23
 is its documentation.
@@ -91,8 +91,8 @@ paste the source's ingredient list into, copied from the page in the browser, co
 verified and how; `docs/TEST-PLAN.md` step 36a is the household's pass on a real Kitchen Sanctuary
 page, and the one thing no session could check: **what a real copy from that page looks like.**
 
-**7e, the source check that no longer calls a difference a match (28 Sep) — open, waiting for the
-household.** Found by the household's first real comparison (Tuscan Chicken Pasta): a source line
+**7e, the source check that no longer calls a difference a match (28 Sep, PR #37) — open, waiting
+for the household.** Found by the household's first real comparison (Tuscan Chicken Pasta): a source line
 listed twice, beside a compound "salt and pepper" line, showed as matched, when the recipe carried
 the doubled line once. Reproduced with the app's own functions, then probed with made-up lines:
 **the check caught one of eleven fault types**, an ingredient sharing no word with anything. It was
@@ -143,7 +143,7 @@ verified and how.
 | 7b | **RLS belt and braces, leaked-password protection** | Revoke `anon`'s blanket grants and restrict every `TO public` policy to `authenticated` — done. Leaked-password protection is a dashboard toggle, not SQL, and is still off | F8 (part) | **Done**, 28 Sep, migration `rls_belt_and_braces_restrict_to_authenticated` (no PR — a database migration, not app code), documented on PR #27. Leaked-password protection is the household's own click, whenever wanted |
 | 7c | **The weekly live-backend test** | A test household, a test user, a Playwright script against the *live* app, credentials in `PrivateBackup`'s secrets | F13 | **Done**, 28 Sep. `PrivateBackup` PR #3 and #4 merged (a missing reload wait, the test script's own bug); this repo's PR #31 merged (a real app bug — `updateDiaryEntry` silently dropped a meal-type tag tapped before its insert confirmed). Run #5 proved both fixes live: 13 checks, 0 failed |
 | 7d | **The paste box for COMPARE WITH SOURCE** | Asked and answered 28 Sep: its own small PR. A textarea and COMPARE PASTED LIST under AGAINST THE SOURCE in the add/edit preview, for the two sites (18 of 34 recipes) that refuse the function with a 403. `pastedIngredientLines` in `core.js` strips tick boxes, bullets, blank lines and headings that are certainly headings, and the same `sourceFidelity` pairs what is left with the recipe's lines. No fetch, no write, no schema change; advice only, never a gate. The pasted text is kept only until the form closes | §2 and answer 4 of the architecture review (the source check for half the library); closes no numbered finding | **Done**, PR #35, merged 28 Sep 21:53 UTC. `core.js` `2026-09-28.3`. Its comparison was rewritten in 7e the same evening |
-| 7e | **The source check stops calling a difference a match** | Found 28 Sep by the household's first real comparison: a doubled source line was shown as matched. Probing found one of eleven fault types caught. `sourceFidelity` rewritten: compound lines split into parts; same-ingredient pairs first (the dictionary's name, or the recipe's words all in the source's, one-way, unless the dictionary knows them as different products); a leftover joins a group only as the same ingredient; similar-only lines pair last and are always flagged; each group's amounts compared in total, only where a difference cannot be a unit conversion; every flagged pair says why. The table shows flagged pairs highlighted with the reason, and counts them. No write, no schema, no dictionary or naming change, so no tick is re-keyed | §2 and answer 4 of the architecture review (the source check itself); closes no numbered finding | **Open**, 28 Sep — awaiting the household's review and merge. `core.js` `2026-09-28.4` |
+| 7e | **The source check stops calling a difference a match** | Found 28 Sep by the household's first real comparison: a doubled source line was shown as matched. Probing found one of eleven fault types caught. `sourceFidelity` rewritten: compound lines split into parts; same-ingredient pairs first (the dictionary's name, or the recipe's words all in the source's, one-way, unless the dictionary knows them as different products); a leftover joins a group only as the same ingredient; similar-only lines pair last and are always flagged; each group's amounts compared in total, only where a difference cannot be a unit conversion; every flagged pair says why. The table shows flagged pairs highlighted with the reason, and counts them. No write, no schema, no dictionary or naming change, so no tick is re-keyed | §2 and answer 4 of the architecture review (the source check itself); closes no numbered finding | **Open**, PR #37, 28 Sep — awaiting the household's review and merge. `core.js` `2026-09-28.4` |
 
 ### PR 6 reviewed against what came after it (25 Sep)
 
