@@ -55,15 +55,15 @@ runbook plus the RLS migration) are all merged — `docs/HANDOVER.md` §7 has wh
 how for each. Leaked-password protection is still off; it's a dashboard toggle, not something a
 session can do.
 
-**7c, the weekly live-backend test — started 28 Sep, in `PrivateBackup`, not this repo.**
-`scripts/weekly-live-check.js` and `.github/workflows/weekly-live-check.yml` are written and on
-`PrivateBackup` PR #3, along with the README changes. The household has created the test
-account and given back its email; a fresh, isolated `households` row and `household_members`
-row link it (28 Sep 2026), verified empty of recipes and diary entries, same as any new
-household. **Still blocked on:** the two secrets (`TEST_USER_EMAIL`, `TEST_USER_PASSWORD`)
-in `PrivateBackup`'s own Actions settings — the last of PR #3's three steps, and the household's
-alone to do (a session's own credentials can't reach repo secrets). Until that happens the
-workflow exists but has never actually run against the live app.
+**7c, the weekly live-backend test — `PrivateBackup` PR #3 merged 28 Sep, fix on PR #4, open.**
+`scripts/weekly-live-check.js` and `.github/workflows/weekly-live-check.yml`, not in this repo.
+The household created the test account, gave back its email (linked to its own isolated
+household), added the two secrets, and PR #3 merged — all three of its blocking steps done.
+**Run #1, triggered right after, found a real bug: in the test script, not the app** — the reload
+straight after the first save was missing the 2 s wait every other write-then-reload step already
+has, so it could race ahead of the real network write. Sign-in, `hydrate()` and RLS all worked;
+nothing in `index.html` or `core.js` is implicated. Fixed on PR #4. **Still open:** PR #4 merging,
+then one more run to prove the fix.
 
 **Still open:** should the PASTE box for COMPARE WITH SOURCE, the answer to the two sites that
 refuse the function, be its own small PR, or come later?
@@ -98,7 +98,7 @@ verified and how.
 | 7 | **Sharing** | Started 28 Sep, split into one PR per piece rather than built as one, the same habit as 6d. The JSON-LD "plain recipe, no flow" extraction and the model-backed converter are both deferred until a family member is actually adding a recipe — asked and answered 28 Sep, not assumed | F8 F13, answer 4 | See 7a–7c |
 | 7a | **The onboarding runbook** | Documentation only, no code, no production write: the three steps to add someone (create their account, one guarded SQL statement to link them, give them the address), what `hydrate()`'s real error looks like if the link is missing, why the app has no sign-up form of its own, and that `household_members.role` is unused (verified: `grep -rn "\.role\b" index.html` finds nothing) | F8 (part) | **Done**, PR #27, merged 28 Sep |
 | 7b | **RLS belt and braces, leaked-password protection** | Revoke `anon`'s blanket grants and restrict every `TO public` policy to `authenticated` — done. Leaked-password protection is a dashboard toggle, not SQL, and is still off | F8 (part) | **Done**, 28 Sep, migration `rls_belt_and_braces_restrict_to_authenticated` (no PR — a database migration, not app code), documented on PR #27. Leaked-password protection is the household's own click, whenever wanted |
-| 7c | **The weekly live-backend test** | A test household, a test user, a Playwright script against the *live* app, credentials in `PrivateBackup`'s secrets | F13 | **Started** 28 Sep, `PrivateBackup` PR #3 (not this repo). Script and workflow written; test account created and its isolated household linked (28 Sep); still blocked on the household adding the two secrets — PR #3's description has the step |
+| 7c | **The weekly live-backend test** | A test household, a test user, a Playwright script against the *live* app, credentials in `PrivateBackup`'s secrets | F13 | `PrivateBackup` PR #3 **merged** 28 Sep (not this repo). Run #1 found a real bug in the script itself (a missing wait before a reload, raced ahead of the write queue) — sign-in, `hydrate()` and RLS all worked. Fix on `PrivateBackup` PR #4, open |
 
 ### PR 6 reviewed against what came after it (25 Sep)
 
@@ -158,20 +158,19 @@ and open a pull request when the work is tested.
 Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md                  — the map of all documentation
-  docs/NEXT-SESSION.md                    — "Start here" first; 7a and 7b are merged, 7c is
-                                             linked to its test household, blocked on secrets
+  docs/NEXT-SESSION.md                    — "Start here" first; 7a and 7b are merged, 7c's
+                                             PR #3 merged, a fix for what run #1 found is on PR #4
   docs/REVIEW-ARCHITECTURE-FINDINGS.md    — §0 and the findings the PR closes
   docs/HANDOVER.md                        — verified status
   docs/ARCHITECTURE.md                    — how the app and its recipe format work
   CLAUDE.md                               — applies in full
 
-THE TASK: check `PrivateBackup` PR #3 (7c, the weekly live-backend
-test) — the test account is created and its isolated household is
-already linked (28 Sep); what's left is whether the household has
-added the two secrets (`TEST_USER_EMAIL`, `TEST_USER_PASSWORD`) to
-`PrivateBackup`'s Actions settings. If they have, trigger the
-workflow (or check whether Monday's run has happened) and read the
-result. If the PR has merged, note that too. If none of that has
+THE TASK: check `PrivateBackup` PR #4 (7c's fix — run #1 found a
+missing wait before a reload in the test script itself, raced ahead
+of the write queue; not an app bug). If it's merged, trigger the
+workflow once more (or check whether Monday's run has happened) and
+read the result — that is the actual proof 7c works end to end. If
+it's still open, check CI and merge only if asked. If none of that has
 moved, ask what to work on instead — 7c was never urgent. Follow the
 first three sections of CLAUDE.md to the letter, and don't merge or
 touch production without asking first.
