@@ -738,7 +738,7 @@ const check = (name, pass, detail) => {
   await page.evaluate(() => {
     window.__INVOKES__.length = 0;
     window.__INVOKE_REPLY__ = call => call.name === 'source-ingredients'
-      ? { data: { pageUrl: call.body.pageUrl, name: 'Checks', ingredients: ['1/2 cup honey', '1 (14 oz) can crushed tomatoes', '1 large onion', '1 carrot', '1 tsp Italian seasoning'] }, error: null }
+      ? { data: { pageUrl: call.body.pageUrl, name: 'Checks', ingredients: ['3 tbsp honey or golden syrup', '1 (14 oz) can plum tomatoes', '1 large onion', '1 carrot', '1 tsp Italian seasoning'] }, error: null }
       : { data: null, error: null };
   });
   await page.click('#compareSourceBtn');
@@ -774,7 +774,7 @@ const check = (name, pass, detail) => {
   const pasteEmpty = await page.evaluate(() => ({ out: document.getElementById('sourceCompareOut').textContent, rows: document.querySelectorAll('#sourceCompareOut tr').length }));
   check('an empty paste box says there is nothing to compare, rather than drawing an empty table',
         /Nothing to compare yet/.test(pasteEmpty.out) && pasteEmpty.rows === 0, JSON.stringify(pasteEmpty));
-  await page.fill('#sourcePasteInput', ['Ingredients', '▢ 3 tbsp honey', '▢ 1 (14 oz) can crushed tomatoes', '▢ 1 large onion', 'For the topping:', '▢ 1 carrot', '▢ 1 tsp Italian seasoning'].join('\n'));
+  await page.fill('#sourcePasteInput', ['Ingredients', '▢ 3 tbsp honey or golden syrup', '▢ 1 (14 oz) can plum tomatoes', '▢ 1 large onion', 'For the topping:', '▢ 1 carrot', '▢ 1 tsp Italian seasoning'].join('\n'));
   await page.click('#comparePastedBtn');
   await page.waitForTimeout(300);
   const pasted = await page.evaluate(() => ({
@@ -791,6 +791,28 @@ const check = (name, pass, detail) => {
   const afterReparse = await page.evaluate(() => ({ box: document.getElementById('sourcePasteInput').value, out: document.getElementById('sourceCompareOut').textContent.trim() }));
   check('a re-parse (or USE THIS) keeps what was pasted, and clears the table it no longer describes',
         afterReparse.box.includes('▢ 1 tsp Italian seasoning') && afterReparse.out === '', JSON.stringify(afterReparse));
+
+  /* PR 7e (28 Sep): a pair can match on its words and still differ. That is
+     shown, with what differs, and counted — never left looking matched. */
+  const comparePasted = async lines => {
+    await page.fill('#sourcePasteInput', lines.join('\n'));
+    await page.click('#comparePastedBtn');
+    await page.waitForTimeout(300);
+    return page.evaluate(() => ({
+      hint: ((document.querySelector('#sourceCompareOut .hint') || {}).textContent || '').trim(),
+      misses: [...document.querySelectorAll('#sourceCompareOut tr.miss')].length,
+      why: [...document.querySelectorAll('#sourceCompareOut tr.miss .why')].map(d => d.textContent)
+    }));
+  };
+  const amountDiffers = await comparePasted(['2 tbsp honey or golden syrup', '1 (14 oz) can plum tomatoes', '1 large onion', 'grated parmesan', '1 carrot']);
+  check('a pair that matches on its words but not its amount is highlighted, says what differs, and is counted',
+        amountDiffers.misses === 1 && amountDiffers.why.join('|') === 'amounts differ: source 2 tbsp; recipe 3 tbsp' && /^1 to look at/.test(amountDiffers.hint), JSON.stringify(amountDiffers));
+  const allAgree = await comparePasted(['3 tbsp honey or golden syrup', '1 (14 oz) can plum tomatoes', '1 large onion', 'grated parmesan', '1 carrot']);
+  check('when every ingredient and every comparable amount agrees it says so, and says what it did not compare',
+        allAgree.misses === 0 && /found its match, and the amounts that can be compared agree/.test(allAgree.hint) && /cups against grams/.test(allAgree.hint), JSON.stringify(allAgree));
+  const wordsDiffer = await comparePasted(['3 tbsp honey or golden syrup', '1 (14 oz) can cherry tomatoes', '1 large onion', 'grated parmesan', '1 carrot']);
+  check('cherry tomatoes for plum tomatoes, which share a word, are shown paired but flagged, not quietly matched',
+        wordsDiffer.misses === 1 && /not the same wording: the recipe adds plum; the source has cherry/.test(wordsDiffer.why.join('|')), JSON.stringify(wordsDiffer));
 
   // Advice, never a gate: the recipe saves with warnings still showing.
   const recipeWritesBefore = await page.evaluate(() => (window.__WRITES__ || []).filter(w => w.table === 'recipes').length);

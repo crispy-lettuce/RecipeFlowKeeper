@@ -23,10 +23,12 @@ household decides when to merge.
 Each fact below was checked against the database, the deployed functions or `git log` when it
 was written. Check again before relying on one.
 
-**Done.** PRs 1–7c are merged and live. **7d, the paste box, is open and not merged** (PR #35, below): the
-first change to `core.js` since 6b (`2026-09-28.3`, up from `2026-09-28.2`) and the next to
-`index.html` after PR #31 (7c's own fix — see below). 6c-2 was a data job, not a PR; PR #23 is its
-documentation.
+**Done.** PRs 1–7d are merged and live: 7d, the paste box, was PR #35, merged 28 Sep at 21:53 UTC
+(`main`'s tests and the Pages deploy both succeeded; the household used the box on a real page the
+same evening). **7e is open and not merged** (below): it rewrites the source check the paste box
+feeds, after that first real use showed the check calling a difference a match. It is the second
+change to `core.js` since 6b (`2026-09-28.4`; 7d made `.3`). 6c-2 was a data job, not a PR; PR #23
+is its documentation.
 
 **The live app:**
 
@@ -37,8 +39,8 @@ documentation.
 - **Household swaps:** 2 stored.
 - **Edge Functions:** `rehost-images` v10, `find-recipe-image` v4 and `source-ingredients` v1.
   `source-ingredients` gets a 403 from Kitchen Sanctuary (17 recipes) and Allrecipes (1), so
-  COMPARE WITH SOURCE says "compare by eye" for half the library — the paste box in 7d is the
-  answer, once merged.
+  COMPARE WITH SOURCE says "compare by eye" for half the library — the paste box (7d, merged)
+  is the answer.
 - **Sharing:** the family is one account, one household (verified 28 Sep) —
   `docs/ONBOARDING.md` is the runbook for adding a second family member. A second `households` row
   now exists too, but it is 7c's isolated test household in `PrivateBackup`
@@ -81,7 +83,7 @@ null — consistent with this bug, but just as consistent with never having tapp
 household is the only one who can tell those apart. **7c is done.** `weekly-live-check.yml` now
 runs itself every Monday at 06:00 UTC; nothing further is owed unless a future run goes red.
 
-**7d, the paste box (28 Sep, PR #35) — open, waiting for the household.** Asked and answered the same
+**7d, the paste box (28 Sep, PR #35) — merged.** Asked and answered the same
 session: yes, its own small PR. The two sites that refuse `source-ingredients` are half the library,
 so COMPARE WITH SOURCE could only say "compare by eye" for them; the preview now also has a box to
 paste the source's ingredient list into, copied from the page in the browser, compared by the same
@@ -89,8 +91,20 @@ paste the source's ingredient list into, copied from the page in the browser, co
 verified and how; `docs/TEST-PLAN.md` step 36a is the household's pass on a real Kitchen Sanctuary
 page, and the one thing no session could check: **what a real copy from that page looks like.**
 
-**Still open:** nothing from the seven-PR plan. The household merges 7d (or doesn't) and does
-step 36a; the aisle-override proposal below is written up but not started.
+**7e, the source check that no longer calls a difference a match (28 Sep) — open, waiting for the
+household.** Found by the household's first real comparison (Tuscan Chicken Pasta): a source line
+listed twice, beside a compound "salt and pepper" line, showed as matched, when the recipe carried
+the doubled line once. Reproduced with the app's own functions, then probed with made-up lines:
+**the check caught one of eleven fault types**, an ingredient sharing no word with anything. It was
+blind to a swapped variety (black for white pepper, garlic for onion powder), a dropped half of a
+compound line, and every wrong amount, because it never read one. Rewritten: same-ingredient pairs
+first, a leftover joins a group only as the same ingredient, compound lines split into parts, amounts
+compared in total where a difference cannot be a unit conversion, and every pair that differs shown
+with why. **It is still not a guarantee** — `HANDOVER.md` §7 lists what it cannot see. The household's
+pass is `docs/TEST-PLAN.md` step 36b: re-run that comparison.
+
+**Still open:** nothing from the seven-PR plan. The household reviews 7e and does steps 36a and 36b;
+the aisle-override proposal below is written up but not started.
 
 **Proposed, not started:** a household-editable aisle override in Settings — so moving something
 like "Sirloin Steak" out of Other is a form entry, not a code change and a PR. Raised 28 Sep after
@@ -128,7 +142,8 @@ verified and how.
 | 7a | **The onboarding runbook** | Documentation only, no code, no production write: the three steps to add someone (create their account, one guarded SQL statement to link them, give them the address), what `hydrate()`'s real error looks like if the link is missing, why the app has no sign-up form of its own, and that `household_members.role` is unused (verified: `grep -rn "\.role\b" index.html` finds nothing) | F8 (part) | **Done**, PR #27, merged 28 Sep |
 | 7b | **RLS belt and braces, leaked-password protection** | Revoke `anon`'s blanket grants and restrict every `TO public` policy to `authenticated` — done. Leaked-password protection is a dashboard toggle, not SQL, and is still off | F8 (part) | **Done**, 28 Sep, migration `rls_belt_and_braces_restrict_to_authenticated` (no PR — a database migration, not app code), documented on PR #27. Leaked-password protection is the household's own click, whenever wanted |
 | 7c | **The weekly live-backend test** | A test household, a test user, a Playwright script against the *live* app, credentials in `PrivateBackup`'s secrets | F13 | **Done**, 28 Sep. `PrivateBackup` PR #3 and #4 merged (a missing reload wait, the test script's own bug); this repo's PR #31 merged (a real app bug — `updateDiaryEntry` silently dropped a meal-type tag tapped before its insert confirmed). Run #5 proved both fixes live: 13 checks, 0 failed |
-| 7d | **The paste box for COMPARE WITH SOURCE** | Asked and answered 28 Sep: its own small PR. A textarea and COMPARE PASTED LIST under AGAINST THE SOURCE in the add/edit preview, for the two sites (18 of 34 recipes) that refuse the function with a 403. `pastedIngredientLines` in `core.js` strips tick boxes, bullets, blank lines and headings that are certainly headings, and the same `sourceFidelity` pairs what is left with the recipe's lines. No fetch, no write, no schema change; advice only, never a gate. The pasted text is kept only until the form closes | §2 and answer 4 of the architecture review (the source check for half the library); closes no numbered finding | **Open**, PR #35, 28 Sep — awaiting the household's review and merge. `core.js` `2026-09-28.3` |
+| 7d | **The paste box for COMPARE WITH SOURCE** | Asked and answered 28 Sep: its own small PR. A textarea and COMPARE PASTED LIST under AGAINST THE SOURCE in the add/edit preview, for the two sites (18 of 34 recipes) that refuse the function with a 403. `pastedIngredientLines` in `core.js` strips tick boxes, bullets, blank lines and headings that are certainly headings, and the same `sourceFidelity` pairs what is left with the recipe's lines. No fetch, no write, no schema change; advice only, never a gate. The pasted text is kept only until the form closes | §2 and answer 4 of the architecture review (the source check for half the library); closes no numbered finding | **Done**, PR #35, merged 28 Sep 21:53 UTC. `core.js` `2026-09-28.3`. Its comparison was rewritten in 7e the same evening |
+| 7e | **The source check stops calling a difference a match** | Found 28 Sep by the household's first real comparison: a doubled source line was shown as matched. Probing found one of eleven fault types caught. `sourceFidelity` rewritten: compound lines split into parts; same-ingredient pairs first (the dictionary's name, or the recipe's words all in the source's, one-way, unless the dictionary knows them as different products); a leftover joins a group only as the same ingredient; similar-only lines pair last and are always flagged; each group's amounts compared in total, only where a difference cannot be a unit conversion; every flagged pair says why. The table shows flagged pairs highlighted with the reason, and counts them. No write, no schema, no dictionary or naming change, so no tick is re-keyed | §2 and answer 4 of the architecture review (the source check itself); closes no numbered finding | **Open**, 28 Sep — awaiting the household's review and merge. `core.js` `2026-09-28.4` |
 
 ### PR 6 reviewed against what came after it (25 Sep)
 
@@ -188,18 +203,18 @@ and open a pull request when the work is tested.
 Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md                  — the map of all documentation
-  docs/NEXT-SESSION.md                    — "Start here" first; PR 7 (Sharing), 7a-7c, is done, and 7d is open
+  docs/NEXT-SESSION.md                    — "Start here" first; PR 7 (Sharing), 7a-7d, is done, and 7e is open
   docs/REVIEW-ARCHITECTURE-FINDINGS.md    — §0 and the findings the PR closes
   docs/HANDOVER.md                        — verified status
   docs/ARCHITECTURE.md                    — how the app and its recipe format work
   CLAUDE.md                               — applies in full
 
-THE TASK: PR 7 (Sharing, 7a-7c) is entirely done — nothing of it needs
-picking up — and 7d (the PASTE box for COMPARE WITH SOURCE) was built and
-opened on 28 Sep for me to review: check its state on GitHub before
-assuming it has merged. Nothing else is in the plan; the aisle-override
-proposal (docs/PROPOSAL-AISLE-OVERRIDES.md) is written up but not started,
-so ask what to work on.
+THE TASK: PR 7 (Sharing, 7a-7d) is entirely done and merged — nothing of
+it needs picking up. 7e (the source check that stopped calling a difference
+a match) was built and opened on 28 Sep for me to review: check its state
+on GitHub before assuming it has merged. Nothing else is in the plan; the
+aisle-override proposal (docs/PROPOSAL-AISLE-OVERRIDES.md) is written up
+but not started, so ask what to work on.
 Follow the first three sections of CLAUDE.md to the letter, and don't
 merge or touch production without asking first.
 
@@ -218,7 +233,7 @@ Some context worth having:
     to it. Anything exported stays in scratch outside the repo.
   - Don't trust status notes, mine included, where you can check the real
     thing instead. The corrections table in docs/HANDOVER.md §6 has
-    twenty-seven rows now.
+    twenty-nine rows now.
   - When the PR is done: tick the findings it closes in
     docs/REVIEW-ARCHITECTURE-FINDINGS.md, update the status column in
     docs/NEXT-SESSION.md, and add one line to docs/HANDOVER.md saying what
