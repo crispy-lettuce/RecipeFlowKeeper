@@ -1018,9 +1018,17 @@ cooking-log rows has `meal_type` null. That is consistent with this bug having q
 tag ever tapped — but SKIP is a legitimate, designed answer to the prompt (`docs/HANDOVER.md`'s
 own comment on `promptForMealType` calls it "an enrichment, not a requirement"), so 115-for-115
 null is equally consistent with the household never having tapped a meal type at all. The database
-can't tell those two apart; only the household knows which it was. **Not verified:** the fix
-against the live app — the next `weekly-live-check.yml` run, once PR #31 merges, is what actually
-proves it.
+can't tell those two apart; only the household knows which it was.
+
+**Verified against the live app (28 Sep 2026, run #5, merged 20:36 UTC, triggered 20:48).** The
+run right after PR #31 merged (run #4, 20:36) failed the same way one more time — GitHub Pages/CDN
+propagation lag, not the fix being wrong: confirmed by reading `index.html` straight from `main`
+(the fix was already there) and by the fact that waiting another twelve minutes and triggering
+once more turned it fully green. Run #5: **13 checks, 0 failed**, `the meal type survives a
+reload — reached the real database  (lunch)` included. This is the first genuinely clean pass —
+sign-in, `hydrate()`, RLS, and the background write queue, including the exact race this session
+found, all proven against the real backend in one run. `weekly-live-check.yml` now runs itself
+every Monday at 06:00 UTC; nothing further is owed here unless a future run goes red.
 
 **What it does not cover:** sign-in, hydration, row-level security and the background write
 queue are all stubbed. A green run is not a substitute for opening the real app. Keep Awake
