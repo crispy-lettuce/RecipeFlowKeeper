@@ -66,12 +66,15 @@ out a flake. Root cause: `updateDiaryEntry` checked whether its row's insert had
 silently dropped the update, while the UI's "Tagged as X" toast fired anyway. Verified three
 independent ways (a `Workflow` run — code trace, Supabase `edge_logs` showing the update was never
 even attempted, and confirming why the same run's ad-hoc-entry step didn't share the bug) before
-touching anything. **Fixed on PR #31**, with a new `test/smoke.js` check that reproduces the race
-offline (`__WRITE_DELAY__`) and is mutation-tested to fail without the fix. `docs/HANDOVER.md` §7
-has the full account, including a live number worth having: all 115 of the household's real
-cooking-log rows have `meal_type` null — consistent with this bug, but just as consistent with
-never having tapped one; the household is the only one who can tell those apart. **Still open:**
-PR #31 merging, then one more live run — the actual proof.
+touching anything. **Fixed and merged on PR #31**, with a new `test/smoke.js` check that
+reproduces the race offline (`__WRITE_DELAY__`) and is mutation-tested to fail without the fix.
+**Proved against the live app the same session**: run #4, right after the merge, failed once more
+on GitHub Pages/CDN propagation lag (confirmed, not the fix) — run #5, twelve minutes later,
+**13 checks, 0 failed**, meal type included. `docs/HANDOVER.md` §7 has the full account, including
+a live number worth having: all 115 of the household's real cooking-log rows have `meal_type`
+null — consistent with this bug, but just as consistent with never having tapped one; the
+household is the only one who can tell those apart. **7c is done.** `weekly-live-check.yml` now
+runs itself every Monday at 06:00 UTC; nothing further is owed unless a future run goes red.
 
 **Still open:** should the PASTE box for COMPARE WITH SOURCE, the answer to the two sites that
 refuse the function, be its own small PR, or come later?
@@ -103,10 +106,10 @@ verified and how.
 | 6c-2 | **The line rewrite** | Step 7 as a production data job, with the household present. Re-derived 27 Sep from the live library: **21 lines in 13 recipes** (the review counted 24 in 13; the list is private, never committed). Simulated: 185 rows → 172, and → 167 with five word matches made in the app afterwards, against the review's ideal of 168; no group, stage or layout change in any recipe; every new line passes the shape check. Each recipe: the fidelity check against its source (Victoria Sandwich has none, D6: checked by eye), the shape check, parse, columns and timeline; then `UPDATE … WHERE id = …` in place, never delete and re-insert; then md5 against the validated text and the household opens the flow table. The household's five choices were made on 27 Sep (which alternative is bought, in four lines, and D4's uncooked weight), and the other option is kept in brackets, which the list now shows. Six more "X or Y" lines the first list left alone were added and approved on 27 Sep, so the preview has nothing left to warn about in any recipe: **27 lines in 14 recipes**. Simulated: 185 rows → 172, or 167 with the five word matches; no structure change; 20 rows show a choice | Row 7; D12 waits on it | **Done**, 27 Sep, in the database (a data job, no code). All 14 written in place, each `UPDATE` guarded on the md5 of the text before (the export taken for the job) and after (the validated text); all 14 read back as validated. Re-measured from the live library: **172 rows**, no line the list can't total, none the parser reads past, 21 rows show a choice (the 20 simulated, plus one from a line the household edited by hand earlier that evening). Word matches: the household kept three of the five and kept two pairs apart, as different things to buy: **169 rows** |
 | 6d-1 | **MERGE WITH… made safe** | A confirm step ("Merge X with Y? MERGE · CANCEL"), a filter box, and names from the whole library rather than this week's. Found 27 Sep: the dropdown felt unresponsive on the tablet and saves on the first pick, so a slip saved the neighbouring name (undone), and two matches couldn't be made because their recipes weren't planned. Split from 6d on 27 Sep, so each PR changes one behaviour | The household's review of 6c-2's word matches, 27 Sep | **Done**, PR #25, merged 28 Sep |
 | 6d-2 | **Household swaps on the shopping list** | Decided 27 Sep. First, match a swap by the list's own names (`shoppingKeyForName`) rather than by substring, which today lets a swap for "butter" fire on "peanut butter"; this changes the recipe viewer too. Then a "possible swaps" panel at the **bottom** of the shopping list, listing the household's own swaps (Settings → Swaps) that apply to this week's rows, with ratio and note. A recipe's own alternatives are not in it: since 6c-1 they show on the row, beside the recipe that offered them. Scoping a swap to some recipes or courses (a schema change) only if the panel shows it is needed. Advisory, as the recipe viewer's list already is | The household's review of 6c-1, 27 Sep | **Done**, PR #26, merged 28 Sep. Scoping a swap to specific recipes/courses not needed — the panel didn't ask for it |
-| 7 | **Sharing** | Started 28 Sep, split into one PR per piece rather than built as one, the same habit as 6d. The JSON-LD "plain recipe, no flow" extraction and the model-backed converter are both deferred until a family member is actually adding a recipe — asked and answered 28 Sep, not assumed | F8 F13, answer 4 | See 7a–7c |
+| 7 | **Sharing** | Started 28 Sep, split into one PR per piece rather than built as one, the same habit as 6d. The JSON-LD "plain recipe, no flow" extraction and the model-backed converter are both deferred until a family member is actually adding a recipe — asked and answered 28 Sep, not assumed | F8 F13, answer 4 | **Done**, 28 Sep. See 7a–7c |
 | 7a | **The onboarding runbook** | Documentation only, no code, no production write: the three steps to add someone (create their account, one guarded SQL statement to link them, give them the address), what `hydrate()`'s real error looks like if the link is missing, why the app has no sign-up form of its own, and that `household_members.role` is unused (verified: `grep -rn "\.role\b" index.html` finds nothing) | F8 (part) | **Done**, PR #27, merged 28 Sep |
 | 7b | **RLS belt and braces, leaked-password protection** | Revoke `anon`'s blanket grants and restrict every `TO public` policy to `authenticated` — done. Leaked-password protection is a dashboard toggle, not SQL, and is still off | F8 (part) | **Done**, 28 Sep, migration `rls_belt_and_braces_restrict_to_authenticated` (no PR — a database migration, not app code), documented on PR #27. Leaked-password protection is the household's own click, whenever wanted |
-| 7c | **The weekly live-backend test** | A test household, a test user, a Playwright script against the *live* app, credentials in `PrivateBackup`'s secrets | F13 | `PrivateBackup` PR #3 and #4 **merged** 28 Sep (not this repo) — a missing reload wait, the test script's own bug. Run #2 then found a second, real bug **in this repo**: `updateDiaryEntry` silently dropped a meal-type tag tapped before its row's insert confirmed. Fixed on PR #31, open, with a new offline regression check |
+| 7c | **The weekly live-backend test** | A test household, a test user, a Playwright script against the *live* app, credentials in `PrivateBackup`'s secrets | F13 | **Done**, 28 Sep. `PrivateBackup` PR #3 and #4 merged (a missing reload wait, the test script's own bug); this repo's PR #31 merged (a real app bug — `updateDiaryEntry` silently dropped a meal-type tag tapped before its insert confirmed). Run #5 proved both fixes live: 13 checks, 0 failed |
 
 ### PR 6 reviewed against what came after it (25 Sep)
 
@@ -166,24 +169,19 @@ and open a pull request when the work is tested.
 Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md                  — the map of all documentation
-  docs/NEXT-SESSION.md                    — "Start here" first; 7a/7b merged, 7c's PrivateBackup
-                                             PRs merged, its app-bug fix is here on PR #31
+  docs/NEXT-SESSION.md                    — "Start here" first; PR 7 (Sharing), 7a-7c, is done
   docs/REVIEW-ARCHITECTURE-FINDINGS.md    — §0 and the findings the PR closes
   docs/HANDOVER.md                        — verified status
   docs/ARCHITECTURE.md                    — how the app and its recipe format work
   CLAUDE.md                               — applies in full
 
-THE TASK: check this repo's PR #31 (7c's app-bug fix — a meal type
-tapped before its own insert confirmed was silently dropped;
-docs/HANDOVER.md §7 has the full account). If it's merged, trigger
-`weekly-live-check.yml` once more (or check whether Monday's run has
-happened) and read the result — that is the actual proof 7c works end
-to end, now that both the test script's own bug (PR #3/#4,
-PrivateBackup) and this app bug are fixed. If it's still open, check
-CI and merge only if asked. If none of that has moved, ask what to
-work on instead — 7c was never urgent. Follow the first three sections
-of CLAUDE.md to the letter, and don't merge or touch production
-without asking first.
+THE TASK: PR 7 (Sharing, 7a-7c) is entirely done — nothing of it needs
+picking up. The one open question left in this document is whether the
+PASTE box for COMPARE WITH SOURCE (the answer to the two sites that
+refuse the function) should be its own small PR or come later; ask
+before starting it. If neither is wanted, ask what to work on instead.
+Follow the first three sections of CLAUDE.md to the letter, and don't
+merge or touch production without asking first.
 
 Some context worth having:
 
