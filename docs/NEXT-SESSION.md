@@ -89,8 +89,8 @@ paste the source's ingredient list into, copied from the page in the browser, co
 verified and how; `docs/TEST-PLAN.md` step 36a is the household's pass on a real Kitchen Sanctuary
 page, and the one thing no session could check: **what a real copy from that page looks like.**
 
-**Still open:** nothing is waiting on a decision. The household merges 7d (or doesn't) and does
-step 36a.
+**Still open:** nothing from the seven-PR plan. The household merges 7d (or doesn't) and does
+step 36a; the aisle-override proposal below is written up but not started.
 
 **Proposed, not started:** a household-editable aisle override in Settings — so moving something
 like "Sirloin Steak" out of Other is a form entry, not a code change and a PR. Raised 28 Sep after
@@ -197,8 +197,9 @@ Please read these first, in this order:
 THE TASK: PR 7 (Sharing, 7a-7c) is entirely done — nothing of it needs
 picking up — and 7d (the PASTE box for COMPARE WITH SOURCE) was built and
 opened on 28 Sep for me to review: check its state on GitHub before
-assuming it has merged. Nothing else is waiting on a decision, so ask
-what to work on.
+assuming it has merged. Nothing else is in the plan; the aisle-override
+proposal (docs/PROPOSAL-AISLE-OVERRIDES.md) is written up but not started,
+so ask what to work on.
 Follow the first three sections of CLAUDE.md to the letter, and don't
 merge or touch production without asking first.
 
