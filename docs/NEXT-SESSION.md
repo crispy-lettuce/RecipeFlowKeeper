@@ -50,16 +50,19 @@ needed. 6c-2 was a data job, not a PR; PR #23 is its documentation.
 They were added on 27 Sep so that any model can hold the line. `main` is protected, and
 `offline-harness` is a required check. GitHub enforces that for everyone but admins.
 
-**Done since the last rewrite.** 6d-1 (PR #25) and 6d-2 (PR #26) are both merged —
-`docs/HANDOVER.md` §7 has what was verified and how for each.
+**Done since the last rewrite.** 6d-1 (PR #25), 6d-2 (PR #26) and 7a+7b (PR #27, the onboarding
+runbook plus the RLS migration) are all merged — `docs/HANDOVER.md` §7 has what was verified and
+how for each. Leaked-password protection is still off; it's a dashboard toggle, not something a
+session can do.
 
-**7a and 7b are both done.** 7a (the onboarding runbook) is documentation only —
-`docs/ONBOARDING.md`, `docs/HANDOVER.md` §7. 7b ran 28 Sep, with the household's explicit
-go-ahead: `anon`'s blanket grants revoked, every `TO public` policy restricted to
-`authenticated` — `docs/HANDOVER.md` §7 has the verification. Leaked-password protection is
-still off; it's a dashboard toggle, not something a session can do. **Next: 7c**, the weekly
-live test, waits on the household wanting a real test account created in production; not
-started, and not urgent.
+**7c, the weekly live-backend test — started 28 Sep, in `PrivateBackup`, not this repo.**
+`scripts/weekly-live-check.js` and `.github/workflows/weekly-live-check.yml` are written and on
+`PrivateBackup` PR #3, along with the README changes. **Blocked on the household:** the test
+account has to be created by hand (no tool here can create a real Supabase auth user), its
+email given back so the isolated test household can be linked, and the two secrets
+(`TEST_USER_EMAIL`, `TEST_USER_PASSWORD`) added to `PrivateBackup`'s own Actions secrets —
+`PrivateBackup` PR #3's description has the exact three steps. Until that happens the workflow
+exists but has never actually run against the live app.
 
 **Still open:** should the PASTE box for COMPARE WITH SOURCE, the answer to the two sites that
 refuse the function, be its own small PR, or come later?
@@ -90,11 +93,11 @@ verified and how.
 | 6c-1 | **Checks where recipes come in** | Re-planned 27 Sep, after the household asked how the line shape is kept up once the 24 lines are fixed: nothing in the app checked it. (1) The ingredient-line checks move from `test/ingredient-lines.js` into `core.js`, so the app and `validate-recipes.js` share one copy. (2) The add/edit preview shows them as warnings with a suggested line — never blocking a save. (3) A `source-ingredients` Edge Function reads the Schema.org JSON-LD at `SOURCE_URL` (as `find-recipe-image` already does for images) and returns the source's ingredient strings. (4) The source-fidelity check in `core.js`: each source ingredient matched to one recipe line sharing a content word, misses on either side shown side by side in the preview and reported by `validate-recipes.js`. (5) `parseRecipe` reports the lines it drops, shown in the preview (the review's cheaper fix, §2). (6) `tools/remeasure.js`: reads an export from outside the repo and reports rows, likely splits, "Other" rows and lines outside the shape — run by a developer session every ten or so new recipes. First job once the function is deployed: measure how many of the library's source sites carry JSON-LD (unverified; 13 of the 14 recipes 6c-2 touches have a `SOURCE_URL`, on seven sites; the review counted twelve sites library-wide) | Row 7's prerequisite; §2 and answer 4 of the architecture review; the ingredient review's §6 library regression | **Done**, PR #22, 27 Sep, with two additions the household asked for: the list shows a recipe's bracketed choice beside the recipe that offered it ("(or honey)"), and ghee files under Dairy. `source-ingredients` deployed the same evening (v1). Section F passed. **Step 33, measured by the household on 27 Sep:** of the twelve sites, **two refuse the function outright** with a 403 — Kitchen Sanctuary, which is 17 of the 34 recipes, and Allrecipes (1) — and no other failure was reported. So for half the library COMPARE WITH SOURCE says "compare by eye". Not planned yet: a PASTE box in the preview for the source's own list, copied from the page in the browser, so the check works without the function fetching anything. That, rather than a user agent dressed up as a browser, is the answer to a site that turns automated fetches away |
 | 6c-2 | **The line rewrite** | Step 7 as a production data job, with the household present. Re-derived 27 Sep from the live library: **21 lines in 13 recipes** (the review counted 24 in 13; the list is private, never committed). Simulated: 185 rows → 172, and → 167 with five word matches made in the app afterwards, against the review's ideal of 168; no group, stage or layout change in any recipe; every new line passes the shape check. Each recipe: the fidelity check against its source (Victoria Sandwich has none, D6: checked by eye), the shape check, parse, columns and timeline; then `UPDATE … WHERE id = …` in place, never delete and re-insert; then md5 against the validated text and the household opens the flow table. The household's five choices were made on 27 Sep (which alternative is bought, in four lines, and D4's uncooked weight), and the other option is kept in brackets, which the list now shows. Six more "X or Y" lines the first list left alone were added and approved on 27 Sep, so the preview has nothing left to warn about in any recipe: **27 lines in 14 recipes**. Simulated: 185 rows → 172, or 167 with the five word matches; no structure change; 20 rows show a choice | Row 7; D12 waits on it | **Done**, 27 Sep, in the database (a data job, no code). All 14 written in place, each `UPDATE` guarded on the md5 of the text before (the export taken for the job) and after (the validated text); all 14 read back as validated. Re-measured from the live library: **172 rows**, no line the list can't total, none the parser reads past, 21 rows show a choice (the 20 simulated, plus one from a line the household edited by hand earlier that evening). Word matches: the household kept three of the five and kept two pairs apart, as different things to buy: **169 rows** |
 | 6d-1 | **MERGE WITH… made safe** | A confirm step ("Merge X with Y? MERGE · CANCEL"), a filter box, and names from the whole library rather than this week's. Found 27 Sep: the dropdown felt unresponsive on the tablet and saves on the first pick, so a slip saved the neighbouring name (undone), and two matches couldn't be made because their recipes weren't planned. Split from 6d on 27 Sep, so each PR changes one behaviour | The household's review of 6c-2's word matches, 27 Sep | **Done**, PR #25, merged 28 Sep |
-| 6d-2 | **Household swaps on the shopping list** | Decided 27 Sep. First, match a swap by the list's own names (`shoppingKeyForName`) rather than by substring, which today lets a swap for "butter" fire on "peanut butter"; this changes the recipe viewer too. Then a "possible swaps" panel at the **bottom** of the shopping list, listing the household's own swaps (Settings → Swaps) that apply to this week's rows, with ratio and note. A recipe's own alternatives are not in it: since 6c-1 they show on the row, beside the recipe that offered them. Scoping a swap to some recipes or courses (a schema change) only if the panel shows it is needed. Advisory, as the recipe viewer's list already is | The household's review of 6c-1, 27 Sep | **Built**, PR #26, 28 Sep. Waiting for the household to merge on green CI. Scoping a swap to specific recipes/courses not needed — the panel didn't ask for it |
+| 6d-2 | **Household swaps on the shopping list** | Decided 27 Sep. First, match a swap by the list's own names (`shoppingKeyForName`) rather than by substring, which today lets a swap for "butter" fire on "peanut butter"; this changes the recipe viewer too. Then a "possible swaps" panel at the **bottom** of the shopping list, listing the household's own swaps (Settings → Swaps) that apply to this week's rows, with ratio and note. A recipe's own alternatives are not in it: since 6c-1 they show on the row, beside the recipe that offered them. Scoping a swap to some recipes or courses (a schema change) only if the panel shows it is needed. Advisory, as the recipe viewer's list already is | The household's review of 6c-1, 27 Sep | **Done**, PR #26, merged 28 Sep. Scoping a swap to specific recipes/courses not needed — the panel didn't ask for it |
 | 7 | **Sharing** | Started 28 Sep, split into one PR per piece rather than built as one, the same habit as 6d. The JSON-LD "plain recipe, no flow" extraction and the model-backed converter are both deferred until a family member is actually adding a recipe — asked and answered 28 Sep, not assumed | F8 F13, answer 4 | See 7a–7c |
-| 7a | **The onboarding runbook** | Documentation only, no code, no production write: the three steps to add someone (create their account, one guarded SQL statement to link them, give them the address), what `hydrate()`'s real error looks like if the link is missing, why the app has no sign-up form of its own, and that `household_members.role` is unused (verified: `grep -rn "\.role\b" index.html` finds nothing) | F8 (part) | **Built**, `docs/ONBOARDING.md` |
-| 7b | **RLS belt and braces, leaked-password protection** | Revoke `anon`'s blanket grants and restrict every `TO public` policy to `authenticated` — done. Leaked-password protection is a dashboard toggle, not SQL, and is still off | F8 (part) | **Done**, 28 Sep, migration `rls_belt_and_braces_restrict_to_authenticated` (no PR — a database migration, not app code). Leaked-password protection is the household's own click, whenever wanted |
-| 7c | **The weekly live-backend test** | A test household, a test user, a Playwright script against the *live* app, credentials in `PrivateBackup`'s secrets. Needs a real account created in production, which the household asked to hold off on for now | F13 | Not started |
+| 7a | **The onboarding runbook** | Documentation only, no code, no production write: the three steps to add someone (create their account, one guarded SQL statement to link them, give them the address), what `hydrate()`'s real error looks like if the link is missing, why the app has no sign-up form of its own, and that `household_members.role` is unused (verified: `grep -rn "\.role\b" index.html` finds nothing) | F8 (part) | **Done**, PR #27, merged 28 Sep |
+| 7b | **RLS belt and braces, leaked-password protection** | Revoke `anon`'s blanket grants and restrict every `TO public` policy to `authenticated` — done. Leaked-password protection is a dashboard toggle, not SQL, and is still off | F8 (part) | **Done**, 28 Sep, migration `rls_belt_and_braces_restrict_to_authenticated` (no PR — a database migration, not app code), documented on PR #27. Leaked-password protection is the household's own click, whenever wanted |
+| 7c | **The weekly live-backend test** | A test household, a test user, a Playwright script against the *live* app, credentials in `PrivateBackup`'s secrets | F13 | **Started** 28 Sep, `PrivateBackup` PR #3 (not this repo). Script and workflow written; blocked on the household creating the test account, giving back its email, and adding the two secrets — PR #3's description has the three steps |
 
 ### PR 6 reviewed against what came after it (25 Sep)
 
@@ -154,16 +157,19 @@ and open a pull request when the work is tested.
 Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md                  — the map of all documentation
-  docs/NEXT-SESSION.md                    — "Start here" first; 7a and 7b are both done
+  docs/NEXT-SESSION.md                    — "Start here" first; 7a and 7b are merged, 7c is blocked
   docs/REVIEW-ARCHITECTURE-FINDINGS.md    — §0 and the findings the PR closes
   docs/HANDOVER.md                        — verified status
   docs/ARCHITECTURE.md                    — how the app and its recipe format work
   CLAUDE.md                               — applies in full
 
-THE TASK: check whether PR #27 (7a) has merged, then ask whether 7c
-(the weekly live-backend test) is actually wanted yet — it needs a
-real test account created in production, and the household held off
-on that once already. If not, ask what to work on instead. Follow the
+THE TASK: check `PrivateBackup` PR #3 (7c, the weekly live-backend
+test) — whether the household has created the test account, given
+back its email, and added the two secrets. If the email has arrived
+but the isolated test household hasn't been linked yet, do that (one
+small SQL insert, isolated from the real household). If the PR has
+merged and a run has happened, read its result. If none of that has
+moved, ask what to work on instead — 7c was never urgent. Follow the
 first three sections of CLAUDE.md to the letter, and don't merge or
 touch production without asking first.
 
