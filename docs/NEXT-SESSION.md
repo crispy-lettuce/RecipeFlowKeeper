@@ -23,8 +23,8 @@ household decides when to merge.
 Each fact below was checked against the database, the deployed functions or `git log` when it
 was written. Check again before relying on one.
 
-**Done.** PRs 1–6d-1 are merged and live. The last code change was PR #25, 6d-1, merged 28 Sep.
-`core.js` still carries `2026-09-28.2` — 6d-1 touched only `index.html`, so no version bump was
+**Done.** PRs 1–6d-2 are merged and live. The last code change was PR #26, 6d-2, merged 28 Sep.
+`core.js` still carries `2026-09-28.2` — neither 6d-1 nor 6d-2 touched it, so no version bump was
 needed. 6c-2 was a data job, not a PR; PR #23 is its documentation.
 
 **The live app:**
@@ -37,6 +37,9 @@ needed. 6c-2 was a data job, not a PR; PR #23 is its documentation.
 - **Edge Functions:** `rehost-images` v10, `find-recipe-image` v4 and `source-ingredients` v1.
   `source-ingredients` gets a 403 from Kitchen Sanctuary (17 recipes) and Allrecipes (1), so
   COMPARE WITH SOURCE says "compare by eye" for half the library.
+- **Sharing:** one account, one household, one membership row (verified 28 Sep) —
+  `docs/ONBOARDING.md` is the runbook for adding a second. `anon` now holds no table access and
+  every policy is `authenticated`-only (28 Sep); leaked-password protection is still off.
 
 **Before anything else, read the first three sections of `CLAUDE.md`:**
 
@@ -47,31 +50,16 @@ needed. 6c-2 was a data job, not a PR; PR #23 is its documentation.
 They were added on 27 Sep so that any model can hold the line. `main` is protected, and
 `offline-harness` is a required check. GitHub enforces that for everyone but admins.
 
-**Next: whatever comes after 6d-2.** 6d-2 is built, on PR #26, waiting for the household to merge
-on green CI — `docs/HANDOVER.md` §7 has what was verified and how. Check GitHub before picking up
-7 or anything else, in case a review comment is still open.
+**Done since the last rewrite.** 6d-1 (PR #25) and 6d-2 (PR #26) are both merged —
+`docs/HANDOVER.md` §7 has what was verified and how for each.
 
-**6d-2, household swaps on the shopping list — built.** Two parts, in order:
-
-1. **Match swaps by the list's names.** `findSwapMatchesForIngredient` (`index.html` ~4978) used
-   to match by substring, so a swap for "butter" fired on "peanut butter" too; the recipe viewer
-   used the same function, for its swap icons (~2031) and its swap list (~2076), so the fix
-   changed what the viewer shows too. Now both normalise through `shoppingKeyForName` — a new
-   `findSwapMatchesForKey(key, swaps)` does the matching, and the raw-name version calls it.
-   Before and after against the real library (read-only, never committed): of the 2 stored
-   swaps, one was unaffected (still matches its one row under either rule); the other had
-   matched *nothing* under the old rule, because the household's wording and the recipe's own
-   wording put the same two words in a different order — the new key-based match finds it
-   correctly. No false positive was sitting in the live library today, but the mechanism that
-   prevented one (`butter` vs `peanut butter`) is what the smoke suite proves, with invented
-   names, since the repo is public.
-2. **A "possible swaps" panel at the bottom of the shopping list** (`renderShopping`). Lists the
-   household's swaps that match something on the list — name, ratio and note only, decided
-   28 Sep (no attempt to scale a row's aggregated total, which can be in mixed units or partly
-   unmeasured). Read from every row on the list, not just the ones HIDE TICKED currently shows,
-   so ticking something off doesn't hide the swap for it. `buildShoppingList` stays free of this;
-   the panel is built in `renderShopping` from what it already returned. A recipe's own bracketed
-   choice is not in the panel: since 6c-1 it already shows on the row.
+**7a and 7b are both done.** 7a (the onboarding runbook) is documentation only —
+`docs/ONBOARDING.md`, `docs/HANDOVER.md` §7. 7b ran 28 Sep, with the household's explicit
+go-ahead: `anon`'s blanket grants revoked, every `TO public` policy restricted to
+`authenticated` — `docs/HANDOVER.md` §7 has the verification. Leaked-password protection is
+still off; it's a dashboard toggle, not something a session can do. **Next: 7c**, the weekly
+live test, waits on the household wanting a real test account created in production; not
+started, and not urgent.
 
 **Still open:** should the PASTE box for COMPARE WITH SOURCE, the answer to the two sites that
 refuse the function, be its own small PR, or come later?
@@ -103,7 +91,10 @@ verified and how.
 | 6c-2 | **The line rewrite** | Step 7 as a production data job, with the household present. Re-derived 27 Sep from the live library: **21 lines in 13 recipes** (the review counted 24 in 13; the list is private, never committed). Simulated: 185 rows → 172, and → 167 with five word matches made in the app afterwards, against the review's ideal of 168; no group, stage or layout change in any recipe; every new line passes the shape check. Each recipe: the fidelity check against its source (Victoria Sandwich has none, D6: checked by eye), the shape check, parse, columns and timeline; then `UPDATE … WHERE id = …` in place, never delete and re-insert; then md5 against the validated text and the household opens the flow table. The household's five choices were made on 27 Sep (which alternative is bought, in four lines, and D4's uncooked weight), and the other option is kept in brackets, which the list now shows. Six more "X or Y" lines the first list left alone were added and approved on 27 Sep, so the preview has nothing left to warn about in any recipe: **27 lines in 14 recipes**. Simulated: 185 rows → 172, or 167 with the five word matches; no structure change; 20 rows show a choice | Row 7; D12 waits on it | **Done**, 27 Sep, in the database (a data job, no code). All 14 written in place, each `UPDATE` guarded on the md5 of the text before (the export taken for the job) and after (the validated text); all 14 read back as validated. Re-measured from the live library: **172 rows**, no line the list can't total, none the parser reads past, 21 rows show a choice (the 20 simulated, plus one from a line the household edited by hand earlier that evening). Word matches: the household kept three of the five and kept two pairs apart, as different things to buy: **169 rows** |
 | 6d-1 | **MERGE WITH… made safe** | A confirm step ("Merge X with Y? MERGE · CANCEL"), a filter box, and names from the whole library rather than this week's. Found 27 Sep: the dropdown felt unresponsive on the tablet and saves on the first pick, so a slip saved the neighbouring name (undone), and two matches couldn't be made because their recipes weren't planned. Split from 6d on 27 Sep, so each PR changes one behaviour | The household's review of 6c-2's word matches, 27 Sep | **Done**, PR #25, merged 28 Sep |
 | 6d-2 | **Household swaps on the shopping list** | Decided 27 Sep. First, match a swap by the list's own names (`shoppingKeyForName`) rather than by substring, which today lets a swap for "butter" fire on "peanut butter"; this changes the recipe viewer too. Then a "possible swaps" panel at the **bottom** of the shopping list, listing the household's own swaps (Settings → Swaps) that apply to this week's rows, with ratio and note. A recipe's own alternatives are not in it: since 6c-1 they show on the row, beside the recipe that offered them. Scoping a swap to some recipes or courses (a schema change) only if the panel shows it is needed. Advisory, as the recipe viewer's list already is | The household's review of 6c-1, 27 Sep | **Built**, PR #26, 28 Sep. Waiting for the household to merge on green CI. Scoping a swap to specific recipes/courses not needed — the panel didn't ask for it |
-| 7 | **Sharing** | When wanted: a JSON-LD Edge Function (which also gives the preview its source lines); the onboarding runbook; RLS belt and braces and leaked-password protection; a weekly Playwright test against the live app. A model-backed converter only if the family actually adds recipes | F8 F13, answer 4 | Not started |
+| 7 | **Sharing** | Started 28 Sep, split into one PR per piece rather than built as one, the same habit as 6d. The JSON-LD "plain recipe, no flow" extraction and the model-backed converter are both deferred until a family member is actually adding a recipe — asked and answered 28 Sep, not assumed | F8 F13, answer 4 | See 7a–7c |
+| 7a | **The onboarding runbook** | Documentation only, no code, no production write: the three steps to add someone (create their account, one guarded SQL statement to link them, give them the address), what `hydrate()`'s real error looks like if the link is missing, why the app has no sign-up form of its own, and that `household_members.role` is unused (verified: `grep -rn "\.role\b" index.html` finds nothing) | F8 (part) | **Built**, `docs/ONBOARDING.md` |
+| 7b | **RLS belt and braces, leaked-password protection** | Revoke `anon`'s blanket grants and restrict every `TO public` policy to `authenticated` — done. Leaked-password protection is a dashboard toggle, not SQL, and is still off | F8 (part) | **Done**, 28 Sep, migration `rls_belt_and_braces_restrict_to_authenticated` (no PR — a database migration, not app code). Leaked-password protection is the household's own click, whenever wanted |
+| 7c | **The weekly live-backend test** | A test household, a test user, a Playwright script against the *live* app, credentials in `PrivateBackup`'s secrets. Needs a real account created in production, which the household asked to hold off on for now | F13 | Not started |
 
 ### PR 6 reviewed against what came after it (25 Sep)
 
@@ -163,18 +154,18 @@ and open a pull request when the work is tested.
 Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md                  — the map of all documentation
-  docs/NEXT-SESSION.md                    — "Start here" first; 6d-1 and 6d-2 are both built
+  docs/NEXT-SESSION.md                    — "Start here" first; 7a and 7b are both done
   docs/REVIEW-ARCHITECTURE-FINDINGS.md    — §0 and the findings the PR closes
   docs/HANDOVER.md                        — verified status
   docs/ARCHITECTURE.md                    — how the app and its recipe format work
   CLAUDE.md                               — applies in full
 
-THE TASK: check whether PR #26 (6d-2) has merged and whether 7 (sharing,
-"when wanted") is actually wanted yet. If neither, ask what to work on.
-If it's PR 7: tell me what you'd do and what you need from me before
-building anything, then build it, run the tests, and open the PR. Follow
-the first three sections of CLAUDE.md to the letter, and don't merge:
-I will.
+THE TASK: check whether PR #27 (7a) has merged, then ask whether 7c
+(the weekly live-backend test) is actually wanted yet — it needs a
+real test account created in production, and the household held off
+on that once already. If not, ask what to work on instead. Follow the
+first three sections of CLAUDE.md to the letter, and don't merge or
+touch production without asking first.
 
 Some context worth having:
 

@@ -94,6 +94,20 @@ useful with no Claude Code session and no prior context at all.
 
 ---
 
+### `docs/ONBOARDING.md` — adding a family member
+**What:** The three steps to add someone to the household (create their account, link them with
+one guarded SQL statement, give them the app's address), what they see if the link is missing,
+and why the app has no sign-up form of its own to do any of this instead. Part of PR 7, Sharing.
+
+**Use it when:** actually adding someone. Written 28 Sep 2026, part one of three for PR 7 — RLS
+hardening and the weekly live-backend test are the other two, tracked separately in
+`docs/NEXT-SESSION.md`.
+
+**Don't:** use it as a case for a second, genuinely separate household — it says why that's a
+bigger decision, not a variation on these steps.
+
+---
+
 ### `docs/TEST-PLAN.md` — the browser checklist
 **What:** A step-by-step verification pass against the real backend: sign-in, hydration, the
 write queue, then every Phase 2 feature, then export/import, two devices at once (D) and the shopping list release (E, PR 6b). Includes expected row counts to

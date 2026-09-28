@@ -225,6 +225,7 @@ For a full account of how the schema got here, in order:
 20260913172854  phase2_planner_servings_and_alias_kinds
 20260921193429  make_recipe_images_public_with_guards
 20260922122137  add_recipe_logs_title_for_adhoc_diary_entries
+20260928123928  rls_belt_and_braces_restrict_to_authenticated
 ```
 
 The last two were missing from this list until 22 Sep, while the features they carry were
