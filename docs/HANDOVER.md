@@ -985,11 +985,42 @@ race ahead of the real network write reaching Supabase — but the very first on
 the initial save, was missing that wait. Checked the database afterwards: the test household's
 `recipes` and `recipe_logs` were both empty, which fits "the write never landed before the
 browser closed" rather than "it landed and something else failed to find it" — no manual cleanup
-was needed. Fixed on `PrivateBackup` PR #4: the same 2 s wait added before the first reload, to
-match the other three. **Verified by:** `node --check` on the fixed script (no syntax errors);
-the failing run's own logs, read directly rather than assumed; the database read back empty
-after. **Not yet verified:** the fix itself against the live app — that is what the workflow's
-next run, once PR #4 merges, actually proves.
+was needed. Fixed on `PrivateBackup` PR #4, merged the same session.
+
+**Run #2, straight after PR #4 merged, proved that fix and found a second, real one — this time
+in the app.** The recipe now survived its first reload correctly. But logging a cook and tapping
+a meal type, then reloading, came back with `mealType: null` instead of `'lunch'` — and run #3,
+triggered to rule out a flake, failed identically on the same commit. `updateDiaryEntry`
+(`index.html`) checked `unsavedDiaryIds.has(id)` *before* ever calling `queueWrite`, meaning
+"insert still in flight" and "insert genuinely failed" looked identical from outside, and a fast
+tap — human or scripted — happens well inside a real network round trip almost every time. The
+meal-type update was silently never queued at all, while the click handler showed "Tagged as X"
+regardless, since it never checked the return value.
+
+Verified with a three-way independent check before acting on it (a `Workflow` run: one pass
+re-traced the code by hand, one pulled Supabase's `edge_logs` for both failing runs and found
+**zero** PATCH requests to `recipe_logs` in either window — the update was never even attempted,
+not rejected by RLS — and one confirmed why the run's ad-hoc-entry step passed instead: it sets
+`mealType` in its one insert and never calls `updateDiaryEntry` at all). All three independently
+reached the same root cause.
+
+**Fixed on PR #31** (this repo): the check moves inside the queued write itself, which already
+sits behind the insert in the same shared `writeQueue`, so by the time it runs the insert has
+resolved one way or the other. `test/smoke.js` gains a check using `__WRITE_DELAY__` (already in
+the stub, never used for this) to hold both writes open long enough to force the same race a real
+network round trip does — the offline harness's instant-resolving stub is exactly why this had
+never been caught. **Verified by:** `node test/core.test.js` (72, unchanged); `node test/build.js
+&& node test/smoke.js` (269, 0 failed, up from 267); mutation-tested — reverted the fix, the two
+new checks failed by name with everything else still green, restored, 269/269 again.
+
+**A real number worth having, not a conclusion:** every one of the household's own 115 real
+cooking-log rows has `meal_type` null. That is consistent with this bug having quietly eaten every
+tag ever tapped — but SKIP is a legitimate, designed answer to the prompt (`docs/HANDOVER.md`'s
+own comment on `promptForMealType` calls it "an enrichment, not a requirement"), so 115-for-115
+null is equally consistent with the household never having tapped a meal type at all. The database
+can't tell those two apart; only the household knows which it was. **Not verified:** the fix
+against the live app — the next `weekly-live-check.yml` run, once PR #31 merges, is what actually
+proves it.
 
 **What it does not cover:** sign-in, hydration, row-level security and the background write
 queue are all stubbed. A green run is not a substitute for opening the real app. Keep Awake
