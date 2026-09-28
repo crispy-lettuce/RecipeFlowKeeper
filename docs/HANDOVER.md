@@ -967,11 +967,20 @@ logs it as cooked and answers the meal-type prompt, adds an ad-hoc entry, then c
 up — each step proven by a reload rather than trusted from the in-page cache. Answers Answer 5's
 suggested test and closes F13's specific gap (the diary's writes had never run against the real
 backend). **Verified by:** `node --check` on the script (no syntax errors) and `npm install`
-installing the same `playwright` version RecipeFlowKeeper's own harness pins. **Not verified:**
-against the live app — that needs a real test account, which no tool available to this session
-can create (it needs either the dashboard or the service-role key), so it is the household's to
-do; `PrivateBackup` PR #3's description has the exact three steps. Until that happens the
-workflow exists but has never actually run.
+installing the same `playwright` version RecipeFlowKeeper's own harness pins.
+
+**Its own household is now linked (28 Sep 2026).** The household created the test account in the
+dashboard and gave back its email; from a session, that account's `auth.users` row was found, a
+fresh `households` row was inserted for it alone, and a `household_members` row linked the two —
+the same guarded-insert shape as `docs/ONBOARDING.md` §1, but into a brand-new household rather
+than the family's. Read back afterwards: two households now exist, and the test one has zero
+recipes and zero `recipe_logs` — exactly the empty starting state the script's first check
+asserts.
+
+**Not verified:** against the live app — that still needs the two Actions secrets
+(`TEST_USER_EMAIL`, `TEST_USER_PASSWORD`) in `PrivateBackup`'s own repo settings, step 3 of the
+three in PR #3's description, and it's the household's own step, not something a session's
+credentials can do. Until that happens the workflow exists but has never actually run.
 
 **What it does not cover:** sign-in, hydration, row-level security and the background write
 queue are all stubbed. A green run is not a substitute for opening the real app. Keep Awake
