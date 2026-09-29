@@ -322,6 +322,29 @@ const wm = core.ingredientMatchMap([{ kind: 'ingredient', alias: 'Curly Kale', c
 check('word matches are applied in today\'s words, and one the rules make anyway falls away',
       wm.size === 1 && wm.get('curly kale') === 'kale', JSON.stringify([...wm]));
 
+/* ---- PR 6 of the add-recipe plan, 29 Sep: the household's aisles ----
+   An aisle replaces `category` once the key is final, and never the key. Made-up lines. */
+const aoLines = [{ recipeTitle: 'A', raw: '300 g smoked mackerel' }, { recipeTitle: 'A', raw: '1 onion' }, { recipeTitle: 'A', raw: '1 romano pepper' }, { recipeTitle: 'B', raw: '2 smoked mackerel fillets' }, { recipeTitle: 'B', raw: '4 lamb shanks' }];
+const aoMap = core.aisleOverrideMap([{ name: 'Smoked Mackerel', aisle: 'Meat & Fish' }, { name: 'onion', aisle: 'Pantry' }, { name: 'romano pepper', aisle: 'Pantry' }, { name: 'lamb shanks', aisle: 'Pantry' },
+  { name: 'kohlrabi', aisle: 'Frozen' }, { name: '', aisle: 'Pantry' }]);
+check('aisleOverrideMap keys each name in today\'s words and drops an aisle the app does not have',
+      aoMap.get('smoked mackerel') === 'Meat & Fish' && aoMap.get('onion') === 'Pantry' && aoMap.get('lamb shank') === 'Pantry' && !aoMap.has('kohlrabi') && aoMap.size === 4, JSON.stringify([...aoMap]));
+const aoPlain = core.aggregateShoppingLines(aoLines, null), aoSet = core.aggregateShoppingLines(aoLines, null, k => aoMap.get(k));
+const aoRow = (items, k) => items.find(i => i.key === k) || {};
+check('an aisle override wins over nothing, the keyword rules and a dictionary row alike, and says so',
+      aoRow(aoPlain, 'smoked mackerel').category === 'Other' && aoRow(aoPlain, 'smoked mackerel').aisleWhy === 'none'
+      && aoRow(aoPlain, 'romano pepper').aisleWhy === 'keyword' && aoRow(aoPlain, 'lamb shank').category === 'Meat & Fish' && aoRow(aoPlain, 'lamb shank').aisleWhy === 'keyword'
+      && aoRow(aoPlain, 'onion').aisleWhy === 'dictionary'
+      && aoRow(aoSet, 'smoked mackerel').category === 'Meat & Fish' && aoRow(aoSet, 'romano pepper').category === 'Pantry' && aoRow(aoSet, 'onion').category === 'Pantry'
+      && aoRow(aoSet, 'lamb shank').category === 'Pantry' && ['smoked mackerel', 'romano pepper', 'lamb shank', 'onion'].every(k => aoRow(aoSet, k).aisleWhy === 'override'),
+      JSON.stringify([aoPlain, aoSet].map(l => l.map(i => [i.key, i.category, i.aisleWhy]))));
+check('    and no key changes with an override applied: the same rows, the same keys, the same totals',
+      JSON.stringify(aoPlain.map(i => [i.key, i.name, i.qtyText, i.count])) === JSON.stringify(aoSet.map(i => [i.key, i.name, i.qtyText, i.count])),
+      JSON.stringify([aoPlain.map(i => i.key), aoSet.map(i => i.key)]));
+const aoRev = core.newRecipeReview({ lines: ['300 g smoked mackerel'], library: [], alias: null, isSettled: null, aisleOverride: k => aoMap.get(k) });
+check('    the review lands a new name where the household put it, no longer Other',
+      aoRev.names.length === 1 && aoRev.names[0].aisle === 'Meat & Fish' && aoRev.names[0].other === false && aoRev.names[0].aisleWhy === 'override', JSON.stringify(aoRev.names));
+
 /* ---- PR 7d, 28 Sep: a source's list pasted from its page ---- */
 const pastedOf = t => core.pastedIngredientLines(t);
 const furniture = '▢ 500 g chicken breast\n\n• 2 tbsp olive oil\n- 1 onion, chopped\n☐\u00a01\u00a0tsp   salt\r\n[ ] 3 eggs\n   \n▢\n\u200b▢ 4 shallots\n';

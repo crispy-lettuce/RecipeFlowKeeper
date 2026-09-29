@@ -94,6 +94,11 @@ useful with no Claude Code session and no prior context at all.
 
 ---
 
+### `docs/migrations/add-aisle-overrides.md` — a schema change waiting for the household (29 Sep 2026)
+**What:** The `aisle_overrides` table (PR 6 of the add-recipe plan), with its four `TO authenticated` policies and the
+`anon` revoke, who applies it and when (the household, from the dashboard, **before** merging that PR), why each part is
+there, what the app does if it is merged first, how to check it and how to undo it. DDL only, no data.
+
 ### `docs/migrations/add-recipes-source-check.md` — a schema change, applied by the household 29 Sep 2026
 **What:** The one `ALTER TABLE` that adds `recipes.source_check` (PR 5 of the add-recipe plan), who applies it
 and when (the household, from the dashboard, **before** merging that PR), why it is safe to apply first, what goes in
@@ -368,7 +373,7 @@ to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.m
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 329-check smoke suite, the 133 Node checks and the Edge Function checks, and an honest account of what it can't tell you
+**What:** How to run the 342-check smoke suite, the 138 Node checks and the Edge Function checks, and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 
 **Use it when:** making any code change.

@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-29.6';
+const KITCHEN_CORE_VERSION = '2026-09-29.7';
 
 
 /* ======================= quantity split ======================= */
@@ -1112,16 +1112,22 @@ function shoppingLine(rest, parsed){
    unit, and bare counts ('' — "2 chicken breasts"). A row shows every part
    it has, so nothing that cannot honestly be added is lost:
    "Chicken breast — 2 + 400 g". */
-function aisleFor(key, display, row){
-  if(row) return row.aisle;
+function aisleFor(key, display, row){ return aisleAndWhy(key, display, row).aisle; }
+/* The aisle and the reason for it, which the review and (PR 7) the lookup say
+   out loud: 'dictionary' (a row), 'keyword' (a rule or the keyword lists), or
+   'none' (nothing placed it, so Other). 'override' is added by
+   aggregateShoppingLines, which is where a household's aisle is applied. */
+function aisleAndWhy(key, display, row){
+  if(row) return { aisle: row.aisle, why: 'dictionary' };
   /* The vegetable (see shoppingLine), and the colours the dictionary has no
      row for; categorizeIngredient would call any "pepper" a spice. */
-  if(key === 'pepper' || /^(yellow|orange|mixed|romano|bell) pepper$/.test(key)) return 'Produce';
+  if(key === 'pepper' || /^(yellow|orange|mixed|romano|bell) pepper$/.test(key)) return { aisle: 'Produce', why: 'keyword' };
   /* The wording first, since the keyword lists are written in plurals
      ("chili flakes"; the folded "chili flake" misses), then the folded key,
      which finds what a plural hides ("bay leaves" -> "bay leaf"). */
   const byDisplay = categorizeIngredient(display);
-  return byDisplay !== 'Other' ? byDisplay : categorizeIngredient(key);
+  const aisle = byDisplay !== 'Other' ? byDisplay : categorizeIngredient(key);
+  return { aisle, why: aisle === 'Other' ? 'none' : 'keyword' };
 }
 /* Tablespoons and teaspoons together read as both, largest first: "3 tbsp
    + 2 tsp", where one number of teaspoons ("11 tsp") meant counting them out
@@ -1180,8 +1186,13 @@ function formatShoppingParts(item){
    household's word matches (Settings → Word Matches), applied after the rules
    and the dictionary, so a match is an override, never the mechanism.
    Pure: it reads only its arguments. buildShoppingList in index.html gathers
-   the lines from the plan and calls this. */
-function aggregateShoppingLines(lines, alias){
+   the lines from the plan and calls this.
+
+   `aisleOverride` (PR 6 of the add-recipe plan, 29 Sep 2026) is the household's
+   aisle for a key (Settings → Shopping Aisles), looked up with the key once it
+   is final, so it replaces `category` and can never change `key`: no tick is
+   ever re-keyed by an aisle. docs/PROPOSAL-AISLE-OVERRIDES.md. */
+function aggregateShoppingLines(lines, alias, aisleOverride){
   const byKey = new Map();
   (lines || []).forEach(({ recipeTitle, raw, group }) => {
     const { qty, rest } = splitQty(raw);
@@ -1224,9 +1235,11 @@ function aggregateShoppingLines(lines, alias){
        on a tie the longer, which is the plural ("3 Carrots", not "3 Carrot"). */
     const display = it.row ? it.row.name : Array.from(it.displays.entries())
       .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length || a[0].localeCompare(b[0]))[0][0];
+    const own = aisleOverride ? aisleOverride(it.key) : null;
+    const placed = own ? { aisle: own, why: 'override' } : aisleAndWhy(it.key, display, it.row);
     const item = {
       key: it.key, name: display.charAt(0).toUpperCase() + display.slice(1),
-      category: aisleFor(it.key, display, it.row), parts: it.parts, unmeasured: it.unmeasured, ...rowAlternatives(it),
+      category: placed.aisle, aisleWhy: placed.why, parts: it.parts, unmeasured: it.unmeasured, ...rowAlternatives(it),
       unqtyCount: it.unqtyCount, count: it.count, recipes: it.recipes
     };
     item.qtyText = formatShoppingParts(item);
@@ -1651,6 +1664,18 @@ function pastedIngredientLines(text){
    words still means the same thing), and one the rules now make anyway
    dropped. Here rather than in the page so tools/remeasure.js applies
    them exactly as the list does. */
+/* The household's aisles as the list applies them: each name re-normalised
+   through today's rules, as ingredientMatchMap does for word matches, so an
+   aisle set on "Sirloin steaks" applies to the "sirloin steak" row. An aisle
+   the app does not know is dropped rather than inventing a section. */
+function aisleOverrideMap(overrides){
+  const map = new Map();
+  (overrides || []).forEach(o => {
+    const key = shoppingKeyForName(o && o.name);
+    if(key && INGREDIENT_AISLES.includes(o.aisle)) map.set(key, o.aisle);
+  });
+  return map;
+}
 function ingredientMatchMap(aliases){
   const map = new Map();
   (aliases || []).forEach(a => {
@@ -1744,14 +1769,14 @@ function sourceCheckStatus(check, lines){
    A pair is offered only where exactly ONE side is new. Two names the library has
    already are not this recipe's business, and two new names from this one recipe are
    the converter's wording, not a match to settle. */
-function newRecipeReview({ lines, sourceUrl, recipeId, library, alias, isSettled }){
+function newRecipeReview({ lines, sourceUrl, recipeId, library, alias, isSettled, aisleOverride }){
   const others = (library || []).filter(r => r.id !== recipeId);
   const asLines = (title, ls) => (ls || []).map(raw => ({ recipeTitle: title, raw }));
-  const mine = aggregateShoppingLines(asLines('this recipe', lines), alias);
+  const mine = aggregateShoppingLines(asLines('this recipe', lines), alias, aisleOverride);
   const otherLines = others.flatMap(r => asLines(r.title, r.lines));
   const inLibrary = new Set(aggregateShoppingLines(otherLines, alias).map(i => i.key));
   const names = mine.map(i => ({
-    key: i.key, name: i.name, aisle: i.category, other: i.category === 'Other', isNew: !inLibrary.has(i.key)
+    key: i.key, name: i.name, aisle: i.category, aisleWhy: i.aisleWhy, other: i.category === 'Other', isNew: !inLibrary.has(i.key)
   }));
   const isNew = new Set(names.filter(n => n.isNew).map(n => n.key));
   const union = aggregateShoppingLines(asLines('this recipe', lines).concat(otherLines), alias);
@@ -1783,7 +1808,7 @@ if(typeof module !== 'undefined' && module.exports){
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,
     NEVER_IGNORE, foldPlural, dictionaryRow, dictionaryPhrases, dictionaryKey, shoppingLine, formatShoppingParts, aggregateShoppingLines,
     shoppingKeyForName, strictMatchSuggestions,
-    ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, fidelityAmount, fidelityAgree, pastedIngredientLines, ingredientMatchMap,
+    ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, fidelityAmount, fidelityAgree, pastedIngredientLines, ingredientMatchMap, aisleOverrideMap,
     sourceNoteIn, normalisedSourceUrl, linesHash, fidelityCounts, sourceCheckStatus, newRecipeReview
   };
 }

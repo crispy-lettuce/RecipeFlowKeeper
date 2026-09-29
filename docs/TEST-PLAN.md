@@ -357,6 +357,16 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     hash, and **no ingredient text from the page**. **The one thing no test can judge is whether the chip reads clearly
     beside the link on the tablet.**
 
+36g. **Shopping aisles (new 29 Sep, PR 6 of the add-recipe plan).** **Do this only after the SQL in
+    `docs/migrations/add-aisle-overrides.md` has been applied and the PR merged.** It writes one row per aisle set, and
+    each is removed again below. (1) *Settings:* a SHOPPING AISLES block sits under WORD MATCHES with a name box, an
+    aisle list and ADD, and says no aisles are set. (2) *Pick a row the shopping list puts in Other,* type its name as the
+    list shows it, pick an aisle, ADD: the row is listed, and on the shopping list the item has moved to that aisle,
+    **still ticked if it was ticked**. REMOVE it: it goes back to Other. (3) *Add a made-up recipe with a line whose name
+    is new and lands in Other:* the SHOPPING LIST review shows an aisle list beside SAME AS…; pick an aisle and the row
+    says "Moved to …" with UNDO; UNDO puts it back. Close without saving, and check Settings lists nothing left over. **The
+    one thing no test can judge is whether the aisle list is easy to use on the tablet.**
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

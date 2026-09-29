@@ -1525,6 +1525,32 @@ amended (§11 item 2, put to the household in the PR):** the unamended suite aga
 and its settled-pair check, each on its button count alone. Six mutations, each seen failing by name; `index.html` restored and
 compared byte-identical after the run. *Not verified:* the tablet, and a real tap in the filter box on iPadOS or Android.
 
+**PR 6 of the add-recipe plan, shopping aisles (29 Sep 2026).** The household's aisle for an ingredient: a new
+`aisle_overrides` table (`docs/migrations/add-aisle-overrides.md`, **the household applies it before merging**), SHOPPING
+AISLES in Settings with ADD and REMOVE, and on the add form's review an aisle list on a new name that lands in Other, which
+writes at once and says "Moved to … · UNDO". `core.js`: `aisleOverrideMap`, a third parameter on `aggregateShoppingLines`
+applied after the key is final, and `aisleWhy` on every row. **The first PR to touch `hydrate()`:** the new table is read apart
+and a missing table does not sign anyone out; the feature says it is unavailable instead. Export and import carry the aisles.
+The plan's PR 6 entry has the "Built as". `core.js` `2026-09-29.7`.
+
+*Verified by.* `core.test.js` **134 → 138**, `smoke.js` **333 → 342**, both exit 0, no console or page errors, and **no
+existing check changed**. Node mutations on the new `core.js` code each fail a named check; two survived a first round (an
+override looked up by the display name, and a keyword aisle reported as the dictionary's) because every test name's display
+equalled its key and the only keyword case went through the pepper rule, so "4 lamb shanks" was added and both now fail. The
+first browser run caught a test fault, not an app fault: the tomato row lists "Test Pasta" among its recipes, so ticking "the
+row with pasta in it" ticked the tomatoes; rows are now found by their own name. **Twelve page mutations, each seen failing by name:** `hydrate`
+throwing on a missing table, the list or the review ignoring aisles, the aisle list on every row, while unavailable or beside
+a pending "Same as", a delete by id instead of name, an UNDO that does nothing or is not shown, export writing the key while
+unavailable, the Settings form shown while unavailable, and a name stored as typed. That last one first **survived**: both
+callers passed an already-keyed name, so the keying inside `addAisleOverride` was never exercised. Settings now passes the typed
+text and `addAisleOverride` is the one place a name is keyed; the mutation then failed two checks. `index.html` was restored and
+compared byte-identical after the runs. The live `aliases` definition and the
+project's default privileges were read (read-only) to draft the migration: new tables in `public` grant `anon` everything by
+default, hence the revoke. *Not verified:* the migration itself and the live table (RLS, the upsert on
+`(household_id, name)`), the tablet (`docs/TEST-PLAN.md` step 36g), and a real select on iPadOS or Android. **Counts corrected
+in passing:** `CLAUDE.md`, `test/README.md`, `docs/ARCHITECTURE.md` and `docs/DOCUMENT-INDEX.md` still said 133 and 329, which
+PRs #47 and #48 should have moved.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export

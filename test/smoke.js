@@ -2942,6 +2942,119 @@ const check = (name, pass, detail) => {
   check('the offline start raised no page errors', coldErrors.length === 0, coldErrors.join('; '));
   await cold.close();
 
+  /* ---- Shopping aisles (PR 6 of the add-recipe plan, 29 Sep 2026) ----
+     The household's aisle for a name, set in Settings or from the review, one row per write, and
+     applied after the key is final: a row moves aisle and keeps its key and its tick. And the app must
+     cope with a merge that arrives before the table does. Invented names, put back at the end. */
+  const aoWrites = mark => page.evaluate(m => window.__WRITES__.slice(m).filter(w => w.table === 'aisle_overrides')
+    .map(w => ({ op: w.op, rows: (w.rows || []).map(r => ({ name: r.name, aisle: r.aisle, household: !!r.household_id })), onConflict: w.opts && w.opts.onConflict,
+      eqs: (w.eqs || []).map(e => e.column + '=' + (e.column === 'household_id' ? 'H' : e.value)).join('&') })), mark);
+  const aoShopRow = re => page.evaluate(src => { const el = [...document.querySelectorAll('.shop-item')].find(e => new RegExp(src, 'i').test(e.dataset.name || ''));
+    if(!el) return null; const cat = el.closest('.shop-category');
+    return { key: el.dataset.key, name: el.dataset.name, aisle: cat ? cat.querySelector('.shop-category-title').textContent.trim() : '', ticked: el.classList.contains('checked') }; }, re.source);
+  /* By the row's own name: the tomato row lists "Test Pasta" among its recipes, so matching the text ticks the wrong row. */
+  const aoTick = re => page.evaluate(src => { const el = [...document.querySelectorAll('.shop-item')].find(e => new RegExp(src, 'i').test(e.dataset.name || ''));
+    if(el) el.querySelector('input').click(); }, re.source);
+  await page.click('.navlink[data-view="shopping"]');
+  await page.waitForTimeout(300);
+  await aoTick(/pasta/);
+  await page.waitForTimeout(200);
+  const aoBefore = await aoShopRow(/pasta/);
+  await page.click('.navlink[data-view="settings"]');
+  await page.waitForTimeout(300);
+  const aoMark1 = await anMark();
+  await page.fill('#aisleOverride-name', aoBefore.name);
+  await page.selectOption('#aisleOverride-aisle', 'Produce');
+  await page.click('#aisleOverrideAddBtn');
+  await page.waitForTimeout(300);
+  const aoAdded = await aoWrites(aoMark1);
+  const aoListed = await page.evaluate(() => document.getElementById('aisleOverridesList').textContent.replace(/\s+/g, ' ').trim());
+  check('Settings → Shopping Aisles: ADD writes one aisle for the name, keyed as the list keys it, upserted on the name',
+        aoAdded.length === 1 && aoAdded[0].op === 'upsert' && aoAdded[0].rows.length === 1 && aoAdded[0].rows[0].name === aoBefore.key
+        && aoAdded[0].rows[0].aisle === 'Produce' && aoAdded[0].rows[0].household && aoAdded[0].onConflict === 'household_id,name'
+        && new RegExp(aoBefore.key + ' ?in ?Produce').test(aoListed), JSON.stringify([aoBefore, aoAdded, aoListed]));
+  await page.click('.navlink[data-view="shopping"]');
+  await page.waitForTimeout(300);
+  const aoMoved = await aoShopRow(/pasta/);
+  check('    the row moves to that aisle on the shopping list, with the same key and its tick kept',
+        aoBefore && aoBefore.ticked === true && aoBefore.aisle !== 'PRODUCE' && aoMoved && aoMoved.aisle === 'PRODUCE' && aoMoved.key === aoBefore.key && aoMoved.ticked === true,
+        JSON.stringify([aoBefore, aoMoved]));
+  await page.click('.navlink[data-view="settings"]');
+  await page.waitForTimeout(300);
+  const aoMark2 = await anMark();
+  await page.click('[data-remove-aisle-override]');
+  await page.waitForTimeout(300);
+  const aoRemoved = await aoWrites(aoMark2);
+  await page.click('.navlink[data-view="shopping"]');
+  await page.waitForTimeout(300);
+  const aoBack = await aoShopRow(/pasta/);
+  check('    REMOVE deletes that one row, with no dialog, and the row goes back where the list put it',
+        aoRemoved.length === 1 && aoRemoved[0].op === 'delete' && aoRemoved[0].eqs === 'household_id=H&name=' + aoBefore.key && aoBack.aisle === aoBefore.aisle && aoBack.key === aoBefore.key
+        && (await page.evaluate(() => loadAisleOverrides().length)) === 0, JSON.stringify([aoRemoved, aoBack]));
+  await aoTick(/pasta/);
+  await page.waitForTimeout(200);
+
+  // The review's aisle pick.
+  await page.evaluate(() => {
+    loadRecipes().push({ id: 'ao-jack', title: 'Aisle Jackfruit Curry', source: 'Blue Door Bakery', sourceUrl: '', servings: 4,
+      tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-09-05',
+      syntax: 'TITLE: Aisle Jackfruit Curry\nSOURCE: Blue Door Bakery\nSERVINGS: 4\n\nGROUP a:\n400 g jackfruit\n\nSTAGE:\nMERGE a -> done: Simmer [20 min]' });
+  });
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+  await rvPaste(anText('Aisle Pick', 'Blue Door Bakery', ['300 g smoked mackerel', '300 g young jackfruit', '175 g mangetout']));
+  const aoRows = () => page.evaluate(() => [...document.querySelectorAll('#reviewList .rv-row')].map(r => ({ text: r.textContent.replace(/\s+/g, ' ').trim(),
+    select: !!r.querySelector('select[data-rv-aisle]'), undo: !!r.querySelector('[data-rv="aisle-undo"]') })));
+  const aoRowOf = (rows, n) => rows.find(r => r.text.startsWith(n)) || {};
+  const aoR0 = await aoRows();
+  check('the review offers an aisle on a new name that lands in Other, and not on one with a "Same as" pending or one already placed',
+        aoRowOf(aoR0, 'Smoked mackerel').select === true && aoRowOf(aoR0, 'Young jackfruit').select === false && aoRowOf(aoR0, 'Mangetout').select === false,
+        JSON.stringify(aoR0));
+  const aoMark3 = await anMark();
+  await page.selectOption('#reviewList select[data-rv-aisle="smoked mackerel"]', 'Meat & Fish');
+  await page.waitForTimeout(300);
+  const aoPicked = await aoWrites(aoMark3);
+  const aoR1 = await aoRows();
+  check('    picking one writes that aisle at once, and the row says "Moved to Meat & Fish" with UNDO',
+        aoPicked.length === 1 && aoPicked[0].op === 'upsert' && aoPicked[0].rows[0].name === 'smoked mackerel' && aoPicked[0].rows[0].aisle === 'Meat & Fish'
+        && /lands under Meat & Fish/.test(aoRowOf(aoR1, 'Smoked mackerel').text) && /Moved to Meat & Fish/.test(aoRowOf(aoR1, 'Smoked mackerel').text)
+        && aoRowOf(aoR1, 'Smoked mackerel').undo && !aoRowOf(aoR1, 'Smoked mackerel').select, JSON.stringify([aoPicked, aoR1]));
+  const aoMark4 = await anMark();
+  await anClick('[data-rv="aisle-undo"]');
+  await page.waitForTimeout(300);
+  const aoUndone = await aoWrites(aoMark4);
+  const aoR2 = await aoRows();
+  check('    UNDO deletes it, and the row is back in Other with its aisle pick',
+        aoUndone.length === 1 && aoUndone[0].op === 'delete' && aoUndone[0].eqs === 'household_id=H&name=smoked mackerel' && /lands under Other/.test(aoRowOf(aoR2, 'Smoked mackerel').text)
+        && aoRowOf(aoR2, 'Smoked mackerel').select && !aoRowOf(aoR2, 'Smoked mackerel').undo && (await page.evaluate(() => loadAisleOverrides().length)) === 0,
+        JSON.stringify([aoUndone, aoR2]));
+
+  /* Merged before its migration: the table does not exist yet. The load must not throw (a throw in
+     hydrate signs the household out), and nothing may offer a write that would fail. */
+  const aoSignouts = await page.evaluate(() => window.__SIGNOUTS__);
+  const aoMissing = await page.evaluate(async () => { window.__MISSING_TABLES__ = ['aisle_overrides'];
+    try { const ok = await hydrate(); return { ok, available: aisleOverridesAvailable, n: loadAisleOverrides().length }; }
+    catch(e){ return { threw: String(e && e.message || e) }; } });
+  await page.evaluate(() => { renderAisleOverridesList(); });
+  const aoMissingUi = await page.evaluate(() => ({ note: getComputedStyle(document.getElementById('aisleOverridesUnavailable')).display !== 'none',
+    form: getComputedStyle(document.getElementById('aisleOverrideForm')).display !== 'none' }));
+  await rvPaste(anText('Aisle Missing', 'Blue Door Bakery', ['300 g smoked mackerel']));
+  const aoMissingRows = await aoRows();
+  const aoMissingExport = await page.evaluate(() => { let payload = null; const real = window.Blob;
+    window.Blob = function(parts){ payload = JSON.parse(parts[0]); return new real(parts); };
+    try { exportAllData(); } catch(e){} window.Blob = real; return payload ? ('aisleOverrides' in payload) : 'no export'; });
+  check('with the table not created yet, the load carries on without aisles and signs nobody out',
+        aoMissing.ok === true && aoMissing.available === false && aoMissing.n === 0 && (await page.evaluate(() => window.__SIGNOUTS__)) === aoSignouts,
+        JSON.stringify(aoMissing));
+  check('    and nothing offers a write that would fail: Settings says why, with no form, the review has no aisle pick, and export leaves the key out',
+        aoMissingUi.note && !aoMissingUi.form && aoRowOf(aoMissingRows, 'Smoked mackerel').text && !aoRowOf(aoMissingRows, 'Smoked mackerel').select && aoMissingExport === false,
+        JSON.stringify([aoMissingUi, aoMissingRows, aoMissingExport]));
+  await page.evaluate(async () => { window.__MISSING_TABLES__ = []; await hydrate(); renderAisleOverridesList(); });
+  check('    and once the table exists the next load finds it again',
+        await page.evaluate(() => aisleOverridesAvailable === true), '');
+  await page.evaluate(() => { closeAddModal(); });
+  await page.waitForTimeout(200);
+
   await page.screenshot({ path: path.join(__dirname, 'settings.png'), fullPage: false });
 
   const failed = checks.filter(c => !c.pass).length;

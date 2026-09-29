@@ -152,7 +152,7 @@ refresh lands whole or not at all.
 | `computeTimeline(groups, stages)` | Derives each step's start/end from stage order plus durations. Returns `null` if no step has a real duration — which is why the timeline strip auto-hides. |
 | `mountFlow(container, parsed, opts)` | Renders the diagram and wires tick-to-complete. `opts.tickKey` makes ticks survive a re-render. |
 | `scaleRecipeSyntax(text, multiplier)` | Rewrites quantities in the raw text. Callers compute `multiplier = target ÷ base`; nothing scales by a raw multiplier any more. |
-| `buildShoppingList(weekDays)` | Aggregates the plan into a shopping list. **Must stay side-effect free** — it runs on every planner change via `updateSidebarCounts()`. The naming and totalling are `aggregateShoppingLines` in `core.js` (since PR 6b); the page adds the week, the headcount, the household's word matches and each line's group, which says what a line with no amount is for ("+ extra to serve"). |
+| `buildShoppingList(weekDays)` | Aggregates the plan into a shopping list. **Must stay side-effect free** — it runs on every planner change via `updateSidebarCounts()`. The naming and totalling are `aggregateShoppingLines` in `core.js` (since PR 6b); the page adds the week, the headcount, the household's word matches, the household's aisles (`applyAisleOverride`, PR 6 of the add-recipe plan) and each line's group, which says what a line with no amount is for ("+ extra to serve"). An aisle replaces a row's `category` after its key is final, so it never re-keys a tick. |
 | `shoppingLine(rest, parsed)` (`core.js`) | One ingredient line → its key, the name to show, its aisle's dictionary row and its amount in a base unit. The rules, in order, are in its comment: brackets and the first comma go, then tail notes, size words and a leading count unit ("pinch of", "2 tins", and since 29 Sep, PR 1, with size words between the article and the unit: "a big handful of"); "tinned" is read as "canned" (`foldTin`, also in `dictionaryKey` and the source check, so a tin and a can are one product); garlic and celery carry their count at the end; bare "pepper" is black pepper by the spoon and the vegetable when counted; then the dictionary, then prep words. **One row per key**, whatever the units: parts that can't be added are shown side by side, `2 + 400 g`. |
 | `dictionaryPhrases(row)` (`core.js`) | The wordings of one dictionary row: `live`, which the index reads (the name and each plain wording in `also`), and `skipped`, the pieces that carry a note (brackets, emphasis, backtick or quote mark, or "when", "not", "check") and name no single wording. One function so the index and `test/core.test.js` read a row alike, and the test pins that everything skipped carries a mark: an apostrophe once counted as a note, and `confectioners' sugar` was written in the file and never indexed (29 Sep, PR 7f). A row's rule is one product on the shelf under two names, never a substitute (`tools/ingredient-names-preamble.md`). |
 | `ingredientLineFaults(line)` (`core.js`) | The standard-shape checks for one ingredient line, each marked `affectsList` when the shopping list can't total it (an alternative outside brackets, two ingredients on a line, cups or oz, a tin in ml, an amount inside the name). The add/edit preview shows only those, as warnings that never block a save; `validate-recipes.js` reports all (27 Sep, PR 6c-1). `suggestIngredientLine` offers a rewrite where there is one right answer. |
@@ -173,7 +173,7 @@ refresh lands whole or not at all.
 
 ## 4. The database
 
-Supabase Postgres. 13 tables, all with row-level security enabled and policies on every one.
+Supabase Postgres. 14 tables once `aisle_overrides` is created (13 before), all with row-level security enabled and policies on every one.
 RLS is driven by `private.household_ids_for_user()` — kept in a `private` schema, granted only
 to `authenticated`, never to `anon`.
 
@@ -193,6 +193,7 @@ was a deliberate call in the brief: retrofitting it later, once data exists, is 
 | `ingredient_swaps` | Personal substitutions with a scaling ratio. |
 | `shopping_checked` | Ticked items, keyed by `week_start` + `item_key`. **`item_key` is the row's key**, the ingredient's name alone since PR 6b (with a `both\|` prefix for the both-weeks list), so a recipe changing its unit keeps the tick but anything that changes how items are *named* re-keys them. Until 25 Sep it was `name\|unit`; those rows are deleted at start-up by `purgeOldFormatTicks`. |
 | `aliases` | Word matches. `kind` is `source`, `ingredient`, `source_distinct` or `ingredient_distinct` — the `_distinct` kinds record "these are *not* the same" so the app stops asking. Ingredient matches are re-normalised through `shoppingKeyForName` as they load, so a match stored in the old normaliser's words still applies; the stored rows are never rewritten. |
+| `aisle_overrides` | The household's aisle for an ingredient (PR 6 of the add-recipe plan, 29 Sep 2026): `name` is the shopping list's key for it (`shoppingKeyForName`), `aisle` one of `INGREDIENT_AISLES`, unique on `(household_id, name)`. Set in Settings → Shopping Aisles or from the add form's review; applied by `aggregateShoppingLines` after the key is final. Created by `docs/migrations/add-aisle-overrides.md`, which the household applies. **`hydrate()` reads it apart from the other tables and does not throw when it is missing**: the feature is then unavailable and says so. |
 | `household_settings` | One row. `week_start_day` (0=Sunday, default 5=Friday). |
 | `households`, `household_members` | Identity. `hydrate()` reads the signed-in user's first `household_members` row to set `HOUSEHOLD_ID`, so the app carries no household constant. *(Corrected 23 Sep; this row said it was a constant.)* |
 
@@ -237,10 +238,10 @@ a URL is already ours. See `docs/IMAGES.md` §5.
 (`test/stub.js`) and walks every screen.
 
 ```sh
-node test/core.test.js   # 133 checks on core.js in Node, about two seconds, no browser
+node test/core.test.js   # 138 checks on core.js in Node, about two seconds, no browser
 npm install playwright
 node test/build.js       # bake index.html (with core.js inlined) against the stub
-node test/smoke.js       # 329 checks; exits non-zero on failure
+node test/smoke.js       # 342 checks; exits non-zero on failure
 ```
 
 **`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,
