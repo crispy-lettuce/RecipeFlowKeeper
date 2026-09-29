@@ -675,6 +675,30 @@ Settings block SHOPPING AISLES, the cache functions mirroring the alias ones, an
 override and UNDO deletes it` and `no key changes with an override applied` (assert on keys before
 and after). **Risk.** Low: by construction it never touches a key.
 
+**Built as** (29 Sep, after PR 5b, with the handover's five judgement calls taken as proposed):
+- **`hydrate()` reads `aisle_overrides` apart and does not throw when it is missing** (the first PR to touch
+  `hydrate`). Any error on that one read means no table yet: `aisleOverridesAvailable` is false, Settings says so
+  with no form, the review offers no aisle pick, and export leaves the key out so a later restore cannot read "no
+  aisles". A dead network fails every read together, so the other reads throw for it as before; a separate network
+  test on this read was written, found untestable on its own, and taken out.
+- **`buildShoppingList` gains one argument,** the pure lookup `applyAisleOverride`; it stays side-effect free.
+- **Export and import carry `aisleOverrides`.** A backup without the key, or a household without the table, keeps
+  what is set; an aisle the app does not have is dropped and each name keyed as the list keys it. One new
+  `replaceAisleOverrides`, import only, through `pushList` unchanged.
+- **No CHECK on the `aisle` column;** the unique `(household_id, name)` is what the upsert resolves on.
+- **`aisleWhy` has all four values** (`override`, `dictionary`, `keyword`, `none`) from `aisleAndWhy` in `core.js`,
+  so PR 7 can say why an aisle was chosen. `aisleFor` is unchanged in what it returns.
+- **Names are stored as the list's key** (`shoppingKeyForName`), as word matches are, so two spellings of one
+  ingredient are one row. The proposal said "as typed"; stored as typed, "Dried pasta" and "dried pasta" would
+  be two rows for one key.
+- **The review's pick shows on a new row in Other with no "Same as" pending,** beside SAME AS… (PR 5b), so a name
+  can be matched first. `newRecipeReview` takes the lookup too, so a placed row reads "lands under Pantry".
+- **REMOVE in Settings has no dialog;** an aisle is put back as easily as it was set.
+- **`addAisleOverride` is the one place a name is keyed;** Settings passes the text as typed. (Found by a mutation that
+  survived while both callers keyed the name first.)
+- `core.js` `2026-09-29.7`. **No existing check had to change**: the 333 smoke and 134 Node checks passed unchanged
+  against the new code before any was added.
+
 ### PR 7 — Settings: lookup, dictionary, swaps text
 
 **Scope.** §6: INGREDIENT LOOKUP, the read-only DICTIONARY list, the Swaps subtitle. `aisleWhy` for

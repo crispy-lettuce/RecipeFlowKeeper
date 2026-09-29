@@ -236,8 +236,11 @@ recorded as done elsewhere. If you are adding a migration, add it here in the sa
 A statement run in the dashboard's SQL editor is not recorded in `schema_migrations`, so the check above does
 not show it: `add_recipes_source_check` (`docs/migrations/add-recipes-source-check.md`, one nullable `jsonb` column,
 `recipes.source_check`, for PR 5 of the add-recipe plan) was applied that way by the household on 29 Sep 2026 and is
-checked instead with the query on its own page (read-only, 18:25 UTC that day: `source_check | jsonb | YES`). Nothing
-is waiting to be applied.
+checked instead with the query on its own page (read-only, 18:25 UTC that day: `source_check | jsonb | YES`).
+
+**Waiting to be applied (29 Sep 2026):** `docs/migrations/add-aisle-overrides.md`, the `aisle_overrides` table with its four
+`TO authenticated` policies, for PR 6 of the add-recipe plan. The household applies it from the SQL editor **before** merging that
+PR; add it to the list above when it has been, and remove this note.
 
 ---
 

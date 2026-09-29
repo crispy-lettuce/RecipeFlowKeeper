@@ -21,6 +21,9 @@
        __AUTH_CB__       the app's onAuthStateChange listener, so a test can
                          fire SIGNED_IN as supabase-js does on a tab return
        __SIGNOUTS__      how many times the app signed itself out
+       __MISSING_TABLES__ table names that read as not created yet, the way
+                         PostgREST says so (added 29 Sep for PR 6: a merge can
+                         arrive before its migration, and the app must cope)
 
      The failure is an error OBJECT with the browser's text as its message,
      not a thrown TypeError — that is what postgrest-js actually hands back,
@@ -34,6 +37,9 @@
 
   function result(table){
     if(window.__READ_FAIL__) return { data: null, error: NETWORK_ERROR };
+    if((window.__MISSING_TABLES__ || []).includes(table)){
+      return { data: null, error: { message: `Could not find the table 'public.${table}' in the schema cache`, details: null, hint: null, code: 'PGRST205' } };
+    }
     const rows = DATA[table] === undefined ? [] : DATA[table];
     return { data: rows, error: null };
   }

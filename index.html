@@ -1021,6 +1021,9 @@
   .rv-row .rv-sameas{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:4px; }
   .rv-sameas-filter{ font:inherit; font-size:16px; padding:3px 7px; min-width:160px;
     border:1px solid var(--line-soft); border-radius:5px; background:var(--paper); color:var(--ink); }
+  /* PR 6: the aisle pick, 16px for the same reason as the filter. */
+  .rv-aisle{ font:inherit; font-size:16px; margin-left:6px; padding:2px 4px; border:1px solid var(--line-soft);
+    border-radius:5px; background:var(--paper); color:var(--ink); }
   .rv-sameas-options{ display:flex; flex-wrap:wrap; gap:4px 10px; }
   .rv-sameas-options button{ text-decoration:none; font-family:inherit; font-size:13px; letter-spacing:normal; margin-left:0; }
   .rv-dup-detail{ margin:6px 0 0; padding:8px 10px; background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r); font-size:13px; }
@@ -1605,6 +1608,22 @@
           <div id="aliasesList" class="sources-list"></div>
         </div>
 
+        <div class="settings-block" id="aisleOverridesBlock">
+          <div class="side-label">SHOPPING AISLES</div>
+          <p class="subtle">Move something the shopping list puts in the wrong aisle. It applies to
+            every recipe that uses the name. To total two names as one, match them in Word Matches
+            first, then set one aisle here.</p>
+          <p class="subtle" id="aisleOverridesUnavailable" style="display:none;">Not available yet: the
+            aisle_overrides table has not been created on the database (docs/migrations/add-aisle-overrides.md).</p>
+          <div class="alias-form" id="aisleOverrideForm">
+            <input type="text" id="aisleOverride-name" placeholder="e.g. sirloin steak">
+            <select class="sort" id="aisleOverride-aisle" aria-label="Aisle"></select>
+            <button class="btn" id="aisleOverrideAddBtn">ADD</button>
+          </div>
+          <p class="field-error" id="aisleOverrideError" style="display:none;"></p>
+          <div id="aisleOverridesList" class="sources-list"></div>
+        </div>
+
         <div class="settings-block">
           <div class="side-label">SOURCES</div>
           <p class="subtle">Every distinct source currently in use. If two entries are
@@ -1733,7 +1752,7 @@
   </div>
 </div>
 
-<script src="core.js?v=2026-09-29.6"></script>
+<script src="core.js?v=2026-09-29.7"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -1741,7 +1760,7 @@
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-09-29.6';
+const EXPECTED_CORE_VERSION = '2026-09-29.7';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -2429,6 +2448,7 @@ const cache = {
   groups: [], swaps: [], shoppingChecked: {},
   settings: { weekStartDay: DEFAULT_WEEK_START_DAY, darkMode: 'system' },
   aliases: [],
+  aisleOverrides: [],
   diary: []
 };
 
@@ -2608,7 +2628,7 @@ async function hydrate(opts){
   if(!memberships.length) throw new Error("This account isn't linked to a household yet.");
   HOUSEHOLD_ID = memberships[0].household_id;
 
-  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases] = await Promise.all([
+  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides] = await Promise.all([
     sb.from('recipes').select('*'),
     /* Every column, and no recipe_id filter. The filter was here because a
        log could only ever be a cooked recipe; an ad-hoc diary entry (H2) is
@@ -2624,11 +2644,19 @@ async function hydrate(opts){
     /* maybeSingle, not single: a household with no settings row yet must come
        back as null rather than throwing, since any throw in here signs you out. */
     sb.from('household_settings').select('*').maybeSingle(),
-    sb.from('aliases').select('*')
+    sb.from('aliases').select('*'),
+    sb.from('aisle_overrides').select('*')
   ]);
   for(const res of [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases]){
     if(res.error) throw res.error;
   }
+  /* aisle_overrides (PR 6) is read apart from the rest, and is the one table
+     whose failure does not throw: the app can merge before the household has
+     created the table (PR 5's column did, 29 Sep), and a throw in here signs
+     you out with no way back. A dead network fails every read at once, so the
+     reads above have already thrown for it. An error here means no table
+     yet: no aisles, and Settings says so rather than offering a form whose
+     writes would fail. */
   if(opts && opts.shouldApply && !opts.shouldApply()) return false;
 
   /* Two shapes from one query, deliberately.
@@ -2687,6 +2715,11 @@ async function hydrate(opts){
     id: row.id, kind: row.kind, alias: row.alias, canonical: row.canonical || ''
   }));
   rebuildAliasMaps();
+  aisleOverridesAvailable = !aisleOverrides.error;
+  if(aisleOverrides.error) console.warn('Shopping aisles are unavailable (has the aisle_overrides table been created?)', aisleOverrides.error);
+  cache.aisleOverrides = aisleOverridesAvailable
+    ? (aisleOverrides.data || []).map(row=>({ id: row.id, name: row.name, aisle: row.aisle })) : [];
+  rebuildAisleOverrideMap();
   return true;
 }
 
@@ -2934,6 +2967,51 @@ function removeAlias(id){
 /* A pair key is order-independent, so "is this pair settled?" gives the same
    answer whichever of the two names the shopping list happens to see first. */
 function pairKeyFor(a, b){ return [a, b].sort().join(' || '); }
+
+/* ---- Shopping aisles (PR 6 of the add-recipe plan, 29 Sep 2026) ----
+   docs/PROPOSAL-AISLE-OVERRIDES.md. The household's aisle for an ingredient,
+   the same shape as word matches: stored by the shopping list's key for the
+   name (so "Sirloin Steaks" and "sirloin steak" are one row, as the unique
+   (household_id, name) says), one row per write, and applied by
+   aggregateShoppingLines after the key is final, so no tick is ever re-keyed.
+   `aisleOverridesAvailable` is false until a load has found the table. */
+let aisleOverridesAvailable = false;
+let aisleOverrideLookup = new Map();
+function loadAisleOverrides(){ return cache.aisleOverrides; }
+function rebuildAisleOverrideMap(){ aisleOverrideLookup = aisleOverrideMap(cache.aisleOverrides); }
+function applyAisleOverride(key){ return aisleOverrideLookup.get(key) || null; }
+function aisleOverrideToRow(o){ return { id: o.id, household_id: HOUSEHOLD_ID, name: o.name, aisle: o.aisle }; }
+function addAisleOverride(name, aisle){
+  const key = shoppingKeyForName(name);
+  if(!key || !INGREDIENT_AISLES.includes(aisle)) return false;
+  const prior = loadAisleOverrides().find(o=> o.name === key);
+  const entry = { id: prior ? prior.id : uid(), name: key, aisle };
+  cache.aisleOverrides = loadAisleOverrides().filter(o=> o.name !== key).concat([entry]);
+  rebuildAisleOverrideMap();
+  const row = aisleOverrideToRow(entry);
+  return queueWrite('shopping aisles', async ()=>{
+    const { error } = await sb.from('aisle_overrides').upsert([row], { onConflict: 'household_id,name' });
+    if(error) throw error;
+  });
+}
+/* Removed by the name, as a word match is, since the id in the cache may not
+   be the one the server kept. */
+function removeAisleOverride(id){
+  const entry = loadAisleOverrides().find(o=> o.id === id);
+  cache.aisleOverrides = loadAisleOverrides().filter(o=> o.id !== id);
+  rebuildAisleOverrideMap();
+  if(!entry) return true;
+  return queueWrite('shopping aisles', async ()=>{
+    const { error } = await sb.from('aisle_overrides').delete().eq('household_id', HOUSEHOLD_ID).eq('name', entry.name);
+    if(error) throw error;
+  });
+}
+/* Whole-table replace. Import only — see pushList. */
+function replaceAisleOverrides(list){
+  cache.aisleOverrides = list;
+  rebuildAisleOverrideMap();
+  return queueWrite('shopping aisles', ()=> pushList('aisle_overrides', list.map(aisleOverrideToRow)), { whole: true });
+}
 function isPairDistinct(kind, a, b){ return aliasMaps.distinct.has(kind + '_distinct|' + pairKeyFor(a, b)); }
 function applyIngredientAlias(name){ return aliasMaps.ingredient.get(name) || name; }
 function applySourceAlias(name){ return aliasMaps.source.get(name) || name; }
@@ -5175,7 +5253,7 @@ function buildShoppingList(weekDays){
   /* The totalling is in core.js (aggregateShoppingLines), pure and tested
      in Node: rules, dictionary, one row per ingredient. The household's word
      matches go in as an override. */
-  const items = aggregateShoppingLines(lineItems, applyIngredientAlias);
+  const items = aggregateShoppingLines(lineItems, applyIngredientAlias, applyAisleOverride);
   const byCategory = {};
   items.forEach(it=>{ (byCategory[it.category] = byCategory[it.category] || []).push(it); });
   const order = [...SHOPPING_CATEGORIES.map(c=>c.name), 'Other'];
@@ -6055,7 +6133,7 @@ function openEditModal(recipeId){
   const recipe = loadRecipes().find(r=>r.id === recipeId);
   if(!recipe) return;
   state.editingRecipeId = recipeId;
-  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null;
+  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null; aisleUndo = null;
 
   document.getElementById('modalTitle').textContent = 'Edit recipe';
   document.getElementById('modalSubtitle').textContent =
@@ -6111,7 +6189,7 @@ function closeAddModal(){
      link left behind would send the next recipe's source check to the wrong page. */
   document.getElementById('f-source-url').value = '';
   lastCheckedUrl = ''; lastSourceLines = null; bandsShown = false; reviewLines = [];
-  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null;
+  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null; aisleUndo = null;
   clearTimeout(beforeSaveTimer); renderBeforeSave();
   clearBandsStale();
   document.getElementById('saveError').style.display = 'none';
@@ -6308,6 +6386,7 @@ function renderSettings(){
     `<option value="${m}"${m === current ? ' selected' : ''}>${THEME_LABELS[m]}</option>`
   ).join('');
   renderAliasesList();
+  renderAisleOverridesList();
   renderSourcesList();
   renderKeywordsList();
 }
@@ -6475,6 +6554,59 @@ document.getElementById('aliasAddBtn').addEventListener('click', ()=>{
   showToast(`"${from}" now means "${to}"`);
   renderAliasesList();
   if(state.view === 'shopping') renderShopping();
+});
+
+/* SHOPPING AISLES (PR 6). The aisles offered are INGREDIENT_AISLES, the ones the
+   dictionary itself uses, so nothing here can invent a section of the list. Each
+   row is one name and its aisle, with REMOVE; the row then goes back to wherever
+   the dictionary or the keyword rules put it. No dialog: an aisle is put back as
+   easily as it was set. */
+function renderAisleOverridesList(){
+  const ok = aisleOverridesAvailable;
+  document.getElementById('aisleOverridesUnavailable').style.display = ok ? 'none' : 'block';
+  document.getElementById('aisleOverrideForm').style.display = ok ? '' : 'none';
+  const sel = document.getElementById('aisleOverride-aisle');
+  if(!sel.options.length){
+    sel.innerHTML = `<option value="">AISLE…</option>` + INGREDIENT_AISLES.map(a=> `<option value="${escapeHtml(a)}">${escapeHtml(a.toUpperCase())}</option>`).join('');
+  }
+  const list = document.getElementById('aisleOverridesList');
+  const rows = [...loadAisleOverrides()].sort((a, b)=> a.name.localeCompare(b.name));
+  list.innerHTML = !ok ? '' : !rows.length ? `<p class="empty">No aisles set. The list places everything itself.</p>`
+    : rows.map(o=> `<div class="source-row">
+        <div class="alias-pair">${escapeHtml(o.name)}<span class="alias-arrow">in</span>${escapeHtml(o.aisle)}</div>
+        <button class="btn small-danger" data-remove-aisle-override="${escapeHtml(o.id)}">REMOVE</button>
+      </div>`).join('');
+}
+document.getElementById('aisleOverridesList').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-remove-aisle-override]');
+  if(!btn) return;
+  const entry = loadAisleOverrides().find(o=> o.id === btn.dataset.removeAisleOverride);
+  if(!entry) return;
+  removeAisleOverride(entry.id);
+  showToast(`"${entry.name}" goes back to where the list puts it`);
+  renderAisleOverridesList();
+  if(state.view === 'shopping') renderShopping();
+  updateSidebarCounts();
+});
+document.getElementById('aisleOverrideAddBtn').addEventListener('click', ()=>{
+  const nameEl = document.getElementById('aisleOverride-name');
+  const aisleEl = document.getElementById('aisleOverride-aisle');
+  const errorEl = document.getElementById('aisleOverrideError');
+  /* Keyed in addAisleOverride, the one place a name becomes a key, so this form and the
+     review's pick cannot store the same ingredient two ways. */
+  const key = shoppingKeyForName(nameEl.value);
+  errorEl.style.display = 'none';
+  if(!key || !aisleEl.value){
+    errorEl.textContent = 'Fill in the ingredient and pick an aisle.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  addAisleOverride(nameEl.value, aisleEl.value);
+  showToast(`"${key}" now goes under ${aisleEl.value}`);
+  nameEl.value = ''; aisleEl.value = '';
+  renderAisleOverridesList();
+  if(state.view === 'shopping') renderShopping();
+  updateSidebarCounts();
 });
 
 /* ------------------------------- Swaps ------------------------------- */
@@ -6805,6 +6937,9 @@ let beforeSaveTimer = null;
 /* PR 5. The comparison run in this form session, if one has: { at, route, hard, soft, sourceLines,
    linesHash }. SAVE writes it to the recipe's source_check; nothing else does. */
 let formComparison = null;
+/* PR 6. The aisle last picked in this form's review, for its UNDO: { key, name, aisle }. The pick
+   wrote the override at once; UNDO removes it. Kept only while the form is open. */
+let aisleUndo = null;
 /* A recipe written by hand needs a shape to start from. The parser has no comment syntax,
    so these are real lines to be replaced, and it stays this small on purpose. */
 const HAND_TEMPLATE = ['TITLE: My recipe', 'SOURCE: Personal recipe', 'SERVINGS: 4', 'TAGS: course=Main', '',
@@ -6879,7 +7014,7 @@ function reviewFor(lines){
   const unchanged = editing && normalisedSourceUrl(url) === normalisedSourceUrl(stored);
   return newRecipeReview({
     lines, sourceUrl: unchanged ? '' : url, recipeId: editing, library: libraryForReview(),
-    alias: applyIngredientAlias, isSettled: (a, b)=> isPairDistinct('ingredient', a, b)
+    alias: applyIngredientAlias, isSettled: (a, b)=> isPairDistinct('ingredient', a, b), aisleOverride: applyAisleOverride
   });
 }
 function reviewListHtml(review){
@@ -6893,7 +7028,20 @@ function reviewListHtml(review){
     fresh.map(n=> `<div class="rv-row"><b>${escapeHtml(n.name)}</b> — lands under <b>${escapeHtml(n.aisle)}</b>` +
       `${n.other ? ` <span class="rv-other">OTHER</span>` : ''}` +
       (pair.has(n.key) ? sameAsHtml(pair.get(n.key))
-        : ` <button type="button" data-rv="same-as" data-from="${escapeHtml(n.key)}" data-from-name="${escapeHtml(n.name)}">SAME AS…</button>`) + `</div>`).join('');
+        : ` <button type="button" data-rv="same-as" data-from="${escapeHtml(n.key)}" data-from-name="${escapeHtml(n.name)}">SAME AS…</button>` +
+          (n.other && aisleOverridesAvailable ? aisleSelectHtml(n) : '')) +
+      (aisleUndo && aisleUndo.key === n.key && n.aisleWhy === 'override'
+        ? `<div class="rv-undo">Moved to <b>${escapeHtml(n.aisle)}</b> <button type="button" data-rv="aisle-undo">UNDO</button></div>` : '') +
+      `</div>`).join('');
+}
+/* The aisle pick (PR 6): on a new name that lands in Other with no "Same as" pending, so a name is
+   matched before it is placed (a merged name takes its partner's aisle and leaves the list of new
+   names). Picking writes the household's aisle for that name at once, through addAisleOverride, and
+   the row says "Moved to … · UNDO"; Settings → Shopping Aisles also lists and removes it. Hidden while
+   the table does not exist, since the write would fail. */
+function aisleSelectHtml(n){
+  return ` <select class="rv-aisle" data-rv-aisle="${escapeHtml(n.key)}" data-name="${escapeHtml(n.name)}" aria-label="Aisle for ${escapeHtml(n.name)}">` +
+    `<option value="">AISLE…</option>` + INGREDIENT_AISLES.map(a=> `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('') + `</select>`;
 }
 /* SAME AS… (29 Sep 2026, after PR 5). The strict rule offers only names one word apart, and
    never across a word that changes the product ("whole", "plain"), so "whole rolled oats"
@@ -7104,6 +7252,15 @@ function comparePastedSource(){
   }
   showSourceComparison(out, lines, 'PASTED');
 }
+document.getElementById('addChecks').addEventListener('change', e=>{
+  const sel = e.target.closest('[data-rv-aisle]');
+  if(!sel || !sel.value) return;
+  addAisleOverride(sel.dataset.rvAisle, sel.value);
+  aisleUndo = { key: sel.dataset.rvAisle, name: sel.dataset.name, aisle: sel.value };
+  renderAisleOverridesList();
+  if(state.view === 'shopping') renderShopping();
+  refreshReviewList();
+});
 document.getElementById('addChecks').addEventListener('input', e=>{
   if(e.target.id === 'sourcePasteInput') pastedSourceText = e.target.value;
   if(e.target.classList.contains('rv-sameas-filter')){
@@ -7189,6 +7346,13 @@ document.getElementById('addChecks').addEventListener('click', e=>{
       if(state.view === 'shopping') renderShopping();
       refreshReviewList();
       showToast('Kept apart. The app won\'t offer this pair again');
+    } else if(kind === 'aisle-undo'){
+      const entry = aisleUndo && loadAisleOverrides().find(o=> o.name === aisleUndo.key);
+      if(entry) removeAisleOverride(entry.id);
+      aisleUndo = null;
+      renderAisleOverridesList();
+      if(state.view === 'shopping') renderShopping();
+      refreshReviewList();
     } else if(kind === 'cancel'){
       refreshReviewList();
     } else if(kind === 'undo-line'){
@@ -7401,6 +7565,9 @@ function exportAllData(){
     groups: loadGroups(),
     settings: loadSettings(),
     aliases: loadAliases(),
+    /* Left out, not written as [], while the table is missing: restoring such a
+       backup later must not read "no aisles" and clear the ones set since. */
+    ...(aisleOverridesAvailable ? { aisleOverrides: loadAisleOverrides() } : {}),
     diary: loadDiary()
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
@@ -7606,6 +7773,15 @@ function importAllData(file){
        whatever's already set rather than wiping it. */
     if(data.settings) saveSettings({ ...loadSettings(), ...data.settings });
     if(Array.isArray(data.aliases)) replaceAliases(data.aliases);
+    /* Shopping aisles (PR 6): a backup without them, or a household without the
+       table yet, keeps what is set, as word matches do. An aisle the app does not
+       have is dropped, and each name is keyed as the list keys it. */
+    if(Array.isArray(data.aisleOverrides) && aisleOverridesAvailable){
+      const seen = new Set();
+      replaceAisleOverrides(data.aisleOverrides
+        .map(o=> ({ id: (o && o.id) || uid(), name: shoppingKeyForName((o && o.name) || ''), aisle: o && o.aisle }))
+        .filter(o=> o.name && INGREDIENT_AISLES.includes(o.aisle) && !seen.has(o.name) && seen.add(o.name)));
+    }
 
     state.selectedRecipeId = null;
     state.editingRecipeId = null;
