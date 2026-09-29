@@ -221,9 +221,36 @@ settled with the household already; nothing else has been, and nothing has been 
 
 **Use it when:** this is picked up. It names the exact new table, the `core.js` function to
 extend, and the existing Word Matches feature it mirrors and deliberately stays independent of.
+Its last section sets out the general rules for every fact held about an ingredient: word
+matches, aisle, swaps and dictionary row. Each has one key and one home in Settings, and only
+naming facts re-key ticks.
 
-**Don't:** treat it as tracked work. `docs/NEXT-SESSION.md`'s "Still open" line points here, but
-it's outside the seven-PR plan and has no PR number yet.
+**Don't:** treat it as tracked work. `docs/NEXT-SESSION.md`'s "Proposed, not started" line points
+here, but it's outside the seven-PR plan and has no PR number yet.
+
+---
+
+### `docs/PROPOSAL-NEW-RECIPE-REVIEW.md` — a review when a new recipe comes in, not started
+**What:** A brainstorm and a phased design (A–D), checked against the code and the live library on
+28 Sep 2026. It adds an ON THE SHOPPING LIST section to the Add/Edit preview, showing:
+- a new recipe's names that are new to the library;
+- the aisle each will land in, and whether that is Other;
+- likely matches with the whole library, by the strict rule;
+- a duplicate check on the source link.
+
+It is quiet by default and never a gate. It also lists 15 pitfalls, two of which were found while
+writing it:
+- a merge made at ingest must always fold the new name into the existing one, or it can orphan
+  ticks;
+- every image is self-hosted, so image URLs cannot find duplicates.
+
+It lists five open decisions for the household.
+
+**Use it when:** this is picked up, or when anything is changed about how recipes come in. Phase A
+is read-only and needs no schema change; Phase C depends on `docs/PROPOSAL-AISLE-OVERRIDES.md`.
+
+**Don't:** treat it as agreed. Only the idea came from the household; the phases, the
+recommendations and the open decisions have not been put to them yet.
 
 ---
 

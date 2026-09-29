@@ -169,6 +169,39 @@ placed alongside it:
   overridden row is provably unchanged (it's computed before `aisleOverride` is ever consulted),
   so no household tick is re-keyed by this feature.
 
+## The general point: one ingredient, several household facts, one key
+
+*Added 28 Sep 2026, after the household asked how all of this is kept right over time rather than
+one case at a time.*
+
+An aisle is one of several facts the household holds about an **ingredient** rather than about a
+recipe. The others are:
+
+- its word matches ("same" / "not the same"), in Settings → Word Matches and on the shopping list;
+- its household swaps, in Settings → Swaps;
+- its name and aisle in `INGREDIENT_DICTIONARY` (changed by a PR).
+
+The rules below keep them consistent:
+
+1. **One key.** Each fact is keyed by the shopping-list name, `shoppingKeyForName`, and never by
+   recipe. It is answered once and applies to every recipe that uses the name, so a wrong answer
+   spreads just as widely as a right one.
+2. **Word matches apply first, and everything else follows the key they produce.** That is why
+   this override stays independent: merge first, then set one aisle for the merged name.
+3. **Naming facts re-key ticks; the others don't.** A word match or a dictionary rename changes
+   `item_key`. An aisle or a swap never does. Measure the library before a naming change
+   (CLAUDE.md); an aisle override needs no measuring.
+4. **Each fact the household sets has one home in Settings** where it can be seen and undone.
+   Dictionary rows are the exception, because they live in code. Anywhere else that sets a
+   household fact, such as the shopping list's inline buttons or a future ingest review, writes
+   through the same function to the same table.
+5. **The best time to settle them is when a new name first enters the library**, not weeks later
+   on a shopping list. `docs/PROPOSAL-NEW-RECIPE-REVIEW.md` proposes exactly that: a quiet section
+   in the Add/Edit preview listing a new recipe's new names, where each will land, likely matches
+   and a duplicate check. Its Phase C is this override's aisle pick, offered in place for a new
+   name that lands in Other. `tools/remeasure.js` stays the backstop for recipes that arrive
+   without going through the form.
+
 ## What this document does not cover
 
 - The one-off alternative of just adding a `sirloin steak` row directly to `INGREDIENT_DICTIONARY`
