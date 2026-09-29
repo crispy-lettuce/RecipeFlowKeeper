@@ -1514,6 +1514,17 @@ reads as a source's bare "almonds" when neither has an exact partner; making it 
 shopping list too, so it needs a re-measure first. The recipe's stored `source_check` (1 difference) stays until it is compared and
 saved again.
 
+**PR 5b of the add-recipe plan, SAME AS… in the review (29 Sep 2026).** Asked for by the household after a recipe's "Whole rolled
+oats" was listed as new and landing in Other while the library had "Rolled oats": the strict rule never pairs across a word on
+`NEVER_IGNORE`, so nothing asked. Every new row with no pending "Same as" now has SAME AS…: a filter over the names already in the
+library (the recipe being edited left out), a pick, the guard SAME shows, and only MERGE writes, one `ingredient` alias through
+`addAlias`. `index.html` only; no schema, no `core.js`, no naming change. The plan's PR 5b entry has the detail and the "Built as".
+
+*Verified by.* `smoke.js` **329 → 333**, `core.test.js` 134, both exit 0, no console or page errors. **Two existing clauses were
+amended (§11 item 2, put to the household in the PR):** the unamended suite against the new build failed exactly PR 4's row check
+and its settled-pair check, each on its button count alone. Six mutations, each seen failing by name; `index.html` restored and
+compared byte-identical after the run. *Not verified:* the tablet, and a real tap in the filter box on iPadOS or Android.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export
