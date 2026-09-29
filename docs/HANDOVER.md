@@ -1381,7 +1381,7 @@ recipe's check to the wrong page.
 judge it (`docs/TEST-PLAN.md` step 36d). The paste is tested with a synthetic `paste` event, not a real paste on iPadOS or
 Android. The auto-run is tested against the stub, never the real `source-ingredients` function or a real site.
 
-**PR 4 of the add-recipe plan, answers in place and no dialog left (29 Sep 2026, open for review, not merged).** The
+**PR 4 of the add-recipe plan, answers in place and no dialog left (29 Sep 2026, PR #44, open for review, not merged).** The
 add and edit form now gives its answers where the questions arise, and writes only what is tapped, each through the
 function that already writes that kind of row. A "Same as X?" row has SAME (which asks once more, "for every recipe?
 MERGE · CANCEL", and writes only at MERGE: the new name is the alias, the existing one the canonical) and KEEP APART. A
