@@ -1265,7 +1265,7 @@ in the session; one answer (a hard refusal for a reconstructed recipe) was withd
 the plan records both. A count first given in chat (3 canned, 3 tinned) was over every line of the text;
 the plan carries the ingredient-line count.
 
-**PR 1 of the add-recipe plan, the two naming fixes (29 Sep 2026, open for review, not merged).** The
+**PR 1 of the add-recipe plan, the two naming fixes (29 Sep 2026, PR #41, open for review, not merged).** The
 household's decisions 2 and 3 (`docs/PLAN-NEW-RECIPE-FLOW.md` §4). (a) `shoppingLine` now skips size
 words between an article and a count unit, so `a big handful of X`, `a small bunch of X` and `a large
 pinch of X` read as 1 handful, bunch or pinch; before, the article was left in the name (`a handful of
