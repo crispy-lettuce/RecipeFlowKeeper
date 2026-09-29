@@ -1339,7 +1339,7 @@ app reads the `⚠️ Source note:` line until PR 3.
 `main`'s tests (run 85) and the Pages deploy (run 59) both succeeded. **Not verified:** what the deployed site
 serves (the session's egress policy blocks `github.io`).
 
-**PR 3 of the add-recipe plan, the review band (29 Sep 2026, open for review, not merged).** The add and edit form
+**PR 3 of the add-recipe plan, the review band (29 Sep 2026, PR #43, open for review, not merged).** The add and edit form
 now reads in the order the work goes: what the app read (a one-line summary, then the diagram), the checks, then
 the fields, with every existing id kept. Pasting parses at once; editing the text afterwards shows a stale bar with
 RE-CHECK; the source check runs by itself for an `https` link that has not been fetched for since the form opened
