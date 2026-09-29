@@ -25,9 +25,10 @@ was written. Check again before relying on one.
 
 **Done.** PRs 1–7f are merged and live. 7d, the paste box, was PR #35, merged 28 Sep at 21:53 UTC
 (the household used the box on a real page the same evening). 7e, PR #37, rewrote the source check the
-paste box feeds; merged 29 Sep at 05:06 UTC. 7f, PR #38, added US names to the dictionary, which was
-7e's price; merged 29 Sep at 05:52 UTC (`main`'s tests, run 72, and the Pages deploy, run 54, both
-succeeded). `core.js` is `2026-09-29.1`. 6c-2 was a data job, not a PR; PR #23 is its documentation.
+paste box feeds, after that first real use showed the check calling a difference a match; merged 29 Sep
+at 05:06 UTC (`main`'s tests, run 68, and the Pages deploy, run 53, both succeeded). 7f, PR #38 (below),
+added US names to the dictionary, which was 7e's price; merged 29 Sep at 05:52 UTC (tests run 72 and Pages
+run 54 both succeeded). `core.js` is `2026-09-29.1`. 6c-2 was a data job, not a PR; PR #23 is its documentation.
 
 **Open finding, 29 Sep: a recipe whose ingredients are not its source's.** Comparing *No-Bake
 Chocolate Oat Bars* with the Allrecipes page (paste box, the first US-source recipe compared), the
@@ -115,27 +116,36 @@ flags — false alarms on 67 US→UK pairs went from 31% to 58%; UK sources are 
 dictionary is the fix (`HANDOVER.md` §7), and 7f did it. **It is still not a guarantee** — §7 lists
 what it cannot see. The household's pass is `docs/TEST-PLAN.md` step 36b.
 
-**7f, US names in the dictionary (29 Sep, PR #38) — merged 29 Sep.** The household's answer to that price:
+**7f, US names in the dictionary (29 Sep, PR #38) — merged 29 Sep 05:52 UTC.** The household's answer to that price:
 "Add US translations to the dictionary". 49 rows added (90 → 139) and spellings on 15 more, by one rule:
 **one product on the shelf under two names**, never a substitute (`tools/ingredient-names-preamble.md`).
 Measured on the live library before anything shipped: 0 of 466 lines change key, so no tick is
 re-keyed; the only visible change is mangetout and pak choi moving from "Other" to Produce. False alarms
 on the 67 US→UK pairs 58% → 22%; on a second list written before the rows, 78% → 37%; on the converter
-test set's US-source test, 6 hard differences → 2. **Decisions for the household:** (1) the 15 pairs left
-flagged are substitutes or ambiguous on purpose (`HANDOVER.md` §7, 7f): say if any should be treated as
-one product; (2) `a big handful of arugula` is read as a name, not a count word — a small change to
-`shoppingLine`, measured 29 Sep to re-key nothing in the library, needs your go-ahead (all three decisions are written out in full in `docs/HANDOVER-CONVERSION-INTEGRITY.md` §7); (3) whole against ground
-(`coriander seeds` for `ground coriander`) is not caught, on `main` too; (4) `canned` against `tinned` is
-an adjective swap that flags: a fidelity-only fold would fix it, at no cost to ticks, if wanted.
+test set's US-source test, 6 hard differences → 2. **Three decisions for the household**, written out in full in `docs/HANDOVER-CONVERSION-INTEGRITY.md`
+§7: (1) the 15 pairs left flagged are substitutes or ambiguous on purpose (`HANDOVER.md` §7, 7f): say if
+any should be treated as one product; (2) `a big handful of arugula` is read as a name, not a count word,
+a small change to `shoppingLine` that was measured on 29 Sep to re-key nothing in the library and needs
+your go-ahead; (3) `canned` against `tinned` is an adjective swap that flags: a fidelity-only fold would
+fix it, at no cost to ticks, if wanted. **A known limit, not a decision:** whole against ground
+(`coriander seeds` for `ground coriander`) is not caught, on `main` too.
 `docs/TEST-PLAN.md` steps 36b and 36c are the household's pass.
 
-**Still open:** nothing from the seven-PR plan. The household does steps 36a, 36b and
-36c and answers the three decisions; the aisle-override proposal below is written up but not started.
+**Still open:** nothing from the seven-PR plan. The household answers 7f's three decisions and does
+steps 36a, 36b and 36c; the two proposals below are written up but not started. The open finding above
+is the task for the next session.
 
 **Proposed, not started:** a household-editable aisle override in Settings — so moving something
 like "Sirloin Steak" out of Other is a form entry, not a code change and a PR. Raised 28 Sep after
 that exact case; the design is written up in `docs/PROPOSAL-AISLE-OVERRIDES.md`, checked against
 the running code, waiting to be picked up.
+
+**Proposed, not started:** a review when a new recipe comes in — a quiet ON THE SHOPPING LIST
+section in the Add/Edit preview showing the recipe's names that are new to the library, where each
+will land (Other flagged), likely matches with the whole library and a duplicate check on the
+source link, so these are settled when a recipe is added rather than weeks later. Raised 28 Sep
+by the household; `docs/PROPOSAL-NEW-RECIPE-REVIEW.md` has the phases (A is read-only), the
+pitfalls and five open decisions. Its Phase C is the aisle override above, offered in place.
 
 **Not to redo:** 6c-2's recipe text, its undo and the word matches as made are in
 `PrivateBackup`, `migrations/6c-2-line-rewrite/`. Nothing about the library's lines needs doing.
@@ -170,7 +180,7 @@ verified and how.
 | 7c | **The weekly live-backend test** | A test household, a test user, a Playwright script against the *live* app, credentials in `PrivateBackup`'s secrets | F13 | **Done**, 28 Sep. `PrivateBackup` PR #3 and #4 merged (a missing reload wait, the test script's own bug); this repo's PR #31 merged (a real app bug — `updateDiaryEntry` silently dropped a meal-type tag tapped before its insert confirmed). Run #5 proved both fixes live: 13 checks, 0 failed |
 | 7d | **The paste box for COMPARE WITH SOURCE** | Asked and answered 28 Sep: its own small PR. A textarea and COMPARE PASTED LIST under AGAINST THE SOURCE in the add/edit preview, for the two sites (18 of 34 recipes) that refuse the function with a 403. `pastedIngredientLines` in `core.js` strips tick boxes, bullets, blank lines and headings that are certainly headings, and the same `sourceFidelity` pairs what is left with the recipe's lines. No fetch, no write, no schema change; advice only, never a gate. The pasted text is kept only until the form closes | §2 and answer 4 of the architecture review (the source check for half the library); closes no numbered finding | **Done**, PR #35, merged 28 Sep 21:53 UTC. `core.js` `2026-09-28.3`. Its comparison was rewritten in 7e the same evening |
 | 7e | **The source check stops calling a difference a match** | Found 28 Sep by the household's first real comparison: a doubled source line was shown as matched. Probing found one of eleven fault types caught. `sourceFidelity` rebuilt twice (the first rebuild was tailored to the examples; see `HANDOVER.md` §7): every line of one ingredient, on either side, is one group, and the group's amounts are compared as totals per kind (mass, volume, count, a pinch), only where a difference cannot be a unit conversion, a range by both ends; the same name is exact and "the recipe says less" joins only unmatched lines; compound lines split into parts; an addition the dictionary calls the same product is a soft note, else a hard difference; every flagged pair says why and nothing is dropped. The table shows hard differences highlighted, soft notes shaded, and counts them apart. No write, no schema, no dictionary or naming change, so no tick is re-keyed | §2 and answer 4 of the architecture review (the source check itself); closes no numbered finding | **Done**, PR #37, merged 29 Sep 05:06 UTC. `core.js` `2026-09-28.5` |
-| 7f | **US names in the dictionary** | The household's answer to 7e's price, 29 Sep: 49 rows and 15 rows' spellings, by the rule one product on the shelf under two names. Also one reader function (`dictionaryPhrases`) so the index and the tests read a row the same way, which fixed `confectioners' sugar` never having worked as a spelling. Read-only re-measure on the live library: 0 of 466 lines change key; mangetout and pak choi file under Produce. No schema, no write, no change to `shoppingLine` | 7e's price, `HANDOVER.md` §7 | **Done**, PR #38, merged 29 Sep 05:52 UTC. `core.js` `2026-09-29.1` |
+| 7f | **US names in the dictionary** | The household's answer to 7e's price, 29 Sep: 49 rows and 15 rows' spellings, by the rule one product on the shelf under two names. Also one reader function (`dictionaryPhrases`) so the index and the tests read a row the same way, which fixed `confectioners' sugar` never having worked as a spelling. Read-only re-measure on the live library: 0 of 466 lines change key; mangetout and pak choi file under Produce. No schema, no write, no change to `shoppingLine` | 7e's price, `HANDOVER.md` §7 | **Done**, PR #38, merged 29 Sep 05:52 UTC. `core.js` `2026-09-29.1`. Three decisions and steps 36b–36c are the household's |
 
 ### PR 6 reviewed against what came after it (25 Sep)
 
@@ -237,12 +247,12 @@ Please read these first, in this order:
   CLAUDE.md                               — applies in full
 
 THE TASK: PR 7 (Sharing, 7a-7f) is entirely done and merged — nothing of
-it needs picking up. The open work is a finding, not a PR: a recipe in my
-library whose ingredients are not its source's. Read
-docs/HANDOVER-CONVERSION-INTEGRITY.md and start from its section 4; its
-section 7 has three decisions I will answer first. Nothing else is in the plan; the
-aisle-override proposal (docs/PROPOSAL-AISLE-OVERRIDES.md) is written up
-but not started, so ask what to work on.
+it needs picking up, though 7f left three decisions for me (docs/HANDOVER-CONVERSION-INTEGRITY.md,
+section 7). The open work is a finding, not a PR: a recipe in my library whose ingredients are not its
+source's. Read docs/HANDOVER-CONVERSION-INTEGRITY.md and start from its section 4; I will answer the
+three decisions first. Nothing else is in the plan; two proposals are written up but not started — the
+aisle override (docs/PROPOSAL-AISLE-OVERRIDES.md) and a review when a new recipe comes in
+(docs/PROPOSAL-NEW-RECIPE-REVIEW.md) — so ask what to work on after that.
 Follow the first three sections of CLAUDE.md to the letter, and don't
 merge or touch production without asking first.
 

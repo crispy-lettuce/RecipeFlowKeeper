@@ -131,6 +131,14 @@ In this order. None of it needs a production write; the recipe repair in step 5 
    - a visible marker in the app for a recipe whose text carries a "Source note", so it is seen when
      cooking, not filed under Variations;
    - refusing to ingest a recipe whose text says it was reconstructed.
+
+   Read `docs/PROPOSAL-NEW-RECIPE-REVIEW.md` first (merged 29 Sep, written by another session, not yet
+   agreed or built). It designs a review section in the add form's preview for what a new recipe does
+   to the shopping list, and its Phase D is a library check in Settings that would run the same review
+   over the 34 recipes already in. It does **not** cover this finding (it is about ingredient names,
+   aisles and duplicates, not whether the recipe matches its source), but it is the natural home for a
+   "compared with the source: yes or no" line and a "this recipe carries a source note" marker, and the
+   natural home for the audit in step 3. Extend it rather than build a second review.
 5. **Repair this recipe only with the household's decision.** The options are to re-convert it from
    the real page (the household pastes the list and method), or to leave it and mark it. **Never
    delete and re-insert**: cooking history cascades. The safe route is an in-place `UPDATE`, one
@@ -161,6 +169,8 @@ In this order. None of it needs a production write; the recipe repair in step 5 
 - The dictionary now has 139 rows, by one rule: one product on the shelf under two names, never a
   substitute (`tools/ingredient-names-preamble.md`). That is why this recipe's *chocolate chips* row is
   a hard difference and not a quiet one: milk and semisweet are two products.
+- `docs/PROPOSAL-NEW-RECIPE-REVIEW.md` and `docs/PROPOSAL-AISLE-OVERRIDES.md` are written up and not
+  started. The first is relevant to step 4 above.
 - The household's own pass on the last PR (`docs/TEST-PLAN.md` steps 36b, 36c) has not been reported.
   This finding came from a comparison on a US-source recipe, which is the pass the plan asks for.
 - Two things the last PR said and this session corrected are in `docs/HANDOVER.md` §6.
