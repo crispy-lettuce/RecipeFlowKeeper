@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-29.1';
+const KITCHEN_CORE_VERSION = '2026-09-29.2';
 
 
 /* ======================= quantity split ======================= */
@@ -981,10 +981,20 @@ const squash = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/
 const LEFTOVER_PREP = ['lightly', 'bashed', 'defrosted', 'cored', 'deveined', 'de-veined', 'tail-on', 'tails-on', 'cooled', 'warmed', 'room-temperature'];
 const dropWords = (name, set) => { const w = name.split(' ').filter(x => !set.has(x)); return w.length ? w.join(' ') : name; };
 
+/* One product on the shelf under two names: a tin in the UK, a can in the US, so
+   "tinned" reads as "canned" (the household's decision, 29 Sep 2026,
+   docs/PLAN-NEW-RECIPE-FLOW.md §4). It is applied in three places that must agree
+   — here, so a dictionary wording written either way meets a line written either
+   way; in shoppingLine, for the list's key; and in fidelityItems, for the source
+   check — and only ever to a copy of the text, so what a person wrote is still
+   what is shown. It folds this way round so that lines already written "canned"
+   keep their keys. */
+const foldTin = s => s.replace(/\btinned\b/g, 'canned');
+
 /* The dictionary, indexed. Every "Also written as" spelling that is a plain
    phrase — not a note in brackets, not "(when …)" — points at its row. Built
    through the same steps 1–5 a recipe line goes through, so the two meet. */
-function dictionaryKey(phrase){ return foldPlural(dropWords(squash(String(phrase).toLowerCase()), DESCRIPTOR_WORDS)); }
+function dictionaryKey(phrase){ return foldPlural(dropWords(squash(foldTin(String(phrase).toLowerCase())), DESCRIPTOR_WORDS)); }
 /* Which of a row's wordings the index reads. A cell in `also` is a list
    split at commas and semicolons; a piece that carries a note (brackets,
    emphasis, quotes, "when", "not", "check") is advice to the reader and is
@@ -1016,16 +1026,23 @@ function shoppingLine(rest, parsed){
      in the recipe). It is never part of the name, so it never splits a row
      or re-keys a tick. */
   const alts = (String(rest || '').match(/\([^)]*\bor\b[^)]*\)/gi) || []).map(b => b.slice(1, -1).trim());
-  let text = String(rest || '').toLowerCase().replace(/\([^)]*\)/g, ' ');
+  let text = foldTin(String(rest || '').toLowerCase()).replace(/\([^)]*\)/g, ' ');
   const tailMatch = text.match(TAIL_NOTES);
   const tail = tailMatch ? tailMatch[1].replace(/^(plus|for)\b.*/, '').trim() : '';
   text = text.split(',')[0];
   text = squash(text.replace(TAIL_NOTES, ' '));
   let unit = parsed ? parsed.unit : '';
   let amount = parsed ? parsed.amount : null;
-  /* "a pinch of salt", "1 small bunch dill", "2 tins chopped tomatoes" */
+  /* "a pinch of salt", "1 small bunch dill", "2 tins chopped tomatoes". Size
+     words may stand between the article and the unit ("a big handful of
+     arugula"): until 29 Sep 2026 only a unit straight after the article was
+     read, so the size word was dropped and the article left behind, and the name
+     became "a handful of arugula" — no amount, and no dictionary row. */
   let words = text.split(' ').filter(Boolean);
-  if(amount === null && /^(a|an|one)$/.test(words[0] || '') && COUNT_UNITS[words[1]]) { amount = 1; words = words.slice(1); }
+  if(amount === null && /^(a|an|one)$/.test(words[0] || '')){
+    let k = 1; while(k < words.length - 1 && DESCRIPTOR_WORDS.has(words[k])) k++;
+    if(COUNT_UNITS[words[k]]){ amount = 1; words = words.slice(k); }
+  }
   while(words.length > 1 && DESCRIPTOR_WORDS.has(words[0])) words = words.slice(1);
   /* "1 heaped tbsp crème fraîche": splitQty took the 1, the size word stood
      between it and the unit, so the unit is still here. */
@@ -1471,10 +1488,13 @@ function fidelityItems(lines){
     const parts = fidelityName(rest).split(/\s+(?:and|&)\s+/i).map(x => x.trim()).filter(Boolean);
     const names = x => fidelityWords(x).size > 0 || !!dictionaryRow(shoppingKeyForName(fidelityName(x)));
     const compound = parts.length > 1 && parts.every(names);
+    /* "tinned" is read as "canned" in the words compared (see foldTin), not in
+       the line shown: `line` and the label stay as the person wrote them, and
+       the key already folds inside shoppingLine. */
     const make = (text, part, amount) => {
-      const words = fidelityWords(fidelityName(text));
+      const words = fidelityWords(foldTin(fidelityName(text).toLowerCase()));
       return { i, line, part, label: part ? `${line} (the "${part}" part)` : line, words,
-        all: part ? words : fidelityWordsAll(text), key: shoppingKeyForName(fidelityName(splitQty(text).rest)), amount };
+        all: part ? words : fidelityWordsAll(foldTin(String(text).toLowerCase())), key: shoppingKeyForName(fidelityName(splitQty(text).rest)), amount };
     };
     if(compound){
       const amt = fidelityAmount(line);

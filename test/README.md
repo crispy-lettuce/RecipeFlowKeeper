@@ -46,7 +46,7 @@ Both scripts use whichever Chromium Playwright installs. Set
 
 **`test/core.test.js` — the pure core, in Node.** Since 25 Sep (PR 6a) the parser, layout,
 quantity, scaling and naming functions live in `core.js`, which loads in Node as well as the page.
-109 checks, about two seconds, no browser: the behaviour the app relies on, the shopping list's naming
+116 checks, about two seconds, no browser: the behaviour the app relies on, the shopping list's naming
 and totalling (since PR 6b: the ingredient review's §6 checks, numbered as they are there, each run
 once against the mutation it names), the dictionary's master
 copy against the generated `converter/ingredient-names.md`, and three rules about the split —

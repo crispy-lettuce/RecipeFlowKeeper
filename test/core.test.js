@@ -169,6 +169,30 @@ check('    and the row takes the plural spelling on a tie', only('1 carrot', '2 
 check('11: a size word is not part of the name', only('2 large eggs', '1 egg').qtyText === '3' && only('2 large courgettes', '1 courgette').qtyText === '3',
       only('2 large eggs', '1 egg').qtyText + ', ' + only('2 large courgettes', '1 courgette').qtyText);
 check('12: "pinch of" is a pinch', only('pinch of nutmeg').qtyText === '1 pinch' && only('pinch of nutmeg').key === 'nutmeg', JSON.stringify(only('pinch of nutmeg')));
+/* Two naming fixes, 29 Sep 2026 (PR 1 of docs/PLAN-NEW-RECIPE-FLOW.md, the household's
+   decisions 2 and 3). Made-up lines, none of whose names is in the library.
+   Size words between the article and the unit: until then only a unit straight after
+   the article was read, so "a big handful of X" left the article in the name, "a handful
+   of x", with no amount and no dictionary row. A word the dictionary knows (arugula)
+   and one it does not (chervil) go the same way. */
+const bigHandful = only('a big handful of chervil'), bigHandfulKnown = only('a big handful of arugula');
+check('a big handful of X reads as 1 handful of X, whether or not the dictionary knows X',
+      bigHandful.key === 'chervil' && bigHandful.qtyText === '1 handful' && bigHandfulKnown.key === 'rocket' && bigHandfulKnown.qtyText === '1 handful',
+      JSON.stringify([bigHandful.key, bigHandful.qtyText, bigHandfulKnown.key, bigHandfulKnown.qtyText]));
+const smallBunch = only('a small bunch of sorrel');
+check('a small bunch of X reads as 1 bunch of X', smallBunch.key === 'sorrel' && smallBunch.qtyText === '1 bunch', JSON.stringify([smallBunch.key, smallBunch.qtyText]));
+const largePinch = only('a large pinch of sumac');
+check('a large pinch of X reads as 1 pinch of X', largePinch.key === 'sumac' && largePinch.qtyText === '1 pinch', JSON.stringify([largePinch.key, largePinch.qtyText]));
+/* A tin in the UK, a can in the US: "tinned" folds into "canned", so a line already
+   written canned keeps the key it had. */
+const tinCan = list('400 g tinned peach slices', '400 g canned peach slices');
+check('tinned X and canned X total as one row', tinCan.length === 1 && tinCan[0].qtyText === '800 g', JSON.stringify(tinCan.map(i => [i.key, i.qtyText])));
+check('tinned X in a line meets a dictionary row written canned X, and a wording written either way meets the other',
+      core.shoppingKeyForName('tinned chopped tomatoes') === core.shoppingKeyForName('chopped tomatoes') && core.dictionaryKey('tinned chickpeas') === core.dictionaryKey('canned chickpeas'),
+      JSON.stringify([core.shoppingKeyForName('tinned chopped tomatoes'), core.shoppingKeyForName('chopped tomatoes'), core.dictionaryKey('tinned chickpeas'), core.dictionaryKey('canned chickpeas')]));
+check('tinned against canned in the shopping key: one key, and a line already written canned keeps the key it had',
+      core.shoppingKeyForName('tinned peach slices') === core.shoppingKeyForName('canned peach slices') && core.shoppingKeyForName('canned peach slices') === 'canned peach slice',
+      JSON.stringify([core.shoppingKeyForName('tinned peach slices'), core.shoppingKeyForName('canned peach slices')]));
 const peppers = list('1/4 tsp pepper', 'pinch of pepper', 'pepper, to taste', '1 red pepper', '2 peppers', '1 yellow pepper');
 const pepperRow = k => peppers.find(i => i.key === k) || {};
 check('13: pepper by the spoon, the pinch or to taste is black pepper; counted, a vegetable',
@@ -633,14 +657,15 @@ check('the converter test set\'s recorded correct output for its vocabulary test
    real US source: before the 29 Sep dictionary rows, test 6 had one hard difference and
    test 8 six. Test 6's is the converter's own "salt and freshly ground pepper" -> "black
    pepper" (the dictionary listed "ground black pepper" and not "ground pepper"), now a
-   shaded note. Test 8's remaining two are ONE known gap, and not a dictionary one:
-   "a big handful of arugula" is read as a name, since the article is only taken off when
-   the count word follows it directly, so the row is never looked up. */
+   shaded note. Test 8's remaining two were ONE gap, and not a dictionary one: "a big
+   handful of arugula" was read as a name, since the article was only taken off when the
+   count word followed it directly, so the row was never looked up. Closed on 29 Sep
+   (PR 1 of docs/PLAN-NEW-RECIPE-FLOW.md): shoppingLine skips size words after the article. */
 const t6 = fid(T6s, T6r), t8 = fid(T8s, T8r);
 check('    and for its first test (6) no hard difference, the pepper line being a shaded note',
       flagCount(t6) === 0 && t6.matched.some(m => m.note && /adds black/.test(m.note.why)), JSON.stringify(hardOf(t6)));
-check('    and for its US-source test (8) nothing but the one known gap: "a big handful of" is not read as a count word, so its arugula never meets rocket',
-      JSON.stringify(hardOf(t8).sort()) === JSON.stringify(['1 handful rocket, to serve', 'a big handful of arugula to serve']), JSON.stringify(hardOf(t8)));
+check('    and for its US-source test (8) no hard difference: "a big handful of arugula" is read as a handful, so it meets rocket',
+      flagCount(t8) === 0 && JSON.stringify(hardOf(t8)) === '[]', JSON.stringify(hardOf(t8)));
 const namedWrong = [
   ['a range collapsed to one figure (test 6, run 1)', T6s, T6r, swapLine(T6r, '2-3 tbsp olive oil', '2 tbsp olive oil')],
   ['a different product: oyster for soy sauce (test 7)', T7s, T7r, swapLine(T7r, '2 tbsp soy sauce', '2 tbsp oyster sauce')],
@@ -654,6 +679,20 @@ check('    a recipe naming a product more specifically than its source (light so
       flagCount(soy) === 0 && soy.matched.some(m => m.note && m.note.kind === 'specific' && /adds light/.test(m.note.why)), JSON.stringify(soy));
 check('    and where the dictionary does not know the two as one product, the same addition is a hard difference',
       flagCount(fid(['1 tsp vanilla'], ['1 tsp vanilla extract'])) === 1, JSON.stringify(fid(['1 tsp vanilla'], ['1 tsp vanilla extract'])));
+/* A tin in the UK, a can in the US: an adjective swap that was flagged whenever both
+   sides wrote one (PR 1, decision 3). The lines are still shown as each side wrote them.
+   Two kinds of pair, because they are decided differently: where the lines differ only
+   by that word the key settles it (shoppingLine folds it), but a source that says more
+   ("in syrup") against a recipe that says less is judged by the words, and there only
+   the fold in fidelityItems makes it quiet. Found by mutating the fold away: the plain
+   pair alone stayed green. */
+const tinSrc = fid(['400 g tinned peach slices'], ['400 g canned peach slices']), canSrc = fid(['400 g canned peach slices'], ['400 g tinned peach slices']);
+const tinChatty = fid(['400 g tinned peach slices in syrup'], ['400 g canned peach slices']), canChatty = fid(['400 g canned peach slices in syrup'], ['400 g tinned peach slices']);
+check('tinned in the source against canned in the recipe is quiet, in either direction, and also when the source says more; both lines are shown as written',
+      [tinSrc, canSrc, tinChatty, canChatty].every(f => flagCount(f) === 0)
+      && tinSrc.matched[0].source === '400 g tinned peach slices' && tinSrc.matched[0].recipe === '400 g canned peach slices'
+      && canChatty.matched[0].source === '400 g canned peach slices in syrup' && canChatty.matched[0].recipe === '400 g tinned peach slices',
+      JSON.stringify([tinSrc, canSrc, tinChatty, canChatty].map(flagCount)));
 
 /* Six rows, not five: the leek under the misspelt GROUP x-y is still read, into
    the group above; only the GROUP line itself is reported as read past. */
