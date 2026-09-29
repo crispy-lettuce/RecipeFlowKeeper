@@ -1010,6 +1010,15 @@
   .rv-section.rv-red{ background:rgba(140,58,52,.08); border-color:rgba(140,58,52,.28); }
   .rv-dup-detail{ margin:6px 0 0; padding:8px 10px; background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r); font-size:13px; }
   .rv-dup-detail ul{ margin:4px 0 0; padding-left:18px; }
+  /* PR 4: the answers in place. Each is a tap that writes one row, or takes one step back. */
+  .rv-undo{ padding:6px 0 0; font-size:13px; color:var(--ink-soft); }
+  .rv-undo code{ font-family:'IBM Plex Mono', monospace; font-size:13px; }
+  .rv-undo button, .spell-row button{ margin-left:6px; background:none; border:none; padding:0; cursor:pointer; color:var(--plum);
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; text-decoration:underline; }
+  .spell-row{ margin:-4px 0 14px; padding:10px 14px; background:var(--gold-wash); border:1px solid var(--line);
+    border-radius:var(--r); font-size:13.5px; line-height:1.5; color:var(--ink); }
+  ul.before-save{ margin:0 0 14px; padding:10px 14px 10px 32px; background:var(--gold-wash); border:1px solid var(--line);
+    border-radius:var(--r); font-size:14px; line-height:1.6; color:var(--ink); }
   .line-checks{ padding:12px 14px; margin-bottom:12px; background:var(--gold-wash);
     border:1px solid var(--line); border-radius:var(--r); font-size:14px; line-height:1.5; color:var(--ink); }
   .line-checks h4{ margin:0 0 6px; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.08em; font-weight:500; color:var(--ink-soft); }
@@ -1666,6 +1675,7 @@
         <label><span>SOURCE <b class="required">*</b></span><input type="text" id="f-source" placeholder="Where did this come from?" list="sourceVocab" autocomplete="off"></label>
         <datalist id="sourceVocab"></datalist>
       </div>
+      <div class="spell-row" id="sourceSpellRow" style="display:none;"></div>
       <div class="field-row">
         <label><span>TIME</span><input type="text" id="f-time" placeholder="e.g. 35 min"></label>
         <label><span>SERVINGS <span class="required">*</span></span><input type="number" id="f-servings" placeholder="e.g. 4" min="1" step="1"></label>
@@ -1681,6 +1691,7 @@
         <span class="scale-label">SCALE TO SERVE</span>
         <input type="number" id="f-scale-servings" placeholder="e.g. 6" min="1" step="1" style="width:90px;">
         <button type="button" class="btn small-danger" id="f-scale-apply">APPLY</button>
+        <button type="button" class="btn" id="f-scale-undo" style="display:none;">UNDO SCALE</button>
         <span class="scale-hint">Works out the scale from the SERVINGS this recipe already makes, then rewrites ingredient amounts and servings below, permanently, once saved — review before saving.</span>
       </div>
       <div class="equipment-warning" id="equipmentWarning" style="display:none;"></div>
@@ -1699,13 +1710,14 @@
 
       </div>
 
+      <div id="addBeforeSave" style="display:none;"></div>
       <button class="btn primary" id="saveBtn">SAVE RECIPE</button>
       <p class="field-error" id="saveError" style="display:none;"></p>
     </div>
   </div>
 </div>
 
-<script src="core.js?v=2026-09-29.3"></script>
+<script src="core.js?v=2026-09-29.4"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -1713,7 +1725,7 @@
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-09-29.3';
+const EXPECTED_CORE_VERSION = '2026-09-29.4';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -5998,6 +6010,7 @@ function openEditModal(recipeId){
   const recipe = loadRecipes().find(r=>r.id === recipeId);
   if(!recipe) return;
   state.editingRecipeId = recipeId;
+  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow('');
 
   document.getElementById('modalTitle').textContent = 'Edit recipe';
   document.getElementById('modalSubtitle').textContent =
@@ -6037,6 +6050,7 @@ function openEditModal(recipeId){
   overlay.classList.add('open');
   overlay.scrollTop = 0;
   document.body.style.overflow = 'hidden';
+  renderBeforeSave();
 }
 
 function closeAddModal(){
@@ -6052,6 +6066,8 @@ function closeAddModal(){
      link left behind would send the next recipe's source check to the wrong page. */
   document.getElementById('f-source-url').value = '';
   lastCheckedUrl = ''; lastSourceLines = null; bandsShown = false; reviewLines = [];
+  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow('');
+  clearTimeout(beforeSaveTimer); renderBeforeSave();
   clearBandsStale();
   document.getElementById('saveError').style.display = 'none';
   state.editingRecipeId = null;
@@ -6529,6 +6545,130 @@ document.addEventListener('keydown', e=>{
   if(state.selectedShortlistId){ state.selectedShortlistId = null; renderPlanner(); }
 });
 
+/* The form's fields, as SAVE reads them. One function, so the BEFORE YOU SAVE list and the save
+   itself cannot disagree about what is about to be written. */
+function readFormFields(source){
+  const keywords = document.getElementById('f-keywords').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const servingsRaw = document.getElementById('f-servings').value.trim();
+  return {
+    title: document.getElementById('f-title').value.trim() || 'Untitled recipe',
+    source,
+    imageUrl: document.getElementById('f-image').value.trim() || null,
+    sourceUrl: document.getElementById('f-source-url').value.trim() || null,
+    time: document.getElementById('f-time').value.trim(),
+    servings: servingsRaw ? parseInt(servingsRaw, 10) : null,
+    equipment: document.getElementById('f-equipment').value.trim(),
+    tags: {
+      course: document.getElementById('f-course').value,
+      keywords
+    },
+  };
+}
+/* The source as the form holds it for the recipe being edited (or null for a new one), and as
+   SAVE will record it: only a spelling settled before changes it, and only when it is new or
+   has actually changed, not on every save of a recipe whose source was already settled. */
+function priorSourceOfForm(){
+  return state.editingRecipeId
+    ? (loadRecipes().find(r=>r.id === state.editingRecipeId) || {}).source
+    : null;
+}
+function sourceAsSaved(){
+  const typed = document.getElementById('f-source').value.trim();
+  return typed !== priorSourceOfForm() ? applySourceAlias(typed) : typed;
+}
+/* The row under SOURCE (PR 4), in place of the dialog the save handler used to raise. It is
+   worked out at parse time and again when the field changes. A spelling settled before is put in
+   the field and said so; a spelling that looks like an existing source is asked about, and each
+   button writes exactly what the dialog's answer wrote, at the tap. Left unanswered, the recipe
+   is saved with the spelling as typed and nothing is written, so it is asked again next time. */
+function showSpellRow(html){
+  const row = document.getElementById('sourceSpellRow');
+  row.innerHTML = html;
+  row.style.display = html ? 'block' : 'none';
+}
+function evaluateSourceSpelling(){
+  const field = document.getElementById('f-source');
+  const typed = field.value.trim();
+  if(!typed || typed === priorSourceOfForm()){ showSpellRow(''); return; }
+  const known = applySourceAlias(typed);
+  if(known !== typed){
+    field.value = known;
+    showSpellRow(`Source recorded as <b>${escapeHtml(known)}</b>, a spelling you settled before (Settings → Word Matches). You typed <b>${escapeHtml(typed)}</b>.`);
+    return;
+  }
+  const match = findSimilarTerm(typed, sourceCounts(loadRecipes()));
+  if(match && !isPairDistinct('source', typed, match.term)){
+    const d = `data-typed="${escapeHtml(typed)}" data-term="${escapeHtml(match.term)}"`;
+    showSpellRow(`Looks like <b>${escapeHtml(match.term)}</b> (${match.count} recipe${match.count === 1 ? '' : 's'}). ` +
+      `<button type="button" data-spell="use" ${d}>USE THAT</button> · <button type="button" data-spell="keep" ${d}>KEEP MINE</button>`);
+    return;
+  }
+  showSpellRow('');
+}
+document.getElementById('sourceSpellRow').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-spell]');
+  if(!btn) return;
+  const { typed, term } = btn.dataset;
+  const field = document.getElementById('f-source');
+  /* The row is a question about the spelling in the box. If the box has moved on, ask again. */
+  if(field.value.trim() !== typed){ evaluateSourceSpelling(); return; }
+  if(btn.dataset.spell === 'use'){
+    addAlias('source', typed, term);
+    field.value = term;
+    showSpellRow(`Source recorded as <b>${escapeHtml(term)}</b>. <b>${escapeHtml(typed)}</b> now means <b>${escapeHtml(term)}</b> for every recipe (Settings → Word Matches, FORGET).`);
+  } else {
+    /* Remembering the "no" is the half that was missing from the dialog for a long time: without
+       it the same pair was asked about on every save. */
+    addAlias('source_distinct', pairKeyFor(typed, term), '');
+    showSpellRow(`Kept as <b>${escapeHtml(typed)}</b>. The app will not ask about these two again (Settings → Word Matches, ASK AGAIN).`);
+  }
+  renderAliasesList();
+});
+document.getElementById('f-source').addEventListener('change', evaluateSourceSpelling);
+
+/* BEFORE YOU SAVE (PR 4): exactly what SAVE will do, worked out the way SAVE works it out, and
+   only the lines that apply. Nothing here blocks the save. The keyword line compares with the
+   stored vocabulary (loadKeywordVocab), because that is what mergeKeywordVocab writes against;
+   the ticks line is shown only when there are ticks to reset, since SAVE resets what exists. */
+function wordList(words){
+  return words.length < 2 ? words.join('') : words.slice(0, -1).join(', ') + ' and ' + words[words.length - 1];
+}
+function beforeSaveLines(){
+  const text = document.getElementById('importInput').value;
+  const fields = readFormFields(sourceAsSaved());
+  const out = [];
+  const keys = changedHeaderKeys(text, fields);
+  if(keys.length) out.push(`Rewrites the ${wordList(keys.map(k=> k + ':'))} ${keys.length === 1 ? 'line' : 'lines'} to match the ${keys.length === 1 ? 'field' : 'fields'} above`);
+  if(needsRehosting(fields.imageUrl)) out.push('Copies the photo into your own storage after saving');
+  const vocab = new Set(loadKeywordVocab());
+  const fresh = Array.from(new Set(fields.tags.keywords.filter(k=> !vocab.has(k))));
+  if(fresh.length) out.push(`Adds to your keywords: ${fresh.join(', ')}`);
+  if(state.editingRecipeId && state.viewerTicks[state.editingRecipeId] && state.viewerTicks[state.editingRecipeId].size){
+    out.push('Resets the ticks on this recipe\'s diagram');
+  }
+  return out;
+}
+function renderBeforeSave(){
+  const box = document.getElementById('addBeforeSave');
+  const open = document.getElementById('addModalOverlay').classList.contains('open') && document.getElementById('addForm').style.display !== 'none';
+  const lines = open ? beforeSaveLines() : [];
+  box.innerHTML = lines.length
+    ? `<div class="band-title">BEFORE YOU SAVE</div><ul class="before-save">${lines.map(l=> `<li>${escapeHtml(l)}</li>`).join('')}</ul>`
+    : '';
+  box.style.display = lines.length ? 'block' : 'none';
+}
+/* Recomputed on every parse and, debounced, on any input or change in the form. */
+function scheduleBeforeSave(){
+  clearTimeout(beforeSaveTimer);
+  beforeSaveTimer = setTimeout(renderBeforeSave, 150);
+}
+['input', 'change'].forEach(t=> document.getElementById('addForm').addEventListener(t, scheduleBeforeSave));
+/* The text is the other half of what the save compares: it rewrites the header lines there to
+   match the fields. So a line edited in the box and not yet re-checked is named as one the save
+   would write back over, which is the silent undo of an edit that withUpdatedHeaderLines' own
+   comment describes. The box is outside #addForm, so it needs its own listener. */
+document.getElementById('importInput').addEventListener('input', scheduleBeforeSave);
+
 function parseAndPreview(){
   const text = document.getElementById('importInput').value;
   if(!text.trim()) return;
@@ -6563,6 +6703,9 @@ function parseAndPreview(){
   renderLineChecks(parsed);
   renderReadSummary(parsed);
   mountFlow(document.getElementById('addPreview'), parsed, {});
+  evaluateSourceSpelling();
+  refreshScaleUndo();
+  renderBeforeSave();
   autoCheckSource();
 }
 document.getElementById('parseBtn').addEventListener('click', parseAndPreview);
@@ -6584,9 +6727,10 @@ document.getElementById('parseBtn').addEventListener('click', parseAndPreview);
    is another site's text, checked and forgotten, and never sent or saved. */
 let pastedSourceText = '';
 /* PR 3 of the add-recipe plan (29 Sep 2026): the form reads in the order the work goes, and
-   the review below is READ-ONLY. Nothing here writes a row, asks a question in a dialog or
-   holds a save back: docs/PLAN-NEW-RECIPE-FLOW.md §5. The answers (SAME, KEEP APART, UNDO,
-   an aisle) are PR 4 and 6, each through the function that already writes that kind of row.
+   reading, pasting and reviewing write nothing, ask no question in a dialog and hold no save
+   back: docs/PLAN-NEW-RECIPE-FLOW.md §5. Since PR 4 the answers are given in place, each a tap
+   on a button in the row (SAME then MERGE, KEEP APART, USE THAT, KEEP MINE, UNDO), each through
+   the function that already writes that kind of row, and none a dialog. An aisle is PR 6.
    `lastCheckedUrl` is the SOURCE URL already fetched for since the form opened, so a re-parse
    or RE-CHECK does not fetch the same page again; a URL that changes is fetched again. It
    is cleared when the form closes. `lastSourceLines` is what that fetch returned, kept so
@@ -6595,6 +6739,13 @@ let lastCheckedUrl = '';
 let lastSourceLines = null;
 let bandsShown = false;        // a parse (or an Edit) has drawn the bands, so an edit to the text now makes them stale
 let reviewLines = [];          // the recipe's ingredient lines as last read, for the sections that follow the link field
+/* PR 4. What each undo needs is the whole text before and after the step, so that an undo puts
+   back exactly what was there, and is offered only while the box still holds what the step
+   left: an edit made since means the step can no longer be taken back without taking the edit
+   with it, so the offer goes rather than clobbering it. */
+let lineUndos = [];            // USE THIS steps, newest last: { before, after, line, to }
+let scaleUndo = null;          // SCALE TO SERVE: { before, after }
+let beforeSaveTimer = null;
 /* A recipe written by hand needs a shape to start from. The parser has no comment syntax,
    so these are real lines to be replaced, and it stays this small on purpose. */
 const HAND_TEMPLATE = ['TITLE: My recipe', 'SOURCE: Personal recipe', 'SERVINGS: 4', 'TAGS: course=Main', '',
@@ -6662,9 +6813,23 @@ function reviewListHtml(review){
     `${review.newCount === 1 ? 'This one is' : 'These are'} new to it:</div>` +
     fresh.map(n=> `<div class="rv-row"><b>${escapeHtml(n.name)}</b> — lands under <b>${escapeHtml(n.aisle)}</b>` +
       `${n.other ? ` <span class="rv-other">OTHER</span>` : ''}` +
-      (pair.has(n.key)
-        ? `<div class="rv-note">Same as <b>${escapeHtml(pair.get(n.key).toName)}</b>? Your library already has that one, so the list would show these as two rows. To total them as one, use Settings → Word Matches.</div>`
-        : '') + `</div>`).join('');
+      (pair.has(n.key) ? sameAsHtml(pair.get(n.key)) : '') + `</div>`).join('');
+}
+/* "Same as X?" (PR 4). The answer is given here, at the tap. SAME asks once more, in the row
+   ("... for every recipe? MERGE · CANCEL"), and only MERGE writes, through addAlias, the call
+   the shopping list's own MERGE makes: the NEW name is the alias and the existing one the
+   canonical, so the recipe being added folds into the library's name and never the other way
+   round. KEEP APART writes the pair as not the same. Both are undone in Settings → Word Matches. */
+function pairData(p){
+  return `data-from="${escapeHtml(p.from)}" data-to="${escapeHtml(p.to)}" data-from-name="${escapeHtml(p.fromName)}" data-to-name="${escapeHtml(p.toName)}"`;
+}
+function sameAsHtml(p){
+  return `<div class="rv-note">Same as <b>${escapeHtml(p.toName)}</b>? Your library already has that one, so the list would show these as two rows. ` +
+    `<button type="button" data-rv="same" ${pairData(p)}>SAME</button><button type="button" data-rv="apart" ${pairData(p)}>KEEP APART</button></div>`;
+}
+function refreshReviewList(){
+  const el = document.getElementById('reviewList');
+  if(el) el.innerHTML = `<h4>SHOPPING LIST</h4>${reviewListHtml(reviewFor(reviewLines))}`;
 }
 function duplicateHtml(review){
   if(!review.duplicates.length) return '';
@@ -6707,6 +6872,10 @@ function renderLineChecks(parsed){
         `</div>`).join('') + `</div>`;
   } else {
     html += `<div class="rv-quiet">Every ingredient line is in a shape the shopping list can total.</div>`;
+  }
+  const undo = currentLineUndo();
+  if(undo){
+    html += `<div class="rv-undo">Changed <code>${escapeHtml(undo.line)}</code> to <code>${escapeHtml(undo.to)}</code> <button type="button" data-rv="undo-line">UNDO</button></div>`;
   }
   html += `</div><div id="reviewSource">` + sourceNoteHtml(sourceNoteIn(document.getElementById('importInput').value)) +
     `<div class="rv-quiet" id="sourceStatus">${escapeHtml(sourceStatusText())}</div>` +
@@ -6853,7 +7022,49 @@ document.getElementById('f-source-url').addEventListener('change', ()=>{
   autoCheckSource();
 });
 document.getElementById('f-source').addEventListener('change', refreshSourceStatus);
+/* The step USE THIS made last, while the box still holds exactly what it left. */
+function currentLineUndo(){
+  const top = lineUndos[lineUndos.length - 1];
+  if(top && top.after !== document.getElementById('importInput').value) lineUndos = [];
+  return lineUndos[lineUndos.length - 1] || null;
+}
 document.getElementById('addChecks').addEventListener('click', e=>{
+  const rv = e.target.closest('[data-rv]');
+  if(rv){
+    const { from, to, fromName, toName } = rv.dataset;
+    const kind = rv.dataset.rv;
+    if(kind === 'same'){
+      rv.closest('.rv-note').innerHTML = `Total <b>${escapeHtml(fromName)}</b> with <b>${escapeHtml(toName)}</b>, for every recipe? ` +
+        `<button type="button" data-rv="merge" ${pairData({ from, to, fromName, toName })}>MERGE</button> · <button type="button" data-rv="cancel">CANCEL</button>`;
+    } else if(kind === 'merge'){
+      addAlias('ingredient', from, to);
+      renderAliasesList();
+      if(state.view === 'shopping') renderShopping();
+      refreshReviewList();
+      showToast(`"${fromName}" now totals with "${toName}"`);
+    } else if(kind === 'apart'){
+      addAlias('ingredient_distinct', pairKeyFor(from, to), '');
+      renderAliasesList();
+      if(state.view === 'shopping') renderShopping();
+      refreshReviewList();
+      showToast('Kept apart. The app won\'t offer this pair again');
+    } else if(kind === 'cancel'){
+      refreshReviewList();
+    } else if(kind === 'undo-line'){
+      const ta = document.getElementById('importInput');
+      const top = lineUndos[lineUndos.length - 1];
+      if(!top || top.after !== ta.value){
+        lineUndos = [];
+        showToast('The text has changed since, so that line cannot be put back on its own');
+        parseAndPreview();
+        return;
+      }
+      lineUndos.pop();
+      ta.value = top.before;
+      parseAndPreview();
+    }
+    return;
+  }
   const dup = e.target.closest('[data-show-dup]');
   if(dup){
     const detail = document.getElementById('dup-' + dup.dataset.showDup);
@@ -6863,7 +7074,9 @@ document.getElementById('addChecks').addEventListener('click', e=>{
   const use = e.target.closest('[data-use-line]');
   if(use){
     const ta = document.getElementById('importInput');
-    ta.value = ta.value.split('\n').map(l=> l.trim() === use.dataset.useLine ? l.replace(use.dataset.useLine, ()=> use.dataset.useWith) : l).join('\n');
+    const before = ta.value;
+    ta.value = before.split('\n').map(l=> l.trim() === use.dataset.useLine ? l.replace(use.dataset.useLine, ()=> use.dataset.useWith) : l).join('\n');
+    if(ta.value !== before) lineUndos.push({ before, after: ta.value, line: use.dataset.useLine, to: use.dataset.useWith });
     parseAndPreview();
     return;
   }
@@ -6901,7 +7114,9 @@ function applyScaleToForm(targetServings){
     return;
   }
   const multiplier = targetServings / base;
-  textEl.value = scaleRecipeSyntax(current, multiplier);
+  const scaled = scaleRecipeSyntax(current, multiplier);
+  textEl.value = scaled;
+  scaleUndo = { before: current, after: scaled };
   parseAndPreview();
   const equipment = document.getElementById('f-equipment').value.trim();
   const warningEl = document.getElementById('equipmentWarning');
@@ -6922,10 +7137,31 @@ function applyScaleToForm(targetServings){
 document.getElementById('f-scale-apply').addEventListener('click', ()=>{
   applyScaleToForm(parseInt(document.getElementById('f-scale-servings').value, 10));
 });
+/* UNDO SCALE (PR 4) puts back the text as it was before the scale, and is there only while the
+   box still holds what the scale wrote: see lineUndos. Nothing is written by scaling or by undoing
+   it; SAVE is still the only write. */
+function refreshScaleUndo(){
+  if(scaleUndo && document.getElementById('importInput').value !== scaleUndo.after) scaleUndo = null;
+  document.getElementById('f-scale-undo').style.display = scaleUndo ? '' : 'none';
+}
+document.getElementById('f-scale-undo').addEventListener('click', ()=>{
+  const ta = document.getElementById('importInput');
+  if(!scaleUndo || ta.value !== scaleUndo.after){
+    scaleUndo = null;
+    refreshScaleUndo();
+    showToast('The text has changed since it was scaled, so there is nothing to put back');
+    return;
+  }
+  ta.value = scaleUndo.before;
+  scaleUndo = null;
+  document.getElementById('equipmentWarning').style.display = 'none';
+  parseAndPreview();
+  showToast('Scale undone');
+});
+document.getElementById('importInput').addEventListener('input', refreshScaleUndo);
 
 document.getElementById('saveBtn').addEventListener('click', ()=>{
   const text = document.getElementById('importInput').value;
-  const title = document.getElementById('f-title').value.trim();
   let source = document.getElementById('f-source').value.trim();
   const errorEl = document.getElementById('saveError');
 
@@ -6948,56 +7184,16 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
   }
   errorEl.style.display = 'none';
 
-  /* Only nudge when the source is new or has actually changed — not on
-     every save of a recipe whose source was already settled, and not a
-     second time in the same save if the person already answered. */
-  const priorSource = state.editingRecipeId
-    ? (loadRecipes().find(r=>r.id === state.editingRecipeId) || {}).source
-    : null;
-  if(source !== priorSource){
-    /* A spelling already settled once just gets used — no second prompt. */
-    const known = applySourceAlias(source);
-    if(known !== source){
-      source = known;
-      document.getElementById('f-source').value = source;
-    } else {
-      const match = findSimilarTerm(source, sourceCounts(loadRecipes()));
-      if(match && !isPairDistinct('source', source, match.term)){
-        const useExisting = confirm(
-          `This looks similar to an existing source: "${match.term}" ` +
-          `(used on ${match.count} recipe${match.count===1?'':'s'}).\n\n` +
-          `Use "${match.term}" instead of "${source}"?\n\n` +
-          `OK to use the existing source, Cancel to keep your own spelling.`
-        );
-        if(useExisting){
-          addAlias('source', source, match.term);
-          source = match.term;
-          document.getElementById('f-source').value = source;
-        } else {
-          /* Remembering the "no" is the half that was missing: without it
-             the same pair got asked about on every single save. */
-          addAlias('source_distinct', pairKeyFor(source, match.term), '');
-        }
-      }
-    }
-  }
+  /* A spelling settled before is used, as it always has been (a lookup: no dialog, no write).
+     Anything else about the SOURCE was put to the household in the row under the field, at
+     parse time, and wrote only what was tapped (PR 4). A spelling left unanswered is saved as
+     typed and writes nothing, so it is asked again next time. A confirm() stood here until then. */
+  const typedSource = source;
+  source = sourceAsSaved();
+  if(source !== typedSource) document.getElementById('f-source').value = source;
 
-  const keywords = document.getElementById('f-keywords').value.split(',').map(s=>s.trim()).filter(Boolean);
-  const finalTitle = title || 'Untitled recipe';
-  const servingsRaw = document.getElementById('f-servings').value.trim();
-  const fields = {
-    title: finalTitle,
-    source,
-    imageUrl: document.getElementById('f-image').value.trim() || null,
-    sourceUrl: document.getElementById('f-source-url').value.trim() || null,
-    time: document.getElementById('f-time').value.trim(),
-    servings: servingsRaw ? parseInt(servingsRaw, 10) : null,
-    equipment: document.getElementById('f-equipment').value.trim(),
-    tags: {
-      course: document.getElementById('f-course').value,
-      keywords
-    },
-  };
+  const fields = readFormFields(source);
+  const keywords = fields.tags.keywords;
   /* Every header line is reconciled with the form, from the same values
      the row is built from. Until 22 Sep only TITLE: was; until 23 Sep only
      TITLE: and IMAGE: — see withUpdatedHeaderLines for what that cost. */

@@ -354,8 +354,9 @@ PR 8 after 5 and 6. One behaviour per PR; a smaller PR is always fine.
 1. `git fetch origin main`; branch from `origin/main`.
 2. Run `node test/core.test.js`, then `node test/build.js && node test/smoke.js`, and read `echo $?`
    after each. Write the counts down. On 29 Sep they were **109** and **280**, and **116** and **280**
-   once PR 1 was on its branch (it added seven checks and rewrote one), and **126** and **292** once PR 3 was
-   (ten Node checks; eleven browser checks and one more for Edit); if the exit code is
+   once PR 1 was on its branch (it added seven checks and rewrote one), **126** and **292** once PR 3 was
+   (ten Node checks; eleven browser checks and one more for Edit), and **129** and **312** once PR 4 was
+   (three Node checks for `changedHeaderKeys`; twenty browser checks); if the exit code is
    not 0 before you change anything, stop (§11).
 3. Read the PR's entry below, then the functions it names, in the code. If a name is not there,
    stop (§11).
@@ -532,6 +533,33 @@ in; compute the header list from the fields instead of the text.
 
 **Risk.** Medium: these are household-wide writes from the add form. Each is the same row the
 shopping list or Settings already writes, and each is undone in Settings.
+
+**Built as, 29 Sep (where the code differs from the text above, and why):**
+
+- **`core.js` gained one small pure function, `changedHeaderKeys(text, fields)`,** which the entry does not
+  name. BEFORE YOU SAVE has to say which header lines the save will rewrite, and asking
+  `withUpdatedHeaderLine`, the function the save uses, is what stops the list saying something the save does not
+  do. `core.js` is `2026-09-29.4` in all three places, with three Node checks.
+- **The keyword line compares with the stored vocabulary (`loadKeywordVocab`), not `fullKeywordVocab` as §5 says.**
+  `mergeKeywordVocab` writes against the stored vocabulary, so a keyword that a recipe carries but the vocabulary
+  lacks *is* written by a save, and the list would have missed it.
+- **The "resets the ticks" line shows on Edit only when the recipe has ticks in this session.** §5 says on Edit;
+  the line would otherwise be untrue, since a save resets what exists.
+- **UNDO and UNDO SCALE are offered only while the text is exactly what the step left.** An edit made since means
+  the step can no longer be taken back without taking the edit with it, so the offer goes rather than clobbering it.
+  Neither writes anything; SAVE is still the only write.
+- **The settled-spelling lookup stays in the save handler** as a plain lookup (no dialog, no write), so a spelling
+  settled before is used even when the field was never blurred. What went is the `confirm()` and its two writes.
+  **One behaviour changes:** cancelling the old dialog wrote a `source_distinct` row, and an unanswered row now writes
+  nothing and is asked again next time, as this entry says.
+- **`readFormFields` and `sourceAsSaved` are one function each,** used by the save and by BEFORE YOU SAVE, so the
+  list and the write cannot disagree about the fields or the source.
+- **One existing check changed, by one clause.** PR 3's `…and "Same as X?" is text only` asserted that the review
+  had no buttons at all, which PR 4 exists to change; it now asserts that the "Same as" row has exactly its two
+  and the other rows none. Run unamended against the new build, the previous suite gave 292 checks and 1 failed
+  (that one); the other 291 passed unchanged. Whether that counts as §11 item 2 is the household's call; it is
+  reported in the PR.
+- New ids: `#sourceSpellRow`, `#addBeforeSave`, `#f-scale-undo`. The new buttons carry `data-rv` and `data-spell`.
 
 ### PR 5 — Provenance recorded on the recipe
 

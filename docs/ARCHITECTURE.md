@@ -161,6 +161,8 @@ refresh lands whole or not at all.
 | `strictMatchSuggestions(items, isSettled)` (`core.js`) | The pairs the list offers to merge, in place, never in a dialog: two names that share a last word and differ by one word not on `NEVER_IGNORE`, neither known to the dictionary as a different product. |
 | `newRecipeReview({ lines, sourceUrl, recipeId, library, alias, isSettled })` (`core.js`) | The add form's read-only review of one recipe against the library (PR 3 of the add-recipe plan, 29 Sep 2026): its ingredient names, which the library already has and which are new, the aisle each new one lands in (Other flagged), which existing name a new one probably is (the strict rule, new name first, offered only where exactly one side is new) and any library recipe with the same source link. The recipe being edited (`recipeId`) is left out, so it never finds itself. Pure: it reads and returns, nothing is written, and the page shows it as advice. `test/validate-recipes.js` calls it too, with an empty library. |
 | `sourceNoteIn(text)`, `normalisedSourceUrl(url)`, `linesHash(lines)` (`core.js`) | The converter's `⚠️ Source note:` line (its own line under NOTES, `converter/conversion-instructions.md` §1) and whether the same line says the recipe was not read from its own page; a source link made comparable (scheme, `www.`, query, fragment and trailing slash dropped, empty when it is not a link, so "Personal recipe" never matches); and FNV-1a of the ingredient lines, added for PR 5 to tell whether the lines changed since a comparison was recorded. |
+| `changedHeaderKeys(text, fields)` (`core.js`) | Which of the eight header lines (`TITLE:`, `SOURCE:`, `SOURCE_URL:`, `IMAGE:`, `TIME:`, `SERVINGS:`, `EQUIPMENT:`, `TAGS:`) a save would change, by name, each tried on its own through `withUpdatedHeaderLine`, the function the save uses. A line that would be added or dropped counts; one that is missing and stays missing does not. It is what BEFORE YOU SAVE names (PR 4 of the add-recipe plan, 29 Sep 2026). |
+| `readFormFields(source)`, `sourceAsSaved()`, `beforeSaveLines()`, `evaluateSourceSpelling()` (`index.html`) | The add form's answers in place (PR 4 of the add-recipe plan). `readFormFields` is the one place the form's fields are read, for the save and for BEFORE YOU SAVE alike, so the list cannot disagree with what is written. `sourceAsSaved` is the SOURCE as the save will record it: only a spelling settled before changes it. `evaluateSourceSpelling` is the row under SOURCE (`#sourceSpellRow`): a settled spelling is put in the field and said so, a spelling that looks like an existing source is asked about with USE THAT and KEEP MINE, each writing through `addAlias` at the tap. `beforeSaveLines` builds `#addBeforeSave`, and only the lines that apply. No dialog remains in the add path. |
 | `queueWrite(label, fn)` | Background write queue. Returns `true` synchronously. |
 | `rehostImageFor(id, sentUrl)` | Queued after a save. Asks `rehost-images` to copy one recipe's photo into our own Storage, if it is not there already. Never awaited by the save. |
 | `applyRehostedUrl(id, sentUrl, newUrl)` | Writes the re-hosted URL back into the cached recipe — both `imageUrl` and the `IMAGE:` line — and discards a reply whose `sentUrl` is no longer current. |
@@ -233,10 +235,10 @@ a URL is already ours. See `docs/IMAGES.md` §5.
 (`test/stub.js`) and walks every screen.
 
 ```sh
-node test/core.test.js   # 126 checks on core.js in Node, about two seconds, no browser
+node test/core.test.js   # 129 checks on core.js in Node, about two seconds, no browser
 npm install playwright
 node test/build.js       # bake index.html (with core.js inlined) against the stub
-node test/smoke.js       # 292 checks; exits non-zero on failure
+node test/smoke.js       # 312 checks; exits non-zero on failure
 ```
 
 **`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,

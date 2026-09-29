@@ -928,9 +928,11 @@ const check = (name, pass, detail) => {
     rows: [...document.querySelectorAll('#reviewList .rv-row')].map(r => ({ text: r.textContent.replace(/\s+/g, ' ').trim(), other: !!r.querySelector('.rv-other') })),
     buttons: document.querySelectorAll('#reviewList button').length }));
   const rvRowFor = n => rvFresh.rows.find(r => r.text.startsWith(n)) || {};
-  check('a new name landing in Other is marked, one landing in an aisle is not, and "Same as X?" is text only',
+  /* PR 3 asserted here that "Same as X?" carried no buttons (they were PR 4's). PR 4 gives that row its
+     two, so the clause is now that ONLY that row has any (the other two rows have none). */
+  check('a new name landing in Other is marked, one landing in an aisle is not, and "Same as X?" names the existing ingredient',
         rvFresh.rows.length === 3 && rvRowFor('Sumac').other === true && rvRowFor('Young jackfruit').other === true && rvRowFor('Mangetout').other === false
-        && /lands under Produce/.test(rvRowFor('Mangetout').text) && /Same as Jackfruit\?/.test(rvRowFor('Young jackfruit').text) && rvFresh.buttons === 0,
+        && /lands under Produce/.test(rvRowFor('Mangetout').text) && /Same as Jackfruit\?/.test(rvRowFor('Young jackfruit').text) && rvFresh.buttons === 2,
         JSON.stringify(rvFresh));
 
   await rvPaste(rvText('Same Link', ['1 onion'], ['SOURCE_URL: http://www.EXAMPLE.test/lentil-soup/']));
@@ -1017,6 +1019,306 @@ const check = (name, pass, detail) => {
     for(let i = loadRecipes().length - 1; i >= 0; i--) if(String(loadRecipes()[i].id).startsWith('rv-')) loadRecipes().splice(i, 1);
     window.__INVOKES__.length = 0; window.__INVOKE_REPLY__ = null;
   });
+
+  /* ---- Answers in place (PR 4 of the add-recipe plan, 29 Sep 2026) ----
+     The review asks its questions where they arise and writes only what is tapped, each through the
+     function that already writes that kind of row: SAME (then MERGE) and KEEP APART on a "Same as"
+     row, USE THAT and KEEP MINE under SOURCE (in place of the save handler's confirm(), now gone),
+     UNDO for USE THIS and for SCALE TO SERVE, and a BEFORE YOU SAVE list of what the save will do.
+     window.confirm is replaced for the whole block by a counter, so a dialog anywhere in the add path
+     is a named failure and not a hang. Invented recipes, removed again at the end; the aliases
+     the block writes are put back too. */
+  await page.evaluate(() => {
+    window.__CONFIRMS__ = 0;
+    window.__realConfirm = window.confirm;
+    window.confirm = () => { window.__CONFIRMS__++; return false; };
+    window.__aliasesBefore = JSON.stringify(cache.aliases);
+    loadRecipes().push(
+      { id: 'an-jack', title: 'Answer Jackfruit Curry', source: 'Blue Door Bakery', sourceUrl: '', servings: 4,
+        tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-09-03',
+        syntax: 'TITLE: Answer Jackfruit Curry\nSOURCE: Blue Door Bakery\nSERVINGS: 4\n\nGROUP a:\n400 g jackfruit\n1 onion, sliced\n\nSTAGE:\nMERGE a -> done: Simmer [20 min]' },
+      { id: 'an-lentil', title: 'Answer Lentil Soup', source: 'Blue Door Bakery', sourceUrl: '', servings: 4,
+        tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-09-04',
+        syntax: 'TITLE: Answer Lentil Soup\nSOURCE: Blue Door Bakery\nSERVINGS: 4\n\nGROUP a:\n200 g red lentils\n2 onions, diced\n\nSTAGE:\nMERGE a -> done: Simmer [20 min]' });
+    window.__INVOKES__.length = 0;
+    window.__INVOKE_REPLY__ = null;
+  });
+  const anText = (title, source, lines, header = []) => ['TITLE: ' + title, 'SOURCE: ' + source, ...header, 'SERVINGS: 4', '',
+    'GROUP a:', ...lines, '', 'STAGE:', 'MERGE a -> done: Cook [5 min]'].join('\n');
+  const anMark = () => page.evaluate(() => window.__WRITES__.length);
+  const anSince = mark => page.evaluate(m => window.__WRITES__.slice(m).map(w => ({ table: w.table, op: w.op,
+    rows: (w.rows || []).map(r => ({ kind: r.kind, alias: r.alias, canonical: r.canonical, source: r.source, syntax: r.syntax, name: r.name })) })), mark);
+  const anClick = sel => page.evaluate(s => { const b = document.querySelector(s); if(b) b.click(); return !!b; }, sel);
+  const anResetAliases = () => page.evaluate(() => { cache.aliases = JSON.parse(window.__aliasesBefore); rebuildAliasMaps(); });
+  const anBeforeSave = () => page.evaluate(() => [...document.querySelectorAll('#addBeforeSave li')].map(li => li.textContent.trim()));
+  const anJackLines = ['300 g young jackfruit', '1 onion'];
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+
+  // SAME and KEEP APART, on a "Same as" row.
+  const anMarkA = await anMark();
+  await rvPaste(anText('Same As One', 'Blue Door Bakery', anJackLines));
+  const anRow0 = await page.evaluate(() => { const r = document.querySelector('[data-rv="same"]');
+    return { same: !!r, apart: !!document.querySelector('[data-rv="apart"]'), text: r ? r.closest('.rv-row').textContent.replace(/\s+/g, ' ') : '' }; });
+  await anClick('[data-rv="same"]');
+  const anGuard = await page.evaluate(() => { const n = document.querySelector('#reviewList .rv-note');
+    return { text: n ? n.textContent.replace(/\s+/g, ' ').trim() : '', merge: !!document.querySelector('[data-rv="merge"]'), cancel: !!document.querySelector('[data-rv="cancel"]') }; });
+  await page.waitForTimeout(250);
+  const anGuardWrites = (await anSince(anMarkA)).length;
+  await anClick('[data-rv="cancel"]');
+  await page.waitForTimeout(250);
+  const anAfterCancel = await page.evaluate(() => !!document.querySelector('[data-rv="same"]'));
+  const anCancelWrites = (await anSince(anMarkA)).length;
+  check('CANCEL writes nothing: SAME alone shows the guard ("for every recipe") and writes nothing, and CANCEL puts the row back',
+        anRow0.same && anRow0.apart && /Same as Jackfruit\?/.test(anRow0.text) && /Total .*Young jackfruit.* with .*Jackfruit.*for every recipe\?/.test(anGuard.text)
+        && anGuard.merge && anGuard.cancel && anGuardWrites === 0 && anAfterCancel && anCancelWrites === 0,
+        JSON.stringify([anRow0, anGuard, anGuardWrites, anAfterCancel, anCancelWrites]));
+  await anClick('[data-rv="same"]');
+  await anClick('[data-rv="merge"]');
+  await page.waitForTimeout(300);
+  const anMerged = await anSince(anMarkA);
+  const anAfterMerge = await page.evaluate(() => ({ buttons: document.querySelectorAll('#reviewList [data-rv]').length,
+    text: document.getElementById('reviewList').textContent.replace(/\s+/g, ' '),
+    alias: cache.aliases.filter(a => a.kind === 'ingredient' && a.alias === 'young jackfruit').map(a => a.canonical) }));
+  check('SAME writes exactly one ingredient alias, new name to existing, and only at MERGE',
+        anMerged.length === 1 && anMerged[0].table === 'aliases' && anMerged[0].op === 'upsert' && anMerged[0].rows.length === 1
+        && anMerged[0].rows[0].kind === 'ingredient' && anMerged[0].rows[0].alias === 'young jackfruit' && anMerged[0].rows[0].canonical === 'jackfruit'
+        && anAfterMerge.buttons === 0 && !/Young jackfruit/.test(anAfterMerge.text) && anAfterMerge.alias.join() === 'jackfruit',
+        JSON.stringify([anMerged, anAfterMerge]));
+
+  await anResetAliases();
+  await rvPaste(anText('Apart One', 'Blue Door Bakery', anJackLines));
+  const anMarkB = await anMark();
+  await anClick('[data-rv="apart"]');
+  await page.waitForTimeout(300);
+  const anApart = await anSince(anMarkB);
+  check('KEEP APART writes one distinct row, for the pair in sorted order and with no canonical',
+        anApart.length === 1 && anApart[0].table === 'aliases' && anApart[0].rows.length === 1 && anApart[0].rows[0].kind === 'ingredient_distinct'
+        && anApart[0].rows[0].alias === 'jackfruit || young jackfruit' && anApart[0].rows[0].canonical === '', JSON.stringify(anApart));
+  await rvPaste(anText('Apart Two', 'Blue Door Bakery', anJackLines));
+  const anSettled = await page.evaluate(() => ({ buttons: document.querySelectorAll('#reviewList [data-rv]').length, text: document.getElementById('reviewList').textContent.replace(/\s+/g, ' ') }));
+  check('a settled pair is not offered: after KEEP APART the same names are listed as new, with no "Same as" row',
+        anSettled.buttons === 0 && !/Same as/.test(anSettled.text) && /Young jackfruit/.test(anSettled.text), JSON.stringify(anSettled));
+
+  // The row under SOURCE, in place of the save handler's dialog.
+  await anResetAliases();
+  const anMarkC = await anMark();
+  await rvPaste(anText('Spell One', 'Blue Door', ['1 onion']));
+  const anAsked = await page.evaluate(() => { const r = document.getElementById('sourceSpellRow');
+    return { shown: getComputedStyle(r).display !== 'none', text: r.textContent.replace(/\s+/g, ' ').trim(), use: !!r.querySelector('[data-spell="use"]'), keep: !!r.querySelector('[data-spell="keep"]'),
+      field: document.getElementById('f-source').value }; });
+  const anAskedWrites = (await anSince(anMarkC)).length;
+  await anClick('[data-spell="use"]');
+  await page.waitForTimeout(300);
+  const anUse = await anSince(anMarkC);
+  const anUseField = await page.inputValue('#f-source');
+  check('USE THAT writes a source alias and sets the field, and asking wrote nothing',
+        anAsked.shown && /^Looks like Blue Door Bakery \(\d+ recipes?\)\. USE THAT · KEEP MINE$/.test(anAsked.text) && anAsked.use && anAsked.keep && anAsked.field === 'Blue Door' && anAskedWrites === 0
+        && anUse.length === 1 && anUse[0].table === 'aliases' && anUse[0].rows[0].kind === 'source' && anUse[0].rows[0].alias === 'Blue Door' && anUse[0].rows[0].canonical === 'Blue Door Bakery'
+        && anUseField === 'Blue Door Bakery', JSON.stringify([anAsked, anAskedWrites, anUse, anUseField]));
+  await anResetAliases();
+  await rvPaste(anText('Spell Two', 'Blue Door', ['1 onion']));
+  const anMarkD = await anMark();
+  await anClick('[data-spell="keep"]');
+  await page.waitForTimeout(300);
+  const anKeep = await anSince(anMarkD);
+  const anKeepField = await page.inputValue('#f-source');
+  check('KEEP MINE writes a source_distinct row and leaves the field as typed',
+        anKeep.length === 1 && anKeep[0].table === 'aliases' && anKeep[0].rows[0].kind === 'source_distinct' && anKeep[0].rows[0].alias === 'Blue Door || Blue Door Bakery'
+        && anKeep[0].rows[0].canonical === '' && anKeepField === 'Blue Door', JSON.stringify([anKeep, anKeepField]));
+  await anResetAliases();
+  await page.evaluate(() => addAlias('source', 'Blu Door', 'Blue Door Bakery'));
+  await page.waitForTimeout(300);
+  const anMarkE = await anMark();
+  await rvPaste(anText('Spell Three', 'Blu Door', ['1 onion']));
+  const anSettledSpell = await page.evaluate(() => ({ field: document.getElementById('f-source').value, text: document.getElementById('sourceSpellRow').textContent.replace(/\s+/g, ' ').trim() }));
+  check('a spelling settled before is put in the field and said so, writing nothing',
+        anSettledSpell.field === 'Blue Door Bakery' && /Source recorded as Blue Door Bakery, a spelling you settled before/.test(anSettledSpell.text) && /You typed Blu Door/.test(anSettledSpell.text)
+        && (await anSince(anMarkE)).length === 0, JSON.stringify(anSettledSpell));
+  // The row follows the field: typing a similar source shows it, and typing something unlike any source takes it away.
+  await anResetAliases();
+  await rvPaste(anText('Spell Four', 'Somewhere Else Entirely', ['1 onion']));
+  const anRowBefore = await page.evaluate(() => getComputedStyle(document.getElementById('sourceSpellRow')).display);
+  await page.fill('#f-source', 'Blue Door');
+  await page.locator('#f-source').dispatchEvent('change');
+  const anRowTyped = await page.evaluate(() => ({ shown: getComputedStyle(document.getElementById('sourceSpellRow')).display !== 'none', text: document.getElementById('sourceSpellRow').textContent.replace(/\s+/g, ' ').trim() }));
+  await page.fill('#f-source', 'Somewhere Else Entirely');
+  await page.locator('#f-source').dispatchEvent('change');
+  const anRowCleared = await page.evaluate(() => getComputedStyle(document.getElementById('sourceSpellRow')).display);
+  check('the SOURCE row follows the field: typing a similar source shows it, and typing another takes it away',
+        anRowBefore === 'none' && anRowTyped.shown && /^Looks like Blue Door Bakery/.test(anRowTyped.text) && anRowCleared === 'none', JSON.stringify([anRowBefore, anRowTyped, anRowCleared]));
+  // A spelling settled before is still used at save if the field was never blurred (no change event fired): the lookup stayed in the save.
+  await page.evaluate(() => addAlias('source', 'Blu Door', 'Blue Door Bakery'));
+  await page.waitForTimeout(300);
+  await rvPaste(anText('Backstop One', 'Blue Door Bakery', ['1 onion']));
+  await page.evaluate(() => { document.getElementById('f-source').value = 'Blu Door'; });
+  const anMarkBk = await anMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const anBackstop = await anSince(anMarkBk);
+  const anBackstopRow = anBackstop.filter(w => w.table === 'recipes').flatMap(w => w.rows).pop() || {};
+  check('a spelling settled before is used at save even when the field was never blurred, and the save writes no alias',
+        anBackstopRow.source === 'Blue Door Bakery' && /^SOURCE: Blue Door Bakery$/m.test(anBackstopRow.syntax || '') && anBackstop.filter(w => w.table === 'aliases').length === 0,
+        JSON.stringify([anBackstopRow.source, anBackstop.map(w => w.table)]));
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+  await anResetAliases();
+  await anResetAliases();
+  await rvPaste(anText('Unanswered One', 'Blue Door', ['1 onion']));
+  const anMarkF = await anMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const anUnanswered = await anSince(anMarkF);
+  const anSavedRow = anUnanswered.filter(w => w.table === 'recipes').flatMap(w => w.rows).pop() || {};
+  check('an unanswered spelling row saves the typed spelling and writes no alias',
+        anUnanswered.filter(w => w.table === 'aliases').length === 0 && anSavedRow.source === 'Blue Door' && /^SOURCE: Blue Door$/m.test(anSavedRow.syntax || ''),
+        JSON.stringify(anUnanswered.map(w => [w.table, w.op, (w.rows[0] || {}).source])));
+
+  // USE THIS, and taking it back.
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+  const anLineText = ['TITLE: Undo One', 'SOURCE: Blue Door Bakery', 'SERVINGS: 2', '', 'GROUP a:', '400 ml tin plum tomatoes', '1 onion', '', 'STAGE:', 'MERGE a -> done: Cook [5 min]'].join('\n');
+  await rvPaste(anLineText);
+  const anMarkG = await anMark();
+  await anClick('[data-use-line="400 ml tin plum tomatoes"]');
+  await page.waitForTimeout(300);
+  const anUsed = await page.evaluate(() => { const u = document.querySelector('#reviewLines .rv-undo');
+    return { text: document.getElementById('importInput').value, undo: u ? u.textContent.replace(/\s+/g, ' ').trim() : '' }; });
+  await anClick('[data-rv="undo-line"]');
+  await page.waitForTimeout(300);
+  const anUndone = await page.evaluate(() => ({ text: document.getElementById('importInput').value, undo: document.querySelectorAll('[data-rv="undo-line"]').length,
+    offered: document.querySelectorAll('[data-use-line="400 ml tin plum tomatoes"]').length }));
+  check('UNDO restores the line: exactly the text as it was, the line offered again, and nothing written',
+        anUsed.text.includes('\n400 g plum tomatoes (1 tin)\n') && /^Changed 400 ml tin plum tomatoes to 400 g plum tomatoes \(1 tin\) UNDO$/.test(anUsed.undo)
+        && anUndone.text === anLineText && anUndone.undo === 0 && anUndone.offered === 1 && (await anSince(anMarkG)).length === 0, JSON.stringify([anUsed, anUndone]));
+
+  // SCALE TO SERVE, and taking it back.
+  const anScaleText = ['TITLE: Scale Undo', 'SOURCE: Blue Door Bakery', 'SERVINGS: 4', '', 'GROUP a:', '300 g pasta', '', 'STAGE:', 'MERGE a -> done: Cook [5 min]'].join('\n');
+  await rvPaste(anScaleText);
+  const anUndoVisible = () => page.evaluate(() => getComputedStyle(document.getElementById('f-scale-undo')).display !== 'none');
+  const anScaleBefore = await anUndoVisible();
+  const anMarkH = await anMark();
+  await page.fill('#f-scale-servings', '6');
+  await page.click('#f-scale-apply');
+  await page.waitForTimeout(300);
+  const anScaled = await page.evaluate(() => document.getElementById('importInput').value);
+  const anScaledVisible = await anUndoVisible();
+  await anClick('#f-scale-undo');
+  await page.waitForTimeout(300);
+  const anUnscaled = await page.evaluate(() => ({ text: document.getElementById('importInput').value, servings: document.getElementById('f-servings').value }));
+  check('UNDO SCALE restores the text exactly, re-reads it, offers itself only after a scale, and writes nothing',
+        !anScaleBefore && /450\s*g pasta/.test(anScaled) && /^SERVINGS: 6$/m.test(anScaled) && anScaledVisible
+        && anUnscaled.text === anScaleText && anUnscaled.servings === '4' && !(await anUndoVisible()) && (await anSince(anMarkH)).length === 0,
+        JSON.stringify([anScaleBefore, anScaledVisible, anUnscaled]));
+
+  // Both undos go once the text has changed since: an undo must not take a later edit with it.
+  await page.fill('#f-scale-servings', '6');
+  await page.click('#f-scale-apply');
+  await page.waitForTimeout(300);
+  const anScaleThenType = await page.evaluate(() => document.getElementById('importInput').value);
+  await page.fill('#importInput', anScaleThenType + '\n');
+  await page.waitForTimeout(200);
+  const anScaleGone = !(await anUndoVisible());
+  await rvPaste(anLineText);
+  await anClick('[data-use-line="400 ml tin plum tomatoes"]');
+  await page.waitForTimeout(300);
+  const anUsedAgain = await page.evaluate(() => document.getElementById('importInput').value);
+  await page.fill('#importInput', anUsedAgain + '\n');
+  await anClick('#recheckBtn');
+  await page.waitForTimeout(300);
+  const anLineGone = await page.evaluate(() => document.querySelectorAll('[data-rv="undo-line"]').length);
+  check('UNDO SCALE and UNDO go once the text has changed since, so neither can take a later edit with it',
+        anScaleGone && anLineGone === 0, JSON.stringify([anScaleGone, anLineGone]));
+
+  // BEFORE YOU SAVE.
+  await page.evaluate(() => { if(!loadKeywordVocab().includes('an-known-kw')) cache.keywords.push('an-known-kw'); });
+  await rvPaste(anText('Save One', 'Blue Door Bakery', ['1 onion']));
+  const anQuiet = await page.evaluate(() => ({ lines: document.querySelectorAll('#addBeforeSave li').length, shown: getComputedStyle(document.getElementById('addBeforeSave')).display }));
+  await page.fill('#f-servings', '6');
+  await page.fill('#f-title', 'Save One, Smoky');
+  await page.waitForTimeout(350);
+  const anHeader = await anBeforeSave();
+  await page.fill('#f-servings', '4');
+  await page.fill('#f-title', 'Save One');
+  await page.waitForTimeout(350);
+  const anHeaderBack = await anBeforeSave();
+  check('BEFORE YOU SAVE names the header lines that will change, and is quiet when nothing will',
+        anQuiet.lines === 0 && anQuiet.shown === 'none' && anHeader.join('|') === 'Rewrites the TITLE: and SERVINGS: lines to match the fields above' && anHeaderBack.length === 0,
+        JSON.stringify([anQuiet, anHeader, anHeaderBack]));
+  // The text is the other half of what the save compares: a line edited there and not yet re-checked is one the save would write the field back over.
+  // (An input event sent straight to the box: page.fill would move focus off the last field, whose blur fires a change that refreshes the list on its own.)
+  await page.evaluate(t => { const ta = document.getElementById('importInput'); ta.value = t; ta.dispatchEvent(new Event('input', { bubbles: true })); },
+    anText('Save One', 'Blue Door Bakery', ['1 onion']).replace('SERVINGS: 4', 'SERVINGS: 8'));
+  await page.waitForTimeout(350);
+  const anTextEdit = await anBeforeSave();
+  await anClick('#recheckBtn');
+  await page.waitForTimeout(350);
+  const anTextChecked = await anBeforeSave();
+  check('BEFORE YOU SAVE follows the text too: an edited SERVINGS: line not yet re-checked is named as one the save would write back over, and re-checking clears it',
+        anTextEdit.join('|') === 'Rewrites the SERVINGS: line to match the field above' && anTextChecked.length === 0, JSON.stringify([anTextEdit, anTextChecked]));
+  await rvPaste(anText('Save One', 'Blue Door Bakery', ['1 onion']));
+  await page.fill('#f-keywords', 'an-known-kw, sumac-night');
+  await page.waitForTimeout(350);
+  const anKeywords = await anBeforeSave();
+  check('BEFORE YOU SAVE names the keywords that are new, and not the ones already in the vocabulary',
+        anKeywords.includes('Adds to your keywords: sumac-night') && !anKeywords.some(l => /an-known-kw/.test(l)), JSON.stringify(anKeywords));
+  await page.fill('#f-image', 'https://example.test/pic.jpg');
+  await page.waitForTimeout(350);
+  const anPhoto = await anBeforeSave();
+  await page.fill('#f-image', await page.evaluate(() => SELF_HOST_PREFIX + 'ours.jpg'));
+  await page.waitForTimeout(350);
+  const anPhotoOurs = await anBeforeSave();
+  check('BEFORE YOU SAVE names the photo copy, and not for a photo that is already ours',
+        anPhoto.includes('Copies the photo into your own storage after saving') && !anPhotoOurs.some(l => /photo/.test(l)), JSON.stringify([anPhoto, anPhotoOurs]));
+
+  // What it lists is what the save then does.
+  await page.fill('#f-servings', '6');
+  await page.fill('#f-title', 'Save One, Smoky');
+  await page.fill('#f-image', 'https://example.test/pic.jpg');
+  await page.waitForTimeout(350);
+  const anListed = await anBeforeSave();
+  const anMarkI = await anMark();
+  await page.evaluate(() => { window.__INVOKES__.length = 0; });
+  await page.click('#saveBtn');
+  await page.waitForTimeout(700);
+  const anSaved = await anSince(anMarkI);
+  const anSavedRecipe = anSaved.filter(w => w.table === 'recipes').flatMap(w => w.rows).pop() || {};
+  const anKeywordWrite = anSaved.filter(w => w.table === 'keywords').flatMap(w => w.rows).map(r => r.name);
+  const anRehost = await page.evaluate(() => window.__INVOKES__.map(c => c.name));
+  check('each line of BEFORE YOU SAVE is what the save then does: the header lines, the new keyword, the photo copy',
+        anListed.length === 3 && anListed[0] === 'Rewrites the TITLE:, IMAGE:, SERVINGS: and TAGS: lines to match the fields above'
+        && /photo/.test(anListed[1]) && anListed[2] === 'Adds to your keywords: sumac-night'
+        && /^TITLE: Save One, Smoky$/m.test(anSavedRecipe.syntax || '') && /^IMAGE: https:\/\/example\.test\/pic\.jpg$/m.test(anSavedRecipe.syntax || '')
+        && /^SERVINGS: 6$/m.test(anSavedRecipe.syntax || '') && /^TAGS: .*sumac-night/m.test(anSavedRecipe.syntax || '')
+        && anKeywordWrite.join() === 'sumac-night' && anRehost.join() === 'rehost-images', JSON.stringify([anListed, anKeywordWrite, anRehost, anSavedRecipe.syntax]));
+
+  // On Edit the ticks line appears only when there are ticks to reset, and an untouched form promises no rewrite.
+  const anEditId = await page.evaluate(() => (loadRecipes().find(r => r.title === 'Save One, Smoky') || {}).id);
+  await page.evaluate(id => { state.viewerTicks[id] = new Set(['ticked']); openEditModal(id); }, anEditId);
+  await page.waitForTimeout(350);
+  const anEditTicks = await anBeforeSave();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await page.evaluate(id => { delete state.viewerTicks[id]; openEditModal(id); }, anEditId);
+  await page.waitForTimeout(350);
+  const anEditNoTicks = await anBeforeSave();
+  check('on Edit BEFORE YOU SAVE resets-the-ticks only when there are ticks, and an untouched recipe promises no rewrite',
+        anEditTicks.some(l => /Resets the ticks/.test(l)) && !anEditNoTicks.some(l => /Resets the ticks/.test(l)) && !anEditNoTicks.some(l => /Rewrites/.test(l)), JSON.stringify([anEditTicks, anEditNoTicks]));
+  await page.click('#saveBtn');
+  await page.waitForTimeout(500);
+  const anConfirms = await page.evaluate(() => window.__CONFIRMS__);
+  check('no confirm() is called in the add path: parsing, answering, saving a new recipe and saving an edit', anConfirms === 0, anConfirms + ' calls');
+  await page.evaluate(() => {
+    window.confirm = window.__realConfirm;
+    for(let i = loadRecipes().length - 1; i >= 0; i--){
+      const r = loadRecipes()[i];
+      if(String(r.id).startsWith('an-') || ['Unanswered One', 'Backstop One', 'Save One, Smoky'].includes(r.title)) loadRecipes().splice(i, 1);
+    }
+    cache.keywords = cache.keywords.filter(k => k !== 'an-known-kw' && k !== 'sumac-night');
+    cache.aliases = JSON.parse(window.__aliasesBefore); rebuildAliasMaps();
+    window.__INVOKES__.length = 0; window.__INVOKE_REPLY__ = null;
+  });
+  await page.waitForTimeout(200);
 
   // P1: per-entry planner servings drive the shopping list.
   await page.click('.navlink[data-view="planner"]');
