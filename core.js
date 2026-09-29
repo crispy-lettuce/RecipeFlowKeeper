@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-29.2';
+const KITCHEN_CORE_VERSION = '2026-09-29.3';
 
 
 /* ======================= quantity split ======================= */
@@ -1629,6 +1629,86 @@ function ingredientMatchMap(aliases){
   return map;
 }
 
+/* ================= reviewing a recipe as it comes in (PR 3, 29 Sep 2026) =================
+   docs/PLAN-NEW-RECIPE-FLOW.md §5 and §8. Four pure functions behind the add form's
+   read-only review: a note about the source, a source link made comparable, a hash of
+   the ingredient lines (for PR 5, added now so that PR is smaller), and the review of
+   a recipe's ingredient names against the library. Nothing here writes anything, and
+   nothing here blocks a save: they return what the page shows as advice. */
+
+/* The converter's one form for a note about the source (conversion-instructions.md
+   §1, PR 2): its own line, "⚠️ Source note: …". The line is found by its opening. A
+   note counts as a reconstruction only when that SAME line carries one of the words
+   below, so a note about something else on the page (an inconsistency in its text) is
+   shown as a plain note and does not raise the alarm. The glyph's variation selector
+   is optional, since a converter can drop it; the words are the plan's list, kept as
+   written: a new one goes in a follow-up, not into the middle of another change. */
+const SOURCE_NOTE_LINE = /^\s*(⚠️?\s*)?source note\b/i;
+const RECONSTRUCTION_WORDS = /\b(reconstruct\w*|reproduction|reproduced|from memory|could\s?n[o'’]?t\s+(be\s+)?(fetch|read|access)\w*|blocked for|access error|partner version|branded version)\b/i;
+function sourceNoteIn(text){
+  const line = String(text || '').split(/\r?\n/).find(l => SOURCE_NOTE_LINE.test(l));
+  if(line === undefined) return null;
+  const m = line.match(RECONSTRUCTION_WORDS);
+  return { line: line.trim(), reconstructed: !!m, why: m ? m[0] : '' };
+}
+
+/* A source link as a key: two links to the same page written differently compare
+   equal (scheme, "www.", a query string, a fragment and a trailing slash all go),
+   and anything that is not a link at all comes back empty, so "Personal recipe" in the
+   link field can never match another recipe that says the same. */
+function normalisedSourceUrl(url){
+  const u = String(url || '').trim().toLowerCase()
+    .replace(/^https?:\/\//, '').replace(/^www\./, '')
+    .split(/[?#]/)[0].replace(/\/+$/, '');
+  return u.includes('.') ? u : '';
+}
+
+/* FNV-1a, 32 bits, over the lines joined by newlines (UTF-16 code units, which is
+   stable and all this needs), as eight hex characters. It says whether the ingredient
+   lines changed since something was recorded about them; it is not a security hash. */
+function linesHash(lines){
+  const s = (lines || []).join('\n');
+  let h = 0x811c9dc5;
+  for(let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16).padStart(8, '0');
+}
+
+/* What the shopping list will make of one recipe's ingredient lines, set against the
+   rest of the library: which names it already has and which are new, where each new
+   name lands (Other flagged), which existing name a new one probably is (the strict
+   rule, new name first), and any library recipe with the same source link.
+   `library` is [{ id, title, sourceUrl, lines }]. `alias` and `isSettled` are the
+   page's word-match functions, so a settled answer is respected exactly as the list
+   respects it. The recipe with id `recipeId` is left out of the library, so editing a
+   recipe never finds itself: its own names would otherwise all read as known.
+   A pair is offered only where exactly ONE side is new. Two names the library has
+   already are not this recipe's business, and two new names from this one recipe are
+   the converter's wording, not a match to settle. */
+function newRecipeReview({ lines, sourceUrl, recipeId, library, alias, isSettled }){
+  const others = (library || []).filter(r => r.id !== recipeId);
+  const asLines = (title, ls) => (ls || []).map(raw => ({ recipeTitle: title, raw }));
+  const mine = aggregateShoppingLines(asLines('this recipe', lines), alias);
+  const otherLines = others.flatMap(r => asLines(r.title, r.lines));
+  const inLibrary = new Set(aggregateShoppingLines(otherLines, alias).map(i => i.key));
+  const names = mine.map(i => ({
+    key: i.key, name: i.name, aisle: i.category, other: i.category === 'Other', isNew: !inLibrary.has(i.key)
+  }));
+  const isNew = new Set(names.filter(n => n.isNew).map(n => n.key));
+  const union = aggregateShoppingLines(asLines('this recipe', lines).concat(otherLines), alias);
+  const display = new Map(union.map(i => [i.key, i.name]));
+  const sameAs = strictMatchSuggestions(union, isSettled)
+    .filter(p => isNew.has(p.from) !== isNew.has(p.to))
+    .map(p => {
+      const [from, to] = isNew.has(p.from) ? [p.from, p.to] : [p.to, p.from];
+      return { from, fromName: display.get(from), to, toName: display.get(to) };
+    });
+  const mineUrl = normalisedSourceUrl(sourceUrl);
+  const duplicates = !mineUrl ? [] : others
+    .filter(r => normalisedSourceUrl(r.sourceUrl) === mineUrl)
+    .map(r => ({ id: r.id, title: r.title, sourceUrl: r.sourceUrl }));
+  return { names, knownCount: names.length - isNew.size, newCount: isNew.size, sameAs, duplicates };
+}
+
 /* So Node can load this file too (test/core.test.js, the validators). In the
    page there is no `module`, and everything above is simply global, as it was
    when it lived in index.html. */
@@ -1643,6 +1723,7 @@ if(typeof module !== 'undefined' && module.exports){
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,
     NEVER_IGNORE, foldPlural, dictionaryRow, dictionaryPhrases, dictionaryKey, shoppingLine, formatShoppingParts, aggregateShoppingLines,
     shoppingKeyForName, strictMatchSuggestions,
-    ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, fidelityAmount, fidelityAgree, pastedIngredientLines, ingredientMatchMap
+    ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, fidelityAmount, fidelityAgree, pastedIngredientLines, ingredientMatchMap,
+    sourceNoteIn, normalisedSourceUrl, linesHash, newRecipeReview
   };
 }

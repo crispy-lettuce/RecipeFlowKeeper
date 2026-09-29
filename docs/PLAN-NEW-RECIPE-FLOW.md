@@ -354,7 +354,8 @@ PR 8 after 5 and 6. One behaviour per PR; a smaller PR is always fine.
 1. `git fetch origin main`; branch from `origin/main`.
 2. Run `node test/core.test.js`, then `node test/build.js && node test/smoke.js`, and read `echo $?`
    after each. Write the counts down. On 29 Sep they were **109** and **280**, and **116** and **280**
-   once PR 1 was on its branch (it added seven checks and rewrote one); if the exit code is
+   once PR 1 was on its branch (it added seven checks and rewrote one), and **126** and **292** once PR 3 was
+   (ten Node checks; eleven browser checks and one more for Edit); if the exit code is
    not 0 before you change anything, stop (§11).
 3. Read the PR's entry below, then the functions it names, in the code. If a name is not there,
    stop (§11).
@@ -444,7 +445,10 @@ No write, no schema, no Edge Function change.
   same line matches
   `/\b(reconstruct\w*|reproduction|reproduced|from memory|could\s?n[o'’]?t\s+(be\s+)?(fetch|read|access)\w*|blocked for|access error|partner version|branded version)\b/i`.
   A note without those words (the third library recipe's note about inconsistencies on its page)
-  is `reconstructed: false` and shows as a plain SOURCE NOTE row.
+  is `reconstructed: false` and shows as a plain SOURCE NOTE row. *(Corrected 29 Sep, measured while building PR 3:
+  the live library has exactly **two** recipes with a line that opens with a source note, and both are
+  reconstruction notes. The "third recipe's note about inconsistencies" is not found by this rule, so its
+  wording must differ from the converter's form; it was not investigated.)*
 - `normalisedSourceUrl(url)` → lowercase; strip `^https?://`; strip `^www\.`; cut at the first `?`
   or `#`; strip trailing `/`; return `''` unless the result contains a `.`.
 - `linesHash(lines)` → FNV-1a 32-bit over `lines.join('\n')`, as 8 hex characters. Used by PR 5;
@@ -484,6 +488,31 @@ titles instead of URLs; parse on `input` instead of `paste`; remove the once-per
 
 **Risk.** Low: no writes. The one judgement is the reconstruction word list; keep it as written and
 put any new word in a follow-up.
+
+**Built as, 29 Sep (where the code differs from the text above, and why):**
+
+- `#addChecks` **already existed** (the line checks' container, with its click handler), so it is Band 3's
+  container, not a new id.
+- **`#addUnread` is the first block inside `#addChecks`**, directly under the diagram, not a sibling in
+  the read band. An existing smoke check reads the NOT READ block *through* `#addChecks`, and a check
+  that was not written for this PR must not have to change; the reading order on the page is the same.
+- **Edit does not run the source check on opening.** The plan calls it from `parseAndPreview`, which
+  Edit does not use, and until PR 5 stores a result an auto-run would fetch the source page every time a
+  recipe is opened to change a word. A link typed or changed by hand (`change` on `#f-source-url`) is
+  checked, and PARSE, paste and RE-CHECK check a link the form has not fetched for yet.
+- **A comparison the form fetched itself is redrawn** against the recipe's current lines after a
+  re-parse (USE THIS, RE-CHECK), from the list it already has: no second fetch. A failed fetch is not
+  replayed, so a re-parse clears the box as it always has.
+- **`closeAddModal` now empties `#f-source-url`.** It was left behind before, and with a check that runs
+  by itself a leftover link would have sent the next recipe's check to the wrong page.
+- `sourceNoteIn` takes the glyph with or without its variation selector, since a converter can drop it.
+  On the live library that finds the same two lines and no more.
+- `validate-recipes.js`: "new to the dictionary" is the names of `newRecipeReview` (empty library) that
+  `dictionaryRow` does not know, with those landing in Other marked; "totals as" is each wording the
+  dictionary lists for a row, from `shoppingLine`. Both are `core.js` run in the page, so the second reading
+  of `ingredient-names.md` is no longer used for either.
+- Two browser checks beyond the list: one that reading, pasting and reviewing writes nothing, and one
+  that Edit leaves the edited recipe out of its own review and fetches nothing when it opens.
 
 ### PR 4 — Answers in place, and no dialog left
 

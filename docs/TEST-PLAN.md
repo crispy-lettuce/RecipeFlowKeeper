@@ -12,7 +12,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 280 automated checks pass, plus 96 in Node (102 when this was
+story that used to open this paragraph is history. 292 automated checks pass, plus 126 in Node (102 when this was
 written). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -308,6 +308,20 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     Expect **169 rows**, as before, and every tick you had still ticked (no key changed on the live
     library when this was measured). The one change you should see is **Mangetout and Pak choi under
     Produce instead of Other**. Anything else that moved is a fault; tell me the row.
+
+36d. **The review band, on the tablet (new 29 Sep, PR 3 of the add-recipe plan).** Nothing in it writes, so
+    it is safe on real recipes. (1) *Add a recipe* and paste a conversion from your chat. It should read at
+    once, with no PARSE tap, and the form should show the diagram first, then the checks, then the fields.
+    Say whether that order is easier or harder to use on the tablet, and whether the page scrolls where you
+    expect. (2) *A link from Kitchen Sanctuary or Allrecipes:* the SOURCE box should say the page refused and
+    point at the paste box; from any other site it should draw the comparison by itself, and never fetch
+    twice for the same link. (3) *Type in the box after a parse:* the "text changed" bar should appear, and
+    RE-CHECK should clear it. (4) *SHOPPING LIST:* the names new to your library are listed with where each
+    lands. Write down any that land under Other and should not: that is what PR 6 is for. (5) *Edit an
+    existing recipe:* it should open with the same bands, list its own one-recipe names as new (it is left
+    out of the library), and fetch nothing. (6) *WRITE ONE BY HAND* on an empty box gives a starter recipe.
+    **The one thing no test can judge is a real paste on the tablet: tell me if pasting does not read at
+    once.**
 
 ## Deferred to the tablet, after merging
 

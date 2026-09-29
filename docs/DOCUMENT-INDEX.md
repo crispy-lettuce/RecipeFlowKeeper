@@ -356,7 +356,7 @@ to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.m
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 280-check smoke suite, the 116 Node checks and the Edge Function checks, and an honest account of what it can't tell you
+**What:** How to run the 292-check smoke suite, the 126 Node checks and the Edge Function checks, and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 
 **Use it when:** making any code change.
@@ -369,6 +369,11 @@ repo — recipe data must never be committed here.
 ```sh
 node test/build.js && node test/validate-recipes.js ~/recipes.md
 ```
+
+Since 29 Sep (PR 3 of the add-recipe plan) it also takes `--source <file>`, the source pages' own ingredient
+lists keyed by `TITLE:` (kept outside the repo), and runs each through the app's own `sourceFidelity`; its
+name reports come from `core.js` rather than a second reading of the dictionary file; and a recipe whose
+text says it was not read from its own page is a warning.
 
 Since 23 Sep it also warns on ingredient lines outside the standard shape, and lists names that
 `converter/ingredient-names.md` doesn't know. Those checks live in **`test/ingredient-lines.js`**,

@@ -694,6 +694,69 @@ check('tinned in the source against canned in the recipe is quiet, in either dir
       && canChatty.matched[0].source === '400 g canned peach slices in syrup' && canChatty.matched[0].recipe === '400 g tinned peach slices',
       JSON.stringify([tinSrc, canSrc, tinChatty, canChatty].map(flagCount)));
 
+/* ---- Reviewing a recipe as it comes in (PR 3 of the add-recipe plan, 29 Sep 2026) ----
+   Four pure functions behind the add form's read-only review. Invented lines and
+   links throughout, none in the library: lentil soup, jackfruit, sumac, quince, and
+   example.test, a domain reserved so that it names no real site. */
+const NOTE_RECON = '⚠️ Source note: the page could not be read, so this recipe was reconstructed from another page.';
+const noteA = core.sourceNoteIn(`TITLE: Lentil soup\nNOTES:\n${NOTE_RECON}\nStir well.`);
+check('sourceNoteIn finds a one-line note, and reads a reconstruction word on that same line',
+      !!noteA && noteA.line === NOTE_RECON && noteA.reconstructed === true && /could not be read|reconstruct/i.test(noteA.why), JSON.stringify(noteA));
+const noteB = core.sourceNoteIn('NOTES:\n⚠️ Source note: the page gives two different oven times.\nA line saying it was reconstructed, but not the note.');
+check('a note without reconstruction words is not reconstructed, even when another line of the recipe has one',
+      !!noteB && noteB.reconstructed === false && noteB.why === '', JSON.stringify(noteB));
+check('no note is null, and a line that only mentions a source is not a note',
+      core.sourceNoteIn('TITLE: x\nNOTES:\nStir well.') === null && core.sourceNoteIn('SOURCE: A source note is not this\nNOTES:\nx') === null && core.sourceNoteIn('') === null && core.sourceNoteIn(null) === null);
+check('normalisedSourceUrl drops scheme, www, query, fragment and slash, and ignores case',
+      ['HTTPS://www.Example.test/lentil-soup/?ref=x#top', 'http://example.test/lentil-soup//', 'example.test/lentil-soup'].every(u => core.normalisedSourceUrl(u) === 'example.test/lentil-soup'),
+      JSON.stringify(['HTTPS://www.Example.test/lentil-soup/?ref=x#top', 'http://example.test/lentil-soup//', 'example.test/lentil-soup'].map(core.normalisedSourceUrl)));
+check('a non-URL normalises to empty, so "Personal recipe" never matches another that says the same',
+      ['Personal recipe', '', '   ', null, undefined, 'https://localhost/x'].every(u => core.normalisedSourceUrl(u) === ''),
+      JSON.stringify(['Personal recipe', '', '   ', null, undefined, 'https://localhost/x'].map(core.normalisedSourceUrl)));
+const hashLines = ['2 onions, sliced', '1 tsp sumac'];
+check('linesHash is stable and 8 hex, pads a leading zero, and tells a changed line, a reorder and a join apart',
+      core.linesHash(hashLines) === '5ef03332' && core.linesHash(hashLines.slice()) === core.linesHash(hashLines)
+      && core.linesHash(['1 onion', 'tin 828']) === '0029281a' && core.linesHash([]) === '811c9dc5'
+      && core.linesHash(['2 onions, sliced', '2 tsp sumac']) !== core.linesHash(hashLines)
+      && core.linesHash(hashLines.slice().reverse()) !== core.linesHash(hashLines) && core.linesHash(['a', 'b']) !== core.linesHash(['ab']),
+      [core.linesHash(hashLines), core.linesHash(['1 onion', 'tin 828'])].join(' '));
+const revLib = [
+  { id: 'a', title: 'Lentil soup', sourceUrl: 'https://www.example.test/lentil-soup/?ref=x#top', lines: ['2 onions, diced', '15 ml olive oil', '200 g red lentils'] },
+  { id: 'b', title: 'Jackfruit curry', sourceUrl: 'https://example.test/jackfruit', lines: ['400 g jackfruit', '1 onion, sliced', '30 ml olive oil'] },
+  { id: 'c', title: 'Plain toast', sourceUrl: '', lines: ['2 slices bread'] }];
+const rev = o => core.newRecipeReview({ library: revLib, alias: null, isSettled: null, ...o });
+const revNew = rev({ lines: ['1 onion', '300 g young jackfruit', '1 pinch sumac', '2 quinces'] });
+const byKey = k => revNew.names.find(n => n.key === k) || {};
+check('newRecipeReview marks names not in the library as new, with the aisle each lands in and Other flagged',
+      byKey('onion').isNew === false && byKey('onion').aisle === 'Produce' && byKey('onion').other === false
+      && byKey('sumac').isNew === true && byKey('sumac').other === true && byKey('sumac').aisle === 'Other'
+      && revNew.knownCount === 1 && revNew.newCount === 3, JSON.stringify(revNew.names.map(n => [n.key, n.isNew, n.aisle])));
+const ownLines = revLib[0].lines;
+check('newRecipeReview leaves the edited recipe out of the library, so it never finds itself',
+      rev({ lines: ownLines, recipeId: 'a' }).names.find(n => n.key === 'red lentil').isNew === true
+      && rev({ lines: ownLines }).names.find(n => n.key === 'red lentil').isNew === false
+      && rev({ lines: ownLines, recipeId: 'a' }).names.find(n => n.key === 'onion').isNew === false,
+      JSON.stringify(rev({ lines: ownLines, recipeId: 'a' }).names.map(n => [n.key, n.isNew])));
+/* The strict rule's own from/to is "the rarer folds into the commoner", which is the wrong
+   question here: whichever way round it comes back, the NEW name is the one to fold. The
+   second case makes the existing name the rarer, so the direction has to be put right. */
+const flipped = core.newRecipeReview({ lines: ['200 g jackfruit', '1 tin jackfruit'], library: [{ id: 'x', title: 'X', sourceUrl: '', lines: ['1 tin young jackfruit'] }], alias: null, isSettled: null });
+const bothKnown = core.newRecipeReview({ lines: ['1 onion'], library: [{ id: 'p', title: 'P', sourceUrl: '', lines: ['1 tin jackfruit'] }, { id: 'q', title: 'Q', sourceUrl: '', lines: ['1 tin young jackfruit'] }], alias: null, isSettled: null });
+check('newRecipeReview pairs a new name with an existing one, new first, and only where exactly one side is new',
+      revNew.sameAs.length === 1 && revNew.sameAs[0].from === 'young jackfruit' && revNew.sameAs[0].to === 'jackfruit' && revNew.sameAs[0].fromName === 'Young jackfruit'
+      && flipped.sameAs.length === 1 && flipped.sameAs[0].from === 'jackfruit' && flipped.sameAs[0].to === 'young jackfruit'
+      && bothKnown.sameAs.length === 0 && rev({ lines: ['300 g young jackfruit'], isSettled: () => true }).sameAs.length === 0,
+      JSON.stringify([revNew.sameAs, flipped.sameAs, bothKnown.sameAs]));
+const dupHit = rev({ lines: ['1 onion'], sourceUrl: 'HTTP://WWW.Example.test/lentil-soup' });
+check('newRecipeReview finds a duplicate by normalised URL only: not by title, not for a non-URL, not the recipe itself',
+      dupHit.duplicates.length === 1 && dupHit.duplicates[0].id === 'a' && dupHit.duplicates[0].title === 'Lentil soup'
+      && rev({ lines: ['1 onion'], sourceUrl: 'https://other.test/lentil-soup-2' }).duplicates.length === 0
+      && rev({ lines: ['1 onion'], sourceUrl: 'Personal recipe' }).duplicates.length === 0
+      && rev({ lines: ['1 onion'], sourceUrl: '' }).duplicates.length === 0
+      && rev({ lines: ['1 onion'], sourceUrl: 'https://example.test/jackfruit', recipeId: 'b' }).duplicates.length === 0
+      && rev({ lines: ['1 onion'], sourceUrl: 'https://example.test/jackfruit' }).duplicates.map(d => d.id).join() === 'b',
+      JSON.stringify(dupHit.duplicates));
+
 /* Six rows, not five: the leek under the misspelt GROUP x-y is still read, into
    the group above; only the GROUP line itself is reported as read past. */
 const { remeasure } = require(path.join(ROOT, 'tools', 'remeasure.js'));
