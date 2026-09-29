@@ -1546,8 +1546,9 @@ callers passed an already-keyed name, so the keying inside `addAisleOverride` wa
 text and `addAisleOverride` is the one place a name is keyed; the mutation then failed two checks. `index.html` was restored and
 compared byte-identical after the runs. The live `aliases` definition and the
 project's default privileges were read (read-only) to draft the migration: new tables in `public` grant `anon` everything by
-default, hence the revoke. *Not verified:* the migration itself and the live table (RLS, the upsert on
-`(household_id, name)`), the tablet (`docs/TEST-PLAN.md` step 36g), and a real select on iPadOS or Android. **Counts corrected
+default, hence the revoke. **The migration was applied by the household between 20:40 UTC (read-only: no table) and 20:49 UTC, when PR #49
+merged**, and the table was read back read-only that minute exactly as drafted (columns, RLS, four policies, keys, no `anon` grant). *Not verified:* a real
+write through RLS and the upsert on `(household_id, name)`, the tablet (`docs/TEST-PLAN.md` step 36g), and a real select on iPadOS or Android. **Counts corrected
 in passing:** `CLAUDE.md`, `test/README.md`, `docs/ARCHITECTURE.md` and `docs/DOCUMENT-INDEX.md` still said 133 and 329, which
 PRs #47 and #48 should have moved.
 

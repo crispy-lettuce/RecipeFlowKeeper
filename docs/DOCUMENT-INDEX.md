@@ -94,7 +94,7 @@ useful with no Claude Code session and no prior context at all.
 
 ---
 
-### `docs/migrations/add-aisle-overrides.md` — a schema change waiting for the household (29 Sep 2026)
+### `docs/migrations/add-aisle-overrides.md` — a schema change, applied by the household 29 Sep 2026
 **What:** The `aisle_overrides` table (PR 6 of the add-recipe plan), with its four `TO authenticated` policies and the
 `anon` revoke, who applies it and when (the household, from the dashboard, **before** merging that PR), why each part is
 there, what the app does if it is merged first, how to check it and how to undo it. DDL only, no data.
