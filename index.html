@@ -1021,6 +1021,12 @@
   .rv-row .rv-sameas{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:4px; }
   .rv-sameas-filter{ font:inherit; font-size:16px; padding:3px 7px; min-width:160px;
     border:1px solid var(--line-soft); border-radius:5px; background:var(--paper); color:var(--ink); }
+  /* PR 7: the ingredient lookup, 16px so a tablet does not zoom on focus. */
+  #ingredientLookup{ font:inherit; font-size:16px; width:100%; max-width:360px; padding:5px 8px; margin:6px 0 4px;
+    border:1px solid var(--line-soft); border-radius:5px; background:var(--paper); color:var(--ink); }
+  .lookup-line{ padding:3px 0; font-size:14px; color:var(--ink-soft); }
+  .lookup-line b{ color:var(--ink); font-weight:500; }
+  .lookup-line .btn{ margin-left:8px; }
   /* PR 6: the aisle pick, 16px for the same reason as the filter. */
   .rv-aisle{ font:inherit; font-size:16px; margin-left:6px; padding:2px 4px; border:1px solid var(--line-soft);
     border-radius:5px; background:var(--paper); color:var(--ink); }
@@ -1528,12 +1534,10 @@
       <div class="filter-head">
         <div>
           <h1>Swaps</h1>
-          <p class="subtle" style="margin:4px 0 0;">Your own ingredient substitutions —
-            built up over time, not pre-populated. Each carries a scaling ratio, so
-            "110g brown rice syrup" can show as "82.5g maple syrup" automatically.
-            Matched against a recipe's ingredients on its Viewer page — a fuzzy match,
-            checked after prep words are stripped, so it catches "2 cloves garlic,
-            minced" as well as plain "garlic."</p>
+          <p class="subtle" style="margin:4px 0 0;" id="swapsSubtitle">Your own ingredient substitutions,
+            built up over time. Each carries a scaling ratio. A swap applies wherever the
+            shopping list would call an ingredient by the swap's name, so "butter" never
+            catches "peanut butter".</p>
         </div>
       </div>
       <div class="swap-form">
@@ -1587,6 +1591,21 @@
             <button class="btn" id="verifyImagesBtn">CHECK STORED IMAGES</button>
           </div>
           <p class="subtle" id="imagesSweepResult" style="display:none;"></p>
+        </div>
+
+        <div class="settings-block" id="ingredientLookupBlock">
+          <div class="side-label">INGREDIENT LOOKUP</div>
+          <p class="subtle">Type an ingredient as a recipe would write it, to see what the shopping list
+            calls it, where it goes and why, and what you have already told the app about it.</p>
+          <input type="text" id="ingredientLookup" autocomplete="off" placeholder="e.g. almond flour" aria-label="Ingredient to look up">
+          <div id="ingredientLookupOut"></div>
+        </div>
+
+        <div class="settings-block" id="dictionaryBlock">
+          <div class="side-label">DICTIONARY</div>
+          <p class="subtle">The names and aisles the app knows by itself, each with the wordings it reads as
+            that name. The lookup box above filters it. Changing a row is a code change; ask for it in a session.</p>
+          <div id="dictionaryList" class="sources-list"></div>
         </div>
 
         <div class="settings-block">
@@ -6385,6 +6404,7 @@ function renderSettings(){
   document.getElementById('setDarkMode').innerHTML = THEME_MODES.map(m=>
     `<option value="${m}"${m === current ? ' selected' : ''}>${THEME_LABELS[m]}</option>`
   ).join('');
+  renderIngredientLookup();
   renderAliasesList();
   renderAisleOverridesList();
   renderSourcesList();
@@ -6477,6 +6497,7 @@ document.getElementById('setDarkMode').addEventListener('change', e=>{
    form is for. FORGET on a kept-separate pair makes the app ask about it
    again next time it sees both names. */
 function renderAliasesList(){
+  if(document.getElementById('ingredientLookup').value) renderIngredientLookup();
   const list = document.getElementById('aliasesList');
   const all = loadAliases();
   const matches = all.filter(a=> a.kind === 'ingredient' || a.kind === 'source');
@@ -6556,6 +6577,78 @@ document.getElementById('aliasAddBtn').addEventListener('click', ()=>{
   if(state.view === 'shopping') renderShopping();
 });
 
+/* INGREDIENT LOOKUP and DICTIONARY (PR 7 of the add-recipe plan, 29 Sep 2026), docs/PLAN-NEW-RECIPE-FLOW.md
+   §6. Read-only: everything the app holds about one ingredient in one place, answered the way the
+   shopping list answers it, since the lookup runs the typed wording through aggregateShoppingLines with
+   the household's word matches and aisles, as buildShoppingList does. The one button that writes is
+   FORGET on a word match, the same removal (and the same question) as in Word Matches below. */
+const AISLE_WHY_TEXT = { dictionary: 'from the dictionary', keyword: 'from a keyword rule', override: 'your own aisle, set below' };
+function ingredientLookup(text){
+  const raw = String(text || '').trim();
+  const typedKey = shoppingKeyForName(raw);
+  if(!raw || !typedKey) return null;
+  const item = aggregateShoppingLines([{ recipeTitle: '', raw, group: '' }], applyIngredientAlias, applyAisleOverride)[0];
+  if(!item) return null;
+  const keys = new Set([typedKey, item.key]);
+  const matches = loadAliases().filter(a=> a.kind === 'ingredient' && (keys.has(shoppingKeyForName(a.alias)) || keys.has(shoppingKeyForName(a.canonical))));
+  return { key: item.key, name: item.name, known: !!dictionaryRow(item.key), aisle: item.category, why: item.aisleWhy,
+    matches, swaps: findSwapMatchesForKey(item.key, loadSwaps()) };
+}
+function renderIngredientLookup(){
+  const input = document.getElementById('ingredientLookup');
+  const out = document.getElementById('ingredientLookupOut');
+  const r = ingredientLookup(input.value);
+  renderDictionaryList(input.value);
+  if(!r){ out.innerHTML = ''; return; }
+  const lines = [
+    `<div class="lookup-line" data-lookup="name">The list calls it: <b>${escapeHtml(r.name.toLowerCase())}</b>${r.known ? '' : ', your own wording'}</div>`,
+    r.why === 'none'
+      ? `<div class="lookup-line" data-lookup="aisle">Aisle: <b>Other</b>. Nothing places it; set an aisle in Shopping Aisles below.</div>`
+      : `<div class="lookup-line" data-lookup="aisle">Aisle: <b>${escapeHtml(r.aisle)}</b>, ${escapeHtml(AISLE_WHY_TEXT[r.why] || '')}</div>`,
+    r.matches.length
+      ? r.matches.map(a=> `<div class="lookup-line" data-lookup="match">Word match: “${escapeHtml(a.alias)}” means “${escapeHtml(a.canonical)}” <button class="btn small-danger" data-lookup-forget="${escapeHtml(a.id)}">FORGET</button></div>`).join('')
+      : `<div class="lookup-line" data-lookup="match">Word matches: none</div>`,
+    r.swaps.length
+      ? r.swaps.map(sw=> `<div class="lookup-line" data-lookup="swap">Swap: ${escapeHtml(sw.original)} → ${escapeHtml(sw.replacement)}${sw.ratio ? ` (1 : ${escapeHtml(String(sw.ratio))})` : ''} <button class="btn" data-lookup-swaps>EDIT</button></div>`).join('')
+      : `<div class="lookup-line" data-lookup="swap">Swaps: none</div>`
+  ];
+  out.innerHTML = lines.join('');
+}
+/* Every row of the dictionary, by aisle, with the wordings it reads as that name (its live phrases;
+   notes are left out). Filtered by the lookup box: a row shows when its name or a wording contains
+   what is typed. */
+function renderDictionaryList(filter){
+  const q = String(filter || '').trim().toLowerCase();
+  const list = document.getElementById('dictionaryList');
+  const html = INGREDIENT_AISLES.map(aisle=>{
+    const rows = INGREDIENT_DICTIONARY.filter(r=> r.aisle === aisle)
+      .map(r=> ({ r, live: dictionaryPhrases(r).live }))
+      .filter(x=> !q || x.live.some(p=> p.toLowerCase().includes(q)))
+      .sort((a, b)=> a.r.name.localeCompare(b.r.name));
+    if(!rows.length) return '';
+    return `<div class="alias-group-label">${escapeHtml(aisle.toUpperCase())}</div>` + rows.map(x=>
+      `<div class="source-row dict-row"><div><div class="source-row-name">${escapeHtml(x.r.name)}</div>` +
+      (x.live.length > 1 ? `<div class="swap-row-detail">also ${escapeHtml(x.live.slice(1).join(', '))}</div>` : '') + `</div></div>`).join('');
+  }).join('');
+  list.innerHTML = html || `<p class="empty">No row in the dictionary has that wording.</p>`;
+}
+document.getElementById('ingredientLookup').addEventListener('input', renderIngredientLookup);
+document.getElementById('ingredientLookupOut').addEventListener('click', e=>{
+  const forget = e.target.closest('[data-lookup-forget]');
+  if(forget){
+    const entry = loadAliases().find(a=> a.id === forget.dataset.lookupForget);
+    if(!entry) return;
+    if(!confirm('Forget this match? The app may ask about these two again.')) return;
+    removeAlias(entry.id);
+    showToast('Forgotten');
+    renderAliasesList();
+    renderIngredientLookup();
+    if(state.view === 'shopping') renderShopping();
+    return;
+  }
+  if(e.target.closest('[data-lookup-swaps]')) showView('swaps');
+});
+
 /* SHOPPING AISLES (PR 6). The aisles offered are INGREDIENT_AISLES, the ones the
    dictionary itself uses, so nothing here can invent a section of the list. Each
    row is one name and its aisle, with REMOVE; the row then goes back to wherever
@@ -6569,6 +6662,7 @@ function renderAisleOverridesList(){
   if(!sel.options.length){
     sel.innerHTML = `<option value="">AISLE…</option>` + INGREDIENT_AISLES.map(a=> `<option value="${escapeHtml(a)}">${escapeHtml(a.toUpperCase())}</option>`).join('');
   }
+  if(document.getElementById('ingredientLookup').value) renderIngredientLookup();
   const list = document.getElementById('aisleOverridesList');
   const rows = [...loadAisleOverrides()].sort((a, b)=> a.name.localeCompare(b.name));
   list.innerHTML = !ok ? '' : !rows.length ? `<p class="empty">No aisles set. The list places everything itself.</p>`

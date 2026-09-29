@@ -3055,6 +3055,71 @@ const check = (name, pass, detail) => {
   await page.evaluate(() => { closeAddModal(); });
   await page.waitForTimeout(200);
 
+  /* ---- Settings: ingredient lookup and dictionary (PR 7 of the add-recipe plan, 29 Sep 2026) ----
+     Read-only: what the list calls a wording, where it goes and why, the word matches and swaps
+     touching it, and the dictionary filtered by the same box. The one write is FORGET, the same
+     removal as Word Matches. Invented names; what the block adds is taken out again. */
+  await page.click('.navlink[data-view="settings"]');
+  await page.waitForTimeout(300);
+  const lkAliasesBefore = await page.evaluate(() => JSON.stringify(cache.aliases));
+  const lkLook = async text => { await page.fill('#ingredientLookup', text); await page.waitForTimeout(80);
+    return page.evaluate(() => Object.fromEntries(['name', 'aisle', 'match', 'swap'].map(k =>
+      [k, [...document.querySelectorAll(`#ingredientLookupOut [data-lookup="${k}"]`)].map(e => e.textContent.replace(/\s+/g, ' ').trim()).join(' | ')]))); };
+  const lkKnown = await lkLook('almond flour');
+  check('the lookup names the dictionary row for a known wording, and its aisle from the dictionary',
+        /The list calls it: ground almonds$/.test(lkKnown.name) && /Aisle: Pantry, from the dictionary/.test(lkKnown.aisle), JSON.stringify(lkKnown));
+  const lkOwn = await lkLook('Bulb fennel');
+  check('    says "your own wording" for a name the dictionary does not know',
+        /The list calls it: bulb fennel, your own wording/.test(lkOwn.name), JSON.stringify(lkOwn));
+  const lkOther = await lkLook('smoked mackerel');
+  const lkKeyword = await lkLook('lamb shanks');
+  await page.evaluate(() => { addAisleOverride('smoked mackerel', 'Meat & Fish'); });
+  const lkOverride = await lkLook('smoked mackerel');
+  await page.evaluate(() => { const o = loadAisleOverrides().find(x => x.name === 'smoked mackerel'); if(o) removeAisleOverride(o.id); renderAisleOverridesList(); });
+  check('    says Other and points at the aisle block, and names a keyword rule or the household\'s own aisle',
+        /Aisle: Other\. Nothing places it; set an aisle in Shopping Aisles below/.test(lkOther.aisle) && /Aisle: Meat & Fish, from a keyword rule/.test(lkKeyword.aisle)
+        && /Aisle: Meat & Fish, your own aisle/.test(lkOverride.aisle), JSON.stringify([lkOther, lkKeyword, lkOverride]));
+  await page.evaluate(() => { cache.aliases = cache.aliases.concat([{ id: 'lk-alias', kind: 'ingredient', alias: 'young jackfruit', canonical: 'jackfruit' }]); rebuildAliasMaps(); });
+  const lkMatchNew = await lkLook('young jackfruit');
+  const lkMatchOld = await lkLook('Jackfruit');
+  check('    lists a word match touching the name, from either side, with FORGET',
+        /Word match: “young jackfruit” means “jackfruit” FORGET/.test(lkMatchNew.match) && /Word match: “young jackfruit” means “jackfruit”/.test(lkMatchOld.match)
+        && /The list calls it: jackfruit/.test(lkMatchNew.name) && /Word matches: none/.test(lkOther.match), JSON.stringify([lkMatchNew, lkMatchOld]));
+  const lkForgetMark = await anMark();
+  await page.evaluate(() => { window.__lkConfirm = window.confirm; window.confirm = () => true; });
+  await anClick('[data-lookup-forget="lk-alias"]');
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { window.confirm = window.__lkConfirm; });
+  const lkForgot = await page.evaluate(m => ({ writes: window.__WRITES__.slice(m).map(w => w.table + ':' + w.op), left: cache.aliases.some(a => a.id === 'lk-alias'),
+    match: document.querySelector('#ingredientLookupOut [data-lookup="match"]').textContent.trim() }), lkForgetMark);
+  check('    and FORGET there is the Word Matches removal: one delete, and the lookup redraws',
+        lkForgot.writes.join() === 'aliases:delete' && !lkForgot.left && /Word matches: none/.test(lkForgot.match), JSON.stringify(lkForgot));
+  await page.evaluate(() => { cache.swaps = cache.swaps.concat([{ id: 'lk-swap', original: 'butter', replacement: 'margarine', ratio: '1', notes: '' }]); });
+  const lkSwap = await lkLook('butter');
+  const lkPeanut = await lkLook('peanut butter');
+  check('    lists a swap for the name, by the list\'s own name, so butter\'s swap is not peanut butter\'s',
+        /Swap: butter → margarine \(1 : 1\)/.test(lkSwap.swap) && /EDIT/.test(lkSwap.swap) && /Swaps: none/.test(lkPeanut.swap), JSON.stringify([lkSwap, lkPeanut]));
+  await page.fill('#ingredientLookup', 'butter');
+  await page.waitForTimeout(80);
+  await anClick('[data-lookup-swaps]');
+  await page.waitForTimeout(300);
+  const lkSwapsView = await page.evaluate(() => ({ view: state.view, subtitle: document.getElementById('swapsSubtitle').textContent.replace(/\s+/g, ' ').trim() }));
+  check('    EDIT goes to Swaps, whose subtitle now says how a swap is matched',
+        lkSwapsView.view === 'swaps' && /applies wherever the shopping list would call an ingredient by the swap's name, so "butter" never catches "peanut butter"/.test(lkSwapsView.subtitle)
+        && !/fuzzy/.test(lkSwapsView.subtitle), JSON.stringify(lkSwapsView));
+  await page.click('.navlink[data-view="settings"]');
+  await page.waitForTimeout(300);
+  const lkDict = async text => { await page.fill('#ingredientLookup', text); await page.waitForTimeout(80);
+    return page.evaluate(() => [...document.querySelectorAll('#dictionaryList .dict-row .source-row-name')].map(e => e.textContent.trim())); };
+  const lkDictAll = await lkDict('');
+  const lkDictMeal = await lkDict('almond meal');
+  const lkDictNone = await lkDict('zzqx');
+  check('the dictionary list shows every row, and filters as typed by name or wording',
+        lkDictAll.length === (await page.evaluate(() => INGREDIENT_DICTIONARY.length)) && lkDictMeal.join('|') === 'ground almonds' && lkDictNone.length === 0
+        && /No row in the dictionary has that wording/.test(await page.textContent('#dictionaryList')), JSON.stringify([lkDictAll.length, lkDictMeal, lkDictNone]));
+  await page.fill('#ingredientLookup', '');
+  await page.evaluate(b => { cache.aliases = JSON.parse(b); rebuildAliasMaps(); cache.swaps = cache.swaps.filter(x => x.id !== 'lk-swap'); renderSettings(); }, lkAliasesBefore);
+
   await page.screenshot({ path: path.join(__dirname, 'settings.png'), fullPage: false });
 
   const failed = checks.filter(c => !c.pass).length;

@@ -709,6 +709,18 @@ lookup names the dictionary row for a known wording`; `…says "your own wording
 `…says Other and points at the aisle block`; `…lists a word match touching the name`; `…lists a
 swap for the name`; `the dictionary list filters as typed`. **Risk.** None to data.
 
+**Built as** (29 Sep):
+- **The lookup runs the typed wording through `aggregateShoppingLines`** with the household's word matches and aisles, as
+  `buildShoppingList` does, so it cannot answer differently from the list. A word match shows whichever side of it the
+  wording is on; swaps come from `findSwapMatchesForKey`, the list's own rule.
+- **FORGET is the one write,** and it is the Word Matches removal with the same question, not a new path. §6 asks for it
+  beside the match; the entry's "no writes" is read as no new kind of write.
+- **The Node check the entry names** (`aggregateShoppingLines reports why an aisle was chosen`) came with PR 6, which added
+  all four `aisleWhy` values; PR 7 adds none of its own.
+- **The dictionary list shows each row's live wordings** (`dictionaryPhrases`), not its notes, and the lookup box filters it.
+- **SHOPPING AISLES stays below WORD MATCHES,** where PR 6 put it; the lookup and the dictionary are above both.
+- `index.html` only; `core.js` unchanged at `2026-09-29.8`. **No existing check changed.**
+
 ### PR 8 — LIBRARY CHECK in Settings
 
 **Scope.** A block `#libraryCheck` with a RUN button. For every recipe: title · source · status
