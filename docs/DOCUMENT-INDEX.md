@@ -94,6 +94,17 @@ useful with no Claude Code session and no prior context at all.
 
 ---
 
+### `docs/migrations/add-recipes-source-check.md` — a schema change waiting for the household (29 Sep 2026)
+**What:** The one `ALTER TABLE` that adds `recipes.source_check` (PR 5 of the add-recipe plan), who applies it
+and when (the household, from the dashboard, **before** merging that PR), why it is safe to apply first, what goes in
+the column, how to check it and how to undo it. A markdown page and not a `.sql` file because `.gitignore` excludes
+`*.sql` on purpose. Carries no data.
+
+**Use it when:** applying the migration, or checking whether it has been. `docs/INFRASTRUCTURE.md` lists it as waiting
+until it has been applied.
+
+---
+
 ### `docs/ONBOARDING.md` — adding a family member
 **What:** The three steps to add someone to the household (create their account, link them with
 one guarded SQL statement, give them the app's address), what they see if the link is missing,
@@ -284,7 +295,7 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
-### `docs/PLAN-NEW-RECIPE-FLOW.md` — adding a recipe as one flow (29 Sep 2026, decided; PRs 1–3 built and merged, PR 4 open for review)
+### `docs/PLAN-NEW-RECIPE-FLOW.md` — adding a recipe as one flow (29 Sep 2026, decided; PRs 1–4 built and merged, PR 5 open for review)
 **What:** The plan that makes the journey from a pasted conversion to a saved recipe one page
 with five bands, and gives Settings one place to see what the app knows about an ingredient. It
 opens with an audit of today's add path (every step, every data change, every missing check, each
@@ -301,8 +312,8 @@ supersedes the *phasing* of `docs/PROPOSAL-NEW-RECIPE-REVIEW.md` and adopts
 `docs/PROPOSAL-AISLE-OVERRIDES.md` as its PR 6; both proposals stay the design record for the
 reasoning behind them.
 
-**Don't:** treat it as done. PRs 1–3 are built and merged and PR 4 is open for review (each entry's "Built as" note
-says where the code differs from the text); PRs 5–8 are not built, and a plan closes no finding.
+**Don't:** treat it as done. PRs 1–4 are built and merged and PR 5 is open for review (each entry's "Built as" note
+says where the code differs from the text); PRs 6–8 are not built, and a plan closes no finding.
 
 ---
 
@@ -357,7 +368,7 @@ to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.m
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 312-check smoke suite, the 129 Node checks and the Edge Function checks, and an honest account of what it can't tell you
+**What:** How to run the 329-check smoke suite, the 133 Node checks and the Edge Function checks, and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 
 **Use it when:** making any code change.

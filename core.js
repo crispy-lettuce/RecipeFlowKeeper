@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-29.4';
+const KITCHEN_CORE_VERSION = '2026-09-29.5';
 
 
 /* ======================= quantity split ======================= */
@@ -1687,6 +1687,34 @@ function linesHash(lines){
   return h.toString(16).padStart(8, '0');
 }
 
+/* What a comparison with the source page found, as the two numbers the table shows and the
+   recipe records (PR 5 of the add-recipe plan): `hard` is the "N to look at" (lines on one
+   side only, and pairs that matched but differ, one group counting once) and `soft` the
+   shaded notes, counted apart. One function, so the count drawn and the count recorded
+   cannot differ. `f` is what sourceFidelity returns. */
+function fidelityCounts(f){
+  const flagged = f.matched.filter(m => m.check);
+  return {
+    hard: f.sourceOnly.length + f.recipeOnly.length + new Set(flagged.map(m => m.check)).size,
+    soft: new Set(f.matched.filter(m => m.note).map(m => m.note)).size
+  };
+}
+
+/* Whether what is recorded on a recipe (its source_check, or null) still describes it.
+   'none': nothing recorded, or nothing usable. 'fresh': the ingredient lines now hash to
+   what they hashed to when the comparison ran. 'stale': they do not, so the comparison
+   was of a recipe that has since changed. The chip in the viewer, the SOURCE section on
+   Edit and BEFORE YOU SAVE all read this one rule. A comparison is about the ingredient
+   lines only, so a change to a keyword or a method step never makes one stale. */
+function sourceCheckStatus(check, lines){
+  if(!check || typeof check !== 'object' || typeof check.linesHash !== 'string' || !check.linesHash) return { state: 'none' };
+  return {
+    state: check.linesHash === linesHash(lines) ? 'fresh' : 'stale',
+    at: check.at, route: check.route,
+    hard: check.hard | 0, soft: check.soft | 0, sourceLines: check.sourceLines | 0
+  };
+}
+
 /* What the shopping list will make of one recipe's ingredient lines, set against the
    rest of the library: which names it already has and which are new, where each new
    name lands (Other flagged), which existing name a new one probably is (the strict
@@ -1738,6 +1766,6 @@ if(typeof module !== 'undefined' && module.exports){
     NEVER_IGNORE, foldPlural, dictionaryRow, dictionaryPhrases, dictionaryKey, shoppingLine, formatShoppingParts, aggregateShoppingLines,
     shoppingKeyForName, strictMatchSuggestions,
     ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, fidelityAmount, fidelityAgree, pastedIngredientLines, ingredientMatchMap,
-    sourceNoteIn, normalisedSourceUrl, linesHash, newRecipeReview
+    sourceNoteIn, normalisedSourceUrl, linesHash, fidelityCounts, sourceCheckStatus, newRecipeReview
   };
 }

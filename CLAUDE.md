@@ -33,6 +33,11 @@ Nobody else checks these. Each one is here because it went wrong at least once.
   `offline-harness` is a required check on `main`.
 - **Don't deploy Edge Functions.** The household deploys them from the dashboard, pasting the
   file from its raw GitHub URL.
+- **A schema change is the household's to apply, and first.** The PR carries the SQL
+  (`docs/migrations/`, and `docs/INFRASTRUCTURE.md` lists it as waiting); the household applies it from
+  the dashboard and only then merges. A session never runs DDL on the live database. The app must not
+  send a column that does not exist yet on an ordinary save (`recipeToRow` leaves `source_check` out
+  when a recipe has none, for that reason).
 - **A change to how ingredients are named re-keys the household's ticks.** This means `shoppingLine`
   or a dictionary row. Re-measure the library first ("Re-measuring the live library" in
   `test/README.md`), then ask before shipping.
@@ -81,9 +86,9 @@ node test/core.test.js
 node test/build.js && node test/smoke.js
 ```
 
-`core.test.js` is 129 checks in Node, in about two seconds: the pure functions, the dictionary, the
+`core.test.js` is 133 checks in Node, in about two seconds: the pure functions, the dictionary, the
 shopping list's naming rules, and the rules that keep `core.js` and `index.html` apart. The smoke
-suite is 312 checks. **Run both,
+suite is 329 checks. **Run both,
 always** — `smoke.js` loads what `build.js` wrote, so skipping the build
 tests your previous edit and reports a pass or a failure that belongs to code you have changed.
 

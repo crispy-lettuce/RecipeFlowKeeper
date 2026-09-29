@@ -331,6 +331,14 @@
   }
   .backlink:hover{ color:var(--plum-lift); }
   .meta-source-link{ color:inherit; text-decoration:underline; text-underline-offset:2px; }
+  /* PR 5: what is recorded about the recipe's source, beside the link. Viewer only, never on a card. */
+  .viewer-provenance{ flex-basis:100%; display:flex; flex-wrap:wrap; gap:8px; }
+  .viewer-provenance:empty{ display:none; }
+  .prov-chip{ font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; padding:3px 8px;
+    border:1px solid var(--line); border-radius:var(--r); color:var(--ink-soft); background:var(--well); }
+  .prov-chip.prov-ok{ color:var(--ink); border-color:var(--sage); }
+  .prov-chip.prov-warn, .prov-chip.prov-red{ color:var(--danger); border-color:rgba(140,58,52,.28); background:rgba(140,58,52,.08); }
+  .prov-chip.prov-stale{ color:var(--ink); background:var(--gold-wash); }
   .meta-source-link:hover{ color:var(--plum); }
   .viewer-meta{
     /* A real basis, not 0: with flex-wrap on, a zero-basis meta line gets
@@ -1382,6 +1390,7 @@
       <div class="viewer-head">
         <button class="backlink" id="backToRecipes">← ALL RECIPES</button>
         <div class="viewer-meta" id="viewerMeta"></div>
+        <div class="viewer-provenance" id="viewerProvenance"></div>
         <label class="toggle-switch" title="Keep the screen from timing out while cooking">
           <input type="checkbox" class="keep-awake-toggle">
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
@@ -1717,7 +1726,7 @@
   </div>
 </div>
 
-<script src="core.js?v=2026-09-29.4"></script>
+<script src="core.js?v=2026-09-29.5"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -1725,7 +1734,7 @@
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-09-29.4';
+const EXPECTED_CORE_VERSION = '2026-09-29.5';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -2549,7 +2558,13 @@ function recipeToRow(r){
     tags: r.tags || {course:null, keywords:[]},
     syntax: r.syntax,
     date_added: r.dateAdded || todayStr(),
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    /* PR 5 of the add-recipe plan: what a comparison with the source page found (the counts and a
+       hash of the ingredient lines it was of; never the page's text). Sent only when the recipe has
+       one, so a save that carries no comparison is the row it always was and works before the column
+       exists; a recipe with none writes null by leaving it out, and in a batch a row without the key
+       is written as null, which is what sending null would have done. */
+    ...(r.sourceCheck ? { source_check: r.sourceCheck } : {})
   };
 }
 function rowToRecipe(row, historyById){
@@ -2566,7 +2581,8 @@ function rowToRecipe(row, historyById){
     tags: row.tags || {course:null, keywords:[]},
     syntax: row.syntax,
     history: historyById[row.id] || [],
-    dateAdded: row.date_added
+    dateAdded: row.date_added,
+    sourceCheck: row.source_check || null
   };
 }
 
@@ -4227,6 +4243,26 @@ document.getElementById('groupUngroupBtn').addEventListener('click', ()=>{
   renderPlanner();
 });
 
+/* What is recorded about the recipe's source, beside its link (PR 5): the result of the last
+   comparison, or that there is none, and whether the recipe carries the converter's own note that
+   it was not read from its page. Read from the recipe as stored (never the scaled view), against its
+   ingredient lines as they are now, so an edited recipe says so. Viewer only: the cards stay plain. */
+function renderProvenance(recipe){
+  const el = document.getElementById('viewerProvenance');
+  const st = sourceCheckStatus(recipe.sourceCheck, ingredientLinesOf(parseRecipe(recipe.syntax || '')));
+  const note = sourceNoteIn(recipe.syntax);
+  const chips = [];
+  if(st.state === 'fresh'){
+    chips.push({ cls: st.hard ? 'warn' : 'ok', text: `COMPARED ${formatDate(isoLocal(new Date(st.at)))} · ${differencesWords(st.hard)}`,
+      title: st.route === 'pasted' ? 'Compared with a list pasted from the source page' : "Compared with the source page's own list" });
+  } else if(st.state === 'stale'){
+    chips.push({ cls: 'stale', text: 'COMPARED BEFORE THE INGREDIENTS CHANGED', title: 'The ingredient lines are not the ones that were compared' });
+  } else {
+    chips.push({ cls: 'none', text: 'NOT COMPARED WITH ITS SOURCE', title: '' });
+  }
+  if(note) chips.push({ cls: note.reconstructed ? 'red' : 'note', text: 'CARRIES A SOURCE NOTE', title: note.line });
+  el.innerHTML = chips.map(c=> `<span class="prov-chip prov-${c.cls}" title="${escapeHtml(c.title)}">${escapeHtml(c.text.toUpperCase())}</span>`).join('');
+}
 function renderViewer(){
   const recipe = loadRecipes().find(r=>r.id === state.selectedRecipeId);
   const mount = document.getElementById('flowMount');
@@ -4262,6 +4298,8 @@ function renderViewer(){
     ? metaHtml.replace(escapeHtml(String(recipe.source || '').toUpperCase()),
         `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="meta-source-link">${escapeHtml(String(recipe.source || '').toUpperCase())}</a>`)
     : metaHtml;
+
+  renderProvenance(recipe);
 
   const favBtn = document.getElementById('favouriteBtn');
   favBtn.classList.toggle('on', !!recipe.favourite);
@@ -6010,7 +6048,7 @@ function openEditModal(recipeId){
   const recipe = loadRecipes().find(r=>r.id === recipeId);
   if(!recipe) return;
   state.editingRecipeId = recipeId;
-  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow('');
+  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null;
 
   document.getElementById('modalTitle').textContent = 'Edit recipe';
   document.getElementById('modalSubtitle').textContent =
@@ -6066,7 +6104,7 @@ function closeAddModal(){
      link left behind would send the next recipe's source check to the wrong page. */
   document.getElementById('f-source-url').value = '';
   lastCheckedUrl = ''; lastSourceLines = null; bandsShown = false; reviewLines = [];
-  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow('');
+  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null;
   clearTimeout(beforeSaveTimer); renderBeforeSave();
   clearBandsStale();
   document.getElementById('saveError').style.display = 'none';
@@ -6643,6 +6681,17 @@ function beforeSaveLines(){
   const vocab = new Set(loadKeywordVocab());
   const fresh = Array.from(new Set(fields.tags.keywords.filter(k=> !vocab.has(k))));
   if(fresh.length) out.push(`Adds to your keywords: ${fresh.join(', ')}`);
+  /* What the save will record about the comparison (PR 5). Shown when a comparison ran, and when
+     there is a page it could have been run against (an https link) and nothing is recorded yet;
+     a recipe with no link has nothing to compare with, and one already carrying a result keeps it. */
+  const stored = state.editingRecipeId ? (loadRecipes().find(r=> r.id === state.editingRecipeId) || {}).sourceCheck : null;
+  if(formComparison){
+    out.push(formComparison.linesHash === linesHash(recipeIngredientLines())
+      ? `Records: compared with the source today, ${differencesWords(formComparison.hard)}`
+      : 'Records: compared with the source, but the ingredients changed since');
+  } else if(!stored && /^https:\/\//i.test(fields.sourceUrl || '')){
+    out.push('Records: not compared with its source');
+  }
   if(state.editingRecipeId && state.viewerTicks[state.editingRecipeId] && state.viewerTicks[state.editingRecipeId].size){
     out.push('Resets the ticks on this recipe\'s diagram');
   }
@@ -6746,6 +6795,9 @@ let reviewLines = [];          // the recipe's ingredient lines as last read, fo
 let lineUndos = [];            // USE THIS steps, newest last: { before, after, line, to }
 let scaleUndo = null;          // SCALE TO SERVE: { before, after }
 let beforeSaveTimer = null;
+/* PR 5. The comparison run in this form session, if one has: { at, route, hard, soft, sourceLines,
+   linesHash }. SAVE writes it to the recipe's source_check; nothing else does. */
+let formComparison = null;
 /* A recipe written by hand needs a shape to start from. The parser has no comment syntax,
    so these are real lines to be replaced, and it stays this small on purpose. */
 const HAND_TEMPLATE = ['TITLE: My recipe', 'SOURCE: Personal recipe', 'SERVINGS: 4', 'TAGS: course=Main', '',
@@ -6786,6 +6838,26 @@ function sourceStatusText(){
   const src = document.getElementById('f-source').value.trim().toLowerCase();
   return (!src || /^(personal|my own|own|family|home)\b/.test(src)) ? 'No source page to compare with.' : 'Add the SOURCE URL to compare with the page.';
 }
+/* On Edit, what is recorded on the recipe about its comparison with the source page (PR 5): the
+   result with RE-CHECK when the ingredient lines are the ones it was of, and a plain word when they
+   have changed since or nothing is recorded. Once a comparison has run in this form, that is the
+   one shown, so this steps aside. Opening Edit fetches nothing. */
+function storedSourceHtml(){
+  if(formComparison || !state.editingRecipeId) return '';
+  const r = loadRecipes().find(x=> x.id === state.editingRecipeId);
+  const st = sourceCheckStatus(r && r.sourceCheck, reviewLines);
+  if(st.state === 'none') return 'Not compared with its source yet.';
+  const when = formatDate(isoLocal(new Date(st.at)));
+  return (st.state === 'fresh'
+      ? `Compared ${escapeHtml(when)} · ${differencesWords(st.hard)}.`
+      : `Compared ${escapeHtml(when)}, before the ingredients changed.`) +
+    ` <button type="button" id="sourceRecheckBtn">RE-CHECK</button>`;
+}
+function refreshSourceStored(){
+  const el = document.getElementById('sourceStored');
+  if(el) el.innerHTML = storedSourceHtml();
+}
+function differencesWords(n){ return n === 0 ? 'no differences' : `${n} difference${n === 1 ? '' : 's'}`; }
 function refreshSourceStatus(){
   const el = document.getElementById('sourceStatus');
   if(el) el.textContent = sourceStatusText();
@@ -6879,6 +6951,7 @@ function renderLineChecks(parsed){
   }
   html += `</div><div id="reviewSource">` + sourceNoteHtml(sourceNoteIn(document.getElementById('importInput').value)) +
     `<div class="rv-quiet" id="sourceStatus">${escapeHtml(sourceStatusText())}</div>` +
+    `<div class="rv-quiet" id="sourceStored">${storedSourceHtml()}</div>` +
     `<div class="line-checks" id="sourceCheck"><h4>AGAINST THE SOURCE</h4>` +
     `<div class="hint">Compare these ingredients with the source page's own list, to catch one swapped, left out or given a different amount. <button type="button" id="compareSourceBtn">COMPARE WITH SOURCE</button></div>` +
     `<div class="hint">Some sites turn that check away. Then select the ingredients on the page, copy them and paste them here, one to a line:</div>` +
@@ -6917,6 +6990,14 @@ async function compareWithSource(){
   let data = null, error = null;
   try { ({ data, error } = await sb.functions.invoke('source-ingredients', { body: { pageUrl } })); }
   catch(e){ error = e; }
+  /* An answer belongs to the form and the link it was asked for. Since PR 5 it is also remembered for
+     SAVE to record, so one that arrives after the form has closed, or for a link that has since
+     changed, is dropped: otherwise it would be saved against the next recipe, or a slow older answer
+     would replace the newer comparison. (The message is cleared only when nothing newer will write it.) */
+  if(!out.isConnected || document.getElementById('f-source-url').value.trim() !== pageUrl){
+    if(out.isConnected && !/^https:\/\//i.test(document.getElementById('f-source-url').value.trim())) out.innerHTML = '';
+    return null;
+  }
   if(error || !data){
     out.innerHTML = `<div class="hint">Couldn't reach the source check${error && error.message ? ' (' + escapeHtml(error.message) + ')' : ''}. Is the source-ingredients function deployed? Pasting the source's list into the box above needs no function.</div>`;
     return null;
@@ -6933,8 +7014,10 @@ async function compareWithSource(){
    table or the same message, and a refused or failed fetch leaves the paste box where it was.
    Only what the form fetched by itself is kept for redrawing (a fetch the household asked for
    by pressing the button is theirs, and a re-parse clears it as it always has). Edit does not
-   call this on opening: until a comparison is stored with the recipe (PR 5), that would fetch
-   the source page every time a recipe is opened to change a word. */
+   call this on opening. Since PR 5 a comparison is stored with the recipe and Edit shows it, with
+   RE-CHECK; but running the check on opening whenever nothing fresh is stored would fetch the
+   source page for every recipe opened, until each has been compared and saved once, so that is
+   left as the household's decision (docs/PLAN-NEW-RECIPE-FLOW.md, PR 5 "Built as"). */
 async function autoCheckSource(){
   if(!bandsShown) return;
   const url = document.getElementById('f-source-url').value.trim();
@@ -6947,7 +7030,8 @@ async function autoCheckSource(){
 /* The table both routes share: the function's list and a pasted one go
    through the same sourceFidelity, so they can't disagree about a match. */
 function showSourceComparison(out, sourceLines, heading){
-  const f = sourceFidelity(sourceLines, recipeIngredientLines());
+  const recipeLines = recipeIngredientLines();
+  const f = sourceFidelity(sourceLines, recipeLines);
   /* A pair can be matched and still differ: a word ("white" for "black"), or
      an amount that cannot be a unit conversion (a spoon against a pinch). Those
      are highlighted with what differs, because "matched" that hides a
@@ -6959,8 +7043,13 @@ function showSourceComparison(out, sourceLines, heading){
      and counted apart, because the app cannot tell a sanctioned shorthand from a
      guess and the household can. */
   const soft = f.matched.filter(m=> m.note && !m.check);
-  const misses = f.sourceOnly.length + f.recipeOnly.length + new Set(flagged.map(m=> m.check)).size;
-  const softCount = new Set(f.matched.filter(m=> m.note).map(m=> m.note)).size;
+  const { hard: misses, soft: softCount } = fidelityCounts(f);
+  /* Remembered for SAVE, which is what writes it (PR 5): a comparison alone writes nothing. The
+     hash is of the lines compared, so a recipe edited afterwards reads as compared before it changed.
+     Only counts are kept: the pasted text, and the page's, are never stored. Every redraw against
+     the lines as they are now is a comparison of those lines, so it replaces the record. */
+  formComparison = { at: new Date().toISOString(), route: heading === 'PASTED' ? 'pasted' : 'function',
+    hard: misses, soft: softCount, sourceLines: sourceLines.length, linesHash: linesHash(recipeLines) };
   const row = (a, b, cls, why)=> `<tr class="${cls}"><td>${escapeHtml(a || '—')}</td><td>${escapeHtml(b || '—')}${why ? `<div class="why">${escapeHtml(why)}</div>` : ''}</td></tr>`;
   out.innerHTML =
     `<div class="hint">${misses
@@ -6974,6 +7063,8 @@ function showSourceComparison(out, sourceLines, heading){
     soft.map(m=> row(m.source, m.recipe, 'soft', m.note.why)).join('') +
     f.matched.filter(m=> !m.check && !m.note).map(m=> row(m.source, m.recipe, '')).join('') +
     `</table>`;
+  refreshSourceStored();
+  renderBeforeSave();
 }
 /* The other route, for the sites that refuse the function: no fetch, no
    SOURCE URL needed, nothing sent anywhere. What is in the box is read at the
@@ -7080,7 +7171,7 @@ document.getElementById('addChecks').addEventListener('click', e=>{
     parseAndPreview();
     return;
   }
-  if(e.target.closest('#compareSourceBtn')) compareWithSource();
+  if(e.target.closest('#compareSourceBtn') || e.target.closest('#sourceRecheckBtn')) compareWithSource();
   if(e.target.closest('#comparePastedBtn')) comparePastedSource();
 });
 
@@ -7194,6 +7285,10 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
 
   const fields = readFormFields(source);
   const keywords = fields.tags.keywords;
+  /* A comparison that ran in this form is recorded with the recipe (PR 5). With none, the recipe keeps
+     whatever it already had: the key is left out of `fields` rather than set to nothing, so an Edit
+     that did not compare cannot wipe an earlier result (and an Add carries none). */
+  if(formComparison) fields.sourceCheck = { ...formComparison };
   /* Every header line is reconciled with the form, from the same values
      the row is built from. Until 22 Sep only TITLE: was; until 23 Sep only
      TITLE: and IMAGE: — see withUpdatedHeaderLines for what that cost. */

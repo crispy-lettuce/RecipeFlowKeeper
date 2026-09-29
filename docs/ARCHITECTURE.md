@@ -163,6 +163,8 @@ refresh lands whole or not at all.
 | `sourceNoteIn(text)`, `normalisedSourceUrl(url)`, `linesHash(lines)` (`core.js`) | The converter's `⚠️ Source note:` line (its own line under NOTES, `converter/conversion-instructions.md` §1) and whether the same line says the recipe was not read from its own page; a source link made comparable (scheme, `www.`, query, fragment and trailing slash dropped, empty when it is not a link, so "Personal recipe" never matches); and FNV-1a of the ingredient lines, added for PR 5 to tell whether the lines changed since a comparison was recorded. |
 | `changedHeaderKeys(text, fields)` (`core.js`) | Which of the eight header lines (`TITLE:`, `SOURCE:`, `SOURCE_URL:`, `IMAGE:`, `TIME:`, `SERVINGS:`, `EQUIPMENT:`, `TAGS:`) a save would change, by name, each tried on its own through `withUpdatedHeaderLine`, the function the save uses. A line that would be added or dropped counts; one that is missing and stays missing does not. It is what BEFORE YOU SAVE names (PR 4 of the add-recipe plan, 29 Sep 2026). |
 | `readFormFields(source)`, `sourceAsSaved()`, `beforeSaveLines()`, `evaluateSourceSpelling()` (`index.html`) | The add form's answers in place (PR 4 of the add-recipe plan). `readFormFields` is the one place the form's fields are read, for the save and for BEFORE YOU SAVE alike, so the list cannot disagree with what is written. `sourceAsSaved` is the SOURCE as the save will record it: only a spelling settled before changes it. `evaluateSourceSpelling` is the row under SOURCE (`#sourceSpellRow`): a settled spelling is put in the field and said so, a spelling that looks like an existing source is asked about with USE THAT and KEEP MINE, each writing through `addAlias` at the tap. `beforeSaveLines` builds `#addBeforeSave`, and only the lines that apply. No dialog remains in the add path. |
+| `fidelityCounts(f)`, `sourceCheckStatus(check, lines)` (`core.js`) | The comparison with the source page, recorded on the recipe (PR 5 of the add-recipe plan, 29 Sep 2026). `fidelityCounts` turns what `sourceFidelity` returns into the two numbers the table shows and the recipe records (`hard`, the "N to look at", and `soft`, the shaded notes), so the count drawn and the count recorded cannot differ. `sourceCheckStatus` says whether a recorded comparison is `fresh` (the ingredient lines hash to what they did when it ran), `stale` (they do not) or `none`; the viewer's chip, Edit's SOURCE section and BEFORE YOU SAVE all read that one rule. A keyword or a method step never makes one stale, because only the ingredient lines are hashed (`linesHash`). |
+| `formComparison`, `renderProvenance(recipe)`, `storedSourceHtml()` (`index.html`) | `formComparison` is the comparison run in the open form, set whenever the table is drawn (`showSourceComparison`) and written by SAVE and by nothing else. `renderProvenance` draws the viewer's chips under `#viewerProvenance` (COMPARED … · NO DIFFERENCES / N DIFFERENCES, COMPARED BEFORE THE INGREDIENTS CHANGED, NOT COMPARED WITH ITS SOURCE, CARRIES A SOURCE NOTE); viewer only, never on a card. `storedSourceHtml` is the SOURCE section's line on Edit: the stored result with RE-CHECK, or that it is out of date, or that there is none. `recipeToRow` sends `source_check` only when the recipe has one. |
 | `queueWrite(label, fn)` | Background write queue. Returns `true` synchronously. |
 | `rehostImageFor(id, sentUrl)` | Queued after a save. Asks `rehost-images` to copy one recipe's photo into our own Storage, if it is not there already. Never awaited by the save. |
 | `applyRehostedUrl(id, sentUrl, newUrl)` | Writes the re-hosted URL back into the cached recipe — both `imageUrl` and the `IMAGE:` line — and discards a reply whose `sentUrl` is no longer current. |
@@ -182,7 +184,7 @@ was a deliberate call in the brief: retrofitting it later, once data exists, is 
 
 | Table | Holds |
 | --- | --- |
-| `recipes` | The library. `syntax` is the real recipe; other columns are parsed from it. |
+| `recipes` | The library. `syntax` is the real recipe; other columns are parsed from it. `source_check` (jsonb, nullable; PR 5 of the add-recipe plan) is what a comparison with the source page found: `{at, route, hard, soft, sourceLines, linesHash}`, written by SAVE when a comparison ran in that form session, never the page's text or a pasted list. It is added by `docs/migrations/add-recipes-source-check.md`, which the household applies; **it was not on the live database when this was written (29 Sep)**. |
 | `recipe_logs` | One row per time a recipe was cooked. **`ON DELETE CASCADE`** from `recipes` — deleting a recipe destroys its history. |
 | `keywords` | The tag vocabulary, ordered by `sort_order`. |
 | `planner_days` | One row per planned day. `recipe_ids uuid[]` plus a **parallel `servings smallint[]`** — index *n* in one matches index *n* in the other, `0` meaning "as the recipe is written". |
@@ -235,10 +237,10 @@ a URL is already ours. See `docs/IMAGES.md` §5.
 (`test/stub.js`) and walks every screen.
 
 ```sh
-node test/core.test.js   # 129 checks on core.js in Node, about two seconds, no browser
+node test/core.test.js   # 133 checks on core.js in Node, about two seconds, no browser
 npm install playwright
 node test/build.js       # bake index.html (with core.js inlined) against the stub
-node test/smoke.js       # 312 checks; exits non-zero on failure
+node test/smoke.js       # 329 checks; exits non-zero on failure
 ```
 
 **`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,
