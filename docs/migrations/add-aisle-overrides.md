@@ -6,6 +6,10 @@ Settings → Shopping Aisles or from the add form's review. The design is `docs/
 *(A markdown page rather than a `.sql` file because `.gitignore` excludes `*.sql`, on purpose: nothing that
 looks like a data dump may be committed to this public repo. It carries DDL only and no data.)*
 
+**Applied, 29 Sep 2026,** by the household from the SQL editor. Checked read-only at 20:49 UTC: the five columns, RLS on,
+the four `TO authenticated` policies, the foreign key, unique `(household_id, name)`, and no `anon` grant. The dashboard gave it
+no migration version (see `docs/INFRASTRUCTURE.md`).
+
 ## Who and when
 
 **The household applies this, from the Supabase dashboard's SQL editor, before merging the PR that carries

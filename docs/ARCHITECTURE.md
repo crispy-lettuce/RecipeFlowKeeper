@@ -173,7 +173,7 @@ refresh lands whole or not at all.
 
 ## 4. The database
 
-Supabase Postgres. 14 tables once `aisle_overrides` is created (13 before), all with row-level security enabled and policies on every one.
+Supabase Postgres. 14 tables (`aisle_overrides` added 29 Sep 2026), all with row-level security enabled and policies on every one.
 RLS is driven by `private.household_ids_for_user()` — kept in a `private` schema, granted only
 to `authenticated`, never to `anon`.
 
@@ -193,7 +193,7 @@ was a deliberate call in the brief: retrofitting it later, once data exists, is 
 | `ingredient_swaps` | Personal substitutions with a scaling ratio. |
 | `shopping_checked` | Ticked items, keyed by `week_start` + `item_key`. **`item_key` is the row's key**, the ingredient's name alone since PR 6b (with a `both\|` prefix for the both-weeks list), so a recipe changing its unit keeps the tick but anything that changes how items are *named* re-keys them. Until 25 Sep it was `name\|unit`; those rows are deleted at start-up by `purgeOldFormatTicks`. |
 | `aliases` | Word matches. `kind` is `source`, `ingredient`, `source_distinct` or `ingredient_distinct` — the `_distinct` kinds record "these are *not* the same" so the app stops asking. Ingredient matches are re-normalised through `shoppingKeyForName` as they load, so a match stored in the old normaliser's words still applies; the stored rows are never rewritten. |
-| `aisle_overrides` | The household's aisle for an ingredient (PR 6 of the add-recipe plan, 29 Sep 2026): `name` is the shopping list's key for it (`shoppingKeyForName`), `aisle` one of `INGREDIENT_AISLES`, unique on `(household_id, name)`. Set in Settings → Shopping Aisles or from the add form's review; applied by `aggregateShoppingLines` after the key is final. Created by `docs/migrations/add-aisle-overrides.md`, which the household applies. **`hydrate()` reads it apart from the other tables and does not throw when it is missing**: the feature is then unavailable and says so. |
+| `aisle_overrides` | The household's aisle for an ingredient (PR 6 of the add-recipe plan, 29 Sep 2026): `name` is the shopping list's key for it (`shoppingKeyForName`), `aisle` one of `INGREDIENT_AISLES`, unique on `(household_id, name)`. Set in Settings → Shopping Aisles or from the add form's review; applied by `aggregateShoppingLines` after the key is final. Created by `docs/migrations/add-aisle-overrides.md`, which the household applied on 29 Sep 2026. **`hydrate()` reads it apart from the other tables and does not throw when it is missing**: the feature is then unavailable and says so. |
 | `household_settings` | One row. `week_start_day` (0=Sunday, default 5=Friday). |
 | `households`, `household_members` | Identity. `hydrate()` reads the signed-in user's first `household_members` row to set `HOUSEHOLD_ID`, so the app carries no household constant. *(Corrected 23 Sep; this row said it was a constant.)* |
 
