@@ -1431,7 +1431,7 @@ RLS or the write queue for these calls, though each is the same `addAlias` call 
 Whether the buttons are easy to hit on the tablet. That the Settings word-match list is redrawn after a tap (called, not
 asserted). What the deployed site serves. I also did not read `main`'s own test and Pages runs after PR 3 merged.
 
-**PR 5 of the add-recipe plan, the comparison recorded on the recipe (29 Sep 2026, open for review, not merged; needs the
+**PR 5 of the add-recipe plan, the comparison recorded on the recipe (29 Sep 2026, PR #45, open for review, not merged; needs the
 household to apply one SQL statement first).** A comparison with the source page is now remembered by the add and edit form
 and written by SAVE, and only by SAVE, as `recipes.source_check`: `{at, route, hard, soft, sourceLines, linesHash}`, the counts
 (the table's own "N to look at" and its shaded notes) and a hash of the ingredient lines it was of, never the page's text or a
