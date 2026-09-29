@@ -134,8 +134,12 @@ These are settled. Do not reopen them in an implementation session.
    **Fact, measured 29 Sep, ingredient lines only:** 2 lines in 2 recipes say "canned" (as the
    handover's decision 3 says), 1 line in 1 recipe says "tinned", 0 ticks are stored. (Counting
    every line of the text, notes and method included, gives 3 and 3; that count was written into
-   the session's chat first and is wrong for this purpose.) Folding tinned → canned changes the key
-   of the one "tinned" line and leaves the "canned" lines as they are. That is the direction.
+   the session's chat first and is wrong for this purpose.) Folding tinned → canned leaves the
+   "canned" lines as they are. That is the direction.
+   **Corrected 29 Sep, measured on PR 1's branch:** this paragraph first said the fold "changes the key
+   of the one 'tinned' line". It changes **no** key. That line also says "canned" (it is one of the two
+   "canned" lines), and its "tinned" sits inside a bracket, which a key never reads, so its key and name
+   are the same before and after. The claim was a prediction and was wrong; the rest stands.
 4. **One form, bands in reading order.** Not a wizard.
 5. **The review may write three kinds of household fact:** aisle overrides (a new table), a
    provenance record per recipe (a new column), and it may run over the whole library from Settings.
@@ -349,7 +353,8 @@ PR 8 after 5 and 6. One behaviour per PR; a smaller PR is always fine.
 
 1. `git fetch origin main`; branch from `origin/main`.
 2. Run `node test/core.test.js`, then `node test/build.js && node test/smoke.js`, and read `echo $?`
-   after each. Write the counts down. On 29 Sep they were **109** and **280**; if the exit code is
+   after each. Write the counts down. On 29 Sep they were **109** and **280**, and **116** and **280**
+   once PR 1 was on its branch (it added seven checks and rewrote one); if the exit code is
    not 0 before you change anything, stop (§11).
 3. Read the PR's entry below, then the functions it names, in the code. If a name is not there,
    stop (§11).
@@ -379,10 +384,12 @@ dictionary phrase and a recipe line could stop meeting.
 `node tools/generate-ingredient-names.js --check`).
 
 **Expected numbers.** Re-measure on `main`: 34 recipes, 466 lines, 169 rows, 32 Other, 0 splits.
-On the branch: the **only** line that changes key is an ingredient line containing the word
+On the branch: the **only** line that could change key is an ingredient line containing the word
 "tinned" (1 line in 1 recipe on 29 Sep); rows 169 or fewer; nothing else changes name, amount or
 aisle; 0 ticks stored (`select count(*) from shopping_checked` must be re-read on the day).
-Anything else: stop.
+Anything else: stop. *(Corrected 29 Sep: measured on the branch, **0** lines changed, not 1. That
+line's "tinned" is inside a bracket and it also says "canned", so the fold does nothing to it; see §4
+item 3. Neither fix touches a line in today's library.)*
 
 **Checks to add** (names to use; each mutation-tested): `a big handful of X reads as 1 handful of
 X`; `a small bunch of X reads as 1 bunch`; `a large pinch of X reads as 1 pinch`; `the check that
@@ -610,8 +617,8 @@ Short, and none blocks PR 1–3:
    it). Say before PR 5 if you want it in the text instead.
 3. **Swaps stay a view (A).** Option B (into Settings under the lookup) is drawn in the mockup only.
    Say if you want B, and when.
-4. **PR 1's day.** One line re-keys and no tick exists; the Friday-morning rule is yours to keep
-   or waive.
+4. **PR 1's day.** No line re-keys (measured on the branch, 29 Sep; this said "one line" until
+   then) and no tick exists; the Friday-morning rule is yours to keep or waive.
 5. **The reconstruction word list** (PR 3). Add or remove words before it ships if you know a
    phrasing the converter uses.
 

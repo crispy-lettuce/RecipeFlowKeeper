@@ -1265,6 +1265,46 @@ in the session; one answer (a hard refusal for a reconstructed recipe) was withd
 the plan records both. A count first given in chat (3 canned, 3 tinned) was over every line of the text;
 the plan carries the ingredient-line count.
 
+**PR 1 of the add-recipe plan, the two naming fixes (29 Sep 2026, PR #41, open for review, not merged).** The
+household's decisions 2 and 3 (`docs/PLAN-NEW-RECIPE-FLOW.md` §4). (a) `shoppingLine` now skips size
+words between an article and a count unit, so `a big handful of X`, `a small bunch of X` and `a large
+pinch of X` read as 1 handful, bunch or pinch; before, the article was left in the name (`a handful of
+x`), with no amount and no dictionary row. (b) One helper, `foldTin`, reads `tinned` as `canned` in
+`dictionaryKey`, `shoppingLine` and `fidelityItems`; in the source check only the words compared are
+folded, so the preview still shows each line as written. `core.js` `2026-09-29.2` in all three places.
+
+*Verified by.* `node test/core.test.js` **109 → 116** (seven checks added, one rewritten: the pin that
+held test 8's "known gap" now expects 0 hard differences, which it gets; it was 2), exit 0; `node
+test/build.js && node test/smoke.js` **280**, exit 0; `tools/generate-ingredient-names.js --check` exit
+0. **Mutations, each seen failing by name:** removing the size-word skip failed the three handful, bunch
+and pinch checks and the test 8 check; removing the fold from `shoppingLine` failed the row, key and
+dictionary-row checks (and two older dictionary checks); from `dictionaryKey`, the dictionary-row check
+alone; folding the wrong way round (canned into tinned), the key check alone; folding the line that is
+shown, and not only the copy compared, failed the source check (and two older checks). **The fold in
+`fidelityItems` was the one that first failed nothing.** With it removed all 116 stayed green, because
+two lines that differ only by tinned/canned already share a key (the key folds inside `shoppingLine`)
+and the source check treats equal keys as the same product. The words decide only where the keys
+differ, as when a source says more (`canned peach slices in syrup`) against a recipe that says less; the
+check now includes that pair, and then fails without the fold. The live library, read-only through
+`execute_sql` into scratch and never into the repo, on `main` and on the branch: 34 recipes, 466 lines,
+169 rows, 32 in Other, 0 splits, 0 lines the list cannot total, 0 the parser reads past, both times;
+a per-line snapshot (key, name, unit, amount, dictionary hit) of all 466 lines is identical, **0 lines
+changed**, and the 169 rows are identical. One aggregate query the same day: 0 ticks, no `source_check`
+column, no `aisle_overrides` table, 14 word matches (documented as 3 + 10 + 1; the split was not re-read,
+though `remeasure.js` applied 3).
+
+**A correction to the plan.** It said the fold would change the key of the one "tinned" line. It changes
+none: that line also says "canned" and its "tinned" sits inside a bracket, which no key reads. So
+**neither fix touches a line in today's library** (no line has the size-word shape either). What they
+change is the next line written that way, the shopping list's key for it, and the source check, where
+test 8 of the converter's set goes from 2 hard differences to 0. The plan's §4 item 3, its PR 1 numbers
+and §10 item 4 are corrected in place, saying so.
+
+**Not verified:** the live app or the tablet; the household's Friday-morning rule for a naming change
+(the plan leaves it to them, and nothing here needs a tick re-keyed); whether the converter project's
+copy of its instructions matches the repo's. The examples in the new checks are invented (chervil, sorrel,
+sumac, peach slices) and were checked against the export: none of those words appears in the library.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export
