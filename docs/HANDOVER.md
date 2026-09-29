@@ -1311,7 +1311,7 @@ the deployed site serves. The session's egress policy blocks `github.io` (a 403 
 `core.js` `2026-09-29.2` was not read from the live site.
 
 **PR 2 of the add-recipe plan, the converter's rule for a page it cannot read (29 Sep 2026, documentation
-only, open for review).** `converter/conversion-instructions.md` §1 now says that a URL whose page cannot
+only, PR #42, open for review).** `converter/conversion-instructions.md` §1 now says that a URL whose page cannot
 be read is a stop: name the address that failed and ask for the text or the ingredient list, and never
 convert from another page, a partner's or branded version, a search snippet or memory; any note about the
 source is its own `⚠️ Source note:` line under NOTES. §3 has the matching check. `converter/test-set.md`
