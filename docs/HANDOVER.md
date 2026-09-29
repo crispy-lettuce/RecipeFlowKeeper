@@ -1552,6 +1552,26 @@ write through RLS and the upsert on `(household_id, name)`, the tablet (`docs/TE
 in passing:** `CLAUDE.md`, `test/README.md`, `docs/ARCHITECTURE.md` and `docs/DOCUMENT-INDEX.md` still said 133 and 329, which
 PRs #47 and #48 should have moved.
 
+**Ground almonds are not almonds (29 Sep 2026, the household's decision).** After PR #47, the granola comparison still read the
+recipe's "ground almonds" as plain almonds: the comparison drops preparation words, and "ground" is one, although the shopping list
+keeps it where it changes what you buy (`AGGREGATION_PREP_WORDS`, `NEVER_IGNORE`), so the list already had them as two rows. Now
+the comparison keeps "ground" wherever the list's key keeps it ("ground almond", "ground caraway", "ground cumin") and drops it
+where the key does ("freshly ground pepper" is black pepper). Setting them apart then flagged the source's "almond flour or almond
+meal" against the recipe's ground almonds, which in the UK are the same thing, so two more, **both asked for or approved by the
+household:** a dictionary row **"ground almonds" (Pantry), also "almond flour, almond meal"**, and a source written "X or Y" is read
+as its first alternative when the dictionary knows that and not the whole (the recipe's format keeps alternatives in brackets).
+**Measured read-only before the row was added:** the library's 10 almond lines, 0 change key; the only visible change is "Ground
+almonds" moving from Other to Pantry; 0 ticks stored; 0 library lines have "or" in their name. `core.js` `2026-09-29.8`, dictionary
+139 → 140 rows, `converter/ingredient-names.md` regenerated.
+
+*Verified by.* `core.test.js` **138 → 142**, `smoke.js` 342, `source-ingredients.js` 12, the dictionary check, all exit 0. **Two
+existing checks were amended, both by the decision itself:** the dictionary's row count (139 → 140), and `fidelityCounts`, whose
+example counted "3 tsp caraway" against "3 tsp ground caraway" as the same (now one of four). The household's granola lines, run in
+scratch and not committed: 0 to look at (1 before #47, 0 after it but only because ground almonds were being read as almonds), and
+one shaded note, "the recipe adds flaked", which is older and unrelated. Six mutations, each failing a named check; one (the last
+alternative instead of the first) first survived because almond flour and almond meal are the same row, so an olive oil or butter
+check was added. *Not verified:* the tablet.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export

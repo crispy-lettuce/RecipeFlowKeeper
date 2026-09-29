@@ -307,7 +307,7 @@ New in Settings (PR 7), above the WORD MATCHES block:
   - *"Swaps: brown rice syrup → maple syrup (1 : 0.75)"* with EDIT (goes to Swaps), or none.
   The aisle reason comes from a new `aisleWhy` field on `aggregateShoppingLines` items
   (`'dictionary' | 'keyword' | 'override' | 'none'`; `'override'` arrives with PR 6).
-- **DICTIONARY** (`#dictionaryList`): the 139 rows, grouped by aisle, each row its name and its
+- **DICTIONARY** (`#dictionaryList`): the 140 rows (139 until "ground almonds" was added on 29 Sep), grouped by aisle, each row its name and its
   live wordings, filtered by the same lookup box. Read-only, with one line: *"Changing a row is a
   code change; ask for it in a session."* **Fact:** that is the one thing on the "no code change"
   test (§1.4) that stays code. **Recommendation:** accept it, because a display spelling affects

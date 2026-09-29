@@ -238,7 +238,7 @@ a URL is already ours. See `docs/IMAGES.md` §5.
 (`test/stub.js`) and walks every screen.
 
 ```sh
-node test/core.test.js   # 138 checks on core.js in Node, about two seconds, no browser
+node test/core.test.js   # 142 checks on core.js in Node, about two seconds, no browser
 npm install playwright
 node test/build.js       # bake index.html (with core.js inlined) against the stub
 node test/smoke.js       # 342 checks; exits non-zero on failure
