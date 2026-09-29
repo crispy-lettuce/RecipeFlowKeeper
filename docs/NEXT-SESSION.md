@@ -131,21 +131,35 @@ fix it, at no cost to ticks, if wanted. **A known limit, not a decision:** whole
 (`coriander seeds` for `ground coriander`) is not caught, on `main` too.
 `docs/TEST-PLAN.md` steps 36b and 36c are the household's pass.
 
-**Still open:** nothing from the seven-PR plan. The household answers 7f's three decisions and does
-steps 36a, 36b and 36c; the two proposals below are written up but not started. The open finding above
-is the task for the next session.
+**Still open:** nothing from the seven-PR plan. Steps 36a, 36b and 36c are the household's. **7f's
+three decisions were answered on 29 Sep** (keep all 15 pairs flagged; fix the `a big handful of`
+reading; fold tinned into canned in the source check and the shopping list) and are PR 1 of the plan
+below. The open finding above is answered by that plan's PRs 2, 3, 5 and 8, and the repair of the
+two reconstructed recipes stays a data job under `CLAUDE.md`.
+
+**Planned, 29 Sep, not started: adding a recipe as one flow.** `docs/PLAN-NEW-RECIPE-FLOW.md`, written
+in a planning session with no code change: an audit of the add path, the measured evidence that the
+dictionary fits today's recipes (80% of lines known; every source but the dominant one lands 14–38%
+of its lines in Other), the household's decisions, and **eight PRs in a fixed order** — 1 the two
+naming fixes; 2 the converter's rule for a page it cannot read; 3 the review band, read-only, with the
+source check running by itself; 4 answers in place and the last dialog removed; 5 provenance recorded
+on the recipe; 6 aisle overrides; 7 Settings lookup and a readable dictionary; 8 a library check. It
+has a STOP AND ASK list for an implementation session. The two proposals below are now its PR 6 and
+its PRs 3, 4 and 8.
 
 **Proposed, not started:** a household-editable aisle override in Settings — so moving something
 like "Sirloin Steak" out of Other is a form entry, not a code change and a PR. Raised 28 Sep after
 that exact case; the design is written up in `docs/PROPOSAL-AISLE-OVERRIDES.md`, checked against
-the running code, waiting to be picked up.
+the running code. *Since 29 Sep: PR 6 of `docs/PLAN-NEW-RECIPE-FLOW.md`, built as designed.*
 
 **Proposed, not started:** a review when a new recipe comes in — a quiet ON THE SHOPPING LIST
 section in the Add/Edit preview showing the recipe's names that are new to the library, where each
 will land (Other flagged), likely matches with the whole library and a duplicate check on the
 source link, so these are settled when a recipe is added rather than weeks later. Raised 28 Sep
 by the household; `docs/PROPOSAL-NEW-RECIPE-REVIEW.md` has the phases (A is read-only), the
-pitfalls and five open decisions. Its Phase C is the aisle override above, offered in place.
+pitfalls and five open decisions. Its Phase C is the aisle override above, offered in place. *Since
+29 Sep: its phases are PRs 3, 4, 6 and 8 of `docs/PLAN-NEW-RECIPE-FLOW.md`, and its five decisions are
+answered in that plan's §9.*
 
 **Not to redo:** 6c-2's recipe text, its undo and the word matches as made are in
 `PrivateBackup`, `migrations/6c-2-line-rewrite/`. Nothing about the library's lines needs doing.
@@ -180,6 +194,7 @@ verified and how.
 | 7c | **The weekly live-backend test** | A test household, a test user, a Playwright script against the *live* app, credentials in `PrivateBackup`'s secrets | F13 | **Done**, 28 Sep. `PrivateBackup` PR #3 and #4 merged (a missing reload wait, the test script's own bug); this repo's PR #31 merged (a real app bug — `updateDiaryEntry` silently dropped a meal-type tag tapped before its insert confirmed). Run #5 proved both fixes live: 13 checks, 0 failed |
 | 7d | **The paste box for COMPARE WITH SOURCE** | Asked and answered 28 Sep: its own small PR. A textarea and COMPARE PASTED LIST under AGAINST THE SOURCE in the add/edit preview, for the two sites (18 of 34 recipes) that refuse the function with a 403. `pastedIngredientLines` in `core.js` strips tick boxes, bullets, blank lines and headings that are certainly headings, and the same `sourceFidelity` pairs what is left with the recipe's lines. No fetch, no write, no schema change; advice only, never a gate. The pasted text is kept only until the form closes | §2 and answer 4 of the architecture review (the source check for half the library); closes no numbered finding | **Done**, PR #35, merged 28 Sep 21:53 UTC. `core.js` `2026-09-28.3`. Its comparison was rewritten in 7e the same evening |
 | 7e | **The source check stops calling a difference a match** | Found 28 Sep by the household's first real comparison: a doubled source line was shown as matched. Probing found one of eleven fault types caught. `sourceFidelity` rebuilt twice (the first rebuild was tailored to the examples; see `HANDOVER.md` §7): every line of one ingredient, on either side, is one group, and the group's amounts are compared as totals per kind (mass, volume, count, a pinch), only where a difference cannot be a unit conversion, a range by both ends; the same name is exact and "the recipe says less" joins only unmatched lines; compound lines split into parts; an addition the dictionary calls the same product is a soft note, else a hard difference; every flagged pair says why and nothing is dropped. The table shows hard differences highlighted, soft notes shaded, and counts them apart. No write, no schema, no dictionary or naming change, so no tick is re-keyed | §2 and answer 4 of the architecture review (the source check itself); closes no numbered finding | **Done**, PR #37, merged 29 Sep 05:06 UTC. `core.js` `2026-09-28.5` |
+| 8 | **Adding a recipe as one flow** | Eight PRs planned on 29 Sep in `docs/PLAN-NEW-RECIPE-FLOW.md`: the two naming fixes from 7f's decisions; the converter's rule for an unreadable page; the review band with the source check running by itself; answers in place; provenance on the recipe; aisle overrides; a Settings lookup; a library check. Each entry carries its scope, rules, expected numbers, named checks and mutations, and a STOP AND ASK list | The conversion-integrity finding's preventions and audit; both proposals; closes no numbered finding by itself | **Planned 29 Sep, not started.** Documentation only so far |
 | 7f | **US names in the dictionary** | The household's answer to 7e's price, 29 Sep: 49 rows and 15 rows' spellings, by the rule one product on the shelf under two names. Also one reader function (`dictionaryPhrases`) so the index and the tests read a row the same way, which fixed `confectioners' sugar` never having worked as a spelling. Read-only re-measure on the live library: 0 of 466 lines change key; mangetout and pak choi file under Produce. No schema, no write, no change to `shoppingLine` | 7e's price, `HANDOVER.md` §7 | **Done**, PR #38, merged 29 Sep 05:52 UTC. `core.js` `2026-09-29.1`. Three decisions and steps 36b–36c are the household's |
 
 ### PR 6 reviewed against what came after it (25 Sep)
@@ -230,53 +245,90 @@ before 6b and PR 6 were taken, and 6c-2 is done.
 
 ## The prompt for the next session
 
-Copy everything in the block below, and change the PR number to the one you are starting.
+**Since 29 Sep 2026 the next work is an implementation session on `docs/PLAN-NEW-RECIPE-FLOW.md`**,
+one PR per session, in the order its section 8 gives (PR 1 and PR 2 first, then 3, 4, 5; 6 after 3;
+7 after 6; 8 after 5 and 6). The block below is copied from that plan's section 13; if the two ever
+differ, the plan's copy wins. Change `<N>` to the PR number and nothing else.
 
 ```
 I'm continuing work on my Kitchen recipe app, in the repo
-crispy-lettuce/RecipeFlowKeeper. main is production; work on a new branch
-and open a pull request when the work is tested.
+crispy-lettuce/RecipeFlowKeeper. main is production: GitHub Pages serves it and
+every merge deploys to the tablet I cook from. Work on a new branch and open a
+pull request when the work is tested. Never merge.
 
-Please read these first, in this order:
+YOUR JOB THIS SESSION: PR <N> of docs/PLAN-NEW-RECIPE-FLOW.md, and nothing else.
 
-  docs/DOCUMENT-INDEX.md                  — the map of all documentation
-  docs/NEXT-SESSION.md                    — "Start here" first; PR 7 (Sharing), 7a-7f, is done; an open finding is the task
-  docs/REVIEW-ARCHITECTURE-FINDINGS.md    — §0 and the findings the PR closes
-  docs/HANDOVER.md                        — verified status
-  docs/ARCHITECTURE.md                    — how the app and its recipe format work
-  CLAUDE.md                               — applies in full
+Read these first, in this order, before writing anything:
+  CLAUDE.md                          - its first three sections apply to the letter
+  docs/PLAN-NEW-RECIPE-FLOW.md       - section 8 "Before every PR", then the entry
+                                       for PR <N>, then section 11 STOP AND ASK,
+                                       then sections 4, 5 and 7 for the rules behind it
+  docs/DOCUMENT-INDEX.md             - the map of every document
+  docs/ARCHITECTURE.md               - how the app and its recipe format work
+  the functions, files and ids the PR entry names, in the code itself
 
-THE TASK: PR 7 (Sharing, 7a-7f) is entirely done and merged — nothing of
-it needs picking up, though 7f left three decisions for me (docs/HANDOVER-CONVERSION-INTEGRITY.md,
-section 7). The open work is a finding, not a PR: a recipe in my library whose ingredients are not its
-source's. Read docs/HANDOVER-CONVERSION-INTEGRITY.md and start from its section 4; I will answer the
-three decisions first. Nothing else is in the plan; two proposals are written up but not started — the
-aisle override (docs/PROPOSAL-AISLE-OVERRIDES.md) and a review when a new recipe comes in
-(docs/PROPOSAL-NEW-RECIPE-REVIEW.md) — so ask what to work on after that.
-Follow the first three sections of CLAUDE.md to the letter, and don't
-merge or touch production without asking first.
+Then, before any change, write five lines in chat: what PR <N> changes, which
+files, what it must not touch, the numbers you expect before and after, and the
+checks you will add. Wait for my "go".
+
+BOUNDARIES. Do not:
+  - do any part of another PR, or "one more thing" the entry does not name;
+  - reopen a decision in section 4 of the plan, or ask me a question the plan
+    already answers (section 10's open items take the plan's recommendation
+    unless I say otherwise in this chat);
+  - change buildShoppingList, hydrate(), pushList, queueWrite, refreshLibrary
+    or any replace* function unless the entry names it;
+  - change the database schema, add a table, add a dependency, or change an
+    Edge Function unless the entry names it, and never deploy one;
+  - show a dialog, block a save, delete anything, or write a household fact
+    without a tap;
+  - write recipe text to the database, commit any recipe, plan or diary data,
+    or paste real ingredient lines anywhere (examples are invented and checked
+    against the library);
+  - merge, or push to any branch but your own;
+  - claim a test passed without running it and reading its exit code.
+
+MUST, in this order (section 8 of the plan has the detail):
+  1. git fetch origin main; branch from origin/main.
+  2. node test/core.test.js, then node test/build.js && node test/smoke.js
+     (npm install playwright once; if no browser is found, set
+     PLAYWRIGHT_CHROMIUM to the chrome under /opt/pw-browsers/chromium-*/
+     chrome-linux/). Read echo $? after each. Green before you change anything,
+     or stop.
+  3. Make the change the entry describes. Add the checks it names. Break each
+     one on purpose, see it fail by name, restore the code; git diff must show
+     only your intended change.
+  4. If core.js changed, bump KITCHEN_CORE_VERSION, core.js?v= and
+     EXPECTED_CORE_VERSION together.
+  5. PR 1 only: re-measure the live library on main and on your branch
+     (test/README.md, "Re-measuring the live library"); the export stays in
+     scratch. Put both results in the PR.
+  6. git diff origin/main, read for private data. Dates from date -u.
+  7. Open the PR. Its description has two headings: "Verified by" (what you
+     ran, the counts, the mutations and which check each failed) and "Not
+     verified" (everything you could not check, the live app included).
+  8. Tick nothing in docs/REVIEW-ARCHITECTURE-FINDINGS.md unless the entry
+     says to; update the status column of row 8 in docs/NEXT-SESSION.md; add
+     one line to docs/HANDOVER.md section 7 saying what was verified and how.
+
+STOP AND ASK when any trigger in section 11 of the plan happens. Stop means:
+commit only what is green, with a message saying it is partial; push your
+branch; do not open a PR; tell me what happened, the exact error text or
+number, and the two ways forward you see. A smaller PR is always fine. When
+unsure, stop.
 
 Some context worth having:
-
-  - MAIN IS PRODUCTION. Pages serves from main, and every merge deploys to
-    the tablet I cook from immediately. There is no staging step.
-  - index.html and core.js are the whole app. No build step, no framework;
-    core.js holds the pure functions and the ingredient dictionary.
-    Run `node test/core.test.js`, then `node test/build.js && node test/smoke.js`,
-    after any code change,
-    and `node test/image-integrity.js` after any change to the Edge
-    Functions. Run both smoke commands, always: smoke.js loads what build.js
-    wrote. The suite stubs Supabase, so it proves nothing about sign-in.
-  - The repo is public. Recipe, plan and diary data must never be committed
-    to it. Anything exported stays in scratch outside the repo.
+  - index.html and core.js are the whole app. No build step, no framework.
+    The test suite stubs Supabase, so a green run proves nothing about
+    sign-in, RLS or the write queue.
   - Don't trust status notes, mine included, where you can check the real
-    thing instead. The corrections table in docs/HANDOVER.md §6 has
-    thirty rows now.
-  - When the PR is done: tick the findings it closes in
-    docs/REVIEW-ARCHITECTURE-FINDINGS.md, update the status column in
-    docs/NEXT-SESSION.md, and add one line to docs/HANDOVER.md saying what
-    was verified and how.
+    thing. The corrections table in docs/HANDOVER.md section 6 says why.
+  - The repo is public.
 ```
+
+*(Until 29 Sep this section held the prompt for the conversion-integrity review; that review's
+questions are answered in the plan, and its remaining data job, repairing the two reconstructed
+recipes, follows `CLAUDE.md`, not a prompt.)*
 
 ---
 

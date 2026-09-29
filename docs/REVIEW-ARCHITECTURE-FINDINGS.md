@@ -254,6 +254,10 @@ ticks keyed by name, strict inline suggestions. Step 7 and the fidelity check ar
 
 ---
 
+*29 Sep 2026: `docs/PLAN-NEW-RECIPE-FLOW.md` plans the add-recipe flow (the source check running by
+itself and recorded on the recipe, names and aisles settled at ingest). It ticks nothing here: a plan
+closes no finding, and F12 and F13 are Info rows with nothing left to tick.*
+
 ## 2. Findings
 
 Severity: **High** = can lose data or take the app down; **Medium** = wrong or unverified in a

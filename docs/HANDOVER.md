@@ -1249,6 +1249,22 @@ would re-key lines.
 (the UPDATE bar); the rows against any source I did not have, since the two sites that refuse the
 function cannot be reached from a session.
 
+**The add-recipe flow, planned (29 Sep 2026, documentation only, no PR yet).** `docs/PLAN-NEW-RECIPE-FLOW.md`,
+written in a session that changed no code. **Verified by:** the add path read in `index.html` on `main`
+at `55cd5a6` (the modal markup, `parseAndPreview`, `renderLineChecks`, the save handler's `confirm()`,
+`recipeToRow`/`rowToRecipe`); the naming rules read in `core.js` `2026-09-29.1`; the live library
+re-measured read-only with `tools/remeasure.js` from an export kept in scratch — 34 recipes, 466 lines,
+169 rows, 32 in Other, 0 splits, as recorded — and three scratch scripts over the same export for counts
+only: 80% of lines dictionary-known, 86 of 139 rows hit, per-source coverage, 55% of keys in one recipe,
+2 "canned" and 1 "tinned" ingredient line, both source notes one line each; one aggregate SQL query (0
+ticks, 2 notes, 12 sources, 3 + 10 + 1 word matches, 2 swaps, 49 keywords) and `information_schema` for
+the `recipes` columns. `node test/core.test.js` (109) and `node test/build.js && node test/smoke.js`
+(280) run green on the branch, exit codes read. **Not verified:** the live app, the tablet, the converter
+project's copy of the instructions. The household answered 7f's three decisions and four flow questions
+in the session; one answer (a hard refusal for a reconstructed recipe) was withdrawn the same session and
+the plan records both. A count first given in chat (3 canned, 3 tinned) was over every line of the text;
+the plan carries the ingredient-line count.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export

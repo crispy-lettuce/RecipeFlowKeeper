@@ -284,6 +284,27 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
+### `docs/PLAN-NEW-RECIPE-FLOW.md` — adding a recipe as one flow (29 Sep 2026, decided, not built)
+**What:** The plan that makes the journey from a pasted conversion to a saved recipe one page
+with five bands, and gives Settings one place to see what the app knows about an ingredient. It
+opens with an audit of today's add path (every step, every data change, every missing check, each
+claim labelled as read in the code, measured against the live library, or inferred), then the
+measured evidence of where the dictionary and naming rules fit only today's recipes, then the
+household's decisions of 29 Sep (the three from the conversion-integrity handover's §7 among
+them; no hard refusal), the target flow with element ids, every data change with where it is
+shown and undone, and **eight PRs in a fixed order**, each with scope, exact rules, the numbers
+to expect, the checks to add by name and the mutation that must fail each. §11 is a STOP AND ASK
+list written for an implementation session on a less capable model.
+
+**Use it when:** building any of those PRs, or changing anything about how recipes come in. It
+supersedes the *phasing* of `docs/PROPOSAL-NEW-RECIPE-REVIEW.md` and adopts
+`docs/PROPOSAL-AISLE-OVERRIDES.md` as its PR 6; both proposals stay the design record for the
+reasoning behind them.
+
+**Don't:** treat it as done. Nothing in it is built, and a plan closes no finding.
+
+---
+
 ### `converter/conversion-instructions.md` — how recipes are written
 **What:** The prompt used to convert a recipe from a web page, photo or pasted text into the
 app's flow format. Covers extraction, structure, a mandatory check pass, and how to present the
