@@ -670,3 +670,86 @@ available).
 directory and never in this repo, per `CLAUDE.md`) show bands 1–5 in a quiet and a busy case, the
 CHECKS band with every row type, and Settings with the lookup in options A and B. They are the
 target look, not pixel specifications; ids in this document are the contract.
+
+---
+
+## 13. The prompt to start an implementation session with
+
+Written for a less capable model. Copy the whole block; change `<N>` to the PR number (§8) and
+nothing else. One PR per session. The same block is in `docs/NEXT-SESSION.md`.
+
+```
+I'm continuing work on my Kitchen recipe app, in the repo
+crispy-lettuce/RecipeFlowKeeper. main is production: GitHub Pages serves it and
+every merge deploys to the tablet I cook from. Work on a new branch and open a
+pull request when the work is tested. Never merge.
+
+YOUR JOB THIS SESSION: PR <N> of docs/PLAN-NEW-RECIPE-FLOW.md, and nothing else.
+
+Read these first, in this order, before writing anything:
+  CLAUDE.md                          - its first three sections apply to the letter
+  docs/PLAN-NEW-RECIPE-FLOW.md       - section 8 "Before every PR", then the entry
+                                       for PR <N>, then section 11 STOP AND ASK,
+                                       then sections 4, 5 and 7 for the rules behind it
+  docs/DOCUMENT-INDEX.md             - the map of every document
+  docs/ARCHITECTURE.md               - how the app and its recipe format work
+  the functions, files and ids the PR entry names, in the code itself
+
+Then, before any change, write five lines in chat: what PR <N> changes, which
+files, what it must not touch, the numbers you expect before and after, and the
+checks you will add. Wait for my "go".
+
+BOUNDARIES. Do not:
+  - do any part of another PR, or "one more thing" the entry does not name;
+  - reopen a decision in section 4 of the plan, or ask me a question the plan
+    already answers (section 10's open items take the plan's recommendation
+    unless I say otherwise in this chat);
+  - change buildShoppingList, hydrate(), pushList, queueWrite, refreshLibrary
+    or any replace* function unless the entry names it;
+  - change the database schema, add a table, add a dependency, or change an
+    Edge Function unless the entry names it, and never deploy one;
+  - show a dialog, block a save, delete anything, or write a household fact
+    without a tap;
+  - write recipe text to the database, commit any recipe, plan or diary data,
+    or paste real ingredient lines anywhere (examples are invented and checked
+    against the library);
+  - merge, or push to any branch but your own;
+  - claim a test passed without running it and reading its exit code.
+
+MUST, in this order (section 8 of the plan has the detail):
+  1. git fetch origin main; branch from origin/main.
+  2. node test/core.test.js, then node test/build.js && node test/smoke.js
+     (npm install playwright once; if no browser is found, set
+     PLAYWRIGHT_CHROMIUM to the chrome under /opt/pw-browsers/chromium-*/
+     chrome-linux/). Read echo $? after each. Green before you change anything,
+     or stop.
+  3. Make the change the entry describes. Add the checks it names. Break each
+     one on purpose, see it fail by name, restore the code; git diff must show
+     only your intended change.
+  4. If core.js changed, bump KITCHEN_CORE_VERSION, core.js?v= and
+     EXPECTED_CORE_VERSION together.
+  5. PR 1 only: re-measure the live library on main and on your branch
+     (test/README.md, "Re-measuring the live library"); the export stays in
+     scratch. Put both results in the PR.
+  6. git diff origin/main, read for private data. Dates from date -u.
+  7. Open the PR. Its description has two headings: "Verified by" (what you
+     ran, the counts, the mutations and which check each failed) and "Not
+     verified" (everything you could not check, the live app included).
+  8. Tick nothing in docs/REVIEW-ARCHITECTURE-FINDINGS.md unless the entry
+     says to; update the status column of row 8 in docs/NEXT-SESSION.md; add
+     one line to docs/HANDOVER.md section 7 saying what was verified and how.
+
+STOP AND ASK when any trigger in section 11 of the plan happens. Stop means:
+commit only what is green, with a message saying it is partial; push your
+branch; do not open a PR; tell me what happened, the exact error text or
+number, and the two ways forward you see. A smaller PR is always fine. When
+unsure, stop.
+
+Some context worth having:
+  - index.html and core.js are the whole app. No build step, no framework.
+    The test suite stubs Supabase, so a green run proves nothing about
+    sign-in, RLS or the write queue.
+  - Don't trust status notes, mine included, where you can check the real
+    thing. The corrections table in docs/HANDOVER.md section 6 says why.
+  - The repo is public.
+```
