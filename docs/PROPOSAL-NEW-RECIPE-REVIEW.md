@@ -43,19 +43,19 @@ wrong answer reaches every other recipe too.
 
 ## What already happens when a recipe comes in (checked in the code, 28 Sep)
 
-- **Add/Edit form** (`index.html` ~1599–1654). Pasting into `#importInput` and parsing runs
+- **Add/Edit form** (`index.html` ~1609–1656). Pasting into `#importInput` and parsing runs
   `parseAndPreview`, and `renderLineChecks` fills `#addChecks`. It can show three headings:
   - NOT READ, for lines the parser dropped;
   - THE SHOPPING LIST CAN'T TOTAL…, for `affectsList` faults, each with a suggested line;
   - AGAINST THE SOURCE, the `source-ingredients` function's comparison or 7d's paste box.
-- **Save** (`index.html` ~6690–6760). This step requires a source and servings. If the source is
+- **Save** (`index.html` ~6710–6780). This step requires a source and servings. If the source is
   new or has changed, it applies a settled source alias, or asks through `findSimilarTerm` and a
   `confirm()`. The answer is remembered either way: `source` or `source_distinct`. **This is the
   last `confirm()` in the add path.** D10 replaced the shopping list's equivalent dialogs because
   103 questions had been asked and 35 of them were wrong.
 - **Nothing compares the recipe with the library.** The strict "same as…?" rule
-  (`strictMatchSuggestions`, `core.js:1175`) runs only inside `buildShoppingList`. `renderShopping`
-  shows a pair only when **both names are on this week's list** (`index.html` ~5197). A new
+  (`strictMatchSuggestions`, `core.js:1235`) runs only inside `buildShoppingList`. `renderShopping`
+  shows a pair only when **both names are on this week's list** (`index.html` ~5199). A new
   recipe's near-duplicate name is therefore found only in a week when both recipes are planned
   together. MERGE WITH… (6d-1) searches the whole library, but only for someone who already
   suspects a pair.
@@ -148,7 +148,7 @@ Phase A alone would have shown "Sirloin steak → Other" the day the first recip
    three unanswered questions saves exactly as it does today.
 3. **The direction of a merge can re-key the household's ticks.** *(A new point.)* The shopping
    list's buttons fold the rarer name into the commoner one. On a tie they keep the plainer name
-   (`core.js:1202–1206`). At ingest, the new name has a count of 1. If it is the plainer of the two, and
+   (`core.js:1262–1266`). At ingest, the new name has a count of 1. If it is the plainer of the two, and
    the library's name is used only once, the list's own rule would fold the **library's** name into
    the new one, and every tick stored under the library's name would be orphaned. At ingest the
    direction must be fixed: **the new name folds into the existing one, always.** It will not have
@@ -184,8 +184,10 @@ Phase A alone would have shown "Sirloin steak → Other" the day the first recip
 11. **Paths that bypass the form.** `importAllData` (a whole-library restore), developer SQL batch
     ingests and md5-guarded rewrites never pass through the preview. Keep `remeasure.js` as the
     backstop. Sharing the function means it reports exactly what the preview would have shown.
-12. **What the strict rule cannot see.** Two names for one thing that share no word, a British
-    and an American name for instance, are never proposed. Showing new names is the catch-all.
+12. **What the strict rule cannot see.** Two names for one thing that share no word are never
+    proposed. Since 7f the dictionary folds 49 US names into their UK product, so those arrive
+    already known, but any pair it doesn't list (a regional name, a brand) still won't be proposed.
+    Showing new names is the catch-all.
     Whoever is adding the recipe can see "Sumac: new to your list" and use MERGE WITH… if they
     know better. Don't loosen the rule to find these; that is how 35 of 103 went wrong.
 13. **Aisle answers depend on word matches.** An aisle override applies to the key after word

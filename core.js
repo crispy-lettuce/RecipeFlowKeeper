@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-28.3';
+const KITCHEN_CORE_VERSION = '2026-09-29.1';
 
 
 /* ======================= quantity split ======================= */
@@ -770,58 +770,102 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Produce", name: "spring onions", also: "scallions, scallion, green onions", countAs: "`1 bunch spring onions`" },
   { aisle: "Produce", name: "red pepper", also: "red bell pepper", countAs: "`1 red pepper`" },
   { aisle: "Produce", name: "green pepper", also: "green bell pepper", countAs: "`1 green pepper`" },
-  { aisle: "Produce", name: "red chilli", also: "red chile, fresh red chilli", countAs: "`2 red chillies`" },
+  { aisle: "Produce", name: "red chilli", also: "red chile, red chili, fresh red chilli", countAs: "`2 red chillies`" },
   { aisle: "Produce", name: "fresh ginger", also: "ginger, root ginger, ginger root", countAs: "weight, or `1 piece fresh ginger (5 cm)`" },
-  { aisle: "Produce", name: "fresh coriander", also: "coriander, coriander leaves, cilantro", countAs: "`1 bunch fresh coriander`" },
-  { aisle: "Produce", name: "parsley", also: "curly parsley, flat-leaf parsley, fresh parsley", countAs: "`1 bunch parsley`" },
+  { aisle: "Produce", name: "fresh coriander", also: "coriander, coriander leaves, cilantro, cilantro leaves", countAs: "`1 bunch fresh coriander`" },
+  { aisle: "Produce", name: "parsley", also: "curly parsley, flat-leaf parsley, italian parsley, fresh parsley", countAs: "`1 bunch parsley`" },
   { aisle: "Produce", name: "celery", also: "celery stick(s)", countAs: "`2 celery sticks`" },
   { aisle: "Produce", name: "cherry tomatoes", also: "", countAs: "weight" },
   { aisle: "Produce", name: "baby spinach", also: "spinach leaves (when baby)", countAs: "weight" },
   { aisle: "Produce", name: "cucumber", also: "", countAs: "`1 cucumber`" },
   { aisle: "Produce", name: "potatoes", also: "", countAs: "weight" },
-  { aisle: "Produce", name: "romaine lettuce", also: "", countAs: "`1 romaine lettuce`" },
+  { aisle: "Produce", name: "romaine lettuce", also: "cos lettuce, romaine", countAs: "`1 romaine lettuce`" },
+  { aisle: "Produce", name: "aubergines", also: "eggplant", countAs: "`1 aubergine`" },
+  { aisle: "Produce", name: "courgettes", also: "zucchini", countAs: "`2 courgettes`" },
+  { aisle: "Produce", name: "rocket", also: "arugula", countAs: "weight" },
+  { aisle: "Produce", name: "swede", also: "rutabaga", countAs: "`1 swede`" },
+  { aisle: "Produce", name: "mangetout", also: "snow peas", countAs: "weight" },
+  { aisle: "Produce", name: "pak choi", also: "bok choy, bok choi, pak choy", countAs: "`2 pak choi`" },
+  { aisle: "Produce", name: "green beans", also: "string beans, snap beans, french beans", countAs: "weight" },
+  { aisle: "Produce", name: "broad beans", also: "fava beans", countAs: "weight" },
+  { aisle: "Produce", name: "sugar snap peas", also: "snap peas", countAs: "weight" },
+  { aisle: "Produce", name: "sweetcorn", also: "sweet corn, corn kernels", countAs: "weight" },
+  { aisle: "Produce", name: "chinese leaf", also: "napa cabbage, chinese cabbage", countAs: "`1 chinese leaf`" },
+  { aisle: "Produce", name: "chicory", also: "belgian endive", countAs: "`2 chicory`" },
+  { aisle: "Produce", name: "mixed salad leaves", also: "mesclun, mixed salad greens, mixed greens", countAs: "weight" },
+  { aisle: "Produce", name: "green chilli", also: "green chile, green chili", countAs: "`2 green chillies`" },
+  { aisle: "Produce", name: "beetroot", also: "beets", countAs: "`3 beetroot`" },
+  { aisle: "Produce", name: "chard", also: "swiss chard", countAs: "weight" },
   { aisle: "Produce", name: "lemon juice", also: "fresh lemon juice", countAs: "ml or spoons; whole lemons: `1 lemon, juiced`" },
   { aisle: "Meat & Fish", name: "chicken breast", also: "chicken breasts, chicken breast fillets, skinless chicken breast" },
   { aisle: "Meat & Fish", name: "chorizo", also: "cooking chorizo (when the source means it)" },
   { aisle: "Meat & Fish", name: "raw king prawns", also: "king prawns (when cooked in the dish), jumbo shrimp" },
+  { aisle: "Meat & Fish", name: "prawns", also: "shrimp" },
   { aisle: "Meat & Fish", name: "salmon fillets", also: "tail-end salmon fillets" },
   { aisle: "Meat & Fish", name: "streaky bacon", also: "bacon (in US recipes; in a British one it usually means back bacon, so check)" },
+  { aisle: "Meat & Fish", name: "pork fillet", also: "pork tenderloin" },
+  { aisle: "Meat & Fish", name: "beef fillet", also: "beef tenderloin" },
+  { aisle: "Meat & Fish", name: "back bacon", also: "canadian bacon" },
+  { aisle: "Meat & Fish", name: "beef mince", also: "minced beef, ground beef" },
+  { aisle: "Meat & Fish", name: "pork mince", also: "minced pork, ground pork" },
+  { aisle: "Meat & Fish", name: "lamb mince", also: "minced lamb, ground lamb" },
+  { aisle: "Meat & Fish", name: "turkey mince", also: "minced turkey, ground turkey" },
+  { aisle: "Meat & Fish", name: "chicken mince", also: "minced chicken, ground chicken" },
   { aisle: "Dairy & Eggs", name: "eggs", also: "egg, large eggs, free-range eggs (write the size in brackets if it matters: `3 eggs (large)`)" },
   { aisle: "Dairy & Eggs", name: "butter", also: "salted butter" },
   { aisle: "Dairy & Eggs", name: "unsalted butter", also: "" },
-  { aisle: "Dairy & Eggs", name: "double cream", also: "heavy cream, whipping cream is **not** the same" },
+  { aisle: "Dairy & Eggs", name: "double cream", also: "heavy cream, heavy whipping cream, whipping cream is **not** the same" },
+  { aisle: "Dairy & Eggs", name: "single cream", also: "light cream" },
+  { aisle: "Dairy & Eggs", name: "soured cream", also: "sour cream" },
   { aisle: "Dairy & Eggs", name: "milk", also: "whole milk, full-fat milk, semi-skimmed milk" },
+  { aisle: "Dairy & Eggs", name: "skimmed milk", also: "skim milk" },
   { aisle: "Dairy & Eggs", name: "natural yoghurt", also: "natural yogurt, plain yoghurt, plain yogurt" },
+  { aisle: "Dairy & Eggs", name: "yoghurt", also: "yogurt" },
+  { aisle: "Dairy & Eggs", name: "greek yoghurt", also: "greek yogurt" },
   { aisle: "Dairy & Eggs", name: "parmesan", also: "parmesan cheese, parmigiano reggiano" },
-  { aisle: "Pantry", name: "vegetable oil", also: "oil, neutral oil, sunflower oil, rapeseed oil, cooking oil" },
+  { aisle: "Pantry", name: "vegetable oil", also: "oil, neutral oil, sunflower oil, rapeseed oil, canola oil, cooking oil" },
   { aisle: "Pantry", name: "olive oil", also: "extra virgin olive oil" },
   { aisle: "Pantry", name: "sesame oil", also: "toasted sesame oil" },
   { aisle: "Pantry", name: "coconut oil", also: "" },
-  { aisle: "Pantry", name: "plain flour", also: "all-purpose flour" },
+  { aisle: "Pantry", name: "plain flour", also: "all-purpose flour, all purpose flour" },
   { aisle: "Pantry", name: "self-raising flour", also: "self-rising flour" },
+  { aisle: "Pantry", name: "wholemeal flour", also: "whole wheat flour, whole-wheat flour, wholewheat flour" },
+  { aisle: "Pantry", name: "strong white bread flour", also: "bread flour, strong bread flour, strong white flour" },
   { aisle: "Pantry", name: "cornflour", also: "cornstarch" },
   { aisle: "Pantry", name: "baking powder", also: "" },
   { aisle: "Pantry", name: "bicarbonate of soda", also: "baking soda" },
-  { aisle: "Pantry", name: "caster sugar", also: "superfine sugar; plain \"sugar\" when the source doesn't say which" },
+  { aisle: "Pantry", name: "caster sugar", also: "superfine sugar, castor sugar; plain \"sugar\" when the source doesn't say which" },
   { aisle: "Pantry", name: "golden caster sugar", also: "" },
   { aisle: "Pantry", name: "light brown sugar", also: "soft brown sugar, light soft brown sugar" },
-  { aisle: "Pantry", name: "icing sugar", also: "powdered sugar, confectioners' sugar" },
+  { aisle: "Pantry", name: "dark brown sugar", also: "soft dark brown sugar, dark soft brown sugar" },
+  { aisle: "Pantry", name: "icing sugar", also: "powdered sugar, confectioners' sugar, confectioners sugar, confectioner's sugar" },
   { aisle: "Pantry", name: "honey", also: "runny honey" },
   { aisle: "Pantry", name: "maple syrup", also: "pure maple syrup" },
   { aisle: "Pantry", name: "vanilla extract", also: "pure vanilla extract" },
-  { aisle: "Pantry", name: "cocoa powder", also: "unsweetened cocoa" },
+  { aisle: "Pantry", name: "cocoa powder", also: "unsweetened cocoa, unsweetened cocoa powder" },
   { aisle: "Pantry", name: "dark chocolate", also: "" },
   { aisle: "Pantry", name: "peanut butter", also: "smooth peanut butter, creamy peanut butter, crunchy peanut butter" },
   { aisle: "Pantry", name: "almond butter", also: "" },
-  { aisle: "Pantry", name: "rolled oats", also: "oats, old-fashioned oats, porridge oats, quick-cooking oats" },
+  { aisle: "Pantry", name: "rolled oats", also: "oats, old-fashioned oats, old fashioned oats, porridge oats, quick-cooking oats, quick cooking oats, quick oats" },
   { aisle: "Pantry", name: "flaked almonds", also: "sliced almonds, slivered almonds" },
   { aisle: "Pantry", name: "raisins", also: "" },
+  { aisle: "Pantry", name: "sultanas", also: "golden raisins" },
+  { aisle: "Pantry", name: "gelatine", also: "gelatin, powdered gelatin, powdered gelatine" },
+  { aisle: "Pantry", name: "chickpea flour", also: "garbanzo bean flour, gram flour, besan" },
+  { aisle: "Pantry", name: "vanilla pods", also: "vanilla beans" },
+  { aisle: "Pantry", name: "filo pastry", also: "phyllo pastry, phyllo dough, filo dough" },
+  { aisle: "Pantry", name: "sponge fingers", also: "ladyfingers, lady fingers, savoiardi" },
+  { aisle: "Pantry", name: "pumpkin seeds", also: "pepitas" },
+  { aisle: "Pantry", name: "soda water", also: "club soda" },
   { aisle: "Pantry", name: "raspberry jam", also: "seedless raspberry jam, soft-set raspberry jam" },
   { aisle: "Pantry", name: "long grain rice", also: "long-grain rice (write the **uncooked** amount, D4)" },
   { aisle: "Pantry", name: "rigatoni", also: "dried rigatoni, pasta shapes (when rigatoni)" },
   { aisle: "Pantry", name: "spaghetti", also: "dried spaghetti" },
   { aisle: "Pantry", name: "orzo", also: "dried orzo" },
-  { aisle: "Pantry", name: "chopped tomatoes", also: "tinned chopped tomatoes (write `400 g chopped tomatoes (1 tin)`, as the tin is labelled)" },
+  { aisle: "Pantry", name: "chopped tomatoes", also: "tinned chopped tomatoes (write `400 g chopped tomatoes (1 tin)`, as the tin is labelled), canned chopped tomatoes, canned diced tomatoes" },
+  { aisle: "Pantry", name: "chickpeas", also: "garbanzo beans, garbanzos, chick peas, tinned chickpeas, canned chickpeas" },
+  { aisle: "Pantry", name: "haricot beans", also: "navy beans" },
+  { aisle: "Pantry", name: "butter beans", also: "lima beans" },
   { aisle: "Pantry", name: "tomato purée", also: "tomato paste" },
   { aisle: "Pantry", name: "sun-dried tomatoes", also: "" },
   { aisle: "Pantry", name: "tomato ketchup", also: "ketchup" },
@@ -829,6 +873,10 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Pantry", name: "gherkins", also: "dill pickles" },
   { aisle: "Pantry", name: "panko breadcrumbs", also: "" },
   { aisle: "Pantry", name: "chicken stock", also: "chicken broth, hot chicken stock" },
+  { aisle: "Pantry", name: "stock", also: "broth" },
+  { aisle: "Pantry", name: "stock cubes", also: "bouillon cubes" },
+  { aisle: "Pantry", name: "beef stock", also: "beef broth" },
+  { aisle: "Pantry", name: "vegetable stock", also: "vegetable broth" },
   { aisle: "Pantry", name: "light soy sauce", also: "soy sauce" },
   { aisle: "Pantry", name: "dark soy sauce", also: "" },
   { aisle: "Pantry", name: "oyster sauce", also: "" },
@@ -836,14 +884,15 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Pantry", name: "chinese rice wine", also: "shaoxing wine, shaoxing rice wine" },
   { aisle: "Pantry", name: "white wine", also: "dry white wine" },
   { aisle: "Spices & Seasoning", name: "salt", also: "table salt, fine salt" },
-  { aisle: "Spices & Seasoning", name: "sea salt", also: "fine sea salt, flaky sea salt" },
-  { aisle: "Spices & Seasoning", name: "black pepper", also: "pepper, ground black pepper, freshly ground black pepper" },
+  { aisle: "Spices & Seasoning", name: "sea salt", also: "fine sea salt, flaky sea salt, sea salt flakes, flaked sea salt" },
+  { aisle: "Spices & Seasoning", name: "black pepper", also: "pepper, ground pepper, ground black pepper, freshly ground black pepper" },
   { aisle: "Spices & Seasoning", name: "white pepper", also: "ground white pepper" },
   { aisle: "Spices & Seasoning", name: "garlic salt", also: "" },
   { aisle: "Spices & Seasoning", name: "garlic powder", also: "" },
+  { aisle: "Spices & Seasoning", name: "ground ginger", also: "powdered ginger" },
   { aisle: "Spices & Seasoning", name: "paprika", also: "sweet paprika (not smoked, which is its own item)" },
   { aisle: "Spices & Seasoning", name: "smoked paprika", also: "" },
-  { aisle: "Spices & Seasoning", name: "chilli flakes", also: "crushed chillies, red pepper flakes" },
+  { aisle: "Spices & Seasoning", name: "chilli flakes", also: "crushed chillies, red pepper flakes, chili flakes, chile flakes, crushed red pepper, crushed red pepper flakes, red chilli flakes" },
   { aisle: "Spices & Seasoning", name: "chilli powder", also: "mild chilli powder, hot chilli powder" },
   { aisle: "Spices & Seasoning", name: "cajun seasoning", also: "cajun spice mix, cajun spice" },
   { aisle: "Spices & Seasoning", name: "dried oregano", also: "oregano, *fresh oregano is its own item*" },
@@ -936,14 +985,25 @@ const dropWords = (name, set) => { const w = name.split(' ').filter(x => !set.ha
    phrase — not a note in brackets, not "(when …)" — points at its row. Built
    through the same steps 1–5 a recipe line goes through, so the two meet. */
 function dictionaryKey(phrase){ return foldPlural(dropWords(squash(String(phrase).toLowerCase()), DESCRIPTOR_WORDS)); }
+/* Which of a row's wordings the index reads. A cell in `also` is a list
+   split at commas and semicolons; a piece that carries a note (brackets,
+   emphasis, quotes, "when", "not", "check") is advice to the reader and is
+   skipped, since it names no single wording. An apostrophe is NOT a note:
+   until 29 Sep 2026 it was on this list, which silently switched off
+   "confectioners' sugar", the one plain spelling that had one. One function
+   so the index and test/core.test.js read the same pieces: the test pins
+   what is skipped, so a spelling written and never indexed fails by name. */
+const DICTIONARY_NOTE = /[()*"`]|\b(when|not|is|its own|check)\b/i;
+function dictionaryPhrases(row){
+  const live = [row.name], skipped = [];
+  String(row.also || '').split(/[,;]/).map(x => x.trim()).forEach(p => {
+    if(p) (DICTIONARY_NOTE.test(p) ? skipped : live).push(p);
+  });
+  return { live, skipped };
+}
 const DICTIONARY_INDEX = new Map();
 INGREDIENT_DICTIONARY.forEach(row => {
-  const add = (phrase) => { const k = dictionaryKey(phrase); if(k && !DICTIONARY_INDEX.has(k)) DICTIONARY_INDEX.set(k, row); };
-  add(row.name);
-  String(row.also || '').split(/[,;]/).map(x => x.trim()).forEach(p => {
-    if(!p || /[()*"'`]|\b(when|not|is|its own|check)\b/i.test(p)) return;
-    add(p);
-  });
+  dictionaryPhrases(row).live.forEach(phrase => { const k = dictionaryKey(phrase); if(k && !DICTIONARY_INDEX.has(k)) DICTIONARY_INDEX.set(k, row); });
 });
 function dictionaryRow(key){ return DICTIONARY_INDEX.get(key) || null; }
 
@@ -1277,17 +1337,56 @@ function suggestIngredientLine(line){
 /* Checking a recipe against its source (docs/REVIEW-ARCHITECTURE-FINDINGS.md
    §2 and §4): the converter once swapped Italian seasoning for dried
    oregano, and nothing downstream could see it, because every check looked
-   at the shape of a line and none at what it said. This pairs the source's
-   ingredient list with the recipe's lines and shows what is on one side
-   only. It judges words, never quantities: a cup becoming grams is the
-   converter's job, so amounts are shown side by side for a person to read.
+   at the shape of a line and none at what it said. This sets the source's
+   ingredient list beside the recipe's and shows what differs.
 
-   Two lines are the same ingredient when they share a content word, or
-   when the dictionary names them the same thing (cilantro → fresh
-   coriander, heavy cream → double cream). Pass one pairs them one to one,
-   best overlap first; pass two lets a line left over attach to one already
-   paired, which is what a line split in two ("salt and pepper" becoming two
-   lines) looks like. What is left on either side is the warning. */
+   REBUILT 28 Sep (PR 7e), twice. A real comparison called two different
+   things "matched": the source listed one ingredient twice, with the same
+   amount, beside a compound "salt and pepper" line, and the recipe carried the
+   doubled line once. Probing then found the check blind to ten of eleven faults
+   tried. The first rebuild fixed the examples it was written from, and was then
+   measured against data nobody wrote for it — the converter's own specification
+   and test set, and the dictionary's vocabulary driven through mechanical
+   operators (test/core.test.js) — which showed it tailored: it false-alarmed on
+   the converter's own "1 pinch X", and on any ingredient the converter had
+   restructured across lines. What follows is the model that survived. The rule
+   for all of it: never call a pair matched when the check cannot tell, and say
+   why. A false alarm costs a glance; a false match costs the recipe.
+
+   The model. What matters is what the source asks for of an INGREDIENT, in
+   total, against what the recipe asks for — not how the converter split or
+   merged the lines, which is how the shopping list already treats them.
+   1. A compound line ("salt and pepper") becomes its parts on both sides; the
+      converter is told to write two lines.
+   2. Two lines are the SAME ingredient in two tiers. The same name — the
+      dictionary's, or the same words — is exact. "The recipe's words are all in
+      the source's" (the recipe may say less; a source is chatty) is looser, and
+      joins only lines that have no exact partner, or a leftover "pepper" would
+      absorb a dropped "red bell pepper". The dictionary can veto the looser tier
+      where it knows the two as different products.
+   3. Every line of one ingredient, on either side, is one group. Its amounts are
+      compared as totals per kind — mass, volume, count, and a pinch as a kind of
+      its own however it is written — and a range by both ends, only where a
+      difference cannot be a unit conversion (grams with ounces, ml with spoons
+      and cups). Cups against grams, a count against a weight, "up to N", anything
+      unreadable: unknown, and unknown never warns.
+   4. A recipe that keeps everything the source said and adds a qualifier
+      ("light" soy sauce for soy sauce) has settled what the source left open,
+      which the converter's instructions forbid. Where the dictionary calls the
+      two one product that is a SOFT note, listed and counted apart, because the
+      dictionary cannot say whether a bare "pepper" (which the converter's own
+      example writes as black pepper) or a bare "oil" (which it must not settle)
+      was meant; where it does not, it is a hard difference.
+   5. Lines with no same-ingredient partner may still be SIMILAR — they share
+      words: paired last, always flagged, with what differs.
+   6. Nothing is dropped: every line is drawn in a pair or listed on its own.
+
+   What it cannot do. It does not read the method, the groups, the timings or the
+   order; it cannot tell that "1 cup" became the wrong number of grams; a recipe
+   that swaps the qualifier for another the dictionary calls the same ("vegetable
+   oil" for "neutral oil") passes; and a translation the dictionary has no entry
+   for is flagged, in proportion to the dictionary's gaps. It narrows what a
+   person must check by eye; it does not replace the check. */
 const FIDELITY_NOISE = new Set(['a','an','the','of','and','or','to','for','into','about','plus','extra','taste','serve',
   'serving','garnish','optional','g','kg','ml','l','tsp','tbsp','cup','cups','oz','lb','lbs','pound','pounds','ounce','ounces',
   'teaspoon','teaspoons','tablespoon','tablespoons','x','can','tin','jar','pack','packet','inch','cm','at','room','temperature',
@@ -1298,27 +1397,178 @@ function fidelityWords(line){
   const prep = new Set(PREP_WORDS.concat(LEFTOVER_PREP));
   return new Set(squash(text).split(' ').filter(w => w.length > 1 && !FIDELITY_NOISE.has(w) && !prep.has(w)).map(w => foldPlural(w)));
 }
+/* Every word of a line, brackets included: "(I use udon)" is where a
+   source sometimes puts the product the recipe names outright. */
+function fidelityWordsAll(line){
+  const text = String(line || '').toLowerCase().replace(/[()]/g, ' ').replace(/[\d¼½¾⅓⅔⅛⅜⅝⅞./-]+/g, ' ');
+  const prep = new Set(PREP_WORDS.concat(LEFTOVER_PREP));
+  return new Set(squash(text).split(' ').filter(w => w.length > 1 && !FIDELITY_NOISE.has(w) && !prep.has(w)).map(w => foldPlural(w)));
+}
+/* What a line says it wants, comparable only where a difference cannot be a
+   unit conversion: mass with mass, volume with volume, a count with a count.
+   Spoons and cups are volume (5, 15 and 240 ml). A pinch or a dash is an amount
+   of its own kind, however it is written ("a pinch of X", "1 pinch X", "pinch
+   X" — the converter's shape is the second), so "1 tsp" against "a pinch" differs.
+   A range is kept as its two ends: the converter must keep a range as the source
+   gives it, so "2-3" against "2" is a difference. "Up to N" is not one figure,
+   and unreadable is never a warning. */
+const FIDELITY_SMALL = /^(?:(?:a|an|one)\s+)?(?:(?:small|large|good|generous)\s+)?(pinch|pinches|dash|dashes)\b/i;
+const FIDELITY_UNITS = { g: ['mass', 1], kg: ['mass', 1000], oz: ['mass', 28.35], lb: ['mass', 453.6],
+  ml: ['volume', 1], l: ['volume', 1000], tsp: ['volume', 5], tbsp: ['volume', 15], cup: ['volume', 240], '': ['count', 1] };
+function fidelityAmount(line){
+  const { qty, rest } = splitQty(line);
+  const a = parseIngredientAmount(qty);
+  const small = String(qty ? rest : line).trim().match(FIDELITY_SMALL);
+  if(small){
+    const n = !qty ? 1 : (a && !a.unit && !a.upTo && a.low === undefined ? a.amount : null);
+    if(n === null) return null;
+    const word = small[1].toLowerCase().replace(/es$/, '');
+    return { kind: 'small', cls: 'small', unit: word, lo: n, hi: n, text: n === 1 ? `a ${word}` : `${n} ${word}es` };
+  }
+  const u = a && FIDELITY_UNITS[a.unit];
+  if(!u || a.upTo) return null;
+  return { kind: 'measured', cls: u[0], unit: a.unit, lo: (a.low !== undefined ? a.low : a.amount) * u[1], hi: a.amount * u[1], text: qty };
+}
+/* Two groups of readings: 'agree', 'differ', or 'unknown' (which never warns).
+   Compared as TOTALS per kind of amount, so a "3 tbsp" line the converter split
+   into 1 + 2, or two lines it merged, still agrees. Where the two sides share no
+   kind, only a pinch against a weight or a volume is a difference. */
+function fidelityAgree(xs, ys){
+  if(!xs.length || !ys.length || xs.concat(ys).some(a => !a)) return 'unknown';
+  const total = list => list.reduce((t, a) => {
+    const c = t[a.cls] || (t[a.cls] = { lo: 0, hi: 0, units: new Set() });
+    c.lo += a.lo; c.hi += a.hi; c.units.add(a.unit);
+    return t;
+  }, {});
+  const X = total(xs), Y = total(ys);
+  const shared = Object.keys(X).filter(c => Y[c]);
+  const near = (p, q, tol) => Math.abs(p - q) <= tol * Math.max(p, q);
+  if(shared.length){
+    return shared.every(c => {
+      const same = X[c].units.size === 1 && Y[c].units.size === 1 && [...X[c].units][0] === [...Y[c].units][0];
+      const tol = same ? 0.02 : 0.12;
+      return near(X[c].lo, Y[c].lo, tol) && near(X[c].hi, Y[c].hi, tol);
+    }) ? 'agree' : 'differ';
+  }
+  const weighed = o => !!(o.mass || o.volume);
+  return (X.small && !Y.small && weighed(Y)) || (Y.small && !X.small && weighed(X)) ? 'differ' : 'unknown';
+}
+/* A line as the check sees it. The recipe's format puts the name before the first
+   comma and everything else after it or in brackets (conversion-instructions.md),
+   so `words` are the name's words and `all` are every word on the line. "salt and
+   pepper" is two items, so that a pinch of each is set against a pinch of each; a
+   measured amount on a compound line is ambiguous (each? together?) and reads as
+   unknown. */
+const fidelityName = text => String(text).replace(/\([^)]*\)/g, ' ').split(',')[0];
+function fidelityItems(lines){
+  const items = [];
+  (lines || []).forEach((line, i) => {
+    const { rest } = splitQty(line);
+    /* "salt and pepper" is two ingredients; "peeled and sliced" is one, and
+       "sliced" alone is no ingredient at all — every part must name something:
+       a content word, or a name the dictionary knows (its own words may all be
+       count words, as in "whole cloves"). */
+    const parts = fidelityName(rest).split(/\s+(?:and|&)\s+/i).map(x => x.trim()).filter(Boolean);
+    const names = x => fidelityWords(x).size > 0 || !!dictionaryRow(shoppingKeyForName(fidelityName(x)));
+    const compound = parts.length > 1 && parts.every(names);
+    const make = (text, part, amount) => {
+      const words = fidelityWords(fidelityName(text));
+      return { i, line, part, label: part ? `${line} (the "${part}" part)` : line, words,
+        all: part ? words : fidelityWordsAll(text), key: shoppingKeyForName(fidelityName(splitQty(text).rest)), amount };
+    };
+    if(compound){
+      const amt = fidelityAmount(line);
+      parts.forEach(p => items.push(make(p, p, amt && amt.kind === 'small' ? amt : null)));
+    } else items.push(make(line, null, fidelityAmount(line)));
+  });
+  return items;
+}
+const fidelitySubset = (small, big) => small.size > 0 && [...small].every(w => big.has(w));
+/* `a` is a source item, `b` a recipe item — always that way round, because the
+   tests are one-way. The recipe may say less than its source (a source is chatty),
+   and the converter's instructions forbid it saying more: a recipe that keeps
+   everything the source said and adds a qualifier ("light" soy sauce for soy
+   sauce, "olive" oil for oil) has settled something the source left open.
+   Whether that is a difference depends on the dictionary: where it names the two
+   as one product they are the SAME ingredient — totalled together, as the shopping
+   list totals them — but the recipe is flagged as more specific than its source,
+   softly, because the dictionary cannot say whether a bare "pepper" (which the
+   converter's own example writes as black pepper) or a bare "oil" (which it must
+   not settle) was meant. Where the dictionary does not know them, an addition is
+   a hard difference. Translation is different again: "heavy" becomes "double"
+   without the source's words surviving, and there the dictionary's name decides. */
+const fidelitySpecifies = (a, b) => fidelitySubset(a.words, b.words) && !fidelitySubset(b.words, a.all);
+function fidelitySame(a, b){
+  if(a.key && a.key === b.key) return true;
+  const ra = dictionaryRow(a.key), rb = dictionaryRow(b.key);
+  if(ra && rb && ra !== rb) return false;
+  return fidelitySubset(b.words, a.all);
+}
 function sourceFidelity(sourceLines, recipeLines){
-  const src = (sourceLines || []).map((line, i) => ({ i, line, words: fidelityWords(line), key: shoppingKeyForName(splitQty(line).rest) }));
-  const rec = (recipeLines || []).map((line, i) => ({ i, line, words: fidelityWords(line), key: shoppingKeyForName(splitQty(line).rest) }));
-  const score = (a, b) => {
-    let n = 0; a.words.forEach(w => { if(b.words.has(w)) n++; });
-    return a.key && a.key === b.key ? Math.max(n, 1) + 1 : n;
-  };
+  const src = fidelityItems(sourceLines), rec = fidelityItems(recipeLines), isSrc = new Set(src);
+  const overlap = (a, b) => [...a.all].filter(w => b.all.has(w)).length;
+  const score = (a, b) => a.key && a.key === b.key ? Math.max(overlap(a, b), 1) + 1 : overlap(a, b);
+  const rank = (a, b) => ({ agree: 0, unknown: 1, differ: 2 })[fidelityAgree(a.amount ? [a.amount] : [], b.amount ? [b.amount] : [])];
   const pairs = [];
-  src.forEach(a => rec.forEach(b => { const n = score(a, b); if(n > 0) pairs.push({ a, b, n }); }));
-  pairs.sort((x, y) => y.n - x.n || x.a.i - y.a.i || x.b.i - y.b.i);
-  const srcTo = new Map(), recTo = new Map();
-  pairs.forEach(({ a, b }) => { if(!srcTo.has(a.i) && !recTo.has(b.i)){ srcTo.set(a.i, b.i); recTo.set(b.i, a.i); } });
-  const matched = Array.from(srcTo, ([si, ri]) => ({ source: src[si].line, recipe: rec[ri].line, split: false }));
-  pairs.forEach(({ a, b }) => {
-    if(!recTo.has(b.i) && srcTo.has(a.i)){ recTo.set(b.i, a.i); matched.push({ source: a.line, recipe: b.line, split: true }); }
-    else if(!srcTo.has(a.i) && recTo.has(b.i)){ srcTo.set(a.i, b.i); matched.push({ source: a.line, recipe: b.line, split: true }); }
+  src.forEach(a => rec.forEach(b => {
+    const n = score(a, b);
+    if(n > 0) pairs.push({ a, b, n, same: fidelitySame(a, b), r: rank(a, b) });
+  }));
+  const order = (x, y) => y.n - x.n || x.r - y.r || x.a.i - y.a.i || x.b.i - y.b.i;
+
+  /* An ingredient is every line, on either side, joined by a same-ingredient
+     pair. What matters is what the source asks for in TOTAL against what the
+     recipe asks for — how the converter split or merged the lines does not — as
+     the shopping list already treats it. Which line stands beside which is only
+     how the table is drawn. */
+  const parent = new Map(src.concat(rec).map(x => [x, x]));
+  const find = x => { while(parent.get(x) !== x){ parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+  /* Two tiers of "same". A shared name (the dictionary's, or the same words) is
+     exact. "The recipe says less than the source" is looser, and joins only lines
+     that have no exact partner: a line already matched by name is spoken for, or
+     a leftover "pepper" would absorb a dropped "red bell pepper". */
+  const exact = p => p.a.key && p.a.key === p.b.key;
+  const spoken = new Set();
+  pairs.forEach(p => { if(p.same && exact(p)){ spoken.add(p.a); spoken.add(p.b); } });
+  const same = pairs.filter(p => p.same && (exact(p) || (!spoken.has(p.a) && !spoken.has(p.b)))).sort(order);
+  same.forEach(p => parent.set(find(p.a), find(p.b)));
+  const groups = new Map();
+  src.concat(rec).forEach(x => {
+    const g = groups.get(find(x)) || groups.set(find(x), { S: [], R: [] }).get(find(x));
+    (isSrc.has(x) ? g.S : g.R).push(x);
+  });
+  const matchedGroups = [...groups.values()].filter(g => g.S.length && g.R.length);
+  const inGroup = new Set(matchedGroups.flatMap(g => g.S.concat(g.R)));
+
+  const matched = [], drawn = new Set(), taken = new Set();
+  const gone = (x, y) => [...x].filter(w => !y.has(w));
+  matchedGroups.forEach(g => {
+    const mine = same.filter(p => g.S.includes(p.a));
+    const rows = [];
+    mine.forEach(p => { if(!taken.has(p.a) && !taken.has(p.b)){ taken.add(p.a); taken.add(p.b); rows.push(p); } });
+    mine.forEach(p => { if(!taken.has(p.a)){ taken.add(p.a); rows.push(p); } else if(!taken.has(p.b)){ taken.add(p.b); rows.push(p); } });
+    const say = items => items.map(x => x.amount && x.amount.text).filter(Boolean).sort().join(' + ');
+    const check = fidelityAgree(g.S.map(a => a.amount), g.R.map(b => b.amount)) === 'differ'
+      ? { kind: 'amount', why: `amounts differ: source ${say(g.S)}; recipe ${say(g.R)}` } : null;
+    const more = new Set(); rows.filter(p => fidelitySpecifies(p.a, p.b)).forEach(p => gone(p.b.words, p.a.all).forEach(w => more.add(w)));
+    const note = more.size ? { kind: 'specific', why: `more specific than the source: the recipe adds ${[...more].sort().join(', ')}` } : null;
+    rows.forEach(p => matched.push({ source: p.a.line, recipe: p.b.line, split: g.S.length + g.R.length > 2, check, note }));
+  });
+
+  /* What has no same-ingredient partner may still be similar to something: it
+     shares words but is not the same. Paired last, and always flagged. */
+  const left = pairs.filter(p => !p.same && !inGroup.has(p.a) && !inGroup.has(p.b)).sort(order);
+  left.forEach(p => {
+    if(drawn.has(p.a) || drawn.has(p.b)) return;
+    drawn.add(p.a); drawn.add(p.b);
+    const added = gone(p.b.words, p.a.all), had = gone(p.a.words, p.b.all);
+    const said = [added.length ? `the recipe adds ${added.join(', ')}` : '', had.length ? `the source has ${had.join(', ')}` : ''].filter(Boolean);
+    matched.push({ source: p.a.line, recipe: p.b.line, split: false, note: null, check: { kind: 'wording', why: `not the same wording: ${said.join('; ') || 'different words'}` } });
   });
   return {
     matched,
-    sourceOnly: src.filter(a => !srcTo.has(a.i)).map(a => a.line),
-    recipeOnly: rec.filter(b => !recTo.has(b.i)).map(b => b.line)
+    sourceOnly: src.filter(a => !inGroup.has(a) && !drawn.has(a)).map(a => a.label),
+    recipeOnly: rec.filter(b => !inGroup.has(b) && !drawn.has(b)).map(b => b.label)
   };
 }
 
@@ -1371,8 +1621,8 @@ if(typeof module !== 'undefined' && module.exports){
     parseFraction, normalizeUnit, toBaseUnit, formatShoppingQty, parseIngredientAmount,
     formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,
-    NEVER_IGNORE, foldPlural, dictionaryRow, shoppingLine, formatShoppingParts, aggregateShoppingLines,
+    NEVER_IGNORE, foldPlural, dictionaryRow, dictionaryPhrases, dictionaryKey, shoppingLine, formatShoppingParts, aggregateShoppingLines,
     shoppingKeyForName, strictMatchSuggestions,
-    ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, pastedIngredientLines, ingredientMatchMap
+    ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, fidelityAmount, fidelityAgree, pastedIngredientLines, ingredientMatchMap
   };
 }

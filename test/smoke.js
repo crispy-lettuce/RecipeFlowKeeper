@@ -738,7 +738,7 @@ const check = (name, pass, detail) => {
   await page.evaluate(() => {
     window.__INVOKES__.length = 0;
     window.__INVOKE_REPLY__ = call => call.name === 'source-ingredients'
-      ? { data: { pageUrl: call.body.pageUrl, name: 'Checks', ingredients: ['1/2 cup honey', '1 (14 oz) can crushed tomatoes', '1 large onion', '1 carrot', '1 tsp Italian seasoning'] }, error: null }
+      ? { data: { pageUrl: call.body.pageUrl, name: 'Checks', ingredients: ['3 tbsp honey or golden syrup', '1 (14 oz) can plum tomatoes', '1 large onion', '1 carrot', '1 tsp Italian seasoning'] }, error: null }
       : { data: null, error: null };
   });
   await page.click('#compareSourceBtn');
@@ -774,7 +774,7 @@ const check = (name, pass, detail) => {
   const pasteEmpty = await page.evaluate(() => ({ out: document.getElementById('sourceCompareOut').textContent, rows: document.querySelectorAll('#sourceCompareOut tr').length }));
   check('an empty paste box says there is nothing to compare, rather than drawing an empty table',
         /Nothing to compare yet/.test(pasteEmpty.out) && pasteEmpty.rows === 0, JSON.stringify(pasteEmpty));
-  await page.fill('#sourcePasteInput', ['Ingredients', '▢ 3 tbsp honey', '▢ 1 (14 oz) can crushed tomatoes', '▢ 1 large onion', 'For the topping:', '▢ 1 carrot', '▢ 1 tsp Italian seasoning'].join('\n'));
+  await page.fill('#sourcePasteInput', ['Ingredients', '▢ 3 tbsp honey or golden syrup', '▢ 1 (14 oz) can plum tomatoes', '▢ 1 large onion', 'For the topping:', '▢ 1 carrot', '▢ 1 tsp Italian seasoning'].join('\n'));
   await page.click('#comparePastedBtn');
   await page.waitForTimeout(300);
   const pasted = await page.evaluate(() => ({
@@ -792,6 +792,28 @@ const check = (name, pass, detail) => {
   check('a re-parse (or USE THIS) keeps what was pasted, and clears the table it no longer describes',
         afterReparse.box.includes('▢ 1 tsp Italian seasoning') && afterReparse.out === '', JSON.stringify(afterReparse));
 
+  /* PR 7e (28 Sep): a pair can match on its words and still differ. That is
+     shown, with what differs, and counted — never left looking matched. */
+  const comparePasted = async lines => {
+    await page.fill('#sourcePasteInput', lines.join('\n'));
+    await page.click('#comparePastedBtn');
+    await page.waitForTimeout(300);
+    return page.evaluate(() => ({
+      hint: ((document.querySelector('#sourceCompareOut .hint') || {}).textContent || '').trim(),
+      misses: [...document.querySelectorAll('#sourceCompareOut tr.miss')].length,
+      why: [...document.querySelectorAll('#sourceCompareOut tr.miss .why')].map(d => d.textContent)
+    }));
+  };
+  const amountDiffers = await comparePasted(['2 tbsp honey or golden syrup', '1 (14 oz) can plum tomatoes', '1 large onion', 'grated parmesan', '1 carrot']);
+  check('a pair that matches on its words but not its amount is highlighted, says what differs, and is counted',
+        amountDiffers.misses === 1 && amountDiffers.why.join('|') === 'amounts differ: source 2 tbsp; recipe 3 tbsp' && /^1 to look at/.test(amountDiffers.hint), JSON.stringify(amountDiffers));
+  const allAgree = await comparePasted(['3 tbsp honey or golden syrup', '1 (14 oz) can plum tomatoes', '1 large onion', 'grated parmesan', '1 carrot']);
+  check('when every ingredient and every comparable amount agrees it says so, and says what it did not compare',
+        allAgree.misses === 0 && /found its match, and the amounts that can be compared agree/.test(allAgree.hint) && /cups against grams/.test(allAgree.hint), JSON.stringify(allAgree));
+  const wordsDiffer = await comparePasted(['3 tbsp honey or golden syrup', '1 (14 oz) can cherry tomatoes', '1 large onion', 'grated parmesan', '1 carrot']);
+  check('cherry tomatoes for plum tomatoes, which share a word, are shown paired but flagged, not quietly matched',
+        wordsDiffer.misses === 1 && /not the same wording: the recipe adds plum; the source has cherry/.test(wordsDiffer.why.join('|')), JSON.stringify(wordsDiffer));
+
   // Advice, never a gate: the recipe saves with warnings still showing.
   const recipeWritesBefore = await page.evaluate(() => (window.__WRITES__ || []).filter(w => w.table === 'recipes').length);
   await page.click('#saveBtn');
@@ -805,6 +827,28 @@ const check = (name, pass, detail) => {
   await page.waitForTimeout(300);
   await page.click('#openAddBtn');
   await page.waitForTimeout(300);
+
+  /* PR 7e: a recipe that names its product more specifically than its source, where the
+     dictionary says the two are one product, is a soft note: shaded, listed and counted
+     apart from a hard difference, so a bare "soy sauce" made light is seen and a shorthand
+     the converter's own example uses does not read like a fault. */
+  await page.fill('#importInput', ['TITLE: Soft Note Test', 'SOURCE: Blue Door Bakery', 'SERVINGS: 2', '', 'GROUP a:', '2 tbsp light soy sauce', '1 carrot', '',
+    'STAGE:', 'MERGE a -> done: Cook [5 min]'].join('\n'));
+  await page.click('#parseBtn');
+  await page.waitForTimeout(300);
+  await page.fill('#sourcePasteInput', ['2 tbsp soy sauce', '1 carrot'].join('\n'));
+  await page.click('#comparePastedBtn');
+  await page.waitForTimeout(300);
+  const softShown = await page.evaluate(() => ({
+    hint: ((document.querySelector('#sourceCompareOut .hint') || {}).textContent || '').trim(),
+    soft: [...document.querySelectorAll('#sourceCompareOut tr.soft .why')].map(d => d.textContent),
+    hard: document.querySelectorAll('#sourceCompareOut tr.miss').length
+  }));
+  check('a recipe more specific than its source, where the dictionary calls them one product, is a shaded note and not a hard difference',
+        softShown.hard === 0 && softShown.soft.join('|') === 'more specific than the source: the recipe adds light', JSON.stringify(softShown));
+  check('    and the count says so apart from "to look at", never as though nothing were noted',
+        /^Every ingredient found its match/.test(softShown.hint) && /1 line names its product more specifically than the source did \(shaded\)/.test(softShown.hint), softShown.hint);
+  await page.fill('#sourcePasteInput', '');
 
   // The form scales to a headcount too, working the multiplier out of SERVINGS.
   await page.fill('#importInput', 'TITLE: Scale Test\nSOURCE: Somewhere\nSERVINGS: 4\n\nGROUP a:\n300 g pasta\n\nSTAGE:\nMERGE a -> done: Cook [5 min]');
@@ -1185,16 +1229,19 @@ const check = (name, pass, detail) => {
   check('and one the rules now make anyway falls away', legacy.redundantDropped);
 
   // Settings still has its add form, which stores in the list's own words.
+  // (A made-up pair the dictionary knows nothing about: this used to be courgettes and
+  // zucchini, which the dictionary has called one row since 29 Sep, so the form rightly
+  // stores nothing for them.)
   await page.click('.navlink[data-view="settings"]');
   await page.waitForTimeout(300);
   await page.selectOption('#alias-kind', 'ingredient').catch(() => {});
-  await page.fill('#alias-from', 'Courgettes, sliced');
-  await page.fill('#alias-to', 'zucchini');
+  await page.fill('#alias-from', 'Cavolo nero, sliced');
+  await page.fill('#alias-to', 'black kale');
   await page.click('#aliasAddBtn');
   await page.waitForTimeout(300);
-  const formAlias = await page.evaluate(() => loadAliases().find(a => a.kind === 'ingredient' && /courgette/.test(a.alias)));
-  check('Settings stores a new match in the list\'s own words', formAlias && formAlias.alias === 'courgette' && formAlias.canonical === 'zucchini', JSON.stringify(formAlias));
-  await page.evaluate(() => loadAliases().filter(a => /courgette/.test(a.alias)).forEach(a => removeAlias(a.id)));
+  const formAlias = await page.evaluate(() => loadAliases().find(a => a.kind === 'ingredient' && /cavolo/.test(a.alias)));
+  check('Settings stores a new match in the list\'s own words', formAlias && formAlias.alias === 'cavolo nero' && formAlias.canonical === 'black kale', JSON.stringify(formAlias));
+  await page.evaluate(() => loadAliases().filter(a => /cavolo/.test(a.alias)).forEach(a => removeAlias(a.id)));
   await page.evaluate(() => { addAlias('ingredient', 'thing 0', 'things 0'); addAlias('ingredient_distinct', pairKeyFor('thing 1', 'things 1'), ''); addAlias('ingredient_distinct', pairKeyFor('thing 2', 'things 2'), ''); addAlias('ingredient_distinct', pairKeyFor('thing 3', 'things 3'), ''); renderAliasesList(); });
   await page.waitForTimeout(200);
 
