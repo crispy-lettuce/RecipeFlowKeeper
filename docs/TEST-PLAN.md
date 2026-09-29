@@ -367,6 +367,15 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     says "Moved to …" with UNDO; UNDO puts it back. Close without saving, and check Settings lists nothing left over. **The
     one thing no test can judge is whether the aisle list is easy to use on the tablet.**
 
+36h. **Settings: ingredient lookup and dictionary (new 29 Sep, PR 7 of the add-recipe plan).** Read-only; nothing to undo.
+    (1) *Settings:* INGREDIENT LOOKUP and DICTIONARY sit above WORD MATCHES, and the dictionary lists every row by aisle.
+    (2) *Type "almond flour":* the lookup says the list calls it ground almonds, in Pantry from the dictionary, and the
+    dictionary narrows to that row. (3) *Type a wording from one of your own word matches:* the match is listed with FORGET
+    (do not press it unless you mean to). (4) *Type the original of one of your swaps:* the swap is listed; EDIT goes to
+    Swaps, whose subtitle now says a swap for "butter" never catches "peanut butter". (5) *Type something the list puts in
+    Other:* it says so and points at Shopping Aisles. **The one thing no test can judge is whether the lookup answers the
+    question you had when you opened it.**
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

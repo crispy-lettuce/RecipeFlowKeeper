@@ -1572,6 +1572,21 @@ one shaded note, "the recipe adds flaked", which is older and unrelated. Six mut
 alternative instead of the first) first survived because almond flour and almond meal are the same row, so an olive oil or butter
 check was added. *Not verified:* the tablet.
 
+**PR 7 of the add-recipe plan, Settings: ingredient lookup and dictionary (29 Sep 2026).** Two read-only blocks above WORD
+MATCHES. INGREDIENT LOOKUP takes a wording as a recipe would write it and says what the shopping list calls it (the dictionary's
+name, or "your own wording"), its aisle and why (dictionary, keyword rule, the household's own, or Other with a pointer to Shopping
+Aisles), the word matches touching it from either side with FORGET, and the swaps for its name with EDIT. It runs the wording
+through `aggregateShoppingLines` with the household's matches and aisles, so it cannot disagree with the list. DICTIONARY lists
+every row by aisle with its live wordings, filtered by the same box. The Swaps subtitle no longer describes the substring match
+6d-2 replaced. `index.html` only.
+
+*Verified by.* `smoke.js` **342 → 350**, `core.test.js` 142, both exit 0, **no existing check changed**. The first run failed two
+of the new checks on the test's own setup, not the app: by then the PR 6 block had reloaded the stub, which has no swap, so the
+test now adds an invented one and removes it. **Nine page mutations, each seen failing by name:** the dictionary never
+known, every aisle said to be the dictionary's, word matches found from one side only, FORGET removing nothing, swaps matched by
+substring (so butter's catches peanut butter), EDIT going nowhere, the dictionary list unfiltered, the lookup ignoring word
+matches, and the old Swaps subtitle; `index.html` restored and compared byte-identical after the run. *Not verified:* the tablet (`docs/TEST-PLAN.md` step 36h).
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export
