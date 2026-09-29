@@ -925,14 +925,18 @@ const check = (name, pass, detail) => {
 
   await rvPaste(rvText('Some New', ['1 onion', '1 pinch sumac', '300 g young jackfruit', '175 g mangetout']));
   const rvFresh = await page.evaluate(() => ({
-    rows: [...document.querySelectorAll('#reviewList .rv-row')].map(r => ({ text: r.textContent.replace(/\s+/g, ' ').trim(), other: !!r.querySelector('.rv-other') })),
+    rows: [...document.querySelectorAll('#reviewList .rv-row')].map(r => ({ text: r.textContent.replace(/\s+/g, ' ').trim(), other: !!r.querySelector('.rv-other'),
+      rv: [...r.querySelectorAll('[data-rv]')].map(b => b.dataset.rv).join() })),
     buttons: document.querySelectorAll('#reviewList button').length }));
   const rvRowFor = n => rvFresh.rows.find(r => r.text.startsWith(n)) || {};
   /* PR 3 asserted here that "Same as X?" carried no buttons (they were PR 4's). PR 4 gives that row its
-     two, so the clause is now that ONLY that row has any (the other two rows have none). */
+     two, so the clause became that ONLY that row had any. SAME AS… (29 Sep, after PR 5) gives every
+     other new row one button of its own, so it is now: the "Same as" row has SAME and KEEP APART and
+     nothing else, and each other row has exactly SAME AS…. */
   check('a new name landing in Other is marked, one landing in an aisle is not, and "Same as X?" names the existing ingredient',
         rvFresh.rows.length === 3 && rvRowFor('Sumac').other === true && rvRowFor('Young jackfruit').other === true && rvRowFor('Mangetout').other === false
-        && /lands under Produce/.test(rvRowFor('Mangetout').text) && /Same as Jackfruit\?/.test(rvRowFor('Young jackfruit').text) && rvFresh.buttons === 2,
+        && /lands under Produce/.test(rvRowFor('Mangetout').text) && /Same as Jackfruit\?/.test(rvRowFor('Young jackfruit').text)
+        && rvRowFor('Young jackfruit').rv === 'same,apart' && rvRowFor('Sumac').rv === 'same-as' && rvRowFor('Mangetout').rv === 'same-as' && rvFresh.buttons === 4,
         JSON.stringify(rvFresh));
 
   await rvPaste(rvText('Same Link', ['1 onion'], ['SOURCE_URL: http://www.EXAMPLE.test/lentil-soup/']));
@@ -1096,9 +1100,72 @@ const check = (name, pass, detail) => {
         anApart.length === 1 && anApart[0].table === 'aliases' && anApart[0].rows.length === 1 && anApart[0].rows[0].kind === 'ingredient_distinct'
         && anApart[0].rows[0].alias === 'jackfruit || young jackfruit' && anApart[0].rows[0].canonical === '', JSON.stringify(anApart));
   await rvPaste(anText('Apart Two', 'Blue Door Bakery', anJackLines));
-  const anSettled = await page.evaluate(() => ({ buttons: document.querySelectorAll('#reviewList [data-rv]').length, text: document.getElementById('reviewList').textContent.replace(/\s+/g, ' ') }));
+  const anSettled = await page.evaluate(() => ({ buttons: document.querySelectorAll('#reviewList [data-rv]').length, text: document.getElementById('reviewList').textContent.replace(/\s+/g, ' '),
+    rv: [...document.querySelectorAll('#reviewList [data-rv]')].map(b => b.dataset.rv).join() }));
+  /* Before SAME AS… (29 Sep, after PR 5) the row had no button at all; it now has that one, and only that. */
   check('a settled pair is not offered: after KEEP APART the same names are listed as new, with no "Same as" row',
-        anSettled.buttons === 0 && !/Same as/.test(anSettled.text) && /Young jackfruit/.test(anSettled.text), JSON.stringify(anSettled));
+        anSettled.buttons === 1 && anSettled.rv === 'same-as' && !/Same as/.test(anSettled.text) && /Young jackfruit/.test(anSettled.text), JSON.stringify(anSettled));
+
+  /* SAME AS… (29 Sep, after PR 5): a new name the strict rule never pairs ("whole" is never
+     ignored) can be totalled with any name already in the library, from the row. The shopping
+     list's MERGE WITH…, at the moment the name arrives: filter, pick, the same guard, and only
+     MERGE writes. Invented names. */
+  await anResetAliases();
+  const saLines = ['300 g whole jackfruit', '1 onion'];
+  await rvPaste(anText('Same As Pick', 'Blue Door Bakery', saLines));
+  const saMark = await anMark();
+  /* Typed through the input event, not page.fill: with the box missing, fill would wait and crash the
+     suite instead of failing the check that names it. */
+  const saFilter = async q => { await page.evaluate(v => { const f = document.querySelector('#reviewList .rv-sameas-filter');
+      if(f){ f.value = v; f.dispatchEvent(new Event('input', { bubbles: true })); } }, q); await page.waitForTimeout(80);
+    return page.evaluate(() => ({ options: [...document.querySelectorAll('#reviewList [data-rv="same-as-pick"]')].map(b => b.textContent.trim()),
+      hint: (document.querySelector('#reviewList .rv-sameas-options .hint') || {}).textContent || '' })); };
+  const saRow0 = await page.evaluate(() => [...document.querySelectorAll('#reviewList [data-rv]')].map(b => b.dataset.rv).join());
+  await anClick('[data-rv="same-as"]');
+  const saOpen = await page.evaluate(() => ({ box: !!document.querySelector('#reviewList .rv-sameas'), focused: document.activeElement && document.activeElement.classList.contains('rv-sameas-filter') }));
+  const saJack = await saFilter('jack');
+  const saNone = await saFilter('zzqx');
+  const saEmpty = await saFilter('');
+  check('SAME AS… is offered on a new name the strict rule does not pair, and filters only names already in the library, never the new name itself',
+        saRow0 === 'same-as' && saOpen.box && saOpen.focused && saJack.options.join('|') === 'Jackfruit' && !saNone.options.length && /No match in your library/.test(saNone.hint)
+        && !saEmpty.options.length, JSON.stringify([saRow0, saOpen, saJack, saNone, saEmpty]));
+  await anClick('#reviewList .rv-sameas [data-rv="cancel"]');
+  await page.waitForTimeout(150);
+  const saAfterCancel1 = await page.evaluate(() => [...document.querySelectorAll('#reviewList [data-rv]')].map(b => b.dataset.rv).join());
+  await anClick('[data-rv="same-as"]');
+  await saFilter('jack');
+  await anClick('[data-rv="same-as-pick"]');
+  const saGuard = await page.evaluate(() => { const n = document.querySelector('#reviewList .rv-note');
+    return { text: n ? n.textContent.replace(/\s+/g, ' ').trim() : '', merge: !!document.querySelector('#reviewList [data-rv="merge"]') }; });
+  await page.waitForTimeout(250);
+  const saPickWrites = (await anSince(saMark)).length;
+  await anClick('#reviewList [data-rv="cancel"]');
+  await page.waitForTimeout(150);
+  const saAfterCancel2 = await page.evaluate(() => [...document.querySelectorAll('#reviewList [data-rv]')].map(b => b.dataset.rv).join());
+  check('    picking a name writes nothing and shows the same guard as SAME; CANCEL at either step writes nothing and puts the button back',
+        /Total .*Whole jackfruit.* with .*Jackfruit.*for every recipe\?/.test(saGuard.text) && saGuard.merge && saPickWrites === 0
+        && saAfterCancel1 === 'same-as' && saAfterCancel2 === 'same-as' && (await anSince(saMark)).length === 0,
+        JSON.stringify([saGuard, saPickWrites, saAfterCancel1, saAfterCancel2]));
+  await anClick('[data-rv="same-as"]');
+  await saFilter('jack');
+  await anClick('[data-rv="same-as-pick"]');
+  await anClick('#reviewList [data-rv="merge"]');
+  await page.waitForTimeout(300);
+  const saMerged = await anSince(saMark);
+  const saAfter = await page.evaluate(() => ({ text: document.getElementById('reviewList').textContent.replace(/\s+/g, ' '), buttons: document.querySelectorAll('#reviewList [data-rv]').length }));
+  check('    only MERGE writes: exactly one ingredient alias, the new name to the library\'s, and the row goes',
+        saMerged.length === 1 && saMerged[0].table === 'aliases' && saMerged[0].op === 'upsert' && saMerged[0].rows.length === 1
+        && saMerged[0].rows[0].kind === 'ingredient' && saMerged[0].rows[0].alias === 'whole jackfruit' && saMerged[0].rows[0].canonical === 'jackfruit'
+        && !/Whole jackfruit/.test(saAfter.text) && saAfter.buttons === 0 && /2 of 2 ingredients are already on your list/.test(saAfter.text),
+        JSON.stringify([saMerged, saAfter]));
+  /* On Edit the recipe being edited is left out, as the review leaves it out: its names are not
+     "the library" to total with. */
+  const saEditing = await page.evaluate(() => { const was = state.editingRecipeId; state.editingRecipeId = 'an-jack';
+    const names = reviewMergeCandidates('whole jackfruit').map(n => n.key); state.editingRecipeId = was;
+    return { jack: names.includes('jackfruit'), lentil: names.includes('red lentil') }; });
+  check('    on Edit, the recipe being edited is not offered as the library',
+        saEditing.jack === false && saEditing.lentil === true, JSON.stringify(saEditing));
+  await anResetAliases();
 
   // The row under SOURCE, in place of the save handler's dialog.
   await anResetAliases();

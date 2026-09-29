@@ -239,6 +239,9 @@ PR 4 (answers) and PR 6 (aisles):
     existing library name (PR 4). SAME first shows, inline, *"Total 'young jackfruit' with
     'jackfruit', for every recipe? MERGE · CANCEL"* (the same guard MERGE WITH… has). The new name
     always folds into the existing one.
+  - **SAME AS…** on every new row with no pending "Same as" (PR 5b): a filter over the names already
+    in the library, a pick, then the same guard SAME shows, and only MERGE writes. It is for the pairs
+    the strict rule never finds ("whole rolled oats" against "rolled oats": "whole" is never ignored).
   - An aisle `<select>` (the five `INGREDIENT_AISLES`) when the name lands in Other and has no
     pending "Same as" (PR 6). Picking one writes an override at once and shows *"Moved to Produce
     · UNDO"*.
@@ -332,6 +335,7 @@ New in Settings (PR 7), above the WORD MATCHES block:
 | Keywords added to the vocabulary | SAVE | BEFORE YOU SAVE | Settings → Keywords, delete | today / 4 |
 | Photo copied to our storage, IMAGE: line rewritten | after SAVE | BEFORE YOU SAVE | Change the image URL and save | today / 4 |
 | Two names totalled as one | SAME | The row, then MERGE · CANCEL | Settings → Word Matches, FORGET | 4 |
+| Two names totalled as one, the pair picked by hand | SAME AS…, a name, MERGE | The row, then MERGE · CANCEL | Settings → Word Matches, FORGET | 5b |
 | Two names kept apart | KEEP APART | The row | Settings → Word Matches, ASK AGAIN | 4 |
 | An aisle set for a name | The row's select, or Settings | The row; "Moved to … · UNDO" | UNDO, or Settings → Shopping Aisles, REMOVE | 6 |
 | Comparison recorded on the recipe | SAVE, after a comparison | BEFORE YOU SAVE | RE-CHECK and save again | 5 |
@@ -346,7 +350,8 @@ path. `buildShoppingList` is not touched by anything here.
 ## 8. The PRs
 
 **Order and dependencies.** PR 1 and PR 2 first, independent of each other and of the rest. Then
-3 → 4 → 5 in order. PR 6 after 3 (it adds the review's aisle pick) and before 7. PR 7 after 6.
+3 → 4 → 5 in order. PR 5b (SAME AS…, added 29 Sep at the household's request) after 4 and before 6, so
+that a name is matched before it is given an aisle. PR 6 after 3 (it adds the review's aisle pick) and before 7. PR 7 after 6.
 PR 8 after 5 and 6. One behaviour per PR; a smaller PR is always fine.
 
 **Before every PR, in this order** (`CLAUDE.md`, first section, applies in full):
@@ -357,7 +362,8 @@ PR 8 after 5 and 6. One behaviour per PR; a smaller PR is always fine.
    once PR 1 was on its branch (it added seven checks and rewrote one), **126** and **292** once PR 3 was
    (ten Node checks; eleven browser checks and one more for Edit), **129** and **312** once PR 4 was
    (three Node checks for `changedHeaderKeys`; twenty browser checks), and **133** and **329** once PR 5 was
-   (four Node checks; seventeen browser checks); if the exit code is
+   (four Node checks; seventeen browser checks), **134** and **329** after the source-check fix (PR #47, one
+   Node check), and **134** and **333** once PR 5b was (four browser checks, two existing clauses amended); if the exit code is
    not 0 before you change anything, stop (§11).
 3. Read the PR's entry below, then the functions it names, in the code. If a name is not there,
    stop (§11).
@@ -623,6 +629,39 @@ with null`; `the viewer shows NOT COMPARED for a recipe with none`.
   without comparing again keeps a result that was about the old page.
 - **All 312 existing smoke checks and 129 Node checks passed unchanged** against the new code before any new check was
   added, so no check had to be amended (no §11 item 2 this time).
+
+### PR 5b — SAME AS… in the review (added 29 Sep 2026)
+
+**Why.** Found by the household adding a recipe after PR 5: the review listed "Whole rolled oats" as new and
+landing in Other, while the library already had "Rolled oats" (a dictionary row). The strict rule offers only
+names one word apart, and never across a word on `NEVER_IGNORE` ("whole", "plain", "self-raising"), so nothing
+asked. The only way to total the two was MERGE WITH… on the shopping list, after saving and planning the recipe.
+An aisle (PR 6) would have put the row in Pantry and left it a second row on the list.
+
+**Scope.** `index.html` only; no schema, no `core.js`, no change to naming, so no tick is re-keyed. On every new
+row with no pending "Same as": **SAME AS…**, which opens a filter over the names already in the library (never
+what was typed, as MERGE WITH… decided on 27 Sep; the recipe being edited is left out, as the review leaves it
+out). A pick shows the guard SAME shows ("Total X with Y, for every recipe? MERGE · CANCEL") and writes nothing;
+only MERGE writes, one `ingredient` alias through `addAlias`, the new name to the library's. CANCEL at either step
+writes nothing. After KEEP APART a row gets SAME AS…, since the suggestion was wrong but another name may be right.
+
+**Checks.** Browser: `SAME AS… is offered on a new name the strict rule does not pair, and filters only names
+already in the library, never the new name itself`; `picking a name writes nothing and shows the same guard as
+SAME; CANCEL at either step writes nothing and puts the button back`; `only MERGE writes: exactly one ingredient
+alias, the new name to the library's, and the row goes`; `on Edit, the recipe being edited is not offered as the
+library`.
+
+**Built as** (29 Sep):
+- **Two existing clauses were amended, and this is a §11 item 2 case put to the household in the PR.** PR 4's
+  row check asserted that only the "Same as" row had buttons, and its settled-pair check that the row had none;
+  every new row now has SAME AS… by design. The unamended suite against the new build failed exactly those two
+  checks, each on its button count alone; each now says which buttons each row has.
+- `reviewMergeCandidates(fromKey)` is the review's own list, not `allLibraryIngredientNames`, because that one
+  includes the recipe being edited.
+- **Six mutations, each seen failing by name:** no SAME AS… button, a pick that writes at once, MERGE with the
+  direction reversed, the edited recipe offered, an empty filter listing every name, and an option made from the
+  typed text. The first at first crashed the suite (`page.fill` waited on the missing box); the helper now types
+  through the input event, and the same mutation fails five checks by name and runs to the end.
 
 ### PR 6 — Aisle overrides
 

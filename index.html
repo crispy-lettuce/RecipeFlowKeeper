@@ -1016,6 +1016,13 @@
   .rv-row button{ margin-left:6px; background:none; border:none; padding:0; cursor:pointer; color:var(--plum);
     font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; text-decoration:underline; }
   .rv-section.rv-red{ background:rgba(140,58,52,.08); border-color:rgba(140,58,52,.28); }
+  /* SAME AS…: the shopping list's MERGE WITH… box, so the names read as names, not actions.
+     The filter is 16px so a tablet does not zoom on focus. */
+  .rv-row .rv-sameas{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:4px; }
+  .rv-sameas-filter{ font:inherit; font-size:16px; padding:3px 7px; min-width:160px;
+    border:1px solid var(--line-soft); border-radius:5px; background:var(--paper); color:var(--ink); }
+  .rv-sameas-options{ display:flex; flex-wrap:wrap; gap:4px 10px; }
+  .rv-sameas-options button{ text-decoration:none; font-family:inherit; font-size:13px; letter-spacing:normal; margin-left:0; }
   .rv-dup-detail{ margin:6px 0 0; padding:8px 10px; background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r); font-size:13px; }
   .rv-dup-detail ul{ margin:4px 0 0; padding-left:18px; }
   /* PR 4: the answers in place. Each is a tap that writes one row, or takes one step back. */
@@ -6885,7 +6892,23 @@ function reviewListHtml(review){
     `${review.newCount === 1 ? 'This one is' : 'These are'} new to it:</div>` +
     fresh.map(n=> `<div class="rv-row"><b>${escapeHtml(n.name)}</b> — lands under <b>${escapeHtml(n.aisle)}</b>` +
       `${n.other ? ` <span class="rv-other">OTHER</span>` : ''}` +
-      (pair.has(n.key) ? sameAsHtml(pair.get(n.key)) : '') + `</div>`).join('');
+      (pair.has(n.key) ? sameAsHtml(pair.get(n.key))
+        : ` <button type="button" data-rv="same-as" data-from="${escapeHtml(n.key)}" data-from-name="${escapeHtml(n.name)}">SAME AS…</button>`) + `</div>`).join('');
+}
+/* SAME AS… (29 Sep 2026, after PR 5). The strict rule offers only names one word apart, and
+   never across a word that changes the product ("whole", "plain"), so "whole rolled oats"
+   against the library's "rolled oats" was never asked about: the household found it adding a
+   recipe. This is MERGE WITH… from the shopping list, brought to the moment the name arrives:
+   a filter over the library's names, a pick, then the same guard SAME has, and only MERGE
+   writes, the same one alias. A row with a pending "Same as" keeps its two buttons instead;
+   after KEEP APART it gets this one, since the suggestion was wrong but another name may be
+   right. Only names already in the library can be picked, as on the shopping list (decided 27
+   Sep); the recipe being edited is left out, as the review leaves it out. */
+function reviewMergeCandidates(fromKey){
+  const editing = state.editingRecipeId;
+  const lineItems = [];
+  libraryForReview().filter(r=> r.id !== editing).forEach(r=> r.lines.forEach(raw=> lineItems.push({ recipeTitle: r.title, raw, group: '' })));
+  return aggregateShoppingLines(lineItems, applyIngredientAlias).filter(it=> it.key !== fromKey).map(it=> ({ key: it.key, name: it.name }));
 }
 /* "Same as X?" (PR 4). The answer is given here, at the tap. SAME asks once more, in the row
    ("... for every recipe? MERGE · CANCEL"), and only MERGE writes, through addAlias, the call
@@ -7083,6 +7106,20 @@ function comparePastedSource(){
 }
 document.getElementById('addChecks').addEventListener('input', e=>{
   if(e.target.id === 'sourcePasteInput') pastedSourceText = e.target.value;
+  if(e.target.classList.contains('rv-sameas-filter')){
+    /* Every option comes from the library, never from what was typed. */
+    const box = e.target.closest('.rv-sameas');
+    const q = e.target.value.trim().toLowerCase();
+    const optionsEl = box.querySelector('.rv-sameas-options');
+    if(!q){ optionsEl.innerHTML = ''; return; }
+    const matches = reviewMergeCandidates(box.dataset.from)
+      .filter(it=> it.name.toLowerCase().includes(q))
+      .sort((a, b)=> a.name.localeCompare(b.name))
+      .slice(0, 8);
+    optionsEl.innerHTML = matches.length
+      ? matches.map(it=> `<button type="button" data-rv="same-as-pick" ${pairData({ from: box.dataset.from, to: it.key, fromName: box.dataset.fromName, toName: it.name })}>${escapeHtml(it.name)}</button>`).join('')
+      : '<span class="hint">No match in your library</span>';
+  }
 });
 /* Parse on paste, on the next tick, when the pasted text is in the box. Nothing else parses by
    itself. Once the bands have been drawn, any edit to the text makes them stale, and says so
@@ -7127,6 +7164,19 @@ document.getElementById('addChecks').addEventListener('click', e=>{
     if(kind === 'same'){
       rv.closest('.rv-note').innerHTML = `Total <b>${escapeHtml(fromName)}</b> with <b>${escapeHtml(toName)}</b>, for every recipe? ` +
         `<button type="button" data-rv="merge" ${pairData({ from, to, fromName, toName })}>MERGE</button> · <button type="button" data-rv="cancel">CANCEL</button>`;
+    } else if(kind === 'same-as'){
+      const box = document.createElement('div');
+      box.className = 'rv-note rv-sameas';
+      box.dataset.from = from;
+      box.dataset.fromName = fromName;
+      box.innerHTML = `<input type="text" class="rv-sameas-filter" autocomplete="off" placeholder="Same as…" aria-label="Filter your ingredient names to total ${escapeHtml(fromName)} with">` +
+        ` <span class="rv-sameas-options"></span> <button type="button" data-rv="cancel">CANCEL</button>`;
+      rv.replaceWith(box);
+      box.querySelector('.rv-sameas-filter').focus();
+    } else if(kind === 'same-as-pick'){
+      /* Picked, not written: the guard below is the one SAME shows, and only its MERGE writes. */
+      rv.closest('.rv-sameas').outerHTML = `<div class="rv-note">Total <b>${escapeHtml(fromName)}</b> with <b>${escapeHtml(toName)}</b>, for every recipe? ` +
+        `<button type="button" data-rv="merge" ${pairData({ from, to, fromName, toName })}>MERGE</button> · <button type="button" data-rv="cancel">CANCEL</button></div>`;
     } else if(kind === 'merge'){
       addAlias('ingredient', from, to);
       renderAliasesList();
