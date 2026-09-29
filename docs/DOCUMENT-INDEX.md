@@ -309,7 +309,9 @@ reasoning behind them.
 **What:** The prompt used to convert a recipe from a web page, photo or pasted text into the
 app's flow format. Covers extraction, structure, a mandatory check pass, and how to present the
 result. Includes worked right/wrong examples for the grouping rule that late additions get their
-own group.
+own group. Since 29 Sep (PR 2 of the add-recipe plan) it also says what to do with a URL it cannot
+read: stop, name the address and ask for the text, never convert from another page, and write any
+note about the source as a `⚠️ Source note:` line.
 
 **Use it when:** adding any recipe. Paste it, or its contents, into a conversation along with the
 source recipe.
@@ -325,14 +327,15 @@ recognise, leaving raw bracket text visible in the diagram).
 ---
 
 ### `converter/test-set.md` — the converter's regression tests
-**What:** Eight deliberately awkward recipes, each isolating one failure mode — a late addition, a
+**What:** Nine deliberately awkward cases, each isolating one failure mode — a late addition, a
 split ingredient, parallel prep, a zero-length step, a missing yield, and (since 23 Sep) the
-shape of ingredient lines, British English without over-specifying, and ingredients no list has seen — with what a correct
+shape of ingredient lines, British English without over-specifying, and ingredients no list has seen,
+and (since 29 Sep) an address it cannot read — with what a correct
 conversion must produce and what counts as a failure. Plus three audits of the real library. The
 first two (13 and 14 Sep) describe the pre-reprocess library and are history now; the third
 (20 Sep) re-runs all five tests against what's actually in the database.
 
-**Use it when:** you change `conversion-instructions.md`. Run all eight through the revised
+**Use it when:** you change `conversion-instructions.md`. Run all nine through the revised
 instructions and compare. Also the record of which library faults have been fixed and when.
 
 **Worth knowing:** these tests check what the *converter* writes, not what the app's parser

@@ -1265,7 +1265,7 @@ in the session; one answer (a hard refusal for a reconstructed recipe) was withd
 the plan records both. A count first given in chat (3 canned, 3 tinned) was over every line of the text;
 the plan carries the ingredient-line count.
 
-**PR 1 of the add-recipe plan, the two naming fixes (29 Sep 2026, PR #41, open for review, not merged).** The
+**PR 1 of the add-recipe plan, the two naming fixes (29 Sep 2026, PR #41, merged 29 Sep 10:48 UTC).** The
 household's decisions 2 and 3 (`docs/PLAN-NEW-RECIPE-FLOW.md` §4). (a) `shoppingLine` now skips size
 words between an article and a count unit, so `a big handful of X`, `a small bunch of X` and `a large
 pinch of X` read as 1 handful, bunch or pinch; before, the article was left in the name (`a handful of
@@ -1304,6 +1304,36 @@ and §10 item 4 are corrected in place, saying so.
 (the plan leaves it to them, and nothing here needs a tick re-keyed); whether the converter project's
 copy of its instructions matches the repo's. The examples in the new checks are invented (chervil, sorrel,
 sumac, peach slices) and were checked against the export: none of those words appears in the library.
+
+*After the merge (read from GitHub, 29 Sep):* the household merged it at 10:48:02 UTC as `3fce7fe`; on
+that commit `main`'s tests (run 82) and the Pages deploy (run 58) both succeeded. **Not verified:** what
+the deployed site serves. The session's egress policy blocks `github.io` (a 403 from the proxy), so
+`core.js` `2026-09-29.2` was not read from the live site.
+
+**PR 2 of the add-recipe plan, the converter's rule for a page it cannot read (29 Sep 2026, documentation
+only, PR #42, open for review).** `converter/conversion-instructions.md` §1 now says that a URL whose page cannot
+be read is a stop: name the address that failed and ask for the text or the ingredient list, and never
+convert from another page, a partner's or branded version, a search snippet or memory; any note about the
+source is its own `⚠️ Source note:` line under NOTES. §3 has the matching check. `converter/test-set.md`
+gains test 9, an address on `.invalid` (so no real site is named) that must produce a question and no
+recipe. The bullet, the check and the test are the plan's wording, unchanged; the revision note, the
+header date and the test-set counts (eight → nine, here and in `docs/DOCUMENT-INDEX.md`) are the rest.
+No code, no schema, no Edge Function, no recipe text.
+
+*Verified by.* `node test/core.test.js` 116, exit 0, and `node test/build.js && node test/smoke.js` 280,
+exit 0, both before and after the change; `generate-ingredient-names.js --check` exit 0. **Test 9 against a
+stand-in, not the conversion project:** a model given only the instructions (old wording from `main`, then
+the new) and told what the failed fetch returned, one run per cell. With nothing else available it asked
+for the text on **both** wordings; with a same-named page from another site found, the old wording
+converted that page's recipe as a "draft" and the new one declined it and asked. **So test 9 as written
+cannot fail without something to reconstruct from**, and it was not seen failing on the old wording; only
+the variant with another page to find was. That is recorded in the test set, with the instruction to
+note which tools the conversion project had. The stand-in is not necessarily the conversion project's
+model, and the search result was simulated.
+
+*Not verified:* whether the conversion project follows the rule. It has to be reloaded there and test 9 run
+in a fresh chat, which no session can do (`docs/NEXT-SESSION.md`, the household's list). Nothing in the
+app reads the `⚠️ Source note:` line until PR 3.
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
