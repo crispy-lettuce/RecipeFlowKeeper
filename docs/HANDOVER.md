@@ -1431,8 +1431,8 @@ RLS or the write queue for these calls, though each is the same `addAlias` call 
 Whether the buttons are easy to hit on the tablet. That the Settings word-match list is redrawn after a tap (called, not
 asserted). What the deployed site serves. I also did not read `main`'s own test and Pages runs after PR 3 merged.
 
-**PR 5 of the add-recipe plan, the comparison recorded on the recipe (29 Sep 2026, PR #45, open for review, not merged; needs the
-household to apply one SQL statement first).** A comparison with the source page is now remembered by the add and edit form
+**PR 5 of the add-recipe plan, the comparison recorded on the recipe (29 Sep 2026, PR #45, merged 17:12 UTC as `9c4b6f7`; its SQL
+statement applied by the household after the merge).** A comparison with the source page is now remembered by the add and edit form
 and written by SAVE, and only by SAVE, as `recipes.source_check`: `{at, route, hard, soft, sourceLines, linesHash}`, the counts
 (the table's own "N to look at" and its shaded notes) and a hash of the ingredient lines it was of, never the page's text or a
 pasted list. The viewer says what is recorded in a chip beside the source link (COMPARED … · NO DIFFERENCES or N DIFFERENCES,
@@ -1442,7 +1442,10 @@ import restores it, and an older backup without it imports as none. **The column
 read-only, at the start of the PR 5 session on 29 Sep: `recipes` has no `source_check`, no `aisle_overrides` table, 34 recipes, 0 ticks, last migration
 `20260928123928`). The statement is `docs/migrations/add-recipes-source-check.md`, a markdown page because `.gitignore` excludes
 `*.sql` on purpose; **a session did not apply it, and the household applies it before merging.** `core.js` gains `fidelityCounts`
-and `sourceCheckStatus` and is `2026-09-29.5` in all three places.
+and `sourceCheckStatus` and is `2026-09-29.5` in all three places. **Applied, 29 Sep:** the PR merged before the statement had been run (read-only checks
+at 17:19 and 17:29 UTC still found no column), and the household then ran it from the dashboard's SQL editor. **Checked,
+read-only, at 18:25 UTC:** `source_check | jsonb | YES`, 0 recipes holding a value, and no new row in
+`supabase_migrations.schema_migrations`, since the SQL editor does not record one. Step 36f is now the household's to do.
 
 *Verified by.* `node test/core.test.js` **129 → 133** (four checks) and `node test/build.js && node test/smoke.js` **312 → 329**
 (seventeen browser checks: the plan's six and eleven of mine), both exit 0, no console or page errors, and

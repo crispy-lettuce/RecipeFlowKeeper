@@ -226,16 +226,18 @@ For a full account of how the schema got here, in order:
 20260921193429  make_recipe_images_public_with_guards
 20260922122137  add_recipe_logs_title_for_adhoc_diary_entries
 20260928123928  rls_belt_and_braces_restrict_to_authenticated
+(no version)    add_recipes_source_check      (29 Sep 2026, run from the SQL editor, so not in schema_migrations)
 ```
 
 The last two were missing from this list until 22 Sep, while the features they carry were
 recorded as done elsewhere. If you are adding a migration, add it here in the same breath —
 `select version, name from supabase_migrations.schema_migrations` is the check.
 
-**Waiting to be applied (29 Sep 2026, not on the live database when this was written):**
-`docs/migrations/add-recipes-source-check.md`, one nullable `jsonb` column, `recipes.source_check`, for PR 5 of the
-add-recipe plan. The household applies it from the SQL editor **before** merging that PR; add it to the list above, with
-the version the dashboard gives it, when it has been.
+A statement run in the dashboard's SQL editor is not recorded in `schema_migrations`, so the check above does
+not show it: `add_recipes_source_check` (`docs/migrations/add-recipes-source-check.md`, one nullable `jsonb` column,
+`recipes.source_check`, for PR 5 of the add-recipe plan) was applied that way by the household on 29 Sep 2026 and is
+checked instead with the query on its own page (read-only, 18:25 UTC that day: `source_check | jsonb | YES`). Nothing
+is waiting to be applied.
 
 ---
 

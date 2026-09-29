@@ -184,7 +184,7 @@ was a deliberate call in the brief: retrofitting it later, once data exists, is 
 
 | Table | Holds |
 | --- | --- |
-| `recipes` | The library. `syntax` is the real recipe; other columns are parsed from it. `source_check` (jsonb, nullable; PR 5 of the add-recipe plan) is what a comparison with the source page found: `{at, route, hard, soft, sourceLines, linesHash}`, written by SAVE when a comparison ran in that form session, never the page's text or a pasted list. It is added by `docs/migrations/add-recipes-source-check.md`, which the household applies; **it was not on the live database when this was written (29 Sep)**. |
+| `recipes` | The library. `syntax` is the real recipe; other columns are parsed from it. `source_check` (jsonb, nullable; PR 5 of the add-recipe plan) is what a comparison with the source page found: `{at, route, hard, soft, sourceLines, linesHash}`, written by SAVE when a comparison ran in that form session, never the page's text or a pasted list. It is added by `docs/migrations/add-recipes-source-check.md`, which the household applied from the SQL editor on 29 Sep 2026 (checked read-only that day: `jsonb`, nullable). |
 | `recipe_logs` | One row per time a recipe was cooked. **`ON DELETE CASCADE`** from `recipes` — deleting a recipe destroys its history. |
 | `keywords` | The tag vocabulary, ordered by `sort_order`. |
 | `planner_days` | One row per planned day. `recipe_ids uuid[]` plus a **parallel `servings smallint[]`** — index *n* in one matches index *n* in the other, `0` meaning "as the recipe is written". |

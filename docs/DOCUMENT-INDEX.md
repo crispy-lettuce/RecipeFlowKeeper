@@ -94,7 +94,7 @@ useful with no Claude Code session and no prior context at all.
 
 ---
 
-### `docs/migrations/add-recipes-source-check.md` — a schema change waiting for the household (29 Sep 2026)
+### `docs/migrations/add-recipes-source-check.md` — a schema change, applied by the household 29 Sep 2026
 **What:** The one `ALTER TABLE` that adds `recipes.source_check` (PR 5 of the add-recipe plan), who applies it
 and when (the household, from the dashboard, **before** merging that PR), why it is safe to apply first, what goes in
 the column, how to check it and how to undo it. A markdown page and not a `.sql` file because `.gitignore` excludes
