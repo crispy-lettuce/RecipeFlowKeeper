@@ -96,7 +96,7 @@ already flags this for batches but the in-app preview does not), and the save sh
 every header line (F5). §4 has the answer as written before reading the ingredient review, and
 where it moved afterwards. *(27 Sep, PR #22: `parseRecipe` reports what it reads past as `unread`,
 and the preview shows it; the source list reaches the preview from a `source-ingredients` Edge
-Function reading the JSON-LD, the model-independent route recommended here. F5 was done on 24 Sep.)* *(28 Sep, PR 7d: two of the twelve sites refuse that function, so the preview also takes the source's list pasted from the page. No numbered finding closed.)*
+Function reading the JSON-LD, the model-independent route recommended here. F5 was done on 24 Sep.)* *(28 Sep, PR 7d: two of the twelve sites refuse that function, so the preview also takes the source's list pasted from the page. No numbered finding closed.)* *(28 Sep, PR 7e: the household's first real comparison showed the check calling a difference a match; probing found it caught one of eleven fault types. It was rewritten to compare amounts and to flag pairs that differ, and `docs/HANDOVER.md` §7 lists what it still cannot see. The recommendation stands; the first implementation of it was weaker than described.)*
 
 ### 3. The runtime pattern — sound for one device; change writes to row scope before a second
 
