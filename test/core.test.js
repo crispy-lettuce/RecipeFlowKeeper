@@ -757,6 +757,28 @@ check('newRecipeReview finds a duplicate by normalised URL only: not by title, n
       && rev({ lines: ['1 onion'], sourceUrl: 'https://example.test/jackfruit' }).duplicates.map(d => d.id).join() === 'b',
       JSON.stringify(dupHit.duplicates));
 
+/* changedHeaderKeys (PR 4): which header lines a save would change, by name, for BEFORE YOU
+   SAVE. It asks withUpdatedHeaderLine, the function the save uses, so it cannot say something
+   the save does not do. Invented recipe. */
+const hkText = 'TITLE: Lentil Soup\nSOURCE: Blue Door Bakery\nSERVINGS: 4\nTAGS: course=Main, one pan\n\nGROUP a:\n1 onion\n\nSTAGE:\nMERGE a -> done: Cook [5 min]';
+const hkFields = { title: 'Lentil Soup', source: 'Blue Door Bakery', sourceUrl: null, imageUrl: null, time: '', servings: 4, equipment: '', tags: { course: 'Main', keywords: ['one pan'] } };
+check('changedHeaderKeys is empty when the fields agree with the text, so an untouched save changes nothing',
+      core.changedHeaderKeys(hkText, hkFields).length === 0 && core.withUpdatedHeaderLines(hkText, hkFields) === hkText,
+      JSON.stringify(core.changedHeaderKeys(hkText, hkFields)));
+check('changedHeaderKeys names only the lines that differ, in header order',
+      JSON.stringify(core.changedHeaderKeys(hkText, { ...hkFields, servings: 6, title: 'Smoky Lentil Soup' })) === '["TITLE","SERVINGS"]'
+      && JSON.stringify(core.changedHeaderKeys(hkText, { ...hkFields, tags: { course: 'Main', keywords: ['one pan', 'slow'] } })) === '["TAGS"]'
+      && JSON.stringify(core.changedHeaderKeys(hkText, { ...hkFields, source: 'Blue Door' })) === '["SOURCE"]',
+      JSON.stringify(core.changedHeaderKeys(hkText, { ...hkFields, servings: 6, title: 'Smoky Lentil Soup' })));
+const hkVariants = [{}, { time: '35 min' }, { sourceUrl: 'https://example.test/x' }, { imageUrl: 'https://example.test/i.jpg' }, { servings: null },
+  { equipment: '20 cm tin' }, { tags: { course: '', keywords: [] } }, { title: 'X', source: 'Y', servings: 2 }];
+check('changedHeaderKeys counts a line that would be added or dropped, not one that stays missing, and agrees with the save on every variant',
+      JSON.stringify(core.changedHeaderKeys(hkText, { ...hkFields, time: '35 min' })) === '["TIME"]'
+      && JSON.stringify(core.changedHeaderKeys(hkText, { ...hkFields, servings: null })) === '["SERVINGS"]'
+      && core.changedHeaderKeys(hkText, { ...hkFields, imageUrl: '', equipment: '' }).length === 0
+      && hkVariants.every(v => (core.changedHeaderKeys(hkText, { ...hkFields, ...v }).length > 0) === (core.withUpdatedHeaderLines(hkText, { ...hkFields, ...v }) !== hkText)),
+      JSON.stringify(hkVariants.map(v => core.changedHeaderKeys(hkText, { ...hkFields, ...v }))));
+
 /* Six rows, not five: the leek under the misspelt GROUP x-y is still read, into
    the group above; only the GROUP line itself is reported as read past. */
 const { remeasure } = require(path.join(ROOT, 'tools', 'remeasure.js'));

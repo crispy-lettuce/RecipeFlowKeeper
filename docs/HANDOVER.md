@@ -722,7 +722,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **292 checks** (since PR 3 of the add-recipe plan; `core.test.js` adds 126 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **312 checks** (since PR 4 of the add-recipe plan; `core.test.js` adds 129 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday.
@@ -1339,7 +1339,7 @@ app reads the `⚠️ Source note:` line until PR 3.
 `main`'s tests (run 85) and the Pages deploy (run 59) both succeeded. **Not verified:** what the deployed site
 serves (the session's egress policy blocks `github.io`).
 
-**PR 3 of the add-recipe plan, the review band (29 Sep 2026, PR #43, open for review, not merged).** The add and edit form
+**PR 3 of the add-recipe plan, the review band (29 Sep 2026, PR #43, merged 29 Sep 14:15 UTC as `c914792`).** The add and edit form
 now reads in the order the work goes: what the app read (a one-line summary, then the diagram), the checks, then
 the fields, with every existing id kept. Pasting parses at once; editing the text afterwards shows a stale bar with
 RE-CHECK; the source check runs by itself for an `https` link that has not been fetched for since the form opened
@@ -1380,6 +1380,56 @@ recipe's check to the wrong page.
 *Not verified:* the live app and the tablet. The reordered form is the visible change and only a person on the tablet can
 judge it (`docs/TEST-PLAN.md` step 36d). The paste is tested with a synthetic `paste` event, not a real paste on iPadOS or
 Android. The auto-run is tested against the stub, never the real `source-ingredients` function or a real site.
+
+**PR 4 of the add-recipe plan, answers in place and no dialog left (29 Sep 2026, open for review, not merged).** The
+add and edit form now gives its answers where the questions arise, and writes only what is tapped, each through the
+function that already writes that kind of row. A "Same as X?" row has SAME (which asks once more, "for every recipe?
+MERGE · CANCEL", and writes only at MERGE: the new name is the alias, the existing one the canonical) and KEEP APART. A
+row under SOURCE (`#sourceSpellRow`) replaces the save handler's `confirm()`: a spelling settled before is put in the
+field and said so, and a spelling that looks like an existing source is asked about with USE THAT and KEEP MINE. USE THIS
+and SCALE TO SERVE each have an UNDO. A BEFORE YOU SAVE list (`#addBeforeSave`) names exactly what the save will do: the
+header lines it will rewrite, a photo it will copy, keywords it will add, and on Edit ticks it will reset. **No dialog
+remains in the add path.** `core.js` gains `changedHeaderKeys`, and is `2026-09-29.4` in all three places.
+
+*Verified by.* `node test/core.test.js` **126 → 129** (three checks for `changedHeaderKeys`) and `node test/build.js &&
+node test/smoke.js` **292 → 312** (the plan's thirteen browser checks and seven of mine), both exit 0, no console or page
+errors, and `generate-ingredient-names.js --check` exit 0. **One existing check had to change, by one clause**, and this is
+worth reading: PR 3's `…and "Same as X?" is text only` asserted that the review had no buttons at all, which PR 4 exists
+to change, so it now asserts that the "Same as" row has exactly its two. I ran the previous suite unamended against the new
+build to be sure it was the only one: 292 checks, 1 failed, and the other 291 passed unchanged. Whether that counts as §11
+item 2 ("a check you did not write fails") is the household's call. **Mutations, each seen failing by name:** 6 on
+`changedHeaderKeys` and 30 on the page (the merge direction reversed, SAME writing at the pick, a `confirm()` left in the save,
+the header list computed from the fields instead of the text, CANCEL and KEEP APART writing, a settled pair offered again,
+USE THAT not setting the field, KEEP MINE writing the wrong kind, an unanswered save writing an alias, each undo putting back
+the wrong text or not remembering it, every keyword listed as new, the photo line missing or shown for our own, a settled
+spelling not put in the field or ignored at save, the undos never dropped after an edit, the ticks line on every Edit, the
+list not recomputed on input, the save no longer adding keywords, asking writing, the SOURCE row not following the field, the
+guard not saying "for every recipe", the list not redrawn after MERGE, the empty list still shown, and the text box not
+refreshing the list), run against a temporary harness of the suite's boot code and the new block (deleted before the commit).
+**Two things worth recording.** Reading my own diff found a gap, that an edit to the text box did not refresh BEFORE YOU
+SAVE (the box is outside `#addForm`), so a line edited and not yet re-checked was not named as one the save would write back
+over; the check I wrote for it **passed without the fix**, by accident, because `page.fill` moved focus off the title field
+and that blur fired a `change` which refreshed the list. It now sends the `input` event straight to the box, fails without the
+listener, passes with it, and has its own mutation. **Measured, read-only, from the live-library export taken for PR 3
+earlier on 29 Sep (not re-read today):** 0 "Same as" pairs, 0 pairs among the 12 distinct sources that the similar-source rule
+would offer, and an untouched Edit-save would rewrite the header lines of **0** of 34 recipes; 14 word matches (3 ingredient, 10
+ingredient-kept-apart, 1 source). So today's library would show none of the new rows until a new name or spelling arrives, and
+they are tested with invented recipes only. The diff was scanned mechanically for 472 strings from that export (titles,
+sources, links, ingredient lines, word matches): one hit, the single word `onion`, which is also one word match's target and is
+not a pair or a line.
+
+*Where it differs from the plan* (recorded as "Built as" in its PR 4 entry): `core.js` gained `changedHeaderKeys`, which the
+entry does not name; the keyword line compares with the stored vocabulary, not `fullKeywordVocab`, because that is what
+`mergeKeywordVocab` writes against; the ticks line shows only when there are ticks; each undo is offered only while the text is
+exactly what the step left; the settled-spelling lookup stays in the save (a plain lookup, no dialog, no write) and what went is
+the `confirm()` and its two writes. **One behaviour changes:** cancelling the old dialog wrote a `source_distinct` row, and an
+unanswered row now writes nothing and is asked again next time.
+
+*Not verified:* the live app and the tablet (`docs/TEST-PLAN.md` step 36e, which **writes**, so it uses a made-up recipe and
+is undone in Settings). Every write is tested against the stub, so a green run says nothing about the real `aliases` table,
+RLS or the write queue for these calls, though each is the same `addAlias` call the shopping list and Settings already make.
+Whether the buttons are easy to hit on the tablet. That the Settings word-match list is redrawn after a tap (called, not
+asserted). What the deployed site serves. I also did not read `main`'s own test and Pages runs after PR 3 merged.
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all

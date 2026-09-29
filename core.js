@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-29.3';
+const KITCHEN_CORE_VERSION = '2026-09-29.4';
 
 
 /* ======================= quantity split ======================= */
@@ -370,6 +370,20 @@ function withUpdatedHeaderLines(syntaxText, fields){
   text = withUpdatedHeaderLine(text, 'EQUIPMENT', fields.equipment);
   text = withUpdatedHeaderLine(text, 'TAGS', tagsToLine(fields.tags));
   return text;
+}
+
+/* Which of those eight lines a save would change, by name. Each key is tried on its own
+   against the text through withUpdatedHeaderLine, the function the save uses, so the list
+   cannot say something the save does not do (BEFORE YOU SAVE, PR 4 of the add-recipe plan).
+   A line that is missing and would be added counts as a change; one that is missing and
+   stays missing does not. The keys are independent, so trying them one at a time gives
+   the same answer as withUpdatedHeaderLines does in one pass. */
+function changedHeaderKeys(syntaxText, fields){
+  const text = String(syntaxText || '');
+  const f = fields || {};
+  const wanted = { TITLE: f.title, SOURCE: f.source, SOURCE_URL: f.sourceUrl, IMAGE: f.imageUrl,
+    TIME: f.time, SERVINGS: f.servings, EQUIPMENT: f.equipment, TAGS: tagsToLine(f.tags) };
+  return HEADER_ORDER.filter(key => withUpdatedHeaderLine(text, key, wanted[key]) !== text);
 }
 
 /* The two original single-line helpers, kept as names because the image
@@ -1716,7 +1730,7 @@ if(typeof module !== 'undefined' && module.exports){
   module.exports = {
     KITCHEN_CORE_VERSION, INGREDIENT_AISLES, INGREDIENT_DICTIONARY,
     splitQty, parseTags, extractStepDuration, parseRecipe,
-    withUpdatedHeaderLine, withUpdatedHeaderLines, tagsToLine, withUpdatedTitleLine, withUpdatedImageLine,
+    withUpdatedHeaderLine, withUpdatedHeaderLines, changedHeaderKeys, tagsToLine, withUpdatedTitleLine, withUpdatedImageLine,
     scaleRecipeSyntax, buildRows, computeColumns, computeTimeline,
     parseFraction, normalizeUnit, toBaseUnit, formatShoppingQty, parseIngredientAmount,
     formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,

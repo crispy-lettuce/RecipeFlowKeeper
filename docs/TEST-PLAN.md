@@ -12,7 +12,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 292 automated checks pass, plus 126 in Node (102 when this was
+story that used to open this paragraph is history. 312 automated checks pass, plus 129 in Node (102 when this was
 written). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -322,6 +322,24 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     out of the library), and fetch nothing. (6) *WRITE ONE BY HAND* on an empty box gives a starter recipe.
     **The one thing no test can judge is a real paste on the tablet: tell me if pasting does not read at
     once.**
+
+36e. **Answers in place, on the tablet (new 29 Sep, PR 4 of the add-recipe plan).** Unlike 36d this one
+    **writes**, so use a made-up recipe, and undo what it wrote at the end. (1) *SOURCE:* add a recipe whose
+    SOURCE is a shortened spelling of one you already use. A row should appear under the field saying it looks
+    like the existing one, with USE THAT and KEEP MINE, and **no dialog should appear at any point**, not on
+    parse and not on SAVE. Tap USE THAT and check the field changed; then, with a second made-up recipe, tap
+    KEEP MINE and check the field did not. Leave a third unanswered and save: it should save as typed and ask
+    again next time. (2) *SHOPPING LIST:* a "Same as X?" row appears only where a new name looks like one you
+    already have (today's library has none, so you may need a made-up ingredient named as a longer or shorter
+    version of one you use). SAME should ask once more ("… for every recipe? MERGE · CANCEL") and write nothing
+    until MERGE; KEEP APART should make the row go. (3) *USE THIS,* on a line the list cannot total, should now
+    show an UNDO that puts the line back exactly. (4) *SCALE TO SERVE* should show UNDO SCALE beside APPLY,
+    which puts the text back as it was; typing in the box afterwards should make it go. (5) *BEFORE YOU SAVE*
+    should list only what applies (the header lines that will be rewritten, a photo that will be copied, keywords
+    that are new, and on Edit the ticks that will be reset), and nothing when nothing does. Say whether it is
+    clear, or whether it is noise. **Afterwards:** delete the made-up recipes and, in Settings, Word Matches,
+    FORGET what steps 1 and 2 wrote (they show there as a source match, a kept-apart pair and an ingredient match).
+    **The one thing no test can judge is whether the buttons are easy to hit on the tablet.**
 
 ## Deferred to the tablet, after merging
 

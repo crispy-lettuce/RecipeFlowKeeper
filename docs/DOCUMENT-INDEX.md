@@ -284,7 +284,7 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
-### `docs/PLAN-NEW-RECIPE-FLOW.md` — adding a recipe as one flow (29 Sep 2026, decided, not built)
+### `docs/PLAN-NEW-RECIPE-FLOW.md` — adding a recipe as one flow (29 Sep 2026, decided; PRs 1–3 built and merged, PR 4 open for review)
 **What:** The plan that makes the journey from a pasted conversion to a saved recipe one page
 with five bands, and gives Settings one place to see what the app knows about an ingredient. It
 opens with an audit of today's add path (every step, every data change, every missing check, each
@@ -301,7 +301,8 @@ supersedes the *phasing* of `docs/PROPOSAL-NEW-RECIPE-REVIEW.md` and adopts
 `docs/PROPOSAL-AISLE-OVERRIDES.md` as its PR 6; both proposals stay the design record for the
 reasoning behind them.
 
-**Don't:** treat it as done. Nothing in it is built, and a plan closes no finding.
+**Don't:** treat it as done. PRs 1–3 are built and merged and PR 4 is open for review (each entry's "Built as" note
+says where the code differs from the text); PRs 5–8 are not built, and a plan closes no finding.
 
 ---
 
@@ -356,7 +357,7 @@ to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.m
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 292-check smoke suite, the 126 Node checks and the Edge Function checks, and an honest account of what it can't tell you
+**What:** How to run the 312-check smoke suite, the 129 Node checks and the Edge Function checks, and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 
 **Use it when:** making any code change.
