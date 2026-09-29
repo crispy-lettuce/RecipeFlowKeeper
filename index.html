@@ -976,10 +976,40 @@
     border:1px solid rgba(140,58,52,.28); border-radius:var(--r);
     color:var(--danger); font-size:14px; line-height:1.5;
   }
-  #addPreview{ margin:18px 0 20px; }
-  /* The checks above the preview (PR 6c-1). Advice, never a gate: a save
-     goes through whatever they say. */
-  #addChecks{ margin:18px 0 0; }
+  #addPreview{ margin:12px 0 20px; }
+  /* The checks (PR 6c-1), and since PR 3 of the add-recipe plan the form reads in the order
+     the work goes: what the app read (the diagram first), the checks, then the fields. The
+     ids are the ones the form has always had. Advice, never a gate: a save goes through
+     whatever they say. */
+  #addChecks{ margin:12px 0 22px; }
+  .band-title{ margin:22px 0 8px; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.08em; font-weight:500; color:var(--ink-soft); }
+  .band-title:first-child{ margin-top:0; }
+  .read-summary{ font-size:15px; line-height:1.5; color:var(--ink); }
+  .link-btn{ margin-left:14px; background:none; border:none; padding:0; cursor:pointer; color:var(--plum);
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.06em; text-decoration:underline; }
+  .paste-help{ margin:8px 0 0; max-width:62ch; color:var(--ink-soft); font-size:13px; line-height:1.5; }
+  /* Never silent staleness: once the text is edited after a parse, the bands say so and dim. */
+  .stale-bar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 14px; margin-bottom:12px;
+    background:var(--gold-wash); border:1px solid var(--line); border-radius:var(--r); font-size:14px; color:var(--ink); }
+  .stale-bar button{ background:none; border:none; padding:0; cursor:pointer; color:var(--plum);
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.06em; text-decoration:underline; }
+  #addBands.stale{ opacity:.55; }
+  /* The review's own rows. Deliberately not .line-check: the line checks are the ones the
+     SAVING IS STILL FINE box holds, and a row of another kind must not be counted as one. */
+  .rv-section{ padding:12px 14px; margin-bottom:12px; background:var(--gold-wash);
+    border:1px solid var(--line); border-radius:var(--r); font-size:14px; line-height:1.5; color:var(--ink); }
+  .rv-section h4{ margin:0 0 6px; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.08em; font-weight:500; color:var(--ink-soft); }
+  .rv-quiet{ color:var(--ink-soft); font-size:14px; }
+  .rv-row{ padding:6px 0; border-top:1px solid var(--line-soft); }
+  .rv-row:first-of-type{ border-top:none; }
+  .rv-row .rv-note{ color:var(--ink-soft); font-size:13px; }
+  .rv-row .rv-other{ font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.06em; color:var(--danger); }
+  .rv-row code{ font-family:'IBM Plex Mono', monospace; font-size:13px; }
+  .rv-row button{ margin-left:6px; background:none; border:none; padding:0; cursor:pointer; color:var(--plum);
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; text-decoration:underline; }
+  .rv-section.rv-red{ background:rgba(140,58,52,.08); border-color:rgba(140,58,52,.28); }
+  .rv-dup-detail{ margin:6px 0 0; padding:8px 10px; background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r); font-size:13px; }
+  .rv-dup-detail ul{ margin:4px 0 0; padding-left:18px; }
   .line-checks{ padding:12px 14px; margin-bottom:12px; background:var(--gold-wash);
     border:1px solid var(--line); border-radius:var(--r); font-size:14px; line-height:1.5; color:var(--ink); }
   .line-checks h4{ margin:0 0 6px; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.08em; font-weight:500; color:var(--ink-soft); }
@@ -1615,8 +1645,22 @@
     <label class="field-label" for="importInput">RECIPE SYNTAX</label>
     <textarea id="importInput" spellcheck="false" placeholder="TITLE: ...&#10;SOURCE: ...&#10;SOURCE_URL: ...&#10;IMAGE: ...&#10;TIME: ...&#10;TAGS: course=Main, Veg&#10;&#10;GROUP handle:&#10;...&#10;&#10;STAGE:&#10;MERGE ... -> ...: ..."></textarea>
     <button class="btn primary" id="parseBtn">PARSE &amp; PREVIEW</button>
+    <button type="button" class="link-btn" id="handTemplateBtn">WRITE ONE BY HAND</button>
+    <p class="paste-help" id="pasteHelp">Pasting parses at once. From your conversion chat, or write one by hand. A recipe of your own has no source page, so it gets no source check and no photo unless you add a link.</p>
 
     <div class="add-form" id="addForm" style="display:none;">
+      <div class="stale-bar" id="staleBar" style="display:none;"><span>The text changed since it was checked.</span> <button type="button" id="recheckBtn">RE-CHECK</button></div>
+      <div id="addBands">
+        <div class="band-title">WHAT THE APP READ</div>
+        <div id="addRead">
+          <div class="read-summary" id="addReadSummary"></div>
+          <div id="addPreview"></div>
+        </div>
+        <div class="band-title">CHECKS — ADVICE ONLY, NEVER A GATE</div>
+        <div id="addChecks"></div>
+      </div>
+      <div class="band-title">DETAILS</div>
+      <div id="addDetails">
       <div class="field-row">
         <label><span>TITLE</span><input type="text" id="f-title"></label>
         <label><span>SOURCE <b class="required">*</b></span><input type="text" id="f-source" placeholder="Where did this come from?" list="sourceVocab" autocomplete="off"></label>
@@ -1653,8 +1697,7 @@
         </label>
       </div>
 
-      <div id="addChecks"></div>
-      <div id="addPreview"></div>
+      </div>
 
       <button class="btn primary" id="saveBtn">SAVE RECIPE</button>
       <p class="field-error" id="saveError" style="display:none;"></p>
@@ -1662,7 +1705,7 @@
   </div>
 </div>
 
-<script src="core.js?v=2026-09-29.2"></script>
+<script src="core.js?v=2026-09-29.3"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -1670,7 +1713,7 @@
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-09-29.2';
+const EXPECTED_CORE_VERSION = '2026-09-29.3';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -5985,7 +6028,9 @@ function openEditModal(recipeId){
   document.getElementById('saveError').style.display = 'none';
 
   const parsedForEdit = parseRecipe(recipe.syntax);
+  clearBandsStale();
   renderLineChecks(parsedForEdit);
+  renderReadSummary(parsedForEdit);
   mountFlow(document.getElementById('addPreview'), parsedForEdit, {});
 
   const overlay = document.getElementById('addModalOverlay');
@@ -6001,7 +6046,13 @@ function closeAddModal(){
   document.getElementById('addForm').style.display = 'none';
   document.getElementById('addPreview').innerHTML = '';
   document.getElementById('addChecks').innerHTML = '';
+  document.getElementById('addReadSummary').textContent = '';
   pastedSourceText = '';
+  /* Nothing of one recipe's review may reach the next: the link field is emptied too, since a
+     link left behind would send the next recipe's source check to the wrong page. */
+  document.getElementById('f-source-url').value = '';
+  lastCheckedUrl = ''; lastSourceLines = null; bandsShown = false; reviewLines = [];
+  clearBandsStale();
   document.getElementById('saveError').style.display = 'none';
   state.editingRecipeId = null;
   document.getElementById('modalTitle').textContent = 'Add a recipe';
@@ -6508,8 +6559,11 @@ function parseAndPreview(){
   document.getElementById('f-keywords').value = (parsed.tags.keywords || []).join(', ');
   document.getElementById('saveError').style.display = 'none';
 
+  clearBandsStale();
   renderLineChecks(parsed);
+  renderReadSummary(parsed);
   mountFlow(document.getElementById('addPreview'), parsed, {});
+  autoCheckSource();
 }
 document.getElementById('parseBtn').addEventListener('click', parseAndPreview);
 
@@ -6529,6 +6583,104 @@ document.getElementById('parseBtn').addEventListener('click', parseAndPreview);
 /* The pasted list lives in memory only, for as long as the form is open: it
    is another site's text, checked and forgotten, and never sent or saved. */
 let pastedSourceText = '';
+/* PR 3 of the add-recipe plan (29 Sep 2026): the form reads in the order the work goes, and
+   the review below is READ-ONLY. Nothing here writes a row, asks a question in a dialog or
+   holds a save back: docs/PLAN-NEW-RECIPE-FLOW.md §5. The answers (SAME, KEEP APART, UNDO,
+   an aisle) are PR 4 and 6, each through the function that already writes that kind of row.
+   `lastCheckedUrl` is the SOURCE URL already fetched for since the form opened, so a re-parse
+   or RE-CHECK does not fetch the same page again; a URL that changes is fetched again. It
+   is cleared when the form closes. `lastSourceLines` is what that fetch returned, kept so
+   the comparison can be redrawn against the recipe's current lines without a second fetch. */
+let lastCheckedUrl = '';
+let lastSourceLines = null;
+let bandsShown = false;        // a parse (or an Edit) has drawn the bands, so an edit to the text now makes them stale
+let reviewLines = [];          // the recipe's ingredient lines as last read, for the sections that follow the link field
+/* A recipe written by hand needs a shape to start from. The parser has no comment syntax,
+   so these are real lines to be replaced, and it stays this small on purpose. */
+const HAND_TEMPLATE = ['TITLE: My recipe', 'SOURCE: Personal recipe', 'SERVINGS: 4', 'TAGS: course=Main', '',
+  'GROUP base:', '2 onions, sliced', '1 tbsp rapeseed oil', '',
+  'GROUP finish:', '1 lemon, juiced', '',
+  'STAGE:', 'MERGE base -> cooked: soften the onions [10 min]', '',
+  'STAGE:', 'MERGE cooked, finish -> dish: stir in the lemon and serve [instant]'].join('\n');
+const ingredientLinesOf = parsed => {
+  const unread = new Set((parsed.unread || []).map(u=> u.line));
+  return parsed.groups.flatMap(g=> g.items).filter(line=> !unread.has(line));
+};
+/* The library as the review wants it: id, title, link and ingredient lines. */
+function libraryForReview(){
+  return loadRecipes().map(r=> ({ id: r.id, title: r.title, sourceUrl: r.sourceUrl || '', lines: ingredientLinesOf(parseRecipe(r.syntax || '')) }));
+}
+function renderReadSummary(parsed){
+  const steps = parsed.stages.reduce((n, ops)=> n + ops.length, 0);
+  const count = ingredientLinesOf(parsed).length;
+  document.getElementById('addReadSummary').textContent = [
+    parsed.title, parsed.source, parsed.servings ? `serves ${parsed.servings}` : '',
+    `${count} ingredient${count === 1 ? '' : 's'}`, `${steps} step${steps === 1 ? '' : 's'}`
+  ].filter(Boolean).join(' · ');
+}
+function sourceNoteHtml(note){
+  if(!note) return '';
+  return `<div class="rv-section${note.reconstructed ? ' rv-red' : ''}" id="sourceNoteRow"><h4>SOURCE NOTE</h4>` +
+    `<div class="rv-row"><code>${escapeHtml(note.line)}</code>` +
+    (note.reconstructed
+      ? `<div class="rv-note">This recipe was not read from its own page. Compare it with the real page before saving, or re-convert it from the page's text.</div>`
+      : `<div class="rv-note">The converter left a note about the source.</div>`) +
+    `</div></div>`;
+}
+/* Whatever the SOURCE URL field says now, in words. With an https link the check has run, or is running, by itself. */
+function sourceStatusText(){
+  const url = document.getElementById('f-source-url').value.trim();
+  if(/^https:\/\//i.test(url)) return '';
+  if(url) return 'The SOURCE URL needs to start with https:// to be compared with its page.';
+  const src = document.getElementById('f-source').value.trim().toLowerCase();
+  return (!src || /^(personal|my own|own|family|home)\b/.test(src)) ? 'No source page to compare with.' : 'Add the SOURCE URL to compare with the page.';
+}
+function refreshSourceStatus(){
+  const el = document.getElementById('sourceStatus');
+  if(el) el.textContent = sourceStatusText();
+}
+/* SHOPPING LIST and ALREADY IN YOUR LIBRARY?: read-only, from newRecipeReview (core.js). The
+   recipe being edited is left out of the library, and a link that has not changed from the
+   stored one is not offered as a duplicate of the recipe's own twin. */
+function reviewFor(lines){
+  const url = document.getElementById('f-source-url').value.trim();
+  const editing = state.editingRecipeId;
+  const stored = editing ? ((loadRecipes().find(r=> r.id === editing) || {}).sourceUrl || '') : '';
+  const unchanged = editing && normalisedSourceUrl(url) === normalisedSourceUrl(stored);
+  return newRecipeReview({
+    lines, sourceUrl: unchanged ? '' : url, recipeId: editing, library: libraryForReview(),
+    alias: applyIngredientAlias, isSettled: (a, b)=> isPairDistinct('ingredient', a, b)
+  });
+}
+function reviewListHtml(review){
+  const total = review.names.length;
+  if(!total) return `<div class="rv-quiet">No ingredients read yet.</div>`;
+  if(!review.newCount) return `<div class="rv-quiet">${total} of ${total} ingredient${total === 1 ? ' is' : 's are'} already on your list.</div>`;
+  const pair = new Map(review.sameAs.map(p=> [p.from, p]));
+  const fresh = review.names.filter(n=> n.isNew).sort((a, b)=> (b.other - a.other) || a.name.localeCompare(b.name));
+  return `<div class="rv-quiet">${review.knownCount} of ${total} ingredient${total === 1 ? ' is' : 's are'} already on your list. ` +
+    `${review.newCount === 1 ? 'This one is' : 'These are'} new to it:</div>` +
+    fresh.map(n=> `<div class="rv-row"><b>${escapeHtml(n.name)}</b> — lands under <b>${escapeHtml(n.aisle)}</b>` +
+      `${n.other ? ` <span class="rv-other">OTHER</span>` : ''}` +
+      (pair.has(n.key)
+        ? `<div class="rv-note">Same as <b>${escapeHtml(pair.get(n.key).toName)}</b>? Your library already has that one, so the list would show these as two rows. To total them as one, use Settings → Word Matches.</div>`
+        : '') + `</div>`).join('');
+}
+function duplicateHtml(review){
+  if(!review.duplicates.length) return '';
+  return `<div class="rv-section" id="reviewDuplicateBox"><h4>ALREADY IN YOUR LIBRARY?</h4>` + review.duplicates.map(d=>{
+    const r = loadRecipes().find(x=> x.id === d.id) || {};
+    const lines = ingredientLinesOf(parseRecipe(r.syntax || ''));
+    return `<div class="rv-row">“${escapeHtml(d.title)}” has the same source link. <button type="button" data-show-dup="${escapeHtml(d.id)}">SHOW IT</button>` +
+      `<div class="rv-dup-detail" id="dup-${escapeHtml(d.id)}" hidden><b>${escapeHtml(r.title || d.title)}</b> · ${escapeHtml(r.source || '')}` +
+      `${r.dateAdded ? ' · added ' + escapeHtml(formatDate(r.dateAdded)) : ''}<ul>${lines.map(l=> `<li>${escapeHtml(l)}</li>`).join('')}</ul></div></div>`;
+  }).join('') + `</div>`;
+}
+/* The two sections that follow the link field, redrawn when it changes. */
+function refreshDuplicateSection(){
+  const el = document.getElementById('reviewDuplicate');
+  if(el) el.innerHTML = duplicateHtml(reviewFor(reviewLines));
+}
 function renderLineChecks(parsed){
   const box = document.getElementById('addChecks');
   const unread = parsed.unread || [];
@@ -6537,12 +6689,15 @@ function renderLineChecks(parsed){
     const faults = ingredientLineFaults(line).filter(f=> f.affectsList);
     if(faults.length) faulty.push({ line, faults, suggestion: suggestIngredientLine(line) });
   }));
-  let html = '';
+  reviewLines = ingredientLinesOf(parsed);
+  const review = reviewFor(reviewLines);
+  let html = `<div id="addUnread">`;
   if(unread.length){
     html += `<div class="line-checks unread"><h4>NOT READ — THESE LINES ARE MISSING FROM THE RECIPE</h4>` +
       unread.map(u=> `<div class="line-check"><code>${escapeHtml(u.line)}</code><div class="hint">${escapeHtml(u.why)}</div></div>`).join('') +
       `</div>`;
   }
+  html += `</div><div id="reviewLines">`;
   if(faulty.length){
     html += `<div class="line-checks"><h4>THE SHOPPING LIST CAN'T TOTAL ${faulty.length === 1 ? 'THIS LINE' : 'THESE ' + faulty.length + ' LINES'} — SAVING IS STILL FINE</h4>` +
       faulty.map(f=> `<div class="line-check"><code>${escapeHtml(f.line)}</code> — ${escapeHtml(f.faults.map(x=> x.text).join('; '))}` +
@@ -6550,18 +6705,31 @@ function renderLineChecks(parsed){
           ? `<div class="hint">Suggest: <code>${escapeHtml(f.suggestion)}</code><button type="button" data-use-line="${escapeHtml(f.line)}" data-use-with="${escapeHtml(f.suggestion)}">USE THIS</button></div>`
           : `<div class="hint">${escapeHtml(LINE_HINTS[f.faults[0].code] || '')}</div>`) +
         `</div>`).join('') + `</div>`;
+  } else {
+    html += `<div class="rv-quiet">Every ingredient line is in a shape the shopping list can total.</div>`;
   }
-  html += `<div class="line-checks" id="sourceCheck"><h4>AGAINST THE SOURCE</h4>` +
+  html += `</div><div id="reviewSource">` + sourceNoteHtml(sourceNoteIn(document.getElementById('importInput').value)) +
+    `<div class="rv-quiet" id="sourceStatus">${escapeHtml(sourceStatusText())}</div>` +
+    `<div class="line-checks" id="sourceCheck"><h4>AGAINST THE SOURCE</h4>` +
     `<div class="hint">Compare these ingredients with the source page's own list, to catch one swapped, left out or given a different amount. <button type="button" id="compareSourceBtn">COMPARE WITH SOURCE</button></div>` +
     `<div class="hint">Some sites turn that check away. Then select the ingredients on the page, copy them and paste them here, one to a line:</div>` +
     `<textarea id="sourcePasteInput" rows="4" spellcheck="false" placeholder="500 g chicken breast&#10;2 tbsp olive oil&#10;…"></textarea>` +
     `<div class="hint"><button type="button" id="comparePastedBtn">COMPARE PASTED LIST</button></div>` +
-    `<div id="sourceCompareOut"></div></div>`;
+    `<div id="sourceCompareOut"></div></div></div>` +
+    `<div class="rv-section" id="reviewList"><h4>SHOPPING LIST</h4>${reviewListHtml(review)}</div>` +
+    `<div id="reviewDuplicate">${duplicateHtml(review)}</div>`;
   box.innerHTML = html;
+  bandsShown = true;
   /* Every PARSE, and every USE THIS (which re-parses), rebuilds this box, and
      a list fetched from another tab is the one thing here that is a chore to
      redo — so it is kept in step with what was typed and put back. */
   document.getElementById('sourcePasteInput').value = pastedSourceText;
+  /* A comparison the form fetched by itself is redrawn against the lines as they are now,
+     with no second fetch. A failed one is not replayed: its message was shown once, and a
+     re-parse clears the box as it always has. */
+  if(lastSourceLines && lastCheckedUrl === document.getElementById('f-source-url').value.trim()){
+    showSourceComparison(document.getElementById('sourceCompareOut'), lastSourceLines, 'SOURCE');
+  }
 }
 
 /* A misspelt GROUP line lands inside the group above it, as an item (the
@@ -6575,20 +6743,37 @@ function recipeIngredientLines(){
 async function compareWithSource(){
   const out = document.getElementById('sourceCompareOut');
   const pageUrl = document.getElementById('f-source-url').value.trim();
-  if(!/^https:\/\//i.test(pageUrl)){ out.innerHTML = `<div class="hint">Needs a SOURCE URL starting https:// — there is nothing to compare against without one.</div>`; return; }
+  if(!/^https:\/\//i.test(pageUrl)){ out.innerHTML = `<div class="hint">Needs a SOURCE URL starting https:// — there is nothing to compare against without one.</div>`; return null; }
   out.innerHTML = `<div class="hint">Reading the source page…</div>`;
   let data = null, error = null;
   try { ({ data, error } = await sb.functions.invoke('source-ingredients', { body: { pageUrl } })); }
   catch(e){ error = e; }
   if(error || !data){
     out.innerHTML = `<div class="hint">Couldn't reach the source check${error && error.message ? ' (' + escapeHtml(error.message) + ')' : ''}. Is the source-ingredients function deployed? Pasting the source's list into the box above needs no function.</div>`;
-    return;
+    return null;
   }
   if(!data.ingredients || !data.ingredients.length){
     out.innerHTML = `<div class="hint">${escapeHtml(data.error || 'The source page carries no ingredient list the check can read')} — paste its list into the box above, or compare by eye.</div>`;
-    return;
+    return null;
   }
   showSourceComparison(out, data.ingredients, 'SOURCE');
+  return data.ingredients;
+}
+/* The check that runs by itself (PR 3): once the SOURCE URL is an https link that has not been
+   fetched for since the form opened. It is the button's own code path, so it shows the same
+   table or the same message, and a refused or failed fetch leaves the paste box where it was.
+   Only what the form fetched by itself is kept for redrawing (a fetch the household asked for
+   by pressing the button is theirs, and a re-parse clears it as it always has). Edit does not
+   call this on opening: until a comparison is stored with the recipe (PR 5), that would fetch
+   the source page every time a recipe is opened to change a word. */
+async function autoCheckSource(){
+  if(!bandsShown) return;
+  const url = document.getElementById('f-source-url').value.trim();
+  if(!/^https:\/\//i.test(url) || url === lastCheckedUrl) return;
+  lastCheckedUrl = url;
+  lastSourceLines = null;
+  const lines = await compareWithSource();
+  if(url === lastCheckedUrl) lastSourceLines = lines;
 }
 /* The table both routes share: the function's list and a pasted one go
    through the same sourceFidelity, so they can't disagree about a match. */
@@ -6639,7 +6824,42 @@ function comparePastedSource(){
 document.getElementById('addChecks').addEventListener('input', e=>{
   if(e.target.id === 'sourcePasteInput') pastedSourceText = e.target.value;
 });
+/* Parse on paste, on the next tick, when the pasted text is in the box. Nothing else parses by
+   itself. Once the bands have been drawn, any edit to the text makes them stale, and says so
+   (never a silent staleness); RE-CHECK, like PARSE, draws them again and clears it. */
+function markBandsStale(){
+  if(!bandsShown) return;
+  document.getElementById('staleBar').style.display = 'flex';
+  document.getElementById('addBands').classList.add('stale');
+}
+function clearBandsStale(){
+  document.getElementById('staleBar').style.display = 'none';
+  document.getElementById('addBands').classList.remove('stale');
+}
+document.getElementById('importInput').addEventListener('paste', ()=>{ setTimeout(parseAndPreview, 0); });
+document.getElementById('importInput').addEventListener('input', markBandsStale);
+document.getElementById('recheckBtn').addEventListener('click', parseAndPreview);
+document.getElementById('handTemplateBtn').addEventListener('click', ()=>{
+  const ta = document.getElementById('importInput');
+  if(ta.value.trim()){ showToast('Clear the box first'); return; }
+  ta.value = HAND_TEMPLATE;
+  parseAndPreview();
+});
+/* A link typed or changed by hand is checked too, and the sections that follow it are redrawn. */
+document.getElementById('f-source-url').addEventListener('change', ()=>{
+  if(!bandsShown) return;
+  refreshSourceStatus();
+  refreshDuplicateSection();
+  autoCheckSource();
+});
+document.getElementById('f-source').addEventListener('change', refreshSourceStatus);
 document.getElementById('addChecks').addEventListener('click', e=>{
+  const dup = e.target.closest('[data-show-dup]');
+  if(dup){
+    const detail = document.getElementById('dup-' + dup.dataset.showDup);
+    if(detail){ detail.hidden = !detail.hidden; dup.textContent = detail.hidden ? 'SHOW IT' : 'HIDE IT'; }
+    return;
+  }
   const use = e.target.closest('[data-use-line]');
   if(use){
     const ta = document.getElementById('importInput');

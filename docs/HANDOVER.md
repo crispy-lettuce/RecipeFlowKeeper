@@ -722,7 +722,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **280 checks** (since PR 7e; `core.test.js` adds 96 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **292 checks** (since PR 3 of the add-recipe plan; `core.test.js` adds 126 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday.
@@ -1311,7 +1311,7 @@ the deployed site serves. The session's egress policy blocks `github.io` (a 403 
 `core.js` `2026-09-29.2` was not read from the live site.
 
 **PR 2 of the add-recipe plan, the converter's rule for a page it cannot read (29 Sep 2026, documentation
-only, PR #42, open for review).** `converter/conversion-instructions.md` §1 now says that a URL whose page cannot
+only, PR #42, merged 29 Sep 12:25 UTC).** `converter/conversion-instructions.md` §1 now says that a URL whose page cannot
 be read is a stop: name the address that failed and ask for the text or the ingredient list, and never
 convert from another page, a partner's or branded version, a search snippet or memory; any note about the
 source is its own `⚠️ Source note:` line under NOTES. §3 has the matching check. `converter/test-set.md`
@@ -1334,6 +1334,52 @@ model, and the search result was simulated.
 *Not verified:* whether the conversion project follows the rule. It has to be reloaded there and test 9 run
 in a fresh chat, which no session can do (`docs/NEXT-SESSION.md`, the household's list). Nothing in the
 app reads the `⚠️ Source note:` line until PR 3.
+
+*After the merge (read from GitHub, 29 Sep):* the household merged it at 12:25:23 UTC as `c052b4c`; on that commit
+`main`'s tests (run 85) and the Pages deploy (run 59) both succeeded. **Not verified:** what the deployed site
+serves (the session's egress policy blocks `github.io`).
+
+**PR 3 of the add-recipe plan, the review band (29 Sep 2026, open for review, not merged).** The add and edit form
+now reads in the order the work goes: what the app read (a one-line summary, then the diagram), the checks, then
+the fields, with every existing id kept. Pasting parses at once; editing the text afterwards shows a stale bar with
+RE-CHECK; the source check runs by itself for an `https` link that has not been fetched for since the form opened
+(never on opening Edit, and never twice for the same link); a `⚠️ Source note:` line shows as a row, red when it says
+the page was not read; the shopping-list section lists the names new to the library with where each lands (Other
+marked) and "Same as X?" **as text only**; a recipe with the same source link is found, with SHOW IT; WRITE ONE BY HAND
+fills an empty box. Read-only throughout: no write, no dialog, nothing that holds a save back. `core.js` gains
+`sourceNoteIn`, `normalisedSourceUrl`, `linesHash` (for PR 5) and `newRecipeReview`; `core.js` is `2026-09-29.3` in
+all three places. `test/validate-recipes.js` takes `--source <file>`, warns on a reconstruction note, and reports its two
+ingredient-name lines from `core.js` run in the page instead of a second reading of `ingredient-names.md`.
+
+*Verified by.* `node test/core.test.js` **116 → 126** (the plan's ten checks) and `node test/build.js && node
+test/smoke.js` **280 → 292** (the plan's ten browser checks, plus two of mine: that reading, pasting and reviewing
+writes nothing, and that Edit leaves the edited recipe out of its own review and fetches nothing), both exit 0, and
+`generate-ingredient-names.js --check` exit 0. **All 280 existing smoke checks passed unchanged**, so no check I did not
+write had to change. **Mutations, each seen failing by name:** 15 on the `core.js` functions and 21 on the page, run
+against a review-only harness (a temporary copy of the suite's boot code and the new block, deleted before the commit),
+each failing at least one named check; the first browser pass was not clean and is worth recording: three mutations
+ended in a crash from a click that timed out on a missing control rather than a failed check, one read a missing
+element (all three now fail by name, having been made null-safe), and one (moving the bands with CSS `order`) was
+ineffective, since the form's inline `display:block` overrides it, and was replaced by one that moves the bands in
+the DOM. The validator has no suite, so its seven new output lines were mutated by hand and each changed the output;
+comparing it with `main`'s on the same invented batch found a regression, the `totals on the shopping list as` line
+had gone silent (it compared the wording's key with the row's, which differ by definition for a synonym), fixed before
+commit. **Measured, read-only:** the live database still has no `source_check` column and no `aisle_overrides` table, 0
+ticks, 34 recipes; the library's own recipes reviewed one at a time against the other 33 (as Edit would) give a median of 2
+new names per recipe (at most 9; 6 of 34 have none), 31 new names landing in Other across 15 recipes, **0** "Same as"
+pairs and **0** duplicates by source link, in about 24 ms per review (59 ms at most); 33 of 34 recipes carry an `https`
+link, so the source check would run by itself on parse for nearly all of them, and exactly **two** recipes have a source-note
+line, both reconstruction notes (the plan's "third recipe's note" is not found by its own rule; corrected in place).
+
+*Where it differs from the plan* (recorded as "Built as" in its PR 3 entry): `#addChecks` already existed and is Band 3's
+container; `#addUnread` is the first block inside it, so an existing check that reads NOT READ through `#addChecks` stays
+valid; Edit does not auto-run the source check; a comparison the form fetched is redrawn after a re-parse with no second
+fetch; `closeAddModal` now empties the link field, which it had always left behind and which would now have sent the next
+recipe's check to the wrong page.
+
+*Not verified:* the live app and the tablet. The reordered form is the visible change and only a person on the tablet can
+judge it (`docs/TEST-PLAN.md` step 36d). The paste is tested with a synthetic `paste` event, not a real paste on iPadOS or
+Android. The auto-run is tested against the stub, never the real `source-ingredients` function or a real site.
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all

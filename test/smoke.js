@@ -868,6 +868,156 @@ const check = (name, pass, detail) => {
   await page.waitForTimeout(300);
   check('Escape closes the Add modal', !(await page.isVisible('#addModalOverlay.open')));
 
+  /* ---- The review band (PR 3 of the add-recipe plan, 29 Sep 2026) ----
+     The add form now reads in the order the work goes (what the app read, the checks, then the
+     fields) and reviews a recipe against the library, read-only: nothing here may write a row.
+     A small invented library is seeded (lentil soup, jackfruit, sumac, mangetout, and
+     example.test, a domain reserved so it names no real site) and removed again at the end. */
+  await page.evaluate(() => {
+    loadRecipes().push(
+      { id: 'rv-lentil', title: 'Review Lentil Soup', source: 'Blue Door Bakery', sourceUrl: 'https://www.example.test/lentil-soup/?ref=x', servings: 4,
+        tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-09-01',
+        syntax: 'TITLE: Review Lentil Soup\nSOURCE: Blue Door Bakery\nSOURCE_URL: https://www.example.test/lentil-soup/?ref=x\nSERVINGS: 4\n\nGROUP a:\n2 onions, diced\n15 ml olive oil\n200 g red lentils\n\nSTAGE:\nMERGE a -> done: Simmer [20 min]' },
+      { id: 'rv-jack', title: 'Review Jackfruit Curry', source: 'Blue Door Bakery', sourceUrl: '', servings: 4,
+        tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-09-02',
+        syntax: 'TITLE: Review Jackfruit Curry\nSOURCE: Blue Door Bakery\nSERVINGS: 4\n\nGROUP a:\n400 g jackfruit\n1 onion, sliced\n\nSTAGE:\nMERGE a -> done: Simmer [20 min]' });
+    window.__INVOKES__.length = 0;
+    window.__INVOKE_REPLY__ = null;
+  });
+  const writesBeforeReview = await page.evaluate(() => (window.__WRITES__ || []).length);
+  const rvText = (title, lines, header = [], notes = []) => ['TITLE: ' + title, 'SOURCE: Blue Door Bakery', ...header, 'SERVINGS: 4', '',
+    'GROUP a:', ...lines, '', 'STAGE:', 'MERGE a -> done: Cook [5 min]', ...(notes.length ? ['', 'NOTES:', ...notes] : [])].join('\n');
+  // A paste event, with the text already in the box, as a browser sends it.
+  const rvPaste = async text => {
+    await page.evaluate(t => { const ta = document.getElementById('importInput'); ta.value = t; ta.dispatchEvent(new Event('paste', { bubbles: true })); }, text);
+    await page.waitForTimeout(350);
+  };
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+
+  await rvPaste(rvText('Paste One', ['1 onion']));
+  const rvAfterPaste = await page.evaluate(() => ({ shown: document.getElementById('addForm').style.display, title: document.getElementById('f-title').value,
+    summary: document.getElementById('addReadSummary').textContent }));
+  await page.fill('#importInput', rvText('Typed Two', ['1 onion']));
+  await page.waitForTimeout(300);
+  const rvAfterTyping = await page.evaluate(() => ({ title: document.getElementById('f-title').value,
+    stale: getComputedStyle(document.getElementById('staleBar')).display, dimmed: document.getElementById('addBands').classList.contains('stale') }));
+  check('pasting parses at once, and typing does not: the summary says what the app read',
+        rvAfterPaste.shown === 'block' && rvAfterPaste.title === 'Paste One' && rvAfterPaste.summary === 'Paste One · Blue Door Bakery · serves 4 · 1 ingredient · 1 step' && rvAfterTyping.title === 'Paste One',
+        JSON.stringify([rvAfterPaste, rvAfterTyping.title]));
+  await page.evaluate(() => document.getElementById('recheckBtn').click());
+  await page.waitForTimeout(300);
+  const rvAfterRecheck = await page.evaluate(() => ({ title: document.getElementById('f-title').value,
+    stale: getComputedStyle(document.getElementById('staleBar')).display, dimmed: document.getElementById('addBands').classList.contains('stale') }));
+  check('editing after a parse shows the stale bar and dims the bands, and RE-CHECK reads again and clears both',
+        rvAfterTyping.stale === 'flex' && rvAfterTyping.dimmed === true && rvAfterRecheck.title === 'Typed Two' && rvAfterRecheck.stale === 'none' && rvAfterRecheck.dimmed === false,
+        JSON.stringify([rvAfterTyping, rvAfterRecheck]));
+  const rvOrder = await page.evaluate(() => ({ diagram: document.getElementById('addPreview').getBoundingClientRect().top,
+    checks: document.getElementById('addChecks').getBoundingClientRect().top, fields: document.getElementById('f-title').getBoundingClientRect().top,
+    drawn: document.getElementById('addPreview').children.length }));
+  check('the diagram renders above the checks, and the checks above the fields',
+        rvOrder.drawn > 0 && rvOrder.diagram < rvOrder.checks && rvOrder.checks < rvOrder.fields, JSON.stringify(rvOrder));
+
+  await rvPaste(rvText('All Known', ['2 onions, diced', '15 ml olive oil']));
+  const rvKnown = await page.evaluate(() => ({ quiet: [...document.querySelectorAll('#reviewList .rv-quiet')].map(q => q.textContent.trim()), rows: document.querySelectorAll('#reviewList .rv-row').length }));
+  check('a recipe whose names are all known shows one quiet line',
+        rvKnown.quiet.join('|') === '2 of 2 ingredients are already on your list.' && rvKnown.rows === 0, JSON.stringify(rvKnown));
+
+  await rvPaste(rvText('Some New', ['1 onion', '1 pinch sumac', '300 g young jackfruit', '175 g mangetout']));
+  const rvFresh = await page.evaluate(() => ({
+    rows: [...document.querySelectorAll('#reviewList .rv-row')].map(r => ({ text: r.textContent.replace(/\s+/g, ' ').trim(), other: !!r.querySelector('.rv-other') })),
+    buttons: document.querySelectorAll('#reviewList button').length }));
+  const rvRowFor = n => rvFresh.rows.find(r => r.text.startsWith(n)) || {};
+  check('a new name landing in Other is marked, one landing in an aisle is not, and "Same as X?" is text only',
+        rvFresh.rows.length === 3 && rvRowFor('Sumac').other === true && rvRowFor('Young jackfruit').other === true && rvRowFor('Mangetout').other === false
+        && /lands under Produce/.test(rvRowFor('Mangetout').text) && /Same as Jackfruit\?/.test(rvRowFor('Young jackfruit').text) && rvFresh.buttons === 0,
+        JSON.stringify(rvFresh));
+
+  await rvPaste(rvText('Same Link', ['1 onion'], ['SOURCE_URL: http://www.EXAMPLE.test/lentil-soup/']));
+  const rvDupBefore = await page.evaluate(() => ({ text: document.getElementById('reviewDuplicate').textContent.replace(/\s+/g, ' ').trim(),
+    hidden: (document.querySelector('#reviewDuplicate .rv-dup-detail') || {}).hidden }));
+  await page.evaluate(() => { const b = document.querySelector('[data-show-dup="rv-lentil"]'); if(b) b.click(); });
+  const rvDupAfter = await page.evaluate(() => { const d = document.querySelector('#reviewDuplicate .rv-dup-detail'); return d ? { hidden: d.hidden, text: d.textContent.replace(/\s+/g, ' ').trim() } : { hidden: null, text: '' }; });
+  await rvPaste(rvText('Review Lentil Soup', ['1 onion'], ['SOURCE_URL: http://other.test/lentil-soup']));
+  const rvDupTitleOnly = await page.evaluate(() => document.getElementById('reviewDuplicate').textContent.trim());
+  check('a recipe with the same source link is found, and SHOW IT expands it inline; the same title alone is not a duplicate',
+        /Review Lentil Soup.*has the same source link/.test(rvDupBefore.text) && rvDupBefore.hidden === true
+        && rvDupAfter.hidden === false && /Blue Door Bakery/.test(rvDupAfter.text) && /added/.test(rvDupAfter.text) && /200 g red lentils/.test(rvDupAfter.text) && rvDupTitleOnly === '',
+        JSON.stringify([rvDupBefore, rvDupAfter, rvDupTitleOnly]));
+
+  await rvPaste(rvText('Plain Note', ['1 onion'], [], ['⚠️ Source note: the page gives two different oven times.']));
+  const rvPlainNote = await page.evaluate(() => { const n = document.getElementById('sourceNoteRow'); return n ? { red: n.classList.contains('rv-red'), text: n.textContent } : null; });
+  await rvPaste(rvText('Reconstructed', ['1 onion'], [], ['⚠️ Source note: the page could not be read, so this recipe was reconstructed from another page.']));
+  const rvReconNote = await page.evaluate(() => { const n = document.getElementById('sourceNoteRow'); return n ? { red: n.classList.contains('rv-red'), text: n.textContent.replace(/\s+/g, ' ') } : null; });
+  check('a reconstruction note shows the red row and SAVE stays enabled; a note about something else is shown, not alarmed',
+        rvPlainNote && rvPlainNote.red === false && /two different oven times/.test(rvPlainNote.text)
+        && rvReconNote && rvReconNote.red === true && /could not be read/.test(rvReconNote.text) && /not read from its own page/.test(rvReconNote.text)
+        && (await page.isEnabled('#saveBtn')), JSON.stringify([rvPlainNote, rvReconNote]));
+
+  await page.evaluate(() => {
+    window.__INVOKES__.length = 0;
+    window.__INVOKE_REPLY__ = call => call.name === 'source-ingredients'
+      ? { data: { pageUrl: call.body.pageUrl, name: 'Auto', ingredients: ['2 onions, diced', '1 tsp Italian seasoning'] }, error: null }
+      : { data: null, error: null };
+  });
+  await rvPaste(rvText('Auto Check', ['2 onions, diced'], ['SOURCE_URL: https://example.test/auto-check']));
+  const rvAuto1 = await page.evaluate(() => ({ calls: window.__INVOKES__.filter(c => c.name === 'source-ingredients').map(c => c.body.pageUrl), rows: document.querySelectorAll('#sourceCompareOut tr').length }));
+  check('the source check runs by itself for an https URL: no button pressed, and the comparison is drawn',
+        rvAuto1.calls.join('|') === 'https://example.test/auto-check' && rvAuto1.rows > 0, JSON.stringify(rvAuto1));
+  await page.click('#parseBtn');
+  await page.waitForTimeout(350);
+  const rvAuto2 = await page.evaluate(() => ({ calls: window.__INVOKES__.filter(c => c.name === 'source-ingredients').length, rows: document.querySelectorAll('#sourceCompareOut tr').length }));
+  await page.fill('#f-source-url', 'https://example.test/auto-check-2');
+  await page.locator('#f-source-url').dispatchEvent('change');
+  await page.waitForTimeout(350);
+  const rvAuto3 = await page.evaluate(() => window.__INVOKES__.filter(c => c.name === 'source-ingredients').map(c => c.body.pageUrl));
+  check('it does not run twice for the same URL, redraws the comparison from what it already has, and runs again for a URL that changes',
+        rvAuto2.calls === 1 && rvAuto2.rows > 0 && rvAuto3.join('|') === 'https://example.test/auto-check|https://example.test/auto-check-2', JSON.stringify([rvAuto2, rvAuto3]));
+
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+  await page.click('#handTemplateBtn');
+  await page.waitForTimeout(350);
+  const rvHand = await page.evaluate(() => ({ text: document.getElementById('importInput').value, title: document.getElementById('f-title').value,
+    source: document.getElementById('f-source').value, status: (document.getElementById('sourceStatus') || {}).textContent, url: document.getElementById('f-source-url').value }));
+  await page.fill('#importInput', 'TITLE: Something else\nSOURCE: Somewhere\nSERVINGS: 2\n\nGROUP a:\n1 onion\n\nSTAGE:\nMERGE a -> done: Cook [5 min]');
+  await page.click('#handTemplateBtn');
+  await page.waitForTimeout(250);
+  const rvHandFull = await page.evaluate(() => ({ text: document.getElementById('importInput').value.slice(0, 21), toast: (document.querySelector('.toast.show') || {}).textContent || '' }));
+  check('WRITE ONE BY HAND fills an empty box and reads it, and refuses a full one with a word',
+        /^TITLE: My recipe\nSOURCE: Personal recipe\nSERVINGS: 4/.test(rvHand.text) && rvHand.title === 'My recipe' && rvHand.source === 'Personal recipe'
+        && rvHand.status === 'No source page to compare with.' && rvHand.url === '' && rvHandFull.text === 'TITLE: Something else' && rvHandFull.toast === 'Clear the box first',
+        JSON.stringify([rvHand.title, rvHand.source, rvHand.status, rvHand.url, rvHandFull]));
+
+  /* Edit uses the same bands. The recipe being edited is left out of the library, so it is not a
+     duplicate of itself and its own names read as they would if it were new; and opening it
+     fetches nothing, since until a comparison is stored with the recipe (PR 5) that would fetch
+     the source page every time a recipe is opened to change a word. */
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  const rvInvokesBeforeEdit = await page.evaluate(() => window.__INVOKES__.length);
+  await page.evaluate(() => openEditModal('rv-lentil'));
+  await page.waitForTimeout(350);
+  const rvEdit = await page.evaluate(() => ({
+    fresh: [...document.querySelectorAll('#reviewList .rv-row b:first-child')].map(b => b.textContent),
+    dup: document.getElementById('reviewDuplicate').textContent.trim(),
+    invokes: window.__INVOKES__.length }));
+  check('editing a recipe leaves it out of its own review (not a duplicate of itself), and opening it fetches nothing',
+        rvEdit.fresh.some(n => /^Red lentil/.test(n)) && rvEdit.dup === '' && rvEdit.invokes === rvInvokesBeforeEdit,
+        JSON.stringify([rvEdit, rvInvokesBeforeEdit]));
+
+  const reviewWrites = await page.evaluate(() => ({ writes: (window.__WRITES__ || []).length, invokes: [...new Set(window.__INVOKES__.map(c => c.name))] }));
+  check('reading, pasting and reviewing a recipe writes nothing, and the only function it calls is the source check',
+        reviewWrites.writes === writesBeforeReview && reviewWrites.invokes.join() === 'source-ingredients', JSON.stringify([writesBeforeReview, reviewWrites]));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    for(let i = loadRecipes().length - 1; i >= 0; i--) if(String(loadRecipes()[i].id).startsWith('rv-')) loadRecipes().splice(i, 1);
+    window.__INVOKES__.length = 0; window.__INVOKE_REPLY__ = null;
+  });
+
   // P1: per-entry planner servings drive the shopping list.
   await page.click('.navlink[data-view="planner"]');
   await page.waitForTimeout(350);
