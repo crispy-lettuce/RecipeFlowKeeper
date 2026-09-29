@@ -7,6 +7,9 @@ recorded on the recipe by SAVE.
 purpose: nothing that looks like a data dump may be committed to this public repo. It carries one
 DDL statement and no data.)*
 
+**Applied, 29 Sep 2026,** by the household from the SQL editor, after PR #45 had merged. Checked read-only at 18:25 UTC:
+`source_check | jsonb | YES`. The dashboard gave it no migration version (see `docs/INFRASTRUCTURE.md`).
+
 ## Who and when
 
 **The household applies this, from the Supabase dashboard's SQL editor, before merging the PR that
