@@ -1021,6 +1021,10 @@
   .rv-row .rv-sameas{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:4px; }
   .rv-sameas-filter{ font:inherit; font-size:16px; padding:3px 7px; min-width:160px;
     border:1px solid var(--line-soft); border-radius:5px; background:var(--paper); color:var(--ink); }
+  /* PR 8: the library check. A recipe needing attention is marked at its left edge; a reconstruction note is red. */
+  .lc-row.lc-attention{ border-left:3px solid var(--plum); padding-left:8px; }
+  .lc-status.lc-reconstructed{ color:var(--danger); font-weight:500; }
+  .lc-only{ display:inline-flex; align-items:center; gap:6px; margin-left:12px; }
   /* PR 7: the ingredient lookup, 16px so a tablet does not zoom on focus. */
   #ingredientLookup{ font:inherit; font-size:16px; width:100%; max-width:360px; padding:5px 8px; margin:6px 0 4px;
     border:1px solid var(--line-soft); border-radius:5px; background:var(--paper); color:var(--ink); }
@@ -1591,6 +1595,19 @@
             <button class="btn" id="verifyImagesBtn">CHECK STORED IMAGES</button>
           </div>
           <p class="subtle" id="imagesSweepResult" style="display:none;"></p>
+        </div>
+
+        <div class="settings-block" id="libraryCheck">
+          <div class="side-label">LIBRARY CHECK</div>
+          <p class="subtle">Every recipe, with what is known about its match to the page it came from and the
+            names it puts in Other, those needing attention first. Nothing is changed here: OPEN a recipe to
+            compare it with its source and save, and this list is the record.</p>
+          <div class="alias-form">
+            <button class="btn" id="libraryCheckRunBtn">RUN</button>
+            <label class="subtle lc-only"><input type="checkbox" id="libraryCheckOnly"> only those needing attention</label>
+          </div>
+          <p class="subtle" id="libraryCheckSummary"></p>
+          <div id="libraryCheckList" class="sources-list"></div>
         </div>
 
         <div class="settings-block" id="ingredientLookupBlock">
@@ -6575,6 +6592,60 @@ document.getElementById('aliasAddBtn').addEventListener('click', ()=>{
   showToast(`"${from}" now means "${to}"`);
   renderAliasesList();
   if(state.view === 'shopping') renderShopping();
+});
+
+/* LIBRARY CHECK (PR 8 of the add-recipe plan, 29 Sep 2026), docs/PLAN-NEW-RECIPE-FLOW.md §8. The audit the
+   conversion-integrity finding asks for: every recipe, its standing against its source (the viewer chip's
+   own rules, sourceCheckStatus and sourceNoteIn) and the names it puts in Other (with the household's word
+   matches and aisles, as the list applies them). Sorted with those needing attention first, in the plan's
+   order. Read-only: RUN reads, OPEN opens the edit form, where every action lives. A recipe with no https
+   link can never be compared, so it says so and is not counted as needing attention. */
+const LIBRARY_STATUS = [
+  { key: 'reconstructed', text: 'reconstruction note', attention: true },
+  { key: 'none', text: 'not compared', attention: true },
+  { key: 'stale', text: 'compared before the ingredients changed', attention: true },
+  { key: 'differs', text: '', attention: true },
+  { key: 'fresh', text: 'no differences', attention: false },
+  { key: 'nolink', text: 'no source link to compare', attention: false }
+];
+function libraryCheckRows(){
+  return loadRecipes().map(r=>{
+    const lines = ingredientLinesOf(parseRecipe(r.syntax || ''));
+    const st = sourceCheckStatus(r.sourceCheck, lines);
+    const note = sourceNoteIn(r.syntax);
+    const other = aggregateShoppingLines(lines.map(raw=> ({ recipeTitle: r.title, raw, group: '' })), applyIngredientAlias, applyAisleOverride)
+      .filter(i=> i.category === 'Other').map(i=> i.name).sort();
+    const key = note && note.reconstructed ? 'reconstructed'
+      : st.state === 'stale' ? 'stale'
+      : st.state === 'fresh' ? (st.hard ? 'differs' : 'fresh')
+      : /^https:\/\//i.test(r.sourceUrl || '') ? 'none' : 'nolink';
+    const rank = LIBRARY_STATUS.findIndex(x=> x.key === key);
+    const status = key === 'differs' ? differencesWords(st.hard) : LIBRARY_STATUS[rank].text;
+    return { id: r.id, title: r.title, source: r.source || '', key, rank, status, other,
+      attention: LIBRARY_STATUS[rank].attention || other.length > 0 };
+  }).sort((a, b)=> (b.attention - a.attention) || (a.rank - b.rank) || (b.other.length - a.other.length) || a.title.localeCompare(b.title));
+}
+let libraryCheckResult = null;
+function renderLibraryCheck(){
+  const list = document.getElementById('libraryCheckList');
+  const summary = document.getElementById('libraryCheckSummary');
+  if(!libraryCheckResult){ list.innerHTML = ''; summary.textContent = ''; return; }
+  const only = document.getElementById('libraryCheckOnly').checked;
+  const rows = libraryCheckResult.filter(x=> !only || x.attention);
+  const needing = libraryCheckResult.filter(x=> x.attention).length;
+  summary.textContent = `${libraryCheckResult.length} recipe${libraryCheckResult.length === 1 ? '' : 's'}, ${needing} needing attention.`;
+  list.innerHTML = rows.map(x=> `<div class="source-row lc-row${x.attention ? ' lc-attention' : ''}" data-lc-id="${escapeHtml(x.id)}" data-lc-status="${x.key}">
+      <div><div class="source-row-name">${escapeHtml(x.title)}</div>
+        <div class="swap-row-detail">${escapeHtml(x.source)}${x.source ? ' · ' : ''}<span class="lc-status lc-${x.key}">${escapeHtml(x.status)}</span>` +
+        (x.other.length ? ` · in Other: ${escapeHtml(x.other.join(', '))}` : '') + `</div></div>
+      <button class="btn" data-lc-open="${escapeHtml(x.id)}">OPEN</button>
+    </div>`).join('') || `<p class="empty">Nothing needs attention.</p>`;
+}
+document.getElementById('libraryCheckRunBtn').addEventListener('click', ()=>{ libraryCheckResult = libraryCheckRows(); renderLibraryCheck(); });
+document.getElementById('libraryCheckOnly').addEventListener('change', renderLibraryCheck);
+document.getElementById('libraryCheckList').addEventListener('click', e=>{
+  const open = e.target.closest('[data-lc-open]');
+  if(open) openEditModal(open.dataset.lcOpen);
 });
 
 /* INGREDIENT LOOKUP and DICTIONARY (PR 7 of the add-recipe plan, 29 Sep 2026), docs/PLAN-NEW-RECIPE-FLOW.md

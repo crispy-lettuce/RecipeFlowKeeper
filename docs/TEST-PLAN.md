@@ -376,6 +376,12 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     Other:* it says so and points at Shopping Aisles. **The one thing no test can judge is whether the lookup answers the
     question you had when you opened it.**
 
+36i. **Settings: library check (new 29 Sep, PR 8 of the add-recipe plan).** Read-only; nothing to undo. (1) *Settings → LIBRARY
+    CHECK → RUN:* every recipe is listed once, with those needing attention first: the two reconstructed ones (the oat bars,
+    the loaded fries) at the top in red, then those not compared. (2) *Tick "only those needing attention":* the rest go.
+    (3) *OPEN one:* its edit form opens; compare it with its source and save, then RUN again: it has moved down and says
+    what the comparison found. **This is the audit: work down the list until it is short.**
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in
