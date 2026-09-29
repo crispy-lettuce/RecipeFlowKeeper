@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-29.7';
+const KITCHEN_CORE_VERSION = '2026-09-29.8';
 
 
 /* ======================= quantity split ======================= */
@@ -862,6 +862,7 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Pantry", name: "almond butter", also: "" },
   { aisle: "Pantry", name: "rolled oats", also: "oats, old-fashioned oats, old fashioned oats, porridge oats, quick-cooking oats, quick cooking oats, quick oats" },
   { aisle: "Pantry", name: "flaked almonds", also: "sliced almonds, slivered almonds" },
+  { aisle: "Pantry", name: "ground almonds", also: "almond flour, almond meal" },
   { aisle: "Pantry", name: "raisins", also: "" },
   { aisle: "Pantry", name: "sultanas", also: "golden raisins" },
   { aisle: "Pantry", name: "gelatine", also: "gelatin, powdered gelatin, powdered gelatine" },
@@ -1513,7 +1514,18 @@ function fidelityAgree(xs, ys){
    "sliced almonds". A line in the recipe's format always names its ingredient
    first (measured 29 Sep: all 126 comma lines in the library do), so this only
    ever reads a source. */
-const fidelityName = text => {
+const fidelityName = text => alternativeName(namedFirst(text));
+/* "almond flour or almond meal" is two names for one thing, and as a whole the dictionary
+   knows neither: when it does not know the whole but knows the first alternative, the first
+   is the name (29 Sep, after "ground almonds" was set apart from almonds and a source's
+   "almond flour or almond meal" was flagged against it). No line in the library has "or"
+   in its name (measured 29 Sep: 0), which the recipe's format keeps in brackets. */
+function alternativeName(name){
+  const alts = String(name).split(/\s+or\s+/i);
+  if(alts.length < 2 || dictionaryRow(shoppingKeyForName(splitQty(name).rest))) return name;
+  return dictionaryRow(shoppingKeyForName(splitQty(alts[0]).rest)) ? alts[0] : name;
+}
+function namedFirst(text){
   const parts = String(text).replace(/\([^)]*\)/g, ' ').split(',');
   /* "Names something" as fidelityItems means it: a content word, or a name the
      dictionary knows ("whole cloves" is all count words). */
@@ -1521,7 +1533,7 @@ const fidelityName = text => {
   const prep = new Set(PREP_WORDS.concat(LEFTOVER_PREP));
   const noun = parts[parts.length - 1].trim().replace(/^(?:or|and|&)\s+/i, '').split(/\s+/).filter(w => !prep.has(w.toLowerCase())).join(' ');
   return `${parts[0].trim()} ${noun}`;
-};
+}
 function fidelityItems(lines){
   const items = [];
   (lines || []).forEach((line, i) => {
@@ -1536,10 +1548,18 @@ function fidelityItems(lines){
     /* "tinned" is read as "canned" in the words compared (see foldTin), not in
        the line shown: `line` and the label stay as the person wrote them, and
        the key already folds inside shoppingLine. */
+    /* "Ground" is a preparation word, but the shopping list keeps it in a name where it
+       changes what you buy: "ground almonds" is not almonds, nor "ground caraway" caraway
+       seeds (decided by the household 29 Sep, after a comparison drew ground almonds against
+       the source's almonds). Where the list's own key keeps it, so does the comparison; where
+       the key drops it ("freshly ground pepper" is black pepper), it stays dropped. */
     const make = (text, part, amount) => {
+      const key = shoppingKeyForName(fidelityName(splitQty(text).rest));
+      const ground = /(^| )ground( |$)/.test(key);
       const words = fidelityWords(foldTin(fidelityName(text).toLowerCase()));
-      return { i, line, part, label: part ? `${line} (the "${part}" part)` : line, words,
-        all: part ? words : fidelityWordsAll(foldTin(String(text).toLowerCase())), key: shoppingKeyForName(fidelityName(splitQty(text).rest)), amount };
+      const all = part ? words : fidelityWordsAll(foldTin(String(text).toLowerCase()));
+      if(ground){ words.add('ground'); all.add('ground'); }
+      return { i, line, part, label: part ? `${line} (the "${part}" part)` : line, words, all, key, amount };
     };
     if(compound){
       const amt = fidelityAmount(line);

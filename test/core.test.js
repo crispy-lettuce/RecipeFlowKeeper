@@ -61,7 +61,9 @@ try { genOut = execFileSync('node', [path.join(ROOT, 'tools', 'generate-ingredie
 catch(e){ genOk = false; genOut = (e.stderr || e.message).trim(); }
 check('converter/ingredient-names.md is exactly what core.js generates', genOk, genOut);
 const D = core.INGREDIENT_DICTIONARY;
-check('the dictionary holds its 139 rows', D.length === 139, D.length);
+/* 140 since 29 Sep: "ground almonds" (almond flour, almond meal), asked for by the household with 0 of the
+   library's almond lines changing key. */
+check('the dictionary holds its 140 rows', D.length === 140, D.length);
 const names = D.map(r => r.name.toLowerCase());
 check('every name in the dictionary is written once', new Set(names).size === names.length,
       names.filter((n, i) => names.indexOf(n) !== i).join(', '));
@@ -408,6 +410,24 @@ check('a source line of alternatives ("sliced, slivered, or chopped almonds") is
       altList.matched.some(m => /sliced, slivered/.test(m.source) && m.recipe === '50 g flaked almonds')
       && altList.matched.some(m => /almond flour/.test(m.source) && m.recipe === '100 g ground almonds')
       && altList.matched.length === 2 && !altList.matched.some(m => m.split) && !altList.recipeOnly.length && !altList.sourceOnly.length, JSON.stringify(altList));
+
+/* 29 Sep, the household: ground almonds are not almonds. "Ground" counts in a name wherever the shopping
+   list's key keeps it, and is dropped where the key drops it ("freshly ground pepper" is black pepper).
+   And UK "ground almonds" is US "almond flour" or "almond meal" (a dictionary row), so a source written
+   "almond flour or almond meal" is read as its first alternative. Made-up amounts. */
+const grAlm = fid(['100 g almonds'], ['100 g ground almonds']), grCar = fid(['1 tsp caraway seeds'], ['1 tsp ground caraway']);
+check('ground almonds are not almonds, nor ground caraway caraway seeds: each is flagged as a wording difference',
+      flagKinds(grAlm) === 'wording' && /adds ground/.test(grAlm.matched[0].check.why) && flagKinds(grCar) === 'wording',
+      JSON.stringify([grAlm, grCar]));
+const grPep = fid(['1/2 tsp black pepper', 'a pinch of freshly ground pepper'], ['1/2 tsp ground black pepper', 'pinch black pepper']);
+check('    but "ground" stays dropped where the list drops it: ground black pepper is black pepper, with no hard difference',
+      flagCount(grPep) === 0 && !grPep.matched.some(m => m.note && /ground/.test(m.note.why)), JSON.stringify(grPep));
+const grFlour = fid(['1 cup (100g) almond flour', '1/2 cup (50g) almond meal', '3/4 cup (80g) almond flour or almond meal'], ['100 g ground almonds', '50 g ground almonds', '80 g ground almonds']);
+check('    and a source\'s almond flour, almond meal, or "almond flour or almond meal" is the recipe\'s ground almonds',
+      flagCount(grFlour) === 0 && !grFlour.matched.some(m => m.note), JSON.stringify(grFlour));
+const grOr = fid(['2 tbsp olive oil or butter'], ['2 tbsp olive oil (or butter)']);
+check('    the first alternative is the name, as the converter keeps the rest in brackets ("olive oil or butter" is olive oil)',
+      flagCount(grOr) === 0, JSON.stringify(grOr));
 
 /* Each of these is a conversion fault a person would want to see. */
 const faults = [
@@ -834,8 +854,11 @@ check('sourceCheckStatus says fresh for the lines that were compared, stale once
       && [null, undefined, {}, 'text', 5, { linesHash: '' }, { linesHash: 5 }].every(c => core.sourceCheckStatus(c, pvLines).state === 'none'),
       JSON.stringify([pvFresh, pvStale]));
 const fcOf = (src, rec) => core.fidelityCounts(core.sourceFidelity(src, rec));
+/* The caraway pair counted as the same until 29 Sep, when the household set "ground" apart where the
+   shopping list keeps it (ground almonds are not almonds): caraway seeds against ground caraway is now
+   one of the four. */
 check('fidelityCounts is the "N to look at": lines on one side only and pairs that differ, one flagged group counting once',
-      JSON.stringify(fcOf(['2 onions', '200 g red lentils', '3 tsp caraway', '400 g tin tomatoes'], ['2 onions', '250 g red lentils', '3 tsp ground caraway', '1 leek'])) === '{"hard":3,"soft":0}'
+      JSON.stringify(fcOf(['2 onions', '200 g red lentils', '3 tsp caraway', '400 g tin tomatoes'], ['2 onions', '250 g red lentils', '3 tsp ground caraway', '1 leek'])) === '{"hard":4,"soft":0}'
       && JSON.stringify(fcOf(['2 onions', '200 g red lentils'], ['2 onions', '200 g red lentils'])) === '{"hard":0,"soft":0}'
       && JSON.stringify(fcOf(['200 g red lentils'], ['100 g red lentils', '50 g red lentils'])) === '{"hard":1,"soft":0}',
       JSON.stringify(fcOf(['200 g red lentils'], ['100 g red lentils', '50 g red lentils'])));

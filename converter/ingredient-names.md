@@ -182,6 +182,7 @@ library said "mince" when it was measured.
 | almond butter | |
 | rolled oats | oats, old-fashioned oats, old fashioned oats, porridge oats, quick-cooking oats, quick cooking oats, quick oats |
 | flaked almonds | sliced almonds, slivered almonds |
+| ground almonds | almond flour, almond meal |
 | raisins | |
 | sultanas | golden raisins |
 | gelatine | gelatin, powdered gelatin, powdered gelatine |
