@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-29.5';
+const KITCHEN_CORE_VERSION = '2026-09-29.6';
 
 
 /* ======================= quantity split ======================= */
@@ -1490,7 +1490,25 @@ function fidelityAgree(xs, ys){
    pepper" is two items, so that a pinch of each is set against a pinch of each; a
    measured amount on a compound line is ambiguous (each? together?) and reads as
    unknown. */
-const fidelityName = text => String(text).replace(/\([^)]*\)/g, ' ').split(',')[0];
+/* A web page is not in that format. "sliced, slivered, or chopped almonds" is a
+   list of alternatives sharing one noun, and before its first comma it names
+   nothing, so read as the recipe's format its name was "sliced": no dictionary
+   name, no words, and any line mentioning almonds matched it (29 Sep, a real
+   comparison, where "ground almonds" was drawn against both almond lines and the
+   flaked almonds stood alone). When the text before the first comma names
+   nothing, the name is that first alternative with the noun the list ends on:
+   "sliced almonds". A line in the recipe's format always names its ingredient
+   first (measured 29 Sep: all 126 comma lines in the library do), so this only
+   ever reads a source. */
+const fidelityName = text => {
+  const parts = String(text).replace(/\([^)]*\)/g, ' ').split(',');
+  /* "Names something" as fidelityItems means it: a content word, or a name the
+     dictionary knows ("whole cloves" is all count words). */
+  if(parts.length < 2 || fidelityWords(parts[0]).size || dictionaryRow(shoppingKeyForName(splitQty(parts[0]).rest))) return parts[0];
+  const prep = new Set(PREP_WORDS.concat(LEFTOVER_PREP));
+  const noun = parts[parts.length - 1].trim().replace(/^(?:or|and|&)\s+/i, '').split(/\s+/).filter(w => !prep.has(w.toLowerCase())).join(' ');
+  return `${parts[0].trim()} ${noun}`;
+};
 function fidelityItems(lines){
   const items = [];
   (lines || []).forEach((line, i) => {

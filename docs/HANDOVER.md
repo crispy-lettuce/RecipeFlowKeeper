@@ -1489,6 +1489,31 @@ returns it: the suite stubs Supabase, so a green run says nothing about the real
 real `source-ingredients` function or a real site. What the deployed site serves. `main`'s own test and Pages runs after PR 4 merged
 were not read.
 
+**The source check named a web page's line of alternatives by its first word (29 Sep 2026, after PR 5).** Found by the household's
+step 36f on the tablet: a comparison drew the recipe's ground almonds line beside **both** of the source's almond lines, and left the
+recipe's flaked almonds line on its own, as the one difference. The recipe's text was right (read-only: one line of each). **Root
+cause, reproduced in Node:** `fidelityName` reads a name as the text before the first comma, which is the recipe's format but not a
+web page's; the source's "sliced, slivered, or chopped almonds" was named `sliced`, which is a preparation word, so the line had no
+name and no name words, and "ground" being a preparation word too, the recipe's ground almonds line read as plain almonds and joined
+it by the looser "the recipe says less" rule. With no exact partner on either side, both source lines joined one group with the
+ground almonds, and the cups against grams hid the totals. **Fix:** when the text before the first comma names nothing (no content
+word and no dictionary name, as `fidelityItems` already judges it), the name is that first alternative with the noun the list ends
+on, "sliced almonds", which the dictionary calls flaked almonds. The first version keyed "names nothing" on content words alone, and
+the dictionary sweep failed on "2 whole cloves, cut into matchsticks" (all count words, but a dictionary name); it now asks the
+dictionary as well. `core.js` `2026-09-29.6` in all three places. No change to `shoppingLine` or the dictionary, so no tick is
+re-keyed.
+
+*Verified by.* `core.test.js` 133 → 134 (one check, invented lines, seen failing by name against the old `fidelityName` with the
+fault's own shape, then passing), `source-ingredients.js` 12, `smoke.js` 329, `generate-ingredient-names.js --check`, all exit 0.
+**Measured, read-only:** all 126 comma lines in the live library (88 distinct texts before the comma) name something before it, so
+the new reading never applies to a recipe line, only to a source's. The household's line pair reproduced the fault and, with the fix,
+pairs each almond line with its own; the only note left is a soft "the recipe adds flaked", which `main` also gives for a plain
+"sliced almonds" line (a follow-up, not this change: "sliced" is dropped as a preparation word). *Not verified:* the tablet after
+the merge. **Left as it is, for the household to decide:** "ground" stays a preparation word, so a recipe's "ground almonds" still
+reads as a source's bare "almonds" when neither has an exact partner; making it part of the name is a naming question for the
+shopping list too, so it needs a re-measure first. The recipe's stored `source_check` (1 difference) stays until it is compared and
+saved again.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export

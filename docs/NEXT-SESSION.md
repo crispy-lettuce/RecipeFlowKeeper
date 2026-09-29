@@ -28,7 +28,7 @@ was written. Check again before relying on one.
 paste box feeds, after that first real use showed the check calling a difference a match; merged 29 Sep
 at 05:06 UTC (`main`'s tests, run 68, and the Pages deploy, run 53, both succeeded). 7f, PR #38 (below),
 added US names to the dictionary, which was 7e's price; merged 29 Sep at 05:52 UTC (tests run 72 and Pages
-run 54 both succeeded). `core.js` is `2026-09-29.4` on `main` (PR 4 of the add-recipe plan, merged 29 Sep) and `2026-09-29.5` on PR 5's branch. 6c-2 was a data job, not a PR; PR #23 is its documentation.
+run 54 both succeeded). `core.js` is `2026-09-29.5` on `main` (PR 5 of the add-recipe plan, merged 29 Sep) and `2026-09-29.6` on the branch that fixes the source check's reading of a line of alternatives (`docs/HANDOVER.md` §7). 6c-2 was a data job, not a PR; PR #23 is its documentation.
 
 **Open finding, 29 Sep: a recipe whose ingredients are not its source's.** Comparing *No-Bake
 Chocolate Oat Bars* with the Allrecipes page (paste box, the first US-source recipe compared), the
