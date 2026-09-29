@@ -241,6 +241,22 @@ everything, so that export must be taken *after* recipe ingestion, never before.
 
 ---
 
+### `docs/HANDOVER-CONVERSION-INTEGRITY.md` — a recipe whose ingredients are not its source's (29 Sep 2026)
+**What:** A handover for a review session (written for Opus). The household's comparison of
+*No-Bake Chocolate Oat Bars* with its source page showed three of six ingredients missing and two
+added; the recipe's own text says the converter reconstructed it because it could not read the page.
+Covers what was seen and what was verified, what is not known, the ordered work (reproduce, find the
+cause, scope an audit of the 34 recipes, propose prevention, repair only through the `CLAUDE.md`
+procedure), the ground rules, a ready-to-paste starting prompt, and, in section 7, **the three
+decisions still open from PR #38, written out in full** (the 15 pairs left flagged; the `a big
+handful of` reading; `canned`/`tinned`).
+
+**Use it when:** starting the review, or answering those three decisions.
+
+**Don't:** look for the recipe's lines in it. They are left out on purpose (this repo is public).
+
+---
+
 ### `converter/conversion-instructions.md` — how recipes are written
 **What:** The prompt used to convert a recipe from a web page, photo or pasted text into the
 app's flow format. Covers extraction, structure, a mandatory check pass, and how to present the

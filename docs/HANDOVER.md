@@ -558,6 +558,8 @@ fetched, so it's reconstructed from a secondary reproduction) and *Lasagne Loade
 (poppycooks.com returned an access error, so it uses McCain's branded reproduction). Both are
 worth a glance against the original page before cooking from them. *Cacao & Almond Oat Bar*
 carries a note about two inconsistencies on the source page itself.
+**(29 Sep: "worth a glance" understated this. The oat bars' ingredients are not the source's; see
+`docs/HANDOVER-CONVERSION-INTEGRITY.md`.)**
 
 **The method used, for the record:**
 
@@ -656,7 +658,7 @@ point, and confirming the schedule still fires afterwards.
 
 ## 6. Corrections to the earlier record
 
-Thirty-two times now, something recorded as true wasn't. The pattern is worth more than the individual
+Thirty-four times now, something recorded as true wasn't. The pattern is worth more than the individual
 corrections: **every one was found by checking the real thing, and none by reading more carefully.**
 
 | Recorded | Actually | Found |
@@ -693,6 +695,8 @@ corrections: **every one was found by checking the real thing, and none by readi
 | 7e as first built and described (in the PR and this file): "probed with 11 fault types, all caught", and tested by "an independent 50-case corpus" | Every case was written by the same hand as the fix, after seeing the failure. Run against the converter's own spec, the dictionary's vocabulary and mechanical operators, it false-alarmed on the converter's own `1 pinch X` shape every time, on an ingredient restructured across lines 53–96% of the time, and missed collapsed ranges entirely. Rebuilt around per-ingredient totals; the earlier "independent" claim was wrong | 28 Sep, when the household asked that it not be a fit to the examples |
 | 7e's account: the converter's own bare-`pepper` example "is a soft note here" | True of `pepper` alone. The converter test set's own source line, `salt and freshly ground pepper`, gave a **hard** flag until 7f added `ground pepper` to the dictionary | 29 Sep, by running the test set's recorded correct outputs through the check |
 | `confectioners' sugar` listed as a spelling of icing sugar in the dictionary's file, and in `core.js`, since 23 Sep | Never indexed: the reader treated an apostrophe as a note and skipped it, so it totalled with nothing | 29 Sep, by probing US→UK pairs and asking what each keyed as |
+| §3 (20 Sep): two conversions carry a `⚠️ Source note`, "worth a glance against the original page before cooking from them" | For *No-Bake Chocolate Oat Bars* a glance was not enough. On the household's own comparison with the Allrecipes page, one of six source ingredients matches, one is a shaded refinement, one is a different product and **three are absent**, and the recipe has two the source lacks: not the same recipe. Nobody compared ingredient lists because nothing could (the source check arrived 27 Sep and `validate-recipes.js` never calls it). *Lasagne Loaded Fries* has the same shape and has not been compared. The converter's instructions cover an unreadable photo and say nothing of an unreadable URL. Full account in `docs/HANDOVER-CONVERSION-INTEGRITY.md` | 29 Sep, by the household's paste-box comparison of a US-source recipe |
+| PR #38 (7f): the `a big handful of …` change "re-keys nothing in the library (measured)" | Said before it was measured. Measured afterwards, on a copy in scratch: 0 of 466 lines change key and none has that shape, so the claim happened to be true. The wording was ahead of the evidence | 29 Sep, on rereading the PR against what had been run |
 
 **The last one is the most instructive, because the verification itself was the thing that was
 wrong.** Every "the tests pass" statement in this repo was false for a day, and the reason it went
@@ -1171,7 +1175,7 @@ test set and generated data; the household's step 36b; the live app.
 *After the merge (read from GitHub, 29 Sep):* `main`'s tests (run 68) and the Pages deploy (run 53)
 both succeeded on the merge commit `4b3f8eb`. Whether the household's step 36b has been done: not known.
 
-**7f, US names in the dictionary (29 Sep 2026, PR #38, open — not merged).** The household's
+**7f, US names in the dictionary (29 Sep 2026, PR #38, merged 29 Sep at 05:52 UTC).** The household's
 answer to 7e's price: "Add US translations to the dictionary". **49 rows added (90 → 139) and spellings
 added to 15 that were there**, listed by `git diff origin/main -- converter/ingredient-names.md`, which is
 generated from `core.js`. `core.js` is `2026-09-29.1` in all three places.
@@ -1233,8 +1237,9 @@ flags**, and a modifier on one (`vanilla yogurt`) is a wording of its own: rows 
 modifier. The survey tool is still how the dictionary grows. **`a big handful of arugula`** is read as a
 name, not a count word, because `shoppingLine` takes the article off only when the count word follows it
 directly; it is why test 8 still has two hard differences. It is a small change to how ingredients are
-named, so it re-keys nothing in the library (measured) but needs a go-ahead; not made here, and pinned by
-a check that says so. **Whole for ground is not caught**: `coriander seeds` against `ground coriander`
+named, so it needs a go-ahead; not made here, and pinned by a check that says so. It re-keys nothing in
+the library: **measured on 29 Sep after the merge** (0 of 466 lines change key, none has the shape); when
+this paragraph was first written the claim was ahead of the evidence (§6). **Whole for ground is not caught**: `coriander seeds` against `ground coriander`
 passes (the same on `main`). **Twenty-three wordings in the file are skipped on purpose as notes**, and
 some are plain spellings with a note glued on (`long-grain rice`, `tinned chopped tomatoes`, `sweet
 paprika`), so they never total with their rows; not touched, since each is a household decision that
