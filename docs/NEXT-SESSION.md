@@ -27,7 +27,7 @@ was written. Check again before relying on one.
 (the household used the box on a real page the same evening). 7e, PR #37, rewrote the source check the
 paste box feeds, after that first real use showed the check calling a difference a match; merged 29 Sep
 at 05:06 UTC (`main`'s tests, run 68, and the Pages deploy, run 53, both succeeded). **7f is open and not
-merged** (below): US names added to the dictionary, which was 7e's price. `core.js` is `2026-09-29.1`
+merged** (PR #38, below): US names added to the dictionary, which was 7e's price. `core.js` is `2026-09-29.1`
 on the branch (`2026-09-28.5` on `main`). 6c-2 was a data job, not a PR; PR #23 is its documentation.
 
 **The live app:**
@@ -104,7 +104,7 @@ flags — false alarms on 67 US→UK pairs went from 31% to 58%; UK sources are 
 dictionary is the fix (`HANDOVER.md` §7), and 7f did it. **It is still not a guarantee** — §7 lists
 what it cannot see. The household's pass is `docs/TEST-PLAN.md` step 36b.
 
-**7f, US names in the dictionary (29 Sep, PR open, not merged).** The household's answer to that price:
+**7f, US names in the dictionary (29 Sep, PR #38, open — not merged).** The household's answer to that price:
 "Add US translations to the dictionary". 49 rows added (90 → 139) and spellings on 15 more, by one rule:
 **one product on the shelf under two names**, never a substitute (`tools/ingredient-names-preamble.md`).
 Measured on the live library before anything shipped: 0 of 466 lines change key, so no tick is
@@ -159,7 +159,7 @@ verified and how.
 | 7c | **The weekly live-backend test** | A test household, a test user, a Playwright script against the *live* app, credentials in `PrivateBackup`'s secrets | F13 | **Done**, 28 Sep. `PrivateBackup` PR #3 and #4 merged (a missing reload wait, the test script's own bug); this repo's PR #31 merged (a real app bug — `updateDiaryEntry` silently dropped a meal-type tag tapped before its insert confirmed). Run #5 proved both fixes live: 13 checks, 0 failed |
 | 7d | **The paste box for COMPARE WITH SOURCE** | Asked and answered 28 Sep: its own small PR. A textarea and COMPARE PASTED LIST under AGAINST THE SOURCE in the add/edit preview, for the two sites (18 of 34 recipes) that refuse the function with a 403. `pastedIngredientLines` in `core.js` strips tick boxes, bullets, blank lines and headings that are certainly headings, and the same `sourceFidelity` pairs what is left with the recipe's lines. No fetch, no write, no schema change; advice only, never a gate. The pasted text is kept only until the form closes | §2 and answer 4 of the architecture review (the source check for half the library); closes no numbered finding | **Done**, PR #35, merged 28 Sep 21:53 UTC. `core.js` `2026-09-28.3`. Its comparison was rewritten in 7e the same evening |
 | 7e | **The source check stops calling a difference a match** | Found 28 Sep by the household's first real comparison: a doubled source line was shown as matched. Probing found one of eleven fault types caught. `sourceFidelity` rebuilt twice (the first rebuild was tailored to the examples; see `HANDOVER.md` §7): every line of one ingredient, on either side, is one group, and the group's amounts are compared as totals per kind (mass, volume, count, a pinch), only where a difference cannot be a unit conversion, a range by both ends; the same name is exact and "the recipe says less" joins only unmatched lines; compound lines split into parts; an addition the dictionary calls the same product is a soft note, else a hard difference; every flagged pair says why and nothing is dropped. The table shows hard differences highlighted, soft notes shaded, and counts them apart. No write, no schema, no dictionary or naming change, so no tick is re-keyed | §2 and answer 4 of the architecture review (the source check itself); closes no numbered finding | **Done**, PR #37, merged 29 Sep 05:06 UTC. `core.js` `2026-09-28.5` |
-| 7f | **US names in the dictionary** | The household's answer to 7e's price, 29 Sep: 49 rows and 15 rows' spellings, by the rule one product on the shelf under two names. Also one reader function (`dictionaryPhrases`) so the index and the tests read a row the same way, which fixed `confectioners' sugar` never having worked as a spelling. Read-only re-measure on the live library: 0 of 466 lines change key; mangetout and pak choi file under Produce. No schema, no write, no change to `shoppingLine` | 7e's price, `HANDOVER.md` §7 | **Open**, awaiting the household's review and merge. `core.js` `2026-09-29.1` |
+| 7f | **US names in the dictionary** | The household's answer to 7e's price, 29 Sep: 49 rows and 15 rows' spellings, by the rule one product on the shelf under two names. Also one reader function (`dictionaryPhrases`) so the index and the tests read a row the same way, which fixed `confectioners' sugar` never having worked as a spelling. Read-only re-measure on the live library: 0 of 466 lines change key; mangetout and pak choi file under Produce. No schema, no write, no change to `shoppingLine` | 7e's price, `HANDOVER.md` §7 | **Open**, PR #38, 29 Sep — awaiting the household's review and merge. `core.js` `2026-09-29.1` |
 
 ### PR 6 reviewed against what came after it (25 Sep)
 
