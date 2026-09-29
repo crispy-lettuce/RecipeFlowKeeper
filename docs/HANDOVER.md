@@ -1171,7 +1171,7 @@ test set and generated data; the household's step 36b; the live app.
 *After the merge (read from GitHub, 29 Sep):* `main`'s tests (run 68) and the Pages deploy (run 53)
 both succeeded on the merge commit `4b3f8eb`. Whether the household's step 36b has been done: not known.
 
-**7f, US names in the dictionary (29 Sep 2026, PR opened for review, not merged).** The household's
+**7f, US names in the dictionary (29 Sep 2026, PR #38, open — not merged).** The household's
 answer to 7e's price: "Add US translations to the dictionary". **49 rows added (90 → 139) and spellings
 added to 15 that were there**, listed by `git diff origin/main -- converter/ingredient-names.md`, which is
 generated from `core.js`. `core.js` is `2026-09-29.1` in all three places.
