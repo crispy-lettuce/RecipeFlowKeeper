@@ -376,6 +376,16 @@ const mixesSpoonAndPinch = f => f.matched.some(m => /\btsp\b/.test(m.source) !==
 check('    whatever order the lists come in (612 orders, both variants), it is the same two lines blamed for the same reason, drawn sensibly and with no stray note', wrongOrder.length === 0,
       wrongOrder.length + ' wrong, e.g. ' + wrongOrder[0]);
 
+/* 29 Sep: a web page's line of alternatives, "sliced, slivered, or chopped almonds",
+   was named "sliced" (the text before its first comma), so it had no name of its own,
+   joined the recipe's "ground almonds" by that line's words alone, and left the
+   recipe's flaked almonds standing on their own. Made-up amounts. */
+const altList = fid(['1 cup (100g) almond flour', '1/2 cup (50g) sliced, slivered, or chopped almonds'], ['100 g ground almonds', '50 g flaked almonds']);
+check('a source line of alternatives ("sliced, slivered, or chopped almonds") is named by its first one and the noun they share, so it pairs with the flaked almonds',
+      altList.matched.some(m => /sliced, slivered/.test(m.source) && m.recipe === '50 g flaked almonds')
+      && altList.matched.some(m => /almond flour/.test(m.source) && m.recipe === '100 g ground almonds')
+      && altList.matched.length === 2 && !altList.matched.some(m => m.split) && !altList.recipeOnly.length && !altList.sourceOnly.length, JSON.stringify(altList));
+
 /* Each of these is a conversion fault a person would want to see. */
 const faults = [
   ['white pepper for black', ['1/2 tsp black pepper'], ['1/2 tsp white pepper'], 'wording'],
