@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-28.5';
+const KITCHEN_CORE_VERSION = '2026-09-29.1';
 
 
 /* ======================= quantity split ======================= */
@@ -770,58 +770,102 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Produce", name: "spring onions", also: "scallions, scallion, green onions", countAs: "`1 bunch spring onions`" },
   { aisle: "Produce", name: "red pepper", also: "red bell pepper", countAs: "`1 red pepper`" },
   { aisle: "Produce", name: "green pepper", also: "green bell pepper", countAs: "`1 green pepper`" },
-  { aisle: "Produce", name: "red chilli", also: "red chile, fresh red chilli", countAs: "`2 red chillies`" },
+  { aisle: "Produce", name: "red chilli", also: "red chile, red chili, fresh red chilli", countAs: "`2 red chillies`" },
   { aisle: "Produce", name: "fresh ginger", also: "ginger, root ginger, ginger root", countAs: "weight, or `1 piece fresh ginger (5 cm)`" },
-  { aisle: "Produce", name: "fresh coriander", also: "coriander, coriander leaves, cilantro", countAs: "`1 bunch fresh coriander`" },
-  { aisle: "Produce", name: "parsley", also: "curly parsley, flat-leaf parsley, fresh parsley", countAs: "`1 bunch parsley`" },
+  { aisle: "Produce", name: "fresh coriander", also: "coriander, coriander leaves, cilantro, cilantro leaves", countAs: "`1 bunch fresh coriander`" },
+  { aisle: "Produce", name: "parsley", also: "curly parsley, flat-leaf parsley, italian parsley, fresh parsley", countAs: "`1 bunch parsley`" },
   { aisle: "Produce", name: "celery", also: "celery stick(s)", countAs: "`2 celery sticks`" },
   { aisle: "Produce", name: "cherry tomatoes", also: "", countAs: "weight" },
   { aisle: "Produce", name: "baby spinach", also: "spinach leaves (when baby)", countAs: "weight" },
   { aisle: "Produce", name: "cucumber", also: "", countAs: "`1 cucumber`" },
   { aisle: "Produce", name: "potatoes", also: "", countAs: "weight" },
-  { aisle: "Produce", name: "romaine lettuce", also: "", countAs: "`1 romaine lettuce`" },
+  { aisle: "Produce", name: "romaine lettuce", also: "cos lettuce, romaine", countAs: "`1 romaine lettuce`" },
+  { aisle: "Produce", name: "aubergines", also: "eggplant", countAs: "`1 aubergine`" },
+  { aisle: "Produce", name: "courgettes", also: "zucchini", countAs: "`2 courgettes`" },
+  { aisle: "Produce", name: "rocket", also: "arugula", countAs: "weight" },
+  { aisle: "Produce", name: "swede", also: "rutabaga", countAs: "`1 swede`" },
+  { aisle: "Produce", name: "mangetout", also: "snow peas", countAs: "weight" },
+  { aisle: "Produce", name: "pak choi", also: "bok choy, bok choi, pak choy", countAs: "`2 pak choi`" },
+  { aisle: "Produce", name: "green beans", also: "string beans, snap beans, french beans", countAs: "weight" },
+  { aisle: "Produce", name: "broad beans", also: "fava beans", countAs: "weight" },
+  { aisle: "Produce", name: "sugar snap peas", also: "snap peas", countAs: "weight" },
+  { aisle: "Produce", name: "sweetcorn", also: "sweet corn, corn kernels", countAs: "weight" },
+  { aisle: "Produce", name: "chinese leaf", also: "napa cabbage, chinese cabbage", countAs: "`1 chinese leaf`" },
+  { aisle: "Produce", name: "chicory", also: "belgian endive", countAs: "`2 chicory`" },
+  { aisle: "Produce", name: "mixed salad leaves", also: "mesclun, mixed salad greens, mixed greens", countAs: "weight" },
+  { aisle: "Produce", name: "green chilli", also: "green chile, green chili", countAs: "`2 green chillies`" },
+  { aisle: "Produce", name: "beetroot", also: "beets", countAs: "`3 beetroot`" },
+  { aisle: "Produce", name: "chard", also: "swiss chard", countAs: "weight" },
   { aisle: "Produce", name: "lemon juice", also: "fresh lemon juice", countAs: "ml or spoons; whole lemons: `1 lemon, juiced`" },
   { aisle: "Meat & Fish", name: "chicken breast", also: "chicken breasts, chicken breast fillets, skinless chicken breast" },
   { aisle: "Meat & Fish", name: "chorizo", also: "cooking chorizo (when the source means it)" },
   { aisle: "Meat & Fish", name: "raw king prawns", also: "king prawns (when cooked in the dish), jumbo shrimp" },
+  { aisle: "Meat & Fish", name: "prawns", also: "shrimp" },
   { aisle: "Meat & Fish", name: "salmon fillets", also: "tail-end salmon fillets" },
   { aisle: "Meat & Fish", name: "streaky bacon", also: "bacon (in US recipes; in a British one it usually means back bacon, so check)" },
+  { aisle: "Meat & Fish", name: "pork fillet", also: "pork tenderloin" },
+  { aisle: "Meat & Fish", name: "beef fillet", also: "beef tenderloin" },
+  { aisle: "Meat & Fish", name: "back bacon", also: "canadian bacon" },
+  { aisle: "Meat & Fish", name: "beef mince", also: "minced beef, ground beef" },
+  { aisle: "Meat & Fish", name: "pork mince", also: "minced pork, ground pork" },
+  { aisle: "Meat & Fish", name: "lamb mince", also: "minced lamb, ground lamb" },
+  { aisle: "Meat & Fish", name: "turkey mince", also: "minced turkey, ground turkey" },
+  { aisle: "Meat & Fish", name: "chicken mince", also: "minced chicken, ground chicken" },
   { aisle: "Dairy & Eggs", name: "eggs", also: "egg, large eggs, free-range eggs (write the size in brackets if it matters: `3 eggs (large)`)" },
   { aisle: "Dairy & Eggs", name: "butter", also: "salted butter" },
   { aisle: "Dairy & Eggs", name: "unsalted butter", also: "" },
-  { aisle: "Dairy & Eggs", name: "double cream", also: "heavy cream, whipping cream is **not** the same" },
+  { aisle: "Dairy & Eggs", name: "double cream", also: "heavy cream, heavy whipping cream, whipping cream is **not** the same" },
+  { aisle: "Dairy & Eggs", name: "single cream", also: "light cream" },
+  { aisle: "Dairy & Eggs", name: "soured cream", also: "sour cream" },
   { aisle: "Dairy & Eggs", name: "milk", also: "whole milk, full-fat milk, semi-skimmed milk" },
+  { aisle: "Dairy & Eggs", name: "skimmed milk", also: "skim milk" },
   { aisle: "Dairy & Eggs", name: "natural yoghurt", also: "natural yogurt, plain yoghurt, plain yogurt" },
+  { aisle: "Dairy & Eggs", name: "yoghurt", also: "yogurt" },
+  { aisle: "Dairy & Eggs", name: "greek yoghurt", also: "greek yogurt" },
   { aisle: "Dairy & Eggs", name: "parmesan", also: "parmesan cheese, parmigiano reggiano" },
-  { aisle: "Pantry", name: "vegetable oil", also: "oil, neutral oil, sunflower oil, rapeseed oil, cooking oil" },
+  { aisle: "Pantry", name: "vegetable oil", also: "oil, neutral oil, sunflower oil, rapeseed oil, canola oil, cooking oil" },
   { aisle: "Pantry", name: "olive oil", also: "extra virgin olive oil" },
   { aisle: "Pantry", name: "sesame oil", also: "toasted sesame oil" },
   { aisle: "Pantry", name: "coconut oil", also: "" },
-  { aisle: "Pantry", name: "plain flour", also: "all-purpose flour" },
+  { aisle: "Pantry", name: "plain flour", also: "all-purpose flour, all purpose flour" },
   { aisle: "Pantry", name: "self-raising flour", also: "self-rising flour" },
+  { aisle: "Pantry", name: "wholemeal flour", also: "whole wheat flour, whole-wheat flour, wholewheat flour" },
+  { aisle: "Pantry", name: "strong white bread flour", also: "bread flour, strong bread flour, strong white flour" },
   { aisle: "Pantry", name: "cornflour", also: "cornstarch" },
   { aisle: "Pantry", name: "baking powder", also: "" },
   { aisle: "Pantry", name: "bicarbonate of soda", also: "baking soda" },
-  { aisle: "Pantry", name: "caster sugar", also: "superfine sugar; plain \"sugar\" when the source doesn't say which" },
+  { aisle: "Pantry", name: "caster sugar", also: "superfine sugar, castor sugar; plain \"sugar\" when the source doesn't say which" },
   { aisle: "Pantry", name: "golden caster sugar", also: "" },
   { aisle: "Pantry", name: "light brown sugar", also: "soft brown sugar, light soft brown sugar" },
-  { aisle: "Pantry", name: "icing sugar", also: "powdered sugar, confectioners' sugar" },
+  { aisle: "Pantry", name: "dark brown sugar", also: "soft dark brown sugar, dark soft brown sugar" },
+  { aisle: "Pantry", name: "icing sugar", also: "powdered sugar, confectioners' sugar, confectioners sugar, confectioner's sugar" },
   { aisle: "Pantry", name: "honey", also: "runny honey" },
   { aisle: "Pantry", name: "maple syrup", also: "pure maple syrup" },
   { aisle: "Pantry", name: "vanilla extract", also: "pure vanilla extract" },
-  { aisle: "Pantry", name: "cocoa powder", also: "unsweetened cocoa" },
+  { aisle: "Pantry", name: "cocoa powder", also: "unsweetened cocoa, unsweetened cocoa powder" },
   { aisle: "Pantry", name: "dark chocolate", also: "" },
   { aisle: "Pantry", name: "peanut butter", also: "smooth peanut butter, creamy peanut butter, crunchy peanut butter" },
   { aisle: "Pantry", name: "almond butter", also: "" },
-  { aisle: "Pantry", name: "rolled oats", also: "oats, old-fashioned oats, porridge oats, quick-cooking oats" },
+  { aisle: "Pantry", name: "rolled oats", also: "oats, old-fashioned oats, old fashioned oats, porridge oats, quick-cooking oats, quick cooking oats, quick oats" },
   { aisle: "Pantry", name: "flaked almonds", also: "sliced almonds, slivered almonds" },
   { aisle: "Pantry", name: "raisins", also: "" },
+  { aisle: "Pantry", name: "sultanas", also: "golden raisins" },
+  { aisle: "Pantry", name: "gelatine", also: "gelatin, powdered gelatin, powdered gelatine" },
+  { aisle: "Pantry", name: "chickpea flour", also: "garbanzo bean flour, gram flour, besan" },
+  { aisle: "Pantry", name: "vanilla pods", also: "vanilla beans" },
+  { aisle: "Pantry", name: "filo pastry", also: "phyllo pastry, phyllo dough, filo dough" },
+  { aisle: "Pantry", name: "sponge fingers", also: "ladyfingers, lady fingers, savoiardi" },
+  { aisle: "Pantry", name: "pumpkin seeds", also: "pepitas" },
+  { aisle: "Pantry", name: "soda water", also: "club soda" },
   { aisle: "Pantry", name: "raspberry jam", also: "seedless raspberry jam, soft-set raspberry jam" },
   { aisle: "Pantry", name: "long grain rice", also: "long-grain rice (write the **uncooked** amount, D4)" },
   { aisle: "Pantry", name: "rigatoni", also: "dried rigatoni, pasta shapes (when rigatoni)" },
   { aisle: "Pantry", name: "spaghetti", also: "dried spaghetti" },
   { aisle: "Pantry", name: "orzo", also: "dried orzo" },
-  { aisle: "Pantry", name: "chopped tomatoes", also: "tinned chopped tomatoes (write `400 g chopped tomatoes (1 tin)`, as the tin is labelled)" },
+  { aisle: "Pantry", name: "chopped tomatoes", also: "tinned chopped tomatoes (write `400 g chopped tomatoes (1 tin)`, as the tin is labelled), canned chopped tomatoes, canned diced tomatoes" },
+  { aisle: "Pantry", name: "chickpeas", also: "garbanzo beans, garbanzos, chick peas, tinned chickpeas, canned chickpeas" },
+  { aisle: "Pantry", name: "haricot beans", also: "navy beans" },
+  { aisle: "Pantry", name: "butter beans", also: "lima beans" },
   { aisle: "Pantry", name: "tomato purée", also: "tomato paste" },
   { aisle: "Pantry", name: "sun-dried tomatoes", also: "" },
   { aisle: "Pantry", name: "tomato ketchup", also: "ketchup" },
@@ -829,6 +873,10 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Pantry", name: "gherkins", also: "dill pickles" },
   { aisle: "Pantry", name: "panko breadcrumbs", also: "" },
   { aisle: "Pantry", name: "chicken stock", also: "chicken broth, hot chicken stock" },
+  { aisle: "Pantry", name: "stock", also: "broth" },
+  { aisle: "Pantry", name: "stock cubes", also: "bouillon cubes" },
+  { aisle: "Pantry", name: "beef stock", also: "beef broth" },
+  { aisle: "Pantry", name: "vegetable stock", also: "vegetable broth" },
   { aisle: "Pantry", name: "light soy sauce", also: "soy sauce" },
   { aisle: "Pantry", name: "dark soy sauce", also: "" },
   { aisle: "Pantry", name: "oyster sauce", also: "" },
@@ -836,14 +884,15 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Pantry", name: "chinese rice wine", also: "shaoxing wine, shaoxing rice wine" },
   { aisle: "Pantry", name: "white wine", also: "dry white wine" },
   { aisle: "Spices & Seasoning", name: "salt", also: "table salt, fine salt" },
-  { aisle: "Spices & Seasoning", name: "sea salt", also: "fine sea salt, flaky sea salt" },
-  { aisle: "Spices & Seasoning", name: "black pepper", also: "pepper, ground black pepper, freshly ground black pepper" },
+  { aisle: "Spices & Seasoning", name: "sea salt", also: "fine sea salt, flaky sea salt, sea salt flakes, flaked sea salt" },
+  { aisle: "Spices & Seasoning", name: "black pepper", also: "pepper, ground pepper, ground black pepper, freshly ground black pepper" },
   { aisle: "Spices & Seasoning", name: "white pepper", also: "ground white pepper" },
   { aisle: "Spices & Seasoning", name: "garlic salt", also: "" },
   { aisle: "Spices & Seasoning", name: "garlic powder", also: "" },
+  { aisle: "Spices & Seasoning", name: "ground ginger", also: "powdered ginger" },
   { aisle: "Spices & Seasoning", name: "paprika", also: "sweet paprika (not smoked, which is its own item)" },
   { aisle: "Spices & Seasoning", name: "smoked paprika", also: "" },
-  { aisle: "Spices & Seasoning", name: "chilli flakes", also: "crushed chillies, red pepper flakes" },
+  { aisle: "Spices & Seasoning", name: "chilli flakes", also: "crushed chillies, red pepper flakes, chili flakes, chile flakes, crushed red pepper, crushed red pepper flakes, red chilli flakes" },
   { aisle: "Spices & Seasoning", name: "chilli powder", also: "mild chilli powder, hot chilli powder" },
   { aisle: "Spices & Seasoning", name: "cajun seasoning", also: "cajun spice mix, cajun spice" },
   { aisle: "Spices & Seasoning", name: "dried oregano", also: "oregano, *fresh oregano is its own item*" },
@@ -936,14 +985,25 @@ const dropWords = (name, set) => { const w = name.split(' ').filter(x => !set.ha
    phrase — not a note in brackets, not "(when …)" — points at its row. Built
    through the same steps 1–5 a recipe line goes through, so the two meet. */
 function dictionaryKey(phrase){ return foldPlural(dropWords(squash(String(phrase).toLowerCase()), DESCRIPTOR_WORDS)); }
+/* Which of a row's wordings the index reads. A cell in `also` is a list
+   split at commas and semicolons; a piece that carries a note (brackets,
+   emphasis, quotes, "when", "not", "check") is advice to the reader and is
+   skipped, since it names no single wording. An apostrophe is NOT a note:
+   until 29 Sep 2026 it was on this list, which silently switched off
+   "confectioners' sugar", the one plain spelling that had one. One function
+   so the index and test/core.test.js read the same pieces: the test pins
+   what is skipped, so a spelling written and never indexed fails by name. */
+const DICTIONARY_NOTE = /[()*"`]|\b(when|not|is|its own|check)\b/i;
+function dictionaryPhrases(row){
+  const live = [row.name], skipped = [];
+  String(row.also || '').split(/[,;]/).map(x => x.trim()).forEach(p => {
+    if(p) (DICTIONARY_NOTE.test(p) ? skipped : live).push(p);
+  });
+  return { live, skipped };
+}
 const DICTIONARY_INDEX = new Map();
 INGREDIENT_DICTIONARY.forEach(row => {
-  const add = (phrase) => { const k = dictionaryKey(phrase); if(k && !DICTIONARY_INDEX.has(k)) DICTIONARY_INDEX.set(k, row); };
-  add(row.name);
-  String(row.also || '').split(/[,;]/).map(x => x.trim()).forEach(p => {
-    if(!p || /[()*"'`]|\b(when|not|is|its own|check)\b/i.test(p)) return;
-    add(p);
-  });
+  dictionaryPhrases(row).live.forEach(phrase => { const k = dictionaryKey(phrase); if(k && !DICTIONARY_INDEX.has(k)) DICTIONARY_INDEX.set(k, row); });
 });
 function dictionaryRow(key){ return DICTIONARY_INDEX.get(key) || null; }
 
@@ -1561,7 +1621,7 @@ if(typeof module !== 'undefined' && module.exports){
     parseFraction, normalizeUnit, toBaseUnit, formatShoppingQty, parseIngredientAmount,
     formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,
-    NEVER_IGNORE, foldPlural, dictionaryRow, shoppingLine, formatShoppingParts, aggregateShoppingLines,
+    NEVER_IGNORE, foldPlural, dictionaryRow, dictionaryPhrases, dictionaryKey, shoppingLine, formatShoppingParts, aggregateShoppingLines,
     shoppingKeyForName, strictMatchSuggestions,
     ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, fidelityAmount, fidelityAgree, pastedIngredientLines, ingredientMatchMap
   };

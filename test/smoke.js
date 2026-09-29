@@ -1229,16 +1229,19 @@ const check = (name, pass, detail) => {
   check('and one the rules now make anyway falls away', legacy.redundantDropped);
 
   // Settings still has its add form, which stores in the list's own words.
+  // (A made-up pair the dictionary knows nothing about: this used to be courgettes and
+  // zucchini, which the dictionary has called one row since 29 Sep, so the form rightly
+  // stores nothing for them.)
   await page.click('.navlink[data-view="settings"]');
   await page.waitForTimeout(300);
   await page.selectOption('#alias-kind', 'ingredient').catch(() => {});
-  await page.fill('#alias-from', 'Courgettes, sliced');
-  await page.fill('#alias-to', 'zucchini');
+  await page.fill('#alias-from', 'Cavolo nero, sliced');
+  await page.fill('#alias-to', 'black kale');
   await page.click('#aliasAddBtn');
   await page.waitForTimeout(300);
-  const formAlias = await page.evaluate(() => loadAliases().find(a => a.kind === 'ingredient' && /courgette/.test(a.alias)));
-  check('Settings stores a new match in the list\'s own words', formAlias && formAlias.alias === 'courgette' && formAlias.canonical === 'zucchini', JSON.stringify(formAlias));
-  await page.evaluate(() => loadAliases().filter(a => /courgette/.test(a.alias)).forEach(a => removeAlias(a.id)));
+  const formAlias = await page.evaluate(() => loadAliases().find(a => a.kind === 'ingredient' && /cavolo/.test(a.alias)));
+  check('Settings stores a new match in the list\'s own words', formAlias && formAlias.alias === 'cavolo nero' && formAlias.canonical === 'black kale', JSON.stringify(formAlias));
+  await page.evaluate(() => loadAliases().filter(a => /cavolo/.test(a.alias)).forEach(a => removeAlias(a.id)));
   await page.evaluate(() => { addAlias('ingredient', 'thing 0', 'things 0'); addAlias('ingredient_distinct', pairKeyFor('thing 1', 'things 1'), ''); addAlias('ingredient_distinct', pairKeyFor('thing 2', 'things 2'), ''); addAlias('ingredient_distinct', pairKeyFor('thing 3', 'things 3'), ''); renderAliasesList(); });
   await page.waitForTimeout(200);
 
