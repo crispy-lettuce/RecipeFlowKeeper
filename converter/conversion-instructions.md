@@ -1,6 +1,6 @@
 # Recipe Conversion — Project Instructions
 
-*Revised 23 Sep 2026 — see the notes at the end for what changed and why.*
+*Revised 29 Sep 2026 — see the notes at the end for what changed and why.*
 
 Whenever a recipe is given here — a photo, a URL, or pasted text — convert it into
 GROUP / STAGE / MERGE syntax for the recipe merge-flow tool. Work through these
@@ -16,6 +16,13 @@ stages in order every time; don't skip Check even for a simple recipe.
   "unconfirmed" or ask for a clearer/straightened photo of just that section before
   finalizing quantities. A correct structure with a wrong quantity is a real failure
   mode, not a minor one.
+- If the source is a URL and the page cannot be read (blocked, an access error, a login wall,
+  anything but the page itself): **stop**. Say which address failed and ask for the recipe's text
+  or its ingredient list to be pasted. Never convert from another page that seems to carry the
+  same recipe, a partner's or branded version, a search snippet, or memory: a recipe reconstructed
+  that way is not the source's recipe, and nothing downstream can tell. If a conversion has to say
+  anything about its source, write it as its own line beginning `⚠️ Source note:` under NOTES, and
+  say plainly what was not read.
 - Pull out, precisely: title; every ingredient with its exact quantity and unit; any
   one-off prep steps that aren't ingredients (oven temp, tin size/prep); the full
   method in order, including timings, doneness cues, and technique cautions;
@@ -285,6 +292,7 @@ line:
 - Source is present — either confidently determined from the input or explicitly
   confirmed with the person, never guessed and never silently blank.
 - `SOURCE_URL` present if the recipe came from a webpage, absent otherwise.
+- **The page itself was read;** nothing was reconstructed from another page or from memory.
 - Servings present — taken from the source, or asked for and supplied by the person.
   Never estimated from the ingredient quantities.
 - `EQUIPMENT` present if the recipe depends on a specific tin/tray/dish size.
@@ -303,6 +311,27 @@ Report gaps as a short list (found → fixed), not a long essay.
   and when.
 
 ---
+
+## Revision note (29 Sep 2026)
+
+Changed following the household's comparison of one library recipe with its source page
+(`docs/HANDOVER-CONVERSION-INTEGRITY.md`) and PR 2 of `docs/PLAN-NEW-RECIPE-FLOW.md`:
+
+- **A page the converter cannot read is a stop, not a recipe.** These instructions covered a
+  photo too blurry to read and said nothing about a URL that would not load. The comparison found a
+  recipe whose ingredients were not its source's: the converter had not been able to read the page,
+  and had reconstructed the recipe from another one that seemed to carry it. The recipe's own text
+  said so, but nothing downstream could act on that. Section 1 now says to stop, name the address
+  that failed and ask for the text or the ingredient list, and never to convert from another page,
+  a partner's or branded version, a search snippet or memory. Section 3 has the matching check.
+- **`⚠️ Source note:`** is the one form a note about the source may take: its own line under NOTES,
+  saying plainly what was not read. The app's review of a new recipe (PR 3 of the plan, not yet
+  built) will look for exactly that line.
+- Test 9 in `test-set.md` checks the rule: an address that cannot be read must produce a question
+  and no recipe.
+- Nothing changes for a page that can be read, a photo or pasted text.
+- **Reload this file into the conversion project.** Nothing in the repo can do that, and until it
+  is reloaded the converter behaves as before.
 
 ## Revision note (23 Sep 2026, later the same day)
 
