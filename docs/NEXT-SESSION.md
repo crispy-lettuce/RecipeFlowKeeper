@@ -3,6 +3,10 @@
 Two things live here: **the order work should happen in**, with the reasoning, and a
 **ready-to-paste prompt** for starting the next session.
 
+**Picking the add-recipe plan up after 29 Sep 2026? Read `docs/HANDOVER-2026-09-29-SESSION.md` first.** It says
+where PRs 1 to 8 stand, that **one SQL statement (`recipes.source_check`) was still waiting for the household**
+after PR 5 merged, which decisions and tests are outstanding, and PR 6 as already put to the household.
+
 **Rewritten 23 Sep 2026.** Until then this document narrated steps 0–4 of the original build
 (reprocess, ingest, test pass, merge, images), all done by 22 Sep and recorded in
 `docs/HANDOVER.md` §2–§3. What replaced them is a seven-PR plan agreed after two reviews:
