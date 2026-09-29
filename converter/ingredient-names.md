@@ -55,6 +55,28 @@ other.
   (D8). Keep whichever the source asks for.
 - "soy sauce" on its own means *light soy sauce* (D9).
 
+**Added 29 Sep 2026, US names for British products (PR 7f): 49 rows, and spellings on 15 that were
+there.** The source check stopped treating "shares a word" as "the same product" (PR 7e), so a US
+name the dictionary had no row for was flagged against its British one: 58% of 67 US→UK pairs. The
+household chose this file as the remedy. The rows were written from general knowledge of the
+standard US/UK cookery glossaries, not from a survey: none was seen in a second recipe, so the
+survey tool is still how this grows.
+
+**The rule for a row is one product on the shelf under two names.** Not a substitute and not a near
+equivalent, because a row also totals the shopping list, and two different products on one row is a
+worse failure than a flag on the source check. (It is D8's reasoning: *different on a shelf*.) So
+these are deliberately **not** spellings: granulated sugar (for caster), half-and-half (single
+cream), whipping cream (double), cake flour (plain), molasses (black treacle), corn syrup (golden
+syrup), graham crackers (digestives), raisins (sultanas), collard greens (spring greens), jalapeño
+(green chilli), pie crust (shortcrust), and chili powder, which in the US is a blend and not ground
+chillies. Words that mean something different across the Atlantic are left out too: endive and
+frisée, biscuits, chips, jelly, candy, a bare "corn", kosher salt and shortening.
+
+**A mince is a product here.** "Mince" is one of the app's preparation words ("garlic, minced"), so
+until these rows a line for beef mince totalled with plain beef. Naming the mince rows is what stops
+that; it is the one place a row changes what an existing name totals with, and no line in the
+library said "mince" when it was measured.
+
 ---
 
 ## Produce
@@ -67,16 +89,32 @@ other.
 | spring onions | scallions, scallion, green onions | `1 bunch spring onions` |
 | red pepper | red bell pepper | `1 red pepper` |
 | green pepper | green bell pepper | `1 green pepper` |
-| red chilli | red chile, fresh red chilli | `2 red chillies` |
+| red chilli | red chile, red chili, fresh red chilli | `2 red chillies` |
 | fresh ginger | ginger, root ginger, ginger root | weight, or `1 piece fresh ginger (5 cm)` |
-| fresh coriander | coriander, coriander leaves, cilantro | `1 bunch fresh coriander` |
-| parsley | curly parsley, flat-leaf parsley, fresh parsley | `1 bunch parsley` |
+| fresh coriander | coriander, coriander leaves, cilantro, cilantro leaves | `1 bunch fresh coriander` |
+| parsley | curly parsley, flat-leaf parsley, italian parsley, fresh parsley | `1 bunch parsley` |
 | celery | celery stick(s) | `2 celery sticks` |
 | cherry tomatoes | | weight |
 | baby spinach | spinach leaves (when baby) | weight |
 | cucumber | | `1 cucumber` |
 | potatoes | | weight |
-| romaine lettuce | | `1 romaine lettuce` |
+| romaine lettuce | cos lettuce, romaine | `1 romaine lettuce` |
+| aubergines | eggplant | `1 aubergine` |
+| courgettes | zucchini | `2 courgettes` |
+| rocket | arugula | weight |
+| swede | rutabaga | `1 swede` |
+| mangetout | snow peas | weight |
+| pak choi | bok choy, bok choi, pak choy | `2 pak choi` |
+| green beans | string beans, snap beans, french beans | weight |
+| broad beans | fava beans | weight |
+| sugar snap peas | snap peas | weight |
+| sweetcorn | sweet corn, corn kernels | weight |
+| chinese leaf | napa cabbage, chinese cabbage | `1 chinese leaf` |
+| chicory | belgian endive | `2 chicory` |
+| mixed salad leaves | mesclun, mixed salad greens, mixed greens | weight |
+| green chilli | green chile, green chili | `2 green chillies` |
+| beetroot | beets | `3 beetroot` |
+| chard | swiss chard | weight |
 | lemon juice | fresh lemon juice | ml or spoons; whole lemons: `1 lemon, juiced` |
 
 ## Meat & Fish
@@ -86,8 +124,17 @@ other.
 | chicken breast | chicken breasts, chicken breast fillets, skinless chicken breast |
 | chorizo | cooking chorizo (when the source means it) |
 | raw king prawns | king prawns (when cooked in the dish), jumbo shrimp |
+| prawns | shrimp |
 | salmon fillets | tail-end salmon fillets |
 | streaky bacon | bacon (in US recipes; in a British one it usually means back bacon, so check) |
+| pork fillet | pork tenderloin |
+| beef fillet | beef tenderloin |
+| back bacon | canadian bacon |
+| beef mince | minced beef, ground beef |
+| pork mince | minced pork, ground pork |
+| lamb mince | minced lamb, ground lamb |
+| turkey mince | minced turkey, ground turkey |
+| chicken mince | minced chicken, ground chicken |
 
 ## Dairy & Eggs
 
@@ -96,44 +143,63 @@ other.
 | eggs | egg, large eggs, free-range eggs (write the size in brackets if it matters: `3 eggs (large)`) |
 | butter | salted butter |
 | unsalted butter | |
-| double cream | heavy cream, whipping cream is **not** the same |
+| double cream | heavy cream, heavy whipping cream, whipping cream is **not** the same |
+| single cream | light cream |
+| soured cream | sour cream |
 | milk | whole milk, full-fat milk, semi-skimmed milk |
+| skimmed milk | skim milk |
 | natural yoghurt | natural yogurt, plain yoghurt, plain yogurt |
+| yoghurt | yogurt |
+| greek yoghurt | greek yogurt |
 | parmesan | parmesan cheese, parmigiano reggiano |
 
 ## Pantry
 
 | Write | Also written as |
 | --- | --- |
-| vegetable oil | oil, neutral oil, sunflower oil, rapeseed oil, cooking oil |
+| vegetable oil | oil, neutral oil, sunflower oil, rapeseed oil, canola oil, cooking oil |
 | olive oil | extra virgin olive oil |
 | sesame oil | toasted sesame oil |
 | coconut oil | |
-| plain flour | all-purpose flour |
+| plain flour | all-purpose flour, all purpose flour |
 | self-raising flour | self-rising flour |
+| wholemeal flour | whole wheat flour, whole-wheat flour, wholewheat flour |
+| strong white bread flour | bread flour, strong bread flour, strong white flour |
 | cornflour | cornstarch |
 | baking powder | |
 | bicarbonate of soda | baking soda |
-| caster sugar | superfine sugar; plain "sugar" when the source doesn't say which |
+| caster sugar | superfine sugar, castor sugar; plain "sugar" when the source doesn't say which |
 | golden caster sugar | |
 | light brown sugar | soft brown sugar, light soft brown sugar |
-| icing sugar | powdered sugar, confectioners' sugar |
+| dark brown sugar | soft dark brown sugar, dark soft brown sugar |
+| icing sugar | powdered sugar, confectioners' sugar, confectioners sugar, confectioner's sugar |
 | honey | runny honey |
 | maple syrup | pure maple syrup |
 | vanilla extract | pure vanilla extract |
-| cocoa powder | unsweetened cocoa |
+| cocoa powder | unsweetened cocoa, unsweetened cocoa powder |
 | dark chocolate | |
 | peanut butter | smooth peanut butter, creamy peanut butter, crunchy peanut butter |
 | almond butter | |
-| rolled oats | oats, old-fashioned oats, porridge oats, quick-cooking oats |
+| rolled oats | oats, old-fashioned oats, old fashioned oats, porridge oats, quick-cooking oats, quick cooking oats, quick oats |
 | flaked almonds | sliced almonds, slivered almonds |
 | raisins | |
+| sultanas | golden raisins |
+| gelatine | gelatin, powdered gelatin, powdered gelatine |
+| chickpea flour | garbanzo bean flour, gram flour, besan |
+| vanilla pods | vanilla beans |
+| filo pastry | phyllo pastry, phyllo dough, filo dough |
+| sponge fingers | ladyfingers, lady fingers, savoiardi |
+| pumpkin seeds | pepitas |
+| soda water | club soda |
 | raspberry jam | seedless raspberry jam, soft-set raspberry jam |
 | long grain rice | long-grain rice (write the **uncooked** amount, D4) |
 | rigatoni | dried rigatoni, pasta shapes (when rigatoni) |
 | spaghetti | dried spaghetti |
 | orzo | dried orzo |
-| chopped tomatoes | tinned chopped tomatoes (write `400 g chopped tomatoes (1 tin)`, as the tin is labelled) |
+| chopped tomatoes | tinned chopped tomatoes (write `400 g chopped tomatoes (1 tin)`, as the tin is labelled), canned chopped tomatoes, canned diced tomatoes |
+| chickpeas | garbanzo beans, garbanzos, chick peas, tinned chickpeas, canned chickpeas |
+| haricot beans | navy beans |
+| butter beans | lima beans |
 | tomato purée | tomato paste |
 | sun-dried tomatoes | |
 | tomato ketchup | ketchup |
@@ -141,6 +207,10 @@ other.
 | gherkins | dill pickles |
 | panko breadcrumbs | |
 | chicken stock | chicken broth, hot chicken stock |
+| stock | broth |
+| stock cubes | bouillon cubes |
+| beef stock | beef broth |
+| vegetable stock | vegetable broth |
 | light soy sauce | soy sauce |
 | dark soy sauce | |
 | oyster sauce | |
@@ -153,14 +223,15 @@ other.
 | Write | Also written as |
 | --- | --- |
 | salt | table salt, fine salt |
-| sea salt | fine sea salt, flaky sea salt |
-| black pepper | pepper, ground black pepper, freshly ground black pepper |
+| sea salt | fine sea salt, flaky sea salt, sea salt flakes, flaked sea salt |
+| black pepper | pepper, ground pepper, ground black pepper, freshly ground black pepper |
 | white pepper | ground white pepper |
 | garlic salt | |
 | garlic powder | |
+| ground ginger | powdered ginger |
 | paprika | sweet paprika (not smoked, which is its own item) |
 | smoked paprika | |
-| chilli flakes | crushed chillies, red pepper flakes |
+| chilli flakes | crushed chillies, red pepper flakes, chili flakes, chile flakes, crushed red pepper, crushed red pepper flakes, red chilli flakes |
 | chilli powder | mild chilli powder, hot chilli powder |
 | cajun seasoning | cajun spice mix, cajun spice |
 | dried oregano | oregano, *fresh oregano is its own item* |

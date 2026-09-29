@@ -294,9 +294,20 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     is right and the row is the check reading the page faithfully. Repeat on two or three more recipes
     and **write down every row that is only noise**. Expect little on a UK source and more on a US
     one, in proportion to the names the dictionary lacks (`docs/HANDOVER.md` §7 measures it: 58% of
-    67 US→UK pairs). A shaded row is not a fault: the recipe names a product more specifically than
+    67 US→UK pairs before PR 7f's rows, 22% after, the rest mostly substitutes). A shaded row is not a fault: the recipe names a product more specifically than
     the source did, and the dictionary calls them one product; check the source meant it.
     A recipe scaled to another number of people will flag every amount: compare before scaling.
+36c. **US names, and the list they must not move (new 29 Sep, PR 7f).** Two halves. *The source check:*
+    paste the ingredient list of a recipe from a US site (the library has one from Allrecipes) and compare.
+    A US name for a British product (eggplant for aubergine, zucchini for courgette, ground beef for beef
+    mince, heavy cream for double cream…) should now be quiet. **Write down every row that still flags and
+    say which it is:** a real swap or omission; a substitute the dictionary leaves apart on purpose
+    (granulated for caster sugar, half-and-half for single cream — `docs/HANDOVER.md` §7 lists them, and
+    says if you would rather one of them counted as the same product); or a name the dictionary has
+    simply not heard of, which is the noise to send back. *The shopping list:* plan every recipe at once.
+    Expect **169 rows**, as before, and every tick you had still ticked (no key changed on the live
+    library when this was measured). The one change you should see is **Mangetout and Pak choi under
+    Produce instead of Other**. Anything else that moved is a fault; tell me the row.
 
 ## Deferred to the tablet, after merging
 

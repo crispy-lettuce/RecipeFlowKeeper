@@ -61,7 +61,7 @@ try { genOut = execFileSync('node', [path.join(ROOT, 'tools', 'generate-ingredie
 catch(e){ genOk = false; genOut = (e.stderr || e.message).trim(); }
 check('converter/ingredient-names.md is exactly what core.js generates', genOk, genOut);
 const D = core.INGREDIENT_DICTIONARY;
-check('the dictionary holds its 90 rows', D.length === 90, D.length);
+check('the dictionary holds its 139 rows', D.length === 139, D.length);
 const names = D.map(r => r.name.toLowerCase());
 check('every name in the dictionary is written once', new Set(names).size === names.length,
       names.filter((n, i) => names.indexOf(n) !== i).join(', '));
@@ -70,6 +70,25 @@ check('every row is in a listed aisle, and every aisle has rows',
 const decided = (n) => D.find(r => r.name === n);
 check('the household\'s 23 Sep decisions are in it (D7, D8, D9)',
       /\boil\b/.test(decided('vegetable oil').also) && decided('unsalted butter') && decided('sea salt') && /\bsoy sauce\b/.test(decided('light soy sauce').also));
+
+/* ---- What the dictionary's reader does with the wordings (29 Sep 2026) ----
+   Rows are edited by hand and read by one function, so these are properties of
+   the whole table, not of the rows somebody remembered. The first bug they hold
+   off was real: an apostrophe was on the reader's list of "this is a note", so
+   the one plain spelling that had one, confectioners' sugar, was written in the
+   file and never indexed. */
+const pieces = D.map(r => ({ row: r.name, ...core.dictionaryPhrases(r) }));
+const notNotes = pieces.flatMap(p => p.skipped.filter(s => !/[()*"`]/.test(s)).map(s => `${p.row}: ${s}`));
+check('every wording the reader skips is a note: it carries a bracket, emphasis, backtick or quote mark', notNotes.length === 0, notNotes.join('; '));
+const claimed = new Map();
+pieces.forEach(p => p.live.forEach(w => { const k = core.dictionaryKey(w); (claimed.get(k) || claimed.set(k, new Set()).get(k)).add(p.row); }));
+const claimedTwice = [...claimed].filter(([, rows]) => rows.size > 1).map(([k, rows]) => `${k}: ${[...rows].join(' / ')}`);
+check('no wording belongs to two rows (the index keeps the first without a word)', claimedTwice.length === 0, claimedTwice.join('; '));
+const offName = pieces.flatMap(p => p.live.filter(w => core.shoppingKeyForName(w) !== core.shoppingKeyForName(p.row)).map(w => `${p.row}: "${w}" keys as ${core.shoppingKeyForName(w)}`));
+check('every wording of a row totals with the row\'s own name, whatever the line pipeline does to it on the way', offName.length === 0, offName.join('; '));
+check("an apostrophe is part of a spelling: confectioners' sugar, confectioner's sugar and confectioners sugar are one row, icing sugar",
+      ["confectioners' sugar", "confectioner's sugar", 'confectioners sugar'].every(w => core.shoppingKeyForName(w) === 'icing sugar'),
+      ["confectioners' sugar", "confectioner's sugar", 'confectioners sugar'].map(w => core.shoppingKeyForName(w)).join(' | '));
 
 /* ---- Quantities ---- */
 const q = (line) => core.splitQty(line);
@@ -177,8 +196,13 @@ const offered19 = falsePairs.filter(p => suggest(p).length);
 check('    and none of the review\'s false pairs', offered19.length === 0, offered19.map(p => p.join(' ~ ')).join('; '));
 check('    and a pair already answered is not offered again', core.strictMatchSuggestions([{ key: 'curly kale', count: 1 }, { key: 'kale', count: 1 }], () => true).length === 0);
 check('    and on a tie the plainer name is kept', JSON.stringify(suggest(['kale', 'curly kale'])) === '[{"from":"curly kale","to":"kale"}]', JSON.stringify(suggest(['kale', 'curly kale'])));
-/* "chili flakes" is not a dictionary spelling, so this is the keyword rule's. */
+/* Until 29 Sep 2026 "chili flakes" was not a dictionary spelling, so this was the
+   keyword rule's alone (the lists are written in plurals, the folded key is not).
+   It is a spelling of chilli flakes now, so this reads the row; the keyword rule is
+   held by the second check, on a name the dictionary deliberately does not know
+   ("chili powder" is a blend in the US, not ground chillies). */
 check('20: chili flakes are a spice after the key folds the plural', only('1 tsp chili flakes').category === 'Spices & Seasoning', only('1 tsp chili flakes').category);
+check('    and so is chili powder, which no dictionary row claims', core.dictionaryRow(core.shoppingKeyForName('chili powder')) === null && only('1 tsp chili powder').category === 'Spices & Seasoning', only('1 tsp chili powder').category);
 check('    and bay leaves are one because it does', only('2 bay leaves').category === 'Spices & Seasoning', only('2 bay leaves').category);
 check('21: the aisle comes from the dictionary', only('1 red pepper').category === 'Produce' && only('1 tbsp chinese rice wine').category === 'Pantry',
       only('1 red pepper').category + ', ' + only('1 tbsp chinese rice wine').category);
@@ -425,7 +449,7 @@ check('    a pinch is an amount of its own kind: it differs from a spoon and agr
    vocabulary, and the operators are the ways a converter may legitimately reshape
    a line (conversion-instructions.md) and the ways it can get one wrong. */
 const vocab = core.INGREDIENT_DICTIONARY.map(r => ({ name: r.name, aisle: r.aisle,
-  aliases: String(r.also || '').split(/[,;]/).map(x => x.trim()).filter(p => p && !/[()*"'`]|\b(when|not|is|its own|check)\b/i.test(p)) }));
+  aliases: core.dictionaryPhrases(r).live.slice(1) }));
 const wordsOf = n => n.toLowerCase().split(/[^a-z]+/).filter(w => w.length > 2 && !['and', 'the', 'whole', 'fresh'].includes(w));
 const allWords = r => new Set([r.name].concat(r.aliases).flatMap(wordsOf));
 const collides = (a, b) => { const wa = allWords(a); return [...allWords(b)].some(w => wa.has(w)); };
@@ -541,6 +565,56 @@ vocab.forEach((r, i) => [1, 7, 31].forEach(off => {
 }));
 check('a compound line of any two dictionary ingredients is quiet when split and flagged when a half is dropped', compoundWrong.length === 0, compoundWrong.length + ' wrong, e.g. ' + compoundWrong[0]);
 
+/* ---- US translations (29 Sep 2026) ----
+   The check no longer takes "shares a word" for "the same", so a US name the dictionary
+   has no row for was flagged against its British one (58% of 67 pairs written for the
+   purpose). The remedy is rows, and the rule for a row is the household's own (23 Sep):
+   ONE PRODUCT ON THE SHELF UNDER TWO NAMES. Never a substitute, never a near
+   equivalent, because a row also totals the shopping list, and two different products
+   on one row is a worse failure than a false alarm here. These checks hold both halves. */
+const wordingsWrong = [];
+vocab.forEach(r => { const all = [r.name].concat(r.aliases);
+  all.forEach(a => all.forEach(b => { if(a !== b && flagCount(fid([`2 tbsp ${a}`], [`2 tbsp ${b}`])) !== 0) wordingsWrong.push(`${a} -> ${b}`); })); });
+check('every wording of a row is quiet against every other wording of the same row, in both directions', wordingsWrong.length === 0, wordingsWrong.length + ' flagged, e.g. ' + wordingsWrong[0]);
+const neighbours = [];
+vocab.forEach((a, i) => vocab.slice(i + 1).forEach(b => { if(collides(a, b)) neighbours.push([a.name, b.name]); }));
+const takenForOne = neighbours.filter(([a, b]) => flagCount(fid([`2 tbsp ${a}`], [`2 tbsp ${b}`])) === 0 || flagCount(fid([`2 tbsp ${b}`], [`2 tbsp ${a}`])) === 0);
+check(`two different rows that share a word are never taken for one another (${neighbours.length} pairs, both ways round)`, takenForOne.length === 0, takenForOne.map(p => p.join(' / ')).join('; '));
+const TRANSLATED = [['eggplant', 'aubergine'], ['zucchini', 'courgette'], ['arugula', 'rocket'], ['heavy whipping cream', 'double cream'], ["confectioners' sugar", 'icing sugar'],
+  ['shrimp', 'prawns'], ['garbanzo beans', 'chickpeas'], ['rutabaga', 'swede'], ['snow peas', 'mangetout'], ['yogurt', 'yoghurt'], ['greek yogurt', 'greek yoghurt'],
+  ['fava beans', 'broad beans'], ['romaine lettuce', 'cos lettuce'], ['string beans', 'green beans'], ['chile flakes', 'chilli flakes'], ['crushed red pepper', 'chilli flakes'],
+  ['beef broth', 'beef stock'], ['vegetable broth', 'vegetable stock'], ['broth', 'stock'], ['sour cream', 'soured cream'], ['light cream', 'single cream'],
+  ['skim milk', 'skimmed milk'], ['sea salt flakes', 'flaky sea salt'], ['quick oats', 'porridge oats'], ['golden raisins', 'sultanas'], ['ground beef', 'beef mince'],
+  ['ground turkey', 'turkey mince'], ['whole wheat flour', 'wholemeal flour'], ['bread flour', 'strong white bread flour'], ['navy beans', 'haricot beans'],
+  ['lima beans', 'butter beans'], ['bok choy', 'pak choi'], ['canola oil', 'rapeseed oil'], ['italian parsley', 'flat-leaf parsley'], ['canadian bacon', 'back bacon'],
+  ['napa cabbage', 'chinese leaf'], ['belgian endive', 'chicory'], ['corn kernels', 'sweetcorn'], ['green chile', 'green chilli'], ['snap peas', 'sugar snap peas'],
+  ['gelatin', 'gelatine'], ['beets', 'beetroot'], ['pork tenderloin', 'pork fillet'], ['vanilla beans', 'vanilla pods'], ['phyllo dough', 'filo pastry'],
+  ['ladyfingers', 'sponge fingers'], ['club soda', 'soda water'], ['bouillon cubes', 'stock cubes'], ['pepitas', 'pumpkin seeds'], ['powdered ginger', 'ground ginger'],
+  ['freshly ground pepper', 'black pepper'], ['canned diced tomatoes', 'chopped tomatoes']];
+const stillFlagged = TRANSLATED.filter(([us, uk]) => flagCount(fid([`2 tbsp ${us}`], [`2 tbsp ${uk}`])) !== 0);
+check(`${TRANSLATED.length} US names for a British product read as one product and stay quiet`, stillFlagged.length === 0, stillFlagged.map(p => p.join(' -> ')).join('; '));
+/* What a row must NOT do. Each pair is two products a cook might swap, or a word that
+   means something else on the other side. A row that made any of these quiet would hide
+   a substitution the converter is told never to make, and merge two things on the list. */
+const SUBSTITUTES = [['granulated sugar', 'caster sugar'], ['half-and-half', 'single cream'], ['whipping cream', 'double cream'], ['cake flour', 'plain flour'],
+  ['molasses', 'black treacle'], ['light corn syrup', 'golden syrup'], ['graham crackers', 'digestive biscuits'], ['raisins', 'sultanas'],
+  ['collard greens', 'spring greens'], ['jalapeno', 'green chilli'], ['chili powder', 'chilli powder'], ['pie crust', 'shortcrust pastry'],
+  ['skimmed milk', 'semi-skimmed milk'], ['plain yoghurt', 'greek yoghurt'], ['kale', 'chard'], ['beef mince', 'beef fillet']];
+const madeQuiet = SUBSTITUTES.filter(([a, b]) => flagCount(fid([`2 tbsp ${a}`], [`2 tbsp ${b}`])) === 0);
+check(`${SUBSTITUTES.length} substitutes are still flagged: a translation is one product under two names, never a swap`, madeQuiet.length === 0, madeQuiet.map(p => p.join(' -> ')).join('; '));
+const stayApart = [['1 tbsp skimmed milk', '1 tbsp milk'], ['125 g yoghurt', '125 g natural yoghurt'], ['125 g greek yoghurt', '125 g natural yoghurt'], ['100 ml single cream', '100 ml double cream'],
+  ['500 g beef mince', '500 g beef'], ['500 g beef mince', '500 g pork mince'], ['100 g wholemeal flour', '100 g plain flour'], ['100 g strong white bread flour', '100 g plain flour'],
+  ['100 g dark brown sugar', '100 g light brown sugar'], ['100 g sultanas', '100 g raisins'], ['100 g mangetout', '100 g sugar snap peas'], ['100 g green beans', '100 g broad beans'],
+  ['100 g haricot beans', '100 g butter beans'], ['200 ml stock', '200 ml chicken stock'], ['1 green chilli', '1 red chilli'], ['1 tsp ground ginger', '1 tsp fresh ginger'],
+  ['100 g pork fillet', '100 g pork mince'], ['100 g chickpea flour', '100 g plain flour']];
+const mergedRows = stayApart.filter(p => keysOf(...p).length !== 2);
+check(`the shopping list keeps ${stayApart.length} near-neighbours as two rows`, mergedRows.length === 0, mergedRows.map(p => p.join(' + ')).join('; '));
+/* A row named for a mince is the one deliberate re-key: "mince" is a preparation word
+   ("garlic, minced"), so before a row said otherwise "beef mince" totalled with "beef". */
+check('mince is a product once a row says so, and still a preparation for the rest', keysOf('500 g beef mince', '500 g minced beef', '300 g ground beef').length === 1
+      && keysOf('7 garlic cloves, minced', '3 garlic cloves').length === 1 && keysOf('1 onion, minced', '1 onion').length === 1,
+      JSON.stringify([keysOf('500 g beef mince', '500 g minced beef', '300 g ground beef'), keysOf('7 garlic cloves, minced', '3 garlic cloves')]));
+
 /* The converter's own test set (converter/test-set.md, tests 6-8), written by earlier
    sessions for a different purpose: sources, the outputs recorded as correct, and the
    wrong outputs its "Fails if" lines name. None of it was written for this check. */
@@ -555,6 +629,18 @@ const hardOf = f => f.sourceOnly.concat(f.recipeOnly, f.matched.filter(m => m.ch
 const newHard = (src, good, bad) => { const had = new Set(hardOf(fid(src, good))); return hardOf(fid(src, bad)).filter(x => !had.has(x)); };
 check('the converter test set\'s recorded correct output for its vocabulary test (test 7) is quiet',
       flagCount(fid(T7s, T7r)) === 0, JSON.stringify(hardOf(fid(T7s, T7r))));
+/* Written by earlier sessions, never tuned to this check, and the best evidence it has of a
+   real US source: before the 29 Sep dictionary rows, test 6 had one hard difference and
+   test 8 six. Test 6's is the converter's own "salt and freshly ground pepper" -> "black
+   pepper" (the dictionary listed "ground black pepper" and not "ground pepper"), now a
+   shaded note. Test 8's remaining two are ONE known gap, and not a dictionary one:
+   "a big handful of arugula" is read as a name, since the article is only taken off when
+   the count word follows it directly, so the row is never looked up. */
+const t6 = fid(T6s, T6r), t8 = fid(T8s, T8r);
+check('    and for its first test (6) no hard difference, the pepper line being a shaded note',
+      flagCount(t6) === 0 && t6.matched.some(m => m.note && /adds black/.test(m.note.why)), JSON.stringify(hardOf(t6)));
+check('    and for its US-source test (8) nothing but the one known gap: "a big handful of" is not read as a count word, so its arugula never meets rocket',
+      JSON.stringify(hardOf(t8).sort()) === JSON.stringify(['1 handful rocket, to serve', 'a big handful of arugula to serve']), JSON.stringify(hardOf(t8)));
 const namedWrong = [
   ['a range collapsed to one figure (test 6, run 1)', T6s, T6r, swapLine(T6r, '2-3 tbsp olive oil', '2 tbsp olive oil')],
   ['a different product: oyster for soy sauce (test 7)', T7s, T7r, swapLine(T7r, '2 tbsp soy sauce', '2 tbsp oyster sauce')],

@@ -55,4 +55,26 @@ other.
   (D8). Keep whichever the source asks for.
 - "soy sauce" on its own means *light soy sauce* (D9).
 
+**Added 29 Sep 2026, US names for British products (PR 7f): 49 rows, and spellings on 15 that were
+there.** The source check stopped treating "shares a word" as "the same product" (PR 7e), so a US
+name the dictionary had no row for was flagged against its British one: 58% of 67 US→UK pairs. The
+household chose this file as the remedy. The rows were written from general knowledge of the
+standard US/UK cookery glossaries, not from a survey: none was seen in a second recipe, so the
+survey tool is still how this grows.
+
+**The rule for a row is one product on the shelf under two names.** Not a substitute and not a near
+equivalent, because a row also totals the shopping list, and two different products on one row is a
+worse failure than a flag on the source check. (It is D8's reasoning: *different on a shelf*.) So
+these are deliberately **not** spellings: granulated sugar (for caster), half-and-half (single
+cream), whipping cream (double), cake flour (plain), molasses (black treacle), corn syrup (golden
+syrup), graham crackers (digestives), raisins (sultanas), collard greens (spring greens), jalapeño
+(green chilli), pie crust (shortcrust), and chili powder, which in the US is a blend and not ground
+chillies. Words that mean something different across the Atlantic are left out too: endive and
+frisée, biscuits, chips, jelly, candy, a bare "corn", kosher salt and shortening.
+
+**A mince is a product here.** "Mince" is one of the app's preparation words ("garlic, minced"), so
+until these rows a line for beef mince totalled with plain beef. Naming the mince rows is what stops
+that; it is the one place a row changes what an existing name totals with, and no line in the
+library said "mince" when it was measured.
+
 ---

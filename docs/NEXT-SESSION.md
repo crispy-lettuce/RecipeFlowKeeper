@@ -18,17 +18,17 @@ household decides when to merge.
 
 ---
 
-## Start here: where things stand (28 Sep 2026)
+## Start here: where things stand (29 Sep 2026)
 
 Each fact below was checked against the database, the deployed functions or `git log` when it
 was written. Check again before relying on one.
 
-**Done.** PRs 1–7d are merged and live: 7d, the paste box, was PR #35, merged 28 Sep at 21:53 UTC
-(`main`'s tests and the Pages deploy both succeeded; the household used the box on a real page the
-same evening). **7e is open and not merged** (PR #37, below): it rewrites the source check the paste box
-feeds, after that first real use showed the check calling a difference a match. It is the second
-change to `core.js` since 6b (`2026-09-28.5`; 7d made `.3`). 6c-2 was a data job, not a PR; PR #23
-is its documentation.
+**Done.** PRs 1–7e are merged and live. 7d, the paste box, was PR #35, merged 28 Sep at 21:53 UTC
+(the household used the box on a real page the same evening). 7e, PR #37, rewrote the source check the
+paste box feeds, after that first real use showed the check calling a difference a match; merged 29 Sep
+at 05:06 UTC (`main`'s tests, run 68, and the Pages deploy, run 53, both succeeded). **7f is open and not
+merged** (below): US names added to the dictionary, which was 7e's price. `core.js` is `2026-09-29.1`
+on the branch (`2026-09-28.5` on `main`). 6c-2 was a data job, not a PR; PR #23 is its documentation.
 
 **The live app:**
 
@@ -91,8 +91,7 @@ paste the source's ingredient list into, copied from the page in the browser, co
 verified and how; `docs/TEST-PLAN.md` step 36a is the household's pass on a real Kitchen Sanctuary
 page, and the one thing no session could check: **what a real copy from that page looks like.**
 
-**7e, the source check that no longer calls a difference a match (28 Sep, PR #37) — open, waiting
-for the household.** Found by the household's first real comparison (Tuscan Chicken Pasta): a source line
+**7e, the source check that no longer calls a difference a match (28 Sep, PR #37) — merged 29 Sep.** Found by the household's first real comparison (Tuscan Chicken Pasta): a source line
 listed twice, beside a compound "salt and pepper" line, showed as matched, when the recipe carried
 the doubled line once. Reproduced with the app's own functions, then probed with made-up lines:
 **the check caught one of eleven fault types**, an ingredient sharing no word with anything. The
@@ -102,11 +101,25 @@ tailored (it false-alarmed on the converter's own `1 pinch X`, and on any ingred
 across lines). It was rebuilt around **per-ingredient totals** and re-measured on data nobody wrote for
 it. **The price:** it no longer accepts "shares a word", so a US translation the dictionary lacks now
 flags — false alarms on 67 US→UK pairs went from 31% to 58%; UK sources are quiet. Growing the
-dictionary is the fix and needs the household's go-ahead (`HANDOVER.md` §7). **It is still not a
-guarantee** — §7 lists what it cannot see. The household's pass is `docs/TEST-PLAN.md` step 36b.
+dictionary is the fix (`HANDOVER.md` §7), and 7f did it. **It is still not a guarantee** — §7 lists
+what it cannot see. The household's pass is `docs/TEST-PLAN.md` step 36b.
 
-**Still open:** nothing from the seven-PR plan. The household reviews 7e and does steps 36a and 36b;
-the aisle-override proposal below is written up but not started.
+**7f, US names in the dictionary (29 Sep, PR open, not merged).** The household's answer to that price:
+"Add US translations to the dictionary". 49 rows added (90 → 139) and spellings on 15 more, by one rule:
+**one product on the shelf under two names**, never a substitute (`tools/ingredient-names-preamble.md`).
+Measured on the live library before anything shipped: 0 of 466 lines change key, so no tick is
+re-keyed; the only visible change is mangetout and pak choi moving from "Other" to Produce. False alarms
+on the 67 US→UK pairs 58% → 22%; on a second list written before the rows, 78% → 37%; on the converter
+test set's US-source test, 6 hard differences → 2. **Decisions for the household:** (1) the 15 pairs left
+flagged are substitutes or ambiguous on purpose (`HANDOVER.md` §7, 7f): say if any should be treated as
+one product; (2) `a big handful of arugula` is read as a name, not a count word — a small change to
+`shoppingLine`, re-keys nothing in the library, needs your go-ahead; (3) whole against ground
+(`coriander seeds` for `ground coriander`) is not caught, on `main` too; (4) `canned` against `tinned` is
+an adjective swap that flags: a fidelity-only fold would fix it, at no cost to ticks, if wanted.
+`docs/TEST-PLAN.md` steps 36b and 36c are the household's pass.
+
+**Still open:** nothing from the seven-PR plan. The household reviews 7f and does steps 36a, 36b and
+36c; the aisle-override proposal below is written up but not started.
 
 **Proposed, not started:** a household-editable aisle override in Settings — so moving something
 like "Sirloin Steak" out of Other is a form entry, not a code change and a PR. Raised 28 Sep after
@@ -145,7 +158,8 @@ verified and how.
 | 7b | **RLS belt and braces, leaked-password protection** | Revoke `anon`'s blanket grants and restrict every `TO public` policy to `authenticated` — done. Leaked-password protection is a dashboard toggle, not SQL, and is still off | F8 (part) | **Done**, 28 Sep, migration `rls_belt_and_braces_restrict_to_authenticated` (no PR — a database migration, not app code), documented on PR #27. Leaked-password protection is the household's own click, whenever wanted |
 | 7c | **The weekly live-backend test** | A test household, a test user, a Playwright script against the *live* app, credentials in `PrivateBackup`'s secrets | F13 | **Done**, 28 Sep. `PrivateBackup` PR #3 and #4 merged (a missing reload wait, the test script's own bug); this repo's PR #31 merged (a real app bug — `updateDiaryEntry` silently dropped a meal-type tag tapped before its insert confirmed). Run #5 proved both fixes live: 13 checks, 0 failed |
 | 7d | **The paste box for COMPARE WITH SOURCE** | Asked and answered 28 Sep: its own small PR. A textarea and COMPARE PASTED LIST under AGAINST THE SOURCE in the add/edit preview, for the two sites (18 of 34 recipes) that refuse the function with a 403. `pastedIngredientLines` in `core.js` strips tick boxes, bullets, blank lines and headings that are certainly headings, and the same `sourceFidelity` pairs what is left with the recipe's lines. No fetch, no write, no schema change; advice only, never a gate. The pasted text is kept only until the form closes | §2 and answer 4 of the architecture review (the source check for half the library); closes no numbered finding | **Done**, PR #35, merged 28 Sep 21:53 UTC. `core.js` `2026-09-28.3`. Its comparison was rewritten in 7e the same evening |
-| 7e | **The source check stops calling a difference a match** | Found 28 Sep by the household's first real comparison: a doubled source line was shown as matched. Probing found one of eleven fault types caught. `sourceFidelity` rebuilt twice (the first rebuild was tailored to the examples; see `HANDOVER.md` §7): every line of one ingredient, on either side, is one group, and the group's amounts are compared as totals per kind (mass, volume, count, a pinch), only where a difference cannot be a unit conversion, a range by both ends; the same name is exact and "the recipe says less" joins only unmatched lines; compound lines split into parts; an addition the dictionary calls the same product is a soft note, else a hard difference; every flagged pair says why and nothing is dropped. The table shows hard differences highlighted, soft notes shaded, and counts them apart. No write, no schema, no dictionary or naming change, so no tick is re-keyed | §2 and answer 4 of the architecture review (the source check itself); closes no numbered finding | **Open**, PR #37, 28 Sep — awaiting the household's review and merge. `core.js` `2026-09-28.4` |
+| 7e | **The source check stops calling a difference a match** | Found 28 Sep by the household's first real comparison: a doubled source line was shown as matched. Probing found one of eleven fault types caught. `sourceFidelity` rebuilt twice (the first rebuild was tailored to the examples; see `HANDOVER.md` §7): every line of one ingredient, on either side, is one group, and the group's amounts are compared as totals per kind (mass, volume, count, a pinch), only where a difference cannot be a unit conversion, a range by both ends; the same name is exact and "the recipe says less" joins only unmatched lines; compound lines split into parts; an addition the dictionary calls the same product is a soft note, else a hard difference; every flagged pair says why and nothing is dropped. The table shows hard differences highlighted, soft notes shaded, and counts them apart. No write, no schema, no dictionary or naming change, so no tick is re-keyed | §2 and answer 4 of the architecture review (the source check itself); closes no numbered finding | **Done**, PR #37, merged 29 Sep 05:06 UTC. `core.js` `2026-09-28.5` |
+| 7f | **US names in the dictionary** | The household's answer to 7e's price, 29 Sep: 49 rows and 15 rows' spellings, by the rule one product on the shelf under two names. Also one reader function (`dictionaryPhrases`) so the index and the tests read a row the same way, which fixed `confectioners' sugar` never having worked as a spelling. Read-only re-measure on the live library: 0 of 466 lines change key; mangetout and pak choi file under Produce. No schema, no write, no change to `shoppingLine` | 7e's price, `HANDOVER.md` §7 | **Open**, awaiting the household's review and merge. `core.js` `2026-09-29.1` |
 
 ### PR 6 reviewed against what came after it (25 Sep)
 
@@ -205,16 +219,16 @@ and open a pull request when the work is tested.
 Please read these first, in this order:
 
   docs/DOCUMENT-INDEX.md                  — the map of all documentation
-  docs/NEXT-SESSION.md                    — "Start here" first; PR 7 (Sharing), 7a-7d, is done, and 7e is open
+  docs/NEXT-SESSION.md                    — "Start here" first; PR 7 (Sharing), 7a-7e, is done, and 7f is open
   docs/REVIEW-ARCHITECTURE-FINDINGS.md    — §0 and the findings the PR closes
   docs/HANDOVER.md                        — verified status
   docs/ARCHITECTURE.md                    — how the app and its recipe format work
   CLAUDE.md                               — applies in full
 
-THE TASK: PR 7 (Sharing, 7a-7d) is entirely done and merged — nothing of
-it needs picking up. 7e (the source check that stopped calling a difference
-a match) was built and opened on 28 Sep for me to review: check its state
-on GitHub before assuming it has merged. Nothing else is in the plan; the
+THE TASK: PR 7 (Sharing, 7a-7e) is entirely done and merged — nothing of
+it needs picking up. 7f (US names added to the dictionary) was built and
+opened on 29 Sep for me to review: check its state on GitHub before
+assuming it has merged. Nothing else is in the plan; the
 aisle-override proposal (docs/PROPOSAL-AISLE-OVERRIDES.md) is written up
 but not started, so ask what to work on.
 Follow the first three sections of CLAUDE.md to the letter, and don't
