@@ -12,7 +12,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 312 automated checks pass, plus 129 in Node (102 when this was
+story that used to open this paragraph is history. 329 automated checks pass, plus 133 in Node (102 when this was
 written). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -340,6 +340,22 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     clear, or whether it is noise. **Afterwards:** delete the made-up recipes and, in Settings, Word Matches,
     FORGET what steps 1 and 2 wrote (they show there as a source match, a kept-apart pair and an ingredient match).
     **The one thing no test can judge is whether the buttons are easy to hit on the tablet.**
+
+36f. **The comparison recorded on the recipe (new 29 Sep, PR 5 of the add-recipe plan).** **Do this only after the
+    SQL in `docs/migrations/add-recipes-source-check.md` has been applied and the PR merged.** It writes one recipe row
+    per save, so use one recipe you do not mind, and it is replaced by the next comparison. (1) *Open any recipe:* a small
+    chip beside its source link should say NOT COMPARED WITH ITS SOURCE (every one will, to begin with), and the two
+    reconstructed ones (the oat bars, the loaded fries) should also say CARRIES A SOURCE NOTE, in red. **The cards should
+    show nothing of this.** (2) *Edit a recipe that has a source link,* press COMPARE WITH SOURCE (or paste the page's list
+    and press COMPARE PASTED LIST), then look at BEFORE YOU SAVE: it should say "Records: compared with the source today"
+    with the number of differences. Save; the chip should now say COMPARED with today's date and that number. (3) *Edit
+    it again:* the SOURCE section should show that result with RE-CHECK, and **opening Edit should not fetch the page.**
+    (4) *Change an ingredient line and save without comparing:* the chip should say COMPARED BEFORE THE INGREDIENTS
+    CHANGED. Change only a keyword or a method step and save: the chip should not change. (5) *A recipe from a site that
+    refuses the check:* BEFORE YOU SAVE should say "not compared with its source", and the chip after saving should say
+    the same. (6) *Export,* and glance at the file: each compared recipe carries a small `sourceCheck` with counts and a
+    hash, and **no ingredient text from the page**. **The one thing no test can judge is whether the chip reads clearly
+    beside the link on the tablet.**
 
 ## Deferred to the tablet, after merging
 

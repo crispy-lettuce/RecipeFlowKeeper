@@ -779,6 +779,38 @@ check('changedHeaderKeys counts a line that would be added or dropped, not one t
       && hkVariants.every(v => (core.changedHeaderKeys(hkText, { ...hkFields, ...v }).length > 0) === (core.withUpdatedHeaderLines(hkText, { ...hkFields, ...v }) !== hkText)),
       JSON.stringify(hkVariants.map(v => core.changedHeaderKeys(hkText, { ...hkFields, ...v }))));
 
+/* PR 5: what a recorded comparison is of, and what it found. Invented recipe and lines. */
+const pvText = (tags, extra, spice) => ['TITLE: Lentil Soup', 'SOURCE: Blue Door Bakery', 'SERVINGS: 4', ...extra, 'TAGS: ' + tags, '',
+  'GROUP a:', '2 onions, diced', spice, '200 g red lentils', '', 'STAGE:', 'MERGE a -> done: Simmer until soft [20 min]'].join('\n');
+const pvLinesOf = t => { const p = core.parseRecipe(t); const un = new Set((p.unread || []).map(u => u.line)); return p.groups.flatMap(g => g.items).filter(l => !un.has(l)); };
+const pvBase = pvText('course=Main, one pan', [], '3 tsp ground caraway');
+const pvKeyword = pvText('course=Main, one pan, slow', ['TIME: 35 min'], '3 tsp ground caraway').replace('Simmer until soft', 'Simmer gently until soft');
+const pvLine = pvBase.replace('200 g red lentils', '250 g red lentils');
+check('linesHash changes when an ingredient line changes, and not when a keyword, a header or a step does',
+      /^[0-9a-f]{8}$/.test(core.linesHash(pvLinesOf(pvBase)))
+      && core.linesHash(pvLinesOf(pvBase)) === core.linesHash(pvLinesOf(pvKeyword))
+      && core.linesHash(pvLinesOf(pvBase)) !== core.linesHash(pvLinesOf(pvLine)),
+      [core.linesHash(pvLinesOf(pvBase)), core.linesHash(pvLinesOf(pvKeyword)), core.linesHash(pvLinesOf(pvLine))].join(' '));
+const pvLines = pvLinesOf(pvBase);
+const pvCheck = { at: '2026-09-29T10:00:00.000Z', route: 'function', hard: 3, soft: 1, sourceLines: 9, linesHash: core.linesHash(pvLines) };
+const pvFresh = core.sourceCheckStatus(pvCheck, pvLines);
+const pvStale = core.sourceCheckStatus(pvCheck, pvLinesOf(pvLine));
+check('sourceCheckStatus says fresh for the lines that were compared, stale once one has changed, and none for nothing usable',
+      pvFresh.state === 'fresh' && pvFresh.hard === 3 && pvFresh.soft === 1 && pvFresh.sourceLines === 9 && pvFresh.route === 'function' && pvFresh.at === pvCheck.at
+      && pvStale.state === 'stale' && pvStale.hard === 3
+      && [null, undefined, {}, 'text', 5, { linesHash: '' }, { linesHash: 5 }].every(c => core.sourceCheckStatus(c, pvLines).state === 'none'),
+      JSON.stringify([pvFresh, pvStale]));
+const fcOf = (src, rec) => core.fidelityCounts(core.sourceFidelity(src, rec));
+check('fidelityCounts is the "N to look at": lines on one side only and pairs that differ, one flagged group counting once',
+      JSON.stringify(fcOf(['2 onions', '200 g red lentils', '3 tsp caraway', '400 g tin tomatoes'], ['2 onions', '250 g red lentils', '3 tsp ground caraway', '1 leek'])) === '{"hard":3,"soft":0}'
+      && JSON.stringify(fcOf(['2 onions', '200 g red lentils'], ['2 onions', '200 g red lentils'])) === '{"hard":0,"soft":0}'
+      && JSON.stringify(fcOf(['200 g red lentils'], ['100 g red lentils', '50 g red lentils'])) === '{"hard":1,"soft":0}',
+      JSON.stringify(fcOf(['200 g red lentils'], ['100 g red lentils', '50 g red lentils'])));
+check('fidelityCounts counts the shaded notes apart, and they are never in the count to look at',
+      JSON.stringify(fcOf(['7 ml soy sauce', '2 onions'], ['7 ml light soy sauce', '2 onions'])) === '{"hard":0,"soft":1}'
+      && JSON.stringify(fcOf(['7 ml soy sauce', '2 onions'], ['7 ml light soy sauce', '2 onions', '1 leek'])) === '{"hard":1,"soft":1}',
+      JSON.stringify(fcOf(['7 ml soy sauce', '2 onions'], ['7 ml light soy sauce', '2 onions', '1 leek'])));
+
 /* Six rows, not five: the leek under the misspelt GROUP x-y is still read, into
    the group above; only the GROUP line itself is reported as read past. */
 const { remeasure } = require(path.join(ROOT, 'tools', 'remeasure.js'));

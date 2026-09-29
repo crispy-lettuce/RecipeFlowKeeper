@@ -355,8 +355,9 @@ PR 8 after 5 and 6. One behaviour per PR; a smaller PR is always fine.
 2. Run `node test/core.test.js`, then `node test/build.js && node test/smoke.js`, and read `echo $?`
    after each. Write the counts down. On 29 Sep they were **109** and **280**, and **116** and **280**
    once PR 1 was on its branch (it added seven checks and rewrote one), **126** and **292** once PR 3 was
-   (ten Node checks; eleven browser checks and one more for Edit), and **129** and **312** once PR 4 was
-   (three Node checks for `changedHeaderKeys`; twenty browser checks); if the exit code is
+   (ten Node checks; eleven browser checks and one more for Edit), **129** and **312** once PR 4 was
+   (three Node checks for `changedHeaderKeys`; twenty browser checks), and **133** and **329** once PR 5 was
+   (four Node checks; seventeen browser checks); if the exit code is
    not 0 before you change anything, stop (§11).
 3. Read the PR's entry below, then the functions it names, in the code. If a name is not there,
    stop (§11).
@@ -589,6 +590,39 @@ with null`; `the viewer shows NOT COMPARED for a recipe with none`.
 
 **Risk.** Medium: a schema change and the row allowlist. The migration is a one-line `ALTER TABLE`;
 `hydrate()` needs nothing (`select('*')` returns the column). The stub gets the column too.
+
+**Built as, 29 Sep (where the code differs from the text above, and why):**
+
+- **The migration is `docs/migrations/add-recipes-source-check.md`,** the one `ALTER TABLE` with its check and its undo,
+  on a markdown page because `.gitignore` excludes `*.sql` on purpose. **A session did not apply it;** the household applies it before merging, and the live database was read
+  (29 Sep, read-only) to have no `source_check` column, 34 recipes and 0 ticks.
+- **`source_check` is sent only when the recipe has one, not as `null` on every save.** The entry's browser check says a
+  save without a comparison "pushes null"; it now says it sends no key. The reason is the merge order: sent as `null`
+  every time, merging before the column exists would make every recipe save fail, and the write queue resends a failed
+  write, so nothing could be saved. Sent only when set, an early merge breaks only the first save that carries a
+  comparison. In a batch a row without the key is written as null, so the values written are the same. The household
+  should still apply the SQL first.
+- **Edit does not fetch the source page on opening,** as in PR 3. §5 reads as though it should run the check by itself
+  unless a fresh result is stored. That would fetch the page for every recipe opened, until each has been compared and
+  saved once (34 of them at the start), and would reverse a PR 3 check ("opening it fetches nothing"). Edit instead shows
+  what is stored: the result with RE-CHECK when the ingredient lines are the ones compared, "before the ingredients
+  changed" when they are not, and "not compared yet" when nothing is. **Decision for the household:** whether Edit should
+  run the check on opening. It is a small follow-up. (Pressing RE-CHECK on the stale bar, which re-reads the text, still
+  checks a link not yet fetched for, as PR 3 says; a comparison that then runs is recorded by the save.)
+- **Two pure functions in `core.js` that the entry does not name:** `fidelityCounts` (the count recorded is the count
+  the table shows) and `sourceCheckStatus` (one rule for fresh, stale and none, read by the chip, Edit and BEFORE YOU
+  SAVE). `core.js` is `2026-09-29.5` in all three places.
+- **The chip sits in its own element, `#viewerProvenance`, under `#viewerMeta`,** so the checks that read the meta line
+  are unaffected. It is viewer only. NOT COMPARED shows for every recipe with none, personal ones included, as the entry
+  says; BEFORE YOU SAVE, by contrast, says "not compared" only when there is an `https` link it could have been compared
+  against, and says nothing about a recipe that already carries a result (the save keeps it).
+- **What is recorded is the comparison last drawn in the form.** A redraw against the lines as they are now (after a
+  re-parse) replaces it, so the hash is always of the lines the table was of. A comparison run and then followed by an
+  edit to the lines reads "compared, but the ingredients changed since".
+- **A known limit, not built:** the value has no URL, as the entry's shape says. Changing the source link and saving
+  without comparing again keeps a result that was about the old page.
+- **All 312 existing smoke checks and 129 Node checks passed unchanged** against the new code before any new check was
+  added, so no check had to be amended (no §11 item 2 this time).
 
 ### PR 6 — Aisle overrides
 

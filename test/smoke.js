@@ -1320,6 +1320,305 @@ const check = (name, pass, detail) => {
   });
   await page.waitForTimeout(200);
 
+  /* ---- The comparison recorded on the recipe (PR 5 of the add-recipe plan, 29 Sep 2026) ----
+     A comparison with the source page is remembered by the form and written by SAVE, as source_check:
+     the counts and a hash of the ingredient lines it was of, never the page's text or a pasted list.
+     The viewer says what is recorded beside the source link, and an edited recipe says its comparison
+     was of the lines before. Invented recipes on example.test, removed again at the end. */
+  await page.evaluate(() => {
+    window.__INVOKES__.length = 0;
+    window.__PV_SOURCE__ = [];
+    window.__INVOKE_REPLY__ = call => call.name === 'source-ingredients'
+      ? { data: { pageUrl: call.body.pageUrl, name: 'Prov', ingredients: window.__PV_SOURCE__ }, error: null }
+      : { data: null, error: null };
+    const L = ['2 onions, diced', '200 g red lentils'];
+    const chk = (hard, lines) => ({ at: new Date().toISOString(), route: 'function', hard, soft: 0, sourceLines: lines.length, linesHash: linesHash(lines) });
+    const mk = (id, title, check) => ({ id, title, source: 'Blue Door Bakery', sourceUrl: 'https://example.test/' + id, servings: 4,
+      tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-09-05', sourceCheck: check,
+      syntax: ['TITLE: ' + title, 'SOURCE: Blue Door Bakery', 'SOURCE_URL: https://example.test/' + id, 'SERVINGS: 4', '', 'GROUP a:', ...L, '', 'STAGE:', 'MERGE a -> done: Cook [5 min]'].join('\n') });
+    loadRecipes().push(mk('pv-none', 'Prov None', null), mk('pv-ok', 'Prov Clear', chk(0, L)), mk('pv-one', 'Prov One', chk(1, L)),
+      mk('pv-three', 'Prov Three', chk(3, L)), mk('pv-stale', 'Prov Stale', chk(0, ['2 onions, diced', '250 g red lentils'])), mk('pv-re', 'Prov Recheck', chk(0, L)));
+  });
+  const pvL = ['2 onions, diced', '200 g red lentils'];
+  // The source page's list, or a refusal: what the stub answers source-ingredients with from here.
+  const pvReply = list => page.evaluate(l => { window.__PV_SOURCE__ = l || []; window.__INVOKE_REPLY__ = call => call.name === 'source-ingredients'
+    ? (l ? { data: { pageUrl: call.body.pageUrl, name: 'Prov', ingredients: window.__PV_SOURCE__ }, error: null } : { data: null, error: { message: 'refused' } })
+    : { data: null, error: null }; }, list);
+  const pvHash = await page.evaluate(l => linesHash(l), pvL);
+  const pvRows = mark => page.evaluate(m => window.__WRITES__.slice(m).filter(w => w.table === 'recipes').flatMap(w => w.rows || []), mark);
+  const pvWhen = id => page.evaluate(i => { const c = loadRecipes().find(r => r.id === i).sourceCheck; return c ? formatDate(isoLocal(new Date(c.at))) : ''; }, id);
+  const pvChips = async id => {
+    await page.evaluate(i => openRecipe(i, 'recipes'), id);
+    await page.waitForTimeout(200);
+    return page.evaluate(() => [...document.querySelectorAll('#viewerProvenance .prov-chip')].map(c => ({ text: c.textContent, cls: c.className.replace('prov-chip ', '') })));
+  };
+  const pvStored = () => page.evaluate(() => ({ text: (document.getElementById('sourceStored') || { textContent: '' }).textContent.replace(/\s+/g, ' ').trim(), recheck: !!document.getElementById('sourceRecheckBtn') }));
+
+  // What the viewer says.
+  const pvNone = await pvChips('pv-none');
+  const pvOk = await pvChips('pv-ok');
+  const pvOne = await pvChips('pv-one');
+  const pvThree = await pvChips('pv-three');
+  const pvStale = await pvChips('pv-stale');
+  await page.evaluate(() => { showView('recipes'); renderHome(); });
+  await page.waitForTimeout(250);
+  const pvCards = await page.evaluate(() => [...document.querySelectorAll('.rcard')].some(c => /COMPARED|SOURCE NOTE/i.test(c.textContent)));
+  check('the viewer shows NOT COMPARED for a recipe with none, and the cards show nothing of it',
+        pvNone.length === 1 && pvNone[0].text === 'NOT COMPARED WITH ITS SOURCE' && pvNone[0].cls === 'prov-none' && !pvCards, JSON.stringify([pvNone, pvCards]));
+  const pvWhenOk = (await pvWhen('pv-ok')).toUpperCase(), pvWhenOne = (await pvWhen('pv-one')).toUpperCase(), pvWhenThree = (await pvWhen('pv-three')).toUpperCase();
+  check('the chip says what was found: no differences, one difference, three differences; and it says so when the ingredients have changed since',
+        pvOk[0].text === `COMPARED ${pvWhenOk} · NO DIFFERENCES` && pvOk[0].cls === 'prov-ok'
+        && pvOne[0].text === `COMPARED ${pvWhenOne} · 1 DIFFERENCE` && pvOne[0].cls === 'prov-warn'
+        && pvThree[0].text === `COMPARED ${pvWhenThree} · 3 DIFFERENCES` && pvThree[0].cls === 'prov-warn'
+        && pvStale[0].text === 'COMPARED BEFORE THE INGREDIENTS CHANGED' && pvStale[0].cls === 'prov-stale',
+        JSON.stringify([pvOk, pvOne, pvThree, pvStale]));
+  await page.evaluate(() => { const r = loadRecipes().find(x => x.id === 'pv-none'); r.syntax += '\n\nNOTES:\n⚠️ Source note: the page could not be read, so this recipe was reconstructed from another page.'; });
+  const pvNoteRed = await pvChips('pv-none');
+  await page.evaluate(() => { const r = loadRecipes().find(x => x.id === 'pv-none'); r.syntax = r.syntax.replace(/could not be read, so this recipe was reconstructed from another page/, 'gives two different oven times'); });
+  const pvNotePlain = await pvChips('pv-none');
+  await page.evaluate(() => { const r = loadRecipes().find(x => x.id === 'pv-none'); r.syntax = r.syntax.replace(/\n\nNOTES:\n.*$/s, ''); });
+  const pvNoNote = await pvChips('pv-none');
+  check('a source note shows as its own chip, red when the note says the page was not read, and no chip without one',
+        pvNoteRed.length === 2 && pvNoteRed[1].text === 'CARRIES A SOURCE NOTE' && pvNoteRed[1].cls === 'prov-red'
+        && pvNotePlain.length === 2 && pvNotePlain[1].cls === 'prov-note' && pvNoNote.length === 1, JSON.stringify([pvNoteRed, pvNotePlain, pvNoNote]));
+
+  // The row both ways, and the key.
+  const pvRowShape = await page.evaluate(() => {
+    const sc = { at: '2026-09-01T10:00:00.000Z', route: 'pasted', hard: 2, soft: 1, sourceLines: 5, linesHash: 'abcd1234' };
+    const mk = extra => ({ id: 'x', title: 'X', source: 'S', servings: 4, syntax: 'TITLE: X', tags: { course: '', keywords: [] }, ...extra });
+    return { withOne: recipeToRow(mk({ sourceCheck: sc })), without: recipeToRow(mk({})), nulled: recipeToRow(mk({ sourceCheck: null })),
+      back: rowToRecipe({ id: 'x', source_check: sc }, {}).sourceCheck, backNone: rowToRecipe({ id: 'y' }, {}).sourceCheck, backNull: rowToRecipe({ id: 'z', source_check: null }, {}).sourceCheck, sc };
+  });
+  check('the row carries source_check both ways, and a recipe with none leaves the key out',
+        JSON.stringify(pvRowShape.withOne.source_check) === JSON.stringify(pvRowShape.sc) && !('source_check' in pvRowShape.without) && !('source_check' in pvRowShape.nulled)
+        && JSON.stringify(pvRowShape.back) === JSON.stringify(pvRowShape.sc) && pvRowShape.backNone === null && pvRowShape.backNull === null, JSON.stringify(pvRowShape));
+
+  // On Edit: the stored result, with RE-CHECK, and nothing fetched on opening.
+  await page.evaluate(() => { window.__INVOKES__.length = 0; });
+  await page.evaluate(() => openEditModal('pv-ok'));
+  await page.waitForTimeout(300);
+  const pvEditOk = await pvStored();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  await page.evaluate(() => openEditModal('pv-stale'));
+  await page.waitForTimeout(300);
+  const pvEditStale = await pvStored();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  await page.evaluate(() => openEditModal('pv-none'));
+  await page.waitForTimeout(300);
+  const pvEditNone = await pvStored();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  await page.evaluate(() => openEditModal('pv-three'));
+  await page.waitForTimeout(300);
+  const pvEditThree = await pvStored();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  const pvWhenOkRaw = await pvWhen('pv-ok'), pvWhenStaleRaw = await pvWhen('pv-stale');
+  check('Edit shows the stored result with RE-CHECK when the lines are the ones compared, says so when they have changed, says none when none, and fetches nothing',
+        pvEditOk.text === `Compared ${pvWhenOkRaw} · no differences. RE-CHECK` && pvEditOk.recheck
+        && pvEditStale.text === `Compared ${pvWhenStaleRaw}, before the ingredients changed. RE-CHECK` && pvEditStale.recheck
+        && pvEditNone.text === 'Not compared with its source yet.' && !pvEditNone.recheck
+        && pvEditThree.text === `Compared ${await pvWhen('pv-three')} · 3 differences. RE-CHECK`
+        && (await page.evaluate(() => window.__INVOKES__.length)) === 0, JSON.stringify([pvEditOk, pvEditStale, pvEditNone, pvEditThree]));
+
+  // RE-CHECK reads the page again, and a save then records the new result.
+  await pvReply(['2 onions, diced', '200 g red lentils', '3 tsp caraway']);
+  await page.evaluate(() => { window.__INVOKES__.length = 0; });
+  await page.evaluate(() => openEditModal('pv-re'));
+  await page.waitForTimeout(300);
+  const pvMarkRe = await anMark();
+  await anClick('#sourceRecheckBtn');
+  await page.waitForTimeout(400);
+  const pvReAfter = await page.evaluate(() => ({ calls: window.__INVOKES__.filter(c => c.name === 'source-ingredients').map(c => c.body.pageUrl), stored: document.getElementById('sourceStored').textContent.trim(),
+    hint: (document.querySelector('#sourceCompareOut .hint') || { textContent: '' }).textContent.slice(0, 20) }));
+  const pvReBand = await anBeforeSave();
+  const pvReWrites = (await anSince(pvMarkRe)).length;
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const pvReRow = (await pvRows(pvMarkRe)).pop() || {};
+  const pvReChip = await page.evaluate(() => [...document.querySelectorAll('#viewerProvenance .prov-chip')].map(c => c.textContent));
+  check('RE-CHECK reads the page again, replaces the stored line, and a save then records the new result',
+        pvReAfter.calls.join() === 'https://example.test/pv-re' && pvReAfter.stored === '' && /^1 to look at/.test(pvReAfter.hint)
+        && pvReBand.includes('Records: compared with the source today, 1 difference') && pvReWrites === 0
+        && pvReRow.source_check && pvReRow.source_check.route === 'function' && pvReRow.source_check.hard === 1 && pvReRow.source_check.sourceLines === 3 && pvReRow.source_check.linesHash === pvHash
+        && /· 1 DIFFERENCE$/.test(pvReChip[0] || ''), JSON.stringify([pvReAfter, pvReBand, pvReRow.source_check, pvReChip]));
+
+  // Editing an ingredient line, and a keyword. The save keeps what was recorded either way.
+  const pvOkBefore = await page.evaluate(() => JSON.stringify(loadRecipes().find(r => r.id === 'pv-ok').sourceCheck));
+  await pvReply(null);   // RE-CHECK re-reads the text, which checks a link not yet fetched for; here the page refuses, so no new comparison
+  await page.evaluate(() => openEditModal('pv-ok'));
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { const ta = document.getElementById('importInput'); ta.value = ta.value.replace('200 g red lentils', '250 g red lentils'); ta.dispatchEvent(new Event('input', { bubbles: true })); });
+  await anClick('#recheckBtn');
+  await page.waitForTimeout(300);
+  const pvEditedNote = (await pvStored()).text;
+  const pvMarkEd = await anMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const pvEdRow = (await pvRows(pvMarkEd)).pop() || {};
+  const pvEdChip = await page.evaluate(() => [...document.querySelectorAll('#viewerProvenance .prov-chip')].map(c => c.textContent));
+  check('editing an ingredient line makes the chip say the ingredients changed, and the save kept what was recorded',
+        /before the ingredients changed/.test(pvEditedNote) && JSON.stringify(pvEdRow.source_check) === pvOkBefore && pvEdChip[0] === 'COMPARED BEFORE THE INGREDIENTS CHANGED', JSON.stringify([pvEditedNote, pvEdChip]));
+  await page.evaluate(() => openEditModal('pv-one'));
+  await page.waitForTimeout(300);
+  await page.fill('#f-keywords', 'sumac-night');
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const pvKwChip = await page.evaluate(() => [...document.querySelectorAll('#viewerProvenance .prov-chip')].map(c => c.textContent));
+  check('a keyword edit does not make the comparison stale',
+        pvKwChip.length === 1 && pvKwChip[0] === `COMPARED ${pvWhenOne} · 1 DIFFERENCE`, JSON.stringify(pvKwChip));
+
+  // A new recipe: a comparison that ran is recorded by the save, and by nothing before it.
+  await page.evaluate(() => { showView('recipes'); renderHome(); window.__INVOKES__.length = 0; });
+  await pvReply(['2 onions, diced', '200 g red lentils', '3 tsp caraway']);
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+  const pvMarkAdd = await anMark();
+  await rvPaste(anText('Prov Add', 'Blue Door Bakery', pvL, ['SOURCE_URL: https://example.test/pv-add']));
+  await page.waitForTimeout(400);
+  const pvAddBefore = await page.evaluate(() => ({ hint: (document.querySelector('#sourceCompareOut .hint') || { textContent: '' }).textContent.slice(0, 20) }));
+  const pvAddBand = await anBeforeSave();
+  const pvAddWrites = (await anSince(pvMarkAdd)).length;
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const pvAddRow = (await pvRows(pvMarkAdd)).pop() || {};
+  const pvAddSc = pvAddRow.source_check || {};
+  check('a comparison alone writes nothing, and a save after a comparison pushes source_check with the counts and hash',
+        /^1 to look at/.test(pvAddBefore.hint) && pvAddBand.includes('Records: compared with the source today, 1 difference') && pvAddWrites === 0
+        && pvAddSc.route === 'function' && pvAddSc.hard === 1 && pvAddSc.soft === 0 && pvAddSc.sourceLines === 3 && pvAddSc.linesHash === pvHash && !isNaN(Date.parse(pvAddSc.at))
+        && Object.keys(pvAddSc).sort().join() === 'at,hard,linesHash,route,soft,sourceLines', JSON.stringify([pvAddBefore, pvAddBand, pvAddWrites, pvAddSc]));
+
+  // A comparison that could not run records nothing, and the save sends no source_check.
+  await pvReply(null);
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+  const pvMarkNo = await anMark();
+  await rvPaste(anText('Prov Refused', 'Blue Door Bakery', pvL, ['SOURCE_URL: https://example.test/pv-refused']));
+  await page.waitForTimeout(400);
+  const pvNoBand = await anBeforeSave();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const pvNoRow = (await pvRows(pvMarkNo)).pop() || {};
+  check('a save without a comparison sends no source_check, so it works before the column exists, and the form says it is not compared',
+        pvNoBand.includes('Records: not compared with its source') && pvNoRow.title === 'Prov Refused' && !('source_check' in pvNoRow), JSON.stringify([pvNoBand, Object.keys(pvNoRow)]));
+
+  // The pasted route: recorded as pasted, counted, and the pasted text is stored nowhere.
+  await page.evaluate(() => { window.__INVOKE_REPLY__ = null; });
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+  const pvMarkPaste = await anMark();
+  await rvPaste(anText('Prov Pasted', 'Blue Door Bakery', pvL));
+  await page.fill('#sourcePasteInput', ['2 onions, diced', '200 g red lentils', '1 pinch qzx-marker'].join('\n'));
+  await anClick('#comparePastedBtn');
+  await page.waitForTimeout(300);
+  const pvPasteBand = await anBeforeSave();
+  const pvPasteWrites = (await anSince(pvMarkPaste)).length;
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const pvPasteWritesAll = await page.evaluate(m => JSON.stringify(window.__WRITES__.slice(m)), pvMarkPaste);
+  const pvPasteRow = (await pvRows(pvMarkPaste)).pop() || {};
+  check('the pasted route is recorded as pasted with the count of its lines, and the pasted text is stored nowhere',
+        pvPasteBand.includes('Records: compared with the source today, 1 difference') && pvPasteWrites === 0
+        && pvPasteRow.source_check && pvPasteRow.source_check.route === 'pasted' && pvPasteRow.source_check.sourceLines === 3 && pvPasteRow.source_check.hard === 1
+        && !/qzx-marker/.test(pvPasteWritesAll), JSON.stringify([pvPasteBand, pvPasteRow.source_check]));
+
+  // An answer that arrives after the form has gone, or for a link that has since changed, must not be recorded against the wrong recipe.
+  const pvSlow = ms => page.evaluate(m => { window.__INVOKE_REPLY__ = call => call.name !== 'source-ingredients' ? { data: null, error: null }
+    : new Promise(res => setTimeout(() => res({ data: { pageUrl: call.body.pageUrl, name: 'Slow', ingredients: /pv-slow|pv-race-a/.test(call.body.pageUrl)
+        ? ['2 onions, diced', '200 g red lentils', '3 tsp caraway'] : ['2 onions, diced', '200 g red lentils'] }, error: null }), /pv-slow|pv-race-a/.test(call.body.pageUrl) ? m : 0)); }, ms);
+  await pvSlow(900);
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+  const pvMarkSlow = await anMark();
+  await rvPaste(anText('Prov Slow', 'Blue Door Bakery', pvL, ['SOURCE_URL: https://example.test/pv-slow']));
+  await page.click('#saveBtn');          // saved before the page has answered
+  await page.waitForTimeout(1100);       // and now it answers, to a form that has gone
+  const pvSlowRow = (await pvRows(pvMarkSlow)).pop() || {};
+  await pvReply(null);
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+  const pvMarkAfter = await anMark();
+  await rvPaste(anText('Prov After', 'Blue Door Bakery', pvL));
+  const pvAfterBand = await anBeforeSave();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const pvAfterRow = (await pvRows(pvMarkAfter)).pop() || {};
+  check('an answer that arrives after the form has closed is dropped, not carried into the next recipe',
+        pvSlowRow.title === 'Prov Slow' && !('source_check' in pvSlowRow) && pvAfterRow.title === 'Prov After' && !('source_check' in pvAfterRow)
+        && !pvAfterBand.some(l => /^Records:/.test(l)), JSON.stringify([Object.keys(pvSlowRow), pvAfterBand, Object.keys(pvAfterRow)]));
+  await pvSlow(900);
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+  const pvMarkRace = await anMark();
+  await rvPaste(anText('Prov Race', 'Blue Door Bakery', pvL, ['SOURCE_URL: https://example.test/pv-race-a']));
+  await page.fill('#f-source-url', 'https://example.test/pv-race-b');
+  await page.locator('#f-source-url').dispatchEvent('change');
+  await page.waitForTimeout(1300);       // the newer link answered at once; the older answers after it
+  const pvRaceHint = await page.evaluate(() => (document.querySelector('#sourceCompareOut .hint') || { textContent: '' }).textContent.slice(0, 40));
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const pvRaceRow = (await pvRows(pvMarkRace)).pop() || {};
+  check('an older answer for a link that has since changed does not replace the newer comparison',
+        /^Every ingredient found its match/.test(pvRaceHint) && pvRaceRow.source_check && pvRaceRow.source_check.hard === 0 && pvRaceRow.source_url === 'https://example.test/pv-race-b',
+        JSON.stringify([pvRaceHint, pvRaceRow.source_check, pvRaceRow.source_url]));
+
+  // The same link answering into a different form (here Edit of a recipe that has that link) is dropped too: the link alone cannot tell the two forms apart.
+  await page.evaluate(() => {
+    loadRecipes().push({ id: 'pv-same', title: 'Prov Same', source: 'Blue Door Bakery', sourceUrl: 'https://example.test/pv-slow', servings: 4, tags: { course: '', keywords: [] },
+      history: [], dateAdded: '2026-09-05', sourceCheck: null,
+      syntax: 'TITLE: Prov Same\nSOURCE: Blue Door Bakery\nSOURCE_URL: https://example.test/pv-slow\nSERVINGS: 4\n\nGROUP a:\n2 onions, diced\n200 g red lentils\n\nSTAGE:\nMERGE a -> done: Cook [5 min]' });
+  });
+  await pvSlow(900);
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+  await rvPaste(anText('Prov Gone', 'Blue Door Bakery', pvL, ['SOURCE_URL: https://example.test/pv-slow']));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(100);
+  await page.evaluate(() => openEditModal('pv-same'));
+  await page.waitForTimeout(1200);       // the first form's answer lands while Edit, with the same link, is open
+  const pvSameBand = await anBeforeSave();
+  const pvSameOut = await page.evaluate(() => document.getElementById('sourceCompareOut').textContent.trim());
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  check('an answer for the same link that arrives in a different form is dropped too',
+        pvSameBand.includes('Records: not compared with its source') && !pvSameBand.some(l => /^Records: compared/.test(l)) && pvSameOut === '', JSON.stringify([pvSameBand, pvSameOut]));
+
+  // The four things BEFORE YOU SAVE can say about it, and when it says nothing.
+  await pvReply(['2 onions, diced', '200 g red lentils']);
+  await page.click('#openAddBtn');
+  await page.waitForTimeout(300);
+  await rvPaste(anText('Prov Band', 'Blue Door Bakery', pvL, ['SOURCE_URL: https://example.test/pv-band']));
+  await page.waitForTimeout(400);
+  const pvBandClear = await anBeforeSave();
+  await page.evaluate(() => { const ta = document.getElementById('importInput'); ta.value = ta.value.replace('200 g red lentils', '250 g red lentils'); ta.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.waitForTimeout(350);
+  const pvBandChanged = await anBeforeSave();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  await page.evaluate(() => openEditModal('pv-ok'));
+  await page.waitForTimeout(300);
+  const pvBandEdit = await anBeforeSave();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  check('BEFORE YOU SAVE says what the save records about the comparison, in its four wordings, and nothing for a recipe that already carries one',
+        pvBandClear.includes('Records: compared with the source today, no differences')
+        && pvBandChanged.includes('Records: compared with the source, but the ingredients changed since')
+        && pvNoBand.includes('Records: not compared with its source') && pvReBand.includes('Records: compared with the source today, 1 difference')
+        && !pvBandEdit.some(l => /^Records:/.test(l)), JSON.stringify([pvBandClear, pvBandChanged, pvBandEdit]));
+
+  await page.evaluate(() => {
+    for(let i = loadRecipes().length - 1; i >= 0; i--){
+      const r = loadRecipes()[i];
+      if(String(r.id).startsWith('pv-') || ['Prov Add', 'Prov Refused', 'Prov Pasted', 'Prov Slow', 'Prov After', 'Prov Race'].includes(r.title)) loadRecipes().splice(i, 1);
+    }
+    cache.keywords = cache.keywords.filter(k => k !== 'sumac-night');
+    window.__INVOKES__.length = 0; window.__INVOKE_REPLY__ = null;
+    showView('recipes'); renderHome();
+  });
+  await page.waitForTimeout(250);
+
   // P1: per-entry planner servings drive the shopping list.
   await page.click('.navlink[data-view="planner"]');
   await page.waitForTimeout(350);
@@ -2456,6 +2755,56 @@ const check = (name, pass, detail) => {
   check('and replaces the plan, groups and shortlist the same way',
         [imp.plan, imp.groups, imp.shortlist].every(t => t.some(w => w.op === 'delete')),
         JSON.stringify({ plan: imp.plan, groups: imp.groups, shortlist: imp.shortlist }));
+
+  /* PR 5: a backup carries source_check on each recipe that has one, and restoring it puts it back; an older backup
+     without it imports as none. The real export button and the real import, through a file. Two invented recipes are
+     added to the library for it and taken out again. */
+  const impHash = await page.evaluate(l => linesHash(l), ['2 onions, diced', '200 g red lentils']);
+  const impCheck = { at: '2026-09-01T10:00:00.000Z', route: 'function', hard: 2, soft: 1, sourceLines: 5, linesHash: impHash };
+  await page.evaluate(c => {
+    const mk = (id, sc) => ({ id, title: 'Imp ' + id, source: 'Blue Door Bakery', sourceUrl: '', servings: 4, tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-09-06', sourceCheck: sc,
+      syntax: 'TITLE: Imp ' + id + '\nSOURCE: Blue Door Bakery\nSERVINGS: 4\n\nGROUP a:\n2 onions, diced\n200 g red lentils\n\nSTAGE:\nMERGE a -> done: Cook [5 min]' });
+    loadRecipes().push(mk('imp-new', c), mk('imp-none', null));
+  }, impCheck);
+  const impFile = require('path').join(require('os').tmpdir(), 'kitchen-backup-source-check.json');
+  const [impDl] = await Promise.all([page.waitForEvent('download'), page.click('#exportDataBtn')]);
+  await impDl.saveAs(impFile);
+  const impExport = JSON.parse(require('fs').readFileSync(impFile, 'utf8'));
+  const impExNew = (impExport.recipes || []).find(r => r.id === 'imp-new') || {};
+  const impExNone = (impExport.recipes || []).find(r => r.id === 'imp-none') || {};
+  await page.evaluate(() => { loadRecipes().forEach(r => { r.sourceCheck = null; }); window.__WRITES__.length = 0; });   // as if another device, which has never heard of it
+  page.once('dialog', d => d.accept());
+  await page.setInputFiles('#importFileInput', impFile);
+  await page.waitForTimeout(1200);
+  const impRows = await page.evaluate(() => window.__WRITES__.filter(w => w.table === 'recipes' && w.op === 'upsert').flatMap(w => w.rows));
+  const impBack = await page.evaluate(() => ({ nu: (loadRecipes().find(r => r.id === 'imp-new') || {}).sourceCheck, none: (loadRecipes().find(r => r.id === 'imp-none') || {}).sourceCheck }));
+  const impChipNew = await pvChips('imp-new');
+  const impChipNone = await pvChips('imp-none');
+  check('export carries source_check and import restores it: in the file, in the cache, in the row written, and in the chip',
+        JSON.stringify(impExNew.sourceCheck) === JSON.stringify(impCheck) && !impExNone.sourceCheck
+        && JSON.stringify(impBack.nu) === JSON.stringify(impCheck) && !impBack.none
+        && JSON.stringify((impRows.find(r => r.id === 'imp-new') || {}).source_check) === JSON.stringify(impCheck) && !('source_check' in (impRows.find(r => r.id === 'imp-none') || {}))
+        && /· 2 DIFFERENCES$/.test((impChipNew[0] || {}).text || '') && (impChipNone[0] || {}).text === 'NOT COMPARED WITH ITS SOURCE',
+        JSON.stringify([impExNew.sourceCheck, impBack, impChipNew, impChipNone]));
+  const impOld = JSON.parse(JSON.stringify(impExport));
+  impOld.recipes.forEach(r => { delete r.sourceCheck; });
+  const impOldFile = require('path').join(require('os').tmpdir(), 'kitchen-backup-older.json');
+  require('fs').writeFileSync(impOldFile, JSON.stringify(impOld));
+  await page.evaluate(() => { window.__WRITES__.length = 0; });
+  page.once('dialog', d => d.accept());
+  await page.setInputFiles('#importFileInput', impOldFile);
+  await page.waitForTimeout(1200);
+  const impOldRows = await page.evaluate(() => window.__WRITES__.filter(w => w.table === 'recipes' && w.op === 'upsert').flatMap(w => w.rows));
+  const impOldCache = await page.evaluate(() => loadRecipes().map(r => r.sourceCheck || null));
+  const impOldChip = await pvChips('imp-new');
+  check('an older backup without it imports with null: no key in any row written, nothing in the cache, and NOT COMPARED in the viewer',
+        impOldRows.length === impOld.recipes.length && impOldRows.every(r => !('source_check' in r)) && impOldCache.every(c => c === null)
+        && (impOldChip[0] || {}).text === 'NOT COMPARED WITH ITS SOURCE', JSON.stringify([impOldRows.length, impOldCache.filter(Boolean).length, impOldChip]));
+  await page.evaluate(() => {
+    for(let i = loadRecipes().length - 1; i >= 0; i--) if(String(loadRecipes()[i].id).startsWith('imp-')) loadRecipes().splice(i, 1);
+    showView('recipes'); renderHome();
+  });
+  await page.waitForTimeout(250);
 
   /* ---- Offline notice (25 Sep). The two-device pass found step 25's toast
      never came: an offline write can sit for up to 30 s behind supabase-js's

@@ -232,6 +232,11 @@ The last two were missing from this list until 22 Sep, while the features they c
 recorded as done elsewhere. If you are adding a migration, add it here in the same breath —
 `select version, name from supabase_migrations.schema_migrations` is the check.
 
+**Waiting to be applied (29 Sep 2026, not on the live database when this was written):**
+`docs/migrations/add-recipes-source-check.md`, one nullable `jsonb` column, `recipes.source_check`, for PR 5 of the
+add-recipe plan. The household applies it from the SQL editor **before** merging that PR; add it to the list above, with
+the version the dashboard gives it, when it has been.
+
 ---
 
 ## 4. Secrets — what's safe and what isn't

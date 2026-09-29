@@ -722,7 +722,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **312 checks** (since PR 4 of the add-recipe plan; `core.test.js` adds 129 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **329 checks** (since PR 5 of the add-recipe plan; `core.test.js` adds 133 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday.
@@ -1381,7 +1381,7 @@ recipe's check to the wrong page.
 judge it (`docs/TEST-PLAN.md` step 36d). The paste is tested with a synthetic `paste` event, not a real paste on iPadOS or
 Android. The auto-run is tested against the stub, never the real `source-ingredients` function or a real site.
 
-**PR 4 of the add-recipe plan, answers in place and no dialog left (29 Sep 2026, PR #44, open for review, not merged).** The
+**PR 4 of the add-recipe plan, answers in place and no dialog left (29 Sep 2026, PR #44, merged 29 Sep 16:02 UTC as `eee0f43`).** The
 add and edit form now gives its answers where the questions arise, and writes only what is tapped, each through the
 function that already writes that kind of row. A "Same as X?" row has SAME (which asks once more, "for every recipe?
 MERGE · CANCEL", and writes only at MERGE: the new name is the alias, the existing one the canonical) and KEEP APART. A
@@ -1430,6 +1430,61 @@ is undone in Settings). Every write is tested against the stub, so a green run s
 RLS or the write queue for these calls, though each is the same `addAlias` call the shopping list and Settings already make.
 Whether the buttons are easy to hit on the tablet. That the Settings word-match list is redrawn after a tap (called, not
 asserted). What the deployed site serves. I also did not read `main`'s own test and Pages runs after PR 3 merged.
+
+**PR 5 of the add-recipe plan, the comparison recorded on the recipe (29 Sep 2026, open for review, not merged; needs the
+household to apply one SQL statement first).** A comparison with the source page is now remembered by the add and edit form
+and written by SAVE, and only by SAVE, as `recipes.source_check`: `{at, route, hard, soft, sourceLines, linesHash}`, the counts
+(the table's own "N to look at" and its shaded notes) and a hash of the ingredient lines it was of, never the page's text or a
+pasted list. The viewer says what is recorded in a chip beside the source link (COMPARED … · NO DIFFERENCES or N DIFFERENCES,
+COMPARED BEFORE THE INGREDIENTS CHANGED, NOT COMPARED WITH ITS SOURCE, and CARRIES A SOURCE NOTE, red when the note says the
+page was not read); Edit shows the stored result with RE-CHECK; BEFORE YOU SAVE says what the save records; export carries it and
+import restores it, and an older backup without it imports as none. **The column does not exist on the live database** (read,
+read-only, at the start of the PR 5 session on 29 Sep: `recipes` has no `source_check`, no `aisle_overrides` table, 34 recipes, 0 ticks, last migration
+`20260928123928`). The statement is `docs/migrations/add-recipes-source-check.md`, a markdown page because `.gitignore` excludes
+`*.sql` on purpose; **a session did not apply it, and the household applies it before merging.** `core.js` gains `fidelityCounts`
+and `sourceCheckStatus` and is `2026-09-29.5` in all three places.
+
+*Verified by.* `node test/core.test.js` **129 → 133** (four checks) and `node test/build.js && node test/smoke.js` **312 → 329**
+(seventeen browser checks: the plan's six and eleven of mine), both exit 0, no console or page errors, and
+`generate-ingredient-names.js --check` exit 0. **Both suites were green, exit 0, on unchanged `main` first (129 and 312), and all
+312 existing smoke checks and 129 Node checks passed unchanged against the new code before I added any check**, so no check I did
+not write had to be amended (no §11 item 2 this time). **Mutations, each seen failing by name:** 7 on the new `core.js` functions
+and 28 on the page (the hash taken of the whole text, a comparison writing by itself, the column dropped from `recipeToRow` or
+from `rowToRecipe`, a recipe with none sending null, SAVE not recording, the route always `function`, the recorded count always 0,
+a changed recipe shown as compared, no chip for none, a reconstruction note not red, a chip on the cards, Edit showing no stored
+result, Edit fetching on opening, RE-CHECK not wired, each wording of BEFORE YOU SAVE, an Edit with no comparison wiping what was
+recorded, the viewer hashing the whole text, the stored line or the band not redrawn, the pasted text kept with the record, a
+closed form keeping its comparison, an answer for a closed form or for a changed link still recorded, and three that made the
+count read 0), none crashing. They ran against a temporary harness of the suite's boot code and the new blocks (deleted before
+the commit), and `index.html` and `core.js` were restored and compared byte-identical after each run.
+**Four things worth recording.** (1) **Reading my own diff found a real bug:** an answer from the source check that arrived
+after the form had closed would have set the comparison on the *next* form and been saved against the wrong recipe, and a slow
+older answer would have replaced a newer one for a changed link. Two checks were written first and **seen failing** (the next
+recipe's band read "compared, but the ingredients changed since"; the older answer's count won), then a guard was added to
+`compareWithSource`. (2) **One mutation of that guard survived** (removing the closed-form half), because the link comparison
+alone caught every case I had tried; it is only needed when the same link answers into a different form, so a third check
+was written for exactly that (Edit of a recipe with that link, opened while the answer was in flight) and the mutation now fails.
+(3) **The first scan of the diff found three real library strings in my new test data** (two ingredient lines and one
+household word match, deliberately not repeated here); all were swapped for invented lines, and the rescan finds one hit, a
+single generic ingredient word, which is not a line or a pair. **The first rescan of the documents then found that this very
+paragraph had named them**, which is why it does not. (4) **My first attempt to
+ship the migration as a `.sql` file was silently ignored by `.gitignore`** (`*.sql`, on purpose); it is a markdown page instead,
+and the ignore is unchanged.
+
+*Where it differs from the plan* (recorded as "Built as" in its PR 5 entry): the column is sent **only when the recipe has one**,
+not as `null` on every save, so merging before the migration is applied breaks only the first save that carries a comparison
+and not every save (the write queue resends a failed write, so an unmigrated column would otherwise stop all saving); Edit
+**does not fetch the source page on opening**, as in PR 3, and shows what is stored (a **decision for the household**: §5 reads as
+though it should run the check on opening when nothing fresh is stored, which would fetch the page for every recipe opened, and
+reverse a PR 3 check); two pure functions the entry does not name; the chip is in its own element, `#viewerProvenance`; BEFORE
+YOU SAVE says "not compared" only when there is an `https` link to compare against. **A known limit, not built:** the value has no
+URL, so changing the link and saving without comparing again keeps a result that was about the old page.
+
+*Not verified:* the live app and the tablet (`docs/TEST-PLAN.md` step 36f, after the migration is applied and the PR merged). The
+migration itself, which has not been run. That a real Supabase upsert stores the object in a `jsonb` column and that `select('*')`
+returns it: the suite stubs Supabase, so a green run says nothing about the real table, RLS or the write queue for this column. The
+real `source-ingredients` function or a real site. What the deployed site serves. `main`'s own test and Pages runs after PR 4 merged
+were not read.
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
