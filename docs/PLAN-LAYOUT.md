@@ -14,7 +14,7 @@ seen failing (`CLAUDE.md` rule 3), and a tablet step in `docs/TEST-PLAN.md` (the
 | 1 | **C**, step text at the foot of its box, and **A**, edit dialog near full width | Small | **Built and merged**, 30 Sep (PR #57) |
 | 2 | **D**, Shopping Aisles shows the current aisle | Small | **Built and merged**, 30 Sep (PR #58) |
 | 3 | **B**, cooking mode | Medium | **Built and merged**, 30 Sep (PR #59) |
-| 4 | **E**, Settings in tabs, with Swaps | Largest | **Built**, 30 Sep |
+| 4 | **E**, Settings in tabs, with Swaps | Largest | **Built and merged**, 30 Sep (PR #60) |
 
 ## C. Step text at the foot of its box
 
@@ -111,4 +111,4 @@ the top of Settings, the last one used remembered per device.
 - **Leaked-password protection is a paid-plan feature** in Supabase, and the household is on the free plan, so it is no longer
   an open item (`docs/NEXT-SESSION.md`, 7b).
 - **Tablet step 36k** (the ingredient boxes' own dropdown, PR #56): reported "broadly ok" by the household, 30 Sep.
-- **Tablet steps 37a, 37b and 37c** (C and A, D, B): reported passed by the household, 30 Sep.
+- **Tablet steps 37a, 37b, 37c and 37d** (C and A, D, B, E): reported passed by the household, 30 Sep. **The plan is finished.**

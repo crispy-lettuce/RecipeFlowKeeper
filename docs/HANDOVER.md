@@ -1706,8 +1706,13 @@ box on a hidden tab measures 0, which passed "under 30". `core.test.js` 142. Bot
 read-only against the live recipes and swaps first: none. **Eight page mutations:** tabs not hiding, Sources on the wrong tab, the
 dictionary never folded, the lookup not opening it, Swaps not drawn when Settings opens, and SWAPS back in the sidebar each failed
 by name; no redirect for the old screen failed the EDIT check by name, then crashed; the tab not remembered crashed early, at the
-appearance check's control on a tab no longer shown. Screenshots at 1280×900 and 412×860. *Not verified:* the tablet
-(`docs/TEST-PLAN.md` step 37d).
+appearance check's control on a tab no longer shown. Screenshots at 1280×900 and 412×860. *Tablet:* 37d reported "ok" by the
+household, 30 Sep, after PR #60 merged. The layout plan is finished, and every tablet step of it (37a–37d) has passed.
+
+**Keep Awake on the Android tablet (reported 30 Sep 2026).** The household reported that Keep Awake works on the Android tablet,
+the one thing `docs/TEST-PLAN.md` had left "deferred to the tablet" since the first build, because no desktop browser can show a
+screen that would otherwise dim. *Not stated:* whether that was the Recipe Viewer, the Group Viewer or both, and which of the two
+methods (the screen-lock API or the video fallback) the status line named; the status line says which when it is on.
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against

@@ -438,10 +438,13 @@ The 37 series is `docs/PLAN-LAYOUT.md`, the layout changes agreed on 30 Sep. Eac
     have a swap for, press EDIT:* you land on Swaps in the Ingredients tab. **What no test can judge: whether you can find
     each thing where you expect it.**
 
+*37d reported "ok" by the household, 30 Sep. Every step of the 37 series has passed.*
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in
-  any meaningful way — the failure mode is a screen that dims twenty minutes later.
+  any meaningful way — the failure mode is a screen that dims twenty minutes later. *Reported working on the Android tablet
+  by the household, 30 Sep 2026* (which viewer, and which method the status line named, not stated).
 - The sidebar peek and general reachability with wet hands at arm's length.
 
 ## If something fails
