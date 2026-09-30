@@ -3875,7 +3875,8 @@ const check = (name, pass, detail) => {
     { name: 'barley-broth.pdf', mimeType: 'application/pdf', buffer: pdfBytes },
     { name: 'whole-book.pdf', mimeType: 'application/pdf', buffer: Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(10.5 * 1024 * 1024)]) },
     { name: 'not-really.pdf', mimeType: 'application/pdf', buffer: Buffer.from('<html>a saved page</html>') }]);
-  await page.waitForFunction(() => formPhotos.length >= 1, null, { timeout: 5000 });
+  // Waited for, not required: a PDF that never arrives must fail the check below by name, not time out here.
+  await page.waitForFunction(() => formPhotos.length >= 1, null, { timeout: 5000 }).catch(() => {});
   await page.waitForTimeout(300);
   const pdfForm = await page.evaluate(() => ({ photos: formPhotos.map(p => ({ type: p.type || null, name: p.name || null, size: p.blob && p.blob.size })),
     toast: (document.querySelector('.toast') || { textContent: '' }).textContent,
