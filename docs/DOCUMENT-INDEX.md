@@ -311,6 +311,14 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
+### `docs/PLAN-LAYOUT.md` — layout changes: edit dialog, cooking mode, step text, aisle box, Settings (30 Sep 2026, agreed; C and A built)
+**What:** Five layout changes the household asked for on 30 Sep, lettered A to E as they lettered them, each with what the
+app does now, what was decided and why, and what was considered and not chosen. All `index.html` only, no data change.
+Built one PR at a time: C and A first, then D (the aisle box shows the current aisle), B (cooking mode, when KEEP AWAKE is on)
+and E (Settings in three tabs, Swaps moved in). Tablet steps are the 37 series of `docs/TEST-PLAN.md`.
+
+**Use it when:** building the next of those PRs, or asked why the viewer or Settings looks the way it does.
+
 ### `docs/PLAN-NEW-RECIPE-FLOW.md` — adding a recipe as one flow (29 Sep 2026, decided; PRs 1–4 built and merged, PR 5 open for review)
 **What:** The plan that makes the journey from a pasted conversion to a saved recipe one page
 with five bands, and gives Settings one place to see what the app knows about an ingredient. It
@@ -384,7 +392,7 @@ to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.m
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 367-check smoke suite, the 142 Node checks and the Edge Function checks, and an honest account of what it can't tell you
+**What:** How to run the 369-check smoke suite, the 142 Node checks and the Edge Function checks, and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 
 **Use it when:** making any code change.

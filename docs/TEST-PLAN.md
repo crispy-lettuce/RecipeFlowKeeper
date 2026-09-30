@@ -401,7 +401,17 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     shopping list uses, never almond meal. (6) *Swaps:* both boxes offer the lookup's names. (7) *On the phone, with the box
     just above the keyboard:* the list opens above the box, not behind the keyboard. The ▼ at the right of the box, and
     Chrome's own grey list, mean the old version is still loaded: reload. **What no test can judge: whether
-    a tap on a name is easy to hit, and whether scrolling the list ever picks one by accident.**
+    a tap on a name is easy to hit, and whether scrolling the list ever picks one by accident.** *Reported "broadly ok"
+    by the household, 30 Sep.*
+
+The 37 series is `docs/PLAN-LAYOUT.md`, the layout changes agreed on 30 Sep. Each is read-only.
+
+37a. **Step words at the foot of their box; the edit dialog near full width (new 30 Sep, C and A).** (1) *Open a recipe with
+    a long group:* each step's words sit at the bottom of its box, level with the last ingredient that goes into it. Tick
+    down a group and read straight across. (2) *PRINT / A4 PDF, then EXPORT PNG:* the same. (3) *EDIT:* the dialog fills the
+    screen less a margin, the recipe box is about half the screen tall, and the preview no longer scrolls sideways (unless
+    the recipe has very many steps). *Close it without saving.* (4) *On the phone:* the dialog still fills the width.
+    **What no test can judge: whether the bottom-aligned words read better in the kitchen than the centred ones did.**
 
 ## Deferred to the tablet, after merging
 

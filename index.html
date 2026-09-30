@@ -440,9 +440,13 @@
     display:inline-block; margin-left:6px; color:var(--plum); font-size:12px;
     cursor:help;
   }
+  /* A step's words sit at the foot of its box, level with the last ingredient that goes into it (asked for
+     30 Sep 2026): you tick a group off from the top down, and the step is then straight across, not back up
+     the page. The same on screen, on paper and in the PNG, so what prints is what you cooked from. */
   .box-cell{
     text-align:center; font-family:'IBM Plex Mono', monospace; font-size:12px;
     letter-spacing:.02em; min-width:135px; cursor:pointer; position:relative;
+    vertical-align:bottom;
   }
   .box-cell.passthrough{ opacity:.55; border-left-style:dashed !important; }
   .blank-cell{ min-width:135px; }
@@ -860,6 +864,11 @@
     background:var(--card); border:1px solid var(--line); border-radius:var(--r);
     padding:30px; max-width:780px; width:100%; position:relative;
   }
+  /* The add/edit dialog uses the screen (asked for 30 Sep 2026): at 780px its recipe preview scrolled sideways
+     and squeezed each step to a few words a line. Full width less a margin, to 1600px; a phone is already
+     full width. */
+  #addModalOverlay{ padding:20px; }
+  #addModalOverlay .modal-panel{ max-width:1600px; }
   .modal-close{
     position:absolute; top:18px; right:18px; width:30px; height:30px;
     border:1px solid var(--line); border-radius:var(--r); background:var(--paper);
@@ -931,8 +940,9 @@
     font-family:'IBM Plex Mono', monospace; font-size:10px;
     letter-spacing:.1em; color:var(--ink-faint);
   }
+  /* Half the screen tall, since editing a recipe is mostly scrolling this box (30 Sep 2026). */
   textarea#importInput{
-    width:100%; min-height:240px; resize:vertical;
+    width:100%; min-height:max(240px, 50vh); resize:vertical;
     font-family:'IBM Plex Mono', monospace; font-size:13px; line-height:1.65;
     color:var(--ink); background:var(--paper);
     border:1px solid var(--line); border-radius:var(--r);

@@ -3256,6 +3256,37 @@ const check = (name, pass, detail) => {
         acSwapA.shown && acSwapA.items.join('|') === acAlm.items.join('|') && acSwapB.items.join('|') === acAlm.items.join('|'),
         JSON.stringify([acSwapA.items.length, acSwapB.items.length, acAlm.items.length]));
 
+  /* ---- Layout, 30 Sep 2026 (docs/PLAN-LAYOUT.md, C and A) ----
+     C: a step's words at the foot of its box, on screen and in print. A: the add/edit dialog near full width,
+     with a recipe box half the screen tall; a phone still gets the whole width. Read-only. */
+  const lyRecipe = await page.evaluate(() => loadRecipes().find(r => r.title === 'Test Pasta').id);
+  await page.evaluate(id => openRecipe(id), lyRecipe);
+  await page.waitForTimeout(400);
+  const lyAlign = () => page.evaluate(() => { const cells = [...document.querySelectorAll('#flowMount .box-cell')];
+    const tall = cells.map(c => { const r = c.getBoundingClientRect(), t = [...c.childNodes].map(n => { const rg = document.createRange(); rg.selectNodeContents(n); return rg.getBoundingClientRect(); })
+      .filter(b => b.height > 0); const bottom = Math.max(...t.map(b => b.bottom)), top = Math.min(...t.map(b => b.top));
+      return { h: Math.round(r.height), gapTop: Math.round(top - r.top), gapBottom: Math.round(r.bottom - bottom) }; }).filter(x => x.h > 120);
+    return { n: cells.length, valign: [...new Set(cells.map(c => getComputedStyle(c).verticalAlign))], tall }; });
+  const lyScreen = await lyAlign();
+  await page.emulateMedia({ media: 'print' });
+  const lyPrint = await page.evaluate(() => [...new Set([...document.querySelectorAll('#flowMount .box-cell')].map(c => getComputedStyle(c).verticalAlign))]);
+  await page.emulateMedia({ media: 'screen' });
+  check('layout: a step\'s words sit at the foot of its box, level with the last ingredient into it, on screen and in print',
+        lyScreen.n > 0 && lyScreen.valign.join() === 'bottom' && lyScreen.tall.length > 0 && lyScreen.tall.every(x => x.gapBottom < x.gapTop) && lyPrint.join() === 'bottom',
+        JSON.stringify([lyScreen, lyPrint]));
+  await page.click('#editRecipeBtn');
+  await page.waitForTimeout(400);
+  const lyDialog = () => page.evaluate(() => { const p = document.querySelector('#addModalOverlay .modal-panel').getBoundingClientRect();
+    return { w: Math.round(p.width), vw: innerWidth, vh: innerHeight, box: Math.round(document.getElementById('importInput').getBoundingClientRect().height) }; });
+  const lyWide = await lyDialog();
+  await page.setViewportSize({ width: 412, height: 800 });
+  const lyPhone = await lyDialog();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.evaluate(() => closeAddModal());
+  check('    the edit dialog fills the screen less its margin (was 780px), its recipe box half the screen tall; a phone still gets the whole width',
+        lyWide.w >= lyWide.vw - 40 && lyWide.w > 780 && lyWide.box >= Math.floor(lyWide.vh / 2) && lyPhone.w >= lyPhone.vw - 40 && lyPhone.box >= 400,
+        JSON.stringify([lyWide, lyPhone]));
+
   /* ---- LIBRARY CHECK (PR 8 of the add-recipe plan, 29 Sep 2026) ----
      Every recipe, its standing against its source and its names in Other, those needing attention
      first; RUN writes nothing and OPEN opens the edit form. Six invented recipes, one per status,
