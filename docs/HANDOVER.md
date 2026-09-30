@@ -1645,6 +1645,15 @@ check on the test's own typo ("almond me" is not the only name left). Each mutat
 *Not verified:* the tablet: whether a name is easy to tap, and whether scrolling the list ever picks one (a synthetic mousedown
 cannot tell); `docs/TEST-PLAN.md` step 36k.
 
+*Added before merging, after the household's phone screenshots (09:22 local, still the #55 datalist, since this PR was not yet
+merged).* They showed two things this PR had not handled. **A box just above the keyboard:** Chrome scrolls a focused box only
+just clear of the keyboard, so a list opened under it would sit behind the keyboard; the list now opens above the box when
+`visualViewport` shows more room there. **LIBRARY CHECK's tick box**, stretched to 150px by `.alias-form input` and left floating
+mid-row with its words at the far edge; a more specific rule keeps it its own size. `smoke.js` **366 → 367**: one check at
+412×560 with the box at the foot of the screen (list above it) and at the top (list below), plus the tick box's width. Seen
+failing: never opening above, always opening above (which also fails the placement check), and the tick box at 150px (the first
+fix lost to the later rule of equal weight). Screenshot at 412×560, dark: the list above the box, opaque.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export

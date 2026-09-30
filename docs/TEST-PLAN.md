@@ -398,7 +398,9 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     being picked. (3) *Type "alm", tap almond meal:* the box says almond meal, the list closes, the keyboard stays up, and the
     lookup says the list calls it ground almonds. (4) *WORD MATCHES:* either box offers ingredients; pick SOURCE and type
     the start of one of your sources: the sources are offered; switch back. (5) *SHOPPING AISLES, type "alm":* only names your
-    shopping list uses, never almond meal. (6) *Swaps:* both boxes offer the lookup's names. **What no test can judge: whether
+    shopping list uses, never almond meal. (6) *Swaps:* both boxes offer the lookup's names. (7) *On the phone, with the box
+    just above the keyboard:* the list opens above the box, not behind the keyboard. The ▼ at the right of the box, and
+    Chrome's own grey list, mean the old version is still loaded: reload. **What no test can judge: whether
     a tap on a name is easy to hit, and whether scrolling the list ever picks one by accident.**
 
 ## Deferred to the tablet, after merging
