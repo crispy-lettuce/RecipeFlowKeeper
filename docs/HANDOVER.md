@@ -1819,6 +1819,26 @@ CHECK's new status and its wording, Edit's line, UNDO, the reset on opening a fo
 first round three did not: the save removed crashed the run (the test read a missing check; it now fails by name), and the guard
 at SAVE and the reset on opening survived, since no check typed lines without re-reading them or reopened a form after a tap; the
 check that does both was added, and all three then failed by name. *Not verified:* the tablet, `docs/TEST-PLAN.md` step 38c.
+*Merged 30 Sep 17:52 UTC as PR #64.*
+
+**Source photos, step 4: PDF sources (30 Sep 2026).** Asked for by the household once step 3 had merged ("often you can 'print'
+recipes as PDFs"). `index.html` only; the bucket already allowed `application/pdf`. ADD PHOTO OR PDF (`accept="image/*,application/pdf"`)
+takes a PDF **as it is**, nothing shrunk, held to the bucket's 10 MB and refused before anything is stored if larger ("over 10 MB,
+too big to keep"), and refused if it does not begin `%PDF-` (a renamed web page). It is stored as `<time>-<id>.pdf` with
+`application/pdf`, and its entry in `source_photos` says `type: 'pdf'` and keeps the file `name`, so an entry without `type` is a
+photo, as every earlier one is. **A PDF is not drawn in the app:** it shows as a card with its name and OPEN ↗, a real link (so no
+pop-up blocker) to the signed link or, before upload, this tab's copy; the laptop's browser shows it, the tablet hands it to its PDF
+viewer. The chip and the viewer's title say SOURCE PDF, SOURCE PDFS · n, or SOURCE FILES · n for a mixture; the check reads
+CHECKED AGAINST THE PDF (the route stays `'photo'`). BEFORE YOU SAVE's removal line now says "source file". Not changed: LIBRARY
+CHECK's wording ("checked against the photo", "source photo not checked") covers PDFs too.
+
+*Verified by.* `core.test.js` 143, unchanged. `smoke.js` **403 → 407**, both exit 0: taken as it is, and over 10 MB and not-a-PDF
+refused with nothing stored; its card, name, OPEN link and the check's wording, and BEFORE YOU SAVE; SAVE storing it byte for byte
+as `.pdf` with `application/pdf`, the row's `type` and `name`, the chip, and OPEN by a signed link in a new tab; a photo beside it
+keeping both types, and SOURCE FILES · 2. **Twelve mutations, all failing a check by name:** no PDF in the file picker, the PDF sent through the photo shrinker, no size
+cap, no `%PDF-` test, stored as `image/jpeg`, stored as `.jpg`, no `type` in the row, the type dropped when Edit reopens it, the
+chip's word always PHOTO, the PDF drawn as an image, OPEN in the same tab, and the OPEN link never given its address. (The shrinker
+one first crashed the run on a wait the test required; the wait is now a wait, and the check after it fails by name.) *Not verified:* the tablet's PDF viewer, `docs/TEST-PLAN.md` step 38d.
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against

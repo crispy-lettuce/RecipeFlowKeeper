@@ -890,6 +890,14 @@
     font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; text-decoration:underline; text-underline-offset:2px; }
   .prov-chip.prov-photo{ cursor:pointer; }
   .prov-chip.prov-photo{ color:var(--ink); }
+  /* A PDF in place of a picture: its name and an OPEN link, the size of the photo it stands beside. */
+  .pdf-card{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:12px; box-sizing:border-box;
+    border:1px solid var(--line); border-radius:var(--r); background:var(--well); text-align:center; }
+  .pdf-card.source-photo-img{ width:180px; height:220px; }
+  .pdf-card.photo-compare-img, .pdf-card.source-photo-full{ min-height:160px; margin-bottom:8px; }
+  .pdf-card-mark{ font-family:'IBM Plex Mono', monospace; font-size:22px; letter-spacing:.1em; color:var(--plum); }
+  .pdf-card-name{ font-size:13px; color:var(--ink); word-break:break-word; }
+  .pdf-open{ font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.06em; color:var(--plum); }
   .photo-missing{ font-size:13px; color:var(--ink-soft); padding:12px; border:1px dashed var(--line); border-radius:var(--r); }
   .photo-compare{ display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; margin-top:6px; }
   .photo-compare-lines{ flex:1 1 260px; margin:0; padding-left:18px; font-size:14px; }
@@ -1838,10 +1846,10 @@
         <label><span>SOURCE URL</span><input type="text" id="f-source-url" placeholder="where this recipe came from — worth filling in, it's what makes a re-convert cheap"></label>
       </div>
       <div class="source-photos" id="sourcePhotosBlock">
-        <span class="source-photos-label">SOURCE PHOTOS</span>
+        <span class="source-photos-label">SOURCE PHOTOS AND PDFS</span>
         <div class="source-photo-list" id="sourcePhotoList"></div>
-        <button type="button" class="btn" id="addSourcePhotoBtn">ADD PHOTO</button>
-        <input type="file" id="sourcePhotoInput" accept="image/*" multiple hidden>
+        <button type="button" class="btn" id="addSourcePhotoBtn">ADD PHOTO OR PDF</button>
+        <input type="file" id="sourcePhotoInput" accept="image/*,application/pdf" multiple hidden>
         <div class="hint" id="sourcePhotoHint"></div>
       </div>
       <div class="field-row">
@@ -4504,7 +4512,7 @@ function renderProvenance(recipe){
   }
   if(note) chips.push({ cls: note.reconstructed ? 'red' : 'note', text: 'CARRIES A SOURCE NOTE', title: note.line });
   const photos = (recipe.sourcePhotos || []).length;
-  if(photos) chips.push({ cls: 'photo', text: photos === 1 ? 'SOURCE PHOTO' : `SOURCE PHOTOS · ${photos}`, title: 'The photo this recipe was converted from', button: true });
+  if(photos) chips.push({ cls: 'photo', text: sourceFilesLabel(recipe.sourcePhotos), title: 'What this recipe was converted from', button: true });
   el.innerHTML = chips.map(c=> c.button
     ? `<button type="button" class="prov-chip prov-${c.cls}" data-source-photos title="${escapeHtml(c.title)}">${escapeHtml(c.text.toUpperCase())}</button>`
     : `<span class="prov-chip prov-${c.cls}" title="${escapeHtml(c.title)}">${escapeHtml(c.text.toUpperCase())}</span>`).join('');
@@ -6303,6 +6311,20 @@ const SOURCE_PHOTO_BUCKET = 'recipe-sources';
    megabyte (the plan's §6.2); the free plan's 1 GB then holds a couple of thousand pages. */
 const SOURCE_PHOTO_EDGE = 2000;
 const SOURCE_PHOTO_QUALITY = 0.8;
+/* A PDF (a recipe page "printed" to PDF, asked for 30 Sep) is kept exactly as it is: there is nothing to
+   shrink without losing the text, so it is held to the bucket's own 10 MB, checked here first so the
+   household hears why at once rather than from a failed upload later. */
+const SOURCE_PDF_MAX_BYTES = 10 * 1024 * 1024;
+const isPdfEntry = p=> !!p && p.type === 'pdf';
+/* What to call a recipe's source files: photos, PDFs, or a mixture of both. */
+function sourceFilesWord(list){
+  const pdfs = (list || []).filter(isPdfEntry).length;
+  return !pdfs ? 'PHOTO' : pdfs === (list || []).length ? 'PDF' : 'FILE';
+}
+function sourceFilesLabel(list){
+  const n = (list || []).length, word = sourceFilesWord(list);
+  return n === 1 ? `SOURCE ${word}` : `SOURCE ${word}S · ${n}`;
+}
 /* False once a load has found recipe rows without the column: the migration is not applied yet. */
 let sourcePhotosAvailable = true;
 /* The open form's photos: stored ones { path, added }, new ones { added, blob, url } until SAVE gives them
@@ -6337,7 +6359,7 @@ function uploadSourcePhotos(items){
      time is simply replaced by itself. */
   queueWrite('the source photos', async ()=>{
     for(const it of items){
-      const { error } = await sourcePhotoStore().upload(it.path, it.blob, { contentType: 'image/jpeg', upsert: true });
+      const { error } = await sourcePhotoStore().upload(it.path, it.blob, { contentType: it.contentType || 'image/jpeg', upsert: true });
       if(error) throw error;
     }
   });
@@ -6372,15 +6394,32 @@ async function shrinkSourcePhoto(file){
   if(bmp.close) bmp.close();
   return new Promise((resolve, reject)=> canvas.toBlob(b=> b ? resolve(b) : reject(new Error('Could not shrink the photo')), 'image/jpeg', SOURCE_PHOTO_QUALITY));
 }
+/* A file is taken as a PDF by its type or its name, and then must start as every PDF does ("%PDF-"), so a
+   page saved as HTML and renamed is refused here rather than stored. */
+async function readSourcePdf(file){
+  if(file.size > SOURCE_PDF_MAX_BYTES) return { tooBig: true };
+  const head = await file.slice(0, 5).text();
+  if(head !== '%PDF-') return { notPdf: true };
+  return { entry: { added: new Date().toISOString(), blob: file, url: URL.createObjectURL(file), type: 'pdf',
+    name: String(file.name || 'source.pdf').slice(0, 120) } };
+}
 async function addSourcePhotoFiles(files){
-  let failed = 0;
+  let failed = 0, tooBig = 0;
   for(const file of files){
     try {
+      if(file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '')){
+        const got = await readSourcePdf(file);
+        if(got.tooBig){ tooBig++; continue; }
+        if(got.notPdf) throw new Error('Not a PDF');
+        formPhotos.push(got.entry);
+        continue;
+      }
       const blob = await shrinkSourcePhoto(file);
       formPhotos.push({ added: new Date().toISOString(), blob, url: URL.createObjectURL(blob) });
-    } catch(e){ console.warn('Source photo not read', file && file.name, e); failed++; }
+    } catch(e){ console.warn('Source file not read', file && file.name, e); failed++; }
   }
-  if(failed) showToast(failed === 1 ? "Couldn't read that picture. Try a JPEG or PNG." : `Couldn't read ${failed} of those pictures. Try JPEG or PNG.`);
+  if(tooBig) showToast(tooBig === 1 ? 'That PDF is over 10 MB, too big to keep. Try printing fewer pages.' : `${tooBig} of those PDFs are over 10 MB, too big to keep.`);
+  else if(failed) showToast(failed === 1 ? "Couldn't read that file. Try a JPEG, PNG or PDF." : `Couldn't read ${failed} of those files. Try JPEG, PNG or PDF.`);
   renderFormPhotos();
 }
 /* What SAVE does with the form's photos, worked out once: null when nothing changed (the recipe keeps
@@ -6390,11 +6429,13 @@ function settleFormPhotos(recipeId){
   const fresh = formPhotos.filter(p=> !p.path);
   if(!fresh.length && !formPhotosRemoved.length) return null;
   const uploads = [];
+  /* A PDF's entry says so, with its file name, since nothing else about a path says what a file is for. */
+  const entryOf = (p, path)=> isPdfEntry(p) ? { path, added: p.added, type: 'pdf', name: p.name } : { path, added: p.added };
   const list = formPhotos.map(p=>{
-    if(p.path) return { path: p.path, added: p.added };
-    const path = `${HOUSEHOLD_ID}/${recipeId}/${Date.now().toString(36)}-${uid().slice(0, 8)}.jpg`;
-    uploads.push({ path, blob: p.blob, url: p.url });
-    return { path, added: p.added };
+    if(p.path) return entryOf(p, p.path);
+    const path = `${HOUSEHOLD_ID}/${recipeId}/${Date.now().toString(36)}-${uid().slice(0, 8)}.${isPdfEntry(p) ? 'pdf' : 'jpg'}`;
+    uploads.push({ path, blob: p.blob, url: p.url, contentType: isPdfEntry(p) ? 'application/pdf' : 'image/jpeg' });
+    return entryOf(p, path);
   });
   return { list, uploads, removals: formPhotosRemoved.slice() };
 }
@@ -6402,29 +6443,39 @@ function resetFormPhotos(recipe){
   /* A new photo's object URL is let go unless SAVE handed it on to be shown from (localPhotoUrls). */
   const kept = new Set(localPhotoUrls.values());
   formPhotos.forEach(p=>{ if(p.url && !p.path && !kept.has(p.url)) URL.revokeObjectURL(p.url); });
-  formPhotos = recipe && Array.isArray(recipe.sourcePhotos) ? recipe.sourcePhotos.map(p=> ({ path: p.path, added: p.added })) : [];
+  formPhotos = recipe && Array.isArray(recipe.sourcePhotos) ? recipe.sourcePhotos.map(p=> ({ ...p })) : [];
   formPhotosRemoved = [];
   formPhotoChecked = null;
   renderFormPhotos();
 }
-/* Fills every <img data-photo-path> under `root` once its link is known; a photo that cannot be shown
-   (offline, or its upload has not landed yet) says so in its place. */
+/* Fills every [data-photo-path] under `root` once its link is known: a photo's <img> gets its picture, a
+   PDF's OPEN link its address. One that cannot be shown (offline, or its upload has not landed yet) says so
+   in its place. */
 function loadPhotoImages(root){
-  root.querySelectorAll('img[data-photo-path]').forEach(img=>{
-    const path = img.dataset.photoPath;
+  root.querySelectorAll('[data-photo-path]').forEach(el=>{
+    const path = el.dataset.photoPath;
     sourcePhotoUrl(path).then(url=>{
-      if(!img.isConnected || img.dataset.photoPath !== path) return;
-      img.src = url;
-      const link = img.closest('figure') && img.closest('figure').querySelector('[data-photo-open]');
-      if(link) link.href = url;
+      if(!el.isConnected || el.dataset.photoPath !== path) return;
+      if(el.tagName === 'IMG'){
+        el.src = url;
+        const link = el.closest('figure') && el.closest('figure').querySelector('[data-photo-open]');
+        if(link) link.href = url;
+      } else el.href = url;
     }).catch(err=>{
-      console.warn('Source photo not shown', path, err);
-      if(img.isConnected) img.replaceWith(Object.assign(document.createElement('div'), {
-        className: 'photo-missing', textContent: "Can't show this photo now: offline, or it hasn't finished uploading." }));
+      console.warn('Source file not shown', path, err);
+      if(el.isConnected) el.replaceWith(Object.assign(document.createElement('div'), {
+        className: 'photo-missing', textContent: `Can't ${el.tagName === 'IMG' ? 'show this photo' : 'open this PDF'} now: offline, or it hasn't finished uploading.` }));
     });
   });
 }
+/* A PDF is opened by the browser (on the tablet, its PDF viewer), not drawn here: a real link, so the tap
+   that opens it is the person's own and no pop-up blocker stands in the way. */
 function photoImgHtml(p, cls){
+  if(isPdfEntry(p)){
+    const where = p.path ? `data-photo-path="${escapeHtml(p.path)}"` : `href="${escapeHtml(p.url)}"`;
+    return `<div class="pdf-card ${cls}"><span class="pdf-card-mark">PDF</span><span class="pdf-card-name">${escapeHtml(p.name || 'source.pdf')}</span>` +
+      `<a class="pdf-open" target="_blank" rel="noopener" ${where}>OPEN ↗</a></div>`;
+  }
   return p.path
     ? `<img class="${cls}" data-photo-path="${escapeHtml(p.path)}" alt="Source photo">`
     : `<img class="${cls}" src="${escapeHtml(p.url)}" alt="Source photo">`;
@@ -6436,15 +6487,15 @@ function renderFormPhotos(){
   if(!list) return;
   list.innerHTML = formPhotos.map((p, i)=>
     `<figure class="source-photo-thumb">${photoImgHtml(p, 'source-photo-img')}` +
-    `<figcaption>PAGE ${i + 1}${p.path ? '' : ' · NEW'} <button type="button" data-photo-view="${i}">VIEW</button>` +
+    `<figcaption>PAGE ${i + 1}${isPdfEntry(p) ? ' · PDF' : ''}${p.path ? '' : ' · NEW'}${isPdfEntry(p) ? '' : ` <button type="button" data-photo-view="${i}">VIEW</button>`}` +
     ` <button type="button" data-photo-remove="${i}">REMOVE</button></figcaption></figure>`).join('');
   loadPhotoImages(list);
   addBtn.disabled = !sourcePhotosAvailable;
   hint.textContent = !sourcePhotosAvailable
     ? "Source photos aren't set up yet: the database change in docs/migrations/add-source-photos.md has not been applied."
     : formPhotosRemoved.length && !formPhotos.length
-      ? 'The photo goes when you save.'
-      : 'The photo or screenshot this recipe was converted from, kept privately to check it against later. Stored when you save.';
+      ? 'It goes when you save.'
+      : 'The photo, screenshot or PDF this recipe was converted from, kept privately to check it against later. Photos are shrunk; a PDF is kept as it is, up to 10 MB. Stored when you save.';
   renderPhotoCompare();
   /* At once, not debounced: a picture takes a moment to shrink, and the list should not lag behind it. */
   renderBeforeSave();
@@ -6455,7 +6506,7 @@ function renderPhotoCompare(){
   const box = document.getElementById('sourcePhotoCompare');
   if(!box) return;
   if(!formPhotos.length){ box.innerHTML = ''; return; }
-  box.innerHTML = `<div class="hint">Or check them against the source photo:</div><div class="photo-compare">` +
+  box.innerHTML = `<div class="hint">Or check them against the source ${sourceFilesWord(formPhotos).toLowerCase()}:</div><div class="photo-compare">` +
     `<ul class="photo-compare-lines">${reviewLines.map(l=> `<li>${escapeHtml(l)}</li>`).join('')}</ul>` +
     `<div class="photo-compare-photos">${formPhotos.map(p=> photoImgHtml(p, 'photo-compare-img')).join('')}</div></div>` +
     `<div class="hint" id="photoCheckRow">${photoCheckHtml()}</div>`;
@@ -6468,14 +6519,16 @@ function photoCheckHtml(){
   const r = state.editingRecipeId ? loadRecipes().find(x=> x.id === state.editingRecipeId) : null;
   const lines = recipeIngredientLines();
   const st = sourceCheckStatus(r && r.sourceCheck, lines);
+  /* "The PDF" for a recipe kept as one, "the source file" for a mixture: the route stays 'photo' either way. */
+  const word = sourceFilesWord(formPhotos) === 'FILE' ? 'SOURCE FILE' : sourceFilesWord(formPhotos);
   if(st.state === 'fresh'){
     return st.validated && st.route === 'photo'
-      ? `<span class="rv-quiet">Checked against the photo ${escapeHtml(formatDate(isoLocal(new Date(st.validated))))}.</span>` : '';
+      ? `<span class="rv-quiet">Checked against the ${word.toLowerCase()} ${escapeHtml(formatDate(isoLocal(new Date(st.validated))))}.</span>` : '';
   }
   if(formPhotoChecked && formPhotoChecked.linesHash !== linesHash(lines)) formPhotoChecked = null;
   return formPhotoChecked
-    ? `<span class="rv-quiet">Recorded as checked against the photo when you save.</span> <button type="button" data-photo-uncheck>UNDO</button>`
-    : `<button type="button" data-photo-check>CHECKED AGAINST THE PHOTO</button>`;
+    ? `<span class="rv-quiet">Recorded as checked against the ${word.toLowerCase()} when you save.</span> <button type="button" data-photo-uncheck>UNDO</button>`
+    : `<button type="button" data-photo-check>CHECKED AGAINST THE ${word}</button>`;
 }
 /* What SAVE records for it: the check, if one is pending and still of the lines being saved. */
 function photoCheckToSave(lines){
@@ -6512,12 +6565,13 @@ document.getElementById('sourcePhotoList').addEventListener('click', e=>{
 function openSourcePhotoViewer(photos, title, startAt){
   const overlay = document.getElementById('sourcePhotoOverlay');
   const n = photos.length;
-  document.getElementById('sourcePhotoTitle').textContent = `${title || 'Recipe'} · SOURCE ${n === 1 ? 'PHOTO' : 'PHOTOS · ' + n}`;
+  document.getElementById('sourcePhotoTitle').textContent = `${title || 'Recipe'} · ${sourceFilesLabel(photos)}`;
   const body = document.getElementById('sourcePhotoBody');
   body.innerHTML = photos.map((p, i)=>
     `<figure class="source-photo-page" id="sourcePhotoPage${i}">${photoImgHtml(p, 'source-photo-full')}` +
     `<figcaption>PAGE ${i + 1} OF ${n}${p.added ? ' · ADDED ' + escapeHtml(formatDate(isoLocal(new Date(p.added))).toUpperCase()) : ''}` +
-    ` · <a data-photo-open target="_blank" rel="noopener"${p.path ? '' : ` href="${escapeHtml(p.url)}"`}>OPEN FULL SIZE ↗</a></figcaption></figure>`).join('');
+    (isPdfEntry(p) ? '' : ` · <a data-photo-open target="_blank" rel="noopener"${p.path ? '' : ` href="${escapeHtml(p.url)}"`}>OPEN FULL SIZE ↗</a>`) +
+    `</figcaption></figure>`).join('');
   loadPhotoImages(body);
   overlay.classList.add('open');
   overlay.scrollTop = 0;
@@ -7603,9 +7657,10 @@ function beforeSaveLines(){
   } else if(!stored && /^https:\/\//i.test(fields.sourceUrl || '')){
     out.push('Records: not compared with its source');
   }
-  const newPhotos = formPhotos.filter(p=> !p.path).length;
-  if(newPhotos) out.push(`Stores ${newPhotos === 1 ? 'the new source photo' : newPhotos + ' new source photos'} with the recipe`);
-  if(formPhotosRemoved.length) out.push(`Deletes ${formPhotosRemoved.length === 1 ? 'the source photo' : formPhotosRemoved.length + ' source photos'} you removed`);
+  const newFiles = formPhotos.filter(p=> !p.path), newPhotos = newFiles.length;
+  const newWord = sourceFilesWord(newFiles) === 'PDF' ? 'PDF' : sourceFilesWord(newFiles).toLowerCase();
+  if(newPhotos) out.push(`Stores ${newPhotos === 1 ? `the new source ${newWord}` : `${newPhotos} new source ${newWord}s`} with the recipe`);
+  if(formPhotosRemoved.length) out.push(`Deletes ${formPhotosRemoved.length === 1 ? 'the source file' : formPhotosRemoved.length + ' source files'} you removed`);
   if(state.editingRecipeId && state.viewerTicks[state.editingRecipeId] && state.viewerTicks[state.editingRecipeId].size){
     out.push('Resets the ticks on this recipe\'s diagram');
   }

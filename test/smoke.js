@@ -3683,7 +3683,7 @@ const check = (name, pass, detail) => {
   const spRmOrder = await spLog(spLog3);
   check('    on Edit the stored pages show; REMOVE is named by BEFORE YOU SAVE and done by SAVE: the row without it first, then its file',
         spStoredThumbs.length === 2 && spStoredThumbs[0].caption === 'PAGE 1 VIEW REMOVE' && spStoredThumbs.every(t => /^blob:/.test(t.src))
-        && spRmBand.includes('Deletes the source photo you removed') && spRmBefore === 0
+        && spRmBand.includes('Deletes the source file you removed') && spRmBefore === 0
         && JSON.stringify((spRmRow.source_photos || []).map(p => p.path)) === JSON.stringify([spPaths[1]])
         && spRm.length === 1 && JSON.stringify(spRm[0].paths) === JSON.stringify([spPaths[0]]) && spRm[0].bucket === 'recipe-sources'
         && spRmOrder.join(',') === 'write-done:recipes,storage-done:remove', JSON.stringify([spStoredThumbs, spRmBand, spRmRow.source_photos, spRm, spRmOrder]));
@@ -3858,6 +3858,77 @@ const check = (name, pass, detail) => {
   check('    and a comparison run in the form takes its place: the offer goes and SAVE records the comparison',
         !pcAfterCompare.check && !pcAfterCompare.undo && pcCmpSc.route === 'pasted' && !pcCmpSc.validated, JSON.stringify([pcAfterCompare, pcCmpSc]));
   await page.evaluate(() => { for(let i = loadRecipes().length - 1; i >= 0; i--) if(String(loadRecipes()[i].id).startsWith('pc-')) loadRecipes().splice(i, 1); });
+  /* ---- PDF sources (asked 30 Sep 2026: a recipe page "printed" to PDF) ----
+     Kept as it is, up to the bucket's 10 MB, opened by the browser; refused when too big or not a PDF. */
+  const pdfBytes = Buffer.from('%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n');
+  await page.evaluate(() => {
+    loadRecipes().push({ id: 'pdf-one', title: 'PDF Barley Broth', source: 'A printed page', sourceUrl: '', servings: 4, tags: { course: '', keywords: [] },
+      history: [], dateAdded: '2026-09-06', sourceCheck: null, sourcePhotos: null,
+      syntax: ['TITLE: PDF Barley Broth', 'SOURCE: A printed page', 'SERVINGS: 4', '', 'GROUP a:', '120 g pearl barley', '1 leek, sliced', '', 'STAGE:', 'MERGE a -> done: Simmer [45 min]'].join('\n') });
+  });
+  await page.evaluate(() => openEditModal('pdf-one'));
+  await page.waitForTimeout(300);
+  const pdfSMark0 = await spStorageMark();
+  const pdfMark0 = await anMark();
+  const pdfAccept = await page.evaluate(() => document.getElementById('sourcePhotoInput').accept);
+  await page.setInputFiles('#sourcePhotoInput', [
+    { name: 'barley-broth.pdf', mimeType: 'application/pdf', buffer: pdfBytes },
+    { name: 'whole-book.pdf', mimeType: 'application/pdf', buffer: Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(10.5 * 1024 * 1024)]) },
+    { name: 'not-really.pdf', mimeType: 'application/pdf', buffer: Buffer.from('<html>a saved page</html>') }]);
+  // Waited for, not required: a PDF that never arrives must fail the check below by name, not time out here.
+  await page.waitForFunction(() => formPhotos.length >= 1, null, { timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(300);
+  const pdfForm = await page.evaluate(() => ({ photos: formPhotos.map(p => ({ type: p.type || null, name: p.name || null, size: p.blob && p.blob.size })),
+    toast: (document.querySelector('.toast') || { textContent: '' }).textContent,
+    thumbs: [...document.querySelectorAll('#sourcePhotoList figure')].map(f => ({ caption: f.querySelector('figcaption').textContent.replace(/\s+/g, ' ').trim(),
+      open: (f.querySelector('.pdf-open') || {}).href || '' })),
+    compare: { card: !!document.querySelector('#sourcePhotoCompare .pdf-card'), button: ((document.querySelector('#photoCheckRow [data-photo-check]') || {}).textContent || '') } }));
+  const pdfBand = await anBeforeSave();
+  check('PDF SOURCES: ADD PHOTO OR PDF takes a PDF as it is, and refuses one over 10 MB and a file that is not a PDF',
+        /application\/pdf/.test(pdfAccept) && pdfForm.photos.length === 1 && pdfForm.photos[0].type === 'pdf' && pdfForm.photos[0].name === 'barley-broth.pdf'
+        && pdfForm.photos[0].size === pdfBytes.length && /over 10 MB/.test(pdfForm.toast)
+        && (await anSince(pdfMark0)).length === 0 && (await spStorage(pdfSMark0)).length === 0, JSON.stringify([pdfAccept, pdfForm.photos, pdfForm.toast]));
+  check('    it shows as a PDF with its name and an OPEN link, beside the lines too, named by BEFORE YOU SAVE, and the check reads "against the PDF"',
+        pdfForm.thumbs.length === 1 && pdfForm.thumbs[0].caption === 'PAGE 1 · PDF · NEW REMOVE' && /^blob:/.test(pdfForm.thumbs[0].open)
+        && pdfForm.compare.card && pdfForm.compare.button === 'CHECKED AGAINST THE PDF' && pdfBand.includes('Stores the new source PDF with the recipe'),
+        JSON.stringify([pdfForm.thumbs, pdfForm.compare, pdfBand]));
+  await page.setInputFiles('#sourcePhotoInput', [{ name: 'renamed.pdf', mimeType: 'application/pdf', buffer: Buffer.from('<html></html>') }]);
+  await page.waitForTimeout(300);
+  const pdfNotPdf = await page.evaluate(() => ({ n: formPhotos.length, toast: (document.querySelector('.toast') || { textContent: '' }).textContent }));
+  const pdfSMark1 = await spStorageMark();
+  const pdfMark1 = await anMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const pdfUp = (await spStorage(pdfSMark1)).filter(s => s.op === 'upload');
+  const pdfRow = ((await spRecipeWrites(pdfMark1)).pop() || { rows: [{}] }).rows[0];
+  const pdfEntry = (pdfRow.source_photos || [])[0] || {};
+  await page.evaluate(() => localPhotoUrls.clear());
+  const pdfChip = await page.evaluate(() => (document.querySelector('#viewerProvenance [data-source-photos]') || {}).textContent || '');
+  await anClick('#viewerProvenance [data-source-photos]');
+  await page.waitForTimeout(300);
+  const pdfViewer = await page.evaluate(() => ({ title: document.getElementById('sourcePhotoTitle').textContent,
+    open: (document.querySelector('#sourcePhotoBody .pdf-open') || {}).href || '', target: (document.querySelector('#sourcePhotoBody .pdf-open') || {}).target || '',
+    fullSize: /OPEN FULL SIZE/.test(document.getElementById('sourcePhotoBody').textContent) }));
+  await page.keyboard.press('Escape');
+  check('    SAVE stores it as a PDF, byte for byte, under a .pdf name, the row saying so; the chip reads SOURCE PDF and opens it in a new tab by a signed link',
+        /not a PDF|Couldn't read that file/.test(pdfNotPdf.toast) && pdfNotPdf.n === 1
+        && pdfUp.length === 1 && pdfUp[0].contentType === 'application/pdf' && pdfUp[0].size === pdfBytes.length && /\/pdf-one\/[^/]+\.pdf$/.test(pdfUp[0].path)
+        && pdfEntry.type === 'pdf' && pdfEntry.name === 'barley-broth.pdf' && pdfEntry.path === pdfUp[0].path
+        && pdfChip === 'SOURCE PDF' && /· SOURCE PDF$/.test(pdfViewer.title) && /^blob:/.test(pdfViewer.open) && pdfViewer.target === '_blank' && !pdfViewer.fullSize,
+        JSON.stringify([pdfNotPdf, pdfUp, pdfEntry, pdfChip, pdfViewer]));
+  // A photo added beside it: the PDF keeps what it is, and the chip counts files.
+  await page.evaluate(() => openEditModal('pdf-one'));
+  await page.waitForTimeout(300);
+  await spPick([800, 600]);
+  const pdfMark2 = await anMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const pdfMixed = (((await spRecipeWrites(pdfMark2)).pop() || { rows: [{}] }).rows[0].source_photos) || [];
+  const pdfMixedChip = await page.evaluate(() => (document.querySelector('#viewerProvenance [data-source-photos]') || {}).textContent || '');
+  check('    with a photo added beside it the PDF keeps its type and name, the photo has none, and the chip reads SOURCE FILES · 2',
+        pdfMixed.length === 2 && pdfMixed[0].type === 'pdf' && pdfMixed[0].name === 'barley-broth.pdf' && !('type' in pdfMixed[1]) && /\.jpg$/.test(pdfMixed[1].path)
+        && pdfMixedChip === 'SOURCE FILES · 2', JSON.stringify([pdfMixed, pdfMixedChip]));
+  await page.evaluate(() => { for(let i = loadRecipes().length - 1; i >= 0; i--) if(loadRecipes()[i].id === 'pdf-one') loadRecipes().splice(i, 1); showView('recipes'); });
   // Before the migration: rows without the column mean it has not been applied; ADD PHOTO says so.
   const spOff = await page.evaluate(async () => {
     const saved = JSON.stringify(window.__STUB_DATA__.recipes);
