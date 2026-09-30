@@ -1605,6 +1605,25 @@ no link read as not compared, and the number of differences hidden. "Attention f
 attention row also ranked above every other, sorting by status alone gave the same order, so a recipe with no link but a name in
 Other was added, which only attention-first puts above one needing nothing. `index.html` restored byte-identical after the run. *Tablet:* 36h (PR 7) and 36i reported done by the household, 30 Sep.
 
+**Autocomplete on the ingredient boxes, Settings and Swaps (30 Sep 2026).** Asked for by the household after the tablet passes of
+PRs 6 to 8, planned in `docs/HANDOVER-2026-09-29-SESSION.md` §7 and built on their "go", with both decisions answered: Swaps too,
+and the aisle box offering the library's names only. A native `<datalist>` on six boxes, as the diary title and the form's SOURCE
+already use. `#ingredientVocab` (every name the library's shopping list uses, every dictionary name and wording, both sides of
+every ingredient word match; lower case, each once) serves the ingredient lookup, both Word Matches boxes and both Swaps boxes;
+`#libraryIngredientVocab` (the library's names alone) serves Shopping Aisles. Word Matches follows its kind select to the sources
+in use (`#sourceVocab`, now filled when Settings is drawn too, by `fillSourceVocab`). Refilled when Settings or Swaps is drawn
+and after a word match is added. A suggestion only fills the box; nothing is written by one. `index.html` only: no `core.js`
+change, no schema, no naming change.
+
+*Verified by.* `smoke.js` **357 → 363**, `core.test.js` 142, both exit 0, **no existing check changed**. The lists are emptied
+before the block, so what it sees is what drawing Settings put there. Invented names (sea purslane, marsh samphire), checked
+read-only against the live recipes and word matches first: neither appears. **Ten page mutations, each seen failing by name:**
+a box without its list, the aisle box on the full list, the dictionary left out, names not lower-cased (duplicates), the kind
+select not followed, the sources not filled from Settings, the list not refilled after a match is added, Swaps not filling the
+list, word matches left out, and the aisle list given the dictionary's names. `index.html` restored after each, `git diff`
+empty. *Not verified:* how the tablet shows the suggestions; a headless browser draws no datalist dropdown
+(`docs/TEST-PLAN.md` step 36j).
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export
