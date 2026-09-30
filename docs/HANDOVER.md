@@ -32,7 +32,7 @@ verified status. **Nothing here is inferred from a previous summary.**
 | --- | --- | --- |
 | P1 | Servings + scale on the card | **Done.** Per-entry headcount, stored in a parallel `servings smallint[]` on `planner_days`, feeds that week's shopping list. |
 | P2 | Total time on cards | **Done, verified.** Planner rows (`day-recipe-time`) and Shortlist cards (`course · time`). This one was inherited, not built — confirmed present rather than assumed. |
-| P3 | Automatic calendar push | **Not started. Never appeared in any task list.** Phase 3 in the brief's own build order. Needs a Supabase Edge Function holding a Google OAuth refresh token — see §4. |
+| P3 | Automatic calendar push | **Scoped 30 Sep 2026 in `docs/PLAN-CALENDAR-PUSH.md`; not built.** Until then it had never appeared in any task list. Phase 3 in the brief's own build order. Needs a Supabase Edge Function holding a Google OAuth refresh token — see §4. |
 
 ### Recipe viewing & editing
 
@@ -623,6 +623,9 @@ personal project). After that, reminders are created automatically. Opt-in per p
 
 This explicitly **supersedes** the earlier downloadable `.ics` idea, which is in the brief's
 "deliberately dropped" list so it doesn't quietly reappear.
+
+**Scoped 30 Sep 2026: `docs/PLAN-CALENDAR-PUSH.md`**, with seven decisions for the household. Found while scoping: the nightly
+`pg_dump` copies the `public` and `private` schemas, so the refresh token must live in Vault (installed), not in a table.
 
 ---
 
@@ -1872,6 +1875,11 @@ is written. (Ten-not-three first crashed the run on a click at a button that was
 nothing, and the check fails by name.) The invented lines were checked against the live library (read-only): none is a real line.
 *Screenshots* at 1280×800 and 412 wide: the section, cooking mode, the prompt. *Not verified:* the tablet, `docs/TEST-PLAN.md`
 step 39a.
+*Merged 30 Sep 21:39 UTC as PR #67.*
+
+**P3 scoped (30 Sep 2026).** `docs/PLAN-CALENDAR-PUSH.md`, from the live schema (read-only, 22:01 UTC): `planner_days` has no
+time or opt-in; 16 days planned in the last four weeks, 3 ahead; no recipe has an `[overnight]` step, 6 have a step of an hour or more;
+Vault installed, `pg_cron` and `pg_net` available but not installed. Not built.
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
