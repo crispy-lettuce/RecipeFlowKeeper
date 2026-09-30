@@ -293,9 +293,18 @@ asks for the recipe's text, or its ingredient list, to be pasted.
 - a conversion is produced with a `⚠️ Source note:` line attached. The note is for what a
   conversion has to say about its source, not a licence to convert without one.
 
-**Runs.** None in the conversion project yet: the household reloads `conversion-instructions.md`
-there, runs this once in a fresh chat, and records the result here with the tools that chat had
-(see below).
+**Runs.**
+
+- **30 Sep 2026, the conversion project, run by the household: passed.** The project had been reloaded
+  with `conversion-instructions.md` alone (no `ingredient-names.md`). The whole reply, in a fresh chat:
+  it could not read `https://recipes.example.invalid/one-pot-lentil-stew`, had converted nothing,
+  said why (a recipe built from a search snippet, another page or memory would not be that site's
+  recipe, and the app could not tell), and asked for the recipe text or the ingredient list and
+  method, with the servings and times, promising `SOURCE_URL` set to the address. No syntax, no
+  substitute recipe, no source note. Two things to know: the reason it gave, "the site blocks
+  automated access", is a guess (a `.invalid` address never resolves at all), and the tools the chat
+  had (search or browse) were **not stated**, so this run does not show the rule holding against a
+  page it *could* reconstruct from (see the stand-in below).
 
 **A stand-in, 29 Sep 2026 (not the conversion project).** Four runs, one per cell, of a model given
 only the instructions (the old wording from `main`, then the new) and told what the failed fetch

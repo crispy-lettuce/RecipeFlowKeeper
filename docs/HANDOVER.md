@@ -1713,6 +1713,12 @@ household, 30 Sep, after PR #60 merged. The layout plan is finished, and every t
 the one thing `docs/TEST-PLAN.md` had left "deferred to the tablet" since the first build, because no desktop browser can show a
 screen that would otherwise dim. *Not stated:* whether that was the Recipe Viewer, the Group Viewer or both, and which of the two
 methods (the screen-lock API or the video fallback) the status line named; the status line says which when it is on.
+
+**Converter test 9 passed (30 Sep 2026)**, run by the household in the conversion project after reloading
+`conversion-instructions.md` alone: it named the address it could not read, converted nothing, said why, and asked for the text.
+Recorded in `converter/test-set.md` with its two caveats: the reason it gave ("the site blocks automated access") is a guess for a
+`.invalid` address, and the chat's tools were not stated, so the run does not test the case the rule exists for (a page it could
+have reconstructed from).
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
