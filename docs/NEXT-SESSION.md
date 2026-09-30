@@ -33,7 +33,7 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 | Autocomplete (30 Sep) | The ingredient boxes' own dropdown in Settings and Swaps | Done, PRs #55–#56; tablet 36k |
 | `docs/PLAN-LAYOUT.md` (30 Sep) | Edit dialog, cooking mode, step text, aisle box, Settings tabs | Done, PRs #57–#60; tablet 37a–37d |
 | VALIDATE INGREDIENT LIST, OPEN SOURCE (30 Sep) | Accepting a comparison's differences; the source page from Edit | Done, PR #62; tablet 38a |
-| `docs/PLAN-COOKING-NOTES.md` (30 Sep) | R4: dated cooking notes per recipe, after cooking, foldable into NOTES | Built; tablet 39a |
+| `docs/PLAN-COOKING-NOTES.md` (30 Sep) | R4: dated cooking notes per recipe, after cooking, foldable into NOTES | Done, PR #67; tablet 39a |
 | `docs/PLAN-SOURCE-PHOTOS.md` (30 Sep) | The photo or PDF a recipe was converted from, kept privately; CHECKED AGAINST THE PHOTO | Done, PRs #63–#65; tablet 38b passed, 38c and 38d the household's |
 
 ---
@@ -42,11 +42,10 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 
 1. **The household's tablet passes:** `docs/TEST-PLAN.md` 38c (CHECKED AGAINST THE PHOTO) and 38d (PDF sources).
 2. **The household's data jobs** (below): compare and validate the BBC Good Food recipes; D6, the reconstructed recipes.
-3. **R4, dated cooking notes: built 30 Sep** (`docs/PLAN-COOKING-NOTES.md`, agreed "as suggested"). Tablet step 39a is the
-   household's.
-4. **P3, the calendar push.** Planned meals into Google Calendar. Not scoped. The brief's mechanism is an Edge Function holding a
-   Google OAuth refresh token after a one-off consent screen (`docs/HANDOVER.md` §4); the household would deploy the function and
-   give the consent. Scope it before building, as R4 was.
+3. **R4, dated cooking notes: merged 30 Sep** (PR #67; `docs/PLAN-COOKING-NOTES.md`). Tablet step 39a is the household's.
+4. **P3, the calendar push.** Scoped 30 Sep in `docs/PLAN-CALENDAR-PUSH.md`: one event per switched-on planned day, from
+   start-cooking time to the meal, in a Kitchen calendar, the Google token kept in Vault. **Waiting for the household's seven
+   answers** (its §7), then their one-off Google setup (its §5), then a migration, two Edge Functions and the app.
 5. **Optional, not planned:** a "download all source files" backup (neither the JSON export nor the nightly `pg_dump` holds the
    files); drawing a PDF's pages inside the app, if opening it in the browser proves awkward on the tablet (38d will tell).
 
@@ -59,6 +58,7 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **D6: repair the reconstructed recipes**, together with a session, by the recipe-text rules in `CLAUDE.md` (the household
   approves the exact lines; the before and after go to `PrivateBackup`; one guarded statement per recipe).
 - **Tablet step 39a**, cooking notes.
+- **Answer P3's seven decisions** (`docs/PLAN-CALENDAR-PUSH.md` §7).
 - **The converter.** The conversion project in the Claude app holds **one file, `converter/conversion-instructions.md`**; its
   master copy is the one in this repo. After any change to that file here, reload it into the project. The other files under
   `converter/` stay in git as the project's reference and test material (`test-set.md` is how a change to the instructions is

@@ -19,7 +19,8 @@ GitHub at the time of writing.
 Then pick up work from **`docs/NEXT-SESSION.md`**: where things stand, what is left and in what
 order, and the household's own jobs. As of 30 Sep 2026 the app is live and in daily use and every
 agreed plan is built and merged, R4 (dated cooking notes, `docs/PLAN-COOKING-NOTES.md`) included.
-What remains is the household's data jobs and P3 (the calendar push, not yet scoped).
+What remains is the household's data jobs and P3 (the calendar push, scoped in `docs/PLAN-CALENDAR-PUSH.md`, waiting for the
+household's answers).
 
 **One thing to absorb before changing anything: `main` is production.** GitHub Pages serves from
 `main`, and every merge deploys straight to the tablet. There is no staging step. This was
@@ -310,6 +311,16 @@ handful of` reading; `canned`/`tinned`).
 **Use it when:** starting the review, or answering those three decisions.
 
 **Don't:** look for the recipe's lines in it. They are left out on purpose (this repo is public).
+
+---
+
+### `docs/PLAN-CALENDAR-PUSH.md` — planned meals in Google Calendar, P3 (30 Sep 2026; scoped, waiting for the household's answers)
+**What:** The brief's P3, scoped: what exists (the Planner has no time or opt-in; Vault is installed; the nightly backup would copy
+a token kept in `public` or `private`), a live connection against a subscribed feed, the proposal (one event per switched-on day,
+from start-cooking time to the meal, in its own Kitchen calendar; the token in Vault), the household's one-off Google setup, how
+it would be built (a migration, two Edge Functions, the app) and seven decisions.
+
+**Use it when:** answering those decisions, doing the Google setup, or building P3.
 
 ---
 
