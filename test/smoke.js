@@ -3120,6 +3120,59 @@ const check = (name, pass, detail) => {
   await page.fill('#ingredientLookup', '');
   await page.evaluate(b => { cache.aliases = JSON.parse(b); rebuildAliasMaps(); cache.swaps = cache.swaps.filter(x => x.id !== 'lk-swap'); renderSettings(); }, lkAliasesBefore);
 
+  /* ---- Autocomplete on the ingredient boxes (asked for 30 Sep 2026) ----
+     A native <datalist> on each box. A headless browser draws no dropdown, so these check the wiring and the
+     options; how the tablet shows them is TEST-PLAN step 36j. Invented names; the match added is taken out again.
+     The lists are emptied first, so everything below is what drawing Settings put there, not an earlier form's. */
+  await page.evaluate(() => { ['ingredientVocab', 'libraryIngredientVocab', 'sourceVocab'].forEach(id => { document.getElementById(id).innerHTML = ''; }); });
+  await page.click('.navlink[data-view="settings"]');
+  await page.waitForTimeout(300);
+  const acOpts = id => page.evaluate(i => [...document.querySelectorAll(`#${i} option`)].map(o => o.value), id);
+  const acLists = () => page.evaluate(() => Object.fromEntries(['ingredientLookup', 'alias-from', 'alias-to', 'aisleOverride-name', 'swap-original', 'swap-replacement']
+    .map(id => [id, document.getElementById(id).getAttribute('list') + '/' + document.getElementById(id).getAttribute('autocomplete')])));
+  const acWired = await acLists();
+  check('autocomplete: the lookup, both Word Matches boxes and both Swaps boxes suggest ingredients, and the aisle box the library\'s names',
+        ['ingredientLookup', 'alias-from', 'alias-to', 'swap-original', 'swap-replacement'].every(id => acWired[id] === 'ingredientVocab/off')
+        && acWired['aisleOverride-name'] === 'libraryIngredientVocab/off', JSON.stringify(acWired));
+  const acExpect = await page.evaluate(() => {
+    const library = allLibraryIngredientNames().map(it => it.name.toLowerCase());
+    const dictionaryOnly = INGREDIENT_DICTIONARY.flatMap(r => dictionaryPhrases(r).live).filter(p => !library.includes(p.toLowerCase()));
+    return { library, dictionaryOnly };
+  });
+  const acAll = await acOpts('ingredientVocab');
+  const acLib = await acOpts('libraryIngredientVocab');
+  check('    the ingredient list holds every library name and every dictionary wording, in lower case and each once',
+        acExpect.library.length > 0 && acExpect.library.every(n => acAll.includes(n)) && acAll.includes('almond meal') && acAll.includes('ground almonds')
+        && acExpect.dictionaryOnly.every(p => acAll.includes(p.toLowerCase())) && new Set(acAll).size === acAll.length && acAll.every(v => v === v.toLowerCase()),
+        JSON.stringify([acAll.length, acExpect.library.filter(n => !acAll.includes(n))]));
+  check('    the aisle list holds the library\'s names and nothing from the dictionary alone',
+        acExpect.library.every(n => acLib.includes(n)) && acLib.length === new Set(acExpect.library).size && acExpect.dictionaryOnly.length > 0
+        && !acExpect.dictionaryOnly.some(p => acLib.includes(p.toLowerCase())), JSON.stringify([acLib.length, acExpect.library.length]));
+  await page.selectOption('#alias-kind', 'source');
+  const acSource = await page.evaluate(() => ({ from: document.getElementById('alias-from').getAttribute('list'), to: document.getElementById('alias-to').getAttribute('list'),
+    sources: [...document.querySelectorAll('#sourceVocab option')].map(o => o.value) }));
+  await page.selectOption('#alias-kind', 'ingredient');
+  const acBack = await page.evaluate(() => document.getElementById('alias-from').getAttribute('list') + '/' + document.getElementById('alias-to').getAttribute('list'));
+  check('    Word Matches suggests the sources in use when SOURCE is picked, filled without opening the recipe form, and ingredients again after',
+        acSource.from === 'sourceVocab' && acSource.to === 'sourceVocab' && acSource.sources.includes('Test Kitchen') && acBack === 'ingredientVocab/ingredientVocab',
+        JSON.stringify([acSource, acBack]));
+  const acAliasesBefore = await page.evaluate(() => JSON.stringify(cache.aliases));
+  await page.fill('#alias-from', 'Sea Purslane');
+  await page.fill('#alias-to', 'marsh samphire');
+  await page.click('#aliasAddBtn');
+  await page.waitForTimeout(200);
+  const acAdded = await acOpts('ingredientVocab');
+  check('    a word match added in Settings is suggested at once, both sides',
+        acAdded.includes('sea purslane') && acAdded.includes('marsh samphire') && !acAll.includes('sea purslane'), JSON.stringify(acAdded.filter(v => /purslane|samphire/.test(v))));
+  await page.evaluate(b => { cache.aliases = JSON.parse(b); rebuildAliasMaps(); renderSettings(); }, acAliasesBefore);
+  const acForgotten = await acOpts('ingredientVocab');
+  await page.evaluate(() => { document.getElementById('ingredientVocab').innerHTML = ''; });
+  await page.click('.navlink[data-view="swaps"]');
+  await page.waitForTimeout(300);
+  const acSwaps = await acOpts('ingredientVocab');
+  check('    and the next drawing drops it again; Swaps fills the list itself, without Settings drawn first',
+        !acForgotten.includes('sea purslane') && acSwaps.length === acAll.length && acSwaps.includes('almond meal'), JSON.stringify([acForgotten.length, acSwaps.length]));
+
   /* ---- LIBRARY CHECK (PR 8 of the add-recipe plan, 29 Sep 2026) ----
      Every recipe, its standing against its source and its names in Other, those needing attention
      first; RUN writes nothing and OPEN opens the edit form. Six invented recipes, one per status,
