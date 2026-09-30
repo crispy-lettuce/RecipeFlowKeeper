@@ -960,7 +960,11 @@
   .kw-suggest-item{
     padding:9px 12px; font-size:13.5px; color:var(--ink); cursor:pointer;
   }
-  .kw-suggest-item:hover{ background:var(--plum-wash); color:var(--plum); }
+  .kw-suggest-item:hover, .kw-suggest-item.active{ background:var(--plum-wash); color:var(--plum); }
+  /* The ingredient boxes' own dropdown (ingredientSuggest): the keyword list's look, placed under its box by
+     script rather than stretched across a wrapper, so no row's layout changes to hold it. */
+  .suggest-host{ position:relative; }
+  .ing-suggest{ right:auto; margin-top:0; }
   .required{ color:var(--danger); }
   .field-error{ color:var(--danger); font-size:13.5px; margin-top:12px; }
   .scale-row{
@@ -1546,8 +1550,8 @@
       </div>
       <div class="swap-form">
         <div class="field-row">
-          <label><span>ORIGINAL INGREDIENT</span><input type="text" id="swap-original" list="ingredientVocab" autocomplete="off" placeholder="e.g. brown rice syrup"></label>
-          <label><span>REPLACEMENT</span><input type="text" id="swap-replacement" list="ingredientVocab" autocomplete="off" placeholder="e.g. maple syrup"></label>
+          <label><span>ORIGINAL INGREDIENT</span><input type="text" id="swap-original" autocomplete="off" placeholder="e.g. brown rice syrup"></label>
+          <label><span>REPLACEMENT</span><input type="text" id="swap-replacement" autocomplete="off" placeholder="e.g. maple syrup"></label>
         </div>
         <div class="field-row">
           <label><span>RATIO (ORIGINAL × THIS = REPLACEMENT)</span><input type="number" id="swap-ratio" placeholder="e.g. 0.75" min="0" step="0.01"></label>
@@ -1614,10 +1618,7 @@
           <div class="side-label">INGREDIENT LOOKUP</div>
           <p class="subtle">Type an ingredient as a recipe would write it, to see what the shopping list
             calls it, where it goes and why, and what you have already told the app about it.</p>
-          <input type="text" id="ingredientLookup" list="ingredientVocab" autocomplete="off" placeholder="e.g. almond flour" aria-label="Ingredient to look up">
-          <!-- The suggestions for every ingredient box, in Settings and in Swaps: filled by fillIngredientVocab. -->
-          <datalist id="ingredientVocab"></datalist>
-          <datalist id="libraryIngredientVocab"></datalist>
+          <input type="text" id="ingredientLookup" autocomplete="off" placeholder="e.g. almond flour" aria-label="Ingredient to look up">
           <div id="ingredientLookupOut"></div>
         </div>
 
@@ -1634,9 +1635,9 @@
             get added together on the shopping list; source matches stop you being asked
             about a spelling you've already settled.</p>
           <div class="alias-form">
-            <input type="text" id="alias-from" list="ingredientVocab" autocomplete="off" placeholder="e.g. spring onion">
+            <input type="text" id="alias-from" autocomplete="off" placeholder="e.g. spring onion">
             <span class="alias-arrow">means</span>
-            <input type="text" id="alias-to" list="ingredientVocab" autocomplete="off" placeholder="e.g. spring onions">
+            <input type="text" id="alias-to" autocomplete="off" placeholder="e.g. spring onions">
             <select class="sort" id="alias-kind" aria-label="Kind of match">
               <option value="ingredient">INGREDIENT</option>
               <option value="source">SOURCE</option>
@@ -1655,7 +1656,7 @@
           <p class="subtle" id="aisleOverridesUnavailable" style="display:none;">Not available yet: the
             aisle_overrides table has not been created on the database (docs/migrations/add-aisle-overrides.md).</p>
           <div class="alias-form" id="aisleOverrideForm">
-            <input type="text" id="aisleOverride-name" list="libraryIngredientVocab" autocomplete="off" placeholder="e.g. sirloin steak">
+            <input type="text" id="aisleOverride-name" autocomplete="off" placeholder="e.g. sirloin steak">
             <select class="sort" id="aisleOverride-aisle" aria-label="Aisle"></select>
             <button class="btn" id="aisleOverrideAddBtn">ADD</button>
           </div>
@@ -6077,11 +6078,7 @@ function fillTagSelects(){
     sel.value = current;
   });
 
-  fillSourceVocab(recipes);
-}
-/* The recipe form's SOURCE suggestions, and Word Matches' when SOURCE is picked there. */
-function fillSourceVocab(recipes){
-  const sources = Array.from(sourceCounts(recipes || loadRecipes()).keys()).sort((a,b)=>a.localeCompare(b));
+  const sources = Array.from(sourceCounts(recipes).keys()).sort((a,b)=>a.localeCompare(b));
   document.getElementById('sourceVocab').innerHTML =
     sources.map(v=>`<option value="${escapeHtml(v)}"></option>`).join('');
 }
@@ -6428,7 +6425,6 @@ function renderSettings(){
   document.getElementById('setDarkMode').innerHTML = THEME_MODES.map(m=>
     `<option value="${m}"${m === current ? ' selected' : ''}>${THEME_LABELS[m]}</option>`
   ).join('');
-  fillIngredientVocab();
   renderIngredientLookup();
   renderAliasesList();
   renderAisleOverridesList();
@@ -6599,7 +6595,6 @@ document.getElementById('aliasAddBtn').addEventListener('click', ()=>{
   fromEl.value = ''; toEl.value = '';
   showToast(`"${from}" now means "${to}"`);
   renderAliasesList();
-  fillIngredientVocab();
   if(state.view === 'shopping') renderShopping();
 });
 
@@ -6715,34 +6710,113 @@ function renderDictionaryList(filter){
 document.getElementById('ingredientLookup').addEventListener('input', renderIngredientLookup);
 
 /* AUTOCOMPLETE on the ingredient boxes (asked for 30 Sep 2026: "to help make the process easier when you are
-   trying to apply something or review an existing ingredient"). A native <datalist>, as the diary's title and
-   the form's SOURCE already use: each box takes one value, so the browser's own filtering is right, and the
-   tablet already knows how to show it (KEYWORDS avoids one only because it takes several values).
-   Two lists. #ingredientVocab, for the lookup, both Word Matches boxes and both Swaps boxes: every name the
-   library's shopping list uses, every dictionary name and wording, and both sides of every ingredient word
-   match. #libraryIngredientVocab, for the aisle box, holds the library's names only: an aisle is only worth
-   setting for a name the list actually shows (the household's choice, 30 Sep). Lower case, as the lookup
-   shows a name, and each once. A suggestion only fills the box; every box keys what it is given with
-   shoppingKeyForName, so a picked name and the same name typed land on the same row. Refilled whenever
-   Settings or Swaps is drawn and after a word match is added, the one write here that adds a name. */
+   trying to apply something or review an existing ingredient"). First built (PR #55) as a native <datalist>,
+   which the laptop drew as a short scrolling box but the tablet's Chrome drew as a full-screen menu of every
+   name, opened on the first tap before anything was typed: the page has no say over how a datalist is drawn.
+   So the app draws its own, as KEYWORDS already does: capped at about five rows (190px) and scrolling inside
+   itself, shown only once something is typed, names starting with what is typed first and then names
+   containing it. The same on every screen.
+   What each box offers. The lookup, both Word Matches boxes and both Swaps boxes: every name the library's
+   shopping list uses, every dictionary name and wording, and both sides of every ingredient word match. The
+   aisle box: the library's names only, since an aisle is only worth setting for a name the list actually
+   shows (the household's choice, 30 Sep). Word Matches with SOURCE picked: the sources in use. Lower case,
+   as the lookup shows a name, and each once. Worked out when a box is focused, so a name added since (a word
+   match, a saved recipe) is there without anything refilling it; the library is small enough that this
+   costs nothing. A suggestion only fills the box and tells it so, as typing would; every box keys what it is
+   given with shoppingKeyForName, so a picked name and the same name typed land on the same row. */
+const INGREDIENT_SUGGEST_BOXES = { 'ingredientLookup': 'all', 'alias-from': 'alias', 'alias-to': 'alias',
+  'aisleOverride-name': 'library', 'swap-original': 'all', 'swap-replacement': 'all' };
+let ingredientVocab = { all: [], library: [] };
 function fillIngredientVocab(){
   const library = allLibraryIngredientNames().map(it=> it.name);
   const dictionary = INGREDIENT_DICTIONARY.flatMap(r=> dictionaryPhrases(r).live);
   const matched = loadAliases().filter(a=> a.kind === 'ingredient').flatMap(a=> [a.alias, a.canonical]);
-  const options = names => Array.from(new Set(names.map(n=> String(n || '').trim().toLowerCase()).filter(Boolean)))
-    .sort((a, b)=> a.localeCompare(b))
-    .map(v=> `<option value="${escapeHtml(v)}"></option>`).join('');
-  document.getElementById('ingredientVocab').innerHTML = options([...library, ...dictionary, ...matched]);
-  document.getElementById('libraryIngredientVocab').innerHTML = options(library);
-  fillSourceVocab();
-  followAliasKind();
+  const names = list => Array.from(new Set(list.map(n=> String(n || '').trim().toLowerCase()).filter(Boolean)))
+    .sort((a, b)=> a.localeCompare(b));
+  ingredientVocab = { all: names([...library, ...dictionary, ...matched]), library: names(library) };
 }
-/* Word Matches' two boxes suggest what the kind select says they hold: ingredients, or the sources in use. */
-function followAliasKind(){
-  const list = document.getElementById('alias-kind').value === 'source' ? 'sourceVocab' : 'ingredientVocab';
-  ['alias-from', 'alias-to'].forEach(id=> document.getElementById(id).setAttribute('list', list));
+/* What a box offers for what is typed in it: nothing for an empty box, and nothing when the only match is
+   what is already there (there is nothing left to pick). */
+function ingredientSuggestions(input){
+  let kind = INGREDIENT_SUGGEST_BOXES[input.id];
+  if(kind === 'alias') kind = document.getElementById('alias-kind').value === 'source' ? 'source' : 'all';
+  const names = kind === 'source'
+    ? Array.from(sourceCounts(loadRecipes()).keys()).sort((a, b)=> a.localeCompare(b))
+    : ingredientVocab[kind];
+  const q = input.value.trim().toLowerCase();
+  if(!q) return [];
+  const starts = [], within = [];
+  names.forEach(n=>{ const l = n.toLowerCase(); if(l.startsWith(q)) starts.push(n); else if(l.includes(q)) within.push(n); });
+  const out = starts.concat(within);
+  return out.length === 1 && out[0].toLowerCase() === q ? [] : out;
 }
-document.getElementById('alias-kind').addEventListener('change', followAliasKind);
+function hideIngredientSuggest(list){ list.style.display = 'none'; list.innerHTML = ''; list.dataset.active = '-1'; }
+function renderIngredientSuggest(input){
+  const list = document.getElementById(input.id + '-suggest');
+  const names = ingredientSuggestions(input);
+  if(!names.length){ hideIngredientSuggest(list); return; }
+  list.innerHTML = names.map(n=> `<div class="kw-suggest-item" data-suggest-value="${escapeHtml(n)}">${escapeHtml(n)}</div>`).join('');
+  list.dataset.active = '-1';
+  /* Under the box, as wide as it, measured each time: the Word Matches and aisle rows wrap on a narrow
+     screen, so where the box sits is only known when it is drawn. */
+  list.style.top = (input.offsetTop + input.offsetHeight + 4) + 'px';
+  list.style.left = input.offsetLeft + 'px';
+  list.style.width = input.offsetWidth + 'px';
+  list.style.display = 'block';
+  list.scrollTop = 0;
+}
+function pickIngredientSuggestion(input, value){
+  input.value = value;
+  hideIngredientSuggest(document.getElementById(input.id + '-suggest'));
+  /* The box's own listener (the lookup redraws on input) hears the pick as it would hear typing; this
+     one ignores it, or the list would open again on the name just picked. */
+  input.dataset.suggestPicking = '1';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  delete input.dataset.suggestPicking;
+}
+Object.keys(INGREDIENT_SUGGEST_BOXES).forEach(id=>{
+  const input = document.getElementById(id);
+  const list = document.createElement('div');
+  list.id = id + '-suggest';
+  list.className = 'kw-suggest-list ing-suggest';
+  input.insertAdjacentElement('afterend', list);
+  input.parentElement.classList.add('suggest-host');
+  hideIngredientSuggest(list);
+  input.addEventListener('focus', ()=>{ fillIngredientVocab(); renderIngredientSuggest(input); });
+  input.addEventListener('input', ()=>{ if(!input.dataset.suggestPicking) renderIngredientSuggest(input); });
+  input.addEventListener('blur', ()=>{
+    setTimeout(()=>{ if(document.activeElement !== input) hideIngredientSuggest(list); }, 150);
+  });
+  /* The arrow keys and Enter, which the laptop's own list had; Escape closes it. */
+  input.addEventListener('keydown', e=>{
+    if(list.style.display === 'none') return;
+    const items = list.querySelectorAll('[data-suggest-value]');
+    let active = parseInt(list.dataset.active, 10);
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+      e.preventDefault();
+      active = e.key === 'ArrowDown' ? Math.min(active + 1, items.length - 1) : Math.max(active - 1, 0);
+      items.forEach((el, i)=> el.classList.toggle('active', i === active));
+      list.dataset.active = String(active);
+      if(items[active]) items[active].scrollIntoView({ block: 'nearest' });
+    } else if(e.key === 'Enter' && active >= 0 && items[active]){
+      e.preventDefault();
+      pickIngredientSuggestion(input, items[active].dataset.suggestValue);
+    } else if(e.key === 'Escape'){
+      hideIngredientSuggest(list);
+    }
+  });
+  /* mousedown, not click, as the keyword list: it comes before the box's blur, and cancelling it keeps the
+     box focused. A finger dragging the list to scroll it makes no mousedown, so only a tap picks. */
+  list.addEventListener('mousedown', e=>{
+    const item = e.target.closest('[data-suggest-value]');
+    if(!item) return;
+    e.preventDefault();
+    pickIngredientSuggestion(input, item.dataset.suggestValue);
+  });
+});
+/* Changing Word Matches' kind changes what its boxes hold, so an open list would be the other kind's. */
+document.getElementById('alias-kind').addEventListener('change', ()=>
+  ['alias-from', 'alias-to'].forEach(id=> hideIngredientSuggest(document.getElementById(id + '-suggest'))));
 document.getElementById('ingredientLookupOut').addEventListener('click', e=>{
   const forget = e.target.closest('[data-lookup-forget]');
   if(forget){
@@ -6815,7 +6889,6 @@ document.getElementById('aisleOverrideAddBtn').addEventListener('click', ()=>{
 
 /* ------------------------------- Swaps ------------------------------- */
 function renderSwaps(){
-  fillIngredientVocab();
   const swaps = loadSwaps();
   const list = document.getElementById('swapsList');
 
