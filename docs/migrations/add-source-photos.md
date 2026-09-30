@@ -66,11 +66,11 @@ alter table public.recipes add column source_photos jsonb
   `hydrate()` selects every column, so the next app reads it with no other change.
 - Nothing about `recipe-images` or its policies changes.
 
-## If an app is merged before it
+## If the PR is merged first
 
-The PR carrying this page changes no app code, so merging it first changes nothing. The app that uses it (step 2 of the plan)
-will send `source_photos` only on a recipe that has photos, as it does `source_check`, so an ordinary save is the row it always
-was; adding a photo would fail until this is applied, the form saying so, and nothing signs anyone out.
+The app sends `source_photos` only on a recipe that has photos, as it does `source_check`, so an ordinary save is the row it
+always was. A load that finds recipe rows without the column turns ADD PHOTO off, with a line saying this page has not been
+applied; nothing signs anyone out. Apply the statement and reload.
 
 ## After it is applied
 

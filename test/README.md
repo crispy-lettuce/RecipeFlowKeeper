@@ -66,7 +66,7 @@ node test/core.test.js
 `build.js` inlines the real `core.js` into the built page, so the smoke suite below tests exactly
 what Pages serves.
 
-**385 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
+**397 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, the automatic image
 re-host on save, what happens when you come back to the tab (online, offline, mid-save, after a
@@ -111,6 +111,13 @@ discarded and the delete step had no test that could see it.
 **Every stub write can fail.** `__WRITE_FAIL__` and `__WRITE_DELAY__` apply to upserts, inserts,
 updates and deletes alike, and each logs `write-done:<table>`. Since PR 5 an ordinary save is a
 single-row update or delete, so the refresh-rule checks need those to be able to fail too.
+
+**The stub has a pretend storage bucket** (30 Sep 2026, for source photos). `upload`, `remove` and
+`createSignedUrl` are recorded in `__STORAGE__` with the bucket and path; an upload is kept, so a
+signed link for it shows it back, and each logs `storage-done:<op>` in `__LOG__`, beside
+`write-done:<table>`, so a check can prove a file was sent before the row that names it.
+`__STORAGE_FAIL__` fails every storage call; `__STORAGE_FILES__` seeds files "already stored". The
+fixture rows carry `source_photos: null`, as the live rows do once the migration is applied.
 
 **Writes are queued, not sent on the spot.** A check that calls a save function inside
 `page.evaluate` and reads `__WRITES__` in the same breath sees nothing: wait a moment (the new

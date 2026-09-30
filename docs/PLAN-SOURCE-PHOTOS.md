@@ -8,8 +8,8 @@ recommended one.
 | Step | What | Status |
 | --- | --- | --- |
 | 1 | The migration, `docs/migrations/add-source-photos.md` | **Written 30 Sep; the household applies it before merging** |
-| 2 | Attach, store, view, tidy | Not built; after step 1 is applied |
-| 3 | CHECKED AGAINST THE PHOTO | Not built; after step 2 |
+| 2 | Attach, store, view, tidy | **Built 30 Sep, in the same PR as step 1** (the household applies the migration, then merges); tablet step 38b |
+| 3 | CHECKED AGAINST THE PHOTO | Not built; after step 2 is merged |
 
 ## 1. Why it matters
 

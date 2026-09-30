@@ -450,6 +450,17 @@ The 37 series is `docs/PLAN-LAYOUT.md`, the layout changes agreed on 30 Sep. Eac
 
 *38a reported "OK" by the household, 30 Sep.*
 
+38b. **Source photos (new 30 Sep; after `docs/migrations/add-source-photos.md` is applied).** Writes one recipe row and stores
+    files, on SAVE. Use a recipe converted from a photo or screenshot, or any recipe you don't mind giving a photo. (1) *EDIT,
+    SOURCE PHOTOS, ADD PHOTO:* the tablet offers the camera or the gallery. Take a photo of a cookbook page, or pick a screenshot;
+    it appears as PAGE 1 · NEW, and BEFORE YOU SAVE says "Stores the new source photo with the recipe". Add a second. Under
+    AGAINST THE SOURCE, the ingredient lines sit beside the photos. (2) *SAVE:* the viewer shows SOURCE PHOTOS · 2. Tap it: both
+    pages full screen; tap a page to see it at its own size, then OPEN FULL SIZE ↗ and pinch to zoom. Can you read the small
+    print? (3) *On the laptop, the same recipe:* the photos show there too (this is the signed link, not the tablet's copy).
+    (4) *EDIT, REMOVE page 1, SAVE:* the chip says SOURCE PHOTO. (5) *Close the form without saving after ADD PHOTO:* nothing
+    changes. **What no test can judge: whether the camera route is easy, and whether 2000 px is sharp enough for a cookbook's
+    small print.** In the dashboard, Storage → `recipe-sources` → your household's folder should hold one file per page kept.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

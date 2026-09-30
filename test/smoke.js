@@ -3579,6 +3579,205 @@ const check = (name, pass, detail) => {
 
   await page.screenshot({ path: path.join(__dirname, 'settings.png'), fullPage: false });
 
+  /* ---- Source photos (docs/PLAN-SOURCE-PHOTOS.md, step 2, 30 Sep 2026) ----
+     The photo a recipe was converted from: shrunk in the browser, stored in a private bucket by SAVE
+     (before the row), shown by a signed link, deleted by SAVE after REMOVE and with its recipe (after
+     the row). Invented recipes and pictures; the stub's storage keeps what is uploaded. */
+  const spPng = (w, h) => page.evaluate(([w, h]) => new Promise(res => { const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d'); x.fillStyle = '#c84'; x.fillRect(0, 0, w, h);
+    c.toBlob(b => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(b); }, 'image/png'); }), [w, h]);
+  const spPick = async (...sizes) => {
+    const files = [];
+    for(const [w, h] of sizes) files.push({ name: `page-${w}x${h}.png`, mimeType: 'image/png', buffer: Buffer.from(await spPng(w, h), 'base64') });
+    const want = await page.evaluate(() => formPhotos.length) + files.length;
+    await page.setInputFiles('#sourcePhotoInput', files);
+    await page.waitForFunction(n => formPhotos.length >= n, want, { timeout: 5000 });
+    await page.waitForTimeout(100);
+  };
+  const spStorage = mark => page.evaluate(m => window.__STORAGE__.slice(m), mark);
+  const spStorageMark = () => page.evaluate(() => window.__STORAGE__.length);
+  const spLogMark = () => page.evaluate(() => window.__LOG__.length);
+  const spLog = mark => page.evaluate(m => window.__LOG__.slice(m).filter(l => /^(write-done:recipes|storage-done:)/.test(l)), mark);
+  const spRecipeWrites = mark => page.evaluate(m => window.__WRITES__.slice(m).filter(w => w.table === 'recipes'), mark);
+  const spThumbs = () => page.evaluate(() => [...document.querySelectorAll('#sourcePhotoList figure')].map(f => ({
+    caption: f.querySelector('figcaption').textContent.replace(/\s+/g, ' ').trim(), src: (f.querySelector('img') || {}).src || '' })));
+  await page.evaluate(() => {
+    const mk = (id, title) => loadRecipes().push({ id, title, source: 'A family card', sourceUrl: '', servings: 4, tags: { course: '', keywords: [] },
+      history: [], dateAdded: '2026-09-06', sourceCheck: null, sourcePhotos: null,
+      syntax: ['TITLE: ' + title, 'SOURCE: A family card', 'SERVINGS: 4', '', 'GROUP a:', '180 g spelt flour', '60 g toasted hazelnuts', '1½ tsp caraway seeds', '',
+        'STAGE:', 'MERGE a -> done: Bake [35 min]'].join('\n') });
+    mk('sp-one', 'SP Hazelnut Loaf'); mk('sp-two', 'SP Plain Loaf');
+    window.__STORAGE__.length = 0;
+  });
+  await page.evaluate(() => openEditModal('sp-one'));
+  await page.waitForTimeout(300);
+  const spMark0 = await anMark();
+  const spSMark0 = await spStorageMark();
+  const spAddState = await page.evaluate(() => ({ disabled: document.getElementById('addSourcePhotoBtn').disabled, hint: document.getElementById('sourcePhotoHint').textContent }));
+  await spPick([3000, 1500], [1200, 2600]);
+  const spShrunk = await page.evaluate(async () => Promise.all(formPhotos.map(async p => { const b = await createImageBitmap(p.blob); return { w: b.width, h: b.height, type: p.blob.type, path: p.path || null }; })));
+  const spNewThumbs = await spThumbs();
+  const spNewBand = await anBeforeSave();
+  check('SOURCE PHOTOS: ADD PHOTO shrinks each picture to 2000 px on its long edge as a JPEG, shown as a NEW page, stored by nothing until SAVE',
+        !spAddState.disabled && /kept privately/.test(spAddState.hint)
+        && JSON.stringify(spShrunk) === JSON.stringify([{ w: 2000, h: 1000, type: 'image/jpeg', path: null }, { w: 923, h: 2000, type: 'image/jpeg', path: null }])
+        && spNewThumbs.length === 2 && spNewThumbs[0].caption === 'PAGE 1 · NEW VIEW REMOVE' && /^blob:/.test(spNewThumbs[1].src)
+        && spNewBand.includes('Stores 2 new source photos with the recipe') && (await anSince(spMark0)).length === 0 && (await spStorage(spSMark0)).length === 0,
+        JSON.stringify([spAddState, spShrunk, spNewThumbs, spNewBand]));
+  const spCompare = await page.evaluate(() => ({ lines: [...document.querySelectorAll('#sourcePhotoCompare li')].map(li => li.textContent),
+    imgs: document.querySelectorAll('#sourcePhotoCompare img').length }));
+  check('    and AGAINST THE SOURCE shows the recipe\'s ingredient lines beside the photos, to check by eye',
+        JSON.stringify(spCompare.lines) === JSON.stringify(['180 g spelt flour', '60 g toasted hazelnuts', '1½ tsp caraway seeds']) && spCompare.imgs === 2,
+        JSON.stringify(spCompare));
+  const spHouse = await page.evaluate(() => HOUSEHOLD_ID);
+  const spLog0 = await spLogMark();
+  const spSMark1 = await spStorageMark();
+  const spMark1 = await anMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const spUp = await spStorage(spSMark1);
+  const spRow = ((await spRecipeWrites(spMark1)).pop() || { rows: [{}] }).rows[0];
+  const spOrder = await spLog(spLog0);
+  const spPaths = (spRow.source_photos || []).map(p => p.path);
+  check('    SAVE uploads both to the private bucket under the household\'s folder and the recipe, then writes the row listing them in page order',
+        spUp.length === 2 && spUp.every(u => u.op === 'upload' && u.bucket === 'recipe-sources' && u.contentType === 'image/jpeg' && u.upsert && u.size > 0)
+        && spPaths.length === 2 && spPaths.every(p => p.startsWith(`${spHouse}/sp-one/`) && p.endsWith('.jpg')) && JSON.stringify(spPaths) === JSON.stringify(spUp.map(u => u.path))
+        && spRow.source_photos.every(p => !isNaN(Date.parse(p.added))) && spOrder.join(',') === 'storage-done:upload,storage-done:upload,write-done:recipes',
+        JSON.stringify([spUp, spRow.source_photos, spOrder]));
+  const spChip = await page.evaluate(() => { const b = document.querySelector('#viewerProvenance [data-source-photos]'); return b ? { tag: b.tagName, text: b.textContent } : null; });
+  // Shown by a signed link once this tab's own copies are gone, as on another device.
+  const spSMark2 = await spStorageMark();
+  await page.evaluate(() => localPhotoUrls.clear());
+  await anClick('#viewerProvenance [data-source-photos]');
+  await page.waitForTimeout(300);
+  const spViewer = await page.evaluate(() => ({ open: document.getElementById('sourcePhotoOverlay').classList.contains('open'),
+    title: document.getElementById('sourcePhotoTitle').textContent, pages: [...document.querySelectorAll('#sourcePhotoBody figure')].map(f => ({
+      src: (f.querySelector('img') || {}).src || '', link: (f.querySelector('[data-photo-open]') || {}).href || '', caption: f.querySelector('figcaption').textContent })) }));
+  const spSigned = await spStorage(spSMark2);
+  check('    the viewer then shows a SOURCE PHOTOS · 2 chip, which opens both pages full screen by links signed for an hour',
+        spChip && spChip.tag === 'BUTTON' && spChip.text === 'SOURCE PHOTOS · 2' && spViewer.open && /SP Hazelnut Loaf · SOURCE PHOTOS · 2/.test(spViewer.title)
+        && spViewer.pages.length === 2 && spViewer.pages.every(p => /^blob:/.test(p.src) && p.link === p.src) && /^PAGE 1 OF 2 · ADDED /.test(spViewer.pages[0].caption)
+        && spSigned.length === 2 && spSigned.every(s => s.op === 'sign' && s.bucket === 'recipe-sources' && s.expiresIn === 3600) && JSON.stringify(spSigned.map(s => s.path)) === JSON.stringify(spPaths),
+        JSON.stringify([spChip, spViewer, spSigned]));
+  await page.click('#sourcePhotoBody .source-photo-full');
+  const spZoom = await page.evaluate(() => document.querySelector('#sourcePhotoBody .source-photo-full').classList.contains('zoomed'));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  const spEsc = await page.evaluate(() => ({ open: document.getElementById('sourcePhotoOverlay').classList.contains('open'), view: state.view }));
+  check('    a tap zooms a page to its own size, and Escape shuts the photos without leaving the recipe',
+        spZoom && !spEsc.open && spEsc.view === 'viewer', JSON.stringify([spZoom, spEsc]));
+  // REMOVE, then SAVE: the row first, then the file.
+  await page.evaluate(() => openEditModal('sp-one'));
+  await page.waitForTimeout(400);
+  const spStoredThumbs = await spThumbs();
+  const spSMark3 = await spStorageMark();
+  const spMark3 = await anMark();
+  await anClick('#sourcePhotoList [data-photo-remove="0"]');
+  const spRmBand = await anBeforeSave();
+  const spRmBefore = (await spStorage(spSMark3)).filter(s => s.op === 'remove').length + (await anSince(spMark3)).length;
+  const spLog3 = await spLogMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const spRmRow = ((await spRecipeWrites(spMark3)).pop() || { rows: [{}] }).rows[0];
+  const spRm = (await spStorage(spSMark3)).filter(s => s.op === 'remove');
+  const spRmOrder = await spLog(spLog3);
+  check('    on Edit the stored pages show; REMOVE is named by BEFORE YOU SAVE and done by SAVE: the row without it first, then its file',
+        spStoredThumbs.length === 2 && spStoredThumbs[0].caption === 'PAGE 1 VIEW REMOVE' && spStoredThumbs.every(t => /^blob:/.test(t.src))
+        && spRmBand.includes('Deletes the source photo you removed') && spRmBefore === 0
+        && JSON.stringify((spRmRow.source_photos || []).map(p => p.path)) === JSON.stringify([spPaths[1]])
+        && spRm.length === 1 && JSON.stringify(spRm[0].paths) === JSON.stringify([spPaths[0]]) && spRm[0].bucket === 'recipe-sources'
+        && spRmOrder.join(',') === 'write-done:recipes,storage-done:remove', JSON.stringify([spStoredThumbs, spRmBand, spRmRow.source_photos, spRm, spRmOrder]));
+  // An edit that leaves the photos alone keeps them; a recipe with none sends no source_photos at all.
+  const spMark4 = await anMark();
+  await page.evaluate(() => openEditModal('sp-one'));
+  await page.waitForTimeout(300);
+  await page.click('#saveBtn');
+  await page.waitForTimeout(400);
+  await page.evaluate(() => openEditModal('sp-two'));
+  await page.waitForTimeout(300);
+  await page.click('#saveBtn');
+  await page.waitForTimeout(400);
+  const spKeep = (await spRecipeWrites(spMark4)).map(w => w.rows[0]);
+  check('    an edit that leaves the photos alone keeps the list, and a recipe with none sends no source_photos, so an ordinary save is unchanged',
+        spKeep.length === 2 && JSON.stringify((spKeep[0].source_photos || []).map(p => p.path)) === JSON.stringify([spPaths[1]]) && !('source_photos' in spKeep[1]),
+        JSON.stringify(spKeep.map(r => [r.id, r.source_photos])));
+  // The last one removed: the row says null, not nothing (a one-row upsert would keep the old list).
+  await page.evaluate(() => openEditModal('sp-one'));
+  await page.waitForTimeout(300);
+  await anClick('#sourcePhotoList [data-photo-remove="0"]');
+  const spMark5 = await anMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(500);
+  const spNullRow = ((await spRecipeWrites(spMark5)).pop() || { rows: [{}] }).rows[0];
+  const spNoChip = await page.evaluate(() => !document.querySelector('#viewerProvenance [data-source-photos]'));
+  check('    removing the last page writes source_photos as null, and the chip goes',
+        'source_photos' in spNullRow && spNullRow.source_photos === null && spNoChip, JSON.stringify([spNullRow.source_photos, spNoChip]));
+  // Closing the form unsaved stores nothing.
+  await page.evaluate(() => openEditModal('sp-two'));
+  await page.waitForTimeout(300);
+  const spSMark6 = await spStorageMark();
+  const spMark6 = await anMark();
+  await spPick([800, 600]);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  const spClosed = { storage: (await spStorage(spSMark6)).length, writes: (await anSince(spMark6)).length,
+    photos: await page.evaluate(() => [formPhotos.length, loadRecipes().find(r => r.id === 'sp-two').sourcePhotos]) };
+  check('    a photo added to a form closed without saving is never stored',
+        spClosed.storage === 0 && spClosed.writes === 0 && spClosed.photos[0] === 0 && spClosed.photos[1] === null, JSON.stringify(spClosed));
+  // An upload that fails does not hold up the recipe, and is sent again with the next write.
+  await page.evaluate(() => openEditModal('sp-two'));
+  await page.waitForTimeout(300);
+  await spPick([800, 600]);
+  await page.evaluate(() => { window.__STORAGE_FAIL__ = true; });
+  const spSMark7 = await spStorageMark();
+  const spLog7 = await spLogMark();
+  await allowSyncFailures(async () => { await page.click('#saveBtn'); await page.waitForTimeout(600); });
+  const spFailToast = await page.evaluate(() => (document.querySelector('.toast') || { textContent: '' }).textContent);
+  const spFailState = await page.evaluate(() => ({ unsent: unsentLabels.has('the source photos'), listed: (loadRecipes().find(r => r.id === 'sp-two').sourcePhotos || []).length,
+    viewerImg: null }));
+  await anClick('#viewerProvenance [data-source-photos]');
+  await page.waitForTimeout(300);
+  spFailState.viewerImg = await page.evaluate(() => (document.querySelector('#sourcePhotoBody img') || {}).src || '');
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => { window.__STORAGE_FAIL__ = false; flushFailedWrites(); });
+  await page.waitForTimeout(400);
+  const spRetry = await spStorage(spSMark7);
+  const spRetryLog = await spLog(spLog7);
+  const spAfter = await page.evaluate(() => unsentLabels.has('the source photos'));
+  check('    an upload that fails leaves the recipe saved and the photo showing from this tab, says so, and is sent again once storage answers',
+        /Couldn't save the source photos/.test(spFailToast) && spFailState.unsent && spFailState.listed === 1 && /^blob:/.test(spFailState.viewerImg)
+        && spRetry.filter(s => s.op === 'upload').length === 2 && spRetryLog.join(',') === 'write-done:recipes,storage-done:upload' && !spAfter,
+        JSON.stringify([spFailToast, spFailState, spRetry.map(s => s.op), spRetryLog, spAfter]));
+  // Deleting the recipe deletes its photos, after the row.
+  const spTwoPaths = await page.evaluate(() => loadRecipes().find(r => r.id === 'sp-two').sourcePhotos.map(p => p.path));
+  const spSMark8 = await spStorageMark();
+  const spLog8 = await spLogMark();
+  await page.evaluate(() => deleteRecipe('sp-two'));
+  await page.waitForTimeout(400);
+  const spDel = (await spStorage(spSMark8)).filter(s => s.op === 'remove');
+  const spDelOrder = (await page.evaluate(m => window.__LOG__.slice(m).filter(l => /^(write-done:recipes|storage-done:)/.test(l)), spLog8));
+  check('    deleting a recipe deletes its source photos too, after the row',
+        spDel.length === 1 && JSON.stringify(spDel[0].paths) === JSON.stringify(spTwoPaths) && spDelOrder.join(',') === 'write-done:recipes,storage-done:remove',
+        JSON.stringify([spDel, spTwoPaths, spDelOrder]));
+  // Before the migration: rows without the column mean it has not been applied; ADD PHOTO says so.
+  const spOff = await page.evaluate(async () => {
+    const saved = JSON.stringify(window.__STUB_DATA__.recipes);
+    window.__STUB_DATA__.recipes.forEach(r => { delete r.source_photos; });
+    await hydrate();
+    const off = sourcePhotosAvailable;
+    openEditModal(loadRecipes()[0].id);
+    const form = { disabled: document.getElementById('addSourcePhotoBtn').disabled, hint: document.getElementById('sourcePhotoHint').textContent,
+      row: 'source_photos' in recipeToRow(loadRecipes()[0]) };
+    closeAddModal();
+    window.__STUB_DATA__.recipes = JSON.parse(saved);
+    await hydrate();
+    return { off, form, on: sourcePhotosAvailable, roundTrip: rowToRecipe({ ...window.__STUB_DATA__.recipes[0], source_photos: [{ path: 'h/r/x.jpg', added: 'a' }] }, {}).sourcePhotos };
+  });
+  check('    a library whose rows have no source_photos column reads as not set up: ADD PHOTO is off and says why, and a save sends no such column',
+        spOff.off === false && spOff.form.disabled && /aren't set up yet/.test(spOff.form.hint) && !spOff.form.row && spOff.on === true
+        && JSON.stringify(spOff.roundTrip) === JSON.stringify([{ path: 'h/r/x.jpg', added: 'a' }]), JSON.stringify(spOff));
+  await page.evaluate(() => { for(let i = loadRecipes().length - 1; i >= 0; i--) if(String(loadRecipes()[i].id).startsWith('sp-')) loadRecipes().splice(i, 1); showView('recipes'); renderHome(); });
+
   const failed = checks.filter(c => !c.pass).length;
   console.log(`\n${checks.length} checks, ${failed} failed`);
   console.log(errors.length ? '\nERRORS:\n' + errors.join('\n') : 'no console/page errors');

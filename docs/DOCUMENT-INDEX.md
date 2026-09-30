@@ -319,7 +319,7 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
-### `docs/PLAN-SOURCE-PHOTOS.md` — keeping the photo a recipe was converted from (30 Sep 2026; agreed, step 1 written)
+### `docs/PLAN-SOURCE-PHOTOS.md` — keeping the photo a recipe was converted from (30 Sep 2026; agreed, steps 1 and 2 built)
 **What:** The household's ask to keep the photo or screenshot a recipe was converted from, as a web recipe keeps its link.
 What exists today, the proposal (a private bucket, a `source_photos` column, ADD PHOTO in the form, shrunk to 2000 px,
 uploaded on SAVE, shown by signed link, deleted with the recipe), the order of work in three steps, what it does not do, and
@@ -410,7 +410,7 @@ to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.m
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 385-check smoke suite, the 143 Node checks and the Edge Function checks, and an honest account of what it can't tell you
+**What:** How to run the 397-check smoke suite, the 143 Node checks and the Edge Function checks, and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 
 **Use it when:** making any code change.
