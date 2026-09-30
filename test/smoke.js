@@ -3948,6 +3948,206 @@ const check = (name, pass, detail) => {
         && JSON.stringify(spOff.roundTrip) === JSON.stringify([{ path: 'h/r/x.jpg', added: 'a' }]), JSON.stringify(spOff));
   await page.evaluate(() => { for(let i = loadRecipes().length - 1; i >= 0; i--) if(String(loadRecipes()[i].id).startsWith('sp-')) loadRecipes().splice(i, 1); showView('recipes'); renderHome(); });
 
+  /* ---- Cooking notes (R4, docs/PLAN-COOKING-NOTES.md, 30 Sep 2026) ----
+     A running log per recipe: one row per note, dated when written, newest first; kept while cooking;
+     a box after cooking; FOLD INTO NOTES moves one into the recipe's text on SAVE. An invented recipe. */
+  await page.evaluate(() => {
+    loadRecipes().push({ id: 'cn-one', title: 'CN Butter Bean Stew', source: 'A family card', sourceUrl: '', servings: 4, tags: { course: '', keywords: [] },
+      history: [], dateAdded: '2026-09-06', sourceCheck: null, sourcePhotos: null,
+      syntax: ['TITLE: CN Butter Bean Stew', 'SOURCE: A family card', 'SERVINGS: 4', '', 'GROUP a:', '400 g butter beans', '1 tbsp rose harissa', '',
+        'STAGE:', 'MERGE a -> done: Simmer [20 min]', '', 'NOTES:', 'Serve with warm flatbread.', '', 'TIPS:', 'Keeps for two days.'].join('\n') });
+    window.__LOG__.length = 0;
+  });
+  const cnRows = mark => page.evaluate(m => window.__WRITES__.slice(m).filter(w => w.table === 'recipe_notes')
+    .map(w => ({ op: w.op, rows: w.rows || null, patch: w.patch || null, eqs: w.eqs || null })), mark);
+  const cnLog = () => page.evaluate(() => [...document.querySelectorAll('#cookingNotes .cn-item')].filter(li => getComputedStyle(li).display !== 'none')
+    .map(li => ({ date: (li.querySelector('.cn-date') || {}).textContent || '', body: ((li.querySelector('.cn-body') || {}).textContent || '') })));
+  const cnChip = () => page.evaluate(() => (document.querySelector('#viewerProvenance [data-cook-notes]') || {}).textContent || '');
+  await page.evaluate(() => openRecipe('cn-one', 'recipes'));
+  await page.waitForTimeout(300);
+  const cnHouse = await page.evaluate(() => HOUSEHOLD_ID);
+  const cnToday = await page.evaluate(() => noteDateLabel(new Date().toISOString()));
+  const cnEmpty = { log: await cnLog(), chip: await cnChip(), empty: await page.isVisible('#cookingNotes .cn-empty') };
+  const cnMark0 = await anMark();
+  await page.fill('#cookNoteInput', '   ');
+  await page.click('#cookNoteAddBtn');
+  const cnBlank = (await cnRows(cnMark0)).length;
+  await page.fill('#cookNoteInput', '  Needed 10 min longer in our oven  ');
+  await page.click('#cookNoteAddBtn');
+  await page.waitForTimeout(250);
+  const cnAdd = await cnRows(cnMark0);
+  const cnAddRow = ((cnAdd[0] || {}).rows || [])[0] || {};
+  check('COOKING NOTES: ADD writes one row for the note, trimmed and dated now, shows it at the top with the date, and the header chip counts it; a blank box adds nothing',
+        cnEmpty.log.length === 0 && cnEmpty.chip === '' && cnEmpty.empty && cnBlank === 0
+        && cnAdd.length === 1 && cnAdd[0].op === 'upsert' && cnAdd[0].rows.length === 1 && cnAddRow.recipe_id === 'cn-one' && cnAddRow.household_id === cnHouse
+        && cnAddRow.body === 'Needed 10 min longer in our oven' && !isNaN(Date.parse(cnAddRow.created_at)) && typeof cnAddRow.id === 'string'
+        && JSON.stringify(await cnLog()) === JSON.stringify([{ date: cnToday, body: 'Needed 10 min longer in our oven' }]) && (await cnChip()) === 'NOTES · 1'
+        && /^\d{1,2} [A-Z]{3} \d{4}$/.test(cnToday), JSON.stringify([cnEmpty, cnBlank, cnAdd, cnToday]));
+  await page.evaluate(() => {
+    ['2026-09-01', '2026-09-03', '2026-09-02', '2026-08-20'].forEach((d, i) => cache.recipeNotes.push({ id: 'cn-old-' + i, recipeId: 'cn-one', body: 'Older note ' + d, createdAt: d + 'T18:00:00.000Z' }));
+    renderViewer();
+  });
+  const cnThree = await cnLog();
+  const cnMoreText = await page.evaluate(() => (document.querySelector('#cookingNotes [data-note-more]') || {}).textContent || '');
+  await anClick('#cookingNotes [data-note-more]');   // a click that may find nothing, so a missing button fails the check below by name
+  const cnAll = await cnLog();
+  check('    newest first, the latest three shown with SHOW ALL for the rest, and the chip counts them all',
+        cnThree.length === 3 && cnThree[0].body === 'Needed 10 min longer in our oven' && cnThree[1].body === 'Older note 2026-09-03' && cnThree[2].body === 'Older note 2026-09-02'
+        && cnMoreText === 'SHOW ALL 5 NOTES' && cnAll.length === 5 && cnAll[4].body === 'Older note 2026-08-20' && cnAll[4].date === '20 AUG 2026' && (await cnChip()) === 'NOTES · 5',
+        JSON.stringify([cnThree, cnMoreText, cnAll]));
+  // EDIT the text (never the date); DELETE with UNDO.
+  const cnMark1 = await anMark();
+  await page.click('#cookingNotes .cn-item[data-note-id="cn-old-1"] [data-note-edit]');
+  await page.fill('#cookingNotes .cn-edit', 'Older note, now edited');
+  await page.click('#cookingNotes [data-note-save]');
+  await page.waitForTimeout(200);
+  const cnEdit = await cnRows(cnMark1);
+  const cnEdited = await page.evaluate(() => cache.recipeNotes.find(n => n.id === 'cn-old-1'));
+  const cnMark2 = await anMark();
+  await page.click('#cookingNotes .cn-item[data-note-id="cn-old-1"] [data-note-delete]');
+  await page.waitForTimeout(150);
+  const cnGone = await page.evaluate(() => ({ cache: cache.recipeNotes.some(n => n.id === 'cn-old-1'), shown: !!document.querySelector('#cookingNotes [data-note-id="cn-old-1"]'),
+    undo: !!document.querySelector('#cookingNotes [data-note-undo]') }));
+  await page.click('#cookingNotes [data-note-undo]');
+  await page.waitForTimeout(200);
+  const cnDelUndo = await cnRows(cnMark2);
+  const cnBack = await page.evaluate(() => cache.recipeNotes.find(n => n.id === 'cn-old-1'));
+  const cnScoped = w => JSON.stringify(w.eqs) === JSON.stringify([{ column: 'household_id', value: cnHouse }, { column: 'id', value: 'cn-old-1' }]);
+  check('    EDIT sends the new text alone, to that one note, and keeps its date; DELETE is one note\'s delete with UNDO, which puts the same note back',
+        cnEdit.length === 1 && cnEdit[0].op === 'update' && JSON.stringify(cnEdit[0].patch) === JSON.stringify({ body: 'Older note, now edited' }) && cnScoped(cnEdit[0])
+        && cnEdited.createdAt === '2026-09-03T18:00:00.000Z' && !cnGone.cache && !cnGone.shown && cnGone.undo
+        && cnDelUndo.length === 2 && cnDelUndo[0].op === 'delete' && cnScoped(cnDelUndo[0]) && cnDelUndo[1].op === 'upsert'
+        && cnDelUndo[1].rows[0].id === 'cn-old-1' && cnDelUndo[1].rows[0].created_at === '2026-09-03T18:00:00.000Z' && cnDelUndo[1].rows[0].body === 'Older note, now edited'
+        && cnBack && cnBack.body === 'Older note, now edited', JSON.stringify([cnEdit, cnEdited, cnGone, cnDelUndo]));
+  // Cooking mode keeps the box and the latest line; print leaves the notes out.
+  await anClick('#cookingNotes [data-note-more]');   // back to the latest three, as a cook would find it
+  await page.evaluate(() => { state.keepAwake = true; updateKeepAwakeStatus(); });
+  await page.waitForTimeout(150);
+  const cnCooking = await page.evaluate(() => ({ box: document.getElementById('cookNoteInput').offsetParent !== null,
+    add: document.getElementById('cookNoteAddBtn').offsetParent !== null,
+    lines: [...document.querySelectorAll('#cookingNotes .cn-item')].filter(li => getComputedStyle(li).display !== 'none').length,
+    actions: [...document.querySelectorAll('#cookingNotes .cn-actions')].filter(a => getComputedStyle(a).display !== 'none').length }));
+  await page.evaluate(() => { state.keepAwake = false; updateKeepAwakeStatus(); });
+  await page.emulateMedia({ media: 'print' });
+  const cnPrint = await page.evaluate(() => getComputedStyle(document.getElementById('cookingNotes')).display);
+  await page.emulateMedia({ media: 'screen' });
+  const cnInFlow = await page.evaluate(() => !!document.querySelector('#flowMount #cookingNotes'));
+  check('    while cooking the box stays with the latest note only and nothing to edit; PRINT and EXPORT PNG leave the notes out',
+        cnCooking.box && cnCooking.add && cnCooking.lines === 1 && cnCooking.actions === 0 && cnPrint === 'none' && !cnInFlow, JSON.stringify([cnCooking, cnPrint, cnInFlow]));
+  // After cooking: the meal prompt's box adds a note to that recipe, dated today; nothing when empty.
+  const cnMark3 = await anMark();
+  await page.evaluate(() => logRecipeUsed('cn-one'));
+  await page.waitForTimeout(200);
+  const cnPrompt = await page.evaluate(() => ({ open: document.getElementById('mealTypeOverlay').classList.contains('open'), row: !document.getElementById('mealTypeNoteRow').hidden }));
+  await page.fill('#mealTypeNote', 'Halve the harissa next time');
+  await page.click('#mealTypeChoices .meal-type-btn');
+  await page.waitForTimeout(250);
+  const cnAfter = await cnRows(cnMark3);
+  const cnAfterToast = await page.evaluate(() => (document.querySelector('.toast') || { textContent: '' }).textContent);
+  const cnAfterTop = (await cnLog())[0] || {};
+  await page.evaluate(() => { promptForMealType('no-recipe-entry', 'A takeaway'); });
+  const cnAdHocRow = await page.evaluate(() => !document.getElementById('mealTypeNoteRow').hidden);
+  const cnMark4 = await anMark();
+  await page.click('#mealTypeSkip');
+  await page.waitForTimeout(150);
+  const cnSkipRows = (await cnRows(cnMark4)).length;
+  check('    after cooking, the meal prompt has a note box: what is typed becomes a note on that recipe, dated today; none for an entry with no recipe, and SKIP with it empty adds none',
+        cnPrompt.open && cnPrompt.row && cnAfter.length === 1 && cnAfter[0].rows[0].recipe_id === 'cn-one' && cnAfter[0].rows[0].body === 'Halve the harissa next time'
+        && /note added/.test(cnAfterToast) && cnAfterTop.body === 'Halve the harissa next time' && cnAfterTop.date === cnToday && !cnAdHocRow && cnSkipRows === 0,
+        JSON.stringify([cnPrompt, cnAfter, cnAfterToast, cnAfterTop, cnAdHocRow, cnSkipRows]));
+  // FOLD INTO NOTES: pending until SAVE; SAVE writes the text, then deletes the note; closing changes nothing.
+  const cnFoldId = await page.evaluate(() => cache.recipeNotes.find(n => n.body === 'Needed 10 min longer in our oven').id);
+  const cnFoldLine = await page.evaluate(id => foldedNoteLine(cache.recipeNotes.find(n => n.id === id)), cnFoldId);
+  const cnMark5 = await anMark();
+  await page.click(`#cookingNotes [data-note-id="${cnFoldId}"] [data-note-fold]`);
+  await page.waitForTimeout(400);
+  const cnFoldText = await page.evaluate(() => document.getElementById('importInput').value.split('\n'));
+  const cnFoldBand = await anBeforeSave();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  const cnClosed = { writes: (await anSince(cnMark5)).length, kept: await page.evaluate(id => cache.recipeNotes.some(n => n.id === id), cnFoldId),
+    pending: await page.evaluate(() => pendingFold) };
+  const cnNotesAt = cnFoldText.indexOf('NOTES:');
+  check('    FOLD INTO NOTES opens EDIT with the note dated at the end of NOTES:, before TIPS:, named by BEFORE YOU SAVE; closing the form writes nothing and keeps the note',
+        cnNotesAt > 0 && cnFoldText[cnNotesAt + 1] === 'Serve with warm flatbread.' && cnFoldText[cnNotesAt + 2] === cnFoldLine && cnFoldText.indexOf('TIPS:') > cnNotesAt + 2
+        && /: Needed 10 min longer in our oven$/.test(cnFoldLine) && cnFoldBand.includes('Adds the cooking note to NOTES: and takes it out of the log')
+        && cnClosed.writes === 0 && cnClosed.kept && cnClosed.pending === null, JSON.stringify([cnFoldText, cnFoldLine, cnFoldBand, cnClosed]));
+  await page.evaluate(() => openRecipe('cn-one', 'recipes'));
+  await page.waitForTimeout(250);
+  await page.click(`#cookingNotes [data-note-id="${cnFoldId}"] [data-note-fold]`);
+  await page.waitForTimeout(400);
+  const cnMark6 = await anMark();
+  await page.evaluate(() => { window.__LOG__.length = 0; });
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const cnSaved = await page.evaluate(m => window.__WRITES__.slice(m).filter(w => w.table === 'recipes' || w.table === 'recipe_notes')
+    .map(w => ({ table: w.table, op: w.op, syntax: w.rows && w.rows[0] && w.rows[0].syntax, eqs: w.eqs })), cnMark6);
+  const cnSavedOrder = await page.evaluate(() => window.__LOG__.filter(l => /^write-done:(recipes|recipe_notes)$/.test(l)));
+  const cnAfterFold = { cache: await page.evaluate(id => cache.recipeNotes.some(n => n.id === id), cnFoldId), log: (await cnLog()).map(l => l.body) };
+  check('    SAVE writes the recipe with the line, then deletes that note, and the log no longer shows it',
+        cnSaved.length === 2 && cnSaved[0].table === 'recipes' && cnSaved[0].syntax.split('\n').includes(cnFoldLine)
+        && cnSaved[1].table === 'recipe_notes' && cnSaved[1].op === 'delete' && JSON.stringify(cnSaved[1].eqs) === JSON.stringify([{ column: 'household_id', value: cnHouse }, { column: 'id', value: cnFoldId }])
+        && cnSavedOrder.join(',') === 'write-done:recipes,write-done:recipe_notes' && !cnAfterFold.cache && !cnAfterFold.log.includes('Needed 10 min longer in our oven'),
+        JSON.stringify([cnSaved, cnSavedOrder, cnAfterFold]));
+  // The line taken out again before SAVE: the note stays in the log.
+  const cnKeepId = await page.evaluate(() => cache.recipeNotes.find(n => n.body === 'Halve the harissa next time').id);
+  await page.click(`#cookingNotes [data-note-id="${cnKeepId}"] [data-note-fold]`);
+  await page.waitForTimeout(400);
+  await page.evaluate(id => { const ta = document.getElementById('importInput'); const line = foldedNoteLine(cache.recipeNotes.find(n => n.id === id));
+    ta.value = ta.value.split('\n').filter(l => l !== line).join('\n'); ta.dispatchEvent(new Event('input', { bubbles: true })); }, cnKeepId);
+  await page.waitForTimeout(300);
+  const cnKeepBand = await anBeforeSave();
+  const cnMark7 = await anMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(500);
+  const cnKept = { deletes: (await cnRows(cnMark7)).length, cache: await page.evaluate(id => cache.recipeNotes.some(n => n.id === id), cnKeepId) };
+  check('    and a folded line taken out again before SAVE leaves the note where it was',
+        !cnKeepBand.some(l => /cooking note/.test(l)) && cnKept.deletes === 0 && cnKept.cache, JSON.stringify([cnKeepBand, cnKept]));
+  // Export carries them; deleting the recipe says how many go with it and drops them from the cache.
+  const cnExport = await page.evaluate(() => { let payload = null; const real = window.Blob;
+    window.Blob = function(parts){ payload = JSON.parse(parts[0]); return new real(parts); };
+    try { exportAllData(); } catch(e){} window.Blob = real; return payload && payload.recipeNotes ? payload.recipeNotes.filter(n => n.recipeId === 'cn-one').length : -1; });
+  const cnCount = await page.evaluate(() => notesForRecipe('cn-one').length);
+  const cnConfirm = await page.evaluate(() => { let msg = ''; const real = window.confirm; window.confirm = m => { msg = m; return true; };
+    document.getElementById('deleteBtn').click(); window.confirm = real; return msg; });
+  const cnDeleted = await page.evaluate(() => cache.recipeNotes.filter(n => n.recipeId === 'cn-one').length);
+  check('    the export carries the notes, and deleting the recipe says its notes go with it and drops them',
+        cnExport === cnCount && cnCount === 5 && new RegExp(`Its ${cnCount} cooking notes go with it`).test(cnConfirm) && cnDeleted === 0, JSON.stringify([cnExport, cnCount, cnConfirm, cnDeleted]));
+  // Import: notes restored, but only on recipes the file restores.
+  const cnImport = await page.evaluate(async () => {
+    const real = window.confirm; window.confirm = () => true;
+    const base = { app: 'Kitchen', version: 3, exportedAt: new Date().toISOString(), plan: {}, shortlist: [], keywordVocab: [], shoppingChecked: {}, swaps: [], groups: [], aliases: [], diary: [],
+      recipes: [{ id: 'cn-imp', title: 'CN Import', source: 'A family card', sourceUrl: '', servings: 2, tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-09-06',
+        syntax: 'TITLE: CN Import\nSOURCE: A family card\nSERVINGS: 2\n\nGROUP a:\n1 leek\n\nSTAGE:\nMERGE a -> done: Cook [5 min]' }],
+      recipeNotes: [{ id: 'cn-imp-1', recipeId: 'cn-imp', body: 'Kept', createdAt: '2026-09-10T10:00:00.000Z' },
+        { id: 'cn-imp-2', recipeId: 'not-in-the-file', body: 'Dropped', createdAt: '2026-09-10T10:00:00.000Z' }] };
+    const mark = window.__WRITES__.length;
+    importAllData(new File([JSON.stringify(base)], 'backup.json', { type: 'application/json' }));
+    await new Promise(r => setTimeout(r, 800));
+    window.confirm = real;
+    const w = window.__WRITES__.slice(mark).filter(x => x.table === 'recipe_notes' && x.op === 'upsert').flatMap(x => x.rows);
+    return { cache: cache.recipeNotes.map(n => n.id), rows: w.map(r => r.id) };
+  });
+  check('    an import restores the notes on the recipes it restores, and drops a note whose recipe is not in the file',
+        JSON.stringify(cnImport.cache) === JSON.stringify(['cn-imp-1']) && JSON.stringify(cnImport.rows) === JSON.stringify(['cn-imp-1']), JSON.stringify(cnImport));
+  // The table unreadable: no one is signed out, the viewer says so, and nothing offers a write that would fail.
+  const cnSignouts = await page.evaluate(() => window.__SIGNOUTS__);
+  const cnMissing = await page.evaluate(async () => { window.__MISSING_TABLES__ = ['recipe_notes'];
+    try { const ok = await hydrate(); return { ok, available: recipeNotesAvailable }; } catch(e){ return { threw: String(e && e.message || e) }; } });
+  await page.evaluate(() => { openRecipe(loadRecipes()[0].id, 'recipes'); promptForMealType('x', 'A recipe', loadRecipes()[0].id); });
+  await page.waitForTimeout(250);
+  const cnMissingUi = await page.evaluate(() => ({ text: document.getElementById('cookingNotes').textContent, box: !!document.getElementById('cookNoteInput'),
+    prompt: !document.getElementById('mealTypeNoteRow').hidden }));
+  await page.evaluate(() => { document.getElementById('mealTypeSkip').click(); });
+  const cnMissingExport = await page.evaluate(() => { let payload = null; const real = window.Blob;
+    window.Blob = function(parts){ payload = JSON.parse(parts[0]); return new real(parts); };
+    try { exportAllData(); } catch(e){} window.Blob = real; return payload ? ('recipeNotes' in payload) : 'no export'; });
+  check('    with the notes unreadable the load carries on and signs nobody out; the viewer says so, with no box, the prompt has none, and export leaves the key out',
+        cnMissing.ok === true && cnMissing.available === false && (await page.evaluate(() => window.__SIGNOUTS__)) === cnSignouts
+        && /can't be loaded/.test(cnMissingUi.text) && !cnMissingUi.box && !cnMissingUi.prompt && cnMissingExport === false,
+        JSON.stringify([cnMissing, cnMissingUi, cnMissingExport]));
+  await page.evaluate(async () => { window.__MISSING_TABLES__ = []; await hydrate(); showView('recipes'); renderHome(); });
+
   const failed = checks.filter(c => !c.pass).length;
   console.log(`\n${checks.length} checks, ${failed} failed`);
   console.log(errors.length ? '\nERRORS:\n' + errors.join('\n') : 'no console/page errors');

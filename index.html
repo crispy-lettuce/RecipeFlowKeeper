@@ -507,6 +507,28 @@
     color:var(--ink-faint); margin:18px 2px 0; padding-top:2px;
   }
   .note-heading + ul.notes{ margin-top:6px; }
+  /* ---- Cooking notes (R4) ---- */
+  .cooking-notes{ margin:26px 2px 0; padding-top:16px; border-top:1px solid var(--line-soft); max-width:900px; }
+  .cooking-notes-title{ font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:500; letter-spacing:.1em; color:var(--ink-soft); margin:0 0 10px; }
+  .cn-add{ display:flex; gap:10px; align-items:flex-start; margin-bottom:10px; }
+  .cn-add textarea, .cn-edit{ flex:1; min-height:38px; resize:vertical; padding:8px 10px; font:inherit; font-size:14px;
+    background:var(--paper); color:var(--ink); border:1px solid var(--line); border-radius:var(--r); }
+  .cooking-notes-log{ list-style:none; margin:0; padding:0; }
+  .cn-item{ display:flex; flex-wrap:wrap; gap:4px 12px; align-items:baseline; padding:8px 0; border-bottom:1px solid var(--line-soft); font-size:14px; }
+  .cn-date{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.06em; color:var(--ink-faint); min-width:88px; }
+  .cn-body{ flex:1 1 300px; color:var(--ink); white-space:pre-wrap; }
+  .cn-edit{ flex:1 1 300px; }
+  .cn-actions button, .cn-undo button{ background:none; border:none; padding:0; margin-left:6px; cursor:pointer; color:var(--plum);
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; text-decoration:underline; }
+  .cn-more{ margin-top:8px; }
+  .prov-chip.prov-notes{ color:var(--ink); cursor:pointer; }
+  /* While cooking: the box stays, the log shows its latest line and nothing to edit. */
+  .app.keep-awake .cooking-notes-log .cn-item:nth-child(n+2), .app.keep-awake .cn-more, .app.keep-awake .cn-actions{ display:none; }
+  .meal-note{ display:block; margin-top:14px; }
+  .meal-note span{ display:block; font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.1em; color:var(--ink-soft); margin-bottom:5px; }
+  .meal-note textarea{ width:100%; box-sizing:border-box; padding:8px 10px; font:inherit; font-size:14px;
+    background:var(--paper); color:var(--ink); border:1px solid var(--line); border-radius:var(--r); }
+  .meal-note[hidden]{ display:none; }
   .swap-suggestions{
     margin:18px 2px 0; padding:12px 14px; background:var(--plum-wash);
     border:1px solid var(--line); border-radius:var(--r);
@@ -1356,7 +1378,7 @@
     .filter-head, .assign-banner, .offline-bar,
     .shop-head-right, #shopWeekSelect,
     #shopHideCheckedBtn, #shopClearBtn,
-    .sidebar-peek-btn{ display:none !important; }
+    .sidebar-peek-btn, .cooking-notes{ display:none !important; }
     .app{ display:block !important; height:auto !important; overflow:visible !important; }
     .view{ display:none !important; }
     .view.active{ display:block !important; }
@@ -1523,7 +1545,7 @@
       </div>
       <div id="viewerEquipmentWarning" class="equipment-warning" style="display:none;"></div>
       <div class="keep-awake-status" style="display:none;"></div>
-      <div class="viewer-body"><div id="flowMount"></div></div>
+      <div class="viewer-body"><div id="flowMount"></div><section class="cooking-notes" id="cookingNotes" aria-label="Cooking notes"></section></div>
     </section>
 
     <!-- ================= GROUP VIEWER ================= -->
@@ -1776,6 +1798,8 @@
     <h2 id="mealTypeHeading">Which meal was that?</h2>
     <p class="subtle"><span id="mealTypeWhat"></span> is logged. Tag it, or skip &mdash; it stays logged either way.</p>
     <div class="meal-type-row" id="mealTypeChoices"></div>
+    <label class="meal-note" id="mealTypeNoteRow" hidden><span>ADD A NOTE (OPTIONAL)</span>
+      <textarea id="mealTypeNote" rows="2" placeholder="How did it go? Saved with the recipe, dated today."></textarea></label>
     <div class="mini-actions">
       <button class="link-btn" id="mealTypeSkip">SKIP</button>
     </div>
@@ -2588,6 +2612,7 @@ const cache = {
   settings: { weekStartDay: DEFAULT_WEEK_START_DAY, darkMode: 'system' },
   aliases: [],
   aisleOverrides: [],
+  recipeNotes: [],
   diary: []
 };
 
@@ -2773,7 +2798,7 @@ async function hydrate(opts){
   if(!memberships.length) throw new Error("This account isn't linked to a household yet.");
   HOUSEHOLD_ID = memberships[0].household_id;
 
-  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides] = await Promise.all([
+  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides, recipeNotes] = await Promise.all([
     sb.from('recipes').select('*'),
     /* Every column, and no recipe_id filter. The filter was here because a
        log could only ever be a cooked recipe; an ad-hoc diary entry (H2) is
@@ -2790,7 +2815,9 @@ async function hydrate(opts){
        back as null rather than throwing, since any throw in here signs you out. */
     sb.from('household_settings').select('*').maybeSingle(),
     sb.from('aliases').select('*'),
-    sb.from('aisle_overrides').select('*')
+    sb.from('aisle_overrides').select('*'),
+    /* Cooking notes (R4): read apart like aisle_overrides, so a failure here never signs anyone out. */
+    sb.from('recipe_notes').select('id, recipe_id, body, created_at')
   ]);
   for(const res of [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases]){
     if(res.error) throw res.error;
@@ -2869,6 +2896,10 @@ async function hydrate(opts){
   cache.aisleOverrides = aisleOverridesAvailable
     ? (aisleOverrides.data || []).map(row=>({ id: row.id, name: row.name, aisle: row.aisle })) : [];
   rebuildAisleOverrideMap();
+  recipeNotesAvailable = !recipeNotes.error;
+  if(recipeNotes.error) console.warn('Cooking notes are unavailable', recipeNotes.error);
+  cache.recipeNotes = recipeNotesAvailable
+    ? (recipeNotes.data || []).map(row=>({ id: row.id, recipeId: row.recipe_id, body: row.body || '', createdAt: row.created_at })) : [];
   return true;
 }
 
@@ -3155,6 +3186,74 @@ function removeAisleOverride(id){
     if(error) throw error;
   });
 }
+/* ---- Cooking notes (R4, docs/PLAN-COOKING-NOTES.md, agreed "as suggested" 30 Sep 2026) ----
+   A running log per recipe of how it went: "needed 10 min longer in our oven". One row per note in
+   `recipe_notes`, the table Phase 1 made for this; dated the moment it is written (`created_at`, sent by
+   the app so the cache and the row agree from the start) and never re-dated. One write per note, as every
+   ordinary save is. A recipe's notes go with it: the database cascades the delete. Writes are upserts,
+   not inserts, so an ADD retried after a write that did land is not refused as a duplicate. */
+let recipeNotesAvailable = false;
+function loadRecipeNotes(){ return cache.recipeNotes; }
+/* Newest first; two written in the same instant keep the order they were written in, latest first. */
+function notesForRecipe(recipeId){
+  return loadRecipeNotes().map((n, i)=> ({ n, i })).filter(x=> x.n.recipeId === recipeId)
+    .sort((a, b)=> String(b.n.createdAt).localeCompare(String(a.n.createdAt)) || b.i - a.i).map(x=> x.n);
+}
+function recipeNoteToRow(n){ return { id: n.id, household_id: HOUSEHOLD_ID, recipe_id: n.recipeId, body: n.body, created_at: n.createdAt }; }
+function putRecipeNote(note){
+  const row = recipeNoteToRow(note);
+  return queueWrite('cooking notes', async ()=>{
+    const { error } = await sb.from('recipe_notes').upsert([row]);
+    if(error) throw error;
+  });
+}
+function addRecipeNote(recipeId, body){
+  const text = String(body || '').trim();
+  if(!text || !recipeId || !recipeNotesAvailable) return null;
+  const note = { id: uid(), recipeId, body: text, createdAt: new Date().toISOString() };
+  cache.recipeNotes = loadRecipeNotes().concat([note]);
+  putRecipeNote(note);
+  return note;
+}
+/* UNDO of a delete: the same note back, same id and date. */
+function restoreRecipeNote(note){
+  if(!note || loadRecipeNotes().some(n=> n.id === note.id)) return false;
+  cache.recipeNotes = loadRecipeNotes().concat([note]);
+  return putRecipeNote(note);
+}
+/* The text only: a note keeps the day it was written. */
+function updateRecipeNote(id, body){
+  const text = String(body || '').trim();
+  const note = loadRecipeNotes().find(n=> n.id === id);
+  if(!note || !text || text === note.body) return false;
+  note.body = text;
+  return queueWrite('cooking notes', async ()=>{
+    const { error } = await sb.from('recipe_notes').update({ body: text }).eq('household_id', HOUSEHOLD_ID).eq('id', id);
+    if(error) throw error;
+  });
+}
+function deleteRecipeNote(id){
+  const note = loadRecipeNotes().find(n=> n.id === id);
+  cache.recipeNotes = loadRecipeNotes().filter(n=> n.id !== id);
+  if(!note) return null;
+  queueWrite('cooking notes', async ()=>{
+    const { error } = await sb.from('recipe_notes').delete().eq('household_id', HOUSEHOLD_ID).eq('id', id);
+    if(error) throw error;
+  });
+  return note;
+}
+/* Whole-table replace. Import only — see pushList. */
+function replaceRecipeNotes(list){
+  cache.recipeNotes = list;
+  return queueWrite('cooking notes', ()=> pushList('recipe_notes', list.map(recipeNoteToRow)), { whole: true });
+}
+/* A note's date in the British order, the same on every device: "30 SEP 2026". */
+const NOTE_MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+function noteDateLabel(iso){
+  const d = new Date(iso);
+  return isNaN(d) ? '' : `${d.getDate()} ${NOTE_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 /* Whole-table replace. Import only — see pushList. */
 function replaceAisleOverrides(list){
   cache.aisleOverrides = list;
@@ -3282,6 +3381,8 @@ function patchRecipe(id, patch){
 function deleteRecipe(id){
   const gone = cache.recipes.find(r => r.id === id);
   cache.recipes = cache.recipes.filter(r => r.id !== id);
+  /* Its cooking notes go with it on the server (the foreign key cascades), so only the cache is tidied. */
+  cache.recipeNotes = cache.recipeNotes.filter(n => n.recipeId !== id);
   queueWrite('recipes', async ()=>{
     const { error } = await sb.from('recipes').delete().eq('household_id', HOUSEHOLD_ID).eq('id', id);
     if(error) throw error;
@@ -4511,10 +4612,12 @@ function renderProvenance(recipe){
     chips.push({ cls: 'none', text: 'NOT COMPARED WITH ITS SOURCE', title: '' });
   }
   if(note) chips.push({ cls: note.reconstructed ? 'red' : 'note', text: 'CARRIES A SOURCE NOTE', title: note.line });
+  const noteCount = notesForRecipe(recipe.id).length;
+  if(noteCount) chips.push({ cls: 'notes', text: `NOTES · ${noteCount}`, title: 'Cooking notes, below the recipe', button: true, attr: 'data-cook-notes' });
   const photos = (recipe.sourcePhotos || []).length;
-  if(photos) chips.push({ cls: 'photo', text: sourceFilesLabel(recipe.sourcePhotos), title: 'What this recipe was converted from', button: true });
+  if(photos) chips.push({ cls: 'photo', text: sourceFilesLabel(recipe.sourcePhotos), title: 'What this recipe was converted from', button: true, attr: 'data-source-photos' });
   el.innerHTML = chips.map(c=> c.button
-    ? `<button type="button" class="prov-chip prov-${c.cls}" data-source-photos title="${escapeHtml(c.title)}">${escapeHtml(c.text.toUpperCase())}</button>`
+    ? `<button type="button" class="prov-chip prov-${c.cls}" ${c.attr} title="${escapeHtml(c.title)}">${escapeHtml(c.text.toUpperCase())}</button>`
     : `<span class="prov-chip prov-${c.cls}" title="${escapeHtml(c.title)}">${escapeHtml(c.text.toUpperCase())}</span>`).join('');
 }
 function renderViewer(){
@@ -4554,6 +4657,7 @@ function renderViewer(){
     : metaHtml;
 
   renderProvenance(recipe);
+  renderCookingNotes(recipe);
 
   const favBtn = document.getElementById('favouriteBtn');
   favBtn.classList.toggle('on', !!recipe.favourite);
@@ -4621,7 +4725,7 @@ function logRecipeUsed(id){
   const entry = addDiaryEntry({ recipeId: id, cookedOn: today });
   showToast(`Logged "${recipes[idx].title}" as cooked today`);
   renderViewer();
-  promptForMealType(entry.id, recipes[idx].title);
+  promptForMealType(entry.id, recipes[idx].title, id);
 }
 
 /* ---- H1: meal type at the point of logging ----
@@ -4631,20 +4735,32 @@ function logRecipeUsed(id){
 
    SKIP is not a cancel — the entry is already saved. It says "no meal
    type", which the diary and CSV both render honestly as blank. */
-function promptForMealType(entryId, label){
+function promptForMealType(entryId, label, recipeId){
   const overlay = document.getElementById('mealTypeOverlay');
   if(!overlay) return;
   document.getElementById('mealTypeWhat').textContent = label || '';
   overlay.dataset.entryId = entryId;
+  /* R4: a note on how it went, while it is fresh. Only for a recipe, since a note belongs to one. */
+  if(recipeId) overlay.dataset.recipeId = recipeId; else delete overlay.dataset.recipeId;
+  document.getElementById('mealTypeNote').value = '';
+  document.getElementById('mealTypeNoteRow').hidden = !(recipeId && recipeNotesAvailable);
   overlay.classList.add('open');
   renderMealTypeButtons(document.getElementById('mealTypeChoices'), null);
   const first = overlay.querySelector('.meal-type-btn');
   if(first) first.focus();
 }
 
+/* However it closes (a meal, SKIP or the backdrop), anything typed in the note box is kept: closing the
+   prompt is never a cancel. Returns the note it added, if any. */
 function closeMealTypePrompt(){
   const overlay = document.getElementById('mealTypeOverlay');
-  if(overlay){ overlay.classList.remove('open'); delete overlay.dataset.entryId; }
+  if(!overlay) return null;
+  const noteBox = document.getElementById('mealTypeNote');
+  const note = overlay.dataset.recipeId && noteBox.value.trim() ? addRecipeNote(overlay.dataset.recipeId, noteBox.value) : null;
+  noteBox.value = '';
+  overlay.classList.remove('open'); delete overlay.dataset.entryId; delete overlay.dataset.recipeId;
+  if(note && state.view === 'viewer'){ const r = currentViewerRecipe(); if(r){ renderCookingNotes(r); renderProvenance(r); } }
+  return note;
 }
 
 function backFromViewer(){
@@ -4868,7 +4984,8 @@ document.getElementById('shortlistBtn').addEventListener('click', ()=>{
 document.getElementById('deleteBtn').addEventListener('click', ()=>{
   const recipe = loadRecipes().find(r=>r.id === state.selectedRecipeId);
   if(!recipe) return;
-  if(!confirm(`Delete "${recipe.title}"? This can't be undone.`)) return;
+  const noteCount = notesForRecipe(recipe.id).length;
+  if(!confirm(`Delete "${recipe.title}"?${noteCount ? ` Its ${noteCount === 1 ? 'cooking note goes' : noteCount + ' cooking notes go'} with it.` : ''} This can't be undone.`)) return;
   /* Plan days, groups and shortlist entries pointing at it are tidied by
      deleteRecipe. They used to be left dangling on purpose, to render as
      "Recipe removed" rather than look unplanned; the count only ever grew. */
@@ -6126,11 +6243,11 @@ document.getElementById('mealTypeChoices').addEventListener('click', e=>{
   const overlay = document.getElementById('mealTypeOverlay');
   const entryId = overlay.dataset.entryId;
   if(entryId) updateDiaryEntry(entryId, { mealType: btn.dataset.meal });
-  closeMealTypePrompt();
-  showToast(`Tagged as ${MEAL_TYPE_LABELS[btn.dataset.meal].toLowerCase()}`);
+  const noted = closeMealTypePrompt();
+  showToast(`Tagged as ${MEAL_TYPE_LABELS[btn.dataset.meal].toLowerCase()}${noted ? ', and the note added' : ''}`);
   if(state.view === 'history') renderHistory();
 });
-document.getElementById('mealTypeSkip').addEventListener('click', closeMealTypePrompt);
+document.getElementById('mealTypeSkip').addEventListener('click', ()=>{ if(closeMealTypePrompt()) showToast('Note added'); });
 document.getElementById('mealTypeOverlay').addEventListener('click', e=>{
   /* Clicking the backdrop skips rather than cancels — there is nothing to
      cancel, the entry is already saved. */
@@ -6599,6 +6716,117 @@ document.getElementById('viewerProvenance').addEventListener('click', e=>{
   if(recipe && recipe.sourcePhotos && recipe.sourcePhotos.length) openSourcePhotoViewer(recipe.sourcePhotos, recipe.title, 0);
 });
 
+/* ---- COOKING NOTES in the viewer (R4) ----
+   Under the recipe, newest first: three shown, SHOW ALL for the rest. ADD writes at once, as a favourite
+   does; EDIT changes the text, never the date; DELETE offers UNDO. While cooking (KEEP AWAKE) the box stays,
+   since mid-cook is when "this needs longer" is noticed, and the log folds to its latest line. Not part of
+   PRINT or EXPORT PNG: they are the household's working notes, and the printout is the recipe. */
+const COOK_NOTES_SHOWN = 3;
+/* This recipe's view of its notes: whether all are shown, which one is being edited, and the one just
+   deleted (for UNDO). Kept for one recipe at a time, so opening another starts clean. */
+let cookNotesUi = { recipeId: null, showAll: false, editingId: null, undo: null };
+function renderCookingNotes(recipe){
+  const box = document.getElementById('cookingNotes');
+  if(!box || !recipe) return;
+  if(cookNotesUi.recipeId !== recipe.id) cookNotesUi = { recipeId: recipe.id, showAll: false, editingId: null, undo: null };
+  if(!recipeNotesAvailable){
+    box.innerHTML = `<h3 class="cooking-notes-title">COOKING NOTES</h3><p class="hint">Cooking notes can't be loaded just now.</p>`;
+    return;
+  }
+  const notes = notesForRecipe(recipe.id);
+  const shown = cookNotesUi.showAll ? notes : notes.slice(0, COOK_NOTES_SHOWN);
+  const item = n => cookNotesUi.editingId === n.id
+    ? `<li class="cn-item" data-note-id="${escapeHtml(n.id)}"><span class="cn-date">${escapeHtml(noteDateLabel(n.createdAt))}</span>` +
+      `<textarea class="cn-edit" rows="2">${escapeHtml(n.body)}</textarea>` +
+      `<span class="cn-actions"><button type="button" data-note-save>SAVE</button> <button type="button" data-note-cancel>CANCEL</button></span></li>`
+    : `<li class="cn-item" data-note-id="${escapeHtml(n.id)}"><span class="cn-date">${escapeHtml(noteDateLabel(n.createdAt))}</span>` +
+      `<span class="cn-body">${escapeHtml(n.body)}</span>` +
+      `<span class="cn-actions"><button type="button" data-note-edit>EDIT</button> <button type="button" data-note-delete>DELETE</button>` +
+      ` <button type="button" data-note-fold>FOLD INTO NOTES</button></span></li>`;
+  box.innerHTML = `<h3 class="cooking-notes-title">COOKING NOTES</h3>` +
+    `<div class="cn-add"><textarea id="cookNoteInput" rows="1" placeholder="How did it go?"></textarea>` +
+    `<button type="button" class="btn" id="cookNoteAddBtn">ADD A NOTE</button></div>` +
+    (cookNotesUi.undo ? `<div class="rv-undo cn-undo">Note deleted. <button type="button" data-note-undo>UNDO</button></div>` : '') +
+    (notes.length ? `<ul class="cooking-notes-log">${shown.map(item).join('')}</ul>` : `<p class="hint cn-empty">No notes yet. What you learn cooking this goes here, dated.</p>`) +
+    (notes.length > COOK_NOTES_SHOWN
+      ? `<button type="button" class="link-btn cn-more" data-note-more>${cookNotesUi.showAll ? 'SHOW THE LATEST ' + COOK_NOTES_SHOWN : 'SHOW ALL ' + notes.length + ' NOTES'}</button>` : '');
+}
+function currentViewerRecipe(){ return loadRecipes().find(r=> r.id === state.selectedRecipeId); }
+document.getElementById('cookingNotes').addEventListener('click', e=>{
+  const recipe = currentViewerRecipe();
+  if(!recipe) return;
+  const li = e.target.closest('[data-note-id]');
+  const id = li && li.dataset.noteId;
+  if(e.target.closest('#cookNoteAddBtn')){
+    const input = document.getElementById('cookNoteInput');
+    if(addRecipeNote(recipe.id, input.value)){ cookNotesUi.undo = null; renderCookingNotes(recipe); renderProvenance(recipe); showToast('Note added'); }
+    else input.focus();
+  } else if(e.target.closest('[data-note-edit]')){
+    cookNotesUi.editingId = id; renderCookingNotes(recipe);
+    const ta = document.querySelector('#cookingNotes .cn-edit'); if(ta) ta.focus();
+  } else if(e.target.closest('[data-note-save]')){
+    updateRecipeNote(id, li.querySelector('.cn-edit').value);
+    cookNotesUi.editingId = null; renderCookingNotes(recipe);
+  } else if(e.target.closest('[data-note-cancel]')){
+    cookNotesUi.editingId = null; renderCookingNotes(recipe);
+  } else if(e.target.closest('[data-note-delete]')){
+    cookNotesUi.undo = deleteRecipeNote(id); renderCookingNotes(recipe); renderProvenance(recipe);
+  } else if(e.target.closest('[data-note-undo]')){
+    restoreRecipeNote(cookNotesUi.undo); cookNotesUi.undo = null; renderCookingNotes(recipe); renderProvenance(recipe);
+  } else if(e.target.closest('[data-note-more]')){
+    cookNotesUi.showAll = !cookNotesUi.showAll; renderCookingNotes(recipe);
+  } else if(e.target.closest('[data-note-fold]')){
+    foldNoteIntoRecipe(recipe.id, id);
+  }
+});
+/* The chip in the viewer's header row: a recipe with notes says so before anyone scrolls. */
+document.getElementById('viewerProvenance').addEventListener('click', e=>{
+  if(!e.target.closest('[data-cook-notes]')) return;
+  const box = document.getElementById('cookingNotes');
+  if(box) box.scrollIntoView({ block: 'start' });
+});
+
+/* ---- FOLD INTO NOTES (R4) ----
+   A note that has become part of how the recipe is made moves into the recipe's own NOTES:, dated, and
+   leaves the log: in one place or the other, never both. It opens EDIT with the line added, pending like
+   any edit; SAVE writes the text and then deletes the note, and closing the form changes nothing. If the
+   line is taken out of the text before SAVE, the note stays where it was. */
+let pendingFold = null;   // { noteId, line }
+function foldedNoteLine(note){
+  const d = new Date(note.createdAt);
+  const when = isNaN(d) ? '' : `${d.getDate()} ${NOTE_MONTHS[d.getMonth()].charAt(0)}${NOTE_MONTHS[d.getMonth()].slice(1).toLowerCase()} ${d.getFullYear()}: `;
+  return when + String(note.body).replace(/\s*\n\s*/g, ' ').trim();
+}
+/* The line goes at the end of the general NOTES: section, before any VARIATIONS:, STORING: and so on;
+   a recipe with no NOTES: gets one at the end. */
+const NOTE_SECTION_HEADS = /^(NOTES|VARIATIONS|STORING|FREEZING|TIPS|STEPS|STAGE):\s*$|^GROUP\s+\w+\s*:\s*$/i;
+function withFoldedNote(text, line){
+  const lines = String(text || '').replace(/\s+$/, '').split('\n');
+  const at = lines.findIndex(l=> /^NOTES:\s*$/i.test(l.trim()));
+  if(at === -1) return lines.join('\n') + '\n\nNOTES:\n' + line + '\n';
+  let end = at + 1;
+  while(end < lines.length && !NOTE_SECTION_HEADS.test(lines[end].trim())) end++;
+  let last = end - 1;
+  while(last > at && !lines[last].trim()) last--;
+  lines.splice(last + 1, 0, line);
+  return lines.join('\n') + '\n';
+}
+function foldNoteIntoRecipe(recipeId, noteId){
+  const note = loadRecipeNotes().find(n=> n.id === noteId);
+  if(!note) return false;
+  openEditModal(recipeId);
+  const line = foldedNoteLine(note);
+  const ta = document.getElementById('importInput');
+  ta.value = withFoldedNote(ta.value, line);
+  pendingFold = { noteId, line };
+  parseAndPreview();
+  renderBeforeSave();
+  return true;
+}
+function foldToSave(text){
+  return pendingFold && String(text || '').split('\n').some(l=> l.trim() === pendingFold.line) ? pendingFold : null;
+}
+
 function openAddModal(){
   state.editingRecipeId = null;
   document.getElementById('modalTitle').textContent = 'Add a recipe';
@@ -6621,6 +6849,7 @@ function openEditModal(recipeId){
   const recipe = loadRecipes().find(r=>r.id === recipeId);
   if(!recipe) return;
   state.editingRecipeId = recipeId;
+  pendingFold = null;
   lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null; formValidated = null; aisleUndo = null;
 
   document.getElementById('modalTitle').textContent = 'Edit recipe';
@@ -6679,7 +6908,7 @@ function closeAddModal(){
   document.getElementById('f-source-url').value = '';
   lastCheckedUrl = ''; lastSourceLines = null; bandsShown = false; reviewLines = [];
   lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null; formValidated = null; aisleUndo = null;
-  resetFormPhotos(null); closeSourcePhotoViewer();
+  resetFormPhotos(null); closeSourcePhotoViewer(); pendingFold = null;
   clearTimeout(beforeSaveTimer); renderBeforeSave();
   clearBandsStale();
   document.getElementById('saveError').style.display = 'none';
@@ -7657,6 +7886,7 @@ function beforeSaveLines(){
   } else if(!stored && /^https:\/\//i.test(fields.sourceUrl || '')){
     out.push('Records: not compared with its source');
   }
+  if(foldToSave(text)) out.push('Adds the cooking note to NOTES: and takes it out of the log');
   const newFiles = formPhotos.filter(p=> !p.path), newPhotos = newFiles.length;
   const newWord = sourceFilesWord(newFiles) === 'PDF' ? 'PDF' : sourceFilesWord(newFiles).toLowerCase();
   if(newPhotos) out.push(`Stores ${newPhotos === 1 ? `the new source ${newWord}` : `${newPhotos} new source ${newWord}s`} with the recipe`);
@@ -8406,6 +8636,10 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     if(photos) uploadSourcePhotos(photos.uploads);
     saveRecipe(recipes[idx]);
     if(photos) removeSourcePhotoFiles(photos.removals);
+    /* FOLD INTO NOTES: the note leaves the log only once the text carrying it is saved, and only if the
+       line is still there. After the recipe's write, so the note is never gone before its line is kept. */
+    const fold = foldToSave(fields.syntax);
+    if(fold) deleteRecipeNote(fold.noteId);
     /* Before closeAddModal() below, which nulls state.editingRecipeId. */
     rehostImageFor(state.editingRecipeId, fields.imageUrl || '');
     /* An edit can move the groups and stages around, and a tick is a
@@ -8457,6 +8691,8 @@ function exportAllData(){
     /* Left out, not written as [], while the table is missing: restoring such a
        backup later must not read "no aisles" and clear the ones set since. */
     ...(aisleOverridesAvailable ? { aisleOverrides: loadAisleOverrides() } : {}),
+    /* Left out while the notes could not be loaded, for the same reason. */
+    ...(recipeNotesAvailable ? { recipeNotes: loadRecipeNotes() } : {}),
     diary: loadDiary()
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
@@ -8670,6 +8906,14 @@ function importAllData(file){
       replaceAisleOverrides(data.aisleOverrides
         .map(o=> ({ id: (o && o.id) || uid(), name: shoppingKeyForName((o && o.name) || ''), aisle: o && o.aisle }))
         .filter(o=> o.name && INGREDIENT_AISLES.includes(o.aisle) && !seen.has(o.name) && seen.add(o.name)));
+    }
+    /* Cooking notes (R4): a backup without them keeps what is here. Only notes on a recipe the file restores
+       are kept, since the database refuses a note on a recipe it does not have. Queued after the recipes. */
+    if(Array.isArray(data.recipeNotes) && recipeNotesAvailable){
+      const ids = new Set(data.recipes.map(r=> r && r.id));
+      replaceRecipeNotes(data.recipeNotes
+        .filter(n=> n && ids.has(n.recipeId) && String(n.body || '').trim() && !isNaN(Date.parse(n.createdAt)))
+        .map(n=> ({ id: n.id || uid(), recipeId: n.recipeId, body: String(n.body).trim(), createdAt: n.createdAt })));
     }
 
     state.selectedRecipeId = null;

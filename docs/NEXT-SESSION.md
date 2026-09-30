@@ -16,8 +16,8 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 
 - **Library:** 34 recipes. 2 carry a stored comparison with their source, 1 of them validated; 6 are BBC Good Food, five of which
   were rebuilt from another edition before the 29 Sep rule (the household's job below). 1 recipe has a source photo.
-- **Cooking diary:** 116 entries. **Word matches:** 15. **Household aisles:** 1. **Swaps:** 2. **Cooking notes:** none (R4, below).
-- **Tests:** `node test/core.test.js` 143 checks; `node test/build.js && node test/smoke.js` 407 checks. `offline-harness` runs
+- **Cooking diary:** 116 entries. **Word matches:** 15. **Household aisles:** 1. **Swaps:** 2. **Cooking notes:** none yet (R4 built 30 Sep).
+- **Tests:** `node test/core.test.js` 143 checks; `node test/build.js && node test/smoke.js` 418 checks. `offline-harness` runs
   both on every PR and is required on `main`.
 - **Schema:** nothing waiting to be applied. The last migration, `add_source_photos`, was applied 30 Sep (`docs/INFRASTRUCTURE.md`).
 - **The family is one account, one household.** `docs/ONBOARDING.md` adds a second person. A second `households` row is the weekly
@@ -33,6 +33,7 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 | Autocomplete (30 Sep) | The ingredient boxes' own dropdown in Settings and Swaps | Done, PRs #55–#56; tablet 36k |
 | `docs/PLAN-LAYOUT.md` (30 Sep) | Edit dialog, cooking mode, step text, aisle box, Settings tabs | Done, PRs #57–#60; tablet 37a–37d |
 | VALIDATE INGREDIENT LIST, OPEN SOURCE (30 Sep) | Accepting a comparison's differences; the source page from Edit | Done, PR #62; tablet 38a |
+| `docs/PLAN-COOKING-NOTES.md` (30 Sep) | R4: dated cooking notes per recipe, after cooking, foldable into NOTES | Built; tablet 39a |
 | `docs/PLAN-SOURCE-PHOTOS.md` (30 Sep) | The photo or PDF a recipe was converted from, kept privately; CHECKED AGAINST THE PHOTO | Done, PRs #63–#65; tablet 38b passed, 38c and 38d the household's |
 
 ---
@@ -41,9 +42,8 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 
 1. **The household's tablet passes:** `docs/TEST-PLAN.md` 38c (CHECKED AGAINST THE PHOTO) and 38d (PDF sources).
 2. **The household's data jobs** (below): compare and validate the BBC Good Food recipes; D6, the reconstructed recipes.
-3. **R4, dated cooking notes.** Scoped 30 Sep in `docs/PLAN-COOKING-NOTES.md`: a running log of dated notes per recipe, in the
-   viewer, in cooking mode and after cooking, foldable into the recipe's NOTES. No migration for the recommended design. **Waiting
-   for the household's six answers** (its §6); then one PR.
+3. **R4, dated cooking notes: built 30 Sep** (`docs/PLAN-COOKING-NOTES.md`, agreed "as suggested"). Tablet step 39a is the
+   household's.
 4. **P3, the calendar push.** Planned meals into Google Calendar. Not scoped. The brief's mechanism is an Edge Function holding a
    Google OAuth refresh token after a one-off consent screen (`docs/HANDOVER.md` §4); the household would deploy the function and
    give the consent. Scope it before building, as R4 was.
@@ -58,7 +58,7 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
   before the 29 Sep rule (`docs/HANDOVER.md`, 30 Sep). LIBRARY CHECK lists what is still to do.
 - **D6: repair the reconstructed recipes**, together with a session, by the recipe-text rules in `CLAUDE.md` (the household
   approves the exact lines; the before and after go to `PrivateBackup`; one guarded statement per recipe).
-- **Answer R4's six decisions** (`docs/PLAN-COOKING-NOTES.md` §6).
+- **Tablet step 39a**, cooking notes.
 - **The converter.** The conversion project in the Claude app holds **one file, `converter/conversion-instructions.md`**; its
   master copy is the one in this repo. After any change to that file here, reload it into the project. The other files under
   `converter/` stay in git as the project's reference and test material (`test-set.md` is how a change to the instructions is
