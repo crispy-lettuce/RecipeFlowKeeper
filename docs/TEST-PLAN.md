@@ -465,6 +465,13 @@ The 37 series is `docs/PLAN-LAYOUT.md`, the layout changes agreed on 30 Sep. Eac
 106 KB), under the household's folder and its recipe's; one recipe listing one page; no file that no recipe lists (so the
 removed page was deleted), and no listed page missing.*
 
+38d. **PDF sources (new 30 Sep).** Writes one recipe row and stores a file, on SAVE. (1) *On the laptop, open a recipe
+    page, PRINT, "Save as PDF".* (2) *EDIT a recipe, ADD PHOTO OR PDF, pick the PDF:* it shows as PAGE 1 · PDF · NEW with its
+    file name and OPEN ↗; BEFORE YOU SAVE says "Stores the new source PDF with the recipe". Try a PDF over 10 MB: it is refused
+    and says why. (3) *SAVE:* the viewer's chip reads SOURCE PDF; tap it, then OPEN ↗: the PDF opens in a new tab. (4) *On the
+    tablet, the same recipe:* OPEN ↗ opens it in the tablet's PDF viewer. **What no test can judge: whether opening it outside
+    the app is good enough on the tablet**, or whether pages drawn inside the app are worth adding.
+
 38c. **CHECKED AGAINST THE PHOTO (new 30 Sep).** Writes one recipe row, on SAVE. (1) *EDIT the recipe from 38b:* under AGAINST
     THE SOURCE, beside the photo, is CHECKED AGAINST THE PHOTO. Read the lines against the photo, then tap it: it says
     "Recorded as checked against the photo when you save" with UNDO, and BEFORE YOU SAVE says so. (2) *SAVE:* the viewer's chip
