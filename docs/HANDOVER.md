@@ -1752,6 +1752,16 @@ text now includes the VALIDATE button on a fresh comparison (the stale and none 
 the validation carried on a stale check (failed by name); on the page, no VALIDATED chip, the stored validation not saved, the form's
 not saved, no reset on a new comparison, LIBRARY CHECK ignoring it, UNDO not wired, and OPEN SOURCE opening any value each failed by
 name; OPEN SOURCE in the same tab crashed the run by navigating away. *Not verified:* the tablet (`docs/TEST-PLAN.md` step 38a).
+*Merged 30 Sep 15:01 UTC as PR #62,* on a green `offline-harness` run. *Tablet:* 38a reported "OK" by the household, 30 Sep.
+
+**Source photos, step 1: the migration (30 Sep 2026).** The household asked to keep the photo or screenshot a recipe was
+converted from, as a web recipe keeps its link. `docs/PLAN-SOURCE-PHOTOS.md` was agreed "all as suggested" the same day. This
+step is `docs/migrations/add-source-photos.md` only: a **private** bucket, `recipe-sources` (images and PDF, 10 MB), with the
+four folder-per-household policies of `recipe-images` renamed and `TO authenticated`, and one nullable `jsonb` column,
+`recipes.source_photos`, checked to be a list. Drafted from the live bucket and its policies, read-only at 15:10 UTC. **Not
+applied:** the household applies it from the SQL editor before merging. No app change, so the tests are unchanged.
+Also found while planning: the nightly `pg_dump` holds the database only, so neither it nor the JSON export will hold the photos
+themselves (the plan's §6.5, accepted).
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against

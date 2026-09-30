@@ -105,6 +105,14 @@ useful with no Claude Code session and no prior context at all.
 
 ---
 
+### `docs/migrations/add-source-photos.md` — a schema change, waiting for the household (30 Sep 2026)
+**What:** Step 1 of `docs/PLAN-SOURCE-PHOTOS.md`: a private storage bucket, `recipe-sources`, with the same four
+folder-per-household policies as `recipe-images`, and one nullable `jsonb` column, `recipes.source_photos`. Who applies it
+and when (the household, from the dashboard, **before** merging the PR that carries it), why each part is there, how to
+check it and how to undo it. DDL only, no data.
+
+**Use it when:** applying it, or checking whether it has been. `docs/INFRASTRUCTURE.md` lists it as waiting until then.
+
 ### `docs/migrations/add-aisle-overrides.md` — a schema change, applied by the household 29 Sep 2026
 **What:** The `aisle_overrides` table (PR 6 of the add-recipe plan), with its four `TO authenticated` policies and the
 `anon` revoke, who applies it and when (the household, from the dashboard, **before** merging that PR), why each part is
@@ -308,6 +316,16 @@ handful of` reading; `canned`/`tinned`).
 **Use it when:** starting the review, or answering those three decisions.
 
 **Don't:** look for the recipe's lines in it. They are left out on purpose (this repo is public).
+
+---
+
+### `docs/PLAN-SOURCE-PHOTOS.md` — keeping the photo a recipe was converted from (30 Sep 2026; agreed, step 1 written)
+**What:** The household's ask to keep the photo or screenshot a recipe was converted from, as a web recipe keeps its link.
+What exists today, the proposal (a private bucket, a `source_photos` column, ADD PHOTO in the form, shrunk to 2000 px,
+uploaded on SAVE, shown by signed link, deleted with the recipe), the order of work in three steps, what it does not do, and
+the household's five answers ("all as suggested").
+
+**Use it when:** building the next step, or asked where a recipe's source photo lives.
 
 ---
 

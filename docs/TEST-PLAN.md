@@ -448,6 +448,8 @@ The 37 series is `docs/PLAN-LAYOUT.md`, the layout changes agreed on 30 Sep. Eac
     **What no test can judge: whether VALIDATED says what you meant by it.** A change to the recipe's ingredient lines takes
     the validation away until it is compared again.
 
+*38a reported "OK" by the household, 30 Sep.*
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in
