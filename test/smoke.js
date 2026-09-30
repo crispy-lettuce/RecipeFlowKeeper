@@ -3185,10 +3185,12 @@ const check = (name, pass, detail) => {
   await acType('ingredientLookup', 'alm');
   await page.keyboard.press('Escape');
   const acEsc = await acList('ingredientLookup');
+  await acType('ingredientLookup', 'alm');
+  const acBefore = await acList('ingredientLookup');
   await page.focus('#aisleOverride-name');
   const acBlur = await (async () => { await page.waitForTimeout(250); return acList('ingredientLookup'); })();
   check('    it closes when the only name left is the one typed; the arrow keys and Enter pick; Escape and leaving the box close it',
-        !acExact.shown && acKeys === acAlm.items[1] && !acEsc.shown && !acBlur.shown, JSON.stringify([acExact, acKeys, acAlm.items[1], acEsc.shown, acBlur.shown]));
+        !acExact.shown && acKeys === acAlm.items[1] && !acEsc.shown && acBefore.shown && !acBlur.shown, JSON.stringify([acExact, acKeys, acAlm.items[1], acEsc.shown, acBefore.shown, acBlur.shown]));
   const acLibOnly = acExpect.dictionaryOnly.find(p => /^[a-z]/.test(p));
   const acLibName = acExpect.library[0];
   await acType('aisleOverride-name', acLibName.slice(0, 3));
