@@ -41,7 +41,7 @@ verified status. **Nothing here is inferred from a previous summary.**
 | R1 | Reset ticked ingredients/stages | **Done.** Ticks are keyed to flow geometry, so they survive a rescale; RESET TICKS clears in place without re-rendering. Session-only by design. |
 | R2 | Auto-collapsing sidebar | **Done, extended 21 Sep.** Collapses over both Viewers at 861–1180px, peek tab restores it, navigating away resets it. **Also collapses at any width while Keep Awake is on** — a statement that cooking is happening now beats a guess from the window size. Peek tab still offered, so it cannot strand you. |
 | R3 | Group Viewer parity | **Done, with two conscious omissions.** (Its PNG export truncated to one screenful until 21 Sep — see §7.) Delivered: Keep Awake, Favourite, Edit, Export PNG, Print, Reset Ticks, plus **OPEN →** per recipe. Omitted on purpose: *Shortlist* (contradictory for something already planned) and a *group-level Scale row* (no single base to scale from) — OPEN → covers both. **Worth confirming you're happy with that reading**, since the brief lists both as gaps to close. |
-| R4 | Dated cooking notes | **Not started.** Phase 3. The `recipe_notes` table already exists, empty and unreferenced by the app — it was created in Phase 1 anticipating this. Not dead schema; just early. |
+| R4 | Dated cooking notes | **Built 30 Sep 2026** (`docs/PLAN-COOKING-NOTES.md`, agreed "as suggested"): a running log per recipe in the `recipe_notes` table Phase 1 made for it. See §7. |
 | R5 | Scale by servings | **Done.** Multiplier buttons retired everywhere. Viewer reads `SERVES 6 (SCALED FROM 4)`. |
 | R6 | Servings mandatory | **Done, both sides, 20 Sep.** Save is blocked without servings, and all 33 recipes now carry one. The retrofit rode on the reprocess, as planned. |
 | R7 | Recipe images | **Done, 21 Sep.** All 29 images self-hosted in Supabase Storage via an Edge Function. Automatic on save since 22 Sep. See §2 and §2d. |
@@ -1845,6 +1845,27 @@ one first crashed the run on a wait the test required; the wait is now a wait, a
 database at 19:11 UTC), what is left and the household's jobs; the conversion project holds one file, `converter/conversion-instructions.md`,
 whose master is here (the household, 30 Sep). R4 scoped in `docs/PLAN-COOKING-NOTES.md` from the live schema (read-only: `recipe_notes`
 0 rows, four `authenticated` policies, cascade on recipe delete; no `recipe_logs.note` set in 116 entries); not built.
+*Merged 30 Sep 19:53 UTC as PR #66.*
+
+**R4, dated cooking notes (30 Sep 2026).** `docs/PLAN-COOKING-NOTES.md`, agreed "as suggested". `index.html` only; no migration,
+since `recipe_notes` (Phase 1) had every column needed. **COOKING NOTES** under the recipe in the viewer: ADD A NOTE (dated now, by
+the app, so the row and the log agree), newest first, the latest three and SHOW ALL, EDIT (the text only), DELETE with UNDO, and a
+**NOTES · n** chip in the header. Each is one row, aimed at one note of one household; ADD and UNDO are upserts, so a retried write
+that had landed is not refused. **While cooking** (KEEP AWAKE) the box stays and the log shows its latest line, nothing to edit.
+**After cooking**, the "Which meal was that?" prompt has an optional note box, for a cooked recipe only, kept however the prompt
+closes. **FOLD INTO NOTES** opens EDIT with `30 Sep 2026: <note>` at the end of the text's `NOTES:` section (or a new one), named by
+BEFORE YOU SAVE; SAVE writes the recipe, **then** deletes the note; closing the form changes nothing, and a line taken out before
+SAVE leaves the note. Not in PRINT or EXPORT PNG (the section sits outside the diagram, and print hides it). In the JSON export as
+`recipeNotes`; an import restores only notes on recipes the file restores. Deleting a recipe says how many notes go with it (the
+database cascades). `hydrate()` reads the table apart, like `aisle_overrides`: unreadable, the notes say so and nobody is signed out.
+
+*Verified by.* `core.test.js` 143, unchanged. `smoke.js` **407 → 418**, both exit 0: ADD (one upsert, trimmed, dated; a blank adds
+nothing; the chip), order and SHOW ALL, EDIT (text only, one note) and DELETE with UNDO (the same note back), cooking mode and
+print, the after-cooking box (and none for an entry with no recipe, none from an empty SKIP), FOLD pending and closed, FOLD saved
+(recipe written before the note's delete), a folded line taken out again, export and the delete confirmation, import's filter, and
+the table unreadable. MUTRESULT The invented lines were checked against the live library (read-only): none is a real line.
+*Screenshots* at 1280×800 and 412 wide: the section, cooking mode, the prompt. *Not verified:* the tablet, `docs/TEST-PLAN.md`
+step 39a.
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against

@@ -2,7 +2,8 @@
 
 **Asked for in the original build brief** (`docs/BUILD-BRIEF.md`, R4): *"A note box in the Viewer; each entry dated, building a
 running log per recipe across cooking sessions; foldable into the permanent Notes text later."* Scoped on 30 Sep 2026 at the
-household's request. **Not built**; waiting for the household's answers to §6.
+household's request, and **agreed "as suggested" the same day**: every answer in §6 is the recommended one. **Built 30 Sep**
+as one PR, `index.html` only, no migration; tablet step 39a. §7 records what was built where it differs from §4.
 
 ## 1. What it is for
 
@@ -106,3 +107,19 @@ Estimated size: similar to source photos' step 2.
    or print them under the recipe?
 6. **Who wrote it:** not recorded (recommended while one account uses the app), or record the author for when a family member
    joins (`docs/ONBOARDING.md`)? Recording needs one new column, applied first.
+
+## 7. As built (30 Sep 2026)
+
+As §4, with these particulars:
+
+- **The date** is written by the app with the note (`created_at`), so the log shows it at once and the row agrees; it is shown
+  as `30 SEP 2026` on every device. Two notes written in the same instant keep the order they were written in.
+- **ADD, EDIT, DELETE and UNDO** each write one row, aimed at one note of one household. ADD and UNDO are upserts, so a retry
+  after a write that did land is not refused.
+- **FOLD INTO NOTES** puts `30 Sep 2026: <the note>` at the end of the general `NOTES:` section (before `VARIATIONS:`, `TIPS:`
+  and the rest), or adds a `NOTES:` section at the end. If the line is taken out of the text before SAVE, the note stays.
+- **The after-cooking box** keeps what is typed however the prompt closes (a meal, SKIP or the backdrop), since closing it has
+  never been a cancel. It is offered only for a cooked recipe, not for a diary entry without one.
+- **The notes' own section** sits outside the diagram, so EXPORT PNG never captured it, and PRINT hides it.
+- **Not built:** searching notes from the library's search box (§4 left it out of the first version).
+

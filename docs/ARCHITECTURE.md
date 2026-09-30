@@ -197,6 +197,7 @@ was a deliberate call in the brief: retrofitting it later, once data exists, is 
 | `shopping_checked` | Ticked items, keyed by `week_start` + `item_key`. **`item_key` is the row's key**, the ingredient's name alone since PR 6b (with a `both\|` prefix for the both-weeks list), so a recipe changing its unit keeps the tick but anything that changes how items are *named* re-keys them. Until 25 Sep it was `name\|unit`; those rows are deleted at start-up by `purgeOldFormatTicks`. |
 | `aliases` | Word matches. `kind` is `source`, `ingredient`, `source_distinct` or `ingredient_distinct` — the `_distinct` kinds record "these are *not* the same" so the app stops asking. Ingredient matches are re-normalised through `shoppingKeyForName` as they load, so a match stored in the old normaliser's words still applies; the stored rows are never rewritten. |
 | `aisle_overrides` | The household's aisle for an ingredient (PR 6 of the add-recipe plan, 29 Sep 2026): `name` is the shopping list's key for it (`shoppingKeyForName`), `aisle` one of `INGREDIENT_AISLES`, unique on `(household_id, name)`. Set in Settings → Shopping Aisles or from the add form's review; applied by `aggregateShoppingLines` after the key is final. Created by `docs/migrations/add-aisle-overrides.md`, which the household applied on 29 Sep 2026. **`hydrate()` reads it apart from the other tables and does not throw when it is missing**: the feature is then unavailable and says so. |
+| `recipe_notes` | Dated cooking notes (R4, `docs/PLAN-COOKING-NOTES.md`, 30 Sep 2026): `body`, and `created_at` as the note's date, sent by the app and never changed; one row per note, written by ADD, EDIT (the text only), DELETE and UNDO, and deleted by FOLD INTO NOTES once the recipe's text carrying it is saved. Cascades on recipe delete. Made in Phase 1 and unused until R4. Read apart like `aisle_overrides`: a failure leaves the notes unavailable and signs nobody out. In the JSON export as `recipeNotes`. |
 | `household_settings` | One row. `week_start_day` (0=Sunday, default 5=Friday). |
 | `households`, `household_members` | Identity. `hydrate()` reads the signed-in user's first `household_members` row to set `HOUSEHOLD_ID`, so the app carries no household constant. *(Corrected 23 Sep; this row said it was a constant.)* |
 
@@ -208,7 +209,7 @@ mistake that made the image work look finished):
 
 | Column / table | Waiting on |
 | --- | --- |
-| `recipe_notes` (whole table, empty) | R4, dated cooking notes |
+| ~~`recipe_notes`~~ | R4 shipped 30 Sep — no longer scaffolding |
 | ~~`recipe_logs.meal_type`~~ | H1 shipped 22 Sep — now written by the prompt after logging |
 | `recipe_logs.note` | R4, dated cooking notes. Round-tripped by the diary since 22 Sep (read, written back unchanged) but no UI sets it. Deliberately **not** used by H2: an ad-hoc entry's name lives in `recipe_logs.title`, added 22 Sep, so "a takeaway called X" and "a note about recipe Y" stay distinguishable |
 | ~~`household_settings.dark_mode`~~ | S2 shipped 22 Sep — no longer scaffolding |
@@ -244,7 +245,7 @@ a URL is already ours. See `docs/IMAGES.md` §5.
 node test/core.test.js   # 143 checks on core.js in Node, about two seconds, no browser
 npm install playwright
 node test/build.js       # bake index.html (with core.js inlined) against the stub
-node test/smoke.js       # 407 checks; exits non-zero on failure
+node test/smoke.js       # 418 checks; exits non-zero on failure
 ```
 
 **`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,

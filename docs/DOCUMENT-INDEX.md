@@ -18,9 +18,8 @@ GitHub at the time of writing.
 
 Then pick up work from **`docs/NEXT-SESSION.md`**: where things stand, what is left and in what
 order, and the household's own jobs. As of 30 Sep 2026 the app is live and in daily use and every
-agreed plan is built and merged. What remains is the household's data jobs, R4 (dated cooking notes,
-scoped in `docs/PLAN-COOKING-NOTES.md`, waiting for the household's answers) and P3 (the calendar
-push, not yet scoped).
+agreed plan is built and merged, R4 (dated cooking notes, `docs/PLAN-COOKING-NOTES.md`) included.
+What remains is the household's data jobs and P3 (the calendar push, not yet scoped).
 
 **One thing to absorb before changing anything: `main` is production.** GitHub Pages serves from
 `main`, and every merge deploys straight to the tablet. There is no staging step. This was
@@ -314,12 +313,12 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
-### `docs/PLAN-COOKING-NOTES.md` — dated cooking notes, R4 (30 Sep 2026; scoped, waiting for the household's answers)
+### `docs/PLAN-COOKING-NOTES.md` — dated cooking notes, R4 (30 Sep 2026; agreed "as suggested" and built)
 **What:** The brief's R4, scoped: what exists (the unused `recipe_notes` table and `recipe_logs.note`, both empty), a note per
 recipe against a note per cooking, the recommended design (a running log in the viewer, a box after cooking, FOLD INTO NOTES,
-export), how it would be built (one PR, no migration) and six decisions for the household.
+export), how it would be built (one PR, no migration), the household's six answers ("as suggested") and, in §7, what was built.
 
-**Use it when:** answering those decisions, or building R4.
+**Use it when:** asked how cooking notes work, or extending them.
 
 ---
 
@@ -415,7 +414,7 @@ to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.m
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 407-check smoke suite, the 143 Node checks and the Edge Function checks, and an honest account of what it can't tell you
+**What:** How to run the 418-check smoke suite, the 143 Node checks and the Edge Function checks, and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 
 **Use it when:** making any code change.

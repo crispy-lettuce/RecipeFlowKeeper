@@ -472,6 +472,15 @@ removed page was deleted), and no listed page missing.*
     tablet, the same recipe:* OPEN ↗ opens it in the tablet's PDF viewer. **What no test can judge: whether opening it outside
     the app is good enough on the tablet**, or whether pages drawn inside the app are worth adding.
 
+39a. **Cooking notes (new 30 Sep, R4).** Writes one note row per tap. (1) *Open a recipe:* under the diagram, COOKING NOTES.
+    Type "Needed 10 min longer" and ADD A NOTE: it appears at the top with today's date, and the header shows NOTES · 1. (2)
+    *EDIT it, change the words, SAVE:* the date stays. *DELETE it:* UNDO brings it back. (3) *KEEP AWAKE on:* the box is still
+    there and the latest note shows; nothing to edit. (4) *Tick the last column:* the "Which meal?" prompt has ADD A NOTE; type
+    one and pick Dinner: it is in the recipe's log, dated today. (5) *FOLD INTO NOTES on a note:* EDIT opens with it dated at the
+    end of NOTES:, and BEFORE YOU SAVE says so; SAVE, and the note is in the recipe's own notes and gone from the log. (6)
+    *PRINT:* no cooking notes on the page. **What no test can judge: whether the box is quick enough to use with wet hands,
+    and whether notes are where you look for them.**
+
 38c. **CHECKED AGAINST THE PHOTO (new 30 Sep).** Writes one recipe row, on SAVE. (1) *EDIT the recipe from 38b:* under AGAINST
     THE SOURCE, beside the photo, is CHECKED AGAINST THE PHOTO. Read the lines against the photo, then tap it: it says
     "Recorded as checked against the photo when you save" with UNDO, and BEFORE YOU SAVE says so. (2) *SAVE:* the viewer's chip
