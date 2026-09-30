@@ -10,8 +10,8 @@ autocomplete on the ingredient boxes in Settings and Swaps, was built on 30 Sep*
 (tablet step 36k, reported "broadly ok"). **`docs/PLAN-LAYOUT.md` is finished**: five layout changes agreed on
 30 Sep, all merged (PRs #57 to #60), every tablet pass (37a to 37d) done. Keep Awake is reported working on the Android tablet.
 Converter test 9 passed in the conversion project on 30 Sep (recorded in `converter/test-set.md`). **What is left is the
-household's:** reload `converter/conversion-instructions.md` into the conversion project again (30 Sep: pasted page text needs
-no source note) and run test 10; compare the six BBC Good Food recipes against their real pages, since five were rebuilt from
+household's:** compare the six BBC Good Food recipes (the conversion reload and test 10 passed on 30 Sep; VALIDATE INGREDIENT
+LIST, 30 Sep, records the ones found right) against their real pages, since five were rebuilt from
 another edition before the 29 Sep rule (`docs/HANDOVER.md`, 30 Sep); and D6, repairing the reconstructed recipes, a data job
 done together, by the recipe-text rules in `CLAUDE.md`.
 

@@ -186,7 +186,7 @@ was a deliberate call in the brief: retrofitting it later, once data exists, is 
 
 | Table | Holds |
 | --- | --- |
-| `recipes` | The library. `syntax` is the real recipe; other columns are parsed from it. `source_check` (jsonb, nullable; PR 5 of the add-recipe plan) is what a comparison with the source page found: `{at, route, hard, soft, sourceLines, linesHash}`, written by SAVE when a comparison ran in that form session, never the page's text or a pasted list. It is added by `docs/migrations/add-recipes-source-check.md`, which the household applied from the SQL editor on 29 Sep 2026 (checked read-only that day: `jsonb`, nullable). |
+| `recipes` | The library. `syntax` is the real recipe; other columns are parsed from it. `source_check` (jsonb, nullable; PR 5 of the add-recipe plan) is what a comparison with the source page found: `{at, route, hard, soft, sourceLines, linesHash}`, written by SAVE when a comparison ran in that form session, never the page's text or a pasted list. Since 30 Sep 2026 it may also carry `validated` (an ISO time): the household pressed VALIDATE INGREDIENT LIST, accepting the list as it stands with whatever differences it has; `sourceCheckStatus` reports it only while the lines are the ones compared. It is added by `docs/migrations/add-recipes-source-check.md`, which the household applied from the SQL editor on 29 Sep 2026 (checked read-only that day: `jsonb`, nullable). |
 | `recipe_logs` | One row per time a recipe was cooked. **`ON DELETE CASCADE`** from `recipes` — deleting a recipe destroys its history. |
 | `keywords` | The tag vocabulary, ordered by `sort_order`. |
 | `planner_days` | One row per planned day. `recipe_ids uuid[]` plus a **parallel `servings smallint[]`** — index *n* in one matches index *n* in the other, `0` meaning "as the recipe is written". |
@@ -240,10 +240,10 @@ a URL is already ours. See `docs/IMAGES.md` §5.
 (`test/stub.js`) and walks every screen.
 
 ```sh
-node test/core.test.js   # 142 checks on core.js in Node, about two seconds, no browser
+node test/core.test.js   # 143 checks on core.js in Node, about two seconds, no browser
 npm install playwright
 node test/build.js       # bake index.html (with core.js inlined) against the stub
-node test/smoke.js       # 379 checks; exits non-zero on failure
+node test/smoke.js       # 385 checks; exits non-zero on failure
 ```
 
 **`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,

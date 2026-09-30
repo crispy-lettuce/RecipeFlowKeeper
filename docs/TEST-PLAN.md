@@ -440,6 +440,14 @@ The 37 series is `docs/PLAN-LAYOUT.md`, the layout changes agreed on 30 Sep. Eac
 
 *37d reported "ok" by the household, 30 Sep. Every step of the 37 series has passed.*
 
+38a. **VALIDATE INGREDIENT LIST, and OPEN SOURCE (new 30 Sep).** Writes one recipe row, on SAVE. (1) *Open a recipe you have
+    compared (Easy Pilau Rice, say), EDIT:* beside "Compared 30 Sep · 1 difference" is VALIDATE INGREDIENT LIST. Tap it: it
+    says "Validated when you save" with UNDO, and BEFORE YOU SAVE says so. (2) *SAVE:* the viewer's chip reads VALIDATED and
+    the date; EDIT again says when, with no second offer. (3) *Settings → Library → LIBRARY CHECK → RUN:* that recipe reads
+    "validated" and is not among those needing attention. (4) *EDIT, OPEN SOURCE ↗:* the source page opens in a new tab.
+    **What no test can judge: whether VALIDATED says what you meant by it.** A change to the recipe's ingredient lines takes
+    the validation away until it is compared again.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in
