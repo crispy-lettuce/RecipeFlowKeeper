@@ -1679,6 +1679,17 @@ line not following typing, "no recipe uses" inverted, REMOVE not wired, and the 
 not following the picker, which the suite reports as a crash at the PR 6 check's ADD click (the button stays greyed, so
 Playwright waits on it) before the new check is reached. Same fault, earlier symptom; the older check was left as it was. *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37b).
 
+**Layout B (30 Sep 2026): cooking mode.** With KEEP AWAKE on, the recipe viewer hides FAVOURITE, + SHORTLIST, EDIT, EXPORT
+PNG, PRINT, DELETE, the source chip and COOK FOR, and the Group Viewer hides EXPORT PNG, PRINT and UNGROUP: CSS on the
+`.app.keep-awake` class the toggle already sets, so turning it off brings them all back. The header is pinned (`sticky`); the
+timeline is hidden while cooking until SHOW TIMELINE, which is remembered per device (`kitchen.cookingTimeline`). No "COOKING
+FOR n" text was added: the meta line's "SERVES 6 (SCALED FROM 4)" already says it. `index.html` only.
+
+*Verified by.* `smoke.js` **372 → 376**, `core.test.js` 142, both exit 0, no other check changed. Screenshots at 1280×800 and
+412×800 with KEEP AWAKE on. **Seven page mutations, each seen failing by name:** DELETE left showing, the
+Group Viewer's buttons left showing, COOK FOR left showing, the timeline shown by default, the header not pinned, SHOW TIMELINE
+not remembered, and the switch showing outside cooking mode. *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export

@@ -3320,6 +3320,51 @@ const check = (name, pass, detail) => {
         && (await page.evaluate(() => loadAisleOverrides().length)) === 0, JSON.stringify([adOwn, adWrites, adAfter]));
   await adType('');
 
+  /* ---- Layout B, 30 Sep 2026 (docs/PLAN-LAYOUT.md): cooking mode ----
+     KEEP AWAKE hides what is not used while cooking, and hides the timeline until SHOW TIMELINE, which the
+     device remembers. The state is set directly, as the keep-awake block above does (no wake lock headless).
+     Everything is put back at the end: KEEP AWAKE off, the stored choice removed. */
+  await page.evaluate(() => { try { localStorage.removeItem('kitchen.cookingTimeline'); } catch(e){} });
+  const ckRecipe = await page.evaluate(() => loadRecipes().find(r => r.title === 'Test Pasta').id);
+  await page.evaluate(id => openRecipe(id), ckRecipe);
+  await page.waitForTimeout(400);
+  const ckHidden = ['#viewerProvenance', '#favouriteBtn', '#shortlistBtn', '#editRecipeBtn', '#exportPngBtn', '#printBtn', '#deleteBtn', '#view-viewer .viewer-scale-row',
+    '#groupExportPngBtn', '#groupPrintBtn', '#groupUngroupBtn'];
+  const ckKept = ['#backToRecipes', '#viewerMeta', '#view-viewer .keep-awake-toggle', '#resetTicksBtn', '#flowMount table'];
+  const ckState = () => page.evaluate(([hid, kept]) => { const shown = sel => { const e = document.querySelector(sel); return !!e && getComputedStyle(e).display !== 'none'
+      && (!e.closest('#view-viewer') || e.offsetParent !== null || getComputedStyle(e).position === 'fixed'); };
+    const btn = document.querySelector('#view-viewer .cook-timeline-btn');
+    return { hidden: hid.filter(sel => { const e = document.querySelector(sel); return e && getComputedStyle(e).display === 'none'; }),
+      kept: kept.filter(shown), timeline: shown('#view-viewer .timeline-strip'), btn: btn && getComputedStyle(btn).display !== 'none' ? btn.textContent.trim() : '',
+      sticky: getComputedStyle(document.querySelector('#view-viewer .viewer-head')).position }; }, [ckHidden, ckKept]);
+  const ckOff = await ckState();
+  await page.evaluate(() => { state.keepAwake = true; updateKeepAwakeStatus(); });
+  await page.waitForTimeout(200);
+  const ckOn = await ckState();
+  check('layout B: KEEP AWAKE is cooking mode: favourite, shortlist, edit, export, print, delete, the source chip, COOK FOR and the Group Viewer\'s export, print and ungroup hidden',
+        ckOff.hidden.filter(x => x !== '#viewerProvenance').length === 0 && ckOn.hidden.length === ckHidden.length, JSON.stringify([ckOff.hidden, ckOn.hidden]));
+  check('    the recipe\'s details, KEEP AWAKE, RESET TICKS and the grid stay, with the header pinned; the timeline is hidden with SHOW TIMELINE offered',
+        ckOn.kept.length === ckKept.length && ckOn.sticky === 'sticky' && !ckOn.timeline && ckOn.btn === 'SHOW TIMELINE'
+        && ckOff.timeline && ckOff.btn === '' && ckOff.sticky !== 'sticky', JSON.stringify([ckOff, ckOn]));
+  await page.click('#view-viewer .cook-timeline-btn');
+  await page.waitForTimeout(150);
+  const ckShown = await ckState();
+  const ckStored = await page.evaluate(() => localStorage.getItem('kitchen.cookingTimeline'));
+  await page.evaluate(() => { state.keepAwake = false; updateKeepAwakeStatus(); state.keepAwake = true; updateKeepAwakeStatus(); });
+  const ckAgain = await ckState();
+  await page.click('#view-viewer .cook-timeline-btn');
+  await page.waitForTimeout(150);
+  const ckHiddenAgain = await ckState();
+  check('    SHOW TIMELINE shows it and is remembered on the device, next time too; HIDE TIMELINE hides it again',
+        ckShown.timeline && ckShown.btn === 'HIDE TIMELINE' && ckStored === 'show' && ckAgain.timeline && ckAgain.btn === 'HIDE TIMELINE'
+        && !ckHiddenAgain.timeline && ckHiddenAgain.btn === 'SHOW TIMELINE', JSON.stringify([ckShown, ckStored, ckAgain, ckHiddenAgain]));
+  await page.evaluate(() => { state.keepAwake = false; updateKeepAwakeStatus(); });
+  await page.waitForTimeout(150);
+  const ckBack = await ckState();
+  check('    and turning KEEP AWAKE off brings every one of them back',
+        JSON.stringify(ckBack) === JSON.stringify(ckOff), JSON.stringify([ckOff, ckBack]));
+  await page.evaluate(() => { try { localStorage.removeItem('kitchen.cookingTimeline'); } catch(e){} applyCookTimeline(); });
+
   /* ---- LIBRARY CHECK (PR 8 of the add-recipe plan, 29 Sep 2026) ----
      Every recipe, its standing against its source and its names in Other, those needing attention
      first; RUN writes nothing and OPEN opens the edit form. Six invented recipes, one per status,
