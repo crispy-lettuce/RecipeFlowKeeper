@@ -420,6 +420,14 @@ The 37 series is `docs/PLAN-LAYOUT.md`, the layout changes agreed on 30 Sep. Eac
     "your own aisle", with REMOVE and where it would go back to. (4) *Type something no recipe uses:* the line says so.
     **What no test can judge: whether the line answers the question before you have to ask it.**
 
+37c. **Cooking mode (new 30 Sep, B).** (1) *Open a recipe, scale it to 6, turn KEEP AWAKE on:* the header is one line: ← ALL
+    RECIPES, the recipe's details (saying SERVES 6, SCALED FROM its own), KEEP AWAKE, RESET TICKS and SHOW TIMELINE. Favourite,
+    shortlist, edit, export, print, delete, the source chip and COOK FOR are gone, and so is the timeline. (2) *SHOW TIMELINE:*
+    it appears; leave the recipe, open another and turn KEEP AWAKE on: it is still shown. HIDE TIMELINE hides it again, and the
+    tablet and the laptop each keep their own choice. (3) *On the phone, scroll down the recipe:* the header stays at the top.
+    (4) *Turn KEEP AWAKE off:* everything is back. (5) *A group from the Planner, KEEP AWAKE on:* export, print and ungroup go.
+    **What no test can judge: whether anything you want mid-cook has gone missing.**
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

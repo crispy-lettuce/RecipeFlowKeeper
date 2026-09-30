@@ -311,7 +311,7 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
-### `docs/PLAN-LAYOUT.md` — layout changes: edit dialog, cooking mode, step text, aisle box, Settings (30 Sep 2026, agreed; C, A and D built)
+### `docs/PLAN-LAYOUT.md` — layout changes: edit dialog, cooking mode, step text, aisle box, Settings (30 Sep 2026, agreed; C, A, D and B built)
 **What:** Five layout changes the household asked for on 30 Sep, lettered A to E as they lettered them, each with what the
 app does now, what was decided and why, and what was considered and not chosen. All `index.html` only, no data change.
 Built one PR at a time: C and A first, then D (the aisle box shows the current aisle), B (cooking mode, when KEEP AWAKE is on)
@@ -392,7 +392,7 @@ to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.m
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 372-check smoke suite, the 142 Node checks and the Edge Function checks, and an honest account of what it can't tell you
+**What:** How to run the 376-check smoke suite, the 142 Node checks and the Edge Function checks, and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 
 **Use it when:** making any code change.

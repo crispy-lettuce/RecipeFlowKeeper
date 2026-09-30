@@ -12,8 +12,8 @@ seen failing (`CLAUDE.md` rule 3), and a tablet step in `docs/TEST-PLAN.md` (the
 | Order | Change | Size | Status |
 | --- | --- | --- | --- |
 | 1 | **C**, step text at the foot of its box, and **A**, edit dialog near full width | Small | **Built and merged**, 30 Sep (PR #57) |
-| 2 | **D**, Shopping Aisles shows the current aisle | Small | **Built**, 30 Sep |
-| 3 | **B**, cooking mode | Medium | Planned |
+| 2 | **D**, Shopping Aisles shows the current aisle | Small | **Built and merged**, 30 Sep (PR #58) |
+| 3 | **B**, cooking mode | Medium | **Built**, 30 Sep |
 | 4 | **E**, Settings in tabs, with Swaps | Largest | Planned |
 
 ## C. Step text at the foot of its box
@@ -75,6 +75,12 @@ Turning KEEP AWAKE off brings everything back as it was.
 **Also decided:** the timeline is **hidden by default** in cooking mode and the choice is **remembered per device**
 (`localStorage`: the tablet and the laptop are used differently); the **header line is pinned** to the top while scrolling;
 the **Group Viewer** gets the same treatment (EXPORT PNG, PRINT and UNGROUP hidden).
+
+**Built as** CSS on the class KEEP AWAKE already sets (`.app.keep-awake`), so the buttons are hidden, never removed, and come
+back the moment it is turned off. SHOW / HIDE TIMELINE is in both viewers' headers, shown only while cooking, and stores
+`kitchen.cookingTimeline` in `localStorage` (one setting for the device, both viewers). **"COOKING FOR *n*" was not added:**
+the meta line already reads "SERVES 6 (SCALED FROM 4)" after scaling, which says the same. The header is `position: sticky`:
+on a laptop or tablet only the recipe scrolls anyway, so it matters on a phone, where the page scrolls. Tablet step 37c.
 
 ## E. Settings in tabs, with Swaps
 
