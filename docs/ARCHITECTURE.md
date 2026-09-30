@@ -244,7 +244,7 @@ a URL is already ours. See `docs/IMAGES.md` §5.
 node test/core.test.js   # 143 checks on core.js in Node, about two seconds, no browser
 npm install playwright
 node test/build.js       # bake index.html (with core.js inlined) against the stub
-node test/smoke.js       # 402 checks; exits non-zero on failure
+node test/smoke.js       # 403 checks; exits non-zero on failure
 ```
 
 **`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,

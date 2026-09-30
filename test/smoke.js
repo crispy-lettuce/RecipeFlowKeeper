@@ -3792,7 +3792,7 @@ const check = (name, pass, detail) => {
   const pcSc = (((await spRecipeWrites(pcMark1)).pop() || { rows: [{}] }).rows[0].source_check) || {};
   const pcHash = await page.evaluate(() => linesHash(['250 g rye flour', '2 tbsp black treacle']));
   const pcChip = await page.evaluate(() => [...document.querySelectorAll('#viewerProvenance .prov-chip')].map(c => ({ text: c.textContent, title: c.title })));
-  const pcWhen = await page.evaluate(() => formatDate(isoLocal(new Date(loadRecipes().find(r => r.id === 'pc-one').sourceCheck.validated))).toUpperCase());
+  const pcWhen = await page.evaluate(() => { const sc = loadRecipes().find(r => r.id === 'pc-one').sourceCheck; return sc && sc.validated ? formatDate(isoLocal(new Date(sc.validated))).toUpperCase() : null; });
   check('    SAVE records it as a check of these lines, route "photo", validated; the viewer then says VALIDATED, by the photo',
         pcSc.route === 'photo' && pcSc.hard === 0 && pcSc.linesHash === pcHash && !isNaN(Date.parse(pcSc.validated)) && pcSc.validated === pcSc.at
         && pcChip.length === 2 && pcChip[0].text === `VALIDATED ${pcWhen}` && /source photo/.test(pcChip[0].title) && pcChip[1].text === 'SOURCE PHOTO',
@@ -3808,6 +3808,27 @@ const check = (name, pass, detail) => {
         /^Checked against the photo .+\.$/.test(pcAgain.row.text) && !pcAgain.row.check && /^Checked against the source photo .+\.$/.test(pcAgain.stored) && !/RE-CHECK/.test(pcAgain.stored)
         && pcLc[0].key === 'validated' && pcLc[0].status === 'checked against the photo' && !pcLc[0].attention
         && pcLc[1].key === 'photo' && pcLc[1].status === 'source photo not checked' && pcLc[1].attention, JSON.stringify([pcAgain, pcLc]));
+  /* A tap in a form closed unsaved is not carried to the next form (pc-two has pc-one's lines, so a tap left
+     over would match them); and lines typed after the tap but not yet re-read are not vouched for by SAVE. */
+  await page.evaluate(() => openEditModal('pc-two'));
+  await page.waitForTimeout(400);
+  await anClick('#photoCheckRow [data-photo-check]');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  await page.evaluate(() => openEditModal('pc-two'));
+  await page.waitForTimeout(400);
+  const pcReopened = await pcRow();
+  await anClick('#photoCheckRow [data-photo-check]');
+  await page.evaluate(() => { const ta = document.getElementById('importInput'); ta.value = ta.value.replace('2 tbsp black treacle', '3 tbsp black treacle'); ta.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.waitForTimeout(300);
+  const pcTypedBand = await anBeforeSave();
+  const pcMarkT = await anMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(500);
+  const pcTypedRow = ((await spRecipeWrites(pcMarkT)).pop() || { rows: [{}] }).rows[0];
+  check('    a tap in a form closed unsaved is gone when it opens again, and lines typed after the tap are not saved as checked',
+        pcReopened.check && !pcReopened.undo && !pcTypedBand.some(l => /photo/.test(l)) && pcTypedRow.id === 'pc-two' && !('source_check' in pcTypedRow),
+        JSON.stringify([pcReopened, pcTypedBand, pcTypedRow.id, pcTypedRow.source_check]));
   // Lines changed after the tap: it asks again rather than vouch for lines nobody checked.
   await page.evaluate(() => openEditModal('pc-two'));
   await page.waitForTimeout(400);
@@ -3826,7 +3847,7 @@ const check = (name, pass, detail) => {
   await page.evaluate(() => openEditModal('pc-two'));
   await page.waitForTimeout(400);
   await anClick('#photoCheckRow [data-photo-check]');
-  await page.fill('#sourcePasteInput', '300 g rye flour\n2 tbsp black treacle');
+  await page.fill('#sourcePasteInput', '300 g rye flour\n3 tbsp black treacle');
   await anClick('#comparePastedBtn');
   await page.waitForTimeout(300);
   const pcAfterCompare = await pcRow();

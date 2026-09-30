@@ -1809,6 +1809,16 @@ with VALIDATE INGREDIENT LIST); a comparison run in the form takes its place. Ed
 date, with RE-CHECK only where there is a web link. **LIBRARY CHECK** reads it "checked against the photo", and has a new status,
 "source photo not checked" (needs attention), for a recipe with photos and no link that has not been checked; such a recipe read
 "no source link to compare" before.
+
+*Verified by.* `core.test.js` 143, unchanged (`sourceCheckStatus` needed nothing). `smoke.js` **397 → 403**, both exit 0: offered and
+pending with UNDO and the BEFORE YOU SAVE line; SAVE's record and the VALIDATED chip; Edit afterwards and LIBRARY CHECK's two
+readings; a tap not carried to the next form, and lines typed after the tap not saved as checked; lines re-read after the tap
+dropping it; a comparison in the form taking its place. **Twelve mutations, all failing a check by name** (the chip's photo branch,
+the reset on changed lines, the guard at SAVE, the save itself, the BEFORE YOU SAVE line, the offer despite a comparison, LIBRARY
+CHECK's new status and its wording, Edit's line, UNDO, the reset on opening a form, and the check not written as validated). In the
+first round three did not: the save removed crashed the run (the test read a missing check; it now fails by name), and the guard
+at SAVE and the reset on opening survived, since no check typed lines without re-reading them or reopened a form after a tap; the
+check that does both was added, and all three then failed by name. *Not verified:* the tablet, `docs/TEST-PLAN.md` step 38c.
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
