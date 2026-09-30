@@ -3,6 +3,10 @@
 Two things live here: **the order work should happen in**, with the reasoning, and a
 **ready-to-paste prompt** for starting the next session.
 
+**Picking the work up after 29 Sep 2026? Read `docs/HANDOVER-2026-09-29-SESSION.md` first:** the note at its top says where
+things stand (the add-recipe plan's PRs are all merged, both migrations applied, tablet passes 36f to 36i done), and **§7 is the
+next piece of work, autocomplete on the Settings text boxes**, planned and waiting for a "go".
+
 **Rewritten 23 Sep 2026.** Until then this document narrated steps 0–4 of the original build
 (reprocess, ingest, test pass, merge, images), all done by 22 Sep and recorded in
 `docs/HANDOVER.md` §2–§3. What replaced them is a seven-PR plan agreed after two reviews:
