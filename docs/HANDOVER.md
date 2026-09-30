@@ -1706,8 +1706,36 @@ box on a hidden tab measures 0, which passed "under 30". `core.test.js` 142. Bot
 read-only against the live recipes and swaps first: none. **Eight page mutations:** tabs not hiding, Sources on the wrong tab, the
 dictionary never folded, the lookup not opening it, Swaps not drawn when Settings opens, and SWAPS back in the sidebar each failed
 by name; no redirect for the old screen failed the EDIT check by name, then crashed; the tab not remembered crashed early, at the
-appearance check's control on a tab no longer shown. Screenshots at 1280×900 and 412×860. *Not verified:* the tablet
-(`docs/TEST-PLAN.md` step 37d).
+appearance check's control on a tab no longer shown. Screenshots at 1280×900 and 412×860. *Tablet:* 37d reported "ok" by the
+household, 30 Sep, after PR #60 merged. The layout plan is finished, and every tablet step of it (37a–37d) has passed.
+
+**Keep Awake on the Android tablet (reported 30 Sep 2026).** The household reported that Keep Awake works on the Android tablet,
+the one thing `docs/TEST-PLAN.md` had left "deferred to the tablet" since the first build, because no desktop browser can show a
+screen that would otherwise dim. *Not stated:* whether that was the Recipe Viewer, the Group Viewer or both, and which of the two
+methods (the screen-lock API or the video fallback) the status line named; the status line says which when it is on.
+
+**Converter test 9 passed (30 Sep 2026)**, run by the household in the conversion project after reloading
+`conversion-instructions.md` alone: it named the address it could not read, converted nothing, said why, and asked for the text.
+Recorded in `converter/test-set.md` with its two caveats: the reason it gave ("the site blocks automated access") is a guess for a
+`.invalid` address, and the chat's tools were not stated, so the run does not test the case the rule exists for (a page it could
+have reconstructed from).
+
+**Five BBC Good Food recipes were rebuilt, not read (found 30 Sep 2026).** Converting a BBC Good Food page after the 29 Sep
+rule, the household saw it stop (the site blocks the converter's fetch) and then found, in the conversion chat that had made the
+library's BBC Good Food recipes before that rule, the converter's own words: bbcgoodfood.com was blocking it, so it "pulled all
+five from BBC Good Food's own Middle East edition (bbcgoodfoodme.com) ... cross-checked against independent reproductions where
+needed". None of the recipes says so: read-only on 30 Sep, the library has **six** BBC Good Food recipes, none with a source note
+and none compared with its page, and one (*Easy Pilau Rice*) still links to bbcgoodfoodme.com. Which five were in that batch is
+in the household's chat, not here. **What to do, the household's:** compare each against its real page with COMPARE PASTED LIST
+and save; any that differ join D6. The one *BBC Food* recipe (bbc.co.uk, a different site) was converted on 22 Sep, also before
+the rule, and is uncompared too.
+
+**Converter: pasted page text needs no source note (30 Sep 2026).** The same conversion offered to add a `⚠️ Source note:` for a
+recipe made from pasted text. Checked against `RECONSTRUCTION_WORDS` in `core.js`: "made from text you supplied" passes as
+ordinary, but "the page itself could not be fetched" or "could not be read" flags the recipe as reconstructed in LIBRARY CHECK and
+the viewer. `converter/conversion-instructions.md` §1 now says pasted text, a screenshot or a photo of the page is the page,
+converted with no note unless something is missing; §3 checks it; `converter/test-set.md` test 10 tests it. **The household
+reloads the file into the conversion project** and runs test 10. No app change.
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against

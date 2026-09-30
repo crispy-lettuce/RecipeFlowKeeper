@@ -311,7 +311,7 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
-### `docs/PLAN-LAYOUT.md` — layout changes: edit dialog, cooking mode, step text, aisle box, Settings (30 Sep 2026, agreed; all five built)
+### `docs/PLAN-LAYOUT.md` — layout changes: edit dialog, cooking mode, step text, aisle box, Settings (30 Sep 2026; all five built, merged and passed on the tablet)
 **What:** Five layout changes the household asked for on 30 Sep, lettered A to E as they lettered them, each with what the
 app does now, what was decided and why, and what was considered and not chosen. All `index.html` only, no data change.
 Built one PR at a time: C and A first, then D (the aisle box shows the current aisle), B (cooking mode, when KEEP AWAKE is on)

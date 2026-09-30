@@ -7,9 +7,13 @@ Two things live here: **the order work should happen in**, with the reasoning, a
 things stand (the add-recipe plan's PRs are all merged, both migrations applied, tablet passes 36a to 36i done). **§7,
 autocomplete on the ingredient boxes in Settings and Swaps, was built on 30 Sep**; its tablet pass is `docs/TEST-PLAN.md` step
 36j; on the tablet its native list covered the screen, so it was **rebuilt the same day as the app's own capped dropdown**
-(tablet step 36k, reported "broadly ok"). **The next piece of work is `docs/PLAN-LAYOUT.md`**, five layout changes agreed on
-30 Sep: C and A (PR #57), D (PR #58) and B (PR #59) are merged, with tablet passes 37a to 37c; E, the last, is built. Also left for the household: converter test 9, and D6 (repairing
-the two reconstructed recipes).
+(tablet step 36k, reported "broadly ok"). **`docs/PLAN-LAYOUT.md` is finished**: five layout changes agreed on
+30 Sep, all merged (PRs #57 to #60), every tablet pass (37a to 37d) done. Keep Awake is reported working on the Android tablet.
+Converter test 9 passed in the conversion project on 30 Sep (recorded in `converter/test-set.md`). **What is left is the
+household's:** reload `converter/conversion-instructions.md` into the conversion project again (30 Sep: pasted page text needs
+no source note) and run test 10; compare the six BBC Good Food recipes against their real pages, since five were rebuilt from
+another edition before the 29 Sep rule (`docs/HANDOVER.md`, 30 Sep); and D6, repairing the reconstructed recipes, a data job
+done together, by the recipe-text rules in `CLAUDE.md`.
 
 **Rewritten 23 Sep 2026.** Until then this document narrated steps 0–4 of the original build
 (reprocess, ingest, test pass, merge, images), all done by 22 Sep and recorded in
@@ -251,7 +255,7 @@ before 6b and PR 6 were taken, and 6c-2 is done.
   - After PR 2 of the add-recipe plan (29 Sep, the rule for a page it cannot read): reload
     `converter/conversion-instructions.md` into the conversion project again, run test 9 of
     `converter/test-set.md` once in a fresh chat, and record the result there with the tools that chat
-    had. Until you do, the converter behaves as before.
+    had. **Done 30 Sep 2026: passed** (tools not stated).
 - **Before any job that rewrites recipe text:** a fresh export from the app's sidebar, kept
   outside the repo.
 

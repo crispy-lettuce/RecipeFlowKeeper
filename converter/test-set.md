@@ -1,6 +1,6 @@
 # Converter test set
 
-Nine deliberately awkward cases for checking `conversion-instructions.md` still
+Ten deliberately awkward cases for checking `conversion-instructions.md` still
 produces the right shape. Run them whenever those instructions change: paste each
 source into a fresh conversion chat and compare the output against the notes here.
 
@@ -10,7 +10,8 @@ fine. What must match is which ingredients sit in which group, where each group 
 and that every MERGE carries a duration. Tests 6 to 8 are the exception: they check the ingredient lines
 themselves, because the shopping list reads their shape, and because a renamed ingredient is a
 changed recipe. Test 9 is the exception the other way: it has no recipe in it, and checks that
-nothing is converted.
+nothing is converted. Test 10 is its partner: the same unreadable address with the page's text pasted,
+which must convert normally.
 
 ---
 
@@ -293,9 +294,18 @@ asks for the recipe's text, or its ingredient list, to be pasted.
 - a conversion is produced with a `⚠️ Source note:` line attached. The note is for what a
   conversion has to say about its source, not a licence to convert without one.
 
-**Runs.** None in the conversion project yet: the household reloads `conversion-instructions.md`
-there, runs this once in a fresh chat, and records the result here with the tools that chat had
-(see below).
+**Runs.**
+
+- **30 Sep 2026, the conversion project, run by the household: passed.** The project had been reloaded
+  with `conversion-instructions.md` alone (no `ingredient-names.md`). The whole reply, in a fresh chat:
+  it could not read `https://recipes.example.invalid/one-pot-lentil-stew`, had converted nothing,
+  said why (a recipe built from a search snippet, another page or memory would not be that site's
+  recipe, and the app could not tell), and asked for the recipe text or the ingredient list and
+  method, with the servings and times, promising `SOURCE_URL` set to the address. No syntax, no
+  substitute recipe, no source note. Two things to know: the reason it gave, "the site blocks
+  automated access", is a guess (a `.invalid` address never resolves at all), and the tools the chat
+  had (search or browse) were **not stated**, so this run does not show the rule holding against a
+  page it *could* reconstruct from (see the stand-in below).
 
 **A stand-in, 29 Sep 2026 (not the conversion project).** Four runs, one per cell, of a model given
 only the instructions (the old wording from `main`, then the new) and told what the failed fetch
@@ -313,6 +323,36 @@ and an address whose name matches a real recipe is a fair invitation. The stand-
 cell, not necessarily the conversion project's model, and the search result was simulated: it shows
 that the wording changes the behaviour where it matters, not that the conversion project will follow
 it.
+
+---
+
+## 10. The page's text, pasted
+
+**Why:** added 30 Sep 2026. Test 9's other half. The first real conversion under the 29 Sep rule, a
+BBC Good Food page that would not load, stopped and asked for the text as it should, then offered to
+add a `⚠️ Source note:` saying the recipe came from pasted text. The app reads words such as "could not
+be fetched" in that line as a reconstruction, so LIBRARY CHECK would flag a faithful recipe for repair.
+The rule under test is in section 1 of `conversion-instructions.md`.
+
+**Source** (the whole message: the address, then the pasted text):
+
+> https://recipes.example.invalid/honey-walnut-drizzle — the page won't load for you, so here is its
+> text: **Honey Walnut Drizzle.** Serves 4. Toast 40g chopped walnuts in a dry pan for 3 minutes.
+> Warm 3 tbsp honey with 15g butter until melted, about 2 minutes, then stir in the walnuts off the heat.
+
+**Must produce:** a normal conversion of the pasted text: TITLE, `SOURCE_URL` set to the address,
+servings 4, the walnuts toasted in their own group and stirred into the warmed honey and butter at a
+later stage, every MERGE timed.
+
+**Fails if:**
+
+- it stops and asks for the text again;
+- it adds a `⚠️ Source note:` (or any note) saying the page could not be read, or that the recipe came
+  from pasted text;
+- `SOURCE_URL` is missing.
+
+**Runs.** None yet: after reloading `conversion-instructions.md`, run it in a fresh chat of the
+conversion project and record the result here.
 
 ---
 
