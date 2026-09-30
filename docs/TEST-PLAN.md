@@ -382,7 +382,8 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     (3) *OPEN one:* its edit form opens; compare it with its source and save, then RUN again: it has moved down and says
     what the comparison found. **This is the audit: work down the list until it is short.**
 
-36j. **Autocomplete on the ingredient boxes (new 30 Sep).** Nothing is written by a suggestion; only ADD writes, as before.
+36j. *Superseded by 36k the same day:* on the tablet the native list covered the whole screen (reported 30 Sep, 08:03), so
+    the boxes now use the app's own dropdown. Kept for the record. **Autocomplete on the ingredient boxes (new 30 Sep).** Nothing is written by a suggestion; only ADD writes, as before.
     (1) *Settings → INGREDIENT LOOKUP, type "alm":* the tablet offers names under the box, among them ground almonds and almond
     meal; pick one and the lookup answers for it. (2) *WORD MATCHES, type in either box:* ingredient names are offered; switch the
     select to SOURCE and the same boxes offer your sources instead; switch back. (3) *SHOPPING AISLES, type "alm":* only the names
@@ -390,6 +391,15 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     ground almonds. (4) *Swaps, type in ORIGINAL INGREDIENT and
     REPLACEMENT:* the same ingredient names as the lookup. **The one thing no test can judge is how the tablet shows the list:
     whether it appears as you type, and whether a picked name fills the box without an extra tap.**
+
+36k. **The ingredient boxes' own dropdown, on the tablet (new 30 Sep).** Replaces 36j. Nothing is written by a suggestion.
+    (1) *Settings → INGREDIENT LOOKUP, tap the box:* nothing opens until you type. (2) *Type "a":* a list opens just under the
+    box, about five names high, and **the rest of the screen stays visible**; drag the list to scroll it without anything
+    being picked. (3) *Type "alm", tap almond meal:* the box says almond meal, the list closes, the keyboard stays up, and the
+    lookup says the list calls it ground almonds. (4) *WORD MATCHES:* either box offers ingredients; pick SOURCE and type
+    the start of one of your sources: the sources are offered; switch back. (5) *SHOPPING AISLES, type "alm":* only names your
+    shopping list uses, never almond meal. (6) *Swaps:* both boxes offer the lookup's names. **What no test can judge: whether
+    a tap on a name is easy to hit, and whether scrolling the list ever picks one by accident.**
 
 ## Deferred to the tablet, after merging
 
