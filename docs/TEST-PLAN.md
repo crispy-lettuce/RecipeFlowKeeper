@@ -413,6 +413,13 @@ The 37 series is `docs/PLAN-LAYOUT.md`, the layout changes agreed on 30 Sep. Eac
     the recipe has very many steps). *Close it without saving.* (4) *On the phone:* the dialog still fills the width.
     **What no test can judge: whether the bottom-aligned words read better in the kitchen than the centred ones did.**
 
+37b. **Shopping Aisles says where a name goes now (new 30 Sep, D).** Writes only if you press ADD or REMOVE. (1) *Settings →
+    SHOPPING AISLES, type a name your recipes use:* a line under the box says what the list calls it and where it goes now,
+    and the aisle picker is already on that aisle, with ADD greyed out. (2) *Pick another aisle:* ADD lights up. *Don't press
+    it* unless you mean to. (3) *Type a name of your own aisles* (one in the list below the box, if any): the line says
+    "your own aisle", with REMOVE and where it would go back to. (4) *Type something no recipe uses:* the line says so.
+    **What no test can judge: whether the line answers the question before you have to ask it.**
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

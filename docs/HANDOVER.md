@@ -1666,6 +1666,19 @@ seen failing by name:** the bottom alignment removed, a print rule putting it ba
 back, and the recipe box's height put back. Screenshots at 1280×800 of Test Pasta and its edit dialog. *Not verified:* the
 tablet (`docs/TEST-PLAN.md` step 37a).
 
+**Layout D (30 Sep 2026): Shopping Aisles says where a name goes now.** `renderAisleOverrideNow`: under the box, what the list
+calls the name, its aisle and why (`ingredientLookup`'s answer, so it matches INGREDIENT LOOKUP), the aisle picker set to it as
+the name is typed, and ADD greyed out while the picker shows the aisle the name has already. The household's own aisle gets
+REMOVE there, naming where the name goes back to (worked out without the household's aisles). A name no recipe uses is said so.
+`.btn:disabled` is new. `index.html` only.
+
+*Verified by.* `smoke.js` **369 → 372**, `core.test.js` 142, both exit 0, no other check changed (the PR 6 checks, which type a
+name and pick another aisle before ADD, pass as they were). "Smoked eel", the invented name, checked read-only against the live
+recipes, word matches and aisles first: none. **Seven page mutations, each seen failing:** the picker not set, ADD never greyed, the
+line not following typing, "no recipe uses" inverted, REMOVE not wired, and the "goes back to" aisle lost, each by name; and ADD
+not following the picker, which the suite reports as a crash at the PR 6 check's ADD click (the button stays greyed, so
+Playwright waits on it) before the new check is reached. Same fault, earlier symptom; the older check was left as it was. *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37b).
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export
