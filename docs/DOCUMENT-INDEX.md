@@ -16,11 +16,11 @@ GitHub at the time of writing.
 5. **`docs/IMAGES.md`** — how recipe photos become ours, and the two cases that still need a
    button pressed.
 
-Then pick up work from **`docs/NEXT-SESSION.md`**, which sets out the order things should
-happen in. As of 23 Sep 2026 the app is live and in daily use, and the work is a **seven-PR plan**
-agreed after two reviews: a safety net (PR 1, done), closing the review loop (PR 2), backups,
-a faithful save, row-scoped writes, the shopping-list release, and sharing with family.
-Phase 3's last two items (R4, P3) follow it.
+Then pick up work from **`docs/NEXT-SESSION.md`**: where things stand, what is left and in what
+order, and the household's own jobs. As of 30 Sep 2026 the app is live and in daily use and every
+agreed plan is built and merged. What remains is the household's data jobs, R4 (dated cooking notes,
+scoped in `docs/PLAN-COOKING-NOTES.md`, waiting for the household's answers) and P3 (the calendar
+push, not yet scoped).
 
 **One thing to absorb before changing anything: `main` is production.** GitHub Pages serves from
 `main`, and every merge deploys straight to the tablet. There is no staging step. This was
@@ -260,8 +260,7 @@ Its last section sets out the general rules for every fact held about an ingredi
 matches, aisle, swaps and dictionary row. Each has one key and one home in Settings, and only
 naming facts re-key ticks.
 
-**Don't:** treat it as tracked work. `docs/NEXT-SESSION.md`'s "Proposed, not started" line points
-here, but it's outside the seven-PR plan and has no PR number yet.
+**Since 29 Sep** it is PR 6 of `docs/PLAN-NEW-RECIPE-FLOW.md`, built and merged (PR #49).
 
 ---
 
@@ -289,17 +288,13 @@ recommendations and the open decisions have not been put to them yet.
 
 ---
 
-### `docs/NEXT-SESSION.md` — the order of work, and how to start
-**What:** **The definitive sequence for what happens next**, with the reasoning behind the three
-places where order genuinely matters. Plus a complete, ready-to-paste prompt for the next session
-and alternative starting points if you want to work out of sequence.
+### `docs/NEXT-SESSION.md` — where things stand, what is left, and how to start
+**What:** **Rewritten 30 Sep 2026**, when every agreed plan was finished: where things stand (checked against the database),
+the finished plans in one table, what is left in order, the household's own jobs (including how the conversion project is kept:
+one file, `converter/conversion-instructions.md`, whose master is in this repo), a ready-to-paste prompt for the next session
+and alternative starting points. The history it used to carry is in `docs/HANDOVER.md` §7 and in git.
 
 **Use it when:** starting a new session, or whenever you're unsure what should happen next.
-Rewritten 23 Sep around the **seven-PR plan** from the two reviews, with a starting prompt per
-PR. Phase 3's R4 and P3 wait until the plan is done.
-
-**Contains one warning worth not missing:** the test plan's export/import step rewrites
-everything, so that export must be taken *after* recipe ingestion, never before.
 
 ---
 
@@ -319,13 +314,23 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
-### `docs/PLAN-SOURCE-PHOTOS.md` — keeping the photo a recipe was converted from (30 Sep 2026; steps 1 and 2 applied and merged)
+### `docs/PLAN-COOKING-NOTES.md` — dated cooking notes, R4 (30 Sep 2026; scoped, waiting for the household's answers)
+**What:** The brief's R4, scoped: what exists (the unused `recipe_notes` table and `recipe_logs.note`, both empty), a note per
+recipe against a note per cooking, the recommended design (a running log in the viewer, a box after cooking, FOLD INTO NOTES,
+export), how it would be built (one PR, no migration) and six decisions for the household.
+
+**Use it when:** answering those decisions, or building R4.
+
+---
+
+### `docs/PLAN-SOURCE-PHOTOS.md` — the photo or PDF a recipe was converted from (30 Sep 2026; all four steps merged)
 **What:** The household's ask to keep the photo or screenshot a recipe was converted from, as a web recipe keeps its link.
 What exists today, the proposal (a private bucket, a `source_photos` column, ADD PHOTO in the form, shrunk to 2000 px,
-uploaded on SAVE, shown by signed link, deleted with the recipe), the order of work in three steps, what it does not do, and
-the household's five answers ("all as suggested").
+uploaded on SAVE, shown by signed link, deleted with the recipe), the order of work, what it does not do, and
+the household's five answers ("all as suggested"). Step 3 added CHECKED AGAINST THE PHOTO; step 4, asked for the same day,
+PDFs kept as they are.
 
-**Use it when:** building the next step, or asked where a recipe's source photo lives.
+**Use it when:** asked where a recipe's source photo or PDF lives, or extending it.
 
 ---
 

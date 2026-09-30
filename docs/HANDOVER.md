@@ -1839,6 +1839,12 @@ keeping both types, and SOURCE FILES · 2. **Twelve mutations, all failing a che
 cap, no `%PDF-` test, stored as `image/jpeg`, stored as `.jpg`, no `type` in the row, the type dropped when Edit reopens it, the
 chip's word always PHOTO, the PDF drawn as an image, OPEN in the same tab, and the OPEN link never given its address. (The shrinker
 one first crashed the run on a wait the test required; the wait is now a wait, and the check after it fails by name.) *Not verified:* the tablet's PDF viewer, `docs/TEST-PLAN.md` step 38d.
+*Merged 30 Sep 19:46 UTC as PR #65.*
+
+**Docs, 30 Sep 2026.** `docs/NEXT-SESSION.md` rewritten from its history into where things stand (numbers read from the
+database at 19:11 UTC), what is left and the household's jobs; the conversion project holds one file, `converter/conversion-instructions.md`,
+whose master is here (the household, 30 Sep). R4 scoped in `docs/PLAN-COOKING-NOTES.md` from the live schema (read-only: `recipe_notes`
+0 rows, four `authenticated` policies, cascade on recipe delete; no `recipe_logs.note` set in 116 entries); not built.
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
