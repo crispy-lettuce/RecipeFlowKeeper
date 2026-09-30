@@ -3989,7 +3989,7 @@ const check = (name, pass, detail) => {
   });
   const cnThree = await cnLog();
   const cnMoreText = await page.evaluate(() => (document.querySelector('#cookingNotes [data-note-more]') || {}).textContent || '');
-  await page.click('#cookingNotes [data-note-more]');
+  await anClick('#cookingNotes [data-note-more]');   // a click that may find nothing, so a missing button fails the check below by name
   const cnAll = await cnLog();
   check('    newest first, the latest three shown with SHOW ALL for the rest, and the chip counts them all',
         cnThree.length === 3 && cnThree[0].body === 'Needed 10 min longer in our oven' && cnThree[1].body === 'Older note 2026-09-03' && cnThree[2].body === 'Older note 2026-09-02'
@@ -4020,7 +4020,7 @@ const check = (name, pass, detail) => {
         && cnDelUndo[1].rows[0].id === 'cn-old-1' && cnDelUndo[1].rows[0].created_at === '2026-09-03T18:00:00.000Z' && cnDelUndo[1].rows[0].body === 'Older note, now edited'
         && cnBack && cnBack.body === 'Older note, now edited', JSON.stringify([cnEdit, cnEdited, cnGone, cnDelUndo]));
   // Cooking mode keeps the box and the latest line; print leaves the notes out.
-  await page.click('#cookingNotes [data-note-more]');   // back to the latest three, as a cook would find it
+  await anClick('#cookingNotes [data-note-more]');   // back to the latest three, as a cook would find it
   await page.evaluate(() => { state.keepAwake = true; updateKeepAwakeStatus(); });
   await page.waitForTimeout(150);
   const cnCooking = await page.evaluate(() => ({ box: document.getElementById('cookNoteInput').offsetParent !== null,

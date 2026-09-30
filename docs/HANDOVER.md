@@ -1863,7 +1863,13 @@ database cascades). `hydrate()` reads the table apart, like `aisle_overrides`: u
 nothing; the chip), order and SHOW ALL, EDIT (text only, one note) and DELETE with UNDO (the same note back), cooking mode and
 print, the after-cooking box (and none for an entry with no recipe, none from an empty SKIP), FOLD pending and closed, FOLD saved
 (recipe written before the note's delete), a folded line taken out again, export and the delete confirmation, import's filter, and
-the table unreadable. MUTRESULT The invented lines were checked against the live library (read-only): none is a real line.
+the table unreadable. **Twenty mutations, all failing a check by name:** ADD not written, a blank note added, oldest first, ten shown instead of three,
+EDIT re-dating the note, EDIT unscoped to the household, UNDO doing nothing, cooking mode showing the whole log, notes printed, the
+after-cooking box ignored, the box offered for an entry with no recipe, FOLD not deleting, FOLD deleting a line taken out again,
+the line placed straight under `NOTES:`, a fold left pending after closing, no export, import keeping notes on recipes not in the
+file, a deleted recipe's notes kept in the cache, an unreadable table thrown (signing out), and the note deleted before the recipe
+is written. (Ten-not-three first crashed the run on a click at a button that was not there; the click is now one that may find
+nothing, and the check fails by name.) The invented lines were checked against the live library (read-only): none is a real line.
 *Screenshots* at 1280×800 and 412 wide: the section, cooking mode, the prompt. *Not verified:* the tablet, `docs/TEST-PLAN.md`
 step 39a.
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
