@@ -228,6 +228,7 @@ For a full account of how the schema got here, in order:
 20260928123928  rls_belt_and_braces_restrict_to_authenticated
 (no version)    add_recipes_source_check      (29 Sep 2026, run from the SQL editor, so not in schema_migrations)
 (no version)    add_aisle_overrides           (29 Sep 2026, run from the SQL editor, so not in schema_migrations)
+(no version)    add_source_photos             (30 Sep 2026, run from the SQL editor, so not in schema_migrations)
 ```
 
 The last two were missing from this list until 22 Sep, while the features they carry were
@@ -241,10 +242,12 @@ checked instead with the query on its own page (read-only, 18:25 UTC that day: `
 `add_aisle_overrides` (`docs/migrations/add-aisle-overrides.md`, the `aisle_overrides` table for PR 6 of the add-recipe plan) was
 applied the same way the same evening, and checked read-only at 20:49 UTC, the minute PR #49 merged: the five columns, row-level
 security on, the four `TO authenticated` policies, the household foreign key, unique `(household_id, name)`, and no `anon` grant.
-**Waiting to be applied, 30 Sep 2026:** `add_source_photos` (`docs/migrations/add-source-photos.md`: a private bucket,
-`recipe-sources`, with four `TO authenticated` policies, and one nullable `jsonb` column, `recipes.source_photos`, for step 1
-of `docs/PLAN-SOURCE-PHOTOS.md`). The household applies it from the SQL editor before merging the PR that carries it; the
-page has the queries that check it.
+`add_source_photos` (`docs/migrations/add-source-photos.md`: the private `recipe-sources` bucket, its four `TO authenticated`
+policies and `recipes.source_photos`, for `docs/PLAN-SOURCE-PHOTOS.md`) was applied the same way by the household on 30 Sep, just
+after PR #63 merged (the bucket's `created_at` is 16:35:52 UTC; the merge was 16:34). Checked read-only at 16:47 UTC: the bucket
+private, 10 MB, the four types; four policies, one per command, each for `{authenticated}` and naming the bucket and the household
+folder; the column `jsonb`, nullable, no default, with its list check; no `anon` select on it; no files yet.
+Nothing is waiting to be applied.
 
 ---
 

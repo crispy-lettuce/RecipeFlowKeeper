@@ -4490,7 +4490,9 @@ function renderProvenance(recipe){
   const note = sourceNoteIn(recipe.syntax);
   const chips = [];
   const how = st.route === 'pasted' ? 'Compared with a list pasted from the source page' : "Compared with the source page's own list";
-  if(st.state === 'fresh' && st.validated){
+  if(st.state === 'fresh' && st.validated && st.route === 'photo'){
+    chips.push({ cls: 'ok', text: `VALIDATED ${formatDate(isoLocal(new Date(st.validated)))}`, title: 'The ingredient list checked by eye against the source photo' });
+  } else if(st.state === 'fresh' && st.validated){
     chips.push({ cls: 'ok', text: `VALIDATED ${formatDate(isoLocal(new Date(st.validated)))}`,
       title: `${how} on ${formatDate(isoLocal(new Date(st.at)))}, ${differencesWords(st.hard)}, and the ingredient list accepted` });
   } else if(st.state === 'fresh'){
@@ -6307,6 +6309,11 @@ let sourcePhotosAvailable = true;
    a path. `formPhotosRemoved` is the stored paths REMOVE took out, deleted by SAVE and not before. */
 let formPhotos = [];
 let formPhotosRemoved = [];
+/* CHECKED AGAINST THE PHOTO (step 3 of the plan), pending until SAVE: { at, linesHash }. No comparison can
+   read a photo, but the household can; this records that they did, as a comparison would, so the recipe
+   reads VALIDATED and lapses the same way when its ingredient lines change. The hash is of the lines when
+   it was tapped, so an edit to the lines after the tap asks again rather than vouching for lines unseen. */
+let formPhotoChecked = null;
 /* path → a link this tab can show it by: an object URL for a photo added here (kept for the session, so
    it shows before and while it uploads, and offline), or a signed link with the time it stops working. */
 const localPhotoUrls = new Map();
@@ -6397,6 +6404,7 @@ function resetFormPhotos(recipe){
   formPhotos.forEach(p=>{ if(p.url && !p.path && !kept.has(p.url)) URL.revokeObjectURL(p.url); });
   formPhotos = recipe && Array.isArray(recipe.sourcePhotos) ? recipe.sourcePhotos.map(p=> ({ path: p.path, added: p.added })) : [];
   formPhotosRemoved = [];
+  formPhotoChecked = null;
   renderFormPhotos();
 }
 /* Fills every <img data-photo-path> under `root` once its link is known; a photo that cannot be shown
@@ -6449,8 +6457,36 @@ function renderPhotoCompare(){
   if(!formPhotos.length){ box.innerHTML = ''; return; }
   box.innerHTML = `<div class="hint">Or check them against the source photo:</div><div class="photo-compare">` +
     `<ul class="photo-compare-lines">${reviewLines.map(l=> `<li>${escapeHtml(l)}</li>`).join('')}</ul>` +
-    `<div class="photo-compare-photos">${formPhotos.map(p=> photoImgHtml(p, 'photo-compare-img')).join('')}</div></div>`;
+    `<div class="photo-compare-photos">${formPhotos.map(p=> photoImgHtml(p, 'photo-compare-img')).join('')}</div></div>` +
+    `<div class="hint" id="photoCheckRow">${photoCheckHtml()}</div>`;
   loadPhotoImages(box);
+}
+/* Offered only where nothing else speaks for the list: no comparison run in this form, and none stored that is
+   still of these lines (a current one is validated with VALIDATE INGREDIENT LIST instead, one route per case). */
+function photoCheckHtml(){
+  if(!formPhotos.length || formComparison) return '';
+  const r = state.editingRecipeId ? loadRecipes().find(x=> x.id === state.editingRecipeId) : null;
+  const lines = recipeIngredientLines();
+  const st = sourceCheckStatus(r && r.sourceCheck, lines);
+  if(st.state === 'fresh'){
+    return st.validated && st.route === 'photo'
+      ? `<span class="rv-quiet">Checked against the photo ${escapeHtml(formatDate(isoLocal(new Date(st.validated))))}.</span>` : '';
+  }
+  if(formPhotoChecked && formPhotoChecked.linesHash !== linesHash(lines)) formPhotoChecked = null;
+  return formPhotoChecked
+    ? `<span class="rv-quiet">Recorded as checked against the photo when you save.</span> <button type="button" data-photo-uncheck>UNDO</button>`
+    : `<button type="button" data-photo-check>CHECKED AGAINST THE PHOTO</button>`;
+}
+/* What SAVE records for it: the check, if one is pending and still of the lines being saved. */
+function photoCheckToSave(lines){
+  if(!formPhotoChecked || !formPhotos.length || formComparison) return null;
+  if(formPhotoChecked.linesHash !== linesHash(lines)) return null;
+  return { at: formPhotoChecked.at, route: 'photo', hard: 0, soft: 0, sourceLines: 0, linesHash: formPhotoChecked.linesHash, validated: formPhotoChecked.at };
+}
+function refreshPhotoCheckRow(){
+  const row = document.getElementById('photoCheckRow');
+  if(row) row.innerHTML = photoCheckHtml();
+  renderBeforeSave();
 }
 document.getElementById('addSourcePhotoBtn').addEventListener('click', ()=> document.getElementById('sourcePhotoInput').click());
 document.getElementById('sourcePhotoInput').addEventListener('change', e=>{
@@ -6990,6 +7026,7 @@ document.getElementById('aliasAddBtn').addEventListener('click', ()=>{
 const LIBRARY_STATUS = [
   { key: 'reconstructed', text: 'reconstruction note', attention: true },
   { key: 'none', text: 'not compared', attention: true },
+  { key: 'photo', text: 'source photo not checked', attention: true },
   { key: 'stale', text: 'compared before the ingredients changed', attention: true },
   { key: 'differs', text: '', attention: true },
   { key: 'fresh', text: 'no differences', attention: false },
@@ -7006,9 +7043,11 @@ function libraryCheckRows(){
     const key = note && note.reconstructed ? 'reconstructed'
       : st.state === 'stale' ? 'stale'
       : st.state === 'fresh' ? (st.validated ? 'validated' : st.hard ? 'differs' : 'fresh')
-      : /^https:\/\//i.test(r.sourceUrl || '') ? 'none' : 'nolink';
+      : /^https:\/\//i.test(r.sourceUrl || '') ? 'none'
+      : (r.sourcePhotos || []).length ? 'photo' : 'nolink';
     const rank = LIBRARY_STATUS.findIndex(x=> x.key === key);
-    const status = key === 'differs' ? differencesWords(st.hard) : LIBRARY_STATUS[rank].text;
+    const status = key === 'differs' ? differencesWords(st.hard)
+      : key === 'validated' && st.route === 'photo' ? 'checked against the photo' : LIBRARY_STATUS[rank].text;
     return { id: r.id, title: r.title, source: r.source || '', key, rank, status, other,
       attention: LIBRARY_STATUS[rank].attention || other.length > 0 };
   }).sort((a, b)=> (b.attention - a.attention) || (a.rank - b.rank) || (b.other.length - a.other.length) || a.title.localeCompare(b.title));
@@ -7559,6 +7598,8 @@ function beforeSaveLines(){
       : 'Records: compared with the source, but the ingredients changed since');
   } else if(formValidated && storedCheckToValidate()){
     out.push('Records: the ingredient list validated against its last comparison');
+  } else if(photoCheckToSave(recipeIngredientLines())){
+    out.push('Records: the ingredient list checked against the source photo');
   } else if(!stored && /^https:\/\//i.test(fields.sourceUrl || '')){
     out.push('Records: not compared with its source');
   }
@@ -7725,6 +7766,12 @@ function storedSourceHtml(){
   const st = sourceCheckStatus(r && r.sourceCheck, reviewLines);
   if(st.state === 'none') return 'Not compared with its source yet.';
   const when = formatDate(isoLocal(new Date(st.at)));
+  /* A check by eye against the photo (step 3 of docs/PLAN-SOURCE-PHOTOS.md) has no page to compare again, so
+     RE-CHECK is offered only where there is a web link; when the lines change, CHECKED AGAINST THE PHOTO asks again. */
+  if(st.route === 'photo'){
+    const recheck = /^https:\/\//i.test(document.getElementById('f-source-url').value.trim()) ? ` <button type="button" id="sourceRecheckBtn">RE-CHECK</button>` : '';
+    return (st.state === 'fresh' ? `Checked against the source photo ${escapeHtml(when)}.` : `Checked against the source photo ${escapeHtml(when)}, before the ingredients changed.`) + recheck;
+  }
   if(st.state === 'fresh' && st.validated){
     return `Validated ${escapeHtml(formatDate(isoLocal(new Date(st.validated))))} (compared ${escapeHtml(when)} · ${differencesWords(st.hard)}).` +
       ` <button type="button" id="sourceRecheckBtn">RE-CHECK</button>`;
@@ -7985,6 +8032,8 @@ function showSourceComparison(out, sourceLines, heading){
   formComparison = { at: new Date().toISOString(), route: heading === 'PASTED' ? 'pasted' : 'function',
     hard: misses, soft: softCount, sourceLines: sourceLines.length, linesHash: linesHash(recipeLines) };
   formValidated = null;
+  /* A comparison speaks for the list from here on, so the photo's offer steps aside (SAVE records the comparison). */
+  formPhotoChecked = null; refreshPhotoCheckRow();
   const row = (a, b, cls, why)=> `<tr class="${cls}"><td>${escapeHtml(a || '—')}</td><td>${escapeHtml(b || '—')}${why ? `<div class="why">${escapeHtml(why)}</div>` : ''}</td></tr>`;
   out.innerHTML =
     `<div class="hint">${misses
@@ -8152,6 +8201,8 @@ document.getElementById('addChecks').addEventListener('click', e=>{
   if(e.target.closest('#compareSourceBtn') || e.target.closest('#sourceRecheckBtn')) compareWithSource();
   if(e.target.closest('[data-source-validate]')){ formValidated = new Date().toISOString(); refreshValidateRow(); return; }
   if(e.target.closest('[data-source-unvalidate]')){ formValidated = null; refreshValidateRow(); return; }
+  if(e.target.closest('[data-photo-check]')){ formPhotoChecked = { at: new Date().toISOString(), linesHash: linesHash(recipeIngredientLines()) }; refreshPhotoCheckRow(); return; }
+  if(e.target.closest('[data-photo-uncheck]')){ formPhotoChecked = null; refreshPhotoCheckRow(); return; }
   if(e.target.closest('#comparePastedBtn')) comparePastedSource();
   /* OPEN SOURCE (30 Sep 2026): the page in a new tab, to copy its ingredient list into the box below when
      the site turns the check away. The link as it is in the form now, and only a web address, since a
@@ -8278,6 +8329,7 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
      that did not compare cannot wipe an earlier result (and an Add carries none). */
   if(formComparison) fields.sourceCheck = { ...formComparison, ...(formValidated ? { validated: formValidated } : {}) };
   else if(formValidated && storedCheckToValidate()) fields.sourceCheck = { ...storedCheckToValidate(), validated: formValidated };
+  else if(photoCheckToSave(recipeIngredientLines())) fields.sourceCheck = photoCheckToSave(recipeIngredientLines());
   /* Every header line is reconciled with the form, from the same values
      the row is built from. Until 22 Sep only TITLE: was; until 23 Sep only
      TITLE: and IMAGE: — see withUpdatedHeaderLines for what that cost. */

@@ -11,9 +11,9 @@ autocomplete on the ingredient boxes in Settings and Swaps, was built on 30 Sep*
 30 Sep, all merged (PRs #57 to #60), every tablet pass (37a to 37d) done. Keep Awake is reported working on the Android tablet.
 Converter test 9 passed in the conversion project on 30 Sep (recorded in `converter/test-set.md`). VALIDATE INGREDIENT LIST and
 OPEN SOURCE merged 30 Sep (PR #62; tablet step 38a passed). **Being built: `docs/PLAN-SOURCE-PHOTOS.md`**, keeping the photo a
-recipe was converted from, agreed "all as suggested" on 30 Sep: steps 1 and 2 (`docs/migrations/add-source-photos.md`, **which the
-household applies before merging**, and the app: ADD PHOTO, upload on SAVE, the viewer's chip, deletion with the recipe) are one
-PR; tablet step 38b after it. Step 3 (CHECKED AGAINST THE PHOTO) follows. **Also the household's:** compare the six BBC Good Food recipes (the conversion reload and test 10 passed on 30 Sep; VALIDATE INGREDIENT
+recipe was converted from, agreed "all as suggested" on 30 Sep: steps 1 and 2 are live: PR #63 merged 16:34 UTC and the
+household applied `docs/migrations/add-source-photos.md` at 16:35 (checked read-only 16:47). Tablet step 38b passed 30 Sep. Step 3,
+CHECKED AGAINST THE PHOTO, built the same day; its tablet pass is step 38c. **Also the household's:** compare the six BBC Good Food recipes (the conversion reload and test 10 passed on 30 Sep; VALIDATE INGREDIENT
 LIST, 30 Sep, records the ones found right) against their real pages, since five were rebuilt from
 another edition before the 29 Sep rule (`docs/HANDOVER.md`, 30 Sep); and D6, repairing the reconstructed recipes, a data job
 done together, by the recipe-text rules in `CLAUDE.md`.

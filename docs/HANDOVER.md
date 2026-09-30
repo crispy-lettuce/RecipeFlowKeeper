@@ -1790,6 +1790,35 @@ checks, with four suites running at once; alone it failed by name. The crash was
 chip, the full-screen view. *Not verified:* the real bucket and its policies (the stub is not Supabase), the tablet's camera
 route, EXIF turning on a real phone photo, and whether 2000 px keeps a cookbook's small print legible: `docs/TEST-PLAN.md` step
 38b, after the migration is applied.
+*Merged 30 Sep 16:34 UTC as PR #63,* on a green `offline-harness` run. **The migration was applied by the household at 16:35 UTC**
+(the bucket's `created_at`), a minute after the merge, so the live app briefly ran with ADD PHOTO switched off, as designed.
+Checked read-only at 16:47 UTC: the bucket private with its 10 MB limit and four types, the four policies each for
+`{authenticated}`, the column `jsonb` and nullable with its list check, no `anon` select on it, no files yet.
+*Tablet:* 38b reported "successful" by the household, 30 Sep. Checked read-only at 17:06 UTC: one JPEG (106 KB) in
+`recipe-sources`, under the household's folder and its recipe's, listed by that one recipe; no unlisted file (the removed page was
+deleted) and no listed page missing.
+
+**Source photos, step 3: CHECKED AGAINST THE PHOTO (30 Sep 2026).** `index.html` only. Under AGAINST THE SOURCE, beside the photos,
+**CHECKED AGAINST THE PHOTO** records that the household read the lines against the photo: pending until SAVE, with UNDO, named by
+BEFORE YOU SAVE. SAVE writes it as a comparison would be, `source_check` `{ at, route: 'photo', hard: 0, soft: 0, sourceLines: 0,
+linesHash, validated }`, so `sourceCheckStatus` (unchanged) reads it as fresh and validated: the viewer's chip says **VALIDATED**
+(its title "checked by eye against the source photo"), and a change to the lines lapses it like any comparison. The hash is taken
+**when tapped**, so lines edited after the tap are not vouched for: the offer comes back and nothing is saved. It is offered only
+where nothing else speaks for the list (no comparison in the form, none stored still of these lines; a current one is validated
+with VALIDATE INGREDIENT LIST); a comparison run in the form takes its place. Edit says "Checked against the source photo" and the
+date, with RE-CHECK only where there is a web link. **LIBRARY CHECK** reads it "checked against the photo", and has a new status,
+"source photo not checked" (needs attention), for a recipe with photos and no link that has not been checked; such a recipe read
+"no source link to compare" before.
+
+*Verified by.* `core.test.js` 143, unchanged (`sourceCheckStatus` needed nothing). `smoke.js` **397 → 403**, both exit 0: offered and
+pending with UNDO and the BEFORE YOU SAVE line; SAVE's record and the VALIDATED chip; Edit afterwards and LIBRARY CHECK's two
+readings; a tap not carried to the next form, and lines typed after the tap not saved as checked; lines re-read after the tap
+dropping it; a comparison in the form taking its place. **Twelve mutations, all failing a check by name** (the chip's photo branch,
+the reset on changed lines, the guard at SAVE, the save itself, the BEFORE YOU SAVE line, the offer despite a comparison, LIBRARY
+CHECK's new status and its wording, Edit's line, UNDO, the reset on opening a form, and the check not written as validated). In the
+first round three did not: the save removed crashed the run (the test read a missing check; it now fails by name), and the guard
+at SAVE and the reset on opening survived, since no check typed lines without re-reading them or reopened a form after a tap; the
+check that does both was added, and all three then failed by name. *Not verified:* the tablet, `docs/TEST-PLAN.md` step 38c.
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against

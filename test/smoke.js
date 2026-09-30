@@ -3759,6 +3759,105 @@ const check = (name, pass, detail) => {
   check('    deleting a recipe deletes its source photos too, after the row',
         spDel.length === 1 && JSON.stringify(spDel[0].paths) === JSON.stringify(spTwoPaths) && spDelOrder.join(',') === 'write-done:recipes,storage-done:remove',
         JSON.stringify([spDel, spTwoPaths, spDelOrder]));
+  /* ---- CHECKED AGAINST THE PHOTO (docs/PLAN-SOURCE-PHOTOS.md, step 3) ----
+     No comparison can read a photo, but the household can: the check is recorded as one would be, so the
+     recipe reads VALIDATED and lapses when its lines change. Two invented recipes, each with a stored page. */
+  await page.evaluate(() => {
+    const mk = (id, title) => { const path = `${HOUSEHOLD_ID}/${id}/page.jpg`; window.__STORAGE_FILES__[path] = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+      loadRecipes().push({ id, title, source: 'A family card', sourceUrl: '', servings: 4, tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-09-06',
+        sourceCheck: null, sourcePhotos: [{ path, added: '2026-09-30T10:00:00.000Z' }],
+        syntax: ['TITLE: ' + title, 'SOURCE: A family card', 'SERVINGS: 4', '', 'GROUP a:', '250 g rye flour', '2 tbsp black treacle', '', 'STAGE:', 'MERGE a -> done: Bake [40 min]'].join('\n') }); };
+    mk('pc-one', 'PC Rye Loaf'); mk('pc-two', 'PC Treacle Rye');
+  });
+  const pcRow = () => page.evaluate(() => ({ text: ((document.getElementById('photoCheckRow') || {}).textContent || '').replace(/\s+/g, ' ').trim(),
+    check: !!document.querySelector('#photoCheckRow [data-photo-check]'), undo: !!document.querySelector('#photoCheckRow [data-photo-uncheck]') }));
+  await page.evaluate(() => openEditModal('pc-one'));
+  await page.waitForTimeout(400);
+  const pcOffer = await pcRow();
+  const pcMark0 = await anMark();
+  await anClick('#photoCheckRow [data-photo-check]');
+  const pcPending = await pcRow();
+  const pcBandPending = await anBeforeSave();
+  await anClick('#photoCheckRow [data-photo-uncheck]');
+  const pcUndone = await pcRow();
+  const pcBandUndone = await anBeforeSave();
+  check('CHECKED AGAINST THE PHOTO is offered beside the photo; tapped it waits for SAVE with UNDO, and BEFORE YOU SAVE names it',
+        pcOffer.check && pcPending.undo && /Recorded as checked against the photo when you save/.test(pcPending.text)
+        && pcBandPending.includes('Records: the ingredient list checked against the source photo') && pcUndone.check && !pcBandUndone.some(l => /photo/.test(l))
+        && (await anSince(pcMark0)).length === 0, JSON.stringify([pcOffer, pcPending, pcBandPending, pcUndone, pcBandUndone]));
+  await anClick('#photoCheckRow [data-photo-check]');
+  const pcMark1 = await anMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(500);
+  const pcSc = (((await spRecipeWrites(pcMark1)).pop() || { rows: [{}] }).rows[0].source_check) || {};
+  const pcHash = await page.evaluate(() => linesHash(['250 g rye flour', '2 tbsp black treacle']));
+  const pcChip = await page.evaluate(() => [...document.querySelectorAll('#viewerProvenance .prov-chip')].map(c => ({ text: c.textContent, title: c.title })));
+  const pcWhen = await page.evaluate(() => { const sc = loadRecipes().find(r => r.id === 'pc-one').sourceCheck; return sc && sc.validated ? formatDate(isoLocal(new Date(sc.validated))).toUpperCase() : null; });
+  check('    SAVE records it as a check of these lines, route "photo", validated; the viewer then says VALIDATED, by the photo',
+        pcSc.route === 'photo' && pcSc.hard === 0 && pcSc.linesHash === pcHash && !isNaN(Date.parse(pcSc.validated)) && pcSc.validated === pcSc.at
+        && pcChip.length === 2 && pcChip[0].text === `VALIDATED ${pcWhen}` && /source photo/.test(pcChip[0].title) && pcChip[1].text === 'SOURCE PHOTO',
+        JSON.stringify([pcSc, pcChip]));
+  await page.evaluate(() => openEditModal('pc-one'));
+  await page.waitForTimeout(400);
+  const pcAgain = { row: await pcRow(), stored: await page.evaluate(() => document.getElementById('sourceStored').textContent.replace(/\s+/g, ' ').trim()) };
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  const pcLc = await page.evaluate(() => ['pc-one', 'pc-two'].map(id => { const x = libraryCheckRows().find(r => r.id === id); return { key: x.key, status: x.status, attention: LIBRARY_STATUS.find(st => st.key === x.key).attention }; }));
+  // The status's own weight: both recipes also put their made-up names in Other, which needs attention for its own reason.
+  check('    Edit then says when, with no second offer; LIBRARY CHECK reads it "checked against the photo", and an unchecked photo recipe as needing attention',
+        /^Checked against the photo .+\.$/.test(pcAgain.row.text) && !pcAgain.row.check && /^Checked against the source photo .+\.$/.test(pcAgain.stored) && !/RE-CHECK/.test(pcAgain.stored)
+        && pcLc[0].key === 'validated' && pcLc[0].status === 'checked against the photo' && !pcLc[0].attention
+        && pcLc[1].key === 'photo' && pcLc[1].status === 'source photo not checked' && pcLc[1].attention, JSON.stringify([pcAgain, pcLc]));
+  /* A tap in a form closed unsaved is not carried to the next form (pc-two has pc-one's lines, so a tap left
+     over would match them); and lines typed after the tap but not yet re-read are not vouched for by SAVE. */
+  await page.evaluate(() => openEditModal('pc-two'));
+  await page.waitForTimeout(400);
+  await anClick('#photoCheckRow [data-photo-check]');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  await page.evaluate(() => openEditModal('pc-two'));
+  await page.waitForTimeout(400);
+  const pcReopened = await pcRow();
+  await anClick('#photoCheckRow [data-photo-check]');
+  await page.evaluate(() => { const ta = document.getElementById('importInput'); ta.value = ta.value.replace('2 tbsp black treacle', '3 tbsp black treacle'); ta.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.waitForTimeout(300);
+  const pcTypedBand = await anBeforeSave();
+  const pcMarkT = await anMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(500);
+  const pcTypedRow = ((await spRecipeWrites(pcMarkT)).pop() || { rows: [{}] }).rows[0];
+  check('    a tap in a form closed unsaved is gone when it opens again, and lines typed after the tap are not saved as checked',
+        pcReopened.check && !pcReopened.undo && !pcTypedBand.some(l => /photo/.test(l)) && pcTypedRow.id === 'pc-two' && !('source_check' in pcTypedRow),
+        JSON.stringify([pcReopened, pcTypedBand, pcTypedRow.id, pcTypedRow.source_check]));
+  // Lines changed after the tap: it asks again rather than vouch for lines nobody checked.
+  await page.evaluate(() => openEditModal('pc-two'));
+  await page.waitForTimeout(400);
+  await anClick('#photoCheckRow [data-photo-check]');
+  await page.evaluate(() => { const ta = document.getElementById('importInput'); ta.value = ta.value.replace('250 g rye flour', '300 g rye flour'); parseAndPreview(); });
+  await page.waitForTimeout(300);
+  const pcChanged = await pcRow();
+  const pcChangedBand = await anBeforeSave();
+  const pcMark2 = await anMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(500);
+  const pcChangedRow = ((await spRecipeWrites(pcMark2)).pop() || { rows: [{}] }).rows[0];
+  check('    a change to the lines after the tap drops it: offered again, not named by BEFORE YOU SAVE, not saved',
+        pcChanged.check && !pcChanged.undo && !pcChangedBand.some(l => /photo/.test(l)) && !('source_check' in pcChangedRow), JSON.stringify([pcChanged, pcChangedBand, pcChangedRow.source_check]));
+  // A comparison run in the form speaks for the list instead.
+  await page.evaluate(() => openEditModal('pc-two'));
+  await page.waitForTimeout(400);
+  await anClick('#photoCheckRow [data-photo-check]');
+  await page.fill('#sourcePasteInput', '300 g rye flour\n3 tbsp black treacle');
+  await anClick('#comparePastedBtn');
+  await page.waitForTimeout(300);
+  const pcAfterCompare = await pcRow();
+  const pcMark3 = await anMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(500);
+  const pcCmpSc = (((await spRecipeWrites(pcMark3)).pop() || { rows: [{}] }).rows[0].source_check) || {};
+  check('    and a comparison run in the form takes its place: the offer goes and SAVE records the comparison',
+        !pcAfterCompare.check && !pcAfterCompare.undo && pcCmpSc.route === 'pasted' && !pcCmpSc.validated, JSON.stringify([pcAfterCompare, pcCmpSc]));
+  await page.evaluate(() => { for(let i = loadRecipes().length - 1; i >= 0; i--) if(String(loadRecipes()[i].id).startsWith('pc-')) loadRecipes().splice(i, 1); });
   // Before the migration: rows without the column mean it has not been applied; ADD PHOTO says so.
   const spOff = await page.evaluate(async () => {
     const saved = JSON.stringify(window.__STUB_DATA__.recipes);

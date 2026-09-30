@@ -6,7 +6,11 @@ converted from, and a column on the recipe listing them.
 *(A markdown page rather than a `.sql` file because `.gitignore` excludes `*.sql`, on purpose: nothing that looks like a
 data dump may be committed to this public repo. It carries DDL only and no data.)*
 
-**Not applied yet.** `docs/INFRASTRUCTURE.md` lists it as waiting.
+**Applied, 30 Sep 2026,** by the household from the SQL editor, just after PR #63 merged (the bucket was created at 16:35:52 UTC;
+the merge was at 16:34, so the app ran for a minute or two with ADD PHOTO switched off, as designed). Checked read-only at
+16:47 UTC with the queries below: `recipe-sources | false | 10485760 | {image/jpeg,image/png,image/webp,application/pdf}`; the four
+policies, SELECT, INSERT, UPDATE and DELETE, each for `{authenticated}`; `source_photos | jsonb | YES` with its list check; no
+`anon` select on the column. The dashboard gave it no migration version (see `docs/INFRASTRUCTURE.md`).
 
 ## Who and when
 
