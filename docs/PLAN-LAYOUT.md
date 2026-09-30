@@ -11,8 +11,8 @@ seen failing (`CLAUDE.md` rule 3), and a tablet step in `docs/TEST-PLAN.md` (the
 
 | Order | Change | Size | Status |
 | --- | --- | --- | --- |
-| 1 | **C**, step text at the foot of its box, and **A**, edit dialog near full width | Small | **Built**, 30 Sep (this plan's first PR) |
-| 2 | **D**, Shopping Aisles shows the current aisle | Small | Planned |
+| 1 | **C**, step text at the foot of its box, and **A**, edit dialog near full width | Small | **Built and merged**, 30 Sep (PR #57) |
+| 2 | **D**, Shopping Aisles shows the current aisle | Small | **Built**, 30 Sep |
 | 3 | **B**, cooking mode | Medium | Planned |
 | 4 | **E**, Settings in tabs, with Swaps | Largest | Planned |
 
@@ -48,6 +48,11 @@ set to that aisle. The answer is `ingredientLookup`'s, the same as INGREDIENT LO
 - **Already one of the household's own aisles:** the line says so, with REMOVE, which goes back to where the list would put it.
 - **ADD stays greyed out** until a different aisle is picked, so no aisle is stored that the list would use anyway.
 - **A name no recipe uses:** the line says so; its aisle can still be set, for a recipe to come.
+
+**Built as** `renderAisleOverrideNow` in `index.html`, run as the name is typed (setting the picker) and when the picker
+changes (only greying ADD). REMOVE there is the list's own removal. A name nothing places says Other and leaves the picker
+empty, since Other is not an aisle one can pick, with ADD usable. `.btn:disabled` is new: the app had no disabled button
+before. Tablet step 37b.
 
 ## B. Cooking mode
 
