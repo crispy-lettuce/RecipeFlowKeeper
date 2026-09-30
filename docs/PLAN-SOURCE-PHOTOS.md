@@ -9,7 +9,7 @@ recommended one.
 | --- | --- | --- |
 | 1 | The migration, `docs/migrations/add-source-photos.md` | **Applied by the household 30 Sep, 16:35 UTC; checked read-only 16:47** |
 | 2 | Attach, store, view, tidy | **Built and merged 30 Sep** (PR #63, 16:34 UTC); tablet step 38b |
-| 3 | CHECKED AGAINST THE PHOTO | Not built; after step 2 is merged |
+| 3 | CHECKED AGAINST THE PHOTO | **Built 30 Sep**, after tablet step 38b passed; tablet step 38c |
 
 ## 1. Why it matters
 

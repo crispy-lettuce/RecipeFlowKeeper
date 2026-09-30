@@ -461,6 +461,19 @@ The 37 series is `docs/PLAN-LAYOUT.md`, the layout changes agreed on 30 Sep. Eac
     changes. **What no test can judge: whether the camera route is easy, and whether 2000 px is sharp enough for a cookbook's
     small print.** In the dashboard, Storage → `recipe-sources` → your household's folder should hold one file per page kept.
 
+*38b reported "successful" by the household, 30 Sep. Checked read-only at 17:06 UTC: one file in `recipe-sources` (a JPEG,
+106 KB), under the household's folder and its recipe's; one recipe listing one page; no file that no recipe lists (so the
+removed page was deleted), and no listed page missing.*
+
+38c. **CHECKED AGAINST THE PHOTO (new 30 Sep).** Writes one recipe row, on SAVE. (1) *EDIT the recipe from 38b:* under AGAINST
+    THE SOURCE, beside the photo, is CHECKED AGAINST THE PHOTO. Read the lines against the photo, then tap it: it says
+    "Recorded as checked against the photo when you save" with UNDO, and BEFORE YOU SAVE says so. (2) *SAVE:* the viewer's chip
+    reads VALIDATED and the date. EDIT again: "Checked against the source photo" and the date, and no second offer. (3) *Settings
+    → Library → LIBRARY CHECK → RUN:* it reads "checked against the photo" and is not among those needing attention; a recipe
+    with a photo and no link that has not been checked reads "source photo not checked", and is. **What no test can judge:
+    whether the photo and the lines sit close enough on the tablet to check one against the other.** A change to the
+    ingredient lines takes the check away, as for a web recipe.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in
