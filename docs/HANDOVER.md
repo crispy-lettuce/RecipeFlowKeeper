@@ -1790,6 +1790,10 @@ checks, with four suites running at once; alone it failed by name. The crash was
 chip, the full-screen view. *Not verified:* the real bucket and its policies (the stub is not Supabase), the tablet's camera
 route, EXIF turning on a real phone photo, and whether 2000 px keeps a cookbook's small print legible: `docs/TEST-PLAN.md` step
 38b, after the migration is applied.
+*Merged 30 Sep 16:34 UTC as PR #63,* on a green `offline-harness` run. **The migration was applied by the household at 16:35 UTC**
+(the bucket's `created_at`), a minute after the merge, so the live app briefly ran with ADD PHOTO switched off, as designed.
+Checked read-only at 16:47 UTC: the bucket private with its 10 MB limit and four types, the four policies each for
+`{authenticated}`, the column `jsonb` and nullable with its list check, no `anon` select on it, no files yet.
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
