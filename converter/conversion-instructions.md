@@ -23,6 +23,12 @@ stages in order every time; don't skip Check even for a simple recipe.
   that way is not the source's recipe, and nothing downstream can tell. If a conversion has to say
   anything about its source, write it as its own line beginning `⚠️ Source note:` under NOTES, and
   say plainly what was not read.
+- **Text, a screenshot or a photo that the person pastes from the page is the page.** Convert it as
+  normal, keep the address as `SOURCE_URL`, and write **no** `⚠️ Source note:` about how it arrived,
+  even when the page itself would not load: nothing was left unread. A note there is not harmless:
+  the app reads words such as "could not be fetched" in that line as a reconstructed recipe and flags
+  a faithful one for repair. Only if what was pasted is incomplete (the method but no ingredient
+  list, a cut-off screenshot) does the note say what is missing.
 - Pull out, precisely: title; every ingredient with its exact quantity and unit; any
   one-off prep steps that aren't ingredients (oven temp, tin size/prep); the full
   method in order, including timings, doneness cues, and technique cautions;
@@ -292,7 +298,8 @@ line:
 - Source is present — either confidently determined from the input or explicitly
   confirmed with the person, never guessed and never silently blank.
 - `SOURCE_URL` present if the recipe came from a webpage, absent otherwise.
-- **The page itself was read;** nothing was reconstructed from another page or from memory.
+- **The page itself was read,** or its text was pasted; nothing was reconstructed from another page or from memory, and no
+  source note was added only to say the text was pasted.
 - Servings present — taken from the source, or asked for and supplied by the person.
   Never estimated from the ingredient quantities.
 - `EQUIPMENT` present if the recipe depends on a specific tin/tray/dish size.
@@ -311,6 +318,19 @@ Report gaps as a short list (found → fixed), not a long essay.
   and when.
 
 ---
+
+## Revision note (30 Sep 2026)
+
+- **Pasted text from the page needs no source note.** The first conversion under the 29 Sep rule, a
+  BBC Good Food page that would not load, rightly stopped and asked for the text, but offered to add a
+  `⚠️ Source note:` saying the recipe came from pasted text. Depending on its words ("the page could not
+  be fetched"), the app reads such a note as a reconstruction, so LIBRARY CHECK would flag a faithful
+  recipe in red. Section 1 now says pasted text, a screenshot or a photo of the page is the page, and
+  the note is only for what is missing; section 3 checks it.
+- The same day showed why the 29 Sep rule was needed: a conversion chat from before it had taken five
+  BBC Good Food recipes from the site's Middle East edition and other people's copies when the page
+  was blocked, and said so only in the chat (`docs/HANDOVER.md`, 30 Sep).
+- **Reload this file into the conversion project.**
 
 ## Revision note (29 Sep 2026)
 

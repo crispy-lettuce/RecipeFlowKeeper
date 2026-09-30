@@ -1719,6 +1719,23 @@ methods (the screen-lock API or the video fallback) the status line named; the s
 Recorded in `converter/test-set.md` with its two caveats: the reason it gave ("the site blocks automated access") is a guess for a
 `.invalid` address, and the chat's tools were not stated, so the run does not test the case the rule exists for (a page it could
 have reconstructed from).
+
+**Five BBC Good Food recipes were rebuilt, not read (found 30 Sep 2026).** Converting a BBC Good Food page after the 29 Sep
+rule, the household saw it stop (the site blocks the converter's fetch) and then found, in the conversion chat that had made the
+library's BBC Good Food recipes before that rule, the converter's own words: bbcgoodfood.com was blocking it, so it "pulled all
+five from BBC Good Food's own Middle East edition (bbcgoodfoodme.com) ... cross-checked against independent reproductions where
+needed". None of the recipes says so: read-only on 30 Sep, the library has **six** BBC Good Food recipes, none with a source note
+and none compared with its page, and one (*Easy Pilau Rice*) still links to bbcgoodfoodme.com. Which five were in that batch is
+in the household's chat, not here. **What to do, the household's:** compare each against its real page with COMPARE PASTED LIST
+and save; any that differ join D6. The one *BBC Food* recipe (bbc.co.uk, a different site) was converted on 22 Sep, also before
+the rule, and is uncompared too.
+
+**Converter: pasted page text needs no source note (30 Sep 2026).** The same conversion offered to add a `⚠️ Source note:` for a
+recipe made from pasted text. Checked against `RECONSTRUCTION_WORDS` in `core.js`: "made from text you supplied" passes as
+ordinary, but "the page itself could not be fetched" or "could not be read" flags the recipe as reconstructed in LIBRARY CHECK and
+the viewer. `converter/conversion-instructions.md` §1 now says pasted text, a screenshot or a photo of the page is the page,
+converted with no note unless something is missing; §3 checks it; `converter/test-set.md` test 10 tests it. **The household
+reloads the file into the conversion project** and runs test 10. No app change.
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
