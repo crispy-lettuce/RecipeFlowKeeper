@@ -300,7 +300,9 @@ reports one "unpushed commit" on the working branch: it is the merge commit, and
 consistent approach throughout the app"*; **(2) the aisle box offers the library's names only.** As planned, with two lists
 rather than one, since the aisle box's differs: `#ingredientVocab` (library, dictionary and both sides of every ingredient word
 match) for the lookup, Word Matches and Swaps, and `#libraryIngredientVocab` for Shopping Aisles. `index.html` only. The
-tablet pass is `docs/TEST-PLAN.md` step 36j; the record is `docs/HANDOVER.md` §7. The plan as written follows.
+tablet pass is `docs/TEST-PLAN.md` step 36j; the record is `docs/HANDOVER.md` §7. **Rebuilt the same day:** on the tablet
+the native list opened full-screen with every name, which a page cannot control, so the boxes now use the app's own dropdown
+(capped, shown once something is typed; tablet step 36k). The plan as written follows.
 
 **Asked for by the household on 30 Sep**, after the tablet passes of PRs 6 to 8: *"could the text boxes, where
 appropriate, have autocomplete, to help make the process easier when you are trying to apply something or review an

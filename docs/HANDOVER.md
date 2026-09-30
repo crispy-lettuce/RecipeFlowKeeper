@@ -1624,6 +1624,36 @@ list, word matches left out, and the aisle list given the dictionary's names. `i
 empty. *Not verified:* how the tablet shows the suggestions; a headless browser draws no datalist dropdown
 (`docs/TEST-PLAN.md` step 36j).
 
+**The ingredient boxes' own dropdown, replacing that datalist (30 Sep 2026).** The household's first tablet try (08:03 local):
+the laptop drew the datalist as a short scrolling box, but the tablet's Chrome drew it as a full-screen menu of every name,
+opened on the first tap before anything was typed. A page has no say over how a datalist is drawn, so the six boxes now use the
+app's own dropdown, the keyword list's look (`renderIngredientSuggest` in `index.html`): about five rows (190px) and scrolling inside
+itself, placed under its box by script so no row's layout changes; nothing until something is typed; names starting with it first,
+then names containing it; closed when the only name left is the one typed, on Escape and on leaving the box; the arrow keys and
+Enter as the laptop's list had; a tap fills the box and tells it so, as typing would. The names are worked out when a box is
+focused, so the refills #55 wired in are gone. The same names per box as #55 (the aisle box the library's only; Word Matches the
+sources in use when SOURCE is picked). `index.html` only, no data or naming change.
+
+*Verified by.* `smoke.js` **363 → 366** (the six #55 checks replaced by nine that can now check the list itself), `core.test.js`
+142, both exit 0, no other check changed. Screenshots at 1280×800 and 700×900 in the session: the list sits just under the box, as
+wide as it, over the page below. **Fifteen page mutations, each seen failing by name:** no cap, open on an empty box, starting
+matches not first, not closing on the only name left, a pick that does not tell the box, a pick that reopens the list, no arrow
+keys, no Escape, not closing on leaving the box, the aisle box on the full list, SOURCE ignored, the kind change leaving a list open,
+names worked out once only, word matches left out, and the list not placed under its box. "Leaving the box" at first **survived**:
+the test pressed Escape first, so the list was already shut; it now reopens the list before leaving. The first run also failed one
+check on the test's own typo ("almond me" is not the only name left). Each mutation ran in its own worktree, removed after.
+*Not verified:* the tablet: whether a name is easy to tap, and whether scrolling the list ever picks one (a synthetic mousedown
+cannot tell); `docs/TEST-PLAN.md` step 36k.
+
+*Added before merging, after the household's phone screenshots (09:22 local, still the #55 datalist, since this PR was not yet
+merged).* They showed two things this PR had not handled. **A box just above the keyboard:** Chrome scrolls a focused box only
+just clear of the keyboard, so a list opened under it would sit behind the keyboard; the list now opens above the box when
+`visualViewport` shows more room there. **LIBRARY CHECK's tick box**, stretched to 150px by `.alias-form input` and left floating
+mid-row with its words at the far edge; a more specific rule keeps it its own size. `smoke.js` **366 → 367**: one check at
+412×560 with the box at the foot of the screen (list above it) and at the top (list below), plus the tick box's width. Seen
+failing: never opening above, always opening above (which also fails the placement check), and the tick box at 150px (the first
+fix lost to the later rule of equal weight). Screenshot at 412×560, dark: the list above the box, opaque.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export
