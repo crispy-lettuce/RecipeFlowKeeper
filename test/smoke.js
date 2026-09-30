@@ -3174,6 +3174,22 @@ const check = (name, pass, detail) => {
   check('    a tap on a name fills the box, closes the list, keeps the box focused, and the lookup answers for it',
         acPicked.value === 'salt' && !acPicked.shown && acPicked.focused === 'ingredientLookup' && /The list calls it: salt$/.test(acPicked.name.trim()),
         JSON.stringify(acPicked));
+  /* A phone: the box just above where the keyboard starts. The list opens above the box, not behind the keyboard. */
+  await page.setViewportSize({ width: 412, height: 560 });
+  await page.evaluate(() => document.getElementById('ingredientLookup').scrollIntoView({ block: 'end' }));
+  await acType('ingredientLookup', 'a');
+  const acFlip = await page.evaluate(() => { const l = document.getElementById('ingredientLookup-suggest').getBoundingClientRect(),
+    i = document.getElementById('ingredientLookup').getBoundingClientRect(); return { listBottom: Math.round(l.bottom), listTop: Math.round(l.top), boxTop: Math.round(i.top), height: innerHeight }; });
+  await acType('ingredientLookup', '');
+  await page.evaluate(() => document.getElementById('ingredientLookup').scrollIntoView({ block: 'start' }));
+  await acType('ingredientLookup', 'a');
+  const acNoFlip = await page.evaluate(() => Math.round(document.getElementById('ingredientLookup-suggest').getBoundingClientRect().top
+    - document.getElementById('ingredientLookup').getBoundingClientRect().bottom));
+  const acCheckbox = await page.evaluate(() => Math.round(document.getElementById('libraryCheckOnly').getBoundingClientRect().width));
+  await acType('ingredientLookup', '');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  check('    on a phone, a box near the foot of the screen opens its list above it, and one with room below still opens below; the LIBRARY CHECK tick box keeps its size',
+        acFlip.listBottom <= acFlip.boxTop && acFlip.listTop >= 0 && acNoFlip >= 0 && acNoFlip <= 8 && acCheckbox < 30, JSON.stringify([acFlip, acNoFlip, acCheckbox]));
   await acType('ingredientLookup', 'almond meal');
   const acExact = await acList('ingredientLookup');
   await acType('ingredientLookup', 'alm');

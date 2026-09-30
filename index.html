@@ -1029,6 +1029,9 @@
   .lc-row.lc-attention{ border-left:3px solid var(--plum); padding-left:8px; }
   .lc-status.lc-reconstructed{ color:var(--danger); font-weight:500; }
   .lc-only{ display:inline-flex; align-items:center; gap:6px; margin-left:12px; }
+  /* .alias-form's rule for its text boxes caught this checkbox too and stretched it to 150px, which on a phone
+     left the box floating mid-row with its words pushed to the far edge (seen 30 Sep). */
+  .alias-form .lc-only input{ flex:none; min-width:0; }
   /* PR 7: the ingredient lookup, 16px so a tablet does not zoom on focus. */
   #ingredientLookup{ font:inherit; font-size:16px; width:100%; max-width:360px; padding:5px 8px; margin:6px 0 4px;
     border:1px solid var(--line-soft); border-radius:5px; background:var(--paper); color:var(--ink); }
@@ -6764,6 +6767,15 @@ function renderIngredientSuggest(input){
   list.style.width = input.offsetWidth + 'px';
   list.style.display = 'block';
   list.scrollTop = 0;
+  /* On a phone the keyboard covers the lower half of the screen and Chrome scrolls a focused box only just
+     clear of it, so a list under the box opens behind the keyboard (the household's phone, 30 Sep). Open it
+     above the box instead when there is more room there. visualViewport is the part of the page the
+     keyboard leaves visible, in the same coordinates as getBoundingClientRect. */
+  const vv = window.visualViewport;
+  const r = input.getBoundingClientRect();
+  const visibleTop = vv ? vv.offsetTop : 0, visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+  const below = visibleBottom - r.bottom, above = r.top - visibleTop;
+  if(below < list.offsetHeight + 8 && above > below) list.style.top = (input.offsetTop - list.offsetHeight - 4) + 'px';
 }
 function pickIngredientSuggestion(input, value){
   input.value = value;
