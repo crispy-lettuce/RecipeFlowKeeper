@@ -67,6 +67,17 @@ progresses — and to distrust first if something doesn't match reality.
 
 ---
 
+### `docs/HANDOVER-2026-09-29-SESSION.md` — the add-recipe plan's session handover (29 Sep 2026), and what is next
+**What:** A session handover written when PR 5 of the add-recipe plan had merged (29 Sep, 17:30 UTC): the state of PRs 1 to 8,
+the decisions and tests outstanding then, PR 6 as put to the household, and how the tests and mutation runs were done and
+what went wrong. **A note at its top (30 Sep) says what has happened since** (every plan PR merged, the migrations applied,
+the tablet passes done), and **§7 plans the next piece of work: autocomplete on the Settings text boxes**, not built.
+
+**Use it when:** picking the work up after 29 Sep: read the note at the top and §7 first; §4d is worth reading before any
+mutation testing.
+
+---
+
 ### `docs/IMAGES.md` — how recipe photos get to Supabase
 **What:** The runbook for image re-hosting (R7). Opens with **"Answers first"** — adding an image
 to a new recipe, replacing one, how images get moved to Supabase, and whether it can be made
