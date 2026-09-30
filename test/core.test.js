@@ -853,6 +853,14 @@ check('sourceCheckStatus says fresh for the lines that were compared, stale once
       && pvStale.state === 'stale' && pvStale.hard === 3
       && [null, undefined, {}, 'text', 5, { linesHash: '' }, { linesHash: 5 }].every(c => core.sourceCheckStatus(c, pvLines).state === 'none'),
       JSON.stringify([pvFresh, pvStale]));
+/* VALIDATE INGREDIENT LIST (30 Sep 2026): the household's acceptance is carried on a fresh check and on
+   nothing else, so an edited recipe loses it with its comparison. */
+const pvValidated = { ...pvCheck, validated: '2026-09-30T12:00:00.000Z' };
+check('sourceCheckStatus carries the validation on a fresh check only, and none when there is none',
+      core.sourceCheckStatus(pvValidated, pvLines).validated === pvValidated.validated && core.sourceCheckStatus(pvValidated, pvLines).state === 'fresh'
+      && core.sourceCheckStatus(pvValidated, pvLinesOf(pvLine)).validated === null && core.sourceCheckStatus(pvCheck, pvLines).validated === null
+      && core.sourceCheckStatus({ ...pvCheck, validated: 5 }, pvLines).validated === null,
+      JSON.stringify([core.sourceCheckStatus(pvValidated, pvLines), core.sourceCheckStatus(pvValidated, pvLinesOf(pvLine))]));
 const fcOf = (src, rec) => core.fidelityCounts(core.sourceFidelity(src, rec));
 /* The caraway pair counted as the same until 29 Sep, when the household set "ground" apart where the
    shopping list keeps it (ground almonds are not almonds): caraway seeds against ground caraway is now

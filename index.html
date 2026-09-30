@@ -1839,7 +1839,7 @@
   </div>
 </div>
 
-<script src="core.js?v=2026-09-29.8"></script>
+<script src="core.js?v=2026-09-30.1"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -1847,7 +1847,7 @@
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-09-29.8';
+const EXPECTED_CORE_VERSION = '2026-09-30.1';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -4431,9 +4431,12 @@ function renderProvenance(recipe){
   const st = sourceCheckStatus(recipe.sourceCheck, ingredientLinesOf(parseRecipe(recipe.syntax || '')));
   const note = sourceNoteIn(recipe.syntax);
   const chips = [];
-  if(st.state === 'fresh'){
-    chips.push({ cls: st.hard ? 'warn' : 'ok', text: `COMPARED ${formatDate(isoLocal(new Date(st.at)))} · ${differencesWords(st.hard)}`,
-      title: st.route === 'pasted' ? 'Compared with a list pasted from the source page' : "Compared with the source page's own list" });
+  const how = st.route === 'pasted' ? 'Compared with a list pasted from the source page' : "Compared with the source page's own list";
+  if(st.state === 'fresh' && st.validated){
+    chips.push({ cls: 'ok', text: `VALIDATED ${formatDate(isoLocal(new Date(st.validated)))}`,
+      title: `${how} on ${formatDate(isoLocal(new Date(st.at)))}, ${differencesWords(st.hard)}, and the ingredient list accepted` });
+  } else if(st.state === 'fresh'){
+    chips.push({ cls: st.hard ? 'warn' : 'ok', text: `COMPARED ${formatDate(isoLocal(new Date(st.at)))} · ${differencesWords(st.hard)}`, title: how });
   } else if(st.state === 'stale'){
     chips.push({ cls: 'stale', text: 'COMPARED BEFORE THE INGREDIENTS CHANGED', title: 'The ingredient lines are not the ones that were compared' });
   } else {
@@ -6241,7 +6244,7 @@ function openEditModal(recipeId){
   const recipe = loadRecipes().find(r=>r.id === recipeId);
   if(!recipe) return;
   state.editingRecipeId = recipeId;
-  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null; aisleUndo = null;
+  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null; formValidated = null; aisleUndo = null;
 
   document.getElementById('modalTitle').textContent = 'Edit recipe';
   document.getElementById('modalSubtitle').textContent =
@@ -6297,7 +6300,7 @@ function closeAddModal(){
      link left behind would send the next recipe's source check to the wrong page. */
   document.getElementById('f-source-url').value = '';
   lastCheckedUrl = ''; lastSourceLines = null; bandsShown = false; reviewLines = [];
-  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null; aisleUndo = null;
+  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null; formValidated = null; aisleUndo = null;
   clearTimeout(beforeSaveTimer); renderBeforeSave();
   clearBandsStale();
   document.getElementById('saveError').style.display = 'none';
@@ -6701,6 +6704,7 @@ const LIBRARY_STATUS = [
   { key: 'stale', text: 'compared before the ingredients changed', attention: true },
   { key: 'differs', text: '', attention: true },
   { key: 'fresh', text: 'no differences', attention: false },
+  { key: 'validated', text: 'validated', attention: false },
   { key: 'nolink', text: 'no source link to compare', attention: false }
 ];
 function libraryCheckRows(){
@@ -6712,7 +6716,7 @@ function libraryCheckRows(){
       .filter(i=> i.category === 'Other').map(i=> i.name).sort();
     const key = note && note.reconstructed ? 'reconstructed'
       : st.state === 'stale' ? 'stale'
-      : st.state === 'fresh' ? (st.hard ? 'differs' : 'fresh')
+      : st.state === 'fresh' ? (st.validated ? 'validated' : st.hard ? 'differs' : 'fresh')
       : /^https:\/\//i.test(r.sourceUrl || '') ? 'none' : 'nolink';
     const rank = LIBRARY_STATUS.findIndex(x=> x.key === key);
     const status = key === 'differs' ? differencesWords(st.hard) : LIBRARY_STATUS[rank].text;
@@ -7262,8 +7266,10 @@ function beforeSaveLines(){
   const stored = state.editingRecipeId ? (loadRecipes().find(r=> r.id === state.editingRecipeId) || {}).sourceCheck : null;
   if(formComparison){
     out.push(formComparison.linesHash === linesHash(recipeIngredientLines())
-      ? `Records: compared with the source today, ${differencesWords(formComparison.hard)}`
+      ? `Records: compared with the source today, ${differencesWords(formComparison.hard)}${formValidated ? ', and the ingredient list validated' : ''}`
       : 'Records: compared with the source, but the ingredients changed since');
+  } else if(formValidated && storedCheckToValidate()){
+    out.push('Records: the ingredient list validated against its last comparison');
   } else if(!stored && /^https:\/\//i.test(fields.sourceUrl || '')){
     out.push('Records: not compared with its source');
   }
@@ -7373,6 +7379,7 @@ let beforeSaveTimer = null;
 /* PR 5. The comparison run in this form session, if one has: { at, route, hard, soft, sourceLines,
    linesHash }. SAVE writes it to the recipe's source_check; nothing else does. */
 let formComparison = null;
+let formValidated = null;  // VALIDATE INGREDIENT LIST, pending until SAVE: see validateButtonHtml
 /* PR 6. The aisle last picked in this form's review, for its UNDO: { key, name, aisle }. The pick
    wrote the override at once; UNDO removes it. Kept only while the form is open. */
 let aisleUndo = null;
@@ -7426,10 +7433,37 @@ function storedSourceHtml(){
   const st = sourceCheckStatus(r && r.sourceCheck, reviewLines);
   if(st.state === 'none') return 'Not compared with its source yet.';
   const when = formatDate(isoLocal(new Date(st.at)));
+  if(st.state === 'fresh' && st.validated){
+    return `Validated ${escapeHtml(formatDate(isoLocal(new Date(st.validated))))} (compared ${escapeHtml(when)} · ${differencesWords(st.hard)}).` +
+      ` <button type="button" id="sourceRecheckBtn">RE-CHECK</button>`;
+  }
   return (st.state === 'fresh'
-      ? `Compared ${escapeHtml(when)} · ${differencesWords(st.hard)}.`
+      ? `Compared ${escapeHtml(when)} · ${differencesWords(st.hard)}. ${validateButtonHtml()}`
       : `Compared ${escapeHtml(when)}, before the ingredients changed.`) +
     ` <button type="button" id="sourceRecheckBtn">RE-CHECK</button>`;
+}
+/* VALIDATE INGREDIENT LIST (30 Sep 2026): the household's word that the comparison has been looked at and
+   the ingredient list is right as it stands, whatever the differences (all of them, in one tap: asked for
+   that way). Offered under a comparison run in this form, and beside a stored comparison that is still of
+   these lines, so one compared earlier can be validated without pasting the list again. Written only by
+   SAVE, into the comparison it validates; a new comparison, or a change to the lines, starts again. */
+function validateButtonHtml(){
+  return formValidated
+    ? `<span class="rv-quiet">Validated when you save.</span> <button type="button" data-source-unvalidate>UNDO</button>`
+    : `<button type="button" data-source-validate>VALIDATE INGREDIENT LIST</button>`;
+}
+/* The stored comparison a validation would apply to: only one still of the lines in the form. */
+function storedCheckToValidate(){
+  if(!state.editingRecipeId) return null;
+  const r = loadRecipes().find(x=> x.id === state.editingRecipeId);
+  const st = sourceCheckStatus(r && r.sourceCheck, recipeIngredientLines());
+  return st.state === 'fresh' && !st.validated ? r.sourceCheck : null;
+}
+function refreshValidateRow(){
+  const row = document.getElementById('sourceValidateRow');
+  if(row) row.innerHTML = validateButtonHtml();
+  refreshSourceStored();
+  renderBeforeSave();
 }
 function refreshSourceStored(){
   const el = document.getElementById('sourceStored');
@@ -7560,7 +7594,7 @@ function renderLineChecks(parsed){
     `<div class="rv-quiet" id="sourceStatus">${escapeHtml(sourceStatusText())}</div>` +
     `<div class="rv-quiet" id="sourceStored">${storedSourceHtml()}</div>` +
     `<div class="line-checks" id="sourceCheck"><h4>AGAINST THE SOURCE</h4>` +
-    `<div class="hint">Compare these ingredients with the source page's own list, to catch one swapped, left out or given a different amount. <button type="button" id="compareSourceBtn">COMPARE WITH SOURCE</button></div>` +
+    `<div class="hint">Compare these ingredients with the source page's own list, to catch one swapped, left out or given a different amount. <button type="button" id="compareSourceBtn">COMPARE WITH SOURCE</button> <button type="button" id="openSourceBtn">OPEN SOURCE ↗</button></div>` +
     `<div class="hint">Some sites turn that check away. Then select the ingredients on the page, copy them and paste them here, one to a line:</div>` +
     `<textarea id="sourcePasteInput" rows="4" spellcheck="false" placeholder="500 g chicken breast&#10;2 tbsp olive oil&#10;…"></textarea>` +
     `<div class="hint"><button type="button" id="comparePastedBtn">COMPARE PASTED LIST</button></div>` +
@@ -7657,6 +7691,7 @@ function showSourceComparison(out, sourceLines, heading){
      the lines as they are now is a comparison of those lines, so it replaces the record. */
   formComparison = { at: new Date().toISOString(), route: heading === 'PASTED' ? 'pasted' : 'function',
     hard: misses, soft: softCount, sourceLines: sourceLines.length, linesHash: linesHash(recipeLines) };
+  formValidated = null;
   const row = (a, b, cls, why)=> `<tr class="${cls}"><td>${escapeHtml(a || '—')}</td><td>${escapeHtml(b || '—')}${why ? `<div class="why">${escapeHtml(why)}</div>` : ''}</td></tr>`;
   out.innerHTML =
     `<div class="hint">${misses
@@ -7669,7 +7704,7 @@ function showSourceComparison(out, sourceLines, heading){
     flagged.map(m=> row(m.source, m.recipe, 'miss', m.check.why + (m.note ? ' · ' + m.note.why : ''))).join('') +
     soft.map(m=> row(m.source, m.recipe, 'soft', m.note.why)).join('') +
     f.matched.filter(m=> !m.check && !m.note).map(m=> row(m.source, m.recipe, '')).join('') +
-    `</table>`;
+    `</table><div class="rv-quiet" id="sourceValidateRow">${validateButtonHtml()}</div>`;
   refreshSourceStored();
   renderBeforeSave();
 }
@@ -7822,7 +7857,17 @@ document.getElementById('addChecks').addEventListener('click', e=>{
     return;
   }
   if(e.target.closest('#compareSourceBtn') || e.target.closest('#sourceRecheckBtn')) compareWithSource();
+  if(e.target.closest('[data-source-validate]')){ formValidated = new Date().toISOString(); refreshValidateRow(); return; }
+  if(e.target.closest('[data-source-unvalidate]')){ formValidated = null; refreshValidateRow(); return; }
   if(e.target.closest('#comparePastedBtn')) comparePastedSource();
+  /* OPEN SOURCE (30 Sep 2026): the page in a new tab, to copy its ingredient list into the box below when
+     the site turns the check away. The link as it is in the form now, and only a web address, since a
+     recipe is data and a field could hold anything. */
+  if(e.target.closest('#openSourceBtn')){
+    const url = document.getElementById('f-source-url').value.trim();
+    if(/^https?:\/\//i.test(url)) window.open(url, '_blank', 'noopener');
+    else showToast('This recipe has no web link to open');
+  }
 });
 
 /* Permanent scaling — rewrites the raw syntax text in the textarea itself
@@ -7938,7 +7983,8 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
   /* A comparison that ran in this form is recorded with the recipe (PR 5). With none, the recipe keeps
      whatever it already had: the key is left out of `fields` rather than set to nothing, so an Edit
      that did not compare cannot wipe an earlier result (and an Add carries none). */
-  if(formComparison) fields.sourceCheck = { ...formComparison };
+  if(formComparison) fields.sourceCheck = { ...formComparison, ...(formValidated ? { validated: formValidated } : {}) };
+  else if(formValidated && storedCheckToValidate()) fields.sourceCheck = { ...storedCheckToValidate(), validated: formValidated };
   /* Every header line is reconciled with the form, from the same values
      the row is built from. Until 22 Sep only TITLE: was; until 23 Sep only
      TITLE: and IMAGE: — see withUpdatedHeaderLines for what that cost. */

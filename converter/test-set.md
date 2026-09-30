@@ -351,8 +351,10 @@ later stage, every MERGE timed.
   from pasted text;
 - `SOURCE_URL` is missing.
 
-**Runs.** None yet: after reloading `conversion-instructions.md`, run it in a fresh chat of the
-conversion project and record the result here.
+**Runs.**
+
+- **30 Sep 2026, the conversion project, run by the household after reloading the 30 Sep instructions:
+  passed** ("test 10 OK"). The household also reported the reload itself as checked.
 
 ---
 

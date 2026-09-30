@@ -1735,7 +1735,23 @@ recipe made from pasted text. Checked against `RECONSTRUCTION_WORDS` in `core.js
 ordinary, but "the page itself could not be fetched" or "could not be read" flags the recipe as reconstructed in LIBRARY CHECK and
 the viewer. `converter/conversion-instructions.md` §1 now says pasted text, a screenshot or a photo of the page is the page,
 converted with no note unless something is missing; §3 checks it; `converter/test-set.md` test 10 tests it. **The household
-reloads the file into the conversion project** and runs test 10. No app change.
+reloads the file into the conversion project** and runs test 10. No app change. *Done 30 Sep:* the household reloaded it and test 10 passed.
+
+**VALIDATE INGREDIENT LIST, and OPEN SOURCE (30 Sep 2026).** Asked for by the household after comparing *Easy Pilau Rice*
+(one difference: "salt, to taste", taken from the method, which they were happy with): "1 difference" read as a problem still
+open. The chip now says COMPARED with its count, and VALIDATE INGREDIENT LIST (all the differences in one tap, as asked) turns it
+to **VALIDATED** and the date. Offered under a comparison run in the form and beside a stored comparison still of these lines, so
+a recipe compared earlier needs no second paste; pending until SAVE, with UNDO; SAVE writes `validated` into that comparison;
+LIBRARY CHECK reads it as "validated", not needing attention; a change to the ingredient lines lapses it with the comparison, and
+a new comparison asks again. `sourceCheckStatus` (`core.js` `2026-09-30.1`) carries it on a fresh check only. No schema change: a
+key inside `source_check`. **OPEN SOURCE ↗** (asked the same day) opens the form's link in a new tab, to copy the list for COMPARE
+PASTED LIST; only an http(s) link, otherwise it says there is none.
+
+*Verified by.* `core.test.js` **142 → 143**, `smoke.js` **379 → 385**, both exit 0. One existing check changed: Edit's stored-result
+text now includes the VALIDATE button on a fresh comparison (the stale and none cases unchanged). **Nine mutations:** in `core.js`,
+the validation carried on a stale check (failed by name); on the page, no VALIDATED chip, the stored validation not saved, the form's
+not saved, no reset on a new comparison, LIBRARY CHECK ignoring it, UNDO not wired, and OPEN SOURCE opening any value each failed by
+name; OPEN SOURCE in the same tab crashed the run by navigating away. *Not verified:* the tablet (`docs/TEST-PLAN.md` step 38a).
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against

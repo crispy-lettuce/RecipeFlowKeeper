@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-29.8';
+const KITCHEN_CORE_VERSION = '2026-09-30.1';
 
 
 /* ======================= quantity split ======================= */
@@ -1769,12 +1769,17 @@ function fidelityCounts(f){
    was of a recipe that has since changed. The chip in the viewer, the SOURCE section on
    Edit and BEFORE YOU SAVE all read this one rule. A comparison is about the ingredient
    lines only, so a change to a keyword or a method step never makes one stale. */
+/* `validated` (30 Sep 2026): the household looked at the comparison and accepted the ingredient list as it
+   stands, differences and all (salt taken from the method, a change made on purpose). Kept as the moment
+   it was done, and only ever true of a fresh check: the validation is of these lines, so a recipe edited
+   since reads as compared before it changed, validation and all. */
 function sourceCheckStatus(check, lines){
   if(!check || typeof check !== 'object' || typeof check.linesHash !== 'string' || !check.linesHash) return { state: 'none' };
+  const state = check.linesHash === linesHash(lines) ? 'fresh' : 'stale';
   return {
-    state: check.linesHash === linesHash(lines) ? 'fresh' : 'stale',
-    at: check.at, route: check.route,
-    hard: check.hard | 0, soft: check.soft | 0, sourceLines: check.sourceLines | 0
+    state, at: check.at, route: check.route,
+    hard: check.hard | 0, soft: check.soft | 0, sourceLines: check.sourceLines | 0,
+    validated: state === 'fresh' && typeof check.validated === 'string' && check.validated ? check.validated : null
   };
 }
 

@@ -392,7 +392,7 @@ to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.m
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 379-check smoke suite, the 142 Node checks and the Edge Function checks, and an honest account of what it can't tell you
+**What:** How to run the 385-check smoke suite, the 143 Node checks and the Edge Function checks, and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 
 **Use it when:** making any code change.
