@@ -3120,6 +3120,71 @@ const check = (name, pass, detail) => {
   await page.fill('#ingredientLookup', '');
   await page.evaluate(b => { cache.aliases = JSON.parse(b); rebuildAliasMaps(); cache.swaps = cache.swaps.filter(x => x.id !== 'lk-swap'); renderSettings(); }, lkAliasesBefore);
 
+  /* ---- LIBRARY CHECK (PR 8 of the add-recipe plan, 29 Sep 2026) ----
+     Every recipe, its standing against its source and its names in Other, those needing attention
+     first; RUN writes nothing and OPEN opens the edit form. Six invented recipes, one per status,
+     removed again at the end. The stored comparisons carry the hash of their own lines, so "fresh"
+     and "stale" are real states, not faked ones. */
+  await page.evaluate(() => {
+    const mk = (id, title, lines, extra = {}) => { const syntax = ['TITLE: ' + title, 'SOURCE: Blue Door Bakery', 'SERVINGS: 4', ...(extra.header || []), '', 'GROUP a:', ...lines, '', 'STAGE:', 'MERGE a -> done: Cook [5 min]'].join('\n');
+      const hash = linesHash(ingredientLinesOf(parseRecipe(syntax)));
+      const check = extra.check === undefined ? null : { at: '2026-09-29T20:00:00.000Z', route: 'function', hard: extra.check, soft: 0, sourceLines: lines.length, linesHash: extra.stale ? '00000000' : hash };
+      loadRecipes().push({ id, title, source: 'Blue Door Bakery', sourceUrl: extra.url === undefined ? 'https://example.test/' + id : extra.url, servings: 4,
+        tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-09-06', syntax, sourceCheck: check }); };
+    mk('lc-fresh', 'LC Fresh Soup', ['1 onion', '2 carrots'], { check: 0 });
+    mk('lc-diff', 'LC Differs Stew', ['1 onion', '300 g smoked mackerel'], { check: 2 });
+    mk('lc-stale', 'LC Stale Bake', ['1 onion'], { check: 0, stale: true });
+    mk('lc-none', 'LC Never Compared', ['1 onion']);
+    mk('lc-nolink', 'LC Family Recipe', ['1 onion'], { url: '' });
+    /* Needs nothing about its source (no link) but has a name in Other, so it needs attention after all,
+       and must sort above a recipe that needs nothing: only "attention first" puts it there. */
+    mk('lc-nolink-other', 'LC Family Fish Pie', ['1 onion', '300 g smoked mackerel'], { url: '' });
+    mk('lc-recon', 'LC Rebuilt Bars', ['1 onion'], { header: ['NOTES:', '⚠️ Source note: reconstructed from memory, the page could not be read'] });
+  });
+  await page.click('.navlink[data-view="settings"]');
+  await page.waitForTimeout(300);
+  const lcMark = await anMark();
+  await page.click('#libraryCheckRunBtn');
+  await page.waitForTimeout(300);
+  const lcRows = () => page.evaluate(() => [...document.querySelectorAll('#libraryCheckList .lc-row')].map(r => ({ id: r.dataset.lcId, status: r.dataset.lcStatus,
+    text: r.textContent.replace(/\s+/g, ' ').trim(), attention: r.classList.contains('lc-attention') })));
+  const lcAll = await lcRows();
+  const lcOf = id => lcAll.find(r => r.id === id) || {};
+  const lcRunWrites = (await anSince(lcMark)).length;
+  check('LIBRARY CHECK lists every recipe once, and RUN writes nothing',
+        lcAll.length === (await page.evaluate(() => loadRecipes().length)) && new Set(lcAll.map(r => r.id)).size === lcAll.length && lcRunWrites === 0,
+        JSON.stringify([lcAll.length, lcRunWrites]));
+  check('    a recipe with no comparison reads "not compared", one with no https link says it has none to compare, and neither is faked',
+        /not compared/.test(lcOf('lc-none').text) && lcOf('lc-none').attention && /no source link to compare/.test(lcOf('lc-nolink').text) && !lcOf('lc-nolink').attention,
+        JSON.stringify([lcOf('lc-none'), lcOf('lc-nolink')]));
+  check('    each stored comparison reads as the viewer\'s chip would: no differences, 2 differences, compared before the ingredients changed',
+        /no differences/.test(lcOf('lc-fresh').text) && !lcOf('lc-fresh').attention && /2 differences/.test(lcOf('lc-diff').text) && /compared before the ingredients changed/.test(lcOf('lc-stale').text),
+        JSON.stringify([lcOf('lc-fresh'), lcOf('lc-diff'), lcOf('lc-stale')]));
+  const lcOrder = lcAll.filter(r => String(r.id).startsWith('lc-')).map(r => r.id).join(',');
+  check('    a reconstruction note sorts first, then not compared, changed since, differences, then a name in Other, and those needing nothing last',
+        lcAll[0].id === 'lc-recon' && /reconstruction note/.test(lcAll[0].text) && lcOrder === 'lc-recon,lc-none,lc-stale,lc-diff,lc-nolink-other,lc-fresh,lc-nolink',
+        lcOrder);
+  check('    and the names a recipe puts in Other are listed with it',
+        /in Other: Smoked mackerel/.test(lcOf('lc-diff').text) && !/in Other/.test(lcOf('lc-fresh').text), JSON.stringify([lcOf('lc-diff'), lcOf('lc-fresh')]));
+  await page.check('#libraryCheckOnly');
+  await page.waitForTimeout(100);
+  const lcOnly = await lcRows();
+  check('    "only those needing attention" hides the rest',
+        lcOnly.length > 0 && lcOnly.every(r => r.attention) && !lcOnly.some(r => r.id === 'lc-fresh' || r.id === 'lc-nolink') && lcOnly.some(r => r.id === 'lc-recon'),
+        JSON.stringify(lcOnly.map(r => r.id)));
+  await page.uncheck('#libraryCheckOnly');
+  await anClick('[data-lc-open="lc-stale"]');
+  await page.waitForTimeout(400);
+  const lcOpened = await page.evaluate(() => ({ editing: state.editingRecipeId, title: document.getElementById('modalTitle').textContent.trim(),
+    text: document.getElementById('importInput').value.split('\n')[0] }));
+  check('    OPEN opens the edit form for that recipe, and still nothing has been written',
+        lcOpened.editing === 'lc-stale' && /Edit recipe/.test(lcOpened.title) && lcOpened.text === 'TITLE: LC Stale Bake' && (await anSince(lcMark)).length === 0,
+        JSON.stringify(lcOpened));
+  await page.evaluate(() => { closeAddModal();
+    for(let i = loadRecipes().length - 1; i >= 0; i--) if(String(loadRecipes()[i].id).startsWith('lc-')) loadRecipes().splice(i, 1);
+    libraryCheckResult = null; renderLibraryCheck(); });
+  await page.waitForTimeout(200);
+
   await page.screenshot({ path: path.join(__dirname, 'settings.png'), fullPage: false });
 
   const failed = checks.filter(c => !c.pass).length;

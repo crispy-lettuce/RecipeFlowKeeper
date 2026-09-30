@@ -1585,7 +1585,25 @@ of the new checks on the test's own setup, not the app: by then the PR 6 block h
 test now adds an invented one and removes it. **Nine page mutations, each seen failing by name:** the dictionary never
 known, every aisle said to be the dictionary's, word matches found from one side only, FORGET removing nothing, swaps matched by
 substring (so butter's catches peanut butter), EDIT going nowhere, the dictionary list unfiltered, the lookup ignoring word
-matches, and the old Swaps subtitle; `index.html` restored and compared byte-identical after the run. *Not verified:* the tablet (`docs/TEST-PLAN.md` step 36h).
+matches, and the old Swaps subtitle; `index.html` restored and compared byte-identical after the run.
+
+**PR 8 of the add-recipe plan, Settings: library check (29 Sep 2026).** The audit the conversion-integrity finding asks for,
+and the plan's last PR. LIBRARY CHECK → RUN lists every recipe with its standing against its source, read by the viewer chip's own
+rules (reconstruction note, not compared, compared before the ingredients changed, *n* differences, no differences, or no source
+link to compare), and the names it puts in Other; those needing attention first; a box to show only those; OPEN goes to the edit
+form. Nothing is written from it. `index.html` only. The plan's PR 8 entry has the "Built as" (a sixth status for a recipe with no
+link, which could otherwise never leave the list).
+
+*Verified by.* `smoke.js` **350 → 357**, `core.test.js` 142, both exit 0, **no existing check changed**, with six invented recipes,
+one per status, whose stored comparisons carry the hash of their own lines. The first run failed three new checks on the test's
+data, not the app: "red lentils" lands in Other with the dictionary, so the "no differences" recipe rightly needed attention; it
+now uses carrots. **What RUN will show on the live library** (read-only, 22:17 UTC): 34 recipes, 2 with a reconstruction note
+(first, in red), 1 compared (its stored result says 1 difference until it is compared and saved again), 33 with an `https` link and
+1 without. **Nine page mutations, each seen failing by name:** a reconstruction note missed, a stale comparison read as fresh,
+RUN writing, the attention sort dropped, the "only those" box ignored, OPEN going nowhere, names in Other ignored, a recipe with
+no link read as not compared, and the number of differences hidden. "Attention first" at first **survived**: with every
+attention row also ranked above every other, sorting by status alone gave the same order, so a recipe with no link but a name in
+Other was added, which only attention-first puts above one needing nothing. `index.html` restored byte-identical after the run. *Not verified:* the tablet (`docs/TEST-PLAN.md` step 36i). *Not verified:* the tablet (`docs/TEST-PLAN.md` step 36h).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all

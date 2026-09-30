@@ -735,6 +735,15 @@ comparing each in the edit form and saving, and the column is the record. No spr
 COMPARED`; `a recipe with a reconstruction note sorts first`; `OPEN opens the edit form for that
 recipe`; `nothing is written by RUN`. **Risk.** None to data; 34 parses is trivial.
 
+**Built as** (29 Sep):
+- **A sixth status, "no source link to compare",** for a recipe with no `https` link, which can never be compared; it is
+  not counted as needing attention and sorts last. The entry's five would have shown it as "not compared" for ever.
+- **"Needing attention"** is any status but "no differences" and "no source link", or any name in Other; the order within
+  it is the entry's, then the most names in Other, then the title.
+- **The status is read by the viewer chip's own rules** (`sourceCheckStatus`, `sourceNoteIn`), and the names in Other with
+  the household's word matches and aisles applied, as the list applies them.
+- `index.html` only; `core.js` unchanged. **No existing check changed.**
+
 ### Outside the PRs
 
 - **Repairing the two reconstructed recipes** (the oat bars; the loaded fries): re-convert from the
