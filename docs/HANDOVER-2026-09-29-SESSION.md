@@ -31,8 +31,8 @@ run in the session that added it.
 - **§3:** D2 (PR 6's five judgement calls) was answered with "go" and built as proposed in #49. D1, D3, D4 and D5 stand as
   recommended. **D6, repairing the two reconstructed recipes, is still open** and still the household's to start; LIBRARY
   CHECK now lists them first.
-- **§4a:** the household reported **36f, 36g, 36h and 36i done** (30 Sep). 36a to 36e and converter test 9 were not reported
-  in that session: *not verified*.
+- **§4a:** the household reported **36f, 36g, 36h and 36i done**, then **36a to 36e all OK** (both 30 Sep). Converter test 9
+  has not been reported: *not verified*.
 - **§4b:** a real `source_check` write and a real `aisle_overrides` write have now happened through the app (the tablet passes
   above); the rest of §4b still holds.
 - **§4c and §5 are done:** PR 6 was built as §5 describes, with the tests §4c lists (see `docs/PLAN-NEW-RECIPE-FLOW.md`, PR 6
@@ -294,7 +294,13 @@ reports one "unpushed commit" on the working branch: it is the merge commit, and
 
 ---
 
-## 7. Next: autocomplete on the Settings text boxes (planned 30 Sep 2026, not built)
+## 7. Autocomplete on the Settings text boxes (planned 30 Sep 2026, built the same day)
+
+**Built on 30 Sep, after the household's "go"** with both decisions answered: **(1) Swaps too**, *"it makes sense to take a
+consistent approach throughout the app"*; **(2) the aisle box offers the library's names only.** As planned, with two lists
+rather than one, since the aisle box's differs: `#ingredientVocab` (library, dictionary and both sides of every ingredient word
+match) for the lookup, Word Matches and Swaps, and `#libraryIngredientVocab` for Shopping Aisles. `index.html` only. The
+tablet pass is `docs/TEST-PLAN.md` step 36j; the record is `docs/HANDOVER.md` §7. The plan as written follows.
 
 **Asked for by the household on 30 Sep**, after the tablet passes of PRs 6 to 8: *"could the text boxes, where
 appropriate, have autocomplete, to help make the process easier when you are trying to apply something or review an

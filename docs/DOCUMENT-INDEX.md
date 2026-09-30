@@ -71,7 +71,7 @@ progresses — and to distrust first if something doesn't match reality.
 **What:** A session handover written when PR 5 of the add-recipe plan had merged (29 Sep, 17:30 UTC): the state of PRs 1 to 8,
 the decisions and tests outstanding then, PR 6 as put to the household, and how the tests and mutation runs were done and
 what went wrong. **A note at its top (30 Sep) says what has happened since** (every plan PR merged, the migrations applied,
-the tablet passes done), and **§7 plans the next piece of work: autocomplete on the Settings text boxes**, not built.
+the tablet passes done), and **§7 is the autocomplete on the ingredient boxes in Settings and Swaps**: planned, then built on 30 Sep.
 
 **Use it when:** picking the work up after 29 Sep: read the note at the top and §7 first; §4d is worth reading before any
 mutation testing.
@@ -384,7 +384,7 @@ to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.m
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 357-check smoke suite, the 142 Node checks and the Edge Function checks, and an honest account of what it can't tell you
+**What:** How to run the 363-check smoke suite, the 142 Node checks and the Edge Function checks, and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 
 **Use it when:** making any code change.

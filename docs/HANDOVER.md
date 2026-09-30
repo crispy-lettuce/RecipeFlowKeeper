@@ -1603,7 +1603,7 @@ now uses carrots. **What RUN will show on the live library** (read-only, 22:17 U
 RUN writing, the attention sort dropped, the "only those" box ignored, OPEN going nowhere, names in Other ignored, a recipe with
 no link read as not compared, and the number of differences hidden. "Attention first" at first **survived**: with every
 attention row also ranked above every other, sorting by status alone gave the same order, so a recipe with no link but a name in
-Other was added, which only attention-first puts above one needing nothing. `index.html` restored byte-identical after the run. *Not verified:* the tablet (`docs/TEST-PLAN.md` step 36i). *Not verified:* the tablet (`docs/TEST-PLAN.md` step 36h).
+Other was added, which only attention-first puts above one needing nothing. `index.html` restored byte-identical after the run. *Tablet:* 36h (PR 7) and 36i reported done by the household, 30 Sep.
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all

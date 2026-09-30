@@ -4,8 +4,9 @@ Two things live here: **the order work should happen in**, with the reasoning, a
 **ready-to-paste prompt** for starting the next session.
 
 **Picking the work up after 29 Sep 2026? Read `docs/HANDOVER-2026-09-29-SESSION.md` first:** the note at its top says where
-things stand (the add-recipe plan's PRs are all merged, both migrations applied, tablet passes 36f to 36i done), and **§7 is the
-next piece of work, autocomplete on the Settings text boxes**, planned and waiting for a "go".
+things stand (the add-recipe plan's PRs are all merged, both migrations applied, tablet passes 36a to 36i done). **§7,
+autocomplete on the ingredient boxes in Settings and Swaps, was built on 30 Sep**; its tablet pass is `docs/TEST-PLAN.md` step
+36j. What is left for the household: step 36j, converter test 9, and D6 (repairing the two reconstructed recipes).
 
 **Rewritten 23 Sep 2026.** Until then this document narrated steps 0–4 of the original build
 (reprocess, ingest, test pass, merge, images), all done by 22 Sep and recorded in
