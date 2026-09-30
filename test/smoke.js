@@ -63,7 +63,8 @@ const check = (name, pass, detail) => {
         (await page.locator('.rcard').count()) + ' cards');
 
   // Walk every nav destination.
-  for (const view of ['planner','shopping','history','swaps','settings','recipes']) {
+  /* Swaps is not in the sidebar since 30 Sep 2026: it is a section of Settings (docs/PLAN-LAYOUT.md, E). */
+  for (const view of ['planner','shopping','history','settings','recipes']) {
     await page.click(`.navlink[data-view="${view}"]`);
     await page.waitForTimeout(350);
     const target = view === 'shortlist' ? 'planner' : view;
@@ -109,6 +110,7 @@ const check = (name, pass, detail) => {
   check('app boots light when nothing asks for dark',
         (await page.getAttribute('html', 'data-theme')) === 'light');
 
+  await page.click('[data-settings-tab-btn="app"]');  // Appearance is on Settings' App tab since 30 Sep
   await page.selectOption('#setDarkMode', 'dark');
   await page.waitForTimeout(300);
   check('choosing dark sets the theme attribute',
@@ -182,6 +184,7 @@ const check = (name, pass, detail) => {
   await page.waitForTimeout(300);
   await page.selectOption('#setDarkMode', 'system');
   await page.waitForTimeout(300);
+  await page.click('[data-settings-tab-btn="ingredients"]');  // the tab is remembered: leave Settings as the checks below expect
 
   /* ---- The food diary (H1, H2, H3) ----
      The stub seeds one cooked recipe with a meal type, one without, and
@@ -3103,9 +3106,10 @@ const check = (name, pass, detail) => {
   await page.waitForTimeout(80);
   await anClick('[data-lookup-swaps]');
   await page.waitForTimeout(300);
-  const lkSwapsView = await page.evaluate(() => ({ view: state.view, subtitle: document.getElementById('swapsSubtitle').textContent.replace(/\s+/g, ' ').trim() }));
+  const lkSwapsView = await page.evaluate(() => ({ view: state.view, swapsShown: !document.getElementById('swapsBlock').hidden && document.getElementById('swapsBlock').offsetParent !== null,
+    subtitle: document.getElementById('swapsSubtitle').textContent.replace(/\s+/g, ' ').trim() }));
   check('    EDIT goes to Swaps, whose subtitle now says how a swap is matched',
-        lkSwapsView.view === 'swaps' && /applies wherever the shopping list would call an ingredient by the swap's name, so "butter" never catches "peanut butter"/.test(lkSwapsView.subtitle)
+        lkSwapsView.view === 'settings' && lkSwapsView.swapsShown && /applies wherever the shopping list would call an ingredient by the swap's name, so "butter" never catches "peanut butter"/.test(lkSwapsView.subtitle)
         && !/fuzzy/.test(lkSwapsView.subtitle), JSON.stringify(lkSwapsView));
   await page.click('.navlink[data-view="settings"]');
   await page.waitForTimeout(300);
@@ -3185,11 +3189,13 @@ const check = (name, pass, detail) => {
   await acType('ingredientLookup', 'a');
   const acNoFlip = await page.evaluate(() => Math.round(document.getElementById('ingredientLookup-suggest').getBoundingClientRect().top
     - document.getElementById('ingredientLookup').getBoundingClientRect().bottom));
+  await page.click('[data-settings-tab-btn="library"]');  // LIBRARY CHECK is on the Library tab since 30 Sep: a hidden box has no width to measure
   const acCheckbox = await page.evaluate(() => Math.round(document.getElementById('libraryCheckOnly').getBoundingClientRect().width));
+  await page.click('[data-settings-tab-btn="ingredients"]');
   await acType('ingredientLookup', '');
   await page.setViewportSize({ width: 1280, height: 800 });
   check('    on a phone, a box near the foot of the screen opens its list above it, and one with room below still opens below; the LIBRARY CHECK tick box keeps its size',
-        acFlip.listBottom <= acFlip.boxTop && acFlip.listTop >= 0 && acNoFlip >= 0 && acNoFlip <= 8 && acCheckbox < 30, JSON.stringify([acFlip, acNoFlip, acCheckbox]));
+        acFlip.listBottom <= acFlip.boxTop && acFlip.listTop >= 0 && acNoFlip >= 0 && acNoFlip <= 8 && acCheckbox > 5 && acCheckbox < 30, JSON.stringify([acFlip, acNoFlip, acCheckbox]));
   await acType('ingredientLookup', 'almond meal');
   const acExact = await acList('ingredientLookup');
   await acType('ingredientLookup', 'alm');
@@ -3245,7 +3251,7 @@ const check = (name, pass, detail) => {
   await acType('ingredientLookup', '');
   check('    a word match added in Settings is offered the next time a box is used, and gone once forgotten',
         acAdded.items.includes('sea purslane') && !acGone.items.includes('sea purslane'), JSON.stringify([acAdded.items, acGone.items]));
-  await page.click('.navlink[data-view="swaps"]');
+  await page.evaluate(() => showView('swaps'));  // Swaps is a section of Settings since 30 Sep
   await page.waitForTimeout(300);
   await acType('swap-original', 'alm');
   const acSwapA = await acList('swap-original');
@@ -3365,6 +3371,65 @@ const check = (name, pass, detail) => {
         JSON.stringify(ckBack) === JSON.stringify(ckOff), JSON.stringify([ckOff, ckBack]));
   await page.evaluate(() => { try { localStorage.removeItem('kitchen.cookingTimeline'); } catch(e){} applyCookTimeline(); });
 
+  /* ---- Layout E, 30 Sep 2026 (docs/PLAN-LAYOUT.md): Settings in three tabs, with Swaps ----
+     Every section drawn as before and only shown or hidden. Invented swap, taken out again. */
+  await page.click('.navlink[data-view="settings"]');
+  await page.waitForTimeout(300);
+  const stShown = () => page.evaluate(() => [...document.querySelectorAll('#view-settings .settings-block')].filter(b => !b.hidden && b.offsetParent !== null)
+    .map(b => b.querySelector('.side-label').textContent.trim()));
+  const stIng = await stShown();
+  const stNav = await page.evaluate(() => [...document.querySelectorAll('.navlink[data-view]')].map(b => b.dataset.view));
+  await page.click('[data-settings-tab-btn="library"]');
+  const stLib = await stShown();
+  await page.click('[data-settings-tab-btn="app"]');
+  const stApp = await stShown();
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(200);
+  await page.click('.navlink[data-view="settings"]');
+  await page.waitForTimeout(300);
+  const stKept = await stShown();
+  await page.click('[data-settings-tab-btn="ingredients"]');
+  check('layout E: Settings has three tabs; Ingredients holds the lookup, word matches, aisles, swaps and dictionary, and SWAPS has left the sidebar',
+        stIng.join('|') === 'INGREDIENT LOOKUP|WORD MATCHES|SHOPPING AISLES|SWAPS|DICTIONARY' && !stNav.includes('swaps') && stNav.includes('settings'),
+        JSON.stringify([stIng, stNav]));
+  check('    Library holds the library check, sources, keywords and photos; App the week start and appearance; the last tab is remembered',
+        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE' && stKept.join('|') === stApp.join('|'),
+        JSON.stringify([stLib, stApp, stKept]));
+  const stDict = () => page.evaluate(() => ({ list: !document.getElementById('dictionaryList').hidden, btn: document.getElementById('dictionaryToggle').hidden ? '' : document.getElementById('dictionaryToggle').textContent.trim(),
+    rows: [...document.querySelectorAll('#dictionaryList .dict-row')].filter(r => r.offsetParent !== null).length }));
+  const stFolded = await stDict();
+  await page.fill('#ingredientLookup', 'almond meal');
+  await page.waitForTimeout(80);
+  const stTyped = await stDict();
+  await page.fill('#ingredientLookup', '');
+  await page.waitForTimeout(80);
+  const stRefolded = await stDict();
+  await page.click('#dictionaryToggle');
+  const stOpen = await stDict();
+  await page.click('#dictionaryToggle');
+  const stClosed = await stDict();
+  const stCount = await page.evaluate(() => INGREDIENT_DICTIONARY.length);
+  check('    the dictionary is folded to SHOW ALL; typing in the lookup opens the rows that match, and SHOW ALL opens and closes the whole of it',
+        !stFolded.list && stFolded.rows === 0 && stFolded.btn === `SHOW ALL ${stCount} ROWS` && stTyped.list && stTyped.rows === 1 && stTyped.btn === ''
+        && !stRefolded.list && stOpen.list && stOpen.rows === stCount && stOpen.btn === 'HIDE THE DICTIONARY' && !stClosed.list,
+        JSON.stringify([stFolded, stTyped, stRefolded, stOpen, stClosed]));
+  await page.click('[data-settings-tab-btn="app"]');
+  await page.evaluate(() => { cache.swaps = cache.swaps.concat([{ id: 'st-swap', original: 'sea kale', replacement: 'curly kale', ratio: '1', notes: '' }]); showView('recipes'); showView('swaps'); });
+  await page.waitForTimeout(200);
+  const stSwapsNav = await page.evaluate(() => ({ view: state.view, shown: document.getElementById('swapsBlock').offsetParent !== null,
+    tab: document.querySelector('[data-settings-tab-btn].active').dataset.settingsTabBtn, listed: /sea kale → curly kale/.test(document.getElementById('swapsList').textContent) }));
+  const stSwapsBefore = await page.evaluate(() => loadSwaps().length);
+  await page.fill('#swap-original', 'sea purslane');
+  await page.fill('#swap-replacement', 'marsh samphire');
+  await page.fill('#swap-ratio', '1');
+  await page.click('#swapAddBtn');
+  await page.waitForTimeout(200);
+  const stSwapAdded = await page.evaluate(() => ({ n: loadSwaps().length, listed: /sea purslane → marsh samphire/.test(document.getElementById('swapsList').textContent) }));
+  await page.evaluate(() => { cache.swaps = cache.swaps.filter(x => x.original !== 'sea purslane' && x.id !== 'st-swap'); renderSwaps(); });
+  check('    anything that asked for the old Swaps screen lands on Settings → Ingredients → Swaps, whose form adds a swap as before',
+        stSwapsNav.view === 'settings' && stSwapsNav.shown && stSwapsNav.tab === 'ingredients' && stSwapsNav.listed && stSwapAdded.n === stSwapsBefore + 1 && stSwapAdded.listed,
+        JSON.stringify([stSwapsNav, stSwapsBefore, stSwapAdded]));
+
   /* ---- LIBRARY CHECK (PR 8 of the add-recipe plan, 29 Sep 2026) ----
      Every recipe, its standing against its source and its names in Other, those needing attention
      first; RUN writes nothing and OPEN opens the edit form. Six invented recipes, one per status,
@@ -3388,6 +3453,7 @@ const check = (name, pass, detail) => {
   });
   await page.click('.navlink[data-view="settings"]');
   await page.waitForTimeout(300);
+  await page.click('[data-settings-tab-btn="library"]');  // LIBRARY CHECK is on the Library tab since 30 Sep
   const lcMark = await anMark();
   await page.click('#libraryCheckRunBtn');
   await page.waitForTimeout(300);
@@ -3427,7 +3493,7 @@ const check = (name, pass, detail) => {
         JSON.stringify(lcOpened));
   await page.evaluate(() => { closeAddModal();
     for(let i = loadRecipes().length - 1; i >= 0; i--) if(String(loadRecipes()[i].id).startsWith('lc-')) loadRecipes().splice(i, 1);
-    libraryCheckResult = null; renderLibraryCheck(); });
+    libraryCheckResult = null; renderLibraryCheck(); showSettingsTab('ingredients'); });
   await page.waitForTimeout(200);
 
   await page.screenshot({ path: path.join(__dirname, 'settings.png'), fullPage: false });

@@ -13,8 +13,8 @@ seen failing (`CLAUDE.md` rule 3), and a tablet step in `docs/TEST-PLAN.md` (the
 | --- | --- | --- | --- |
 | 1 | **C**, step text at the foot of its box, and **A**, edit dialog near full width | Small | **Built and merged**, 30 Sep (PR #57) |
 | 2 | **D**, Shopping Aisles shows the current aisle | Small | **Built and merged**, 30 Sep (PR #58) |
-| 3 | **B**, cooking mode | Medium | **Built**, 30 Sep |
-| 4 | **E**, Settings in tabs, with Swaps | Largest | Planned |
+| 3 | **B**, cooking mode | Medium | **Built and merged**, 30 Sep (PR #59) |
+| 4 | **E**, Settings in tabs, with Swaps | Largest | **Built**, 30 Sep |
 
 ## C. Step text at the foot of its box
 
@@ -98,6 +98,11 @@ the top of Settings, the last one used remembered per device.
 - **Swaps works as now**: the same form, list, EDIT and DELETE; the lookup's EDIT goes straight to it.
 - **SWAPS leaves the sidebar.** Checks that open Swaps from the sidebar will open it from Settings instead; nothing else in the
   suite should change.
+- **Built as** blocks marked `data-settings-tab`, shown and hidden by `showSettingsTab` (stored as `kitchen.settingsTab`), in
+  the order above; the tab bar is pinned. The Swaps screen's form and list moved into a Settings block with the same ids, so
+  every swap handler is unchanged; `showView('swaps')` now opens Settings → Ingredients at Swaps. The dictionary folds with
+  `#dictionaryToggle`. Tablet step 37d. Tests that act on the Library or App tabs pick the tab first (tabs are remembered, so
+  they pick Ingredients again after).
 - Not chosen: one page with a pinned bar of jump links and folding sections. It changes less, but still scrolls, and leaves
   sections open or shut to remember.
 
@@ -106,3 +111,4 @@ the top of Settings, the last one used remembered per device.
 - **Leaked-password protection is a paid-plan feature** in Supabase, and the household is on the free plan, so it is no longer
   an open item (`docs/NEXT-SESSION.md`, 7b).
 - **Tablet step 36k** (the ingredient boxes' own dropdown, PR #56): reported "broadly ok" by the household, 30 Sep.
+- **Tablet steps 37a, 37b and 37c** (C and A, D, B): reported passed by the household, 30 Sep.
