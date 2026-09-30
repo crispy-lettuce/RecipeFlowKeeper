@@ -104,7 +104,7 @@ Some things that *will* still look wrong and aren't:
 3. **Sign out, then back in.** The riskiest single path — any throw during hydration signs you
    straight back out, which would show as a login screen you cannot get past.
 4. **Check the counts** against the table above: sidebar shortlist count, keywords and sources in
-   Settings, swaps on the Swaps screen, groups shown on the Planner.
+   Settings, swaps in Settings → Ingredients → Swaps (its own screen until 30 Sep), groups shown on the Planner.
 5. **Make one small change and hard-reload** — favourite a recipe, say. If it survives the reload it
    reached the database, because the page rebuilds entirely from Supabase on load. This is the only
    way to see the write queue working.
@@ -427,6 +427,16 @@ The 37 series is `docs/PLAN-LAYOUT.md`, the layout changes agreed on 30 Sep. Eac
     tablet and the laptop each keep their own choice. (3) *On the phone, scroll down the recipe:* the header stays at the top.
     (4) *Turn KEEP AWAKE off:* everything is back. (5) *A group from the Planner, KEEP AWAKE on:* export, print and ungroup go.
     **What no test can judge: whether anything you want mid-cook has gone missing.**
+
+*37a, 37b and 37c reported passed by the household, 30 Sep ("happy with tests 37a/b/c").*
+
+37d. **Settings in three tabs (new 30 Sep, E).** Read-only unless you add a swap. (1) *Sidebar:* no SWAPS. (2) *Settings:* three
+    tabs, INGREDIENTS picked, showing Ingredient Lookup, Word Matches, Shopping Aisles, Swaps (your swaps listed, with EDIT and
+    DELETE) and the Dictionary folded to "SHOW ALL 140 ROWS". (3) *LIBRARY:* Library Check, Sources, Keywords, Recipe Photos.
+    *APP:* Week Starts On, Appearance. Leave Settings and come back: the tab you left on is still picked. (4) *Type "almond"
+    in the lookup:* the dictionary opens to the matching rows; clear it and it folds again. (5) *Look up an ingredient you
+    have a swap for, press EDIT:* you land on Swaps in the Ingredients tab. **What no test can judge: whether you can find
+    each thing where you expect it.**
 
 ## Deferred to the tablet, after merging
 

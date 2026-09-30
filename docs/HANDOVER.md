@@ -1688,7 +1688,27 @@ FOR n" text was added: the meta line's "SERVES 6 (SCALED FROM 4)" already says i
 *Verified by.* `smoke.js` **372 → 376**, `core.test.js` 142, both exit 0, no other check changed. Screenshots at 1280×800 and
 412×800 with KEEP AWAKE on. **Seven page mutations, each seen failing by name:** DELETE left showing, the
 Group Viewer's buttons left showing, COOK FOR left showing, the timeline shown by default, the header not pinned, SHOW TIMELINE
-not remembered, and the switch showing outside cooking mode. *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
+not remembered, and the switch showing outside cooking mode.
+
+**Layout E (30 Sep 2026): Settings in three tabs, with Swaps.** INGREDIENTS (lookup, word matches, aisles, swaps, dictionary),
+LIBRARY (library check, sources, keywords, photos) and APP (week start, appearance): blocks marked `data-settings-tab`, shown and
+hidden by `showSettingsTab`, the last tab remembered per device (`kitchen.settingsTab`), the tab bar pinned. The Swaps screen and
+its sidebar entry are gone; its form and list moved into Settings with the same ids, so every swap handler is unchanged, and
+`showView('swaps')` (the lookup's EDIT) opens Settings → Ingredients at Swaps. The dictionary is folded behind "SHOW ALL 140 ROWS"
+and opens by itself to the matching rows when the lookup is typed in. `index.html` only. Tablet passes 37a–37c reported passed by
+the household the same day.
+
+*Verified by.* `smoke.js` **376 → 379**: four new checks, less the sidebar walk's Swaps step. **Existing checks that changed, all
+for the move and none weakened:** the sidebar walk no longer visits Swaps; the appearance and library-check checks pick their tab
+first (and Ingredients again after, since the tab is remembered); the lookup's EDIT now expects Settings with Swaps showing; the
+autocomplete check opens Swaps through `showView`; and #56's tick-box width check now also requires a width above 5px, since a
+box on a hidden tab measures 0, which passed "under 30". `core.test.js` 142. Both exit 0. "Sea kale", the invented swap, checked
+read-only against the live recipes and swaps first: none. **Eight page mutations:** tabs not hiding, Sources on the wrong tab, the
+dictionary never folded, the lookup not opening it, Swaps not drawn when Settings opens, and SWAPS back in the sidebar each failed
+by name; no redirect for the old screen failed the EDIT check by name, then crashed; the tab not remembered crashed early, at the
+appearance check's control on a tab no longer shown. Screenshots at 1280×900 and 412×860. *Not verified:* the tablet
+(`docs/TEST-PLAN.md` step 37d).
+ *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all

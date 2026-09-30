@@ -8,7 +8,7 @@ things stand (the add-recipe plan's PRs are all merged, both migrations applied,
 autocomplete on the ingredient boxes in Settings and Swaps, was built on 30 Sep**; its tablet pass is `docs/TEST-PLAN.md` step
 36j; on the tablet its native list covered the screen, so it was **rebuilt the same day as the app's own capped dropdown**
 (tablet step 36k, reported "broadly ok"). **The next piece of work is `docs/PLAN-LAYOUT.md`**, five layout changes agreed on
-30 Sep: C and A (PR #57) and D (PR #58) are merged, B is built; E follows. Also left for the household: converter test 9, and D6 (repairing
+30 Sep: C and A (PR #57), D (PR #58) and B (PR #59) are merged, with tablet passes 37a to 37c; E, the last, is built. Also left for the household: converter test 9, and D6 (repairing
 the two reconstructed recipes).
 
 **Rewritten 23 Sep 2026.** Until then this document narrated steps 0–4 of the original build
