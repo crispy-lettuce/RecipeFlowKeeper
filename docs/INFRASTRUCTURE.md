@@ -241,7 +241,10 @@ checked instead with the query on its own page (read-only, 18:25 UTC that day: `
 `add_aisle_overrides` (`docs/migrations/add-aisle-overrides.md`, the `aisle_overrides` table for PR 6 of the add-recipe plan) was
 applied the same way the same evening, and checked read-only at 20:49 UTC, the minute PR #49 merged: the five columns, row-level
 security on, the four `TO authenticated` policies, the household foreign key, unique `(household_id, name)`, and no `anon` grant.
-Nothing is waiting to be applied.
+**Waiting to be applied, 30 Sep 2026:** `add_source_photos` (`docs/migrations/add-source-photos.md`: a private bucket,
+`recipe-sources`, with four `TO authenticated` policies, and one nullable `jsonb` column, `recipes.source_photos`, for step 1
+of `docs/PLAN-SOURCE-PHOTOS.md`). The household applies it from the SQL editor before merging the PR that carries it; the
+page has the queries that check it.
 
 ---
 

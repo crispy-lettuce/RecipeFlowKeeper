@@ -125,6 +125,40 @@
     return Promise.resolve(reply || { data: null, error: null });
   }
 
+  /* Storage, added 30 Sep 2026 for source photos (docs/PLAN-SOURCE-PHOTOS.md). A pretend bucket that
+     keeps what is uploaded, so a signed link can show it back, and records every call in __STORAGE__
+     ({bucket, op, path | paths, contentType, upsert}) so a check can see what went where, and when.
+       __STORAGE_FAIL__   every storage call fails as a dead network would
+       __STORAGE_FILES__  path → a URL to serve for it, for a file "already stored"
+     A signed link for a path nothing stored answers as storage does: not found. */
+  window.__STORAGE__ = [];
+  window.__STORAGE_FILES__ = window.__STORAGE_FILES__ || {};
+  function storageBucket(bucket){
+    const fail = () => window.__STORAGE_FAIL__ ? { data: null, error: { message: 'Failed to fetch' } } : null;
+    return {
+      upload(path, blob, opts){
+        window.__STORAGE__.push({ bucket, op: 'upload', path, size: blob && blob.size, contentType: opts && opts.contentType, upsert: !!(opts && opts.upsert) });
+        const f = fail(); if(f) return Promise.resolve(f);
+        window.__STORAGE_FILES__[path] = URL.createObjectURL(blob);
+        window.__LOG__.push('storage-done:upload');
+        return Promise.resolve({ data: { path }, error: null });
+      },
+      remove(paths){
+        window.__STORAGE__.push({ bucket, op: 'remove', paths });
+        const f = fail(); if(f) return Promise.resolve(f);
+        paths.forEach(p => { delete window.__STORAGE_FILES__[p]; });
+        window.__LOG__.push('storage-done:remove');
+        return Promise.resolve({ data: paths.map(name => ({ name })), error: null });
+      },
+      createSignedUrl(path, expiresIn){
+        window.__STORAGE__.push({ bucket, op: 'sign', path, expiresIn });
+        const f = fail(); if(f) return Promise.resolve(f);
+        const url = window.__STORAGE_FILES__[path];
+        return Promise.resolve(url ? { data: { signedUrl: url }, error: null } : { data: null, error: { message: 'Object not found' } });
+      }
+    };
+  }
+
   window.supabase = {
     createClient(){
       return {
@@ -135,7 +169,7 @@
           signInWithPassword(){ return Promise.resolve({ error: null }); },
           signOut(){ window.__SIGNOUTS__++; return Promise.resolve({ error: null }); }
         },
-        storage: { from(){ return { createSignedUrl(){ return Promise.resolve({data:null, error:null}); } }; } },
+        storage: { from: storageBucket },
         functions: { invoke }
       };
     }

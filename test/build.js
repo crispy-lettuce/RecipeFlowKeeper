@@ -26,7 +26,7 @@ const data = {
   recipes: [
     { id: R1, household_id: HOUSE, title: 'Test Pasta', source: 'Test Kitchen', source_url: null,
       image_url: null, time_text: '30 min', servings: 4, favourite: false, equipment: '',
-      tags: { course: 'Main', keywords: ['Pasta'] }, date_added: iso(-30),
+      tags: { course: 'Main', keywords: ['Pasta'] }, date_added: iso(-30), source_photos: null,
       syntax: [
         'TITLE: Test Pasta','SOURCE: Test Kitchen','TIME: 30 min','SERVINGS: 4','TAGS: course=Main, Pasta','',
         'GROUP pasta:','300 g dried pasta','',
@@ -37,7 +37,7 @@ const data = {
       ].join('\n') },
     { id: R2, household_id: HOUSE, title: 'Test Soup', source: 'Test Kitchen', source_url: null,
       image_url: null, time_text: '45 min', servings: 2, favourite: true, equipment: '',
-      tags: { course: 'Main', keywords: ['Veg'] }, date_added: iso(-10),
+      tags: { course: 'Main', keywords: ['Veg'] }, date_added: iso(-10), source_photos: null,
       syntax: [
         'TITLE: Test Soup','SOURCE: Test Kitchen','TIME: 45 min','SERVINGS: 2','TAGS: course=Main, Veg','',
         'GROUP base:','1 kg chopped tomatoes','1 onion, finely diced','',
@@ -55,7 +55,7 @@ const data = {
        correct save leaves behind. */
     { id: R3, household_id: HOUSE, title: 'Test Traybake', source: 'Test Kitchen', source_url: 'https://example.com/traybake',
       image_url: 'https://cdn.example.com/traybake.jpg', time_text: '50 min', servings: 4, favourite: false, equipment: '',
-      tags: { course: 'Main', keywords: ['Batch'] }, date_added: iso(-60),
+      tags: { course: 'Main', keywords: ['Batch'] }, date_added: iso(-60), source_photos: null,
       syntax: [
         'TITLE: Test Traybake','SOURCE: Test Kitchen','SOURCE_URL: https://example.com/traybake',
         'IMAGE: https://cdn.example.com/traybake.jpg','TIME: 50 min','SERVINGS: 4','TAGS: course=Main, Batch','',

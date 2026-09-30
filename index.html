@@ -878,6 +878,37 @@
   }
   .modal-close:hover{ border-color:var(--plum); color:var(--plum); }
 
+  /* ---- Source photos (docs/PLAN-SOURCE-PHOTOS.md) ---- */
+  .source-photos{ margin-bottom:16px; }
+  .source-photos-label{ display:block; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.08em; color:var(--ink-soft); margin-bottom:6px; }
+  .source-photo-list{ display:flex; flex-wrap:wrap; gap:12px; }
+  .source-photo-list:not(:empty){ margin-bottom:10px; }
+  .source-photo-thumb{ margin:0; width:180px; }
+  .source-photo-img{ display:block; width:180px; height:220px; object-fit:cover; border:1px solid var(--line); border-radius:var(--r); background:var(--well); }
+  .source-photo-thumb figcaption{ font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; color:var(--ink-soft); margin-top:4px; }
+  .source-photo-thumb figcaption button{ margin-left:6px; background:none; border:none; padding:0; cursor:pointer; color:var(--plum);
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; text-decoration:underline; text-underline-offset:2px; }
+  .prov-chip.prov-photo{ cursor:pointer; }
+  .prov-chip.prov-photo{ color:var(--ink); }
+  .photo-missing{ font-size:13px; color:var(--ink-soft); padding:12px; border:1px dashed var(--line); border-radius:var(--r); }
+  .photo-compare{ display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; margin-top:6px; }
+  .photo-compare-lines{ flex:1 1 260px; margin:0; padding-left:18px; font-size:14px; }
+  .photo-compare-photos{ flex:2 1 320px; max-height:70vh; overflow:auto; }
+  .photo-compare-img{ display:block; width:100%; margin-bottom:8px; }
+  /* Above the edit form (it opens from there too), below the toast. */
+  .photo-overlay{ position:fixed; inset:0; z-index:150; background:#141210; overflow:auto; display:none; }
+  .photo-overlay.open{ display:block; }
+  .photo-overlay-head{ position:sticky; top:0; display:flex; gap:16px; align-items:center; padding:12px 60px 12px 16px;
+    background:rgba(20,18,16,.96); color:#F4EFE6; font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.06em; }
+  .photo-overlay-tip{ color:#B8AFA2; font-size:10px; }
+  .photo-overlay-head .modal-close{ top:8px; right:12px; }
+  .source-photo-page{ margin:0 auto 24px; padding:0 8px; max-width:1200px; text-align:center; }
+  .source-photo-full{ display:block; width:100%; margin:0 auto; cursor:zoom-in; }
+  .source-photo-full.zoomed{ width:auto; max-width:none; cursor:zoom-out; }
+  .source-photo-page figcaption{ color:#B8AFA2; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.06em; margin-top:6px; }
+  .source-photo-page figcaption a{ color:#F4EFE6; }
+  .source-photo-page .photo-missing{ color:#B8AFA2; }
+
   /* ---- Meal-type prompt (H1) and the ad-hoc entry form (H2) ----
      A narrow panel rather than the full modal: both are a question and a
      handful of choices, and the recipe modal's 780px would make either
@@ -1806,6 +1837,13 @@
       <div class="field-row">
         <label><span>SOURCE URL</span><input type="text" id="f-source-url" placeholder="where this recipe came from — worth filling in, it's what makes a re-convert cheap"></label>
       </div>
+      <div class="source-photos" id="sourcePhotosBlock">
+        <span class="source-photos-label">SOURCE PHOTOS</span>
+        <div class="source-photo-list" id="sourcePhotoList"></div>
+        <button type="button" class="btn" id="addSourcePhotoBtn">ADD PHOTO</button>
+        <input type="file" id="sourcePhotoInput" accept="image/*" multiple hidden>
+        <div class="hint" id="sourcePhotoHint"></div>
+      </div>
       <div class="field-row">
         <label><span>EQUIPMENT (SIZE-SPECIFIC)</span><input type="text" id="f-equipment" placeholder="e.g. 20cm springform tin — leave blank if none"></label>
       </div>
@@ -1837,6 +1875,12 @@
       <p class="field-error" id="saveError" style="display:none;"></p>
     </div>
   </div>
+</div>
+
+<div class="photo-overlay" id="sourcePhotoOverlay" role="dialog" aria-modal="true" aria-label="Source photos">
+  <div class="photo-overlay-head"><span id="sourcePhotoTitle"></span><span class="photo-overlay-tip">TAP A PHOTO TO ZOOM</span>
+    <button type="button" class="modal-close" id="closeSourcePhotos" aria-label="Close">×</button></div>
+  <div id="sourcePhotoBody"></div>
 </div>
 
 <script src="core.js?v=2026-09-30.1"></script>
@@ -2678,7 +2722,12 @@ function recipeToRow(r){
        one, so a save that carries no comparison is the row it always was and works before the column
        exists; a recipe with none writes null by leaving it out, and in a batch a row without the key
        is written as null, which is what sending null would have done. */
-    ...(r.sourceCheck ? { source_check: r.sourceCheck } : {})
+    ...(r.sourceCheck ? { source_check: r.sourceCheck } : {}),
+    /* The photos the recipe was converted from (docs/PLAN-SOURCE-PHOTOS.md): the list, never the files.
+       Sent only when the recipe has a list, for the same reason as source_check. A recipe whose last photo
+       was removed carries an empty list, sent as null: leaving the key out would keep the old list, since
+       a one-row upsert only writes the columns it names. */
+    ...(Array.isArray(r.sourcePhotos) ? { source_photos: r.sourcePhotos.length ? r.sourcePhotos : null } : {})
   };
 }
 function rowToRecipe(row, historyById){
@@ -2696,7 +2745,8 @@ function rowToRecipe(row, historyById){
     syntax: row.syntax,
     history: historyById[row.id] || [],
     dateAdded: row.date_added,
-    sourceCheck: row.source_check || null
+    sourceCheck: row.source_check || null,
+    sourcePhotos: Array.isArray(row.source_photos) && row.source_photos.length ? row.source_photos : null
   };
 }
 
@@ -2767,6 +2817,10 @@ async function hydrate(opts){
   cache.diary = logs.data.map(rowToDiaryEntry);
 
   cache.recipes = recipes.data.map(row=>rowToRecipe(row, historyById));
+  /* `select('*')` names every column on every row, so a library whose rows lack source_photos is one
+     whose migration has not been applied yet (docs/migrations/add-source-photos.md). An empty library
+     cannot tell; the first upload would. */
+  sourcePhotosAvailable = !recipes.data.length || recipes.data.some(row=> 'source_photos' in row);
   cache.keywords = keywords.data.map(k=>k.name);
   cache.plan = {};
   planner.data.forEach(row=>{
@@ -3218,11 +3272,15 @@ function patchRecipe(id, patch){
    row). recipe_logs cascade on the server, and the diary in the cache
    already renders a missing recipe as "(deleted recipe)". */
 function deleteRecipe(id){
+  const gone = cache.recipes.find(r => r.id === id);
   cache.recipes = cache.recipes.filter(r => r.id !== id);
   queueWrite('recipes', async ()=>{
     const { error } = await sb.from('recipes').delete().eq('household_id', HOUSEHOLD_ID).eq('id', id);
     if(error) throw error;
   });
+  /* A recipe's source photos are its own, never shared (unlike a recipe image), so they go with it: after
+     the row, so the row never names a file already deleted. */
+  if(gone && gone.sourcePhotos) removeSourcePhotoFiles(gone.sourcePhotos.map(p => p.path));
   const p = loadPlan();
   Object.keys(p).forEach(date => {
     const entry = p[date];
@@ -4443,7 +4501,11 @@ function renderProvenance(recipe){
     chips.push({ cls: 'none', text: 'NOT COMPARED WITH ITS SOURCE', title: '' });
   }
   if(note) chips.push({ cls: note.reconstructed ? 'red' : 'note', text: 'CARRIES A SOURCE NOTE', title: note.line });
-  el.innerHTML = chips.map(c=> `<span class="prov-chip prov-${c.cls}" title="${escapeHtml(c.title)}">${escapeHtml(c.text.toUpperCase())}</span>`).join('');
+  const photos = (recipe.sourcePhotos || []).length;
+  if(photos) chips.push({ cls: 'photo', text: photos === 1 ? 'SOURCE PHOTO' : `SOURCE PHOTOS · ${photos}`, title: 'The photo this recipe was converted from', button: true });
+  el.innerHTML = chips.map(c=> c.button
+    ? `<button type="button" class="prov-chip prov-${c.cls}" data-source-photos title="${escapeHtml(c.title)}">${escapeHtml(c.text.toUpperCase())}</button>`
+    : `<span class="prov-chip prov-${c.cls}" title="${escapeHtml(c.title)}">${escapeHtml(c.text.toUpperCase())}</span>`).join('');
 }
 function renderViewer(){
   const recipe = loadRecipes().find(r=>r.id === state.selectedRecipeId);
@@ -6223,6 +6285,230 @@ function applyKeywordSuggestion(keyword){
   });
 })();
 
+/* ---- Source photos (docs/PLAN-SOURCE-PHOTOS.md, agreed 30 Sep 2026) ----
+   The photo or screenshot a recipe was converted from, kept so it can be checked against later, as a
+   web recipe keeps its link. The files live in a PRIVATE bucket (a scanned cookbook page is someone
+   else's work) under the household's folder, and are shown through links signed for an hour; the
+   recipe row keeps only the list, `sourcePhotos`: [{ path, added }], in page order.
+
+   Nothing is stored until SAVE, so a form closed without saving leaves nothing behind. SAVE queues the
+   uploads BEFORE the row, so the row never names a file that was not at least on its way, and the
+   deletions AFTER it, so a row never names a file already gone. A failed upload does not hold up the
+   recipe's text: it waits in the write queue and is sent again with the next write, and until then this
+   tab shows the photo from memory. */
+const SOURCE_PHOTO_BUCKET = 'recipe-sources';
+/* 2000 px on the long edge at JPEG 80 % keeps a cookbook page's small print legible at about half a
+   megabyte (the plan's §6.2); the free plan's 1 GB then holds a couple of thousand pages. */
+const SOURCE_PHOTO_EDGE = 2000;
+const SOURCE_PHOTO_QUALITY = 0.8;
+/* False once a load has found recipe rows without the column: the migration is not applied yet. */
+let sourcePhotosAvailable = true;
+/* The open form's photos: stored ones { path, added }, new ones { added, blob, url } until SAVE gives them
+   a path. `formPhotosRemoved` is the stored paths REMOVE took out, deleted by SAVE and not before. */
+let formPhotos = [];
+let formPhotosRemoved = [];
+/* path → a link this tab can show it by: an object URL for a photo added here (kept for the session, so
+   it shows before and while it uploads, and offline), or a signed link with the time it stops working. */
+const localPhotoUrls = new Map();
+const signedPhotoUrls = new Map();
+
+function sourcePhotoStore(){ return sb.storage.from(SOURCE_PHOTO_BUCKET); }
+async function sourcePhotoUrl(path){
+  if(localPhotoUrls.has(path)) return localPhotoUrls.get(path);
+  const hit = signedPhotoUrls.get(path);
+  if(hit && hit.until > Date.now()) return hit.url;
+  const { data, error } = await sourcePhotoStore().createSignedUrl(path, 3600);
+  if(error || !data || !data.signedUrl) throw error || new Error('No link for ' + path);
+  /* Reused for 50 minutes of the hour, so a link handed out is never one about to stop working. */
+  signedPhotoUrls.set(path, { url: data.signedUrl, until: Date.now() + 50 * 60 * 1000 });
+  return data.signedUrl;
+}
+function uploadSourcePhotos(items){
+  if(!items.length) return;
+  items.forEach(it=> localPhotoUrls.set(it.path, it.url || URL.createObjectURL(it.blob)));
+  /* One write for the lot, so a retry sends them all again: upsert, so a file that landed the first
+     time is simply replaced by itself. */
+  queueWrite('the source photos', async ()=>{
+    for(const it of items){
+      const { error } = await sourcePhotoStore().upload(it.path, it.blob, { contentType: 'image/jpeg', upsert: true });
+      if(error) throw error;
+    }
+  });
+}
+function removeSourcePhotoFiles(paths){
+  if(!paths.length) return;
+  paths.forEach(p=>{
+    signedPhotoUrls.delete(p);
+    if(localPhotoUrls.has(p)){ URL.revokeObjectURL(localPhotoUrls.get(p)); localPhotoUrls.delete(p); }
+  });
+  queueWrite('the source photos', async ()=>{
+    const { error } = await sourcePhotoStore().remove(paths);
+    if(error) throw error;
+  });
+}
+/* Shrunk in the browser before anything is sent. createImageBitmap is asked to turn the picture the
+   way the camera held it (a phone photo is often stored sideways with a note saying so); an older
+   browser that does not know the option is asked again without it. A white ground first, so a
+   screenshot's transparent parts do not turn black as JPEG. */
+async function shrinkSourcePhoto(file){
+  let bmp;
+  try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+  catch(e){ bmp = await createImageBitmap(file); }
+  const scale = Math.min(1, SOURCE_PHOTO_EDGE / Math.max(bmp.width, bmp.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(bmp.width * scale));
+  canvas.height = Math.max(1, Math.round(bmp.height * scale));
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  if(bmp.close) bmp.close();
+  return new Promise((resolve, reject)=> canvas.toBlob(b=> b ? resolve(b) : reject(new Error('Could not shrink the photo')), 'image/jpeg', SOURCE_PHOTO_QUALITY));
+}
+async function addSourcePhotoFiles(files){
+  let failed = 0;
+  for(const file of files){
+    try {
+      const blob = await shrinkSourcePhoto(file);
+      formPhotos.push({ added: new Date().toISOString(), blob, url: URL.createObjectURL(blob) });
+    } catch(e){ console.warn('Source photo not read', file && file.name, e); failed++; }
+  }
+  if(failed) showToast(failed === 1 ? "Couldn't read that picture. Try a JPEG or PNG." : `Couldn't read ${failed} of those pictures. Try JPEG or PNG.`);
+  renderFormPhotos();
+}
+/* What SAVE does with the form's photos, worked out once: null when nothing changed (the recipe keeps
+   the list it has, and the key stays out of the row), else the new list, the files to send and the
+   files to delete. New photos get their paths here, under the household's folder and the recipe's id. */
+function settleFormPhotos(recipeId){
+  const fresh = formPhotos.filter(p=> !p.path);
+  if(!fresh.length && !formPhotosRemoved.length) return null;
+  const uploads = [];
+  const list = formPhotos.map(p=>{
+    if(p.path) return { path: p.path, added: p.added };
+    const path = `${HOUSEHOLD_ID}/${recipeId}/${Date.now().toString(36)}-${uid().slice(0, 8)}.jpg`;
+    uploads.push({ path, blob: p.blob, url: p.url });
+    return { path, added: p.added };
+  });
+  return { list, uploads, removals: formPhotosRemoved.slice() };
+}
+function resetFormPhotos(recipe){
+  /* A new photo's object URL is let go unless SAVE handed it on to be shown from (localPhotoUrls). */
+  const kept = new Set(localPhotoUrls.values());
+  formPhotos.forEach(p=>{ if(p.url && !p.path && !kept.has(p.url)) URL.revokeObjectURL(p.url); });
+  formPhotos = recipe && Array.isArray(recipe.sourcePhotos) ? recipe.sourcePhotos.map(p=> ({ path: p.path, added: p.added })) : [];
+  formPhotosRemoved = [];
+  renderFormPhotos();
+}
+/* Fills every <img data-photo-path> under `root` once its link is known; a photo that cannot be shown
+   (offline, or its upload has not landed yet) says so in its place. */
+function loadPhotoImages(root){
+  root.querySelectorAll('img[data-photo-path]').forEach(img=>{
+    const path = img.dataset.photoPath;
+    sourcePhotoUrl(path).then(url=>{
+      if(!img.isConnected || img.dataset.photoPath !== path) return;
+      img.src = url;
+      const link = img.closest('figure') && img.closest('figure').querySelector('[data-photo-open]');
+      if(link) link.href = url;
+    }).catch(err=>{
+      console.warn('Source photo not shown', path, err);
+      if(img.isConnected) img.replaceWith(Object.assign(document.createElement('div'), {
+        className: 'photo-missing', textContent: "Can't show this photo now: offline, or it hasn't finished uploading." }));
+    });
+  });
+}
+function photoImgHtml(p, cls){
+  return p.path
+    ? `<img class="${cls}" data-photo-path="${escapeHtml(p.path)}" alt="Source photo">`
+    : `<img class="${cls}" src="${escapeHtml(p.url)}" alt="Source photo">`;
+}
+function renderFormPhotos(){
+  const list = document.getElementById('sourcePhotoList');
+  const hint = document.getElementById('sourcePhotoHint');
+  const addBtn = document.getElementById('addSourcePhotoBtn');
+  if(!list) return;
+  list.innerHTML = formPhotos.map((p, i)=>
+    `<figure class="source-photo-thumb">${photoImgHtml(p, 'source-photo-img')}` +
+    `<figcaption>PAGE ${i + 1}${p.path ? '' : ' · NEW'} <button type="button" data-photo-view="${i}">VIEW</button>` +
+    ` <button type="button" data-photo-remove="${i}">REMOVE</button></figcaption></figure>`).join('');
+  loadPhotoImages(list);
+  addBtn.disabled = !sourcePhotosAvailable;
+  hint.textContent = !sourcePhotosAvailable
+    ? "Source photos aren't set up yet: the database change in docs/migrations/add-source-photos.md has not been applied."
+    : formPhotosRemoved.length && !formPhotos.length
+      ? 'The photo goes when you save.'
+      : 'The photo or screenshot this recipe was converted from, kept privately to check it against later. Stored when you save.';
+  renderPhotoCompare();
+  /* At once, not debounced: a picture takes a moment to shrink, and the list should not lag behind it. */
+  renderBeforeSave();
+}
+/* In AGAINST THE SOURCE, the recipe's ingredient lines beside its photo, to check by eye: no comparison
+   can read a photo, but the household can. */
+function renderPhotoCompare(){
+  const box = document.getElementById('sourcePhotoCompare');
+  if(!box) return;
+  if(!formPhotos.length){ box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="hint">Or check them against the source photo:</div><div class="photo-compare">` +
+    `<ul class="photo-compare-lines">${reviewLines.map(l=> `<li>${escapeHtml(l)}</li>`).join('')}</ul>` +
+    `<div class="photo-compare-photos">${formPhotos.map(p=> photoImgHtml(p, 'photo-compare-img')).join('')}</div></div>`;
+  loadPhotoImages(box);
+}
+document.getElementById('addSourcePhotoBtn').addEventListener('click', ()=> document.getElementById('sourcePhotoInput').click());
+document.getElementById('sourcePhotoInput').addEventListener('change', e=>{
+  const files = Array.from(e.target.files || []);
+  e.target.value = '';
+  if(files.length) addSourcePhotoFiles(files);
+});
+document.getElementById('sourcePhotoList').addEventListener('click', e=>{
+  const rm = e.target.closest('[data-photo-remove]');
+  const view = e.target.closest('[data-photo-view]');
+  if(rm){
+    const [p] = formPhotos.splice(Number(rm.dataset.photoRemove), 1);
+    if(p && p.path) formPhotosRemoved.push(p.path);
+    else if(p && p.url) URL.revokeObjectURL(p.url);
+    renderFormPhotos();
+  } else if(view){
+    openSourcePhotoViewer(formPhotos, document.getElementById('f-title').value.trim(), Number(view.dataset.photoView));
+  }
+});
+
+/* Full screen, one page under the next. A tap on a photo shows it at its own size, to read small print
+   by scrolling; OPEN FULL SIZE hands it to the browser, where the tablet's own pinch-to-zoom works. */
+function openSourcePhotoViewer(photos, title, startAt){
+  const overlay = document.getElementById('sourcePhotoOverlay');
+  const n = photos.length;
+  document.getElementById('sourcePhotoTitle').textContent = `${title || 'Recipe'} · SOURCE ${n === 1 ? 'PHOTO' : 'PHOTOS · ' + n}`;
+  const body = document.getElementById('sourcePhotoBody');
+  body.innerHTML = photos.map((p, i)=>
+    `<figure class="source-photo-page" id="sourcePhotoPage${i}">${photoImgHtml(p, 'source-photo-full')}` +
+    `<figcaption>PAGE ${i + 1} OF ${n}${p.added ? ' · ADDED ' + escapeHtml(formatDate(isoLocal(new Date(p.added))).toUpperCase()) : ''}` +
+    ` · <a data-photo-open target="_blank" rel="noopener"${p.path ? '' : ` href="${escapeHtml(p.url)}"`}>OPEN FULL SIZE ↗</a></figcaption></figure>`).join('');
+  loadPhotoImages(body);
+  overlay.classList.add('open');
+  overlay.scrollTop = 0;
+  if(startAt){ const page = document.getElementById('sourcePhotoPage' + startAt); if(page) page.scrollIntoView(); }
+}
+function closeSourcePhotoViewer(){
+  const overlay = document.getElementById('sourcePhotoOverlay');
+  if(!overlay.classList.contains('open')) return false;
+  overlay.classList.remove('open');
+  document.getElementById('sourcePhotoBody').innerHTML = '';
+  return true;
+}
+document.getElementById('closeSourcePhotos').addEventListener('click', closeSourcePhotoViewer);
+document.getElementById('sourcePhotoBody').addEventListener('click', e=>{
+  const img = e.target.closest('.source-photo-full');
+  if(img) img.classList.toggle('zoomed');
+});
+/* Capture, so Escape shuts the photo and not the edit form underneath it. */
+document.addEventListener('keydown', e=>{
+  if(e.key === 'Escape' && closeSourcePhotoViewer()) e.stopImmediatePropagation();
+}, true);
+document.getElementById('viewerProvenance').addEventListener('click', e=>{
+  if(!e.target.closest('[data-source-photos]')) return;
+  const recipe = loadRecipes().find(r=> r.id === state.selectedRecipeId);
+  if(recipe && recipe.sourcePhotos && recipe.sourcePhotos.length) openSourcePhotoViewer(recipe.sourcePhotos, recipe.title, 0);
+});
+
 function openAddModal(){
   state.editingRecipeId = null;
   document.getElementById('modalTitle').textContent = 'Add a recipe';
@@ -6230,6 +6516,7 @@ function openAddModal(){
     'Paste the syntax from your recipe-conversion chat, check the preview, then fill in anything missing.';
   document.getElementById('saveBtn').textContent = 'SAVE RECIPE';
   fillTagSelects();
+  resetFormPhotos(null);
   const overlay = document.getElementById('addModalOverlay');
   overlay.classList.add('open');
   overlay.scrollTop = 0;
@@ -6261,6 +6548,7 @@ function openEditModal(recipeId){
   document.getElementById('f-equipment').value = recipe.equipment || '';
   document.getElementById('f-image').value = recipe.imageUrl || '';
   document.getElementById('f-source-url').value = recipe.sourceUrl || '';
+  resetFormPhotos(recipe);
 
   const tags = recipe.tags || {};
   [['f-course', tags.course]]
@@ -6301,6 +6589,7 @@ function closeAddModal(){
   document.getElementById('f-source-url').value = '';
   lastCheckedUrl = ''; lastSourceLines = null; bandsShown = false; reviewLines = [];
   lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null; formValidated = null; aisleUndo = null;
+  resetFormPhotos(null); closeSourcePhotoViewer();
   clearTimeout(beforeSaveTimer); renderBeforeSave();
   clearBandsStale();
   document.getElementById('saveError').style.display = 'none';
@@ -7273,6 +7562,9 @@ function beforeSaveLines(){
   } else if(!stored && /^https:\/\//i.test(fields.sourceUrl || '')){
     out.push('Records: not compared with its source');
   }
+  const newPhotos = formPhotos.filter(p=> !p.path).length;
+  if(newPhotos) out.push(`Stores ${newPhotos === 1 ? 'the new source photo' : newPhotos + ' new source photos'} with the recipe`);
+  if(formPhotosRemoved.length) out.push(`Deletes ${formPhotosRemoved.length === 1 ? 'the source photo' : formPhotosRemoved.length + ' source photos'} you removed`);
   if(state.editingRecipeId && state.viewerTicks[state.editingRecipeId] && state.viewerTicks[state.editingRecipeId].size){
     out.push('Resets the ticks on this recipe\'s diagram');
   }
@@ -7598,7 +7890,7 @@ function renderLineChecks(parsed){
     `<div class="hint">Some sites turn that check away. Then select the ingredients on the page, copy them and paste them here, one to a line:</div>` +
     `<textarea id="sourcePasteInput" rows="4" spellcheck="false" placeholder="500 g chicken breast&#10;2 tbsp olive oil&#10;…"></textarea>` +
     `<div class="hint"><button type="button" id="comparePastedBtn">COMPARE PASTED LIST</button></div>` +
-    `<div id="sourceCompareOut"></div></div></div>` +
+    `<div id="sourceCompareOut"></div><div id="sourcePhotoCompare"></div></div></div>` +
     `<div class="rv-section" id="reviewList"><h4>SHOPPING LIST</h4>${reviewListHtml(review)}</div>` +
     `<div id="reviewDuplicate">${duplicateHtml(review)}</div>`;
   box.innerHTML = html;
@@ -7607,6 +7899,7 @@ function renderLineChecks(parsed){
      a list fetched from another tab is the one thing here that is a chore to
      redo — so it is kept in step with what was typed and put back. */
   document.getElementById('sourcePasteInput').value = pastedSourceText;
+  renderPhotoCompare();
   /* A comparison the form fetched by itself is redrawn against the lines as they are now,
      with no second fetch. A failed one is not replayed: its message was shown once, and a
      re-parse clears the box as it always has. */
@@ -7989,6 +8282,10 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
      the row is built from. Until 22 Sep only TITLE: was; until 23 Sep only
      TITLE: and IMAGE: — see withUpdatedHeaderLines for what that cost. */
   fields.syntax = withUpdatedHeaderLines(text, fields);
+  /* The id comes first now: a new photo is stored under it. */
+  const recipeId = state.editingRecipeId || uid();
+  const photos = settleFormPhotos(recipeId);
+  if(photos) fields.sourcePhotos = photos.list;
 
   const recipes = loadRecipes();
   mergeKeywordVocab(keywords);
@@ -7999,7 +8296,9 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     // id, history, and dateAdded survive an edit untouched — editing is
     // about the recipe's details, not a new entry replacing its record.
     recipes[idx] = { ...recipes[idx], ...fields };
+    if(photos) uploadSourcePhotos(photos.uploads);
     saveRecipe(recipes[idx]);
+    if(photos) removeSourcePhotoFiles(photos.removals);
     /* Before closeAddModal() below, which nulls state.editingRecipeId. */
     rehostImageFor(state.editingRecipeId, fields.imageUrl || '');
     /* An edit can move the groups and stages around, and a tick is a
@@ -8013,7 +8312,8 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     openRecipe(editedId, returnTo);
     showToast(`Saved changes to "${fields.title}"`);
   } else {
-    const recipe = { id: uid(), ...fields, history: [], dateAdded: todayStr() };
+    const recipe = { id: recipeId, ...fields, history: [], dateAdded: todayStr() };
+    if(photos) uploadSourcePhotos(photos.uploads);
     saveRecipe(recipe);
     rehostImageFor(recipe.id, fields.imageUrl || '');
     closeAddModal();

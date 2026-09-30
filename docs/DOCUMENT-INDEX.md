@@ -105,6 +105,14 @@ useful with no Claude Code session and no prior context at all.
 
 ---
 
+### `docs/migrations/add-source-photos.md` — a schema change, waiting for the household (30 Sep 2026)
+**What:** Step 1 of `docs/PLAN-SOURCE-PHOTOS.md`: a private storage bucket, `recipe-sources`, with the same four
+folder-per-household policies as `recipe-images`, and one nullable `jsonb` column, `recipes.source_photos`. Who applies it
+and when (the household, from the dashboard, **before** merging the PR that carries it), why each part is there, how to
+check it and how to undo it. DDL only, no data.
+
+**Use it when:** applying it, or checking whether it has been. `docs/INFRASTRUCTURE.md` lists it as waiting until then.
+
 ### `docs/migrations/add-aisle-overrides.md` — a schema change, applied by the household 29 Sep 2026
 **What:** The `aisle_overrides` table (PR 6 of the add-recipe plan), with its four `TO authenticated` policies and the
 `anon` revoke, who applies it and when (the household, from the dashboard, **before** merging that PR), why each part is
@@ -311,6 +319,16 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
+### `docs/PLAN-SOURCE-PHOTOS.md` — keeping the photo a recipe was converted from (30 Sep 2026; agreed, steps 1 and 2 built)
+**What:** The household's ask to keep the photo or screenshot a recipe was converted from, as a web recipe keeps its link.
+What exists today, the proposal (a private bucket, a `source_photos` column, ADD PHOTO in the form, shrunk to 2000 px,
+uploaded on SAVE, shown by signed link, deleted with the recipe), the order of work in three steps, what it does not do, and
+the household's five answers ("all as suggested").
+
+**Use it when:** building the next step, or asked where a recipe's source photo lives.
+
+---
+
 ### `docs/PLAN-LAYOUT.md` — layout changes: edit dialog, cooking mode, step text, aisle box, Settings (30 Sep 2026; all five built, merged and passed on the tablet)
 **What:** Five layout changes the household asked for on 30 Sep, lettered A to E as they lettered them, each with what the
 app does now, what was decided and why, and what was considered and not chosen. All `index.html` only, no data change.
@@ -392,7 +410,7 @@ to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.m
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 385-check smoke suite, the 143 Node checks and the Edge Function checks, and an honest account of what it can't tell you
+**What:** How to run the 397-check smoke suite, the 143 Node checks and the Edge Function checks, and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 
 **Use it when:** making any code change.

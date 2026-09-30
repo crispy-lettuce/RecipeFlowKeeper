@@ -1752,6 +1752,44 @@ text now includes the VALIDATE button on a fresh comparison (the stale and none 
 the validation carried on a stale check (failed by name); on the page, no VALIDATED chip, the stored validation not saved, the form's
 not saved, no reset on a new comparison, LIBRARY CHECK ignoring it, UNDO not wired, and OPEN SOURCE opening any value each failed by
 name; OPEN SOURCE in the same tab crashed the run by navigating away. *Not verified:* the tablet (`docs/TEST-PLAN.md` step 38a).
+*Merged 30 Sep 15:01 UTC as PR #62,* on a green `offline-harness` run. *Tablet:* 38a reported "OK" by the household, 30 Sep.
+
+**Source photos, step 1: the migration (30 Sep 2026).** The household asked to keep the photo or screenshot a recipe was
+converted from, as a web recipe keeps its link. `docs/PLAN-SOURCE-PHOTOS.md` was agreed "all as suggested" the same day. This
+step is `docs/migrations/add-source-photos.md` only: a **private** bucket, `recipe-sources` (images and PDF, 10 MB), with the
+four folder-per-household policies of `recipe-images` renamed and `TO authenticated`, and one nullable `jsonb` column,
+`recipes.source_photos`, checked to be a list. Drafted from the live bucket and its policies, read-only at 15:10 UTC. **Not
+applied:** the household applies it from the SQL editor before merging. No app change, so the tests are unchanged.
+Also found while planning: the nightly `pg_dump` holds the database only, so neither it nor the JSON export will hold the photos
+themselves (the plan's §6.5, accepted).
+
+**Source photos, step 2: attach, store, view, tidy (30 Sep 2026).** `index.html` only; no `core.js` change. In the add/edit form,
+under SOURCE URL, **SOURCE PHOTOS** with **ADD PHOTO** (`accept="image/*"`, so the tablet offers camera or gallery), a thumbnail per
+page with VIEW and REMOVE. Each picture is shrunk in the browser to 2000 px on its long edge, JPEG at 80 % (`shrinkSourcePhoto`,
+turned the way the camera held it). **Nothing is stored until SAVE:** it uploads new pages to `recipe-sources` under
+`<household_id>/<recipe_id>/`, queued **before** the row, writes `source_photos` (`[{path, added}]`, page order) with the row, and
+deletes removed pages **after** it; a form closed unsaved stores nothing. A failed upload does not hold up the recipe: it waits in
+the write queue, is sent again with the next write, and this tab shows the page from memory meanwhile. BEFORE YOU SAVE names what
+is stored and deleted. The viewer shows a **SOURCE PHOTO / SOURCE PHOTOS · n** chip (hidden in cooking mode with the other chips)
+opening the pages full screen by links signed for an hour: a tap shows a page at its own size, OPEN FULL SIZE ↗ hands it to the
+browser for pinch-to-zoom. Under **AGAINST THE SOURCE** the ingredient lines sit beside the photos, to check by eye (whenever the
+form has photos, not only without a web link, which the plan had said; a screenshot of a web page is as useful to check against).
+Deleting a recipe deletes its photos, after the row. `recipeToRow` sends `source_photos` only when the recipe has a list (an
+emptied one as null, since a one-row upsert keeps a column it does not name), so an ordinary save is unchanged. **If a load finds
+rows without the column** (the migration not applied), ADD PHOTO is off and says why. Not in the app: PDF (the bucket allows it,
+for later).
+
+*Verified by.* `core.test.js` 143, unchanged. `smoke.js` **385 → 397**, both exit 0. The stub gained a pretend bucket
+(`__STORAGE__`, `__STORAGE_FAIL__`, `storage-done:` in `__LOG__`), and the fixture rows `source_photos: null`. **Twenty mutations:**
+all twenty failed a check by name: no shrinking, the width alone taken as the long edge, the upload after the row, the deletion
+before it, an emptied list not sent as null, the column always sent, a week-long link, no copy kept in the tab, no deletion with the
+recipe, the column always taken as present, no comparison beside the photo, Escape leaking to the viewer, no zoom, a closed form
+keeping its photos, BEFORE YOU SAVE silent, REMOVE deleting at once, a failed upload not retried, ADD PHOTO on without the column,
+the chip without its count, and the public bucket. (The upload-after-row run first crashed at check 324, long before the photo
+checks, with four suites running at once; alone it failed by name. The crash was not reproduced.) *Screenshots* at 1280×800 and 412 wide (outside the repo): the form's section, the comparison beside the photo, the
+chip, the full-screen view. *Not verified:* the real bucket and its policies (the stub is not Supabase), the tablet's camera
+route, EXIF turning on a real phone photo, and whether 2000 px keeps a cookbook's small print legible: `docs/TEST-PLAN.md` step
+38b, after the migration is applied.
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
