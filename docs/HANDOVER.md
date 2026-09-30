@@ -1653,6 +1653,18 @@ mid-row with its words at the far edge; a more specific rule keeps it its own si
 412×560 with the box at the foot of the screen (list above it) and at the top (list below), plus the tick box's width. Seen
 failing: never opening above, always opening above (which also fails the placement check), and the tick box at 150px (the first
 fix lost to the later rule of equal weight). Screenshot at 412×560, dark: the list above the box, opaque.
+*Tablet:* 36k reported "broadly ok" by the household, 30 Sep.
+
+**Layout, C and A (30 Sep 2026), the first PR of `docs/PLAN-LAYOUT.md`.** Planned with mockups and agreed "all as suggested"
+the same day. **C:** a step's words sit at the foot of its box (`vertical-align: bottom` on `.box-cell`), level with the last
+ingredient into it, on screen, in print and in the PNG, since print has no rule of its own for it. **A:** the add/edit dialog
+fills the screen less 20px, to 1600px (`#addModalOverlay` only; it is the one `.modal-panel`), and the recipe box is
+`max(240px, 50vh)` tall. `index.html` only.
+
+*Verified by.* `smoke.js` **367 → 369**, `core.test.js` 142, both exit 0, no other check changed. **Four page mutations, each
+seen failing by name:** the bottom alignment removed, a print rule putting it back to the middle, the dialog's width cap put
+back, and the recipe box's height put back. Screenshots at 1280×800 of Test Pasta and its edit dialog. *Not verified:* the
+tablet (`docs/TEST-PLAN.md` step 37a).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all

@@ -7,7 +7,9 @@ Two things live here: **the order work should happen in**, with the reasoning, a
 things stand (the add-recipe plan's PRs are all merged, both migrations applied, tablet passes 36a to 36i done). **§7,
 autocomplete on the ingredient boxes in Settings and Swaps, was built on 30 Sep**; its tablet pass is `docs/TEST-PLAN.md` step
 36j; on the tablet its native list covered the screen, so it was **rebuilt the same day as the app's own capped dropdown**
-(tablet step 36k). What is left for the household: step 36k, converter test 9, and D6 (repairing the two reconstructed recipes).
+(tablet step 36k, reported "broadly ok"). **The next piece of work is `docs/PLAN-LAYOUT.md`**, five layout changes agreed on
+30 Sep: C and A are built; D, B and E follow, in that order. Also left for the household: converter test 9, and D6 (repairing
+the two reconstructed recipes).
 
 **Rewritten 23 Sep 2026.** Until then this document narrated steps 0–4 of the original build
 (reprocess, ingest, test pass, merge, images), all done by 22 Sep and recorded in
@@ -77,8 +79,8 @@ They were added on 27 Sep so that any model can hold the line. `main` is protect
 
 **Done since the last rewrite.** 6d-1 (PR #25), 6d-2 (PR #26) and 7a+7b (PR #27, the onboarding
 runbook plus the RLS migration) are all merged — `docs/HANDOVER.md` §7 has what was verified and
-how for each. Leaked-password protection is still off; it's a dashboard toggle, not something a
-session can do.
+how for each. Leaked-password protection is still off, and stays off: it is a paid-plan feature in Supabase and the
+household is on the free plan (confirmed by the household, 30 Sep 2026). Not an open item.
 
 **7c, the weekly live-backend test — two real bugs found, one in the test, one in the app.**
 `scripts/weekly-live-check.js` and `.github/workflows/weekly-live-check.yml` (`PrivateBackup`, not
