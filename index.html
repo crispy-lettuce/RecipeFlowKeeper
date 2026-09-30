@@ -1134,6 +1134,16 @@
     max-width:760px; margin:0 30px;
   }
   .swaps-list{ display:flex; flex-direction:column; gap:8px; max-width:760px; margin:22px 30px 40px; }
+  /* Swaps lives in Settings since 30 Sep 2026, inside a block that already has the page's margins. */
+  .settings-block .swap-form{ margin:0; }
+  .settings-block .swaps-list{ margin:16px 0 0; }
+  /* Settings' three tabs (showSettingsTab). Pinned, so another tab is one tap away however far down you are. */
+  .settings-tabs{ position:sticky; top:0; z-index:5; background:var(--paper); display:flex; gap:8px; flex-wrap:wrap;
+    padding:12px 0; border-bottom:1px solid var(--line); }
+  .settings-tabs .btn.active{ background:var(--plum); border-color:var(--plum); color:var(--on-accent); }
+  #dictionaryToggle{ margin-bottom:10px; }
+  /* The hidden attribute loses to .sources-list's display:flex and the like without this. */
+  #view-settings .settings-block[hidden], #dictionaryList[hidden], #dictionaryToggle[hidden]{ display:none !important; }
   .swap-row-detail{ font-size:12.5px; color:var(--ink-mute); margin-top:3px; }
   .swap-row-ratio{
     font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--ink-faint);
@@ -1381,7 +1391,6 @@
     <button class="navlink" data-view="shortlist" id="navShortlist">SHORTLIST</button>
     <button class="navlink" data-view="shopping" id="navShopping">SHOPPING</button>
     <button class="navlink" data-view="history">HISTORY</button>
-    <button class="navlink" data-view="swaps">SWAPS</button>
     <button class="navlink" data-view="settings">SETTINGS</button>
 
     <div class="side-rule"></div>
@@ -1572,32 +1581,6 @@
       </div>
     </section>
 
-    <!-- ================= SWAPS ================= -->
-    <section id="view-swaps" class="view">
-      <div class="filter-head">
-        <div>
-          <h1>Swaps</h1>
-          <p class="subtle" style="margin:4px 0 0;" id="swapsSubtitle">Your own ingredient substitutions,
-            built up over time. Each carries a scaling ratio. A swap applies wherever the
-            shopping list would call an ingredient by the swap's name, so "butter" never
-            catches "peanut butter".</p>
-        </div>
-      </div>
-      <div class="swap-form">
-        <div class="field-row">
-          <label><span>ORIGINAL INGREDIENT</span><input type="text" id="swap-original" autocomplete="off" placeholder="e.g. brown rice syrup"></label>
-          <label><span>REPLACEMENT</span><input type="text" id="swap-replacement" autocomplete="off" placeholder="e.g. maple syrup"></label>
-        </div>
-        <div class="field-row">
-          <label><span>RATIO (ORIGINAL × THIS = REPLACEMENT)</span><input type="number" id="swap-ratio" placeholder="e.g. 0.75" min="0" step="0.01"></label>
-          <label><span>NOTES (OPTIONAL)</span><input type="text" id="swap-notes" placeholder="e.g. slightly sweeter, reduce other sugar"></label>
-        </div>
-        <button class="btn primary" id="swapAddBtn">ADD SWAP</button>
-        <p class="field-error" id="swapError" style="display:none;"></p>
-      </div>
-      <div id="swapsList" class="swaps-list"></div>
-    </section>
-
     <!-- ================= SETTINGS ================= -->
     <section id="view-settings" class="view">
       <div class="filter-head">
@@ -1608,48 +1591,13 @@
         </div>
       </div>
       <div class="settings-body">
-        <div class="settings-block">
-          <div class="side-label">WEEK STARTS ON</div>
-          <p class="subtle">Your planner and shopping list group days into weeks that
-            start on this day. Friday suits a Friday shop.</p>
-          <select class="sort" id="setWeekStart" aria-label="Day the week starts on"></select>
+        <!-- Three tabs (E of docs/PLAN-LAYOUT.md, 30 Sep 2026): see showSettingsTab. -->
+        <div class="settings-tabs" role="tablist" aria-label="Settings sections">
+          <button class="btn" role="tab" data-settings-tab-btn="ingredients">INGREDIENTS</button>
+          <button class="btn" role="tab" data-settings-tab-btn="library">LIBRARY</button>
+          <button class="btn" role="tab" data-settings-tab-btn="app">APP</button>
         </div>
-
-        <div class="settings-block">
-          <div class="side-label">APPEARANCE</div>
-          <p class="subtle">Follow the system and the app changes when your device does,
-            which on most tablets means it goes dark in the evening. Light and dark
-            override that. The choice is shared with the household, like every other
-            setting here.</p>
-          <select class="sort" id="setDarkMode" aria-label="Appearance"></select>
-        </div>
-
-        <div class="settings-block">
-          <div class="side-label">RECIPE PHOTOS</div>
-          <p class="subtle">Photos are copied into your own storage automatically when you save a
-            recipe. These are for the times that cannot cover: after restoring a backup, or after
-            saving while offline.</p>
-          <div class="alias-form">
-            <button class="btn" id="rehostSweepBtn">RE-HOST EXTERNAL IMAGES</button>
-            <button class="btn" id="verifyImagesBtn">CHECK STORED IMAGES</button>
-          </div>
-          <p class="subtle" id="imagesSweepResult" style="display:none;"></p>
-        </div>
-
-        <div class="settings-block" id="libraryCheck">
-          <div class="side-label">LIBRARY CHECK</div>
-          <p class="subtle">Every recipe, with what is known about its match to the page it came from and the
-            names it puts in Other, those needing attention first. Nothing is changed here: OPEN a recipe to
-            compare it with its source and save, and this list is the record.</p>
-          <div class="alias-form">
-            <button class="btn" id="libraryCheckRunBtn">RUN</button>
-            <label class="subtle lc-only"><input type="checkbox" id="libraryCheckOnly"> only those needing attention</label>
-          </div>
-          <p class="subtle" id="libraryCheckSummary"></p>
-          <div id="libraryCheckList" class="sources-list"></div>
-        </div>
-
-        <div class="settings-block" id="ingredientLookupBlock">
+        <div class="settings-block" data-settings-tab="ingredients" id="ingredientLookupBlock">
           <div class="side-label">INGREDIENT LOOKUP</div>
           <p class="subtle">Type an ingredient as a recipe would write it, to see what the shopping list
             calls it, where it goes and why, and what you have already told the app about it.</p>
@@ -1657,14 +1605,7 @@
           <div id="ingredientLookupOut"></div>
         </div>
 
-        <div class="settings-block" id="dictionaryBlock">
-          <div class="side-label">DICTIONARY</div>
-          <p class="subtle">The names and aisles the app knows by itself, each with the wordings it reads as
-            that name. The lookup box above filters it. Changing a row is a code change; ask for it in a session.</p>
-          <div id="dictionaryList" class="sources-list"></div>
-        </div>
-
-        <div class="settings-block">
+        <div class="settings-block" data-settings-tab="ingredients">
           <div class="side-label">WORD MATCHES</div>
           <p class="subtle">Things you've told the app are the same. Ingredient matches
             get added together on the shopping list; source matches stop you being asked
@@ -1683,7 +1624,7 @@
           <div id="aliasesList" class="sources-list"></div>
         </div>
 
-        <div class="settings-block" id="aisleOverridesBlock">
+        <div class="settings-block" data-settings-tab="ingredients" id="aisleOverridesBlock">
           <div class="side-label">SHOPPING AISLES</div>
           <p class="subtle">Move something the shopping list puts in the wrong aisle. It applies to
             every recipe that uses the name. To total two names as one, match them in Word Matches
@@ -1700,7 +1641,48 @@
           <div id="aisleOverridesList" class="sources-list"></div>
         </div>
 
-        <div class="settings-block">
+        <div class="settings-block" data-settings-tab="ingredients" id="swapsBlock">
+          <div class="side-label">SWAPS</div>
+          <p class="subtle" id="swapsSubtitle">Your own ingredient substitutions, built up over time. Each carries a
+            scaling ratio. A swap applies wherever the shopping list would call an ingredient by the swap's name, so
+            "butter" never catches "peanut butter".</p>
+          <div class="swap-form">
+            <div class="field-row">
+              <label><span>ORIGINAL INGREDIENT</span><input type="text" id="swap-original" autocomplete="off" placeholder="e.g. brown rice syrup"></label>
+              <label><span>REPLACEMENT</span><input type="text" id="swap-replacement" autocomplete="off" placeholder="e.g. maple syrup"></label>
+            </div>
+            <div class="field-row">
+              <label><span>RATIO (ORIGINAL × THIS = REPLACEMENT)</span><input type="number" id="swap-ratio" placeholder="e.g. 0.75" min="0" step="0.01"></label>
+              <label><span>NOTES (OPTIONAL)</span><input type="text" id="swap-notes" placeholder="e.g. slightly sweeter, reduce other sugar"></label>
+            </div>
+            <button class="btn primary" id="swapAddBtn">ADD SWAP</button>
+            <p class="field-error" id="swapError" style="display:none;"></p>
+          </div>
+          <div id="swapsList" class="swaps-list"></div>
+        </div>
+
+        <div class="settings-block" data-settings-tab="ingredients" id="dictionaryBlock">
+          <div class="side-label">DICTIONARY</div>
+          <p class="subtle">The names and aisles the app knows by itself, each with the wordings it reads as
+            that name. The lookup box above filters it. Changing a row is a code change; ask for it in a session.</p>
+          <button class="btn" id="dictionaryToggle" type="button"></button>
+          <div id="dictionaryList" class="sources-list"></div>
+        </div>
+
+        <div class="settings-block" data-settings-tab="library" id="libraryCheck">
+          <div class="side-label">LIBRARY CHECK</div>
+          <p class="subtle">Every recipe, with what is known about its match to the page it came from and the
+            names it puts in Other, those needing attention first. Nothing is changed here: OPEN a recipe to
+            compare it with its source and save, and this list is the record.</p>
+          <div class="alias-form">
+            <button class="btn" id="libraryCheckRunBtn">RUN</button>
+            <label class="subtle lc-only"><input type="checkbox" id="libraryCheckOnly"> only those needing attention</label>
+          </div>
+          <p class="subtle" id="libraryCheckSummary"></p>
+          <div id="libraryCheckList" class="sources-list"></div>
+        </div>
+
+        <div class="settings-block" data-settings-tab="library">
           <div class="side-label">SOURCES</div>
           <p class="subtle">Every distinct source currently in use. If two entries are
             really the same place, merge one into the other — every recipe using it gets
@@ -1709,11 +1691,40 @@
           <div id="sourcesList" class="sources-list"></div>
         </div>
 
-        <div class="settings-block">
+        <div class="settings-block" data-settings-tab="library">
           <div class="side-label">KEYWORDS</div>
           <p class="subtle">Every keyword you can tag a recipe with. Merge duplicates,
             or delete one to remove it from every recipe carrying it.</p>
           <div id="keywordsList" class="sources-list"></div>
+        </div>
+      
+
+        <div class="settings-block" data-settings-tab="library">
+          <div class="side-label">RECIPE PHOTOS</div>
+          <p class="subtle">Photos are copied into your own storage automatically when you save a
+            recipe. These are for the times that cannot cover: after restoring a backup, or after
+            saving while offline.</p>
+          <div class="alias-form">
+            <button class="btn" id="rehostSweepBtn">RE-HOST EXTERNAL IMAGES</button>
+            <button class="btn" id="verifyImagesBtn">CHECK STORED IMAGES</button>
+          </div>
+          <p class="subtle" id="imagesSweepResult" style="display:none;"></p>
+        </div>
+
+        <div class="settings-block" data-settings-tab="app">
+          <div class="side-label">WEEK STARTS ON</div>
+          <p class="subtle">Your planner and shopping list group days into weeks that
+            start on this day. Friday suits a Friday shop.</p>
+          <select class="sort" id="setWeekStart" aria-label="Day the week starts on"></select>
+        </div>
+
+        <div class="settings-block" data-settings-tab="app">
+          <div class="side-label">APPEARANCE</div>
+          <p class="subtle">Follow the system and the app changes when your device does,
+            which on most tablets means it goes dark in the evening. Light and dark
+            override that. The choice is shared with the household, like every other
+            setting here.</p>
+          <select class="sort" id="setDarkMode" aria-label="Appearance"></select>
         </div>
       </div>
     </section>
@@ -3846,6 +3857,14 @@ function showToast(msg){
 
 /* ============================= VIEW SWITCHING ============================= */
 function showView(name){
+  /* Swaps moved into Settings → Ingredients on 30 Sep 2026 (E of docs/PLAN-LAYOUT.md). Anything still asking
+     for the old screen, such as the lookup's EDIT, lands on the same form there. */
+  if(name === 'swaps'){
+    showView('settings');
+    showSettingsTab('ingredients');
+    document.getElementById('swapsBlock').scrollIntoView({ block: 'start' });
+    return;
+  }
   state.view = name;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const el = document.getElementById('view-'+name);
@@ -3878,7 +3897,6 @@ function showView(name){
   if(name === 'planner') renderPlanner();
   if(name === 'shopping') renderShopping();
   if(name === 'history') renderHistory();
-  if(name === 'swaps') renderSwaps();
   if(name === 'settings') renderSettings();
 }
 document.getElementById('sidebarPeekBtn').addEventListener('click', ()=>{
@@ -6480,7 +6498,30 @@ function renderSettings(){
   renderAisleOverridesList();
   renderSourcesList();
   renderKeywordsList();
+  renderSwaps();
+  showSettingsTab(settingsTabStored());
 }
+
+/* SETTINGS IN THREE TABS (E of docs/PLAN-LAYOUT.md, 30 Sep 2026). The page had grown to ten sections and a
+   140-row dictionary in one scroll, with Swaps on a screen of its own. Grouped by what you came to do:
+   Ingredients (lookup, word matches, aisles, swaps, the dictionary folded), Library (library check, sources,
+   keywords, photos) and App (week start, appearance). Every section is drawn as before and only shown or hidden,
+   so nothing in them changed. The last tab used is remembered on the device (kitchen.settingsTab). */
+const SETTINGS_TABS = ['ingredients', 'library', 'app'];
+function settingsTabStored(){
+  try { const t = localStorage.getItem('kitchen.settingsTab'); return SETTINGS_TABS.includes(t) ? t : 'ingredients'; } catch(e){ return 'ingredients'; }
+}
+function showSettingsTab(tab){
+  if(!SETTINGS_TABS.includes(tab)) tab = 'ingredients';
+  try { localStorage.setItem('kitchen.settingsTab', tab); } catch(e){ /* blocked storage is not fatal */ }
+  document.querySelectorAll('#view-settings [data-settings-tab]').forEach(b=>{ b.hidden = b.dataset.settingsTab !== tab; });
+  document.querySelectorAll('[data-settings-tab-btn]').forEach(b=>{
+    const on = b.dataset.settingsTabBtn === tab;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+}
+document.querySelectorAll('[data-settings-tab-btn]').forEach(b=> b.addEventListener('click', ()=> showSettingsTab(b.dataset.settingsTabBtn)));
 
 document.getElementById('setWeekStart').addEventListener('change', e=>{
   const n = parseInt(e.target.value, 10);
@@ -6742,9 +6783,16 @@ function renderIngredientLookup(){
 /* Every row of the dictionary, by aisle, with the wordings it reads as that name (its live phrases;
    notes are left out). Filtered by the lookup box: a row shows when its name or a wording contains
    what is typed. */
+/* Folded to one button until it is asked for (30 Sep 2026): 140 rows made Settings mostly dictionary. Typing
+   in the lookup opens it to the rows that match, as it always filtered; SHOW ALL opens the whole of it. */
+let dictionaryOpen = false;
 function renderDictionaryList(filter){
   const q = String(filter || '').trim().toLowerCase();
   const list = document.getElementById('dictionaryList');
+  const toggle = document.getElementById('dictionaryToggle');
+  list.hidden = !(dictionaryOpen || q);
+  toggle.hidden = !!q;
+  toggle.textContent = dictionaryOpen ? 'HIDE THE DICTIONARY' : `SHOW ALL ${INGREDIENT_DICTIONARY.length} ROWS`;
   const html = INGREDIENT_AISLES.map(aisle=>{
     const rows = INGREDIENT_DICTIONARY.filter(r=> r.aisle === aisle)
       .map(r=> ({ r, live: dictionaryPhrases(r).live }))
@@ -6758,6 +6806,10 @@ function renderDictionaryList(filter){
   list.innerHTML = html || `<p class="empty">No row in the dictionary has that wording.</p>`;
 }
 document.getElementById('ingredientLookup').addEventListener('input', renderIngredientLookup);
+document.getElementById('dictionaryToggle').addEventListener('click', ()=>{
+  dictionaryOpen = !dictionaryOpen;
+  renderDictionaryList(document.getElementById('ingredientLookup').value);
+});
 
 /* AUTOCOMPLETE on the ingredient boxes (asked for 30 Sep 2026: "to help make the process easier when you are
    trying to apply something or review an existing ingredient"). First built (PR #55) as a native <datalist>,
