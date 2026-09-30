@@ -1487,10 +1487,10 @@ const check = (name, pass, detail) => {
   await page.waitForTimeout(250);
   const pvWhenOkRaw = await pvWhen('pv-ok'), pvWhenStaleRaw = await pvWhen('pv-stale');
   check('Edit shows the stored result with RE-CHECK when the lines are the ones compared, says so when they have changed, says none when none, and fetches nothing',
-        pvEditOk.text === `Compared ${pvWhenOkRaw} · no differences. RE-CHECK` && pvEditOk.recheck
+        pvEditOk.text === `Compared ${pvWhenOkRaw} · no differences. VALIDATE INGREDIENT LIST RE-CHECK` && pvEditOk.recheck
         && pvEditStale.text === `Compared ${pvWhenStaleRaw}, before the ingredients changed. RE-CHECK` && pvEditStale.recheck
         && pvEditNone.text === 'Not compared with its source yet.' && !pvEditNone.recheck
-        && pvEditThree.text === `Compared ${await pvWhen('pv-three')} · 3 differences. RE-CHECK`
+        && pvEditThree.text === `Compared ${await pvWhen('pv-three')} · 3 differences. VALIDATE INGREDIENT LIST RE-CHECK`
         && (await page.evaluate(() => window.__INVOKES__.length)) === 0, JSON.stringify([pvEditOk, pvEditStale, pvEditNone, pvEditThree]));
 
   // RE-CHECK reads the page again, and a save then records the new result.
@@ -1677,6 +1677,87 @@ const check = (name, pass, detail) => {
         && pvBandChanged.includes('Records: compared with the source, but the ingredients changed since')
         && pvNoBand.includes('Records: not compared with its source') && pvReBand.includes('Records: compared with the source today, 1 difference')
         && !pvBandEdit.some(l => /^Records:/.test(l)), JSON.stringify([pvBandClear, pvBandChanged, pvBandEdit]));
+
+  /* ---- VALIDATE INGREDIENT LIST, and OPEN SOURCE (30 Sep 2026) ----
+     The household's word that a comparison was looked at and the list is right as it stands, all its
+     differences at once; written only by SAVE, into the comparison; lapses when the lines change. */
+  const vlStored = () => page.evaluate(() => ({ text: (document.getElementById('sourceStored') || { textContent: '' }).textContent.replace(/\s+/g, ' ').trim(),
+    validate: !!document.querySelector('#sourceStored [data-source-validate]'), undo: !!document.querySelector('#sourceStored [data-source-unvalidate]') }));
+  await page.evaluate(() => openEditModal('pv-three'));
+  await page.waitForTimeout(300);
+  const vlOffer = await vlStored();
+  const vlMark0 = await anMark();
+  await anClick('#sourceStored [data-source-validate]');
+  const vlPending = await vlStored();
+  const vlBandPending = await anBeforeSave();
+  await anClick('#sourceStored [data-source-unvalidate]');
+  const vlUndone = await vlStored();
+  const vlBandUndone = await anBeforeSave();
+  const vlWritesBeforeSave = (await anSince(vlMark0)).length;
+  await anClick('#sourceStored [data-source-validate]');
+  const vlMark = await anMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const vlRow = (await pvRows(vlMark)).pop() || {};
+  const vlSc = vlRow.source_check || {};
+  check('VALIDATE INGREDIENT LIST beside a stored comparison: tapped it says so, with UNDO; BEFORE YOU SAVE names it; nothing is written until SAVE',
+        vlOffer.validate && /3 differences\. VALIDATE INGREDIENT LIST/.test(vlOffer.text) && vlPending.undo && /Validated when you save/.test(vlPending.text)
+        && vlBandPending.includes('Records: the ingredient list validated against its last comparison') && vlUndone.validate && !vlBandUndone.some(l => /validated/.test(l))
+        && vlWritesBeforeSave === 0, JSON.stringify([vlOffer, vlPending, vlBandPending, vlUndone, vlWritesBeforeSave]));
+  const vlChips = await page.evaluate(() => [...document.querySelectorAll('#viewerProvenance .prov-chip')].map(c => ({ text: c.textContent, cls: c.className.replace('prov-chip ', '') })));
+  const vlWhen = await page.evaluate(() => formatDate(isoLocal(new Date(loadRecipes().find(r => r.id === 'pv-three').sourceCheck.validated))).toUpperCase());
+  check('    SAVE writes the validation into that comparison, kept whole, and the viewer then says VALIDATED',
+        !isNaN(Date.parse(vlSc.validated)) && vlSc.hard === 3 && vlSc.linesHash === pvHash && vlSc.route === 'function'
+        && vlChips.length === 1 && vlChips[0].text === `VALIDATED ${vlWhen}` && vlChips[0].cls === 'prov-ok', JSON.stringify([vlSc, vlChips]));
+  await page.evaluate(() => openEditModal('pv-three'));
+  await page.waitForTimeout(300);
+  const vlEditAgain = await vlStored();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  const vlLc = await page.evaluate(() => { const row = libraryCheckRows().find(x => x.id === 'pv-three'); const unv = libraryCheckRows().find(x => x.id === 'pv-one');
+    return { key: row.key, status: row.status, attentionForStatus: LIBRARY_STATUS.find(s => s.key === row.key).attention, unvalidated: unv.key }; });
+  check('    Edit then says when it was validated with no second offer, and LIBRARY CHECK reads it as validated, not needing attention',
+        /^Validated .* \(compared .* · 3 differences\)\. RE-CHECK$/.test(vlEditAgain.text) && !vlEditAgain.validate
+        && vlLc.key === 'validated' && vlLc.status === 'validated' && vlLc.attentionForStatus === false && vlLc.unvalidated === 'differs', JSON.stringify([vlEditAgain, vlLc]));
+  // A comparison run in the form: validated with it; a new comparison starts again.
+  await pvReply(['2 onions, diced', '200 g red lentils', '1 tsp ground cumin']);
+  await page.evaluate(() => openEditModal('pv-one'));
+  await page.waitForTimeout(300);
+  await anClick('#compareSourceBtn');
+  await page.waitForTimeout(400);
+  await anClick('#sourceValidateRow [data-source-validate]');
+  const vlFormBand = await anBeforeSave();
+  await anClick('#compareSourceBtn');
+  await page.waitForTimeout(400);
+  const vlAfterNew = await page.evaluate(() => ({ offer: !!document.querySelector('#sourceValidateRow [data-source-validate]') }));
+  const vlAfterNewBand = await anBeforeSave();
+  await anClick('#sourceValidateRow [data-source-validate]');
+  const vlMark2 = await anMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(600);
+  const vlSc2 = ((await pvRows(vlMark2)).pop() || {}).source_check || {};
+  check('    under a comparison run in the form it is offered too, recorded with it by SAVE; a new comparison asks again',
+        vlFormBand.includes('Records: compared with the source today, 1 difference, and the ingredient list validated')
+        && vlAfterNew.offer && vlAfterNewBand.includes('Records: compared with the source today, 1 difference') && !vlAfterNewBand.some(l => /validated/.test(l))
+        && vlSc2.hard === 1 && !isNaN(Date.parse(vlSc2.validated)) && vlSc2.linesHash === pvHash, JSON.stringify([vlFormBand, vlAfterNew, vlAfterNewBand, vlSc2]));
+  await page.evaluate(() => { const r = loadRecipes().find(x => x.id === 'pv-three'); r.syntax = r.syntax.replace('200 g red lentils', '250 g red lentils'); });
+  const vlLapsed = await pvChips('pv-three');
+  const vlLapsedKey = await page.evaluate(() => libraryCheckRows().find(x => x.id === 'pv-three').key);
+  check('    and a validation lapses when the ingredient lines change: the chip says compared before they changed',
+        vlLapsed[0].text === 'COMPARED BEFORE THE INGREDIENTS CHANGED' && vlLapsedKey === 'stale', JSON.stringify([vlLapsed, vlLapsedKey]));
+  // OPEN SOURCE: the link in the form, in a new tab; nothing for a recipe with no web link.
+  await page.evaluate(() => { window.__opened = []; window.__origOpen = window.open; window.open = (...a) => { window.__opened.push(a); return null; }; });
+  await page.evaluate(() => openEditModal('pv-ok'));
+  await page.waitForTimeout(300);
+  await anClick('#openSourceBtn');
+  await page.evaluate(() => { document.getElementById('f-source-url').value = ''; });
+  await anClick('#openSourceBtn');
+  const vlOpened = await page.evaluate(() => { const o = window.__opened; window.open = window.__origOpen; return o; });
+  const vlToast = await page.evaluate(() => (document.querySelector('.toast') || { textContent: '' }).textContent);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  check('OPEN SOURCE opens the recipe\'s link from the form in a new tab, and says so when there is no web link',
+        vlOpened.length === 1 && vlOpened[0][0] === 'https://example.test/pv-ok' && vlOpened[0][1] === '_blank' && /no web link/.test(vlToast), JSON.stringify([vlOpened, vlToast]));
 
   await page.evaluate(() => {
     for(let i = loadRecipes().length - 1; i >= 0; i--){
