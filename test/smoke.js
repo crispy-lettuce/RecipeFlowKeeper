@@ -3287,6 +3287,39 @@ const check = (name, pass, detail) => {
         lyWide.w >= lyWide.vw - 40 && lyWide.w > 780 && lyWide.box >= Math.floor(lyWide.vh / 2) && lyPhone.w >= lyPhone.vw - 40 && lyPhone.box >= 400,
         JSON.stringify([lyWide, lyPhone]));
 
+  /* ---- Layout D, 30 Sep 2026 (docs/PLAN-LAYOUT.md): Shopping Aisles says where a name goes now ----
+     The lookup's own answer under the box, the aisle picker set to it, ADD greyed out until another aisle is
+     picked, and REMOVE on the household's own aisle. Invented names; the aisle set is taken out again. */
+  await page.click('.navlink[data-view="settings"]');
+  await page.waitForTimeout(300);
+  const adNow = () => page.evaluate(() => { const n = document.getElementById('aisleOverrideNow');
+    return { shown: n.style.display !== 'none', text: n.textContent.replace(/\s+/g, ' ').trim(), aisle: document.getElementById('aisleOverride-aisle').value,
+      addOff: document.getElementById('aisleOverrideAddBtn').disabled }; });
+  const adType = async t => { await page.fill('#aisleOverride-name', t); await page.waitForTimeout(80); await page.keyboard.press('Escape'); return adNow(); };
+  const adEmpty = await adType('');
+  const adDict = await adType('chopped tomatoes');
+  await page.selectOption('#aisleOverride-aisle', 'Produce');
+  const adMoved = await adNow();
+  check('layout D: Shopping Aisles says where a name goes now and why, sets the picker to it, and greys ADD out until another aisle is picked',
+        !adEmpty.shown && adDict.shown && /calls it chopped tomatoes and puts it in Pantry, from the dictionary/.test(adDict.text) && !/No recipe uses/.test(adDict.text)
+        && adDict.aisle === 'Pantry' && adDict.addOff && !adMoved.addOff, JSON.stringify([adEmpty, adDict, adMoved]));
+  const adOther = await adType('Smoked Eel');
+  check('    a name nothing places says Other, leaves the picker empty with ADD usable, and says no recipe uses it',
+        /calls it smoked eel and puts it in Other: nothing places it/.test(adOther.text) && /No recipe uses this name yet/.test(adOther.text) && adOther.aisle === '' && !adOther.addOff,
+        JSON.stringify(adOther));
+  await page.evaluate(() => { addAisleOverride('chopped tomatoes', 'Produce'); renderAisleOverridesList(); });
+  const adOwn = await adType('chopped tomatoes');
+  const adMark = await anMark();
+  await anClick('#aisleOverrideNow [data-now-remove]');
+  await page.waitForTimeout(300);
+  const adAfter = await adNow();
+  const adWrites = (await anSince(adMark)).map(w => w.table + ':' + w.op).join();
+  check('    one of your own aisles says so, with REMOVE there: one delete, and it goes back to the dictionary\'s aisle',
+        /puts it in Produce, your own aisle\. REMOVE puts it back in Pantry, from the dictionary/.test(adOwn.text) && adOwn.aisle === 'Produce' && adOwn.addOff
+        && adWrites === 'aisle_overrides:delete' && /puts it in Pantry, from the dictionary/.test(adAfter.text) && adAfter.aisle === 'Pantry'
+        && (await page.evaluate(() => loadAisleOverrides().length)) === 0, JSON.stringify([adOwn, adWrites, adAfter]));
+  await adType('');
+
   /* ---- LIBRARY CHECK (PR 8 of the add-recipe plan, 29 Sep 2026) ----
      Every recipe, its standing against its source and its names in Other, those needing attention
      first; RUN writes nothing and OPEN opens the edit form. Six invented recipes, one per status,

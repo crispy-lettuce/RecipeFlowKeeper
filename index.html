@@ -379,6 +379,8 @@
     background:var(--card); color:var(--ink-soft); cursor:pointer;
   }
   .btn:hover{ border-color:var(--plum); color:var(--plum); }
+  /* Greyed out and inert, as Shopping Aisles' ADD is while the aisle picked is the one the name has already. */
+  .btn:disabled, .btn:disabled:hover{ opacity:.4; cursor:default; border-color:var(--line); color:var(--ink-soft); }
   .btn.primary{ background:var(--plum); border-color:var(--plum); color:var(--on-accent); }
   .btn.primary:hover{ background:var(--plum-lift); color:var(--on-accent); }
   .btn.danger:hover{ border-color:var(--danger); color:var(--danger); }
@@ -1673,6 +1675,7 @@
             <select class="sort" id="aisleOverride-aisle" aria-label="Aisle"></select>
             <button class="btn" id="aisleOverrideAddBtn">ADD</button>
           </div>
+          <p class="subtle" id="aisleOverrideNow" style="display:none;"></p>
           <p class="field-error" id="aisleOverrideError" style="display:none;"></p>
           <div id="aisleOverridesList" class="sources-list"></div>
         </div>
@@ -6869,6 +6872,7 @@ function renderAisleOverridesList(){
     sel.innerHTML = `<option value="">AISLE…</option>` + INGREDIENT_AISLES.map(a=> `<option value="${escapeHtml(a)}">${escapeHtml(a.toUpperCase())}</option>`).join('');
   }
   if(document.getElementById('ingredientLookup').value) renderIngredientLookup();
+  renderAisleOverrideNow();
   const list = document.getElementById('aisleOverridesList');
   const rows = [...loadAisleOverrides()].sort((a, b)=> a.name.localeCompare(b.name));
   list.innerHTML = !ok ? '' : !rows.length ? `<p class="empty">No aisles set. The list places everything itself.</p>`
@@ -6877,6 +6881,52 @@ function renderAisleOverridesList(){
         <button class="btn small-danger" data-remove-aisle-override="${escapeHtml(o.id)}">REMOVE</button>
       </div>`).join('');
 }
+/* Where the name in the box goes now (D of docs/PLAN-LAYOUT.md, 30 Sep 2026): asked for so an aisle is not set
+   blind. The answer is ingredientLookup's, the lookup's own, so the two never disagree. Typing a name sets the
+   aisle picker to where it goes now, and ADD stays greyed out until a different aisle is picked, so no row is
+   stored that the list would have used anyway. One of the household's own aisles gets REMOVE here, saying where
+   the name goes back to. A name no recipe uses is said so, and can still be set for a recipe to come. */
+function renderAisleOverrideNow(fromTyping){
+  const nameEl = document.getElementById('aisleOverride-name');
+  const aisleEl = document.getElementById('aisleOverride-aisle');
+  const addBtn = document.getElementById('aisleOverrideAddBtn');
+  const now = document.getElementById('aisleOverrideNow');
+  const r = aisleOverridesAvailable ? ingredientLookup(nameEl.value) : null;
+  if(!r){ now.style.display = 'none'; now.innerHTML = ''; addBtn.disabled = false; return; }
+  const placed = INGREDIENT_AISLES.includes(r.aisle) && r.why !== 'none';
+  if(fromTyping) aisleEl.value = placed ? r.aisle : '';
+  const name = `<b>${escapeHtml(r.name.toLowerCase())}</b>`;
+  let text;
+  if(r.why === 'override'){
+    const own = loadAisleOverrides().find(o=> o.name === r.key);
+    const without = aggregateShoppingLines([{ recipeTitle: '', raw: nameEl.value.trim(), group: '' }], applyIngredientAlias)[0];
+    const back = without && without.aisleWhy !== 'none' ? `${escapeHtml(without.category)}, ${escapeHtml(AISLE_WHY_TEXT[without.aisleWhy] || '')}` : 'Other';
+    text = `The list calls it ${name} and puts it in <b>${escapeHtml(r.aisle)}</b>, your own aisle. ` +
+      (own ? `<button class="btn small-danger" data-now-remove="${escapeHtml(own.id)}">REMOVE</button> puts it back in ${back}.` : '');
+  } else if(placed){
+    text = `The list calls it ${name} and puts it in <b>${escapeHtml(r.aisle)}</b>, ${escapeHtml(AISLE_WHY_TEXT[r.why] || '')}. Pick another aisle and ADD to move it.`;
+  } else {
+    text = `The list calls it ${name} and puts it in <b>Other</b>: nothing places it. Pick an aisle and ADD.`;
+  }
+  if(!allLibraryIngredientNames().some(it=> it.key === r.key)) text += ' No recipe uses this name yet.';
+  now.innerHTML = text;
+  now.style.display = 'block';
+  addBtn.disabled = placed && aisleEl.value === r.aisle;
+}
+document.getElementById('aisleOverride-name').addEventListener('input', ()=> renderAisleOverrideNow(true));
+document.getElementById('aisleOverride-aisle').addEventListener('change', ()=> renderAisleOverrideNow(false));
+document.getElementById('aisleOverrideNow').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-now-remove]');
+  if(!btn) return;
+  const entry = loadAisleOverrides().find(o=> o.id === btn.dataset.nowRemove);
+  if(!entry) return;
+  removeAisleOverride(entry.id);
+  showToast(`"${entry.name}" goes back to where the list puts it`);
+  renderAisleOverridesList();
+  renderAisleOverrideNow(true);
+  if(state.view === 'shopping') renderShopping();
+  updateSidebarCounts();
+});
 document.getElementById('aisleOverridesList').addEventListener('click', e=>{
   const btn = e.target.closest('[data-remove-aisle-override]');
   if(!btn) return;
