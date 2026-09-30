@@ -382,6 +382,15 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     (3) *OPEN one:* its edit form opens; compare it with its source and save, then RUN again: it has moved down and says
     what the comparison found. **This is the audit: work down the list until it is short.**
 
+36j. **Autocomplete on the ingredient boxes (new 30 Sep).** Nothing is written by a suggestion; only ADD writes, as before.
+    (1) *Settings → INGREDIENT LOOKUP, type "alm":* the tablet offers names under the box, among them ground almonds and almond
+    meal; pick one and the lookup answers for it. (2) *WORD MATCHES, type in either box:* ingredient names are offered; switch the
+    select to SOURCE and the same boxes offer your sources instead; switch back. (3) *SHOPPING AISLES, type "alm":* only the names
+    your shopping list uses are offered: ground almonds if a recipe uses them, but never almond meal, which the list calls
+    ground almonds. (4) *Swaps, type in ORIGINAL INGREDIENT and
+    REPLACEMENT:* the same ingredient names as the lookup. **The one thing no test can judge is how the tablet shows the list:
+    whether it appears as you type, and whether a picked name fills the box without an extra tap.**
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in
