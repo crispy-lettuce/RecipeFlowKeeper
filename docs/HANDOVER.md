@@ -612,7 +612,7 @@ two different recipes. Title similarity decided none of them; source and image d
 
 ---
 
-## 4. Calendar push (P3) — never tracked, not started
+## 4. Calendar push (P3) — answered 1 Oct 2026; PR 1 built
 
 Phase 3 in the brief. Recorded here because it appears in no task list anywhere and would
 otherwise be forgotten.
@@ -626,6 +626,11 @@ This explicitly **supersedes** the earlier downloadable `.ics` idea, which is in
 
 **Scoped 30 Sep 2026: `docs/PLAN-CALENDAR-PUSH.md`**, with seven decisions for the household. Found while scoping: the nightly
 `pg_dump` copies the `public` and `private` schemas, so the refresh token must live in Vault (installed), not in a table.
+
+**Answered 1 Oct 2026** (its §9): the calendar is for reminders, not a food diary. One all-day event per switched-on day, REMIND ME
+at 20:00 the evening before, ADD THE WEEK, a RecipeWrangler calendar, and DISCONNECT leaving the calendar and its events.
+**PR 1 built 1 Oct:** the migration (`docs/migrations/add-calendar-push.md`, not applied), the `calendar-auth` and
+`calendar-sync` Edge Functions (not deployed), and `test/calendar-push.js`. What was verified is in §7. The app is PR 2.
 
 ---
 
@@ -1881,6 +1886,33 @@ step 39a.
 time or opt-in; 16 days planned in the last four weeks, 3 ahead; no recipe has an `[overnight]` step, 6 have a step of an hour or more;
 Vault installed, `pg_cron` and `pg_net` available but not installed. Not built.
  *Not verified:* the tablet (`docs/TEST-PLAN.md` step 37c).
+
+**P3 PR 1: the calendar push's migration and Edge Functions (1 Oct 2026).** The household answered `docs/PLAN-CALENDAR-PUSH.md`
+§7, then simplified it (§9): one all-day event per switched-on day, REMIND ME at 20:00 the evening before, ADD THE WEEK, a
+RecipeWrangler calendar, DISCONNECT leaving the calendar. `docs/migrations/add-calendar-push.md` (not applied), drafted from the live
+schema (read-only, 1 Oct: `vault.create_secret` and `update_secret` and their defaults, `postgres` able to read and delete
+`vault.secrets`, no secrets yet, the default privileges on `public`, the tables' owner). `supabase/functions/calendar-auth` and
+`calendar-sync` (not deployed). No `index.html` or `core.js` change.
+
+*Verified by.* `test/calendar-push.js` **30 checks**, exit 0, lifting both functions' pure parts from their source. **Thirty-seven
+mutations, all failing a check by name**, among them an id outside Google's alphabet, an event ending the same day, a timed event,
+a busy one, the calendar's default reminder on a day with REMIND ME off, 20:00 ignored, today taken in UTC, a day marked away kept,
+the past rewritten, SYNC NOW not removing strays, a date that does not exist accepted, the consent link without `offline` or
+`consent`, a way back to another site, and the full calendar.events scope taken as enough. Two first survived (a day marked away
+that still had recipes; an id_token with no `-` or `_` in it) and the checks were tightened until they failed. **The migration** was
+run on a scratch local Postgres 16 built to the live project's shape (roles, a stand-in Vault, default privileges), as a
+non-superuser like the live `postgres`: it applies; a consent value is taken once and not after ten minutes; the token is set,
+replaced, read only for its household and forgotten; `authenticated` and `anon` are refused every function, the private table and
+Vault, may read only their own status row and cannot write it; the reminder time refuses 24:00; the page's check queries give
+what it says; its undo runs. **Both functions** pass Deno's `check` and `lint`, and were run under Deno with Supabase and Google
+faked at `fetch`: CONNECT (a bad way back refused), the callback (token to Vault, calendar made, status row, back to
+`#calendar=connected`), a replayed callback (`expired`), reconnecting (the same calendar), consent refused (`denied`), the calendar
+permission unticked (`scope`), DISCONNECT (revoke, forget, the calendar left); a sync's insert, its 409 then PUT, delete, 410 as
+done, a deleted event brought back, SYNC NOW listing and removing a stray, a past day left alone, Google refusing the token
+(status row set to reconnect) and not connected. `core.test.js` and the smoke suite unchanged, both exit 0. The invented recipe
+names match nothing in the library (read-only, 34 recipes). *Not verified:* anything against Google or the live database: the
+household's setup (§10), the real consent screen, the 20:00 notification on the phone, and a deleted event coming back after a
+PUT (step 40a, with PR 2).
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all

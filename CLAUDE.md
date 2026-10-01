@@ -104,7 +104,8 @@ node test/image-integrity.js
 31 checks over the integrity checker and `parseRecipeFilter` in `supabase/functions/*/index.ts`.
 It lifts the code out of the real source rather than copying it, so a signature change makes it
 throw rather than pass vacuously. After a change to `source-ingredients`, or to `sourceFidelity`
-in `core.js`, run `node test/source-ingredients.js` (12 checks, lifted the same way).
+in `core.js`, run `node test/source-ingredients.js` (12 checks, lifted the same way). After a change to
+`calendar-auth` or `calendar-sync`, run `node test/calendar-push.js` (30 checks, lifted the same way).
 
 ## Things that will bite
 

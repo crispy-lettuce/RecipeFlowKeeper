@@ -42,6 +42,12 @@ feeds. Every page in it is made up; it proves nothing about whether a real site 
 block. `node tools/remeasure.js <export>` re-measures the whole library from an export kept
 outside the repo.
 
+`node test/calendar-push.js` (30 checks, no browser) tests the calendar push's two Edge Functions,
+`calendar-sync` and `calendar-auth`, lifted from their real source the same way: the event's id,
+its all-day dates, the 20:00 reminder's minutes, which days a sync writes or deletes, what a sync
+request may ask for, the consent link, the way back to the app and the id_token's email. Nothing
+in it talks to Google; the household's first connection is that (`docs/TEST-PLAN.md` 40a).
+
 `node test/shots.js` writes a PNG of each main screen, for eyeballing a layout
 change without a browser to hand.
 
