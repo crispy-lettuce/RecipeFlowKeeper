@@ -3,7 +3,8 @@
 **Asked for in the original build brief** (`docs/BUILD-BRIEF.md`, P3, and "Calendar reminders" under Architecture): *"A Supabase
 Edge Function holds a Google OAuth refresh token, obtained via one one-off consent screen … After that single step, reminders are
 created automatically with no further manual action, ever."* and *"Opt-in per entry."* Scoped on 30 Sep 2026 at the household's
-request. **Not built**; waiting for the household's answers to §7.
+request; **the household answered §7 on 1 Oct 2026**, and two of the answers changed the design: §8 is the design as answered and
+**supersedes §4 where they differ**. Two small points are still open (§8, last part). **Not built.**
 
 ## 1. What it is for
 
@@ -88,9 +89,9 @@ retry can never make a second event.
 
 ## 5. The household's one-off setup (about 20 minutes, before the build is merged)
 
-1. In the Google Cloud console, with the Google account whose calendar will hold the meals: a new project, **Kitchen**; enable the
+1. In the Google Cloud console, with the Google account whose calendar will hold the meals: a new project, **RecipeWrangler**; enable the
    **Google Calendar API**.
-2. **OAuth consent screen:** External; app name Kitchen; the household's email; the calendar scope (§4, Security). Then
+2. **OAuth consent screen:** External; app name RecipeWrangler; the household's email; the calendar scope (§4, Security). Then
    **publish it** (status "In production"). Not verified by Google, so the consent screen warns "Google hasn't verified this app":
    expected, and clicked through once. **Left in "Testing", Google expires the connection after seven days**, which is why it is
    published.
@@ -124,3 +125,41 @@ anything that talks to Google. The functions are tested with Google's answers st
 6. **Prep ahead:** none of today's recipes has an overnight step, so leave "start the day before" reminders out for now
    (recommended), or add them for recipes that gain one?
 7. **DISCONNECT:** removes the app's events (recommended), or leaves them in the calendar?
+
+## 8. As answered (1 Oct 2026)
+
+The household's answers, and what they change:
+
+1. **The event is a placeholder at the meal's standard time, 15 minutes long**, not a block from start-cooking time. ("They are
+   just place holders, so that's OK.") No cooking time is worked out.
+2. **Standard times:** breakfast 07:00, lunch 13:00, dinner 19:00 (`Europe/London`). Kept as settings, so they can change.
+3. **Switched on per day, with ADD THE WEEK**, as recommended.
+4. **The calendar is called `RecipeWrangler`.**
+5. **The account:** the household's own Google account, named in the answer. It is not written here, since this repo is public.
+6. **A reminder the evening before, chosen per meal on the Planner.** Its purpose is the freezer: "to remind you to get something
+   out of the freezer, and a key feature of the calendar". So the "start the day before" idea is dropped. A meal with its
+   reminder on gets one phone notification **at 20:00 the evening before** ("Dinner: Lamb Tagine, tomorrow 19:00"). The 20:00 is a
+   setting. Google times a reminder from the event's start, so the app works it out per meal: 23 hours before a 19:00 dinner,
+   17 before a 13:00 lunch, 11 before a 07:00 breakfast, all landing on 20:00.
+7. **DISCONNECT** was unclear, so it is put plainly in the open points below.
+
+### What this changes
+
+- **A planned day can now hold more than one meal.** Today a planned day is one list of recipes with no meal attached (the brief
+  dropped "meal slots in the Planner" in favour of asking the meal when cooking is logged). Standard times need to know which meal
+  each planned recipe is. So each recipe on a planned day gets a meal, **dinner unless the recipe's course is Breakfast**, changed
+  with a small picker on the Planner row. Recipes on the same day and meal make one event: `Dinner: Lamb Tagine + Rice`.
+- **Two switches per meal on the Planner:** IN CALENDAR (with ADD THE WEEK), and REMIND THE EVENING BEFORE (only offered once the
+  meal is in the calendar).
+- **The migration** gains `planner_days.meals` (one per recipe, parallel to `recipe_ids` and `servings`, as `servings` is) and the
+  reminder choice per meal; `household_settings` gains the three meal times and the reminder time instead of one meal time.
+- **The events:** one per day and meal that is switched on, with an id worked out from the household, the date and the meal.
+
+### Still open
+
+1. **The meal a recipe is planned as:** dinner unless its course is Breakfast, changeable on the Planner (recommended)? Or always
+   ask when it is planned?
+2. **DISCONNECT** (the button in Settings that stops the app using your Google Calendar, for example if you ever want to switch the
+   feature off): should it also **delete the RecipeWrangler calendar and every meal the app put in it** (recommended: it is the
+   app's own calendar, so nothing of yours is lost), or **leave the calendar and its events** where they are, frozen as they were?
+
