@@ -19,7 +19,8 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **Cooking diary:** 116 entries. **Word matches:** 15. **Household aisles:** 1. **Swaps:** 2. **Cooking notes:** none yet (R4 built 30 Sep).
 - **Tests:** `node test/core.test.js` 143 checks; `node test/build.js && node test/smoke.js` 418 checks. `offline-harness` runs
   both on every PR and is required on `main`.
-- **Schema:** nothing waiting to be applied. The last migration, `add_source_photos`, was applied 30 Sep (`docs/INFRASTRUCTURE.md`).
+- **Schema:** `add_calendar_push` (P3 PR 1) is waiting to be applied by the household. The last applied, `add_source_photos`, was
+  applied 30 Sep (`docs/INFRASTRUCTURE.md`).
 - **The family is one account, one household.** `docs/ONBOARDING.md` adds a second person. A second `households` row is the weekly
   live test's own (`PrivateBackup`), never the family's. Leaked-password protection is a paid-plan feature and the household is on
   the free plan: not an open item.
@@ -43,9 +44,10 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 1. **The household's tablet passes:** `docs/TEST-PLAN.md` 38c (CHECKED AGAINST THE PHOTO) and 38d (PDF sources).
 2. **The household's data jobs** (below): compare and validate the BBC Good Food recipes; D6, the reconstructed recipes.
 3. **R4, dated cooking notes: merged 30 Sep** (PR #67; `docs/PLAN-COOKING-NOTES.md`). Tablet step 39a is the household's.
-4. **P3, the calendar push.** Scoped 30 Sep in `docs/PLAN-CALENDAR-PUSH.md`: one event per switched-on planned day, from
-   start-cooking time to the meal, in a Kitchen calendar, the Google token kept in Vault. **Waiting for the household's seven
-   answers** (its §7), then their one-off Google setup (its §5), then a migration, two Edge Functions and the app.
+4. **P3, the calendar push.** Answered 1 Oct (`docs/PLAN-CALENDAR-PUSH.md` §9): one all-day event per switched-on planned day in
+   a RecipeWrangler calendar, REMIND ME at 20:00 the evening before, ADD THE WEEK; DISCONNECT leaves the calendar. **PR 1** (the
+   migration, `calendar-auth`, `calendar-sync`, `test/calendar-push.js`) is built and waits for the household's setup (§10).
+   **PR 2, the app**, is next: the Planner's switches, Settings → App → CALENDAR, the sync after each Planner change.
 5. **Optional, not planned:** a "download all source files" backup (neither the JSON export nor the nightly `pg_dump` holds the
    files); drawing a PDF's pages inside the app, if opening it in the browser proves awkward on the tablet (38d will tell).
 
@@ -58,7 +60,8 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **D6: repair the reconstructed recipes**, together with a session, by the recipe-text rules in `CLAUDE.md` (the household
   approves the exact lines; the before and after go to `PrivateBackup`; one guarded statement per recipe).
 - **Tablet step 39a**, cooking notes.
-- **Answer P3's seven decisions** (`docs/PLAN-CALENDAR-PUSH.md` §7).
+- **P3's setup** (`docs/PLAN-CALENDAR-PUSH.md` §10): the Google Cloud project and client, two secrets, the SQL, deploying the two
+  functions (`calendar-auth` with JWT verification **off**), then merging PR 1.
 - **The converter.** The conversion project in the Claude app holds **one file, `converter/conversion-instructions.md`**; its
   master copy is the one in this repo. After any change to that file here, reload it into the project. The other files under
   `converter/` stay in git as the project's reference and test material (`test-set.md` is how a change to the instructions is

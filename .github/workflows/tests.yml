@@ -37,3 +37,5 @@ jobs:
       # The source-ingredients function's page reading, lifted from its source,
       # and the source check it feeds (PR 6c-1, 28 Sep).
       - run: node test/source-ingredients.js
+      # The calendar push's two functions, lifted from their source (P3 PR 1, 1 Oct).
+      - run: node test/calendar-push.js

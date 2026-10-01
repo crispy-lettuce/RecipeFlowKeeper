@@ -3,7 +3,9 @@
 **Asked for in the original build brief** (`docs/BUILD-BRIEF.md`, P3, and "Calendar reminders" under Architecture): *"A Supabase
 Edge Function holds a Google OAuth refresh token, obtained via one one-off consent screen … After that single step, reminders are
 created automatically with no further manual action, ever."* and *"Opt-in per entry."* Scoped on 30 Sep 2026 at the household's
-request. **Not built**; waiting for the household's answers to §7.
+request; **the household answered §7 on 1 Oct 2026**, then simplified their answers the same day: **§9 is the design being built and
+supersedes §4 and §8 wherever they differ.** §10 is the household's setup. **PR 1 (the migration and the two Edge Functions) is
+built; the app (PR 2) is not.**
 
 ## 1. What it is for
 
@@ -83,14 +85,14 @@ retry can never make a second event.
 - The consent step is bound to the household by a one-time value that expires in ten minutes, so a stray link cannot connect
   someone else's calendar.
 - **Least access:** Google offers a scope that lets an app make its own calendars and manage only those. If the household's Google
-  Cloud project offers it, the app uses that and can see nothing else in the account; otherwise `calendar.events`. To be checked
-  at setup (§5), not assumed.
+  Cloud project offers it, the app uses that and can see nothing else in the account; otherwise the full `calendar` scope
+  (*corrected 1 Oct: `calendar.events` cannot create a calendar, so it is no fallback*). To be checked at setup (§5), not assumed.
 
 ## 5. The household's one-off setup (about 20 minutes, before the build is merged)
 
-1. In the Google Cloud console, with the Google account whose calendar will hold the meals: a new project, **Kitchen**; enable the
+1. In the Google Cloud console, with the Google account whose calendar will hold the meals: a new project, **RecipeWrangler**; enable the
    **Google Calendar API**.
-2. **OAuth consent screen:** External; app name Kitchen; the household's email; the calendar scope (§4, Security). Then
+2. **OAuth consent screen:** External; app name RecipeWrangler; the household's email; the calendar scope (§4, Security). Then
    **publish it** (status "In production"). Not verified by Google, so the consent screen warns "Google hasn't verified this app":
    expected, and clicked through once. **Left in "Testing", Google expires the connection after seven days**, which is why it is
    published.
@@ -124,3 +126,114 @@ anything that talks to Google. The functions are tested with Google's answers st
 6. **Prep ahead:** none of today's recipes has an overnight step, so leave "start the day before" reminders out for now
    (recommended), or add them for recipes that gain one?
 7. **DISCONNECT:** removes the app's events (recommended), or leaves them in the calendar?
+
+## 8. As first answered (1 Oct 2026; superseded by §9)
+
+The household's answers, and what they change:
+
+1. **The event is a placeholder at the meal's standard time, 15 minutes long**, not a block from start-cooking time. ("They are
+   just place holders, so that's OK.") No cooking time is worked out.
+2. **Standard times:** breakfast 07:00, lunch 13:00, dinner 19:00 (`Europe/London`). Kept as settings, so they can change.
+3. **Switched on per day, with ADD THE WEEK**, as recommended.
+4. **The calendar is called `RecipeWrangler`.**
+5. **The account:** the household's own Google account, named in the answer. It is not written here, since this repo is public.
+6. **A reminder the evening before, chosen per meal on the Planner.** Its purpose is the freezer: "to remind you to get something
+   out of the freezer, and a key feature of the calendar". So the "start the day before" idea is dropped. A meal with its
+   reminder on gets one phone notification **at 20:00 the evening before** ("Dinner: Lamb Tagine, tomorrow 19:00"). The 20:00 is a
+   setting. Google times a reminder from the event's start, so the app works it out per meal: 23 hours before a 19:00 dinner,
+   17 before a 13:00 lunch, 11 before a 07:00 breakfast, all landing on 20:00.
+7. **DISCONNECT** was unclear, so it is put plainly in the open points below.
+
+### What this changes
+
+- **A planned day can now hold more than one meal.** Today a planned day is one list of recipes with no meal attached (the brief
+  dropped "meal slots in the Planner" in favour of asking the meal when cooking is logged). Standard times need to know which meal
+  each planned recipe is. So each recipe on a planned day gets a meal, **dinner unless the recipe's course is Breakfast**, changed
+  with a small picker on the Planner row. Recipes on the same day and meal make one event: `Dinner: Lamb Tagine + Rice`.
+- **Two switches per meal on the Planner:** IN CALENDAR (with ADD THE WEEK), and REMIND THE EVENING BEFORE (only offered once the
+  meal is in the calendar).
+- **The migration** gains `planner_days.meals` (one per recipe, parallel to `recipe_ids` and `servings`, as `servings` is) and the
+  reminder choice per meal; `household_settings` gains the three meal times and the reminder time instead of one meal time.
+- **The events:** one per day and meal that is switched on, with an id worked out from the household, the date and the meal.
+
+### Still open
+
+1. **The meal a recipe is planned as:** dinner unless its course is Breakfast, changeable on the Planner (recommended)? Or always
+   ask when it is planned?
+2. **DISCONNECT** (the button in Settings that stops the app using your Google Calendar, for example if you ever want to switch the
+   feature off): should it also **delete the RecipeWrangler calendar and every meal the app put in it** (recommended: it is the
+   app's own calendar, so nothing of yours is lost), or **leave the calendar and its events** where they are, frozen as they were?
+
+
+## 9. As finally answered (1 Oct 2026): the design being built
+
+Later on 1 Oct the household simplified the answers above: *"this calendar is purely for the reminders. And it in no way is
+intended to serve as a food diary … it could simply be an all day calendar event, with a reminder the previous day at 8 p.m."*
+On DISCONNECT: *"leave the calendar and meals where they are"*. So:
+
+- **One all-day event per planned day that is switched on**, titled with that day's recipes ("Invented Bean Hotpot + Pretend
+  Flatbreads"); the description lists each with its servings and links to the app. **No meal times, no breakfast, lunch or
+  dinner, and nothing stored per planned recipe**: §8's `meals` column, the three meal times and both of §8's open points go.
+  The event is "free", not "busy", so it never blocks the household's time in a shared calendar.
+- **Two switches per day on the Planner:** IN CALENDAR (with **ADD THE WEEK** on each week), and, once that is on, **REMIND ME**:
+  one phone notification at **20:00 the evening before**, chiefly for the freezer. 20:00 is a setting for the whole household.
+  Google times reminders back from the event's start, and an all-day event starts at 00:00, so 20:00 the evening before is
+  240 minutes before. A day with REMIND ME off carries no reminder at all, not the calendar's default.
+- **The calendar is `RecipeWrangler`**, made by the app in the household's Google account on the first connection. The account is
+  named in chat, not here: this repo is public.
+- **DISCONNECT** tells Google to revoke the connection and forgets it here. **The RecipeWrangler calendar and its events stay
+  where they are**; connecting again carries on with the same calendar.
+- **What reaches the calendar:** switching a day on or off; changing its recipes or servings; marking it away (its event goes);
+  ADD THE WEEK; a recipe's title edited, for its days to come; and SYNC NOW in Settings, which brings every day from today into
+  step and removes any of the app's events that no longer match. Past days are never rewritten.
+- **The food diary needs no replanning.** The diary (`recipe_logs`) records what *was* cooked, when it is logged; the calendar
+  shows what *will* be cooked, from the Planner. Neither reads or writes the other's data, and the after-cooking prompt is
+  unchanged. A future food-diary feature reads the diary, not the calendar.
+
+### How it is built
+
+| PR | What | Before merging |
+| --- | --- | --- |
+| 1 | `docs/migrations/add-calendar-push.md`: `planner_days.calendar` and `calendar_remind`, `household_settings.calendar_remind_at` (default 20:00), a `calendar_connections` status row the household can read but not write, the one-time consent values in `private`, and five service-role-only functions that keep the Google token in **Vault**. Two Edge Functions, `calendar-auth` (CONNECT, Google's callback, DISCONNECT) and `calendar-sync` (a list of days, or every day from today). `test/calendar-push.js` lifts their pure parts from the real source | The household's setup, §10 |
+| 2 | The app: the Planner's switches and ADD THE WEEK, Settings → App → CALENDAR (CONNECT, REMIND AT, SYNC NOW, DISCONNECT), a sync queued after each Planner change to a switched-on day, through the write queue so it waits and retries offline. Before the migration it shows nothing and sends nothing new | PR 1's SQL applied |
+| 3 | Docs, after the tablet and phone pass (`docs/TEST-PLAN.md` step 40a) | |
+
+What the functions do, in brief: the event's id is worked out from the household and the date, so the function needs no table of
+events and a retry cannot make a second one. A day is written by inserting with that id; if Google already has it (409, a live
+event or one deleted earlier), it is replaced with its status set back to confirmed. Deleting an event Google has already lost
+(404, 410) counts as done. The function always reads the day from the database, never from what the browser sends. If Google stops
+accepting the connection, the status row says so in words and the app offers CONNECT again.
+
+### Still to be seen on the real thing (step 40a)
+
+None of this can be tested from a session: there is no Google account here. The functions were run under Deno with Google and
+Supabase faked, and their pure parts are tested in Node; the first real event is the household's. To confirm there:
+
+1. Google offers `calendar.app.created` at setup (§5). If not, set the secret `GOOGLE_CALENDAR_SCOPE` to
+   `https://www.googleapis.com/auth/calendar` (no code change).
+2. A REMIND ME day's notification arrives on the phone at 20:00 the evening before.
+3. A day switched off and on again brings its event back (Google keeps deleted ids; the function replaces with status confirmed).
+
+## 10. The household's setup for PR 1, in order
+
+All in the household's own accounts; a session cannot do any of it and never sees the client secret.
+
+1. **Google Cloud console**, signed in as the Google account that will hold the calendar: new project **RecipeWrangler**; APIs &
+   Services → Library → **Google Calendar API** → Enable.
+2. **OAuth consent screen** (Google Auth platform → Branding / Audience / Data access): External; app name RecipeWrangler; your
+   email as support and developer contact. Data access → Add scopes: `…/auth/calendar.app.created` (shown as "Make secondary
+   Google calendars, and see, create, change, and delete events on them"), plus `openid` and `email`. If `calendar.app.created`
+   is not in the list, use `…/auth/calendar` and see §9, point 1. Audience → **Publish app** ("In production"). Left in Testing,
+   Google expires the connection after seven days.
+3. **Clients → Create client:** Web application, name RecipeWrangler; Authorised redirect URI exactly
+   `https://mhkayefzrtceesgizkjs.supabase.co/functions/v1/calendar-auth/callback`. No JavaScript origins are needed. Copy the
+   client ID and client secret straight into step 4.
+4. **Supabase dashboard → Edge Functions → Secrets:** add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+5. **SQL editor:** paste and run `docs/migrations/add-calendar-push.md`, the whole statement, once; then its "After it is applied"
+   queries, or ask a session to run them.
+6. **Deploy the two functions** from their raw GitHub URLs on this PR's branch (or `main` after merging):
+   - `calendar-sync`: **Verify JWT on**, like the other three.
+   - `calendar-auth`: **Verify JWT OFF.** Google's callback carries no Supabase sign-in; the function checks the sign-in itself on
+     everything else, and the callback is guarded by the one-time value.
+7. Merge PR 1. Nothing visible changes until PR 2; then CONNECT in Settings, click through "Google hasn't verified this app"
+   (Advanced → Go to RecipeWrangler) once, and allow.

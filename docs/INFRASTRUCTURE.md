@@ -195,8 +195,10 @@ drops. *(Until 25 Sep this paragraph said the next deploy would be v9.)*
 | `rehost-images` | v10 | Copies external images into Storage. `{"recipeId": "…"}` for one recipe — what the app sends after a save, added in v8; omit it for the full sweep, which is what v7 and earlier always did. `{"dryRun": true}` to preview, `{"verify": true}` to re-check what is already stored |
 | `find-recipe-image` | v4 | Read-only. Finds and measures candidate hero images for a recipe |
 | `source-ingredients` | v1, deployed 27 Sep through the dashboard editor from `main` after PR #22 merged; checked the same day against the repo with `get_edge_function` | Read-only. Reads the Schema.org recipe block at a `SOURCE_URL` and returns the source's ingredient strings, for the preview's COMPARE WITH SOURCE. `{"pageUrl": "https://…"}` or `{"recipeId": "…"}`. Fetches public https pages only, re-checking every redirect. Deploy with JWT verification on, like the other two; it needs no secrets beyond the ones Supabase provides |
+| `calendar-auth` | **Not deployed yet** (in PR 1 of P3, 1 Oct 2026) | CONNECT (Google's consent link), Google's callback (stores the token in Vault, makes the RecipeWrangler calendar), DISCONNECT. **Deploy with JWT verification OFF**: Google calls the callback with no Supabase sign-in; the function checks the sign-in itself on everything else, and the callback is guarded by a one-time value. Needs the secrets `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` |
+| `calendar-sync` | **Not deployed yet** (in PR 1 of P3) | Writes each switched-on planned day as an all-day event in the RecipeWrangler calendar, or deletes it. `{"dates": ["YYYY-MM-DD", …]}` or `{"all": true}`. JWT verification on. The same two secrets |
 
-P3's calendar push would be a fourth; that one does not exist yet.
+The two calendar functions are P3 (`docs/PLAN-CALENDAR-PUSH.md` §9, §10).
 
 **These are deployed straight to Supabase, not through GitHub Pages**, which is why the image
 fixes reached the live app without a merge. A change to their source in this repo is a record,
@@ -247,7 +249,9 @@ policies and `recipes.source_photos`, for `docs/PLAN-SOURCE-PHOTOS.md`) was appl
 after PR #63 merged (the bucket's `created_at` is 16:35:52 UTC; the merge was 16:34). Checked read-only at 16:47 UTC: the bucket
 private, 10 MB, the four types; four policies, one per command, each for `{authenticated}` and naming the bucket and the household
 folder; the column `jsonb`, nullable, no default, with its list check; no `anon` select on it; no files yet.
-Nothing is waiting to be applied.
+**Waiting to be applied: `add_calendar_push`** (`docs/migrations/add-calendar-push.md`, PR 1 of P3, 1 Oct 2026): two columns on
+`planner_days`, one on `household_settings`, the `calendar_connections` table, `private.calendar_oauth_states`, and five
+service-role-only functions that keep the Google token in Vault. The household applies it before merging that PR.
 
 ---
 
@@ -262,13 +266,15 @@ key is explicitly meant to be public-facing — it's designed to sit in front-en
 doing the actual access control.
 
 **Never paste into chat, and never commit to either repo:** the Supabase **service role key**,
-the database **password**, and (once P3 exists) the Google OAuth **client secret**. These live
+the database **password**, and the Google OAuth **client secret** (P3). These live
 only in:
 
 - **GitHub Actions secrets** on the relevant repo (`SUPABASE_DB_URL` on `PrivateBackup`, as above)
 - **Supabase's own dashboard** (Project Settings → API for the service role key; Project
   Settings → Database for the password)
-- Whatever secret store an Edge Function ends up using, once P3 or the image work is built
+- **Edge Functions → Secrets** in the Supabase dashboard, for the Google client: `GOOGLE_CLIENT_ID` and
+  `GOOGLE_CLIENT_SECRET` (P3). The Google **refresh token** the calendar functions are given at CONNECT is kept in
+  **Vault** (`calendar_refresh_token:<household id>`), reachable only by the service role, and is not in the nightly backup
 
 If a future session or tool needs to act with elevated privilege (the service role key, a
 direct `psql` connection), the credential goes into the relevant platform's own settings
