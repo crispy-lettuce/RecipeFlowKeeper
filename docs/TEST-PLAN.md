@@ -490,6 +490,27 @@ removed page was deleted), and no listed page missing.*
     whether the photo and the lines sit close enough on the tablet to check one against the other.** A change to the
     ingredient lines takes the check away, as for a web recipe.
 
+40a. **Planned meals in Google Calendar (new 9 Oct, P3 PR 2; only after `docs/migrations/add-calendar-push.md` is applied and
+    both calendar functions are deployed, `docs/PLAN-CALENDAR-PUSH.md` §10).** Writes Planner rows and the household's settings
+    row, and events in the RecipeWrangler calendar. Before the migration, *Settings → App → CALENDAR* reads "Waiting for the
+    database change" and the Planner has no calendar buttons: check that first, on the tablet, before the household's setup.
+    (1) *Connect, on the tablet:* Settings → App → CALENDAR → CONNECT GOOGLE CALENDAR. Google warns "Google hasn't verified this
+    app": Advanced → Go to RecipeWrangler, then allow. Back in the app a toast says it is connected, Settings is open on App, and
+    the block reads "Connected as …, calendar RecipeWrangler" with REMIND AT 20:00. In Google Calendar on the phone a calendar
+    called RecipeWrangler is listed (turn it on there if the phone hides new calendars). (2) *Planner, a planned day:* IN
+    CALENDAR. Within a few seconds the phone shows an all-day event on that day, titled with its recipes joined by " + ", shown as
+    free, the description listing each with its servings and a link to the app. Settings shows the time it was last brought into
+    step. (3) *REMIND ME 20:00 THE EVENING BEFORE on a day two or more days ahead:* the event gains one notification; on the evening
+    before, at 20:00, the phone shows it. A day with REMIND ME off has no notification at all. (4) *Change the day's recipes and its
+    servings:* the event's title and description follow. *Mark it away* (CHOOSE A RECIPE → MARK DAY AWAY, or empty it): the event
+    goes. *ADD THE WEEK* on a week with three planned days: all three appear, and the week's button goes. Switch a day off and on
+    again: its event comes back. Rename a recipe planned on a switched-on day: the event's title follows. (5) *Settings → DISCONNECT:*
+    the question says the calendar stays in Google; say yes. The block offers CONNECT again; the Planner's calendar buttons go; the
+    plan is as it was. RecipeWrangler and its events are still in Google Calendar on the phone. Connect again (step 1) and the same
+    calendar carries on, with no second RecipeWrangler. **What no test can judge: whether Android shows the 20:00 notification for
+    an all-day event, and whether the event reads well on the phone's lock screen.** Undo: switch the days off (their events go),
+    then DISCONNECT; delete the RecipeWrangler calendar in Google if wanted.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in
