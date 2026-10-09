@@ -612,7 +612,7 @@ two different recipes. Title similarity decided none of them; source and image d
 
 ---
 
-## 4. Calendar push (P3) — answered 1 Oct 2026; PR 1 merged; PR 2 (the app) built 9 Oct
+## 4. Calendar push (P3) — answered 1 Oct 2026; PRs 1 and 2 merged and connected 9 Oct; the automatic toggles built 9 Oct
 
 Phase 3 in the brief. Recorded here because it appears in no task list anywhere and would
 otherwise be forgotten.
@@ -633,7 +633,10 @@ at 20:00 the evening before, ADD THE WEEK, a RecipeWrangler calendar, and DISCON
 `calendar-sync` Edge Functions (not deployed), and `test/calendar-push.js`; merged 1 Oct (#69). **PR 2, the app, built 9 Oct:** the
 Planner's IN CALENDAR, REMIND ME and ADD THE WEEK, Settings → App → CALENDAR, and a sync queued after each Planner change to a
 switched-on day. It shows and sends nothing new until the migration is applied. What was verified is in §7; the real test is the
-household's tablet and phone pass, `docs/TEST-PLAN.md` step 40a.
+household's tablet and phone pass, `docs/TEST-PLAN.md` step 40a. PR 2 merged 9 Oct (#71); the household applied the migration
+and connected the same day. **The follow-up, 9 Oct** (`docs/PLAN-CALENDAR-PUSH.md` §11): AUTOMATICALLY ADD TO CALENDAR and
+AUTOMATICALLY REMIND ME FOR MAIN MEALS, on two new `household_settings` columns (`docs/migrations/add-calendar-auto.md`, waiting),
+step 40b.
 
 ---
 
@@ -1974,6 +1977,56 @@ the two `planner_days` columns and `calendar_remind_at` do not exist yet (34 rec
 *Not verified:* anything against Google or the live database. That means the migration, the deployed functions, the real consent
 round trip and its redirect back, supabase-js's real error objects for a 4xx or a relay error, and the 20:00 notification on the
 phone. That is tablet and phone step 40a, after §10 of the plan.
+
+**P3 follow-up: the automatic calendar toggles (9 Oct 2026).** Asked for and answered the same day (`docs/PLAN-CALENDAR-PUSH.md`
+§11): AUTOMATICALLY ADD TO CALENDAR and AUTOMATICALLY REMIND ME FOR MAIN MEALS in Settings → App → CALENDAR, under REMIND AT, drawn
+as the KEEP AWAKE switch. `docs/migrations/add-calendar-auto.md` adds `household_settings.calendar_auto` and `calendar_auto_remind`
+(waiting; the household applies it, then merges). `index.html` only, no `core.js` change.
+- **Detection:** `calendarAutoAvailable` is `'calendar_auto' in` the settings row from the existing `select('*')`. Until the
+  migration, the toggles stay hidden and no save names the columns.
+- **Where the rules apply:** in `addPlanRecipe`, the one place a recipe is put on a day. `applyCalendarAuto` only switches on, only
+  while connected, and never on a blank day.
+- **Main:** the recipe's own `tags.course === 'Main'`. That is 18 of 34 recipes (read-only, 18:59 UTC).
+- **The sweep:** switching a toggle on catches up the planned days from today inside `withCalendarBatch`. It writes only the days
+  whose switches change, then makes one `calendar-sync` call. Switching a toggle off changes no day.
+
+*Verified by.* `node test/core.test.js` 143 checks, exit 0. `node test/build.js && node test/smoke.js` **447 checks** (437
+before, exit 0 on a copy of `main` at `8ca9321`), exit 0, no console or page errors. `node test/calendar-push.js` 30 checks, exit
+0.
+
+The ten new checks use two invented recipes (a Main and a Side, no live title like them) and cover:
+- before the columns exist;
+- both off;
+- AUTO ADD on, including a day switched off by hand staying off on a servings change and coming back when a recipe is added;
+- AUTO REMIND on alone, Main against Side;
+- the sweep for each toggle: one call, past and away days untouched;
+- off changing nothing;
+- not connected.
+
+**Ten mutations, each failing a check by name:**
+- the settings save without its guard;
+- AUTO ADD ignored;
+- any course taken as Main;
+- the sweep touching past days;
+- the sweep making a call per day;
+- switching off undoing days;
+- applying while disconnected;
+- the columns taken as present without the key;
+- `addPlanRecipe` not applying the rules;
+- the sweep writing days that do not change.
+
+Each ran in its own copy of the repo, so the working tree was never changed.
+
+*Found while testing:* the stub returns its fixture arrays themselves, not copies as supabase-js does, and `hydrate` keeps
+`recipe_ids` by reference. So a check that empties a day in place (`removePlanRecipeAt` splices) also empties the fixture row, for
+every later read. The toggles' checks therefore set fresh planner rows; the stub itself was not changed.
+
+Also found: the existing check "export carries source_check and import restores it" failed once while four smoke runs shared the
+machine, because the import had not finished when it was read. It passed on the same code run alone. It is timing-sensitive under
+load.
+
+*Not verified:* the migration (not applied), and anything against Google: the sweep's events, and the reminder on a Main-course
+day. That is tablet and phone step 40b.
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all

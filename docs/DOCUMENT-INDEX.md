@@ -20,7 +20,7 @@ Then pick up work from **`docs/NEXT-SESSION.md`**: where things stand, what is l
 order, and the household's own jobs. As of 30 Sep 2026 the app is live and in daily use and every
 agreed plan is built and merged, R4 (dated cooking notes, `docs/PLAN-COOKING-NOTES.md`) included.
 What remains is the household's data jobs and P3 (the calendar push, `docs/PLAN-CALENDAR-PUSH.md`: answered 1 Oct, PR 1 built,
-merged, waiting for the household's Google setup; the app is PR 2, built 9 Oct).
+merged; the app, PR 2, merged and connected 9 Oct; two automatic toggles, §11, built 9 Oct).
 
 **One thing to absorb before changing anything: `main` is production.** GitHub Pages serves from
 `main`, and every merge deploys straight to the tablet. There is no staging step. This was
@@ -105,7 +105,14 @@ useful with no Claude Code session and no prior context at all.
 
 ---
 
-### `docs/migrations/add-calendar-push.md` — a schema change, waiting to be applied (1 Oct 2026)
+### `docs/migrations/add-calendar-auto.md` — a schema change, waiting to be applied (9 Oct 2026)
+**What:** the P3 follow-up (`docs/PLAN-CALENDAR-PUSH.md` §11): `household_settings.calendar_auto` and `calendar_auto_remind`, the
+two automatic calendar toggles, off by default. Who applies it and when, why it is safe in either order, how to check it and how to
+undo it. DDL only, no data.
+
+**Use it when:** applying it (the household), checking it, or undoing it.
+
+### `docs/migrations/add-calendar-push.md` — a schema change, applied 9 Oct 2026 (written 1 Oct)
 **What:** PR 1 of P3: `planner_days.calendar` and `calendar_remind`, `household_settings.calendar_remind_at`, the
 `calendar_connections` status table (read-only to the household), the one-time consent values in `private`, and five
 service-role-only functions that keep the Google refresh token in Vault, out of the nightly backup. Who applies it and when, why
@@ -323,14 +330,14 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
-### `docs/PLAN-CALENDAR-PUSH.md` — planned meals in Google Calendar, P3 (30 Sep 2026; answered 1 Oct; PR 1 merged; PR 2 built 9 Oct)
+### `docs/PLAN-CALENDAR-PUSH.md` — planned meals in Google Calendar, P3 (30 Sep 2026; answered 1 Oct; PRs 1 and 2 merged; §11 the toggles, 9 Oct)
 **What:** The brief's P3: what exists, a live connection against a subscribed feed, the first proposal and seven decisions
 (§1–§7), the first answers (§8), and **§9, the design being built**: one all-day event per switched-on planned day in a
 RecipeWrangler calendar, an optional reminder at 20:00 the evening before (for the freezer), ADD THE WEEK, DISCONNECT leaving the
 calendar in place, the token in Vault; no meal times, and no change to the food diary. **§10** is the household's Google and
 Supabase setup, step by step.
 
-**Use it when:** doing the setup, running tablet and phone step 40a, or checking what P3 does.
+**Use it when:** doing the setup, running tablet and phone steps 40a and 40b, or checking what P3 does.
 
 ---
 
