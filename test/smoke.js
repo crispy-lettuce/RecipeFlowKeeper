@@ -4416,6 +4416,171 @@ const check = (name, pass, detail) => {
   await page.evaluate(async () => { delete window.__STUB_DATA__.calendar_connections; window.__INVOKE_REPLY__ = null;
     window.goToGoogle = window.__REAL_GO__; await hydrate(); showView('recipes'); renderHome(); });
 
+  /* ---- The automatic calendar toggles (docs/PLAN-CALENDAR-PUSH.md §11; added 9 Oct 2026) ----
+     AUTOMATICALLY ADD TO CALENDAR and AUTOMATICALLY REMIND ME FOR MAIN MEALS. Two made-up recipes join the
+     fixture for this section only (a Main and a Side; the fixture's three are all Main), and the settings row
+     is given the two columns, or not, to stand for add-calendar-auto applied, or not yet. */
+  const AUTO_MAIN = 'auto-main-0000-4000-8000-000000000001', AUTO_SIDE = 'auto-side-0000-4000-8000-000000000002';
+  const autoRecipe = (id, title, course) => ({ id, household_id: '286a8a12-c12a-4b83-afbc-0912533f6b1c', title, source: 'Test Kitchen',
+    source_url: null, image_url: null, time_text: '20 min', servings: 2, favourite: false, equipment: '', tags: { course, keywords: [] },
+    date_added: '2026-01-01', source_photos: null,
+    syntax: `TITLE: ${title}\nSOURCE: Test Kitchen\nSERVINGS: 2\nTAGS: course=${course}\n\nGROUP a:\n1 leek\n\nSTAGE:\nMERGE a -> done: Cook [5 min]` });
+  const autoSetup = (cols, conn) => page.evaluate(async ([cols, conn, recs]) => {
+    const D = window.__STUB_DATA__;
+    D.calendar_connections = [conn];
+    D.recipes = D.recipes.filter(r => !/^auto-/.test(r.id)).concat(recs);
+    /* Fresh planner rows each time: the stub hands back its own arrays, not copies as the real client does, so an
+       earlier check that emptied a day in place (removePlanRecipeAt splices) emptied the fixture's row with it. */
+    const day = n => isoLocal(dayList()[n]);
+    D.planner_days = [
+      { household_id: '286a8a12-c12a-4b83-afbc-0912533f6b1c', plan_date: day(0), is_blank: false, recipe_ids: ['11111111-1111-4111-8111-111111111111'], servings: [] },
+      { household_id: '286a8a12-c12a-4b83-afbc-0912533f6b1c', plan_date: day(1), is_blank: false,
+        recipe_ids: ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'], servings: [] }];
+    const row = D.household_settings[0];
+    delete row.calendar_auto; delete row.calendar_auto_remind;
+    if(cols) Object.assign(row, cols);
+    window.__MISSING_TABLES__ = [];
+    await hydrate();
+    window.__INVOKES__.length = 0;
+    window.__INVOKE_REPLY__ = call => call.name === 'calendar-sync' ? { data: { ok: true, put: 1, deleted: 0 }, error: null } : { data: null, error: null };
+    showView('planner');
+  }, [cols, conn, [autoRecipe(AUTO_MAIN, 'Invented Bean Hotpot', 'Main'), autoRecipe(AUTO_SIDE, 'Pretend Green Salad', 'Side')]]);
+  const autoDay = n => page.evaluate(n => isoLocal(dayList()[n]), n);
+  const autoShown = () => page.evaluate(() => { showView('settings'); showSettingsTab('app');
+    const r = { add: !!document.getElementById('calAutoAdd'), remind: !!document.getElementById('calAutoRemind') }; showView('planner'); return r; });
+  const autoFlags = d => page.evaluate(d => { const e = cache.plan[d]; return e ? { calendar: !!e.calendar, remind: !!e.remind, blank: !!e.blank } : null; }, d);
+  const [autoD0, autoD1, autoD3, autoD4, autoD5, autoD6] = await Promise.all([0, 1, 3, 4, 5, 6].map(autoDay));
+
+  // 1. Before the migration: the toggles' columns are not in the row.
+  await autoSetup(null, CAL_CONNECTED);
+  const autoPreShown = await autoShown();
+  let autoM = await calMark();
+  const autoPreAvail = await page.evaluate(([d, id]) => { cache.settings.calendarAuto = true; cache.settings.calendarAutoRemind = true;
+    addPlanRecipe(d, id); setSetting('weekStartDay', 5); return calendarAutoAvailable; }, [autoD3, AUTO_MAIN]);
+  await calDrain();
+  let autoS = await calSince(autoM);
+  check('calendar toggles, before their migration: none shown, a settings save names neither column, and adding a recipe switches no day on',
+        autoPreAvail === false && !autoPreShown.add && !autoPreShown.remind
+        && autoS.settings.length === 1 && !('calendar_auto' in autoS.settings[0]) && !('calendar_auto_remind' in autoS.settings[0])
+        && calPlanRow(autoS, autoD3) && calPlanRow(autoS, autoD3).calendar === false && autoS.syncs.length === 0,
+        JSON.stringify([autoPreAvail, autoPreShown, autoS.settings, calPlanRow(autoS, autoD3), autoS.syncs]));
+
+  // 2. Applied, connected, both off: today's behaviour.
+  await autoSetup({ calendar_auto: false, calendar_auto_remind: false }, CAL_CONNECTED);
+  const autoOffShown = await autoShown();
+  autoM = await calMark();
+  await page.evaluate(([d, id]) => { addPlanRecipe(d, id); setSetting('weekStartDay', 5); }, [autoD3, AUTO_MAIN]);
+  await calDrain();
+  autoS = await calSince(autoM);
+  check('    applied, connected, both off: the toggles show, off; adding a recipe leaves the day off and syncs nothing; settings send both as false',
+        autoOffShown.add && autoOffShown.remind && calPlanRow(autoS, autoD3) && calPlanRow(autoS, autoD3).calendar === false && autoS.syncs.length === 0
+        && autoS.settings.length === 1 && autoS.settings[0].calendar_auto === false && autoS.settings[0].calendar_auto_remind === false,
+        JSON.stringify([autoOffShown, calPlanRow(autoS, autoD3), autoS.syncs, autoS.settings]));
+
+  // 3. AUTO ADD on.
+  await autoSetup({ calendar_auto: true, calendar_auto_remind: false }, CAL_CONNECTED);
+  autoM = await calMark();
+  await page.evaluate(([d, id]) => addPlanRecipe(d, id), [autoD3, AUTO_SIDE]);
+  await calDrain();
+  autoS = await calSince(autoM);
+  check('    AUTO ADD on: adding a recipe to an empty day saves it in the calendar (no reminder), and the Planner write lands before the sync of that day',
+        calPlanRow(autoS, autoD3) && calPlanRow(autoS, autoD3).calendar === true && calPlanRow(autoS, autoD3).calendar_remind === false
+        && JSON.stringify(autoS.syncs) === JSON.stringify([{ dates: [autoD3] }])
+        && autoS.log.lastIndexOf('write-done:planner_days') !== -1 && autoS.log.lastIndexOf('write-done:planner_days') < autoS.log.indexOf('invoke:calendar-sync'),
+        JSON.stringify([calPlanRow(autoS, autoD3), autoS.syncs, autoS.log]));
+  await page.evaluate(d => setPlanCalendar(d, false), autoD3);
+  await calDrain();
+  autoM = await calMark();
+  await page.evaluate(d => setPlanServingsAt(d, 0, 4), autoD3);
+  await calDrain();
+  const autoHandOff = await calSince(autoM);
+  autoM = await calMark();
+  await page.evaluate(([d, id]) => addPlanRecipe(d, id), [autoD3, AUTO_SIDE]);
+  await calDrain();
+  autoS = await calSince(autoM);
+  check('    a day switched off by hand stays off on a servings change, and goes back on when a recipe is next added to it',
+        calPlanRow(autoHandOff, autoD3) && calPlanRow(autoHandOff, autoD3).calendar === false && autoHandOff.syncs.length === 0
+        && calPlanRow(autoS, autoD3) && calPlanRow(autoS, autoD3).calendar === true && JSON.stringify(autoS.syncs) === JSON.stringify([{ dates: [autoD3] }]),
+        JSON.stringify([calPlanRow(autoHandOff, autoD3), autoHandOff.syncs, calPlanRow(autoS, autoD3), autoS.syncs]));
+
+  // 4. AUTO REMIND on, AUTO ADD off.
+  await autoSetup({ calendar_auto: false, calendar_auto_remind: true }, CAL_CONNECTED);
+  autoM = await calMark();
+  await page.evaluate(([a, b, main, side]) => { addPlanRecipe(a, main); addPlanRecipe(b, side); }, [autoD3, autoD4, AUTO_MAIN, AUTO_SIDE]);
+  await calDrain();
+  autoS = await calSince(autoM);
+  check('    AUTO REMIND on alone: a Main recipe puts the day in the calendar with REMIND ME; a Side alone gets neither',
+        calPlanRow(autoS, autoD3) && calPlanRow(autoS, autoD3).calendar === true && calPlanRow(autoS, autoD3).calendar_remind === true
+        && calPlanRow(autoS, autoD4) && calPlanRow(autoS, autoD4).calendar === false && calPlanRow(autoS, autoD4).calendar_remind === false
+        && JSON.stringify(autoS.syncs) === JSON.stringify([{ dates: [autoD3] }]),
+        JSON.stringify([calPlanRow(autoS, autoD3), calPlanRow(autoS, autoD4), autoS.syncs]));
+
+  // 5. The sweep, through the real toggles.
+  await autoSetup({ calendar_auto: false, calendar_auto_remind: false }, CAL_CONNECTED);
+  const autoPast = await page.evaluate(([d4, d5, d6, side, main]) => {
+    addPlanRecipe(d4, side); setPlanBlank(d5); addPlanRecipe(d6, main); setPlanCalendar(d6, true);
+    const p = new Date(); p.setDate(p.getDate() - 2); const past = isoLocal(p);
+    cache.plan[past] = { recipeIds: [main], servings: [0] };
+    return past;
+  }, [autoD4, autoD5, autoD6, AUTO_SIDE, AUTO_MAIN]);
+  await calDrain();
+  await page.evaluate(() => { showView('settings'); showSettingsTab('app'); });
+  autoM = await calMark();
+  await page.click('label:has(#calAutoAdd)');
+  await calDrain();
+  autoS = await calSince(autoM);
+  const autoSweepToast = await calToast();
+  const autoSweepWrote = autoS.plan.filter(w => w.op === 'upsert').flatMap(w => w.rows).map(r => r.plan_date).sort();
+  const autoAfterAdd = { past: await autoFlags(autoPast), blank: await autoFlags(autoD5) };
+  check('    switching AUTO ADD on saves it, then puts every upcoming planned day not already on in the calendar, in ONE call after their writes',
+        autoS.settings.length === 1 && autoS.settings[0].calendar_auto === true
+        && JSON.stringify(autoSweepWrote) === JSON.stringify([autoD0, autoD1, autoD4].sort())
+        && JSON.stringify(autoS.syncs) === JSON.stringify([{ dates: [autoD0, autoD1, autoD4].sort() }])
+        && autoS.log.lastIndexOf('write-done:planner_days') < autoS.log.indexOf('invoke:calendar-sync') && /Added 3 days to the calendar/.test(autoSweepToast),
+        JSON.stringify([autoS.settings, autoSweepWrote, autoS.syncs, autoSweepToast]));
+  check('    the sweep leaves a past day and a day marked away untouched',
+        !autoSweepWrote.includes(autoPast) && !autoSweepWrote.includes(autoD5) && autoAfterAdd.past && !autoAfterAdd.past.calendar
+        && autoAfterAdd.blank && autoAfterAdd.blank.blank && !autoAfterAdd.blank.calendar, JSON.stringify([autoSweepWrote, autoAfterAdd]));
+  autoM = await calMark();
+  await page.click('label:has(#calAutoRemind)');
+  await calDrain();
+  autoS = await calSince(autoM);
+  const autoRemindToast = await calToast();
+  const autoRemindWrote = autoS.plan.filter(w => w.op === 'upsert').flatMap(w => w.rows).filter(r => r.calendar_remind).map(r => r.plan_date).sort();
+  check('    switching AUTO REMIND on gives REMIND ME to the upcoming days with a Main course, a Side-only day none, in one call',
+        autoS.settings.length === 1 && autoS.settings[0].calendar_auto_remind === true
+        && JSON.stringify(autoRemindWrote) === JSON.stringify([autoD0, autoD1, autoD6].sort())
+        && JSON.stringify(autoS.syncs) === JSON.stringify([{ dates: [autoD0, autoD1, autoD6].sort() }]) && /Reminders added to 3 main-meal days/.test(autoRemindToast),
+        JSON.stringify([autoS.settings, autoRemindWrote, autoS.syncs, autoRemindToast]));
+  const autoPlanBefore = await page.evaluate(() => JSON.stringify(cache.plan));
+  autoM = await calMark();
+  await page.click('label:has(#calAutoAdd)');
+  await calDrain();
+  await page.click('label:has(#calAutoRemind)');
+  await calDrain();
+  autoS = await calSince(autoM);
+  const autoPlanAfter = await page.evaluate(() => JSON.stringify(cache.plan));
+  check('    switching either toggle off saves it and changes no day: no Planner write, no sync, the plan as it was',
+        autoS.settings.length === 2 && autoS.settings[1].calendar_auto === false && autoS.settings[1].calendar_auto_remind === false
+        && autoS.plan.length === 0 && autoS.syncs.length === 0 && autoPlanAfter === autoPlanBefore,
+        JSON.stringify([autoS.settings, autoS.plan.length, autoS.syncs]));
+
+  // 6. Not connected: the preference is kept, nothing is flagged.
+  await autoSetup({ calendar_auto: true, calendar_auto_remind: true }, { ...CAL_CONNECTED, connected: false });
+  const autoNcShown = await autoShown();
+  autoM = await calMark();
+  await page.evaluate(([d, id]) => addPlanRecipe(d, id), [autoD3, AUTO_MAIN]);
+  await calDrain();
+  autoS = await calSince(autoM);
+  check('    not connected: the toggles are hidden, and adding a Main recipe with both on flags nothing',
+        !autoNcShown.add && !autoNcShown.remind && calPlanRow(autoS, autoD3) && calPlanRow(autoS, autoD3).calendar === false
+        && calPlanRow(autoS, autoD3).calendar_remind === false && autoS.syncs.length === 0,
+        JSON.stringify([autoNcShown, calPlanRow(autoS, autoD3), autoS.syncs]));
+
+  await page.evaluate(async () => { const D = window.__STUB_DATA__; D.recipes = D.recipes.filter(r => !/^auto-/.test(r.id));
+    delete D.household_settings[0].calendar_auto; delete D.household_settings[0].calendar_auto_remind; delete D.calendar_connections;
+    window.__INVOKE_REPLY__ = null; await hydrate(); showView('recipes'); renderHome(); });
+
   const failed = checks.filter(c => !c.pass).length;
   console.log(`\n${checks.length} checks, ${failed} failed`);
   console.log(errors.length ? '\nERRORS:\n' + errors.join('\n') : 'no console/page errors');

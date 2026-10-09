@@ -511,6 +511,21 @@ removed page was deleted), and no listed page missing.*
     an all-day event, and whether the event reads well on the phone's lock screen.** Undo: switch the days off (their events go),
     then DISCONNECT; delete the RecipeWrangler calendar in Google if wanted.
 
+40b. **The automatic calendar toggles (new 9 Oct, `docs/PLAN-CALENDAR-PUSH.md` §11; only after
+    `docs/migrations/add-calendar-auto.md` is applied).** Writes the household's settings row, Planner rows, and events in the
+    RecipeWrangler calendar. Before the migration, *Settings → App → CALENDAR* shows no toggles under REMIND AT: check that first.
+    (1) *Settings → App → CALENDAR, connected:* under REMIND AT, AUTOMATICALLY ADD TO CALENDAR and AUTOMATICALLY REMIND ME FOR MAIN
+    MEALS, both off, in the KEEP AWAKE switch style. (2) *Note which upcoming planned days are not IN CALENDAR, then switch AUTOMATICALLY
+    ADD TO CALENDAR on:* a toast says how many days were added; on the Planner each of those days now shows IN CALENDAR; a day marked
+    away and any day before today are as they were. Within a few seconds the phone shows their all-day events. (3) *Plan a recipe on an
+    empty day:* it is IN CALENDAR at once and its event appears. Switch that day off by hand, change its servings: it stays off. Add
+    another recipe to it: it is on again. (4) *Switch AUTOMATICALLY REMIND ME FOR MAIN MEALS on:* a toast says how many main-meal days
+    got a reminder; a day with a Main-course recipe shows REMIND ME on; a day with only a side or a dessert does not. The evening before
+    such a day, at the REMIND AT time, the phone shows the notification. (5) *Switch both off:* the toasts say days already set stay;
+    nothing on the Planner changes. Plan another recipe: the day stays off. (6) *On the phone, open Settings:* the toggles show as set on
+    the tablet (they belong to the household). **What no test can judge: whether "Main" in the course tags matches what the household
+    means by a main meal, recipe by recipe.** Undo: switch the toggles off and the days off by hand; or the page's undo SQL.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

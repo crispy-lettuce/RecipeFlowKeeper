@@ -231,6 +231,7 @@ For a full account of how the schema got here, in order:
 (no version)    add_recipes_source_check      (29 Sep 2026, run from the SQL editor, so not in schema_migrations)
 (no version)    add_aisle_overrides           (29 Sep 2026, run from the SQL editor, so not in schema_migrations)
 (no version)    add_source_photos             (30 Sep 2026, run from the SQL editor, so not in schema_migrations)
+(no version)    add_calendar_push             (9 Oct 2026, run from the SQL editor, so not in schema_migrations)
 ```
 
 The last two were missing from this list until 22 Sep, while the features they carry were
@@ -249,9 +250,14 @@ policies and `recipes.source_photos`, for `docs/PLAN-SOURCE-PHOTOS.md`) was appl
 after PR #63 merged (the bucket's `created_at` is 16:35:52 UTC; the merge was 16:34). Checked read-only at 16:47 UTC: the bucket
 private, 10 MB, the four types; four policies, one per command, each for `{authenticated}` and naming the bucket and the household
 folder; the column `jsonb`, nullable, no default, with its list check; no `anon` select on it; no files yet.
-**Waiting to be applied: `add_calendar_push`** (`docs/migrations/add-calendar-push.md`, PR 1 of P3, 1 Oct 2026): two columns on
-`planner_days`, one on `household_settings`, the `calendar_connections` table, `private.calendar_oauth_states`, and five
-service-role-only functions that keep the Google token in Vault. The household applies it before merging that PR.
+`add_calendar_push` (`docs/migrations/add-calendar-push.md`, PR 1 of P3: two columns on `planner_days`, one on
+`household_settings`, the `calendar_connections` table, `private.calendar_oauth_states`, and five service-role-only functions that
+keep the Google token in Vault) was applied the same way by the household on 9 Oct 2026, before their first connection (dated
+17:52:47 UTC). Seen read-only at 18:59 UTC that day: `household_settings.calendar_remind_at` exists and the household is connected.
+Its own page's check queries (grants, policies, the functions' execute rights) have not been run by a session yet.
+**Waiting to be applied: `add_calendar_auto`** (`docs/migrations/add-calendar-auto.md`, the P3 follow-up, 9 Oct 2026): two
+booleans on `household_settings`, `calendar_auto` and `calendar_auto_remind`, both off by default, for the two automatic toggles.
+The household applies it before merging that PR; merging first is safe, since the toggles stay hidden until the columns exist.
 
 ---
 

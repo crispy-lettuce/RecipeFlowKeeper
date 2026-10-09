@@ -5,9 +5,10 @@ Edge Function holds a Google OAuth refresh token, obtained via one one-off conse
 created automatically with no further manual action, ever."* and *"Opt-in per entry."* Scoped on 30 Sep 2026 at the household's
 request; **the household answered §7 on 1 Oct 2026**, then simplified their answers the same day: **§9 is the design being built and
 supersedes §4 and §8 wherever they differ.** §10 is the household's setup. **PR 1 (the migration and the two Edge Functions) is
-merged (#69, 1 Oct); the app (PR 2) was built 9 Oct**, safe to merge before §10 is done: until the migration is applied it says
-"Waiting for the database change" in Settings and sends nothing new. Then `docs/TEST-PLAN.md` step 40a, the household's tablet and
-phone pass, and PR 3 records it.
+merged (#69, 1 Oct); the app (PR 2, #71) merged 9 Oct, and the household applied the migration and connected the same day** (the
+connection is dated 17:52 UTC). Then `docs/TEST-PLAN.md` step 40a, the household's tablet and phone pass, and PR 3 records it.
+**§11** is the follow-up asked for on 9 Oct: two toggles that switch days on automatically (`docs/migrations/add-calendar-auto.md`,
+step 40b).
 
 ## 1. What it is for
 
@@ -239,3 +240,30 @@ All in the household's own accounts; a session cannot do any of it and never see
      everything else, and the callback is guarded by the one-time value.
 7. Merge PR 1. Nothing visible changes until PR 2; then CONNECT in Settings, click through "Google hasn't verified this app"
    (Advanced → Go to RecipeWrangler) once, and allow.
+
+## 11. Two automatic toggles (asked for and answered 9 Oct 2026)
+
+With the calendar connected and in use, the household asked not to have to switch each day on by hand. Two toggles in
+**Settings → App → CALENDAR**, under REMIND AT, shown only while connected:
+
+- **AUTOMATICALLY ADD TO CALENDAR:** "Each day you plan goes into the calendar." A day goes in when a recipe is put on it.
+- **AUTOMATICALLY REMIND ME FOR MAIN MEALS:** "Days with a Main course get the evening-before reminder." A day with a Main-course
+  recipe gets REMIND ME.
+
+The household's answers, 9 Oct:
+
+- **Main meals** are recipes whose own course tag is Main (`tags.course`): 18 of the 34 recipes that day (read-only, 18:59 UTC).
+- **Switching a toggle on also sweeps upcoming days**, from today, once: each planned day it applies to is switched on, then one
+  call brings the calendar into step. Past days and days marked away are never touched.
+- **The reminder toggle on its own also puts a main-meal day in the calendar**, since a reminder needs an event.
+- **The toggles only ever switch on**, and only at two moments: a recipe put on a day, and a toggle switched on. Switching a toggle
+  off changes no day. A day switched off by hand stays off until a recipe is next added to it, and the Planner's own buttons work
+  as before.
+- **The setting belongs to the household**, not the device: two columns on `household_settings`,
+  `docs/migrations/add-calendar-auto.md`. Before they exist the toggles stay hidden, so the app's PR is safe to merge either way.
+- **Only while connected.** A day reaches the calendar only then; a toggle is not shown while disconnected, and a preference
+  already set flags nothing until the household connects again (then a recipe added, or the toggle switched off and on, applies it).
+
+How it is built: the rules live in one place, `addPlanRecipe`, which both the recipe picker and the shortlist use; the day is then
+saved and synced as any other. The sweep writes only the days whose switches change, then makes one `calendar-sync` call. Tablet
+and phone step 40b.

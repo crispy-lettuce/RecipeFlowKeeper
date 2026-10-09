@@ -402,6 +402,9 @@
   .toggle-switch input:checked + .toggle-track{ background:var(--plum); border-color:var(--plum); }
   .toggle-switch input:checked + .toggle-track .toggle-thumb{ transform:translateX(15px); }
   .toggle-switch input:focus-visible + .toggle-track{ outline:2px solid var(--plum); outline-offset:2px; }
+  /* Settings → CALENDAR's two automatic toggles: the switch, with its one line of explanation under it. */
+  .cal-auto{ margin:14px 0 4px; }
+  .cal-auto .subtle{ margin:4px 0 0 44px; }
 
   .keep-awake-status{
     padding:7px 30px; background:var(--plum-wash); border-bottom:1px solid var(--line);
@@ -2637,7 +2640,7 @@ const DEFAULT_WEEK_START_DAY = 5;
 const cache = {
   recipes: [], keywords: [], plan: {}, shortlist: [],
   groups: [], swaps: [], shoppingChecked: {},
-  settings: { weekStartDay: DEFAULT_WEEK_START_DAY, darkMode: 'system', remindAt: 1200 },
+  settings: { weekStartDay: DEFAULT_WEEK_START_DAY, darkMode: 'system', remindAt: 1200, calendarAuto: false, calendarAutoRemind: false },
   aliases: [],
   aisleOverrides: [],
   recipeNotes: [],
@@ -2913,8 +2916,13 @@ async function hydrate(opts){
   cache.settings = {
     weekStartDay: settings.data ? settings.data.week_start_day : DEFAULT_WEEK_START_DAY,
     darkMode: (settings.data && settings.data.dark_mode) || 'system',
-    remindAt: validRemindAt(settings.data && settings.data.calendar_remind_at)
+    remindAt: validRemindAt(settings.data && settings.data.calendar_remind_at),
+    calendarAuto: !!(settings.data && settings.data.calendar_auto),
+    calendarAutoRemind: !!(settings.data && settings.data.calendar_auto_remind)
   };
+  /* select('*') names every column, so the row itself says whether docs/migrations/add-calendar-auto.md is in.
+     Until it is, the two toggles stay hidden and no settings save names their columns. */
+  calendarAutoAvailable = !!settings.data && 'calendar_auto' in settings.data;
   /* The database is the source of truth; the boot script painted from the
      localStorage mirror. This is where the two are reconciled — on this
      device for the first time, or after the setting was changed on another,
@@ -3106,6 +3114,8 @@ function saveSettings(next){
       dark_mode: next.darkMode || 'system',
       /* Only once the migration is in: before it the column does not exist and the save would fail. */
       ...(calendarAvailable ? { calendar_remind_at: validRemindAt(next.remindAt) } : {}),
+      /* The automatic toggles (add-calendar-auto), on the same terms: never a column that may not exist. */
+      ...(calendarAutoAvailable ? { calendar_auto: !!next.calendarAuto, calendar_auto_remind: !!next.calendarAutoRemind } : {}),
       updated_at: new Date().toISOString()
     }, { onConflict: 'household_id' });
     if(error) throw error;
@@ -3697,6 +3707,9 @@ function addPlanRecipe(dateStr, recipeId){
   ids.push(recipeId);
   servings.push(0); // as written, until someone says otherwise
   p[dateStr] = keepCalendarFlags(p[dateStr], {recipeIds: ids, servings});
+  /* The one place a recipe is put on a day (the card picker and the shortlist both come here), so the one
+     place the automatic toggles act. Before the save, which then writes the day and queues its sync. */
+  applyCalendarAuto(p[dateStr]);
   return savePlanDay(dateStr);
 }
 /* 0 clears the override and falls back to the recipe's own servings. */
@@ -3755,6 +3768,48 @@ function withCalendarFlags(entry, on, remind){
 function keepCalendarFlags(before, after){
   return isCalendarDay(before) ? withCalendarFlags(after, true, !!before.remind) : after;
 }
+/* ---- The automatic toggles (docs/PLAN-CALENDAR-PUSH.md §11, 9 Oct 2026) ----
+   AUTOMATICALLY ADD TO CALENDAR puts a day in the calendar when a recipe is put on it; AUTOMATICALLY REMIND ME
+   FOR MAIN MEALS gives a day with a Main-course recipe REMIND ME, and so puts it in the calendar too, since a
+   reminder needs an event. Both only ever switch on, and only at two moments: a recipe added to a day, and a
+   toggle switched on (the sweep, below). Switching a toggle off changes no day, and a day switched off by
+   hand stays off until a recipe is next added to it: the household's own taps win.
+
+   Only while connected: a day reaches the calendar only then, so a toggle switched on while disconnected is
+   kept as a preference and flags nothing. */
+let calendarAutoAvailable = false;
+function isMainCourse(recipeId){
+  const r = loadRecipes().find(x=> x.id === recipeId);
+  return !!(r && r.tags && r.tags.course === 'Main');
+}
+/* Changes the entry in place, switching on only. True when it changed anything, so the sweep writes only
+   the days that move. */
+function applyCalendarAuto(entry){
+  if(!calendarShown() || !calendarAutoAvailable) return false;
+  if(!entry || entry.blank) return false;
+  const ids = planRecipeIds(entry);
+  if(!ids.length) return false;
+  const st = cache.settings || {};
+  const remind = !!st.calendarAutoRemind && ids.some(isMainCourse);
+  let changed = false;
+  if((st.calendarAuto || remind) && !entry.calendar){ entry.calendar = true; changed = true; }
+  if(remind && !entry.remind){ entry.remind = true; changed = true; }
+  return changed;
+}
+/* A toggle switched on also catches up the days already planned from today, once: one Planner write per day
+   that changes, then one call to the calendar for all of them. Past days are never rewritten, and a day
+   marked away has no recipes to act on. */
+function sweepCalendarAuto(){
+  if(!calendarShown() || !calendarAutoAvailable) return 0;
+  const plan = loadPlan(), today = todayStr();
+  let changed = 0;
+  withCalendarBatch(()=> Object.keys(plan).sort().forEach(d=>{
+    if(d < today) return;
+    if(applyCalendarAuto(plan[d])){ changed++; savePlanDay(d); }
+  }));
+  return changed;
+}
+
 function calendarColumns(entry){
   const on = isCalendarDay(entry);
   return { calendar: on, calendar_remind: on && !!entry.remind };
@@ -7395,10 +7450,27 @@ function renderCalendarSettings(){
     <label class="subtle" for="calRemindAt">REMIND AT, the evening before</label>
     <select class="sort" id="calRemindAt" aria-label="Reminder time, the evening before">${times.map(m=>
       `<option value="${m}"${m === at ? ' selected' : ''}>${formatRemindAt(m)}</option>`).join('')}</select>
+    ${calendarAutoAvailable ? calendarAutoToggles() : ''}
     <div class="alias-form">
       <button class="btn" id="calSyncBtn">SYNC NOW</button>
       <button class="btn small-danger" id="calDisconnectBtn">DISCONNECT</button>
     </div>`;
+}
+
+/* The two automatic toggles, drawn as KEEP AWAKE is (the app's one switch style). Shown only once
+   add-calendar-auto is applied, and only here, in the connected state. */
+function calendarAutoToggles(){
+  const st = loadSettings() || {};
+  const toggle = (id, on, label, words)=> `<div class="cal-auto">
+      <label class="toggle-switch">
+        <input type="checkbox" id="${id}"${on ? ' checked' : ''}>
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span class="toggle-label">${label}</span>
+      </label>
+      <p class="subtle">${words}</p>
+    </div>`;
+  return toggle('calAutoAdd', !!st.calendarAuto, 'AUTOMATICALLY ADD TO CALENDAR', 'Each day you plan goes into the calendar.')
+       + toggle('calAutoRemind', !!st.calendarAutoRemind, 'AUTOMATICALLY REMIND ME FOR MAIN MEALS', 'Days with a Main course get the evening-before reminder.');
 }
 
 /* The one place the app leaves for Google. A function of its own so the tests can stand in for it. */
@@ -7442,6 +7514,22 @@ document.getElementById('calendarSettings').addEventListener('click', e=>{
   }
 });
 document.getElementById('calendarSettings').addEventListener('change', e=>{
+  if(e.target.id === 'calAutoAdd' || e.target.id === 'calAutoRemind'){
+    const remind = e.target.id === 'calAutoRemind', on = e.target.checked;
+    /* The setting first, so it is saved before the days the sweep writes. */
+    setSetting(remind ? 'calendarAutoRemind' : 'calendarAuto', on);
+    if(!on){
+      /* Off only stops it happening from now on. Nothing already switched on is undone. */
+      showToast(remind ? 'Main meals will no longer get a reminder by themselves. Days already set keep theirs.'
+                       : 'Planned days will no longer go into the calendar by themselves. Days already in it stay.');
+      return;
+    }
+    const n = sweepCalendarAuto();
+    showToast(remind
+      ? (n ? `Reminders added to ${n} main-meal day${n === 1 ? '' : 's'}` : 'Every upcoming main-meal day already has its reminder')
+      : (n ? `Added ${n} day${n === 1 ? '' : 's'} to the calendar` : 'Every upcoming planned day is already in the calendar'));
+    return;
+  }
   if(e.target.id !== 'calRemindAt') return;
   const n = parseInt(e.target.value, 10);
   if(isNaN(n)) return;
