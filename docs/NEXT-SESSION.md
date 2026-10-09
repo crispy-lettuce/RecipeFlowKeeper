@@ -17,9 +17,11 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **Library:** 34 recipes. 2 carry a stored comparison with their source, 1 of them validated; 6 are BBC Good Food, five of which
   were rebuilt from another edition before the 29 Sep rule (the household's job below). 1 recipe has a source photo.
 - **Cooking diary:** 116 entries. **Word matches:** 15. **Household aisles:** 1. **Swaps:** 2. **Cooking notes:** none yet (R4 built 30 Sep).
-- **Tests:** `node test/core.test.js` 143 checks; `node test/build.js && node test/smoke.js` 418 checks. `offline-harness` runs
+- **Tests:** `node test/core.test.js` 143 checks; `node test/build.js && node test/smoke.js` 437 checks (418 until P3 PR 2, 9 Oct).
+  `node test/calendar-push.js` 30 checks. `offline-harness` runs
   both on every PR and is required on `main`.
-- **Schema:** `add_calendar_push` (P3 PR 1) is waiting to be applied by the household. The last applied, `add_source_photos`, was
+- **Schema:** `add_calendar_push` (P3 PR 1, merged 1 Oct as #69) is waiting to be applied by the household (still not applied,
+  read-only check 9 Oct 2026, 16:35 UTC). The last applied, `add_source_photos`, was
   applied 30 Sep (`docs/INFRASTRUCTURE.md`).
 - **The family is one account, one household.** `docs/ONBOARDING.md` adds a second person. A second `households` row is the weekly
   live test's own (`PrivateBackup`), never the family's. Leaked-password protection is a paid-plan feature and the household is on
@@ -46,8 +48,11 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 3. **R4, dated cooking notes: merged 30 Sep** (PR #67; `docs/PLAN-COOKING-NOTES.md`). Tablet step 39a is the household's.
 4. **P3, the calendar push.** Answered 1 Oct (`docs/PLAN-CALENDAR-PUSH.md` §9): one all-day event per switched-on planned day in
    a RecipeWrangler calendar, REMIND ME at 20:00 the evening before, ADD THE WEEK; DISCONNECT leaves the calendar. **PR 1** (the
-   migration, `calendar-auth`, `calendar-sync`, `test/calendar-push.js`) is built and waits for the household's setup (§10).
-   **PR 2, the app**, is next: the Planner's switches, Settings → App → CALENDAR, the sync after each Planner change.
+   migration, `calendar-auth`, `calendar-sync`, `test/calendar-push.js`) is merged (#69, 1 Oct) and waits for the household's setup
+   (§10). **PR 2, the app** (9 Oct): the Planner's IN CALENDAR, REMIND ME and ADD THE WEEK, Settings → App → CALENDAR, and a sync
+   queued after each Planner change to a switched-on day. Safe to merge before the setup: until the migration is applied it shows
+   "Waiting for the database change" and sends nothing new. Then tablet and phone step 40a, and PR 3 records what it found
+   (`docs/INFRASTRUCTURE.md`'s functions table and migration history, `docs/ARCHITECTURE.md` §4, `docs/HANDOVER.md`).
 5. **Optional, not planned:** a "download all source files" backup (neither the JSON export nor the nightly `pg_dump` holds the
    files); drawing a PDF's pages inside the app, if opening it in the browser proves awkward on the tablet (38d will tell).
 
@@ -61,7 +66,8 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
   approves the exact lines; the before and after go to `PrivateBackup`; one guarded statement per recipe).
 - **Tablet step 39a**, cooking notes.
 - **P3's setup** (`docs/PLAN-CALENDAR-PUSH.md` §10): the Google Cloud project and client, two secrets, the SQL, deploying the two
-  functions (`calendar-auth` with JWT verification **off**), then merging PR 1.
+  functions (`calendar-auth` with JWT verification **off**). PR 1 is already merged; PR 2 can be merged before or after. Then
+  tablet and phone step 40a.
 - **The converter.** The conversion project in the Claude app holds **one file, `converter/conversion-instructions.md`**; its
   master copy is the one in this repo. After any change to that file here, reload it into the project. The other files under
   `converter/` stay in git as the project's reference and test material (`test-set.md` is how a change to the instructions is

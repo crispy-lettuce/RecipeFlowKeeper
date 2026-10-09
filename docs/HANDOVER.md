@@ -612,7 +612,7 @@ two different recipes. Title similarity decided none of them; source and image d
 
 ---
 
-## 4. Calendar push (P3) — answered 1 Oct 2026; PR 1 built
+## 4. Calendar push (P3) — answered 1 Oct 2026; PR 1 merged; PR 2 (the app) built 9 Oct
 
 Phase 3 in the brief. Recorded here because it appears in no task list anywhere and would
 otherwise be forgotten.
@@ -630,7 +630,10 @@ This explicitly **supersedes** the earlier downloadable `.ics` idea, which is in
 **Answered 1 Oct 2026** (its §9): the calendar is for reminders, not a food diary. One all-day event per switched-on day, REMIND ME
 at 20:00 the evening before, ADD THE WEEK, a RecipeWrangler calendar, and DISCONNECT leaving the calendar and its events.
 **PR 1 built 1 Oct:** the migration (`docs/migrations/add-calendar-push.md`, not applied), the `calendar-auth` and
-`calendar-sync` Edge Functions (not deployed), and `test/calendar-push.js`. What was verified is in §7. The app is PR 2.
+`calendar-sync` Edge Functions (not deployed), and `test/calendar-push.js`; merged 1 Oct (#69). **PR 2, the app, built 9 Oct:** the
+Planner's IN CALENDAR, REMIND ME and ADD THE WEEK, Settings → App → CALENDAR, and a sync queued after each Planner change to a
+switched-on day. It shows and sends nothing new until the migration is applied. What was verified is in §7; the real test is the
+household's tablet and phone pass, `docs/TEST-PLAN.md` step 40a.
 
 ---
 
@@ -1913,6 +1916,64 @@ done, a deleted event brought back, SYNC NOW listing and removing a stray, a pas
 names match nothing in the library (read-only, 34 recipes). *Not verified:* anything against Google or the live database: the
 household's setup (§10), the real consent screen, the 20:00 notification on the phone, and a deleted event coming back after a
 PUT (step 40a, with PR 2).
+
+**P3 PR 2: the calendar push in the app (9 Oct 2026).** `index.html` only, no `core.js` change. `hydrate` reads
+`calendar_connections` apart from the tables whose errors throw (like `aisle_overrides`): the table being there is what says the
+migration is in (`calendarAvailable`). Until then nothing new is shown or sent. After it, a Planner save names `calendar` and
+`calendar_remind`, and a settings save names `calendar_remind_at`. Once connected, the Planner has IN CALENDAR and REMIND ME per
+planned day and ADD THE WEEK per week. A day that was or is now switched on queues `calendar-sync` for that date through the write
+queue, after its Planner write. Changing a day's recipes or servings keeps its switches; marking it away or emptying it drops them,
+which removes the event. Settings → App → CALENDAR: "Waiting for the database change", or CONNECT (`calendar-auth` start, then
+`goToGoogle`), or who, when, REMIND AT, SYNC NOW and DISCONNECT. `#calendar=<outcome>` from Google is read once, cleared, said in a
+toast, and opens Settings; `connected` syncs every day.
+
+*Choices beyond the plan:*
+- Only a failure to reach the function (`FunctionsFetchError`, or the browser's own words for a dead network) is retried. An
+  answer carrying `error`, and any non-2xx (`FunctionsHttpError`), goes into the status and a toast, and is not sent again.
+  SYNC NOW is the backstop.
+- An import sends the switches with the plan when available, then queues one sync of every day if connected.
+- DISCONNECT calls `calendar-auth` directly, not through the queue, since it writes nothing of the app's.
+- A stored REMIND AT off the half-hour grid is shown as its own option rather than changed.
+
+A title change is synced from the edit form, not from `saveRecipe`, which is handed the already-edited object.
+
+*Verified by.* `node test/core.test.js` 143 checks, exit 0. `node test/build.js && node test/smoke.js` **437 checks** (418
+before), exit 0, no console or page errors. `node test/calendar-push.js` 30 checks, exit 0. The stub now reads
+`calendar_connections` as not created unless a test gives it rows, so the default fixture is the live app today and the 418
+earlier checks ran unchanged. The one exception is the Settings-tabs check, which now expects CALENDAR on App. It logs
+`invoke:<name>` in `__LOG__`, so order can be checked.
+
+The 19 new checks cover three states:
+- **Before the migration:** a fresh boot signs nobody out, sends no calendar column, shows no switches, and Settings is waiting.
+- **Available, not connected:** the switch is sent as off, 20:00 is sent, and CONNECT starts and goes to Google.
+- **Connected:** the toggle, then the sync after the Planner write; REMIND ME; servings on a day that is on and on one that is off;
+  marking away; emptying; ADD THE WEEK as one call; a title edit, never syncing a past day; `reconnect` not resent; a network
+  failure resent with the same days; REMIND AT and SYNC NOW; DISCONNECT leaving the plan; and the return hash, both connected and
+  denied.
+
+**Sixteen mutations, each failing a check by name:**
+- no availability guard on the Planner row, or on the settings row;
+- the sync queued before the Planner write;
+- a servings change dropping the switches;
+- marking away keeping them;
+- ADD THE WEEK without the batch (one call per day);
+- a function `error` thrown, so retried;
+- a network failure not thrown;
+- DISCONNECT writing the plan;
+- the hash not cleared;
+- a title edit not synced;
+- the connections read made to throw in `hydrate` (the first check, "signed in past the login gate", fails);
+- the `connected` return not syncing;
+- REMIND AT not syncing;
+- a day that is off synced anyway;
+- CONNECT not going to Google.
+
+Each ran in its own copy of the repo, so the working tree was never changed. Read-only, 9 Oct 16:35 UTC: `calendar_connections`,
+the two `planner_days` columns and `calendar_remind_at` do not exist yet (34 recipes).
+
+*Not verified:* anything against Google or the live database. That means the migration, the deployed functions, the real consent
+round trip and its redirect back, supabase-js's real error objects for a 4xx or a relay error, and the 20:00 notification on the
+phone. That is tablet and phone step 40a, after §10 of the plan.
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all

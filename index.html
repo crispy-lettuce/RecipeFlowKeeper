@@ -636,6 +636,19 @@
   /* Lit up only when this day asks for a different number than the recipe
      is written for — otherwise it's just quiet information. */
   .day-recipe-serves.on{ border-color:var(--plum); color:var(--plum); }
+  /* The calendar push (P3): the day's two switches, quiet until on, like the headcount above. */
+  .day-cal{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .day-cal-btn{
+    background:none; border:1px solid var(--line); border-radius:20px; cursor:pointer;
+    padding:3px 10px; font-family:'IBM Plex Mono', monospace; font-size:10.5px;
+    letter-spacing:.04em; color:var(--ink-faint);
+  }
+  .day-cal-btn:hover{ color:var(--plum); }
+  .day-cal-btn.on{ border-color:var(--plum); color:var(--plum); }
+  .week-cal{
+    margin-left:12px; background:none; border:none; cursor:pointer; padding:0;
+    font:inherit; letter-spacing:inherit; color:var(--plum); text-decoration:underline;
+  }
   .day-recipe-remove{
     flex:none; background:none; border:none; cursor:pointer; color:var(--ink-faint);
     font-size:14px; line-height:1; padding:2px;
@@ -1787,6 +1800,11 @@
             setting here.</p>
           <select class="sort" id="setDarkMode" aria-label="Appearance"></select>
         </div>
+
+        <div class="settings-block" data-settings-tab="app">
+          <div class="side-label">CALENDAR</div>
+          <div id="calendarSettings"></div>
+        </div>
       </div>
     </section>
   </main>
@@ -2596,6 +2614,16 @@ const SUPABASE_KEY = 'sb_publishable_fH3SOU5nVJE6nsXIlffidg_mVKayaEH';
 /* The client library comes from a CDN, so it can be missing on a flaky
    connection. Without this check the first call would throw here and take
    the whole script with it, leaving a blank screen and no explanation. */
+/* Coming back from Google's consent screen: calendar-auth sends the browser to this page with
+   #calendar=<outcome>. Read once and taken off the address straight away, before anything else looks at
+   the URL, so a reload or a bookmark never repeats it; startApp says what happened once the library is in. */
+const calendarReturn = (function(){
+  const m = /^#calendar=([a-z]+)$/.exec(location.hash || '');
+  if(!m) return null;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch(e){ /* not fatal */ }
+  return m[1];
+})();
+
 const sb = (typeof supabase !== 'undefined' && supabase.createClient)
   ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: true, autoRefreshToken: true }
@@ -2609,7 +2637,7 @@ const DEFAULT_WEEK_START_DAY = 5;
 const cache = {
   recipes: [], keywords: [], plan: {}, shortlist: [],
   groups: [], swaps: [], shoppingChecked: {},
-  settings: { weekStartDay: DEFAULT_WEEK_START_DAY, darkMode: 'system' },
+  settings: { weekStartDay: DEFAULT_WEEK_START_DAY, darkMode: 'system', remindAt: 1200 },
   aliases: [],
   aisleOverrides: [],
   recipeNotes: [],
@@ -2798,7 +2826,7 @@ async function hydrate(opts){
   if(!memberships.length) throw new Error("This account isn't linked to a household yet.");
   HOUSEHOLD_ID = memberships[0].household_id;
 
-  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides, recipeNotes] = await Promise.all([
+  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides, recipeNotes, calendarRow] = await Promise.all([
     sb.from('recipes').select('*'),
     /* Every column, and no recipe_id filter. The filter was here because a
        log could only ever be a cooked recipe; an ad-hoc diary entry (H2) is
@@ -2817,7 +2845,11 @@ async function hydrate(opts){
     sb.from('aliases').select('*'),
     sb.from('aisle_overrides').select('*'),
     /* Cooking notes (R4): read apart like aisle_overrides, so a failure here never signs anyone out. */
-    sb.from('recipe_notes').select('id, recipe_id, body, created_at')
+    sb.from('recipe_notes').select('id, recipe_id, body, created_at'),
+    /* The calendar push (P3): read apart like aisle_overrides. Until the household applies
+       docs/migrations/add-calendar-push.md the table does not exist, and that must read as "not yet",
+       never as a reason to sign anyone out. maybeSingle: a household that has never connected has no row. */
+    sb.from('calendar_connections').select('*').maybeSingle()
   ]);
   for(const res of [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases]){
     if(res.error) throw res.error;
@@ -2861,8 +2893,9 @@ async function hydrate(opts){
   planner.data.forEach(row=>{
     cache.plan[row.plan_date] = row.is_blank
       ? {blank:true}
-      : {recipeIds: row.recipe_ids || [], servings: row.servings || []};
+      : withCalendarFlags({recipeIds: row.recipe_ids || [], servings: row.servings || []}, !!row.calendar, !!row.calendar_remind);
   });
+  rebuildCalendarDates();
   cache.shortlist = shortlist.data.map(row=>({
     id: row.id, text: row.text || '', dateAdded: row.date_added, recipeId: row.recipe_id
   }));
@@ -2879,7 +2912,8 @@ async function hydrate(opts){
   });
   cache.settings = {
     weekStartDay: settings.data ? settings.data.week_start_day : DEFAULT_WEEK_START_DAY,
-    darkMode: (settings.data && settings.data.dark_mode) || 'system'
+    darkMode: (settings.data && settings.data.dark_mode) || 'system',
+    remindAt: validRemindAt(settings.data && settings.data.calendar_remind_at)
   };
   /* The database is the source of truth; the boot script painted from the
      localStorage mirror. This is where the two are reconciled — on this
@@ -2900,6 +2934,11 @@ async function hydrate(opts){
   if(recipeNotes.error) console.warn('Cooking notes are unavailable', recipeNotes.error);
   cache.recipeNotes = recipeNotesAvailable
     ? (recipeNotes.data || []).map(row=>({ id: row.id, recipeId: row.recipe_id, body: row.body || '', createdAt: row.created_at })) : [];
+  /* The table existing is what says the whole migration is in: it is one transaction, so the two
+     planner_days columns and calendar_remind_at arrived with it. Only then does a save name them. */
+  calendarAvailable = !calendarRow.error;
+  if(calendarRow.error) console.warn('The calendar push is unavailable (has add-calendar-push been applied?)', calendarRow.error);
+  calendarConn = calendarAvailable ? (calendarRow.data || null) : null;
   return true;
 }
 
@@ -3065,6 +3104,8 @@ function saveSettings(next){
       household_id: HOUSEHOLD_ID,
       week_start_day: next.weekStartDay,
       dark_mode: next.darkMode || 'system',
+      /* Only once the migration is in: before it the column does not exist and the save would fail. */
+      ...(calendarAvailable ? { calendar_remind_at: validRemindAt(next.remindAt) } : {}),
       updated_at: new Date().toISOString()
     }, { onConflict: 'household_id' });
     if(error) throw error;
@@ -3391,7 +3432,8 @@ function deleteRecipe(id){
      the row, so the row never names a file already deleted. */
   if(gone && gone.sourcePhotos) removeSourcePhotoFiles(gone.sourcePhotos.map(p => p.path));
   const p = loadPlan();
-  Object.keys(p).forEach(date => {
+  /* One call to the calendar for every switched-on day this touches, after all their Planner writes. */
+  withCalendarBatch(()=> Object.keys(p).forEach(date => {
     const entry = p[date];
     if(!entry || entry.blank) return;
     const ids = planRecipeIds(entry);
@@ -3399,9 +3441,9 @@ function deleteRecipe(id){
     const servings = planServings(entry);
     const keepIds = [], keepServings = [];
     ids.forEach((rid, i) => { if(rid !== id){ keepIds.push(rid); keepServings.push(servings[i]); } });
-    if(keepIds.length) p[date] = { recipeIds: keepIds, servings: keepServings }; else delete p[date];
+    if(keepIds.length) p[date] = keepCalendarFlags(entry, { recipeIds: keepIds, servings: keepServings }); else delete p[date];
     savePlanDay(date);
-  });
+  }));
   loadGroups().filter(g => g.recipeIds.includes(id)).forEach(g => {
     const rest = g.recipeIds.filter(x => x !== id);
     if(rest.length < 2) deleteGroup(g.id);
@@ -3563,6 +3605,9 @@ async function pushPlan(p){
     is_blank: !!entry.blank,
     recipe_ids: planRecipeIds(entry),
     servings: planServings(entry),
+    /* A restore says what the plan is, switches included, so the server is told the same as the cache.
+       Only once the columns exist (calendarAvailable); the importer then brings the calendar into step. */
+    ...(calendarAvailable ? calendarColumns(entry) : {}),
     updated_at: new Date().toISOString()
   }));
   if(rows.length){
@@ -3577,6 +3622,7 @@ async function pushPlan(p){
 /* Whole-plan replace. Import only — see pushList. */
 function replacePlan(p){
   cache.plan = p;
+  rebuildCalendarDates();
   return queueWrite('the plan', ()=> pushPlan(p), { whole: true });
 }
 /* One day, as the cache now holds it: upserted if it has an entry, deleted
@@ -3584,21 +3630,35 @@ function replacePlan(p){
    is its own row and nothing about any other day is sent. */
 function savePlanDay(dateStr){
   const entry = cache.plan[dateStr];
+  /* Whether the day was in the calendar as last saved, and is now. A day that was or is now switched on
+     reaches the calendar after this write: on and changed (its event rewritten), on to off, emptied or
+     marked away (its event removed). A day that is off and stays off sends nothing to Google at all. */
+  const wasOn = calendarDates.has(dateStr);
+  const nowOn = isCalendarDay(entry);
+  if(nowOn) calendarDates.add(dateStr); else calendarDates.delete(dateStr);
+  let queued;
   if(entry){
     const row = {
       household_id: HOUSEHOLD_ID, plan_date: dateStr, is_blank: !!entry.blank,
       recipe_ids: planRecipeIds(entry), servings: planServings(entry),
+      /* Named only once the migration is in, like recipeToRow's source_check: before it, a row naming a
+         column that does not exist would fail every Planner save. A blank day sends both as false. */
+      ...(calendarAvailable ? calendarColumns(entry) : {}),
       updated_at: new Date().toISOString()
     };
-    return queueWrite('the plan', async ()=>{
+    queued = queueWrite('the plan', async ()=>{
       const { error } = await sb.from('planner_days').upsert([row], { onConflict: 'household_id,plan_date' });
       if(error) throw error;
     });
+  } else {
+    queued = queueWrite('the plan', async ()=>{
+      const { error } = await sb.from('planner_days').delete().eq('household_id', HOUSEHOLD_ID).eq('plan_date', dateStr);
+      if(error) throw error;
+    });
   }
-  return queueWrite('the plan', async ()=>{
-    const { error } = await sb.from('planner_days').delete().eq('household_id', HOUSEHOLD_ID).eq('plan_date', dateStr);
-    if(error) throw error;
-  });
+  /* After the Planner write, never before: calendar-sync reads the saved row, not what this page holds. */
+  if((wasOn || nowOn) && calendarShown()) calendarDayChanged(dateStr);
+  return queued;
 }
 /* A day can hold more than one recipe now (a main, a side, and a dessert;
    or a main plus an unrelated batch of biscuits) — see the findings doc.
@@ -3636,7 +3696,7 @@ function addPlanRecipe(dateStr, recipeId){
   const servings = planServings(p[dateStr]);
   ids.push(recipeId);
   servings.push(0); // as written, until someone says otherwise
-  p[dateStr] = {recipeIds: ids, servings};
+  p[dateStr] = keepCalendarFlags(p[dateStr], {recipeIds: ids, servings});
   return savePlanDay(dateStr);
 }
 /* 0 clears the override and falls back to the recipe's own servings. */
@@ -3648,7 +3708,7 @@ function setPlanServingsAt(dateStr, index, people){
   if(index < 0 || index >= ids.length) return true;
   const servings = planServings(entry);
   servings[index] = parseInt(people, 10) || 0;
-  p[dateStr] = {recipeIds: ids, servings};
+  p[dateStr] = keepCalendarFlags(entry, {recipeIds: ids, servings});
   return savePlanDay(dateStr);
 }
 /* Removes by list position, not by id — if the same recipe is assigned
@@ -3662,8 +3722,162 @@ function removePlanRecipeAt(dateStr, index){
   const servings = planServings(entry);
   ids.splice(index, 1);
   servings.splice(index, 1); // in lockstep, or every later entry's servings shift up one
-  if(ids.length) p[dateStr] = {recipeIds: ids, servings}; else delete p[dateStr];
+  if(ids.length) p[dateStr] = keepCalendarFlags(entry, {recipeIds: ids, servings}); else delete p[dateStr];
   return savePlanDay(dateStr);
+}
+
+/* ------------------------- The calendar push (P3) -------------------------
+   docs/PLAN-CALENDAR-PUSH.md §9. A planned day can be switched on (IN CALENDAR), and then REMIND ME;
+   calendar-sync turns each switched-on day into one all-day event in the household's RecipeWrangler
+   calendar, with a reminder the evening before when REMIND ME is on. The calendar is for reminders, not a
+   food diary: nothing here reads or writes recipe_logs.
+
+   Stored on the plan entry as `calendar` and `remind`, present only when true, so a day that is off has
+   exactly the shape it always had (and so do exports of it). The switches belong to the day, not to its
+   recipes: changing the recipes or servings keeps them (keepCalendarFlags), while marking the day away or
+   emptying it drops them, and that is what takes the event out of the calendar.
+
+   Nothing shows, and nothing new is sent, until the migration is in (calendarAvailable) and the household
+   has connected (calendarShown). */
+let calendarAvailable = false;
+let calendarConn = null;
+/* The days switched on as last saved, so savePlanDay can tell a day that was on from one that never was:
+   the callers change the cache before saving, so the entry alone cannot say what it was. */
+const calendarDates = new Set();
+const DEFAULT_REMIND_AT = 1200; // 20:00, as asked on 1 Oct; minutes after midnight, like the column
+
+function calendarShown(){ return calendarAvailable && !!(calendarConn && calendarConn.connected); }
+function isCalendarDay(entry){ return !!(entry && !entry.blank && planRecipeIds(entry).length && entry.calendar); }
+function withCalendarFlags(entry, on, remind){
+  if(on){ entry.calendar = true; if(remind) entry.remind = true; }
+  return entry;
+}
+function keepCalendarFlags(before, after){
+  return isCalendarDay(before) ? withCalendarFlags(after, true, !!before.remind) : after;
+}
+function calendarColumns(entry){
+  const on = isCalendarDay(entry);
+  return { calendar: on, calendar_remind: on && !!entry.remind };
+}
+function rebuildCalendarDates(){
+  calendarDates.clear();
+  Object.keys(cache.plan || {}).forEach(d=>{ if(isCalendarDay(cache.plan[d])) calendarDates.add(d); });
+}
+function validRemindAt(n){
+  const v = Number(n);
+  return Number.isInteger(v) && v >= 0 && v <= 1439 ? v : DEFAULT_REMIND_AT;
+}
+function formatRemindAt(n){
+  const v = validRemindAt(n);
+  return String(Math.floor(v / 60)).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0');
+}
+function remindAtNow(){ return validRemindAt(cache.settings && cache.settings.remindAt); }
+
+/* Several days changed by one action reach the calendar in one call. They are collected while the action
+   runs and sent once, after the last of its Planner writes. Merging a date into a sync already queued would
+   be shorter and wrong: that sync can run before the later day's Planner write lands, and calendar-sync
+   would read the day as it was. */
+let calendarBatch = null;
+function calendarDayChanged(dateStr){
+  if(calendarBatch) calendarBatch.add(dateStr);
+  else queueCalendarSync([dateStr]);
+}
+function withCalendarBatch(fn){
+  const outer = calendarBatch;
+  if(!outer) calendarBatch = new Set();
+  try { return fn(); }
+  finally {
+    if(!outer){
+      const dates = [...calendarBatch];
+      calendarBatch = null;
+      if(dates.length) queueCalendarSync(dates);
+    }
+  }
+}
+
+function setPlanCalendar(dateStr, on){
+  const entry = loadPlan()[dateStr];
+  if(!entry || entry.blank || !planRecipeIds(entry).length) return true;
+  if(on) entry.calendar = true;
+  else { delete entry.calendar; delete entry.remind; } // no reminder for a day that is not in the calendar
+  return savePlanDay(dateStr);
+}
+function setPlanRemind(dateStr, on){
+  const entry = loadPlan()[dateStr];
+  if(!isCalendarDay(entry)) return true;
+  if(on) entry.remind = true; else delete entry.remind;
+  return savePlanDay(dateStr);
+}
+/* ADD THE WEEK: every planned day of the week that is not already on, in one call to calendar-sync. */
+function addWeekToCalendar(dates){
+  const plan = loadPlan();
+  const todo = (dates || []).filter(d=> plan[d] && !plan[d].blank && planRecipeIds(plan[d]).length && !plan[d].calendar);
+  withCalendarBatch(()=> todo.forEach(d=> setPlanCalendar(d, true)));
+  return todo.length;
+}
+/* A recipe's title is its days' event title, so a renamed recipe rewrites its switched-on days from today.
+   Past days are never rewritten (calendar-sync skips them too). */
+function syncRecipeCalendarDays(recipeId){
+  const plan = loadPlan(), today = todayStr();
+  const dates = Object.keys(plan).filter(d=> d >= today && isCalendarDay(plan[d]) && planRecipeIds(plan[d]).includes(recipeId));
+  return dates.length ? queueCalendarSync(dates) : true;
+}
+
+/* One call to calendar-sync, through the write queue, so it waits behind the Planner writes it follows and
+   is sent again after a dead network like any other write. 'all' is SYNC NOW: every day from today.
+
+   Only a failure to reach the function at all is thrown, and so retried. An answer from the function that
+   says something went wrong (Google refused the connection, a day it could not write) is not: sending the
+   same thing again would get the same answer, and a failed label also holds back refreshLibrary. It goes
+   into the status in Settings and a toast instead, and SYNC NOW is there to try again. */
+const CALENDAR_SYNC_MAX = 62; // calendar-sync's own limit per call
+function queueCalendarSync(datesOrAll){
+  if(!calendarShown()) return true;
+  const bodies = [];
+  if(datesOrAll === 'all') bodies.push({ all: true });
+  else {
+    const dates = [...new Set(datesOrAll || [])].sort();
+    for(let i = 0; i < dates.length; i += CALENDAR_SYNC_MAX) bodies.push({ dates: dates.slice(i, i + CALENDAR_SYNC_MAX) });
+  }
+  bodies.forEach(body=> queueWrite('the calendar', async ()=>{
+    let data = null, error = null;
+    try { ({ data, error } = await sb.functions.invoke('calendar-sync', { body })); }
+    catch(e){ error = e; }
+    if(error && isCalendarNetworkFailure(error)) throw error;
+    if(error){
+      noteCalendarResult({ error: `couldn't reach the calendar (${(error && error.message) || error})` });
+      return;
+    }
+    noteCalendarResult(data || { error: 'no answer from the calendar' });
+  }));
+  return true;
+}
+/* supabase-js answers a request that never reached the function with a FunctionsFetchError; the browser's
+   own words for a dead network are what isNetworkFailure knows. A FunctionsHttpError (a 4xx or 5xx) did
+   reach it, and is not retried. */
+function isCalendarNetworkFailure(error){
+  return (error && error.name === 'FunctionsFetchError') || isNetworkFailure(error);
+}
+const CALENDAR_ERROR_WORDS = {
+  reconnect: 'Google no longer accepts the connection. CONNECT GOOGLE CALENDAR again in Settings.',
+  notConnected: 'Google Calendar is not connected. CONNECT GOOGLE CALENDAR in Settings.'
+};
+function noteCalendarResult(data){
+  if(!calendarConn) calendarConn = {};
+  if(data && !data.error){
+    calendarConn.last_sync_at = new Date().toISOString();
+    calendarConn.last_error = null;
+  } else {
+    const words = (data.reconnect && CALENDAR_ERROR_WORDS.reconnect)
+               || (data.notConnected && CALENDAR_ERROR_WORDS.notConnected)
+               || `The calendar wasn't brought fully into step: ${data.error}`;
+    calendarConn.last_error = words;
+    /* calendar-sync has already recorded this as not connected; the switches go and CONNECT comes back. */
+    if(data.reconnect || data.notConnected) calendarConn.connected = false;
+    showToast(words);
+  }
+  if(state.view === 'settings') renderCalendarSettings();
+  if(state.view === 'planner') renderPlanner();
 }
 
 /* ------------------------------- Meal groups -------------------------------
@@ -5070,10 +5284,14 @@ function renderPlannerDays(){
   const recipes = loadRecipes();
   const todayIso = todayStr();
 
+  const calOn = calendarShown();
   let html = '';
   buckets.forEach((bucketDays, i)=>{
     const label = weekBucketLabel(i, bucketDays);
-    html += `<div class="week-label">${label}</div>`;
+    /* ADD THE WEEK: the week's planned days that are not yet in the calendar, all in one call. */
+    const weekTodo = calOn ? bucketDays.map(isoLocal).filter(d=>{ const e = plan[d]; return e && !e.blank && planRecipeIds(e).length && !e.calendar; }) : [];
+    html += `<div class="week-label">${label}${weekTodo.length
+      ? `<button class="week-cal" data-action="calWeek" data-dates="${weekTodo.join(',')}" title="Put every planned day of this week in the calendar">ADD THE WEEK</button>` : ''}</div>`;
     bucketDays.forEach(d=>{
       const iso = isoLocal(d);
       const isToday = iso === todayIso;
@@ -5151,8 +5369,17 @@ function renderPlannerDays(){
               ? `<button class="day-choose day-add-more" data-action="toggleGroupMode"><span class="circle">⇄</span>GROUP SOME TOGETHER</button>`
               : '');
 
+        /* The day's two calendar switches, once the household has connected. REMIND ME only once the day is
+           in the calendar: a reminder needs an event to hang from. */
+        const calStrip = (calOn && !isGroupingThisDay)
+          ? `<div class="day-cal">
+              <button class="day-cal-btn${entry.calendar ? ' on' : ''}" data-action="calToggle" aria-pressed="${entry.calendar ? 'true' : 'false'}">${entry.calendar ? '✓ ' : ''}IN CALENDAR</button>
+              ${entry.calendar ? `<button class="day-cal-btn${entry.remind ? ' on' : ''}" data-action="calRemind" aria-pressed="${entry.remind ? 'true' : 'false'}">${entry.remind ? '✓ ' : ''}REMIND ME ${formatRemindAt(remindAtNow())} THE EVENING BEFORE</button>` : ''}
+            </div>`
+          : '';
         inner = `<div class="day-main">${groupBadges}${rows}
           ${isGroupingThisDay ? groupControls : `<button class="day-choose day-add-more" data-action="choose"><span class="circle">+</span>ADD ANOTHER</button>${groupControls}`}
+          ${calStrip}
         </div>`;
       } else {
         inner = `<div class="day-main"><button class="day-choose" data-action="choose"><span class="circle">+</span>CHOOSE A RECIPE</button></div>`;
@@ -5242,6 +5469,14 @@ function servesPill(recipe, serves, idx){
 
 function initPlannerListeners(){
   document.getElementById('dayList').addEventListener('click', e=>{
+    /* Before the day-row test: the week label sits outside every day row. */
+    const weekBtn = e.target.closest('[data-action="calWeek"]');
+    if(weekBtn){
+      const n = addWeekToCalendar((weekBtn.dataset.dates || '').split(',').filter(Boolean));
+      renderPlanner();
+      showToast(n ? `Added ${n} day${n === 1 ? '' : 's'} to the calendar` : 'Every planned day this week is already in the calendar');
+      return;
+    }
     const row = e.target.closest('.day-row');
     if(!row) return;
     const date = row.dataset.date;
@@ -5250,7 +5485,7 @@ function initPlannerListeners(){
        on the headcount button, which would otherwise never be reachable
        while something is selected. */
     if(state.selectedShortlistId && state.groupingDate !== date
-       && !e.target.closest('[data-action="setServes"]')){
+       && !e.target.closest('[data-action="setServes"], [data-action="calToggle"], [data-action="calRemind"]')){
       const item = loadShortlist().find(i=>i.id === state.selectedShortlistId);
       if(item && item.recipeId){
         addPlanRecipe(date, item.recipeId);
@@ -5341,6 +5576,14 @@ function initPlannerListeners(){
       }
     } else if(action === 'viewGroup'){
       openGroup(actionEl.dataset.groupId, 'planner');
+    } else if(action === 'calToggle'){
+      const entry = loadPlan()[date];
+      setPlanCalendar(date, !(entry && entry.calendar));
+      renderPlanner();
+    } else if(action === 'calRemind'){
+      const entry = loadPlan()[date];
+      setPlanRemind(date, !(entry && entry.remind));
+      renderPlanner();
     }
   });
 
@@ -7110,7 +7353,118 @@ function renderSettings(){
   renderSourcesList();
   renderKeywordsList();
   renderSwaps();
+  renderCalendarSettings();
   showSettingsTab(settingsTabStored());
+}
+
+/* ---- Settings → App → CALENDAR (P3, docs/PLAN-CALENDAR-PUSH.md §9) ----
+   Three states: the migration not in yet (say so, offer nothing whose writes would fail), in but not
+   connected (CONNECT), and connected (who, when, REMIND AT, SYNC NOW, DISCONNECT). */
+function calendarWhen(iso){
+  const d = new Date(iso);
+  if(isNaN(d)) return '';
+  return d.toLocaleString('en-GB', { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+function renderCalendarSettings(){
+  const box = document.getElementById('calendarSettings');
+  if(!box) return;
+  const intro = `<p class="subtle">Planned days you switch on go into a Google Calendar called RecipeWrangler, as an all-day
+    event, with a reminder on your phone the evening before if you ask for one.</p>`;
+  if(!calendarAvailable){
+    box.innerHTML = intro + `<p class="subtle">Waiting for the database change (docs/migrations/add-calendar-push.md). Until
+      it is applied nothing here is sent anywhere.</p>`;
+    return;
+  }
+  const c = calendarConn || {};
+  const problem = c.last_error ? `<p class="subtle">Last problem: ${escapeHtml(c.last_error)}</p>` : '';
+  if(!c.connected){
+    box.innerHTML = intro + problem + `<p class="subtle">Connecting takes you to Google once, to say yes. Google warns that it
+      hasn't verified the app: choose Advanced, then Go to RecipeWrangler.</p>
+      <div class="alias-form"><button class="btn" id="calConnectBtn">CONNECT GOOGLE CALENDAR</button></div>`;
+    return;
+  }
+  const at = remindAtNow();
+  const times = [];
+  for(let m = 16 * 60; m <= 23 * 60 + 30; m += 30) times.push(m);
+  /* A time set some other way stays shown as it is, rather than the select quietly picking another. */
+  if(!times.includes(at)) times.push(at);
+  times.sort((a, b)=> a - b);
+  box.innerHTML = intro + `<p class="subtle">Connected as ${escapeHtml(c.google_email || 'your Google account')}, calendar RecipeWrangler.
+      ${c.last_sync_at ? `Last brought into step ${escapeHtml(calendarWhen(c.last_sync_at))}.` : 'Not brought into step yet.'}</p>
+    ${problem}
+    <label class="subtle" for="calRemindAt">REMIND AT, the evening before</label>
+    <select class="sort" id="calRemindAt" aria-label="Reminder time, the evening before">${times.map(m=>
+      `<option value="${m}"${m === at ? ' selected' : ''}>${formatRemindAt(m)}</option>`).join('')}</select>
+    <div class="alias-form">
+      <button class="btn" id="calSyncBtn">SYNC NOW</button>
+      <button class="btn small-danger" id="calDisconnectBtn">DISCONNECT</button>
+    </div>`;
+}
+
+/* The one place the app leaves for Google. A function of its own so the tests can stand in for it. */
+function goToGoogle(url){ location.assign(url); }
+
+async function connectCalendar(){
+  const btn = document.getElementById('calConnectBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'OPENING GOOGLE…'; }
+  let data = null, error = null;
+  try { ({ data, error } = await sb.functions.invoke('calendar-auth', { body: { action: 'start', returnTo: location.origin + location.pathname } })); }
+  catch(e){ error = e; }
+  if(!error && data && data.url){ goToGoogle(data.url); return; }
+  if(btn){ btn.disabled = false; btn.textContent = 'CONNECT GOOGLE CALENDAR'; }
+  showToast(data && data.error
+    ? `Couldn't start connecting: ${data.error}`
+    : `Couldn't reach calendar-auth${error && error.message ? ' (' + error.message + ')' : ''}. Is it deployed?`);
+}
+
+async function disconnectCalendar(){
+  if(!confirm('Disconnect Google Calendar?\n\nThe RecipeWrangler calendar and the meals already in it stay in your Google account; '
+    + 'the app just stops updating them. Your plan here does not change.')) return;
+  let data = null, error = null;
+  try { ({ data, error } = await sb.functions.invoke('calendar-auth', { body: { action: 'disconnect' } })); }
+  catch(e){ error = e; }
+  if(error || !data || !data.ok){
+    showToast(`Couldn't disconnect: ${(data && data.error) || (error && error.message) || 'no answer'}`);
+    return;
+  }
+  /* Only the connection is forgotten. The switches stay on their days, so connecting again carries on. */
+  calendarConn = { ...(calendarConn || {}), connected: false, last_error: null };
+  renderCalendarSettings();
+  showToast('Google Calendar disconnected. The RecipeWrangler calendar stays in Google.');
+}
+
+document.getElementById('calendarSettings').addEventListener('click', e=>{
+  if(e.target.closest('#calConnectBtn')) connectCalendar();
+  else if(e.target.closest('#calDisconnectBtn')) disconnectCalendar();
+  else if(e.target.closest('#calSyncBtn')){
+    queueCalendarSync('all');
+    showToast('Bringing the calendar into step');
+  }
+});
+document.getElementById('calendarSettings').addEventListener('change', e=>{
+  if(e.target.id !== 'calRemindAt') return;
+  const n = parseInt(e.target.value, 10);
+  if(isNaN(n)) return;
+  setSetting('remindAt', validRemindAt(n));
+  /* Every switched-on day's reminder moves, so every day from today is rewritten, after the setting lands. */
+  queueCalendarSync('all');
+  showToast(`Reminders now at ${formatRemindAt(n)} the evening before`);
+});
+
+const CALENDAR_RETURN_WORDS = {
+  connected: 'Google Calendar connected. Your switched-on days are going into RecipeWrangler.',
+  denied: "Google Calendar wasn't connected: permission wasn't given.",
+  expired: 'That connection took too long and expired. Tap CONNECT GOOGLE CALENDAR to try again.',
+  scope: "Google Calendar wasn't connected: the app needs permission to make its own calendar. Leave that box ticked when you connect.",
+  error: "Google Calendar couldn't be connected. Try again in a minute."
+};
+function handleCalendarReturn(outcome){
+  if(!outcome) return;
+  showToast(CALENDAR_RETURN_WORDS[outcome] || CALENDAR_RETURN_WORDS.error);
+  showView('settings');
+  showSettingsTab('app');
+  /* Days switched on before (or during an earlier connection) go in now, without anyone pressing SYNC NOW. */
+  if(outcome === 'connected') queueCalendarSync('all');
 }
 
 /* SETTINGS IN THREE TABS (E of docs/PLAN-LAYOUT.md, 30 Sep 2026). The page had grown to ten sections and a
@@ -8632,9 +8986,15 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     if(idx === -1){ closeAddModal(); return; }
     // id, history, and dateAdded survive an edit untouched — editing is
     // about the recipe's details, not a new entry replacing its record.
+    /* The title before the edit, read here because saveRecipe is handed the edited object and the cache
+       already holds it: by then nothing remembers what the title was. */
+    const titleBefore = recipes[idx].title;
     recipes[idx] = { ...recipes[idx], ...fields };
     if(photos) uploadSourcePhotos(photos.uploads);
     saveRecipe(recipes[idx]);
+    /* Its days in the calendar carry the title, so they are rewritten: after the recipe's write, which is
+       where calendar-sync reads the title from. */
+    if(titleBefore !== recipes[idx].title) syncRecipeCalendarDays(recipes[idx].id);
     if(photos) removeSourcePhotoFiles(photos.removals);
     /* FOLD INTO NOTES: the note leaves the log only once the text carrying it is saved, and only if the
        line is still there. After the recipe's write, so the note is never gone before its line is kept. */
@@ -8887,6 +9247,9 @@ function importAllData(file){
     }
     queueWrite('cooking history', ()=> replaceAllDiary(data.recipes, Array.isArray(data.diary) ? data.diary : null), { whole: true });
     replacePlan(data.plan || {});
+    /* A restore can move, add or drop switched-on days wholesale, so the calendar is brought into step with
+       all of it at once, after the plan's write (a no-op unless the household is connected). */
+    queueCalendarSync('all');
     replaceShortlist(data.shortlist || []);
     if(Array.isArray(data.keywordVocab)){
       replaceKeywordVocab(data.keywordVocab);
@@ -9020,7 +9383,10 @@ async function startApp(){
   purgeOldFormatTicks();
   updateSidebarCounts();
   renderHome();
+  /* Once, after the first load that succeeds. */
+  if(!calendarReturnHandled){ calendarReturnHandled = true; handleCalendarReturn(calendarReturn); }
 }
+let calendarReturnHandled = false;
 
 /* Re-reads the library from the server, but only when that cannot lose
    anything. Runs every time the tab comes back into view.

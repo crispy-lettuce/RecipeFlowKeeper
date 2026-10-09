@@ -2,7 +2,13 @@
    network. Serves canned rows shaped exactly like the live tables, and
    records every write so tests can assert on what the app tried to save. */
 (function(){
-  const DATA = window.__STUB_DATA__;
+  /* __STUB_EXTRA__ (added 9 Oct 2026 for the calendar push) is merged over the fixture, so a test can boot
+     a fresh page in a state the fixture is not in: set it with addInitScript, which runs before this. */
+  const DATA = Object.assign(window.__STUB_DATA__, window.__STUB_EXTRA__ || {});
+  /* Tables whose migration the live database is still waiting for. They read as not created, as PostgREST
+     says so, unless a test puts rows for them in __STUB_DATA__ (an empty list is "created, no rows"): so the
+     default fixture is the live app as it is today, and every check written before them runs unchanged. */
+  const PENDING_TABLES = ['calendar_connections'];
   window.__WRITES__ = [];
 
   /* Switches for the paths that only exist when the network misbehaves —
@@ -16,7 +22,7 @@
                          update, delete — since 24 Sep, when ordinary saves
                          became single-row updates and deletes)
        __WRITE_DELAY__   ms before a write answers, to hold the queue open
-       __LOG__           'read:<table>' and 'write-done:<table>', in order,
+       __LOG__           'read:<table>', 'write-done:<table>' and 'invoke:<name>', in order,
                          so a test can prove what happened before what
        __AUTH_CB__       the app's onAuthStateChange listener, so a test can
                          fire SIGNED_IN as supabase-js does on a tab return
@@ -24,6 +30,8 @@
        __MISSING_TABLES__ table names that read as not created yet, the way
                          PostgREST says so (added 29 Sep for PR 6: a merge can
                          arrive before its migration, and the app must cope)
+       __STUB_EXTRA__    tables merged over the fixture before anything reads it
+                         (9 Oct, the calendar push: a page that boots connected)
 
      The failure is an error OBJECT with the browser's text as its message,
      not a thrown TypeError — that is what postgrest-js actually hands back,
@@ -37,7 +45,7 @@
 
   function result(table){
     if(window.__READ_FAIL__) return { data: null, error: NETWORK_ERROR };
-    if((window.__MISSING_TABLES__ || []).includes(table)){
+    if((window.__MISSING_TABLES__ || []).includes(table) || (PENDING_TABLES.includes(table) && DATA[table] === undefined)){
       return { data: null, error: { message: `Could not find the table 'public.${table}' in the schema cache`, details: null, hint: null, code: 'PGRST205' } };
     }
     const rows = DATA[table] === undefined ? [] : DATA[table];
@@ -115,10 +123,13 @@
      that. A test sets window.__INVOKE_REPLY__ to control the response, so
      the error path is reachable and not just the happy one. */
   window.__INVOKES__ = [];
-  window.__INVOKE_REPLY__ = null;
+  window.__INVOKE_REPLY__ = window.__INVOKE_REPLY__ || null; // one set by addInitScript (a fresh page) is kept
   function invoke(name, opts){
     const call = { name, body: (opts && opts.body) || null };
     window.__INVOKES__.push(call);
+    /* In __LOG__ too (9 Oct 2026), so a check can see a call came after the write it depends on: calendar-sync
+       reads the saved Planner row, so the row must have landed first. */
+    window.__LOG__.push('invoke:' + name);
     const reply = typeof window.__INVOKE_REPLY__ === 'function'
       ? window.__INVOKE_REPLY__(call)
       : window.__INVOKE_REPLY__;

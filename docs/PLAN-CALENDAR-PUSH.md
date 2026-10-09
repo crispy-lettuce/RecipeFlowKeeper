@@ -5,7 +5,9 @@ Edge Function holds a Google OAuth refresh token, obtained via one one-off conse
 created automatically with no further manual action, ever."* and *"Opt-in per entry."* Scoped on 30 Sep 2026 at the household's
 request; **the household answered §7 on 1 Oct 2026**, then simplified their answers the same day: **§9 is the design being built and
 supersedes §4 and §8 wherever they differ.** §10 is the household's setup. **PR 1 (the migration and the two Edge Functions) is
-built; the app (PR 2) is not.**
+merged (#69, 1 Oct); the app (PR 2) was built 9 Oct**, safe to merge before §10 is done: until the migration is applied it says
+"Waiting for the database change" in Settings and sends nothing new. Then `docs/TEST-PLAN.md` step 40a, the household's tablet and
+phone pass, and PR 3 records it.
 
 ## 1. What it is for
 

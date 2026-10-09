@@ -3473,8 +3473,9 @@ const check = (name, pass, detail) => {
   check('layout E: Settings has three tabs; Ingredients holds the lookup, word matches, aisles, swaps and dictionary, and SWAPS has left the sidebar',
         stIng.join('|') === 'INGREDIENT LOOKUP|WORD MATCHES|SHOPPING AISLES|SWAPS|DICTIONARY' && !stNav.includes('swaps') && stNav.includes('settings'),
         JSON.stringify([stIng, stNav]));
-  check('    Library holds the library check, sources, keywords and photos; App the week start and appearance; the last tab is remembered',
-        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE' && stKept.join('|') === stApp.join('|'),
+  /* CALENDAR joined App on 9 Oct 2026 (P3 PR 2); before the migration it only says it is waiting. */
+  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance and calendar; the last tab is remembered',
+        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|CALENDAR' && stKept.join('|') === stApp.join('|'),
         JSON.stringify([stLib, stApp, stKept]));
   const stDict = () => page.evaluate(() => ({ list: !document.getElementById('dictionaryList').hidden, btn: document.getElementById('dictionaryToggle').hidden ? '' : document.getElementById('dictionaryToggle').textContent.trim(),
     rows: [...document.querySelectorAll('#dictionaryList .dict-row')].filter(r => r.offsetParent !== null).length }));
@@ -4147,6 +4148,273 @@ const check = (name, pass, detail) => {
         && /can't be loaded/.test(cnMissingUi.text) && !cnMissingUi.box && !cnMissingUi.prompt && cnMissingExport === false,
         JSON.stringify([cnMissing, cnMissingUi, cnMissingExport]));
   await page.evaluate(async () => { window.__MISSING_TABLES__ = []; await hydrate(); showView('recipes'); renderHome(); });
+
+  /* ---- The calendar push, P3 PR 2 (docs/PLAN-CALENDAR-PUSH.md §9; added 9 Oct 2026) ----
+     Three states, each as the live app meets it: before the migration (the default fixture: the stub
+     reads calendar_connections as not created), the migration in but not connected, and connected.
+     calendar-sync and calendar-auth are the stub's invoke, answered per check; 'invoke:<name>' in __LOG__
+     is what shows the Planner write landed before the sync was asked for. */
+  const calDrain = () => page.evaluate(async () => { let t; do { t = writeQueue; await t; } while(t !== writeQueue); });
+  const calMark = () => page.evaluate(() => ({ w: window.__WRITES__.length, i: window.__INVOKES__.length, l: window.__LOG__.length }));
+  const calSince = m => page.evaluate(m => ({
+    plan: window.__WRITES__.slice(m.w).filter(w => w.table === 'planner_days'),
+    settings: window.__WRITES__.slice(m.w).filter(w => w.table === 'household_settings').flatMap(w => w.rows || []),
+    syncs: window.__INVOKES__.slice(m.i).filter(c => c.name === 'calendar-sync').map(c => c.body),
+    auths: window.__INVOKES__.slice(m.i).filter(c => c.name === 'calendar-auth').map(c => c.body),
+    log: window.__LOG__.slice(m.l)
+  }), m);
+  const calToast = () => page.evaluate(() => { const t = document.querySelector('.toast'); return t ? t.textContent : ''; });
+  const calPlanRow = (s, date) => { const ups = s.plan.filter(w => w.op === 'upsert').flatMap(w => w.rows).filter(r => r.plan_date === date); return ups[ups.length - 1] || null; };
+  const CAL_CONNECTED = { household_id: '286a8a12-c12a-4b83-afbc-0912533f6b1c', connected: true, google_email: 'cook@example.test',
+    calendar_id: 'made-up-calendar@group.calendar.google.com', scope: 'https://www.googleapis.com/auth/calendar.app.created openid email',
+    connected_at: '2026-09-21T18:00:00.000Z', last_sync_at: null, last_error: null, updated_at: '2026-09-21T18:00:00.000Z' };
+  const calOk = () => page.evaluate(() => { window.__INVOKE_REPLY__ = call => call.name === 'calendar-sync'
+    ? { data: { ok: true, put: 1, deleted: 0 }, error: null } : { data: null, error: null }; });
+
+  // Before the migration: a fresh page on the default fixture, exactly as the live app is today.
+  const calPre = await browser.newPage();
+  calPre.on('pageerror', e => errors.push('PAGEERROR (calendar, before): ' + e.message));
+  await calPre.clock.setFixedTime(FIXTURE_NOW);
+  await calPre.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await calPre.waitForTimeout(1200);
+  const calPreState = await calPre.evaluate(async () => {
+    const m = window.__WRITES__.length;
+    const d = isoLocal(dayList()[0]);
+    setPlanServingsAt(d, 0, 6);
+    setSetting('weekStartDay', 5);
+    let t; do { t = writeQueue; await t; } while(t !== writeQueue);
+    const ws = window.__WRITES__.slice(m);
+    const planRows = ws.filter(w => w.table === 'planner_days' && w.op === 'upsert').flatMap(w => w.rows);
+    const setRows = ws.filter(w => w.table === 'household_settings').flatMap(w => w.rows);
+    showView('planner');
+    const switches = document.querySelectorAll('#dayList .day-cal, #dayList .week-cal').length;
+    showView('settings'); showSettingsTab('app');
+    return { gate: !document.getElementById('loginGate').hidden, signouts: window.__SIGNOUTS__, available: calendarAvailable,
+      planKeys: planRows.length ? Object.keys(planRows[0]).filter(k => /calendar/.test(k)) : ['NO ROW'],
+      setKeys: setRows.length ? Object.keys(setRows[0]).filter(k => /calendar/.test(k)) : ['NO ROW'],
+      switches, text: document.getElementById('calendarSettings').textContent.replace(/\s+/g, ' ').trim(),
+      connect: !!document.getElementById('calConnectBtn'), syncs: window.__INVOKES__.filter(c => /^calendar/.test(c.name)).length };
+  });
+  check('calendar, before the migration: the load carries on and signs nobody out, and the feature reads as unavailable',
+        !calPreState.gate && calPreState.signouts === 0 && calPreState.available === false, JSON.stringify(calPreState));
+  check('    a Planner save and a settings save name no calendar column, no switches show, and nothing calls the calendar',
+        calPreState.planKeys.length === 0 && calPreState.setKeys.length === 0 && calPreState.switches === 0 && calPreState.syncs === 0,
+        JSON.stringify(calPreState));
+  check('    Settings → App → CALENDAR says it is waiting for the database change, and offers no CONNECT',
+        /Waiting for the database change/.test(calPreState.text) && !calPreState.connect, calPreState.text);
+  await calPre.close();
+
+  // Available, not connected.
+  await page.evaluate(async () => { window.__MISSING_TABLES__ = []; window.__STUB_DATA__.calendar_connections = []; await hydrate();
+    window.__INVOKES__.length = 0; window.__INVOKE_REPLY__ = null; });
+  const calD0 = await page.evaluate(() => isoLocal(dayList()[0]));
+  const calD1 = await page.evaluate(() => isoLocal(dayList()[1]));
+  let calM = await calMark();
+  await page.evaluate(d => { setPlanServingsAt(d, 0, 6); setSetting('weekStartDay', 5); showView('planner'); }, calD0);
+  await calDrain();
+  let calS = await calSince(calM);
+  const calNcSwitches = await page.locator('#dayList .day-cal, #dayList .week-cal').count();
+  check('calendar, migration in but not connected: a Planner save sends the switch off, settings send 20:00, no switches show, nothing is synced',
+        calPlanRow(calS, calD0) && calPlanRow(calS, calD0).calendar === false && calPlanRow(calS, calD0).calendar_remind === false
+        && calS.settings.length && calS.settings[0].calendar_remind_at === 1200 && calNcSwitches === 0 && calS.syncs.length === 0,
+        JSON.stringify([calPlanRow(calS, calD0), calS.settings, calNcSwitches, calS.syncs]));
+  await page.evaluate(() => { showView('settings'); showSettingsTab('app');
+    window.__WENT__ = null; window.__REAL_GO__ = goToGoogle; window.goToGoogle = url => { window.__WENT__ = url; };
+    window.__INVOKE_REPLY__ = call => call.name === 'calendar-auth' ? { data: { url: 'https://accounts.example.test/consent?state=made-up' }, error: null } : { data: null, error: null }; });
+  calM = await calMark();
+  await page.click('#calConnectBtn');
+  await page.waitForTimeout(300);
+  calS = await calSince(calM);
+  const calWent = await page.evaluate(() => window.__WENT__);
+  check('    CONNECT GOOGLE CALENDAR asks calendar-auth to start, coming back to this page, and goes to the address it returns',
+        calS.auths.length === 1 && calS.auths[0].action === 'start' && /\/app-under-test\.html$/.test(calS.auths[0].returnTo || '')
+        && calWent === 'https://accounts.example.test/consent?state=made-up', JSON.stringify([calS.auths, calWent]));
+
+  // Connected.
+  await page.evaluate(async c => { window.__STUB_DATA__.calendar_connections = [c]; await hydrate(); window.__INVOKES__.length = 0; showView('planner'); }, CAL_CONNECTED);
+  await calOk();
+  calM = await calMark();
+  await page.click(`.day-row[data-date="${calD0}"] [data-action="calToggle"]`);
+  await calDrain();
+  calS = await calSince(calM);
+  const calOrder = { write: calS.log.lastIndexOf('write-done:planner_days'), invoke: calS.log.indexOf('invoke:calendar-sync') };
+  check('calendar, connected: IN CALENDAR saves the day switched on, then asks calendar-sync for that day, after the Planner write has landed',
+        calPlanRow(calS, calD0) && calPlanRow(calS, calD0).calendar === true && calS.syncs.length === 1
+        && JSON.stringify(calS.syncs[0]) === JSON.stringify({ dates: [calD0] }) && calOrder.write !== -1 && calOrder.write < calOrder.invoke,
+        JSON.stringify([calPlanRow(calS, calD0), calS.syncs, calS.log]));
+  const calRemindLabel = await page.locator(`.day-row[data-date="${calD0}"] [data-action="calRemind"]`).textContent();
+  calM = await calMark();
+  await page.click(`.day-row[data-date="${calD0}"] [data-action="calRemind"]`);
+  await calDrain();
+  calS = await calSince(calM);
+  check('    REMIND ME shows the household\'s time, saves calendar_remind and syncs the day',
+        /REMIND ME 20:00 THE EVENING BEFORE/.test(calRemindLabel) && calPlanRow(calS, calD0) && calPlanRow(calS, calD0).calendar_remind === true
+        && JSON.stringify(calS.syncs) === JSON.stringify([{ dates: [calD0] }]), JSON.stringify([calRemindLabel, calPlanRow(calS, calD0), calS.syncs]));
+  calM = await calMark();
+  await page.evaluate(([a, b]) => { setPlanServingsAt(a, 0, 3); setPlanServingsAt(b, 0, 3); }, [calD0, calD1]);
+  await calDrain();
+  calS = await calSince(calM);
+  check('    a servings change keeps the switches and syncs a switched-on day; on a day that is off nothing is sent to the calendar',
+        calPlanRow(calS, calD0) && calPlanRow(calS, calD0).calendar === true && calPlanRow(calS, calD0).calendar_remind === true
+        && calPlanRow(calS, calD1) && calPlanRow(calS, calD1).calendar === false && JSON.stringify(calS.syncs) === JSON.stringify([{ dates: [calD0] }]),
+        JSON.stringify([calPlanRow(calS, calD0), calPlanRow(calS, calD1), calS.syncs]));
+  calM = await calMark();
+  await page.evaluate(d => setPlanBlank(d), calD0);
+  await calDrain();
+  calS = await calSince(calM);
+  const calAwayEntry = await page.evaluate(d => cache.plan[d], calD0);
+  check('    marking a day away drops its switches, saves them off and syncs it, which removes the event',
+        calPlanRow(calS, calD0) && calPlanRow(calS, calD0).is_blank === true && calPlanRow(calS, calD0).calendar === false
+        && !calAwayEntry.calendar && JSON.stringify(calS.syncs) === JSON.stringify([{ dates: [calD0] }]), JSON.stringify([calPlanRow(calS, calD0), calAwayEntry, calS.syncs]));
+  await page.evaluate(d => setPlanCalendar(d, true), calD1);
+  await calDrain();
+  calM = await calMark();
+  const calKept = await page.evaluate(d => { removePlanRecipeAt(d, 1); return !!cache.plan[d].calendar; }, calD1);
+  await page.evaluate(d => removePlanRecipeAt(d, 0), calD1);
+  await calDrain();
+  calS = await calSince(calM);
+  check('    taking one recipe off a switched-on day keeps it on; emptying it deletes the row and syncs it',
+        calKept && calS.plan.some(w => w.op === 'delete' && (w.eqs || []).some(e => e.column === 'plan_date' && e.value === calD1))
+        && JSON.stringify(calS.syncs) === JSON.stringify([{ dates: [calD1] }, { dates: [calD1] }]), JSON.stringify([calKept, calS.plan.map(w => w.op), calS.syncs]));
+
+  // ADD THE WEEK: the second week (a whole week from Friday), three days planned and off.
+  const calWeek = await page.evaluate(() => { const wk = groupDaysByWeek(dayList())[1].map(isoLocal).slice(0, 3);
+    const r1 = loadRecipes().find(r => r.title === 'Test Pasta').id; wk.forEach(d => addPlanRecipe(d, r1)); renderPlanner(); return wk; });
+  await calDrain();
+  calM = await calMark();
+  await page.click(`.week-cal[data-dates*="${calWeek[0]}"]`);
+  await calDrain();
+  calS = await calSince(calM);
+  const calWeekLeft = await page.locator(`.week-cal[data-dates*="${calWeek[0]}"]`).count();
+  check('    ADD THE WEEK switches every planned day of the week on and makes ONE call for all of them, after their Planner writes',
+        calWeek.every(d => calPlanRow(calS, d) && calPlanRow(calS, d).calendar === true) && calS.syncs.length === 1
+        && JSON.stringify(calS.syncs[0]) === JSON.stringify({ dates: calWeek.slice().sort() })
+        && calS.log.lastIndexOf('write-done:planner_days') < calS.log.indexOf('invoke:calendar-sync') && calWeekLeft === 0,
+        JSON.stringify([calS.syncs, calS.log, calWeekLeft]));
+
+  // A title edit: the recipe's switched-on days from today, not a past one.
+  const calPast = await page.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 3); const iso = isoLocal(d);
+    cache.plan[iso] = { recipeIds: [loadRecipes().find(r => r.title === 'Test Pasta').id], servings: [0], calendar: true }; return iso; });
+  const calR1 = await page.evaluate(() => loadRecipes().find(r => r.title === 'Test Pasta').id);
+  await page.evaluate(id => openEditModal(id), calR1);
+  await page.waitForTimeout(350);
+  await page.fill('#f-title', 'Test Pasta, Renamed');
+  calM = await calMark();
+  await page.click('#saveBtn');
+  await page.waitForTimeout(400);
+  await calDrain();
+  calS = await calSince(calM);
+  check('    a recipe\'s title edited through the form syncs its switched-on days from today (never a past one), after the recipe\'s write',
+        JSON.stringify(calS.syncs) === JSON.stringify([{ dates: calWeek.slice().sort() }]) && !JSON.stringify(calS.syncs).includes(calPast)
+        && calS.log.indexOf('write-done:recipes') !== -1 && calS.log.indexOf('write-done:recipes') < calS.log.indexOf('invoke:calendar-sync'),
+        JSON.stringify([calS.syncs, calS.log]));
+  await page.evaluate(d => { delete cache.plan[d]; rebuildCalendarDates(); showView('planner'); }, calPast);
+
+  // Google refuses the connection: said, and not sent again.
+  await page.evaluate(() => { window.__INVOKE_REPLY__ = call => call.name === 'calendar-sync'
+    ? { data: { error: 'Google no longer accepts the connection', reconnect: true }, error: null } : { data: null, error: null }; });
+  calM = await calMark();
+  await page.click(`.day-row[data-date="${calWeek[0]}"] [data-action="calToggle"]`);
+  await calDrain();
+  const calRcToast = await calToast();
+  await page.evaluate(() => { setSetting('weekStartDay', 5); });
+  await calDrain();
+  calS = await calSince(calM);
+  const calRc = await page.evaluate(() => ({ connected: calendarConn.connected, failed: failedWrites.map(f => f.label), unsent: [...unsentLabels],
+    switches: (renderPlanner(), document.querySelectorAll('#dayList .day-cal').length) }));
+  await page.evaluate(() => { showView('settings'); showSettingsTab('app'); });
+  const calRcSettings = await page.evaluate(() => ({ connect: !!document.getElementById('calConnectBtn'), text: document.getElementById('calendarSettings').textContent }));
+  check('    an answer of reconnect is shown in words, CONNECT comes back, the switches go, and it is NOT sent again by the next write',
+        calS.syncs.length === 1 && /CONNECT GOOGLE CALENDAR again/.test(calRcToast) && calRc.connected === false && !calRc.failed.includes('the calendar')
+        && !calRc.unsent.includes('the calendar') && calRc.switches === 0 && calRcSettings.connect && /no longer accepts/.test(calRcSettings.text),
+        JSON.stringify([calS.syncs.length, calRcToast, calRc, calRcSettings]));
+
+  // A dead network: retried with the same days.
+  await page.evaluate(() => { calendarConn.connected = true; calendarConn.last_error = null; showView('planner');
+    window.__INVOKE_REPLY__ = call => call.name === 'calendar-sync'
+      ? { data: null, error: { name: 'FunctionsFetchError', message: 'Failed to send a request to the Edge Function' } } : { data: null, error: null }; });
+  calM = await calMark();
+  const calNfErrors = errors.length;
+  await page.click(`.day-row[data-date="${calWeek[1]}"] [data-action="calToggle"]`);
+  await calDrain();
+  /* The deliberate failure logs 'Sync failed', which this suite otherwise counts as an app fault: only that, only here. */
+  for (let i = errors.length - 1; i >= calNfErrors; i--) if (/Sync failed: the calendar/.test(errors[i])) errors.splice(i, 1);
+  const calNf = await page.evaluate(() => ({ failed: failedWrites.map(f => f.label), toast: document.querySelector('.toast').textContent }));
+  await calOk();
+  await page.evaluate(() => flushFailedWrites());
+  await calDrain();
+  calS = await calSince(calM);
+  const calNfAfter = await page.evaluate(() => ({ failed: failedWrites.map(f => f.label), unsent: [...unsentLabels] }));
+  check('    a network failure is kept and sent again, the same days, once the network is back',
+        calNf.failed.includes('the calendar') && /Couldn't save the calendar/.test(calNf.toast) && calS.syncs.length === 2
+        && JSON.stringify(calS.syncs[0]) === JSON.stringify({ dates: [calWeek[1]] }) && JSON.stringify(calS.syncs[1]) === JSON.stringify(calS.syncs[0])
+        && !calNfAfter.failed.length && !calNfAfter.unsent.includes('the calendar'), JSON.stringify([calNf, calS.syncs, calNfAfter]));
+
+  // Settings: who, REMIND AT, SYNC NOW.
+  await page.evaluate(() => { showView('settings'); showSettingsTab('app'); });
+  const calSet = await page.evaluate(() => ({ text: document.getElementById('calendarSettings').textContent.replace(/\s+/g, ' '),
+    opts: [...document.querySelectorAll('#calRemindAt option')].map(o => o.textContent), value: document.getElementById('calRemindAt').value }));
+  calM = await calMark();
+  await page.selectOption('#calRemindAt', '1290');
+  await calDrain();
+  await page.click('#calSyncBtn');
+  await calDrain();
+  calS = await calSince(calM);
+  const calNewLabel = await page.evaluate(d => { showView('planner'); const b = document.querySelector(`.day-row[data-date="${d}"] [data-action="calRemind"]`); return b ? b.textContent : 'NONE'; }, calWeek[2]);
+  check('    Settings names the account and offers REMIND AT from 16:00 to 23:30 on the half hour, at 20:00',
+        /Connected as cook@example\.test, calendar RecipeWrangler/.test(calSet.text) && calSet.opts.length === 16
+        && calSet.opts[0] === '16:00' && calSet.opts[15] === '23:30' && calSet.value === '1200', JSON.stringify(calSet));
+  check('    a new REMIND AT is saved, then every day is synced; SYNC NOW syncs every day; the Planner shows the new time',
+        calS.settings.length === 1 && calS.settings[0].calendar_remind_at === 1290
+        && JSON.stringify(calS.syncs) === JSON.stringify([{ all: true }, { all: true }])
+        && calS.log.indexOf('write-done:household_settings') < calS.log.indexOf('invoke:calendar-sync') && /21:30/.test(calNewLabel),
+        JSON.stringify([calS.settings, calS.syncs, calNewLabel]));
+
+  // DISCONNECT.
+  await page.evaluate(() => { showView('settings'); showSettingsTab('app');
+    window.__INVOKE_REPLY__ = call => call.name === 'calendar-auth' ? { data: { ok: true }, error: null } : { data: null, error: null };
+    window.__CAL_CONFIRM__ = ''; window.__REAL_CONFIRM__ = window.confirm; window.confirm = m => { window.__CAL_CONFIRM__ = m; return true; }; });
+  const calPlanBefore = await page.evaluate(() => JSON.stringify(cache.plan));
+  calM = await calMark();
+  await page.click('#calDisconnectBtn');
+  await page.waitForTimeout(300);
+  await calDrain();
+  calS = await calSince(calM);
+  const calDc = await page.evaluate(() => { window.confirm = window.__REAL_CONFIRM__;
+    return { msg: window.__CAL_CONFIRM__, plan: JSON.stringify(cache.plan), connected: calendarConn.connected, connect: !!document.getElementById('calConnectBtn') }; });
+  check('    DISCONNECT asks first, saying the calendar stays in Google, then asks calendar-auth to disconnect and changes nothing in the plan',
+        /stay in your Google account/.test(calDc.msg) && JSON.stringify(calS.auths) === JSON.stringify([{ action: 'disconnect' }])
+        && calS.plan.length === 0 && calS.syncs.length === 0 && calDc.plan === calPlanBefore && calDc.connected === false && calDc.connect,
+        JSON.stringify([calDc.msg, calS.auths, calS.plan.length, calDc.connected]));
+
+  // Coming back from Google: a fresh page at #calendar=<outcome>.
+  const calReturn = async (outcome, conn) => {
+    const p = await browser.newPage();
+    p.on('pageerror', e => errors.push('PAGEERROR (calendar, #' + outcome + '): ' + e.message));
+    await p.addInitScript(c => { window.__STUB_EXTRA__ = { calendar_connections: c };
+      window.__INVOKE_REPLY__ = call => call.name === 'calendar-sync' ? { data: { ok: true, put: 0, deleted: 0 }, error: null } : { data: null, error: null }; }, conn);
+    await p.clock.setFixedTime(FIXTURE_NOW);
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html') + '#calendar=' + outcome);
+    await p.waitForTimeout(1500);
+    const out = await p.evaluate(async () => { let t; do { t = writeQueue; await t; } while(t !== writeQueue);
+      const toast = document.querySelector('.toast');
+      return { hash: location.hash, href: location.href.includes('#'), toast: toast ? toast.textContent : '',
+        settings: document.getElementById('view-settings').classList.contains('active'),
+        appTab: document.querySelector('[data-settings-tab-btn="app"]').classList.contains('active'),
+        syncs: window.__INVOKES__.filter(c => c.name === 'calendar-sync').map(c => c.body) }; });
+    await p.close();
+    return out;
+  };
+  const calBackOk = await calReturn('connected', [CAL_CONNECTED]);
+  check('    back from Google connected: a toast says so, the address loses #calendar=, Settings opens on App, and every day is synced',
+        /Google Calendar connected/.test(calBackOk.toast) && calBackOk.hash === '' && !calBackOk.href && calBackOk.settings && calBackOk.appTab
+        && JSON.stringify(calBackOk.syncs) === JSON.stringify([{ all: true }]), JSON.stringify(calBackOk));
+  const calBackNo = await calReturn('denied', []);
+  check('    back from Google refused: the toast says permission was not given, the hash is cleared, and nothing is synced',
+        /permission wasn't given/.test(calBackNo.toast) && calBackNo.hash === '' && calBackNo.settings && calBackNo.syncs.length === 0, JSON.stringify(calBackNo));
+
+  await page.evaluate(async () => { delete window.__STUB_DATA__.calendar_connections; window.__INVOKE_REPLY__ = null;
+    window.goToGoogle = window.__REAL_GO__; await hydrate(); showView('recipes'); renderHome(); });
 
   const failed = checks.filter(c => !c.pass).length;
   console.log(`\n${checks.length} checks, ${failed} failed`);

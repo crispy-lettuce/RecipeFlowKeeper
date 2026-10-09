@@ -20,7 +20,7 @@ Then pick up work from **`docs/NEXT-SESSION.md`**: where things stand, what is l
 order, and the household's own jobs. As of 30 Sep 2026 the app is live and in daily use and every
 agreed plan is built and merged, R4 (dated cooking notes, `docs/PLAN-COOKING-NOTES.md`) included.
 What remains is the household's data jobs and P3 (the calendar push, `docs/PLAN-CALENDAR-PUSH.md`: answered 1 Oct, PR 1 built,
-waiting for the household's Google setup; the app is PR 2).
+merged, waiting for the household's Google setup; the app is PR 2, built 9 Oct).
 
 **One thing to absorb before changing anything: `main` is production.** GitHub Pages serves from
 `main`, and every merge deploys straight to the tablet. There is no staging step. This was
@@ -323,14 +323,14 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
-### `docs/PLAN-CALENDAR-PUSH.md` — planned meals in Google Calendar, P3 (30 Sep 2026; answered 1 Oct; PR 1 built)
+### `docs/PLAN-CALENDAR-PUSH.md` — planned meals in Google Calendar, P3 (30 Sep 2026; answered 1 Oct; PR 1 merged; PR 2 built 9 Oct)
 **What:** The brief's P3: what exists, a live connection against a subscribed feed, the first proposal and seven decisions
 (§1–§7), the first answers (§8), and **§9, the design being built**: one all-day event per switched-on planned day in a
 RecipeWrangler calendar, an optional reminder at 20:00 the evening before (for the freezer), ADD THE WEEK, DISCONNECT leaving the
 calendar in place, the token in Vault; no meal times, and no change to the food diary. **§10** is the household's Google and
 Supabase setup, step by step.
 
-**Use it when:** doing the setup, building PR 2 (the app), or checking what P3 does.
+**Use it when:** doing the setup, running tablet and phone step 40a, or checking what P3 does.
 
 ---
 

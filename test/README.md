@@ -72,16 +72,20 @@ node test/core.test.js
 `build.js` inlines the real `core.js` into the built page, so the smoke suite below tests exactly
 what Pages serves.
 
-**418 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
+**437 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, the automatic image
 re-host on save, what happens when you come back to the tab (online, offline, mid-save, after a
-failed save), the add form's review and its answers in place (what each tap writes and that asking writes nothing, that no `confirm()` is called anywhere in the add path, the undos, and that BEFORE YOU SAVE lists what the save then does), the comparison recorded on the recipe (what SAVE writes and when, the chip in the viewer, Edit's stored result, and export and import carrying it), and that every screen renders without throwing.
+failed save), the add form's review and its answers in place (what each tap writes and that asking writes nothing, that no `confirm()` is called anywhere in the add path, the undos, and that BEFORE YOU SAVE lists what the save then does), the comparison recorded on the recipe (what SAVE writes and when, the chip in the viewer, Edit's stored result, and export and import carrying it), the calendar push (before its migration, applied but not connected, and connected:
+what each switch writes, that the sync is asked for only after the Planner write it depends on, ADD THE WEEK in one call, which
+failures are sent again, DISCONNECT, and the way back from Google's consent screen), and that every screen renders without throwing.
 
 **`stub.js` can misbehave on request.** `__READ_FAIL__` / `__WRITE_FAIL__` fail the way supabase-js
 reports a dead network; `__READ_DELAY__` / `__WRITE_DELAY__` hold a request open; `__LOG__` records
-reads and completed writes in order; `__AUTH_CB__` is the app's auth listener, so a test can fire
-`SIGNED_IN` as a tab return does; `__SIGNOUTS__` counts sign-outs. All off by default.
+reads, completed writes and Edge Function calls (`invoke:<name>`) in order; `__AUTH_CB__` is the app's auth listener, so a test can fire
+`SIGNED_IN` as a tab return does; `__SIGNOUTS__` counts sign-outs. All off by default. `calendar_connections` reads as not created
+(the live database before `add-calendar-push`) unless a test gives `__STUB_DATA__` rows for it, and `__STUB_EXTRA__`, set by
+`addInitScript`, puts tables into a fresh page's fixture before it loads.
 
 **`node test/build.js` first, every time.** `smoke.js` opens `test/app-under-test.html`, which
 `build.js` writes from `index.html`. Run `smoke.js` on its own after editing the app and you are
