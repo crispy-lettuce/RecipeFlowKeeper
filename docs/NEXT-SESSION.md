@@ -17,8 +17,8 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **Library:** 34 recipes. 2 carry a stored comparison with their source, 1 of them validated; 6 are BBC Good Food, five of which
   were rebuilt from another edition before the 29 Sep rule (the household's job below). 1 recipe has a source photo.
 - **Cooking diary:** 116 entries. **Word matches:** 15. **Household aisles:** 1. **Swaps:** 2. **Cooking notes:** none yet (R4 built 30 Sep).
-- **Tests:** `node test/core.test.js` 143 checks; `node test/build.js && node test/smoke.js` 448 checks (418 until P3 PR 2, 437 until the
-  calendar toggles, both 9 Oct; 447 until the HELP tab, 10 Oct).
+- **Tests:** `node test/core.test.js` 143 checks; `node test/build.js && node test/smoke.js` 465 checks (418 until P3 PR 2, 437 until the
+  calendar toggles, both 9 Oct; 447 until the HELP tab, 448 until recipe sharing, both 10 Oct).
   `node test/calendar-push.js` 30 checks; `node test/help-guide.js` 6 checks. `offline-harness` runs
   both on every PR and is required on `main`.
 - **Schema:** `add_calendar_auto` (the P3 toggles) was applied by the household on 9 Oct, before #72 merged. The one before it,
@@ -59,7 +59,10 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
    Keep it true: a renamed button or a new everyday feature updates it in the same PR (`test/help-guide.js`).
 6. **PRE-MADE meals and COOKED ✓ (10 Oct, planned, waiting for the household's review):** the food diary fed from the Planner.
    The plan is in the session's plan file and becomes `docs/PLAN-FOOD-DIARY.md` with its first PR.
-7. **Optional, not planned:** a "download all source files" backup (neither the JSON export nor the nightly `pg_dump` holds the
+7. **A new household, and sharing recipes with it (10 Oct, answered):** `docs/ONBOARDING.md` §4 makes the household from an
+   email address; `docs/PLAN-RECIPE-SHARING.md` lets either household browse the other's recipes and copy them. The SQL,
+   `docs/migrations/add-recipe-sharing.md`, is the household's to apply first; then the app's side.
+8. **Optional, not planned:** a "download all source files" backup (neither the JSON export nor the nightly `pg_dump` holds the
    files); drawing a PDF's pages inside the app, if opening it in the browser proves awkward on the tablet (38d will tell).
 
 ## Things that are the household's to do
@@ -74,6 +77,8 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **P3:** tablet and phone steps 40a and 40b (the SQL and both PRs are in, 9 Oct).
 - **Read the how-to guide** and say what to change; then tablet step 42a once its PR merges.
 - **Review the PRE-MADE / COOKED ✓ plan** (10 Oct).
+- **Recipe sharing:** apply `docs/migrations/add-recipe-sharing.md`, make the new household (`docs/ONBOARDING.md` §4), then
+  name each household and SHARE from Settings → APP once the app's side is merged; tablet step 43a.
 - **The converter.** The conversion project in the Claude app holds **one file, `converter/conversion-instructions.md`**; its
   master copy is the one in this repo. After any change to that file here, reload it into the project. The other files under
   `converter/` stay in git as the project's reference and test material (`test-set.md` is how a change to the instructions is

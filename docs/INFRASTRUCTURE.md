@@ -261,7 +261,9 @@ executable by `service_role` only, not `anon` or `authenticated`; `private.calen
 `add_calendar_auto` (`docs/migrations/add-calendar-auto.md`, the P3 follow-up: `household_settings.calendar_auto` and
 `calendar_auto_remind`, both off by default, for the two automatic toggles) was applied the same way by the household on 9 Oct
 2026, before PR #72 merged (20:03 UTC). Checked read-only at 20:03 UTC: both `boolean`, not null, default false.
-Nothing is waiting to be applied.
+**Waiting to be applied: `add_recipe_sharing`** (`docs/migrations/add-recipe-sharing.md`, 10 Oct 2026): `recipe_shares`,
+`recipes.copied_from`, and six `security definer` functions for browsing another household's recipes
+(`docs/PLAN-RECIPE-SHARING.md`). The household applies it before merging the app's side; merging first is safe.
 
 ---
 

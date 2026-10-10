@@ -170,6 +170,21 @@
     };
   }
 
+  /* Database functions (sb.rpc), added 10 Oct 2026 for recipe sharing (docs/PLAN-RECIPE-SHARING.md). Recorded in
+     __RPCS__ ({name, args}) and in __LOG__ as 'rpc:<name>'. A test answers them with __RPC_REPLY__, a function of the
+     call returning {data, error}, or nothing to fall through. Unanswered, a function reads as not created yet, as
+     PostgREST says so: the live database before add-recipe-sharing is applied, so every older check runs as it did. */
+  window.__RPCS__ = [];
+  function rpc(name, args){
+    const call = { name, args: args || null };
+    window.__RPCS__.push(call);
+    window.__LOG__.push('rpc:' + name);
+    if(window.__READ_FAIL__) return later({ data: null, error: NETWORK_ERROR }, window.__READ_DELAY__);
+    const reply = typeof window.__RPC_REPLY__ === 'function' ? window.__RPC_REPLY__(call) : null;
+    return later(reply || { data: null, error: { message: `Could not find the function public.${name} in the schema cache`, details: null, hint: null, code: 'PGRST202' } },
+      window.__READ_DELAY__);
+  }
+
   window.supabase = {
     createClient(){
       return {
@@ -180,6 +195,7 @@
           signInWithPassword(){ return Promise.resolve({ error: null }); },
           signOut(){ window.__SIGNOUTS__++; return Promise.resolve({ error: null }); }
         },
+        rpc,
         storage: { from: storageBucket },
         functions: { invoke }
       };

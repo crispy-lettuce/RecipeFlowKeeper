@@ -2047,6 +2047,32 @@ and printed to A4. Also corrected here: `docs/INFRASTRUCTURE.md` said `add_calen
 session, and listed `add_calendar_auto` as waiting; both were done on 9 Oct. *Not verified:* the tablet (step 42a), and whether
 the wording reads well to someone new to the app.
 
+**Recipe sharing between households (10 Oct 2026; `docs/PLAN-RECIPE-SHARING.md`).** Asked for the same day: a household of
+the family with its own app, each keeping its own recipe database, able to browse the other's. Answered: the whole library,
+read-only, switched on in Settings by each side, and copies independent. The database side, `docs/migrations/add-recipe-sharing.md`,
+adds `recipe_shares`, `recipes.copied_from` and six `security definer` functions; the `recipes` policies are not widened, since
+`hydrate` reads recipes with no household filter. A new household is made from an email address by one guarded statement
+(`docs/ONBOARDING.md` §4). The app: Settings → APP → RECIPE SHARING (name and SAVE, SHARE by email, SHARED WITH and STOP SHARING,
+who shares with us; "waiting" until the migration is in); RECIPES gains OUR RECIPES · 〈NAME〉'S RECIPES; their recipes come from
+`shared_recipes()` into a list of their own, `shared`, never `cache.recipes`, so they never reach our plan, shopping list, diary or
+export; their recipe opens read-only (EDIT, DELETE, FAVOURITE, SHORTLIST and notes hidden; finishing it logs nothing); ADD TO OUR
+RECIPES saves an independent copy with `copied_from`, copies a photo stored in their folder into ours, and opens the copy. The
+sharing calls are made at once, not queued, as CONNECT is for the calendar. `loadSharing` runs after `hydrate` and the tab-return
+refresh, outside `hydrate`, so nothing about sharing can sign anyone out.
+
+*Verified by.* The migration on a scratch Postgres 16 built to the live shape (the migration page lists what was checked). `node
+test/core.test.js` 143, exit 0. `node test/build.js && node test/smoke.js` **465** (448 before), exit 0, no console or page errors:
+17 new checks, before the migration (waiting, no switch, no `copied_from` on an ordinary save) and after it on a page whose database
+functions answer as another household; the stub gained `sb.rpc`, unanswered calls reading as not created yet. `node
+test/help-guide.js` 6, exit 0, with the guide's new section 11 and a QUICK ANSWER. **Seventeen mutations, each failing by name:**
+`copied_from` always sent; sharing reported available before the migration; the possessive ("THE TESTERS'S"); the switch ignored;
+their recipes added to `cache.recipes`; the copy mark without the source-page match; shortlist and favourite on their cards;
+search over ours instead of theirs; the read-only CSS dropped; their recipe logged on finishing; the copy without `copied_from`;
+the photo copied but not saved to the row; the copy not opened; the "shares with us" line dropped; a refused SHARE listed;
+STOP SHARING without asking (the first version of that check died on a timeout instead of failing by name, and was changed);
+a stopped share's recipes kept. *Not verified:* anything against the live database (the migration is not applied), the real
+`sb.rpc` answers and storage policies, the photo copy against real Storage, and two real households; that is tablet step 43a.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export
