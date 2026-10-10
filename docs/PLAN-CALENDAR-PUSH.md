@@ -225,7 +225,8 @@ All in the household's own accounts; a session cannot do any of it and never see
    Services → Library → **Google Calendar API** → Enable.
 2. **OAuth consent screen** (Google Auth platform → Branding / Audience / Data access): External; app name RecipeWrangler; your
    email as support and developer contact. Data access → Add scopes: `…/auth/calendar.app.created` (shown as "Make secondary
-   Google calendars, and see, create, change, and delete events on them"), plus `openid` and `email`. If `calendar.app.created`
+   Google calendars, and see, create, change, and delete events on them"), plus `openid` and `email`. *(Since 10 Oct 2026 also
+   `…/auth/drive.file`, and the Google Drive API enabled, for the weekly Drive backup: `docs/PLAN-DRIVE-BACKUP.md` §4.)* If `calendar.app.created`
    is not in the list, use `…/auth/calendar` and see §9, point 1. Audience → **Publish app** ("In production"). Left in Testing,
    Google expires the connection after seven days.
 3. **Clients → Create client:** Web application, name RecipeWrangler; Authorised redirect URI exactly

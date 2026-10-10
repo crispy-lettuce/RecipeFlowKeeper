@@ -1840,6 +1840,11 @@
           <div id="sharingSettings"></div>
         </div>
 
+        <div class="settings-block" data-settings-tab="app">
+          <div class="side-label">BACKUP TO GOOGLE DRIVE</div>
+          <div id="driveSettings"></div>
+        </div>
+
         <!-- The guide is a page of its own, help.html, served beside this one: one page with contents, so the browser's
              find and print work on it, and it can be read without signing in. It opens in a new tab so the app keeps its
              place. It needs a connection, like the rest of the app. Its anchors are checked by test/help-guide.js. -->
@@ -1861,6 +1866,7 @@
             <li><a href="help.html#keep-awake" target="_blank" rel="noopener">How do I stop the screen going off while I cook?</a></li>
             <li><a href="help.html#adding" target="_blank" rel="noopener">How do I add a new recipe?</a></li>
             <li><a href="help.html#sharing" target="_blank" rel="noopener">How do I share our recipes with family?</a></li>
+            <li><a href="help.html#drive-backup" target="_blank" rel="noopener">How do I keep a backup in my Google Drive?</a></li>
             <li><a href="help.html#offline" target="_blank" rel="noopener">What does the OFFLINE bar mean?</a></li>
           </ul>
         </div>
@@ -7514,6 +7520,7 @@ function renderSettings(){
   renderSwaps();
   renderCalendarSettings();
   renderSharingSettings();
+  renderDriveSettings();
   showSettingsTab(settingsTabStored());
 }
 
@@ -7830,6 +7837,94 @@ document.getElementById('sharingSettings').addEventListener('keydown', e=>{
   if(e.target.id === 'shareEmail'){ e.preventDefault(); shareOurRecipes(); }
 });
 
+/* ---- Settings → App → BACKUP TO GOOGLE DRIVE (docs/PLAN-DRIVE-BACKUP.md, 10 Oct 2026) ----
+   A second copy of the household's data that the household can see and restore unaided: the very file EXPORT DATA
+   downloads, saved by the drive-backup function into a "RecipeWrangler backups" folder in their own Drive, the newest 8
+   kept. It is not the real backup (that is the nightly database dump in PrivateBackup) and does not replace it.
+
+   It uses the Google connection made for the calendar, which asks for drive.file beside the calendar since 10 Oct. The
+   connection's row says what is possible: the drive_* columns exist once docs/migrations/add-drive-backup.md is in,
+   and `scope` lists drive.file once the household has connected (again) since then.
+
+   WEEKLY BY ITSELF, FROM THE APP. The first load of the app a week or more after the last save sends one, once per page
+   load and only when nothing is waiting to be sent. No server schedule: a week the app is not opened has nothing new to
+   save, and the nightly dump covers it anyway. SAVE TO DRIVE NOW sends one at any time. */
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+let driveSaving = false;
+let driveAutoTried = false;
+function driveAvailable(){ return calendarAvailable && !!calendarConn && 'drive_backup_at' in calendarConn; }
+function driveAllowed(){ return String((calendarConn && calendarConn.scope) || '').split(/\s+/).includes(DRIVE_SCOPE); }
+function driveReady(){ return driveAvailable() && calendarShown() && driveAllowed(); }
+
+function renderDriveSettings(){
+  const box = document.getElementById('driveSettings');
+  if(!box) return;
+  const intro = `<p class="subtle">Once a week the app saves the same file as EXPORT DATA into a folder called RecipeWrangler backups in
+    your Google Drive, keeping the last 8. IMPORT DATA restores one. The nightly backup carries on as well.</p>`;
+  if(!driveAvailable()){
+    box.innerHTML = intro + `<p class="subtle">Waiting for the database change (docs/migrations/add-drive-backup.md). Until it is applied
+      nothing here is sent anywhere.</p>`;
+    return;
+  }
+  if(!calendarShown()){
+    box.innerHTML = intro + `<p class="subtle">Connect Google in CALENDAR above first.</p>`;
+    return;
+  }
+  if(!driveAllowed()){
+    box.innerHTML = intro + `<p class="subtle">Google was connected without permission for Drive. Connect again and leave the Drive box
+      ticked: the calendar carries on as it is.</p>
+      <div class="alias-form"><button type="button" class="btn" id="driveReconnectBtn">CONNECT AGAIN FOR DRIVE</button></div>`;
+    return;
+  }
+  const c = calendarConn;
+  const problem = c.drive_last_error ? `<p class="subtle">Last problem: ${escapeHtml(c.drive_last_error)}</p>` : '';
+  box.innerHTML = intro + `<p class="subtle">${c.drive_backup_at ? `Last saved to Drive ${escapeHtml(calendarWhen(c.drive_backup_at))}.` : 'Not saved to Drive yet.'}</p>
+    ${problem}
+    <div class="alias-form"><button type="button" class="btn" id="driveSaveBtn"${driveSaving ? ' disabled' : ''}>${driveSaving ? 'SAVING…' : 'SAVE TO DRIVE NOW'}</button></div>`;
+}
+
+/* Sends the file. `byHand` is SAVE TO DRIVE NOW, which says how it went in a toast either way; the weekly save says
+   so only when it worked, and leaves a failure for Settings' "Last problem" line rather than a toast at start-up. */
+async function saveToDrive(byHand){
+  if(driveSaving || !driveReady()) return false;
+  driveSaving = true;
+  renderDriveSettings();
+  let data = null, error = null;
+  try { ({ data, error } = await sb.functions.invoke('drive-backup', { body: { backup: exportPayload() } })); }
+  catch(e){ error = e; }
+  driveSaving = false;
+  const ok = !error && data && data.ok;
+  if(ok){
+    calendarConn = { ...calendarConn, drive_backup_at: data.at, drive_last_error: null };
+    showToast(byHand ? `Saved to Google Drive as ${data.name}` : 'This week\'s backup is saved in Google Drive');
+  } else {
+    const words = (data && data.error) || (error && error.message) || 'no answer';
+    /* A dead network is not something to record against the connection; anything Google or the function said is. */
+    if(!isNetworkFailure(error)) calendarConn = { ...calendarConn, drive_last_error: words };
+    if(data && data.reconnect) calendarConn = { ...calendarConn, connected: false };
+    if(byHand) showToast(`Couldn't save to Google Drive: ${words}`);
+  }
+  if(state.view === 'settings'){ renderDriveSettings(); if(data && data.reconnect) renderCalendarSettings(); }
+  return ok;
+}
+
+/* At most once per page load, after the load and after anything waiting to be sent has gone, so the file is the
+   library as the server has it. */
+function maybeWeeklyDriveBackup(){
+  if(driveAutoTried || !driveReady() || unsentLabels.size) return false;
+  const last = Date.parse(calendarConn.drive_backup_at || '');
+  if(!isNaN(last) && Date.now() - last < DRIVE_WEEK_MS) return false;
+  driveAutoTried = true;
+  saveToDrive(false);
+  return true;
+}
+
+document.getElementById('driveSettings').addEventListener('click', e=>{
+  if(e.target.closest('#driveSaveBtn')) saveToDrive(true);
+  else if(e.target.closest('#driveReconnectBtn')) connectCalendar();
+});
+
 /* The one place the app leaves for Google. A function of its own so the tests can stand in for it. */
 function goToGoogle(url){ location.assign(url); }
 
@@ -7848,7 +7943,8 @@ async function connectCalendar(){
 
 async function disconnectCalendar(){
   if(!confirm('Disconnect Google Calendar?\n\nThe RecipeWrangler calendar and the meals already in it stay in your Google account; '
-    + 'the app just stops updating them. Your plan here does not change.')) return;
+    + 'the app just stops updating them. Your plan here does not change. The weekly backup to Google Drive stops too; '
+    + 'the backups already there stay.')) return;
   let data = null, error = null;
   try { ({ data, error } = await sb.functions.invoke('calendar-auth', { body: { action: 'disconnect' } })); }
   catch(e){ error = e; }
@@ -7859,6 +7955,7 @@ async function disconnectCalendar(){
   /* Only the connection is forgotten. The switches stay on their days, so connecting again carries on. */
   calendarConn = { ...(calendarConn || {}), connected: false, last_error: null };
   renderCalendarSettings();
+  renderDriveSettings();
   showToast('Google Calendar disconnected. The RecipeWrangler calendar stays in Google.');
 }
 
@@ -9475,8 +9572,10 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
    scheduled database backup that runs server-side. Import restores into
    Supabase, so it replaces the library on every device, not just this one.
    ===================================================================== */
-function exportAllData(){
-  const payload = {
+/* The backup file: what EXPORT DATA downloads, IMPORT DATA restores, and the weekly Drive backup saves
+   (docs/PLAN-DRIVE-BACKUP.md). One function for all three, so they cannot become different files. */
+function exportPayload(){
+  return {
     app: 'Kitchen',
     /* 3: adds `diary`. The export used to carry cooking history only as
        bare dates inside each recipe, which cannot represent a meal type or
@@ -9500,6 +9599,9 @@ function exportAllData(){
     ...(recipeNotesAvailable ? { recipeNotes: loadRecipeNotes() } : {}),
     diary: loadDiary()
   };
+}
+function exportAllData(){
+  const payload = exportPayload();
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -9830,6 +9932,7 @@ async function startApp(){
   renderHome();
   /* Apart from hydrate, so nothing about sharing can sign anyone out; it redraws what it changes when it lands. */
   loadSharing();
+  maybeWeeklyDriveBackup();
   /* Once, after the first load that succeeds. */
   if(!calendarReturnHandled){ calendarReturnHandled = true; handleCalendarReturn(calendarReturn); }
 }
@@ -9876,6 +9979,7 @@ async function refreshLibrary(){
   updateSidebarCounts();
   renderHome();
   loadSharing();
+  maybeWeeklyDriveBackup();
   return true;
 }
 

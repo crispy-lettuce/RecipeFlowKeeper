@@ -55,7 +55,7 @@ const check = (name, pass, detail) => {
 
 const sync = load('calendar-sync', ['calendarEventId', 'dateFromEventId', 'nextDate', 'reminderMinutes', 'londonToday',
   'eventForDay', 'syncActions', 'parseSyncRequest']);
-const auth = load('calendar-auth', ['consentUrl', 'safeReturnTo', 'withOutcome', 'emailFromIdToken', 'grantedEnough']);
+const auth = load('calendar-auth', ['consentUrl', 'safeReturnTo', 'withOutcome', 'emailFromIdToken', 'grantedEnough', 'requestedScope']);
 
 const HH = '0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0';
 const HH2 = '11111111-2222-3333-4444-555555555555';
@@ -138,6 +138,12 @@ check('the consent link is Google\'s, asking for a lasting token and a fresh one
       && qp.get('response_type') === 'code' && qp.get('state') === 'abc123', consent.toString());
 check('for the app\'s own calendars only, and the account\'s email, and nothing more',
       qp.get('scope').split(' ').sort().join(' ') === 'email https://www.googleapis.com/auth/calendar.app.created openid', qp.get('scope'));
+/* Since 10 Oct 2026 the connection also asks for Drive, for the weekly backup (drive-backup): only drive.file, the
+   files the app makes, and never the whole Drive. */
+const askedScope = new URL(auth.consentUrl({ clientId: 'c', redirectUri: 'https://example.supabase.co/cb', state: 's',
+  scope: auth.requestedScope('https://www.googleapis.com/auth/calendar.app.created') })).searchParams.get('scope');
+check('connecting asks for the app\'s own calendars and the app\'s own Drive files, and nothing wider',
+      askedScope.split(' ').sort().join(' ') === 'email https://www.googleapis.com/auth/calendar.app.created https://www.googleapis.com/auth/drive.file openid', askedScope);
 check('the way back is the app\'s own page, with any old hash dropped',
       auth.safeReturnTo('https://crispy-lettuce.github.io/RecipeFlowKeeper/#settings') === 'https://crispy-lettuce.github.io/RecipeFlowKeeper/'
       && auth.safeReturnTo('http://localhost:8000/index.html') === 'http://localhost:8000/index.html');

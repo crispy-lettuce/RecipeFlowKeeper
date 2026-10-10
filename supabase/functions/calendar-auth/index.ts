@@ -20,7 +20,9 @@
  *
  * On a first connection it makes a calendar of its own, RecipeWrangler, in
  * the Google account. With the calendar.app.created scope the app can see
- * and change that calendar and nothing else in the account.
+ * and change that calendar and nothing else in the account. Since 10 Oct
+ * 2026 it also asks for drive.file, for drive-backup: only the files the
+ * app itself makes in Drive.
  *
  * DISCONNECT revokes the token at Google and forgets it here, and leaves
  * the RecipeWrangler calendar and its events where they are, as the
@@ -61,6 +63,15 @@ function corsHeaders(req: Request): Record<string, string> {
 type ConsentInput = { clientId: string; redirectUri: string; state: string; scope: string };
 
 /* ---- pure: lifted and tested by test/calendar-push.js ---- */
+
+/* Asked for beside the calendar since 10 Oct 2026, for the weekly backup into the household's own Drive
+   (drive-backup, docs/PLAN-DRIVE-BACKUP.md). drive.file reaches only the files and folder the app makes, nothing else
+   in Drive. Google's page lets it be unticked: the calendar still connects (grantedEnough asks only for the calendar),
+   and Settings says Drive was not allowed. */
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+function requestedScope(calendarScope: string): string {
+  return `${calendarScope} ${DRIVE_SCOPE}`;
+}
 
 /* Google's consent page. `access_type=offline` asks for a refresh token,
    and `prompt=consent` makes Google send a fresh one even when the account
@@ -218,7 +229,8 @@ Deno.serve(async (req: Request) => {
     const state = randomState();
     const { error } = await admin.rpc('calendar_state_issue', { p_state: state, p_household: household, p_user: user.id, p_return_to: back });
     if (error) return json({ error: `could not start: ${error.message}` });
-    return json({ url: consentUrl({ clientId, redirectUri, state, scope: Deno.env.get('GOOGLE_CALENDAR_SCOPE') || DEFAULT_SCOPE }) });
+    const scope = requestedScope(Deno.env.get('GOOGLE_CALENDAR_SCOPE') || DEFAULT_SCOPE);
+    return json({ url: consentUrl({ clientId, redirectUri, state, scope }) });
   }
 
   if (body.action === 'disconnect') {

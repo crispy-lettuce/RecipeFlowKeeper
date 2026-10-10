@@ -547,6 +547,16 @@ removed page was deleted), and no listed page missing.*
     stays. **Read-only afterwards:** the copy is a `recipes` row of their household with `copied_from` set; ours is untouched.
     Undo: STOP SHARING; delete the copy on their side if it is not wanted.
 
+44a. **The weekly backup to Google Drive (new 10 Oct; `docs/PLAN-DRIVE-BACKUP.md`; only after its §4 steps 1 to 4).** (1)
+    *Before reconnecting:* Settings → APP → BACKUP TO GOOGLE DRIVE says Google was connected without Drive, and offers CONNECT AGAIN
+    FOR DRIVE. (2) *Tap it:* Google asks again, now for the calendar and Drive files; leave both ticked. Back in the app the calendar
+    is still connected, and within a few seconds a toast says this week's backup is saved. (3) *In Google Drive* (phone or
+    computer): a folder RecipeWrangler backups holding `kitchen-backup-<today>.json`. Download it; it opens as the same kind of file
+    EXPORT DATA gives. (4) *SAVE TO DRIVE NOW:* the toast names the same file; Drive still holds one file for today, not two. (5)
+    *A week later*, no tap needed: opening the app saves the next one. **Read-only afterwards:** `calendar_connections.drive_backup_at`
+    is set and `drive_last_error` empty; `scope` includes `drive.file`. Undo: DISCONNECT stops it; delete the folder in Drive if
+    unwanted. **Do not** IMPORT DATA as a test: it replaces everything.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

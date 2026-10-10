@@ -105,7 +105,14 @@ useful with no Claude Code session and no prior context at all.
 
 ---
 
-### `docs/migrations/add-recipe-sharing.md` — a schema change, written 10 Oct 2026, not applied yet
+### `docs/migrations/add-drive-backup.md` — a schema change, written 10 Oct 2026, not applied yet
+**What:** three columns on `calendar_connections` (`drive_folder_id`, `drive_backup_at`, `drive_last_error`) where the
+`drive-backup` function records the weekly backup to Google Drive (`docs/PLAN-DRIVE-BACKUP.md`). Who applies it and when, why on
+that table, how to check it and how to undo it. Tested on a scratch Postgres. DDL only, no data.
+
+**Use it when:** applying it (the household, before merging the app's side), checking it, or undoing it.
+
+### `docs/migrations/add-recipe-sharing.md` — a schema change, applied by the household 10 Oct 2026
 **What:** `docs/PLAN-RECIPE-SHARING.md`'s database side: `recipe_shares` (one row per "this household lets that one browse its
 recipes"), `recipes.copied_from`, and six `security definer` functions (SHARE by email, STOP SHARING, the two lists, the shared
 recipes, the household's name). The `recipes` policies are not widened, and why. Who applies it and when, how to check it and how
@@ -339,7 +346,16 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
-### `docs/PLAN-RECIPE-SHARING.md` — browsing another household's recipes (10 Oct 2026; answered the same day)
+### `docs/PLAN-DRIVE-BACKUP.md` — a weekly backup to Google Drive (10 Oct 2026; answered the same day)
+**What:** the question, what backups there were, and what was decided: the app's own export file, weekly and by hand, into the
+household's own Drive with the `drive.file` permission; the nightly dump stays the real backup. How it is built, and **§4, the
+household's steps** (Google Cloud, the SQL, two functions, CONNECT AGAIN FOR DRIVE).
+
+**Use it when:** doing the setup, running tablet step 44a, or answering "where are our backups?".
+
+---
+
+### `docs/PLAN-RECIPE-SHARING.md` — browsing another household's recipes (10 Oct 2026; answered and merged the same day)
 **What:** The household's question and answers: each household keeps its own recipe database; another household can be let
 browse the whole library read-only, switched on from Settings on each side; ADD TO OUR RECIPES makes an independent copy. Why the
 `recipes` policies stay as they are, the build in four steps, and what is left for later.
