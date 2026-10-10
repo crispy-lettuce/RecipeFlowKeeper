@@ -58,7 +58,8 @@ fresh, or from the freezer?" (`finishRecipe`):
 - The answer is remembered for that dish and day until the page is reloaded, so unticking and re-ticking does not ask again.
 
 On a phone the dish's name keeps at least 12em and the pills wrap below it; the tablet's row is unchanged where it fits.
-Tablet step 41b.
+**Live 10 Oct** (PR #80, merged 21:37 UTC); tablet step 41b done the same evening, and COOKED FRESH seen in the database at
+22:13 UTC (`docs/HANDOVER.md`).
 
 ## 3. Data
 
