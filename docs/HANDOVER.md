@@ -2108,6 +2108,30 @@ misspelt; both links removed). `node test/core.test.js` 143 and `node test/build
 *Not verified:* how GitHub Pages would serve the `.md` file itself (Pages was unreachable from the session), which is why the
 guide links to GitHub rather than to the app's own site; and the Claude app's own steps, which are described in plain words.
 
+**PRE-MADE meals and COOKED ✓ (10 Oct 2026; `docs/PLAN-FOOD-DIARY.md`).** The food diary fed from the Planner, planned and
+approved on 10 Oct. `docs/migrations/add-premade.md` adds `planner_days.premade text[]` and `recipe_logs.premade boolean`. On the
+Planner each dish gains PRE-MADE (asks the meal; leaves the shopping list; on its day goes into the diary by itself, from the
+freezer, by an upsert whose id `premadeLogId` works out from the household, day, recipe and place, so two devices write one row)
+and, on today, COOKED ✓ (`logRecipeUsed(id, date)`: the same entry and prompt as finishing the flow). Pre-made rows stay out of the
+recipe's `history` at hydrate and on delete, so "last cooked", counts and the streak are cooking only; History and the CSV mark
+them. The automatic main-meal reminder covers pre-made meals, and `calendar-sync` writes "(from the freezer)" in the description
+and now reads `planner_days` with `select('*')`. Export and import carry both. Nothing about PRE-MADE shows, and no save names
+either column, until a `premade` key is seen on a row read. Also: `logRecipeUsed` now redraws only the screen it was called from
+(it had redrawn the Viewer from anywhere, which with no recipe open would have sent the Planner to RECIPES).
+
+*Verified by.* The migration on a scratch Postgres 16 (as a non-superuser owner; defaults for existing and new rows; the undo).
+`node test/core.test.js` 143, exit 0. `node test/build.js && node test/smoke.js` **487** (472 before), exit 0, no console or page
+errors: 15 new checks, before the migration on the main page and after it on a fresh page whose rows carry the columns. `node
+test/calendar-push.js` 32 (one new). `node test/help-guide.js` 7, with the guide's new "From the freezer, and cooked" and a QUICK
+ANSWER. **Twenty-one mutations, each failing by name:** nineteen in the app (PRE-MADE offered, or the column sent, before the
+migration; COOKED ✓ on a future day; the date ignored; the Viewer redrawn from the Planner; pre-made rows in the history; no
+freezer mark; no meal asked; duplicates kept; a future day logged; the shopping list not skipping it; no de-duplication; a random
+id; the slots out of step on removal; switching off asking again; a diary delete touching the history; the reminder ignoring
+pre-made; import and export dropping it) and two in `calendar-sync`. Three of the first run's checks did not catch theirs and were
+tightened: the Viewer redraw (the test had a recipe open from earlier), the slots (removing the last dish hides it), and the meal
+question (a timeout instead of a named failure). *Not verified:* anything against the live database or Google, and two devices at
+once for real; that is tablet step 41a after the household's steps in the plan's §5.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export

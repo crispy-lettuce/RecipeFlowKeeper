@@ -4903,7 +4903,9 @@ const check = (name, pass, detail) => {
         !pmPre.available && pmPre.pills === 0 && !pmPre.key && pmPre.cooked === 1, JSON.stringify(pmPre));
   const pmFuture = await page.evaluate(t => document.querySelector(`.day-row[data-date="${t}"]`).querySelectorAll('[data-action="cooked"]').length, PM_TOMORROW);
   check('    COOKED ✓ is not offered on a day still to come', pmFuture === 0, String(pmFuture));
-  let pmM = await page.evaluate(() => window.__WRITES__.length);
+  /* No recipe open, as when the app is opened straight on the Planner: a redraw of the Viewer would then take the page
+     back to RECIPES, which is the regression this check catches. */
+  let pmM = await page.evaluate(() => { state.selectedRecipeId = null; return window.__WRITES__.length; });
   await page.click(`.day-row[data-date="${PM_TODAY}"] [data-action="cooked"]`);
   await page.waitForTimeout(300);
   await pmDrain(page);
@@ -4965,7 +4967,8 @@ const check = (name, pass, detail) => {
   await pmPage.waitForTimeout(200);
   const pmAsk = await pmPage.evaluate(() => ({ open: document.getElementById('premadeOverlay').classList.contains('open'),
     what: document.getElementById('premadeWhat').textContent, meals: document.querySelectorAll('#premadeChoices .meal-type-btn').length }));
-  await pmPage.click('#premadeChoices .meal-type-btn[data-meal="dinner"]');
+  /* Clicked in the page: if no question was asked there is no button, and the check below fails by name. */
+  await pmPage.evaluate(() => { const b = document.querySelector('#premadeChoices .meal-type-btn[data-meal="dinner"]'); if(b) b.click(); });
   await pmPage.waitForTimeout(200);
   await pmDrain(pmPage);
   const pmOn = await pmPage.evaluate(([m, today, r1]) => {
@@ -5005,17 +5008,24 @@ const check = (name, pass, detail) => {
   check('    running it again writes nothing, and the id is the same on any device for the same day and place, and different otherwise',
         pmAgain.n === 0 && pmAgain.logs === 0 && pmIds.same && pmIds.uuid && pmIds.differs, JSON.stringify([pmAgain, pmIds]));
   pmM = await pmPage.evaluate(() => window.__WRITES__.length);
-  const pmLater = await pmPage.evaluate(async ([m, tomorrow]) => {
+  /* Tomorrow is Pasta then Soup. Soup (second) is made pre-made, then Pasta (first) is taken off: Soup must keep its own
+     setting, which moves up a place with it. Then Soup is taken off too, before its day, and Pasta put back as it was. */
+  const pmLater = await pmPage.evaluate(async ([m, tomorrow, r1]) => {
     setPlanPremadeAt(tomorrow, 1, 'lunch'); let t; do { t = writeQueue; await t; } while(t !== writeQueue);
     const logsAfterOn = window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs').length;
-    removePlanRecipeAt(tomorrow, 1); do { t = writeQueue; await t; } while(t !== writeQueue);
-    const ws = window.__WRITES__.slice(m);
-    const rows = ws.filter(w => w.table === 'planner_days' && w.op === 'upsert').flatMap(w => w.rows).filter(r => r.plan_date === tomorrow);
-    return { logsAfterOn, logs: ws.filter(w => w.table === 'recipe_logs').length, last: rows[rows.length - 1] };
-  }, [pmM, PM_TOMORROW]);
-  check('    a day still to come is not logged; removing its pre-made dish before the day leaves nothing behind, and the slots stay in step',
-        pmLater.logsAfterOn === 0 && pmLater.logs === 0 && JSON.stringify(pmLater.last.recipe_ids) === JSON.stringify([PM_R1])
-        && JSON.stringify(pmLater.last.premade) === JSON.stringify(['']), JSON.stringify(pmLater));
+    removePlanRecipeAt(tomorrow, 0); do { t = writeQueue; await t; } while(t !== writeQueue);
+    const rows = () => window.__WRITES__.slice(m).filter(w => w.table === 'planner_days' && w.op === 'upsert').flatMap(w => w.rows).filter(r => r.plan_date === tomorrow);
+    /* Copied now: the recorded row shares its arrays with the cache, which the next removal changes in place. */
+    const afterFirst = JSON.parse(JSON.stringify(rows()[rows().length - 1]));
+    removePlanRecipeAt(tomorrow, 0); do { t = writeQueue; await t; } while(t !== writeQueue);
+    const gone = !(tomorrow in loadPlan());
+    addPlanRecipe(tomorrow, r1); do { t = writeQueue; await t; } while(t !== writeQueue);
+    return { logsAfterOn, logs: window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs').length,
+      afterFirst: { ids: afterFirst.recipe_ids, premade: afterFirst.premade }, gone };
+  }, [pmM, PM_TOMORROW, PM_R1]);
+  check('    a day still to come is not logged; taking a dish off keeps the others\' PRE-MADE in step, and removing the pre-made one before its day leaves nothing behind',
+        pmLater.logsAfterOn === 0 && pmLater.logs === 0 && JSON.stringify(pmLater.afterFirst.ids) === JSON.stringify([PM_R2])
+        && JSON.stringify(pmLater.afterFirst.premade) === JSON.stringify(['lunch']) && pmLater.gone, JSON.stringify(pmLater));
   pmM = await pmPage.evaluate(() => window.__WRITES__.length);
   await pmPage.click(`.day-row[data-date="${PM_TODAY}"] [data-action="premade"]`);
   await pmPage.waitForTimeout(200);
