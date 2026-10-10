@@ -63,8 +63,8 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
    email address; `docs/PLAN-RECIPE-SHARING.md` lets either household browse the other's recipes and copy them. The SQL,
    `docs/migrations/add-recipe-sharing.md`, is the household's to apply first; then the app's side. **Merged 10 Oct (#74), the SQL
    applied first.**
-8. **A weekly backup to Google Drive (10 Oct, answered):** `docs/PLAN-DRIVE-BACKUP.md`. The export file, into the household's own
-   Drive, weekly and by hand; the nightly dump stays the real backup. The household's steps are its §4.
+8. **A weekly backup to Google Drive (10 Oct): live.** `docs/PLAN-DRIVE-BACKUP.md`. The export file, into the household's own
+   Drive, weekly and by hand; the nightly dump stays the real backup. Merged (#75), set up and first saved 10 Oct 18:05 UTC.
 9. **Optional, not planned:** a "download all source files" backup (the source files go into `PrivateBackup`'s weekly mirror
    instead, 10 Oct); drawing a PDF's pages inside the app, if opening it in the browser proves awkward on the tablet (38d will tell).
 
@@ -82,8 +82,7 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **Review the PRE-MADE / COOKED ✓ plan** (10 Oct).
 - **Recipe sharing (merged 10 Oct):** make the new household (`docs/ONBOARDING.md` §4), then name each household and SHARE from
   Settings → APP; tablet step 43a.
-- **The Drive backup:** the steps in `docs/PLAN-DRIVE-BACKUP.md` §4 (Google Cloud, the SQL, two functions, merge, CONNECT AGAIN FOR
-  DRIVE); tablet step 44a.
+- **The Drive backup (live 10 Oct):** look in Google Drive for RecipeWrangler backups and download one file (tablet step 44a, (3)).
 - **The converter.** The conversion project in the Claude app holds **one file, `converter/conversion-instructions.md`**; its
   master copy is the one in this repo. After any change to that file here, reload it into the project. The other files under
   `converter/` stay in git as the project's reference and test material (`test-set.md` is how a change to the instructions is

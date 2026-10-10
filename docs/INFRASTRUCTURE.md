@@ -195,9 +195,9 @@ drops. *(Until 25 Sep this paragraph said the next deploy would be v9.)*
 | `rehost-images` | v10 | Copies external images into Storage. `{"recipeId": "…"}` for one recipe — what the app sends after a save, added in v8; omit it for the full sweep, which is what v7 and earlier always did. `{"dryRun": true}` to preview, `{"verify": true}` to re-check what is already stored |
 | `find-recipe-image` | v4 | Read-only. Finds and measures candidate hero images for a recipe |
 | `source-ingredients` | v1, deployed 27 Sep through the dashboard editor from `main` after PR #22 merged; checked the same day against the repo with `get_edge_function` | Read-only. Reads the Schema.org recipe block at a `SOURCE_URL` and returns the source's ingredient strings, for the preview's COMPARE WITH SOURCE. `{"pageUrl": "https://…"}` or `{"recipeId": "…"}`. Fetches public https pages only, re-checking every redirect. Deploy with JWT verification on, like the other two; it needs no secrets beyond the ones Supabase provides |
-| `calendar-auth` | v1, deployed 9 Oct 2026, JWT verification off. **Its 10 Oct change (asking for Drive too) is not deployed yet** | CONNECT (Google's consent link), Google's callback (stores the token in Vault, makes the RecipeWrangler calendar), DISCONNECT. **Deploy with JWT verification OFF**: Google calls the callback with no Supabase sign-in; the function checks the sign-in itself on everything else, and the callback is guarded by a one-time value. Needs the secrets `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Since 10 Oct it asks for `drive.file` beside the calendar, for `drive-backup` |
+| `calendar-auth` | v3, redeployed 10 Oct 2026 after PR #75 (v1 was 9 Oct), JWT verification off; read back with `get_edge_function` at 17:50 UTC and carrying the Drive change (`requestedScope`) | CONNECT (Google's consent link), Google's callback (stores the token in Vault, makes the RecipeWrangler calendar), DISCONNECT. **Deploy with JWT verification OFF**: Google calls the callback with no Supabase sign-in; the function checks the sign-in itself on everything else, and the callback is guarded by a one-time value. Needs the secrets `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Since 10 Oct it asks for `drive.file` beside the calendar, for `drive-backup` |
 | `calendar-sync` | v2, redeployed 9 Oct 2026 (v1 carried `calendar-auth`'s code by mistake), JWT verification on | Writes each switched-on planned day as an all-day event in the RecipeWrangler calendar, or deletes it. `{"dates": ["YYYY-MM-DD", …]}` or `{"all": true}`. JWT verification on. The same two secrets |
-| `drive-backup` | **Not deployed yet** (10 Oct 2026) | Saves the app's backup file, the one EXPORT DATA downloads, into a "RecipeWrangler backups" folder in the household's own Google Drive, one file a day and the newest 8 kept. `{"backup": <the export>}`. JWT verification on. The same two secrets, and the household's Google connection with the Drive permission (`docs/PLAN-DRIVE-BACKUP.md`) |
+| `drive-backup` | v1, deployed 10 Oct 2026, JWT verification on; read back with `get_edge_function` at 17:50 UTC and matching `main`. First backup saved 18:05:55 UTC that day | Saves the app's backup file, the one EXPORT DATA downloads, into a "RecipeWrangler backups" folder in the household's own Google Drive, one file a day and the newest 8 kept. `{"backup": <the export>}`. JWT verification on. The same two secrets, and the household's Google connection with the Drive permission (`docs/PLAN-DRIVE-BACKUP.md`) |
 
 The two calendar functions are P3 (`docs/PLAN-CALENDAR-PUSH.md` §9, §10); `drive-backup` uses the same Google connection.
 *Seen with `list_edge_functions` on 10 Oct 2026, 16:45 UTC:* `rehost-images` v12, `find-recipe-image` v6, `source-ingredients` v3,
@@ -270,9 +270,12 @@ functions for browsing another household's recipes, `docs/PLAN-RECIPE-SHARING.md
 10 Oct 2026, before PR #74 merged (16:13 UTC). Its page's check queries were run read-only at 16:15 UTC: `copied_from` `uuid`,
 nullable; the four `recipes` policies unchanged and the one select policy on `recipe_shares`; the six functions executable by
 `authenticated` and not `anon`; no shares and no copies yet.
-**Waiting to be applied: `add_drive_backup`** (`docs/migrations/add-drive-backup.md`, 10 Oct 2026): three columns on
-`calendar_connections` for the weekly backup to Google Drive (`docs/PLAN-DRIVE-BACKUP.md`). The household applies it before merging
-the app's side; merging first is safe.
+`add_drive_backup` (`docs/migrations/add-drive-backup.md`: three columns on `calendar_connections` for the weekly backup to
+Google Drive, `docs/PLAN-DRIVE-BACKUP.md`) was applied the same way by the household on 10 Oct 2026, before PR #75 merged (17:46
+UTC). Checked read-only at 17:47 UTC: `drive_backup_at` `timestamp with time zone`, `drive_folder_id` and `drive_last_error`
+`text`. The household reconnected Google with the Drive permission at 18:05:32 UTC, and the first backup reached Drive at 18:05:55
+(`drive-backup` answered 200; `drive_folder_id` set, no error; the calendar re-synced at 18:05:49, no error).
+Nothing is waiting to be applied.
 
 ---
 

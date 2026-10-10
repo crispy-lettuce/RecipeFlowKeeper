@@ -105,7 +105,7 @@ useful with no Claude Code session and no prior context at all.
 
 ---
 
-### `docs/migrations/add-drive-backup.md` — a schema change, written 10 Oct 2026, not applied yet
+### `docs/migrations/add-drive-backup.md` — a schema change, applied by the household 10 Oct 2026
 **What:** three columns on `calendar_connections` (`drive_folder_id`, `drive_backup_at`, `drive_last_error`) where the
 `drive-backup` function records the weekly backup to Google Drive (`docs/PLAN-DRIVE-BACKUP.md`). Who applies it and when, why on
 that table, how to check it and how to undo it. Tested on a scratch Postgres. DDL only, no data.

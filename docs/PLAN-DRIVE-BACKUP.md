@@ -2,7 +2,9 @@
 
 **Asked on 10 Oct 2026**, once Google was connected for the calendar: "now we have google account link up for calendar would it
 make sense to save backups/export to google drive?" **Answered the same day:** yes, a weekly copy of the app's own export into the
-household's Drive, the export file only; built the same day.
+household's Drive, the export file only; built the same day (PR #75). **Live 10 Oct:** the household did §4's steps, reconnected at
+18:05 UTC, and the first backup reached Drive at 18:05:55 (read-only check of `calendar_connections` and the function log). The
+source files went into `PrivateBackup`'s weekly mirror (its PR #5), first run 18:14 UTC: one file, 108,871 bytes, as in Storage.
 
 ## 1. What there was
 
