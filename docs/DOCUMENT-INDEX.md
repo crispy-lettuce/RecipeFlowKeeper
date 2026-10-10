@@ -286,6 +286,21 @@ which found it right and incomplete (the default privileges went too).
 
 ---
 
+### `docs/REVIEW-2026-10-FINDINGS.md` — the October review of the code, set-up and administration (10 Oct 2026)
+**What:** A second review, written against `main` at `02e7bae`, the live project (read-only) and `PrivateBackup`,
+after the ten days of PRs that added the calendar push, sharing, the Drive backup and PRE-MADE. Fifty findings
+with evidence and severity: the restore runbook that would not run on today's schema, two image functions that
+fetch any address, five ways a change is lost or comes back, the old page still served with recipe text in it,
+and sixty corrections to the record. Recommendations in three lists, what it could not verify, and appendices
+for the deployed functions against the repo, the stated test counts, and every query run.
+
+**Use it when:** picking up any of its "Change now" items, before a restore, or before trusting a number in
+`INFRASTRUCTURE.md` or `HANDOVER.md` §1.
+
+**Don't:** take it as having changed anything. Fixes are described, not made.
+
+---
+
 ### `docs/PROPOSAL-AISLE-OVERRIDES.md` — a household-editable aisle override, not started
 **What:** A design, checked against the running code, for letting the household move an
 ingredient into the right shopping-list aisle themselves from Settings — a form entry, not a code
