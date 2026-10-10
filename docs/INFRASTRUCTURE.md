@@ -196,7 +196,7 @@ drops. *(Until 25 Sep this paragraph said the next deploy would be v9.)*
 | `find-recipe-image` | v4 | Read-only. Finds and measures candidate hero images for a recipe |
 | `source-ingredients` | v1, deployed 27 Sep through the dashboard editor from `main` after PR #22 merged; checked the same day against the repo with `get_edge_function` | Read-only. Reads the Schema.org recipe block at a `SOURCE_URL` and returns the source's ingredient strings, for the preview's COMPARE WITH SOURCE. `{"pageUrl": "https://…"}` or `{"recipeId": "…"}`. Fetches public https pages only, re-checking every redirect. Deploy with JWT verification on, like the other two; it needs no secrets beyond the ones Supabase provides |
 | `calendar-auth` | v3, redeployed 10 Oct 2026 after PR #75 (v1 was 9 Oct), JWT verification off; read back with `get_edge_function` at 17:50 UTC and carrying the Drive change (`requestedScope`) | CONNECT (Google's consent link), Google's callback (stores the token in Vault, makes the RecipeWrangler calendar), DISCONNECT. **Deploy with JWT verification OFF**: Google calls the callback with no Supabase sign-in; the function checks the sign-in itself on everything else, and the callback is guarded by a one-time value. Needs the secrets `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Since 10 Oct it asks for `drive.file` beside the calendar, for `drive-backup` |
-| `calendar-sync` | v2, redeployed 9 Oct 2026 (v1 carried `calendar-auth`'s code by mistake), JWT verification on. **Its 10 Oct change ("(from the freezer)" in the description; reads `planner_days` with `select('*')`) is not deployed yet** | Writes each switched-on planned day as an all-day event in the RecipeWrangler calendar, or deletes it. `{"dates": ["YYYY-MM-DD", …]}` or `{"all": true}`. JWT verification on. The same two secrets |
+| `calendar-sync` | v3, redeployed 10 Oct 2026 after PR #78 (v2 was 9 Oct; v1 carried `calendar-auth`'s code by mistake), JWT verification on. Read back with `get_edge_function` at 20:31 UTC: the same code as `main` line for line, carrying "(from the freezer)" and `select('*')`, **but every line indented further than the last** (up to 659 spaces; 105 KB against 17.6 KB), which the dashboard editor added on paste. It changes nothing the code does (the file has no string or template literal spanning lines), so compare it ignoring whitespace; the next redeploy can paste it cleanly |
 | `drive-backup` | v1, deployed 10 Oct 2026, JWT verification on; read back with `get_edge_function` at 17:50 UTC and matching `main`. First backup saved 18:05:55 UTC that day | Saves the app's backup file, the one EXPORT DATA downloads, into a "RecipeWrangler backups" folder in the household's own Google Drive, one file a day and the newest 8 kept. `{"backup": <the export>}`. JWT verification on. The same two secrets, and the household's Google connection with the Drive permission (`docs/PLAN-DRIVE-BACKUP.md`) |
 
 The two calendar functions are P3 (`docs/PLAN-CALENDAR-PUSH.md` §9, §10); `drive-backup` uses the same Google connection.
@@ -275,9 +275,11 @@ Google Drive, `docs/PLAN-DRIVE-BACKUP.md`) was applied the same way by the house
 UTC). Checked read-only at 17:47 UTC: `drive_backup_at` `timestamp with time zone`, `drive_folder_id` and `drive_last_error`
 `text`. The household reconnected Google with the Drive permission at 18:05:32 UTC, and the first backup reached Drive at 18:05:55
 (`drive-backup` answered 200; `drive_folder_id` set, no error; the calendar re-synced at 18:05:49, no error).
-**Waiting to be applied: `add_premade`** (`docs/migrations/add-premade.md`, 10 Oct 2026): `planner_days.premade` and
-`recipe_logs.premade`, for PRE-MADE meals and COOKED ✓ (`docs/PLAN-FOOD-DIARY.md`). The household applies it before merging the
-app's side and before redeploying `calendar-sync`; merging first is safe.
+`add_premade` (`docs/migrations/add-premade.md`: `planner_days.premade text[]` and `recipe_logs.premade boolean`, for PRE-MADE
+meals and COOKED ✓, `docs/PLAN-FOOD-DIARY.md`) was applied the same way by the household on 10 Oct 2026, before PR #78 merged (20:02
+UTC). Checked read-only at 20:03 UTC: `planner_days.premade` `ARRAY`, not null, default `'{}'::text[]`; `recipe_logs.premade`
+`boolean`, not null, default `false`. At 20:31 no day had a pre-made dish yet and no diary row was pre-made.
+Nothing is waiting to be applied.
 
 ---
 

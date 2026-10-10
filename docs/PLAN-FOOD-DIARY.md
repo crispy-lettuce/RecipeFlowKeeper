@@ -2,7 +2,8 @@
 
 **Asked for on 10 Oct 2026:** the household wanted the app to double as a food diary of what was **eaten**, including a meal cooked
 earlier and eaten from the freezer, "even if the meal is premade this is as important to have the calendar notification". Planned
-the same day; reviewed and approved by the household on 10 Oct; built the same day.
+the same day; reviewed and approved by the household on 10 Oct; built the same day (PR #78). **Live 10 Oct:** the SQL applied before
+the merge (20:02 UTC) and `calendar-sync` redeployed (v3), both checked read-only; tablet step 41a is the household's.
 
 **Why:** the only way into the diary was ticking the last column of a recipe's flow. Read-only on 10 Oct: of 27 past planned days,
 3 had a matching diary entry.
