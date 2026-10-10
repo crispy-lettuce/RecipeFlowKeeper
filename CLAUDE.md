@@ -88,7 +88,7 @@ node test/build.js && node test/smoke.js
 
 `core.test.js` is 143 checks in Node, in about two seconds: the pure functions, the dictionary, the
 shopping list's naming rules, and the rules that keep `core.js` and `index.html` apart. The smoke
-suite is 447 checks. **Run both,
+suite is 448 checks. **Run both,
 always** — `smoke.js` loads what `build.js` wrote, so skipping the build
 tests your previous edit and reports a pass or a failure that belongs to code you have changed.
 
@@ -105,7 +105,8 @@ node test/image-integrity.js
 It lifts the code out of the real source rather than copying it, so a signature change makes it
 throw rather than pass vacuously. After a change to `source-ingredients`, or to `sourceFidelity`
 in `core.js`, run `node test/source-ingredients.js` (12 checks, lifted the same way). After a change to
-`calendar-auth` or `calendar-sync`, run `node test/calendar-push.js` (30 checks, lifted the same way).
+`calendar-auth` or `calendar-sync`, run `node test/calendar-push.js` (30 checks, lifted the same way). After changing
+an on-screen label, or `help.html`, run `node test/help-guide.js` (6 checks).
 
 ## Things that will bite
 
@@ -149,6 +150,9 @@ in `core.js`, run `node test/source-ingredients.js` (12 checks, lifted the same 
   are fine. The preview's checks are advice: never make one block a save.
 - **The ingredient dictionary is edited in `core.js`, never in `converter/ingredient-names.md`.**
   That file is generated: `node tools/generate-ingredient-names.js`, then commit both.
+- **`help.html` is the household's how-to guide, and names buttons exactly as they read**, marked `<b class="ui">`.
+  Rename a button, or add a feature the family will use, and update the guide in the same PR; `test/help-guide.js` fails
+  when a quoted label has gone from `index.html`, or a QUICK ANSWERS link no longer lands.
 - **Ordinary saves write one row; `pushList` and the `replace*` functions are for import only.**
   A favourite is an `update` of that column; a save is an upsert of that row; a removal is a
   delete of that row. Never route a normal action through a whole-table replace again — it is

@@ -526,6 +526,13 @@ removed page was deleted), and no listed page missing.*
     the tablet (they belong to the household). **What no test can judge: whether "Main" in the course tags matches what the household
     means by a main meal, recipe by recipe.** Undo: switch the toggles off and the days off by hand; or the page's undo SQL.
 
+42a. **The how-to guide (new 10 Oct; `help.html`).** Reads only. (1) *Settings:* a fourth tab, HELP, after APP. It shows HOW-TO
+    GUIDE and QUICK ANSWERS and nothing else; leave Settings and come back, and HELP is still the tab shown. (2) *OPEN THE GUIDE ↗:*
+    the guide opens in a new browser tab, in the same light or dark as the app; the app's tab is where it was. (3) *Two QUICK
+    ANSWERS, e.g. the calendar and the OFFLINE bar:* each opens the guide at that section. (4) *Read a section against the app:* every
+    button it names is on screen as written. (5) *Print it from the browser:* A4, with no heading left alone at the foot of a page.
+    **What no test can judge: whether the wording makes sense to someone who has never used the app.** Undo: nothing to undo.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

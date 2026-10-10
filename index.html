@@ -1217,6 +1217,10 @@
   /* Settings' three tabs (showSettingsTab). Pinned, so another tab is one tap away however far down you are. */
   .settings-tabs{ position:sticky; top:0; z-index:5; background:var(--paper); display:flex; gap:8px; flex-wrap:wrap;
     padding:12px 0; border-bottom:1px solid var(--line); }
+  .help-answers{ margin:0; padding-left:18px; }
+  .help-answers li{ margin:6px 0; }
+  .help-answers a{ color:var(--plum); }
+  a.btn{ display:inline-block; text-decoration:none; }
   .settings-tabs .btn.active{ background:var(--plum); border-color:var(--plum); color:var(--on-accent); }
   #dictionaryToggle{ margin-bottom:10px; }
   /* The hidden attribute loses to .sources-list's display:flex and the like without this. */
@@ -1668,11 +1672,12 @@
         </div>
       </div>
       <div class="settings-body">
-        <!-- Three tabs (E of docs/PLAN-LAYOUT.md, 30 Sep 2026): see showSettingsTab. -->
+        <!-- Tabs (E of docs/PLAN-LAYOUT.md, 30 Sep 2026; HELP added 10 Oct 2026): see showSettingsTab. -->
         <div class="settings-tabs" role="tablist" aria-label="Settings sections">
           <button class="btn" role="tab" data-settings-tab-btn="ingredients">INGREDIENTS</button>
           <button class="btn" role="tab" data-settings-tab-btn="library">LIBRARY</button>
           <button class="btn" role="tab" data-settings-tab-btn="app">APP</button>
+          <button class="btn" role="tab" data-settings-tab-btn="help">HELP</button>
         </div>
         <div class="settings-block" data-settings-tab="ingredients" id="ingredientLookupBlock">
           <div class="side-label">INGREDIENT LOOKUP</div>
@@ -1807,6 +1812,30 @@
         <div class="settings-block" data-settings-tab="app">
           <div class="side-label">CALENDAR</div>
           <div id="calendarSettings"></div>
+        </div>
+
+        <!-- The guide is a page of its own, help.html, served beside this one: one page with contents, so the browser's
+             find and print work on it, and it can be read without signing in. It opens in a new tab so the app keeps its
+             place. It needs a connection, like the rest of the app. Its anchors are checked by test/help-guide.js. -->
+        <div class="settings-block" data-settings-tab="help" id="helpGuideBlock">
+          <div class="side-label">HOW-TO GUIDE</div>
+          <p class="subtle">Planning the fortnight, shopping, cooking from a recipe, the food diary and the calendar,
+            with every button named as it reads here. It opens in a new tab.</p>
+          <a class="btn" id="helpGuideLink" href="help.html" target="_blank" rel="noopener">OPEN THE GUIDE ↗</a>
+        </div>
+
+        <div class="settings-block" data-settings-tab="help">
+          <div class="side-label">QUICK ANSWERS</div>
+          <ul class="help-answers" id="helpAnswers">
+            <li><a href="help.html#planner" target="_blank" rel="noopener">How do I plan the week?</a></li>
+            <li><a href="help.html#calendar" target="_blank" rel="noopener">How do I put a day in my Google Calendar?</a></li>
+            <li><a href="help.html#shopping-both" target="_blank" rel="noopener">How do I shop for both weeks at once?</a></li>
+            <li><a href="help.html#diary-entry" target="_blank" rel="noopener">How do I log something I ate that has no recipe?</a></li>
+            <li><a href="help.html#cook-for" target="_blank" rel="noopener">How do I cook for more people this once?</a></li>
+            <li><a href="help.html#keep-awake" target="_blank" rel="noopener">How do I stop the screen going off while I cook?</a></li>
+            <li><a href="help.html#adding" target="_blank" rel="noopener">How do I add a new recipe?</a></li>
+            <li><a href="help.html#offline" target="_blank" rel="noopener">What does the OFFLINE bar mean?</a></li>
+          </ul>
         </div>
       </div>
     </section>
@@ -7560,7 +7589,7 @@ function handleCalendarReturn(outcome){
    Ingredients (lookup, word matches, aisles, swaps, the dictionary folded), Library (library check, sources,
    keywords, photos) and App (week start, appearance). Every section is drawn as before and only shown or hidden,
    so nothing in them changed. The last tab used is remembered on the device (kitchen.settingsTab). */
-const SETTINGS_TABS = ['ingredients', 'library', 'app'];
+const SETTINGS_TABS = ['ingredients', 'library', 'app', 'help'];
 function settingsTabStored(){
   try { const t = localStorage.getItem('kitchen.settingsTab'); return SETTINGS_TABS.includes(t) ? t : 'ingredients'; } catch(e){ return 'ingredients'; }
 }

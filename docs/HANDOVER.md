@@ -2025,8 +2025,27 @@ Also found: the existing check "export carries source_check and import restores 
 machine, because the import had not finished when it was read. It passed on the same code run alone. It is timing-sensitive under
 load.
 
-*Not verified:* the migration (not applied), and anything against Google: the sweep's events, and the reminder on a Main-course
-day. That is tablet and phone step 40b.
+*Not verified:* the migration (not applied at the time; applied by the household 9 Oct and checked read-only at 20:03 UTC), and
+anything against Google: the sweep's events, and the reminder on a Main-course day. That is tablet and phone step 40b.
+
+**The how-to guide and Settings → HELP (10 Oct 2026).** Asked for by the household while they review the PRE-MADE plan; answered
+the same day: a HELP tab in Settings, one page with contents, written for the family's everyday use. `help.html` is a new static
+page beside the app (no data, no sign-in), in the app's palette, following its APPEARANCE setting through the `kitchen.darkMode`
+key the app keeps on the same origin. Twelve sections: a week with the app, one per screen, adding a recipe, Settings, what goes
+wrong, and backups with the recipe text in brief. Every button it names was taken from a read of `index.html` that day and is
+marked `<b class="ui">`. Settings gains a fourth tab, HELP: HOW-TO GUIDE (OPEN THE GUIDE ↗, a new tab) and eight QUICK ANSWERS
+linking to the guide's sections. It needs a connection to open, like the app (there is no offline cache). No `core.js` change.
+
+*Verified by.* `node test/core.test.js` 143, exit 0. `node test/build.js && node test/smoke.js` **448** (447 before), exit 0, no
+console or page errors: one new check that HELP shows only its two blocks, links out to `help.html` in a new tab, and is
+remembered. A new `node test/help-guide.js`, 6 checks, exit 0, in CI: 73 quoted buttons all in `index.html`; every QUICK ANSWER
+links into the guide; every link from the app and from the guide's contents lands. **Seven mutations, each failing by name:** a
+button renamed in the app (CLEAR TICKS), a section's id changed, a contents entry broken, a QUICK ANSWER pointing elsewhere (the
+first version of that check let this through, and was tightened), HELP left out of `SETTINGS_TABS`, the guide opened in the same
+tab, and a HELP block put on the APP tab. The guide rendered at 412 and 1280 wide, light and dark, with no sideways scrolling,
+and printed to A4. Also corrected here: `docs/INFRASTRUCTURE.md` said `add_calendar_push`'s check queries had not been run by a
+session, and listed `add_calendar_auto` as waiting; both were done on 9 Oct. *Not verified:* the tablet (step 42a), and whether
+the wording reads well to someone new to the app.
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all

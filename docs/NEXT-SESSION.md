@@ -17,11 +17,11 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **Library:** 34 recipes. 2 carry a stored comparison with their source, 1 of them validated; 6 are BBC Good Food, five of which
   were rebuilt from another edition before the 29 Sep rule (the household's job below). 1 recipe has a source photo.
 - **Cooking diary:** 116 entries. **Word matches:** 15. **Household aisles:** 1. **Swaps:** 2. **Cooking notes:** none yet (R4 built 30 Sep).
-- **Tests:** `node test/core.test.js` 143 checks; `node test/build.js && node test/smoke.js` 447 checks (418 until P3 PR 2, 437 until the
-  calendar toggles, both 9 Oct).
-  `node test/calendar-push.js` 30 checks. `offline-harness` runs
+- **Tests:** `node test/core.test.js` 143 checks; `node test/build.js && node test/smoke.js` 448 checks (418 until P3 PR 2, 437 until the
+  calendar toggles, both 9 Oct; 447 until the HELP tab, 10 Oct).
+  `node test/calendar-push.js` 30 checks; `node test/help-guide.js` 6 checks. `offline-harness` runs
   both on every PR and is required on `main`.
-- **Schema:** `add_calendar_auto` (the P3 toggles, 9 Oct) is waiting to be applied by the household. The last applied,
+- **Schema:** `add_calendar_auto` (the P3 toggles) was applied by the household on 9 Oct, before #72 merged. The one before it,
   `add_calendar_push`, was applied 9 Oct, before the household connected the calendar at 17:52 UTC (`docs/INFRASTRUCTURE.md`;
   read-only check 18:59 UTC: connected, 5 days switched on, 1 with a reminder).
 - **The family is one account, one household.** `docs/ONBOARDING.md` adds a second person. A second `households` row is the weekly
@@ -55,7 +55,11 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
    AUTOMATICALLY ADD TO CALENDAR and AUTOMATICALLY REMIND ME FOR MAIN MEALS, with `docs/migrations/add-calendar-auto.md`: apply the
    SQL, then merge. Then tablet and phone steps 40a and 40b, and PR 3 records what they found (`docs/INFRASTRUCTURE.md`'s functions
    table, `docs/ARCHITECTURE.md` §4, `docs/HANDOVER.md`).
-5. **Optional, not planned:** a "download all source files" backup (neither the JSON export nor the nightly `pg_dump` holds the
+5. **The how-to guide (10 Oct):** `help.html`, opened from Settings → HELP. Drafted for the household to read; then one PR.
+   Keep it true: a renamed button or a new everyday feature updates it in the same PR (`test/help-guide.js`).
+6. **PRE-MADE meals and COOKED ✓ (10 Oct, planned, waiting for the household's review):** the food diary fed from the Planner.
+   The plan is in the session's plan file and becomes `docs/PLAN-FOOD-DIARY.md` with its first PR.
+7. **Optional, not planned:** a "download all source files" backup (neither the JSON export nor the nightly `pg_dump` holds the
    files); drawing a PDF's pages inside the app, if opening it in the browser proves awkward on the tablet (38d will tell).
 
 ## Things that are the household's to do
@@ -67,8 +71,9 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **D6: repair the reconstructed recipes**, together with a session, by the recipe-text rules in `CLAUDE.md` (the household
   approves the exact lines; the before and after go to `PrivateBackup`; one guarded statement per recipe).
 - **Tablet step 39a**, cooking notes.
-- **P3:** apply `docs/migrations/add-calendar-auto.md` in the SQL editor, then merge the toggles' PR. Then tablet and phone steps
-  40a and 40b.
+- **P3:** tablet and phone steps 40a and 40b (the SQL and both PRs are in, 9 Oct).
+- **Read the how-to guide** and say what to change; then tablet step 42a once its PR merges.
+- **Review the PRE-MADE / COOKED ✓ plan** (10 Oct).
 - **The converter.** The conversion project in the Claude app holds **one file, `converter/conversion-instructions.md`**; its
   master copy is the one in this repo. After any change to that file here, reload it into the project. The other files under
   `converter/` stay in git as the project's reference and test material (`test-set.md` is how a change to the instructions is

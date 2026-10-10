@@ -3469,6 +3469,25 @@ const check = (name, pass, detail) => {
   await page.click('.navlink[data-view="settings"]');
   await page.waitForTimeout(300);
   const stKept = await stShown();
+  /* HELP joined on 10 Oct 2026: the guide is help.html beside the app, opened in a new tab. Whether its anchors
+     exist is test/help-guide.js's to check; this checks the tab shows its own blocks, links out, and is remembered. */
+  await page.click('[data-settings-tab-btn="help"]');
+  const stHelp = await stShown();
+  const stHelpLinks = await page.evaluate(() => {
+    const g = document.getElementById('helpGuideLink');
+    const qs = [...document.querySelectorAll('#helpAnswers a')];
+    return { guide: g && g.getAttribute('href'), guideTarget: g && g.target, guideShown: !!(g && g.offsetParent),
+      quick: qs.length, quickOk: qs.every(a => /^help\.html#[a-z-]+$/.test(a.getAttribute('href')) && a.target === '_blank' && /noopener/.test(a.rel)) };
+  });
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(200);
+  await page.click('.navlink[data-view="settings"]');
+  await page.waitForTimeout(300);
+  const stHelpKept = await stShown();
+  check('    HELP shows the guide and the quick answers alone, opens help.html in a new tab, and is remembered like the other tabs',
+        stHelp.join('|') === 'HOW-TO GUIDE|QUICK ANSWERS' && stHelpLinks.guide === 'help.html' && stHelpLinks.guideTarget === '_blank'
+        && stHelpLinks.guideShown && stHelpLinks.quick >= 6 && stHelpLinks.quickOk && stHelpKept.join('|') === stHelp.join('|'),
+        JSON.stringify([stHelp, stHelpLinks, stHelpKept]));
   await page.click('[data-settings-tab-btn="ingredients"]');
   check('layout E: Settings has three tabs; Ingredients holds the lookup, word matches, aisles, swaps and dictionary, and SWAPS has left the sidebar',
         stIng.join('|') === 'INGREDIENT LOOKUP|WORD MATCHES|SHOPPING AISLES|SWAPS|DICTIONARY' && !stNav.includes('swaps') && stNav.includes('settings'),

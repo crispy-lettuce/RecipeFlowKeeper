@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kitchen: how to use it</title>
+<!-- The app's own look, so the guide reads as part of it. Light or dark follows the app's APPEARANCE
+     setting, which the app keeps in localStorage on this same origin; with none, the device's own. -->
+<script>
+  (function(){
+    var mode = 'system';
+    try { mode = localStorage.getItem('kitchen.darkMode') || 'system'; } catch(e){}
+    var dark = mode === 'dark' || (mode === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F5F1E6; --shell:#EAE4D5; --card:#FBF8F0; --ink:#2B2722; --ink-soft:#6E665A; --ink-mute:#8A8172;
+    --line:#D8CFB8; --plum:#5B2A4A; --plum-wash:rgba(91,42,74,.06); --sage:#7C9473;
+  }
+  :root[data-theme="dark"]{
+    --paper:#1C1915; --shell:#141210; --card:#232019; --ink:#EDE7DA; --ink-soft:#B8AE9C; --ink-mute:#958B7A;
+    --line:#3A352C; --plum:#C98FB4; --plum-wash:rgba(201,143,180,.10); --sage:#9DBE92;
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--shell); color:var(--ink); font:16px/1.6 'IBM Plex Sans', system-ui, sans-serif; font-weight:400; }
+  main{ max-width:46rem; margin:0 auto; padding:2rem 1rem 4rem; }
+  header{ margin-bottom:1.5rem; }
+  .brand{ font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.1em; color:var(--ink-mute); }
+  h1{ font-size:1.9rem; font-weight:300; margin:.25rem 0 .25rem; }
+  .lede{ color:var(--ink-soft); margin:0; }
+  h2{ font-size:1.3rem; font-weight:400; margin:0 0 .5rem; color:var(--plum); }
+  h3{ font-size:1rem; font-weight:500; margin:1.25rem 0 .25rem; }
+  section{ background:var(--card); border:1px solid var(--line); border-radius:2px; padding:1.25rem 1.25rem .75rem; margin:0 0 1rem; }
+  p, li{ margin:.35rem 0; }
+  ul, ol{ padding-left:1.3rem; margin:.35rem 0 .75rem; }
+  a{ color:var(--plum); }
+  b.ui, b.example{ font-family:'IBM Plex Mono', monospace; font-weight:500; font-size:.82em; letter-spacing:.04em;
+        background:var(--plum-wash); padding:.05em .35em; border-radius:2px; white-space:nowrap; }
+  .tip{ border-left:3px solid var(--sage); padding:.25rem .75rem; color:var(--ink-soft); margin:.75rem 0; }
+  nav.contents{ background:var(--paper); border:1px solid var(--line); padding:1rem 1.25rem; margin-bottom:1rem; }
+  nav.contents ol{ columns:2; column-gap:2rem; margin:0; }
+  nav.contents li{ break-inside:avoid; margin:0 0 .35rem; }
+  pre{ font-family:'IBM Plex Mono', monospace; font-size:.85em; background:var(--paper); border:1px solid var(--line);
+       padding:.75rem; overflow-x:auto; white-space:pre; }
+  footer{ color:var(--ink-mute); font-size:.9rem; text-align:center; margin-top:2rem; }
+  @media (max-width:600px){ nav.contents ol{ columns:1; } section{ padding:1rem .9rem .5rem; } }
+  @media print{
+    body{ background:#fff; color:#000; font-size:11pt; }
+    section, nav.contents{ border:none; padding:0; margin:0 0 .75rem; background:none; break-inside:auto; }
+    h2, h3{ break-after:avoid; }
+    li, p{ break-inside:avoid; }
+    a{ color:inherit; text-decoration:none; }
+    b.ui, b.example{ background:none; border:1px solid #999; }
+  }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="brand">KITCHEN · HOW TO</div>
+  <h1>Using the Kitchen app</h1>
+  <p class="lede">Plan the fortnight, shop for it, cook from the recipe, and keep a diary of what you ate.
+    Buttons are shown <b class="ui example">LIKE THIS</b>, exactly as they read in the app.</p>
+</header>
+
+<nav class="contents" aria-label="Contents">
+  <ol>
+    <li><a href="#week">A week with the app</a></li>
+    <li><a href="#recipes">Finding recipes</a></li>
+    <li><a href="#cooking">Cooking from a recipe</a></li>
+    <li><a href="#groups">Cooking several dishes together</a></li>
+    <li><a href="#planner">Planning the fortnight</a></li>
+    <li><a href="#calendar">Your Google Calendar</a></li>
+    <li><a href="#shopping">Shopping</a></li>
+    <li><a href="#history">History and the food diary</a></li>
+    <li><a href="#adding">Adding a recipe</a></li>
+    <li><a href="#settings">Settings</a></li>
+    <li><a href="#trouble">When something goes wrong</a></li>
+    <li><a href="#admin">Backups and admin</a></li>
+  </ol>
+</nav>
+
+<section id="week">
+  <h2>1. A week with the app</h2>
+  <ol>
+    <li><b>Find ideas.</b> Browse <b class="ui">RECIPES</b>, and tap the <b>+</b> on any card to put it on the shortlist.</li>
+    <li><b>Plan.</b> In <b class="ui">PLANNER</b>, tap a shortlisted recipe, then tap the day you'll cook it.</li>
+    <li><b>Shop.</b> <b class="ui">SHOPPING</b> adds up everything the week needs, sorted by aisle. Tick things off as you go.</li>
+    <li><b>Remind.</b> If Google Calendar is connected, the days go into your calendar, with a reminder the evening before
+      (handy for the freezer).</li>
+    <li><b>Cook.</b> Open the recipe on the tablet, switch on <b class="ui">KEEP AWAKE</b>, and tick the boxes as you go.</li>
+    <li><b>Remember.</b> Ticking the last column logs the meal in <b class="ui">HISTORY</b>, and asks which meal it was.</li>
+  </ol>
+</section>
+
+<section id="recipes">
+  <h2>2. Finding recipes</h2>
+  <p>Everything starts from <b class="ui">RECIPES</b> in the sidebar.</p>
+  <ul>
+    <li><b>Search</b> by name, ingredient or note. Press Enter to keep what you typed as a tag while you search for something else.</li>
+    <li><b>Filters:</b> <b class="ui">COURSE</b> (tap several), <b class="ui">SOURCE</b>, and <b class="ui">KEYWORD</b>
+      (tap a faint suggestion, or <b class="ui">+ ADD</b> your own). <b class="ui">CLEAR ALL FILTERS</b> starts again.</li>
+    <li><b>Sort</b> by <b class="ui">RECENTLY ADDED</b>, <b class="ui">LEAST COOKED</b>, <b class="ui">MOST COOKED</b>,
+      <b class="ui">RECENTLY COOKED</b> or <b class="ui">A – Z</b>.</li>
+    <li><b>Saved views</b> in the sidebar are one-tap filters, for example <i>Weeknight, under 30 min</i> or
+      <i>Not cooked in 3 months</i>. Tap again to turn one off.</li>
+    <li><b>On each card:</b> <b>+</b> puts it on the shortlist (it turns to ✓), and ☆ makes it a favourite. Tap anywhere else to open it.</li>
+  </ul>
+</section>
+
+<section id="cooking">
+  <h2>3. Cooking from a recipe</h2>
+  <h3>Reading the diagram</h3>
+  <p>Ingredients are on the left. Each column is a moment in time, read left to right: boxes join together as things are
+    combined, with a time on each step (<i>8 MIN</i>, <i>OVERNIGHT</i>, <i>~ UNTIL DONE</i>).</p>
+  <h3>Ticking as you go</h3>
+  <ul>
+    <li>Tap any box to tick it off. Ticking a step also ticks everything that went into it.</li>
+    <li>Ticks last until you reload. <b class="ui">RESET TICKS</b> clears them.</li>
+    <li><b>Ticking the whole last column logs the recipe as cooked today.</b> A box asks <i>Which meal was that?</i>
+      (Breakfast, Lunch, Dinner, Snack), with room for a note on how it went. <b class="ui">SKIP</b> keeps the log without a meal.</li>
+  </ul>
+  <h3 id="cook-for">Cooking for more or fewer people</h3>
+  <p>Under the header, <b class="ui">COOK FOR</b> rescales the amounts for this time only: tap 2, 4, 6 or 8, or type a number
+    and <b class="ui">GO</b>. <b class="ui">RESET</b> goes back to the recipe as written. Nothing is saved, and tin sizes are
+    never scaled.</p>
+  <h3 id="keep-awake">Keeping the screen on</h3>
+  <p><b class="ui">KEEP AWAKE</b> stops the screen going to sleep and switches to cooking mode: the buttons you don't need
+    at the hob are hidden and the sidebar tucks away (☰ brings it back). Scale the recipe <i>before</i> you switch it on.
+    <b class="ui">SHOW TIMELINE</b> adds the overview bar back if you want it.</p>
+  <h3>Also on the recipe page</h3>
+  <ul>
+    <li><b class="ui">SUBSTITUTION RECOMMENDATIONS</b> lists your swaps that apply, with amounts worked out.</li>
+    <li><b>COOKING NOTES:</b> jot how it went with <b class="ui">ADD A NOTE</b>. Each note is dated. <b class="ui">FOLD INTO NOTES</b>
+      moves one into the recipe's own notes when it's worth keeping for good.</li>
+    <li><b>Source chips</b> under the title say whether the ingredients have been checked against the original, and
+      <b class="ui">SOURCE PHOTO</b> opens the photo or PDF it came from.</li>
+    <li><b class="ui">PRINT / A4 PDF</b> and <b class="ui">EXPORT PNG</b> for a paper copy or a picture to send.</li>
+    <li><b class="ui">+ SHORTLIST</b>, <b class="ui">EDIT</b> and <b class="ui">DELETE</b>. Deleting a recipe also deletes its
+      cooking history and notes, and can't be undone.</li>
+  </ul>
+</section>
+
+<section id="groups">
+  <h2>4. Cooking several dishes together</h2>
+  <p>When a day has two or more recipes (a main and a side, say), <b class="ui">GROUP SOME TOGETHER</b> on the Planner lets
+    you tick the ones you're cooking at once, then <b class="ui">GROUP SELECTED</b>. Tap the <b>GROUPED: …</b> badge to see them
+    together: one timeline with a lane for each dish, and each recipe's diagram below. <b class="ui">UNGROUP</b> separates them
+    again; they stay on the day.</p>
+</section>
+
+<section id="planner">
+  <h2>5. Planning the fortnight</h2>
+  <p><b class="ui">PLANNER</b> shows the next fourteen days, rolling forward each day, grouped into weeks.</p>
+  <ul>
+    <li><b class="ui">CHOOSE A RECIPE</b> opens the library: tap a recipe to put it on that day.
+      <b class="ui">ADD ANOTHER</b> adds a second dish.</li>
+    <li><b class="ui">MARK DAY AWAY</b> (while choosing) marks a day as deliberately blank, such as eating out or away.</li>
+    <li><b>The SERVES button</b> sets how many people a dish is for on that day. The shopping list follows it.</li>
+    <li><b>×</b> takes a dish off the day.</li>
+  </ul>
+  <h3>The shortlist</h3>
+  <p>Ideas waiting for a day. Add recipes with <b>+</b> on a card, or type a note in the box (for something you haven't got a
+    recipe for yet). To plan one: <b>tap the shortlisted recipe, then tap a day</b>. It moves onto that day.
+    <b class="ui">CANCEL</b> or Esc stops.</p>
+</section>
+
+<section id="calendar">
+  <h2>6. Your Google Calendar</h2>
+  <p>Planned days can go into a Google Calendar of their own, called <b>RecipeWrangler</b>, as an all-day event listing that
+    day's dishes. Connect it once in <b>Settings → APP → CALENDAR</b> with <b class="ui">CONNECT GOOGLE CALENDAR</b>. Google says it
+    hasn't verified the app: choose <i>Advanced</i>, then <i>Go to RecipeWrangler</i>, and allow.</p>
+  <h3>On the Planner</h3>
+  <ul>
+    <li><b class="ui">IN CALENDAR</b> puts that day in the calendar. Tap again to take it out.</li>
+    <li><b>REMIND ME … THE EVENING BEFORE</b> adds a phone reminder the night before, for getting things out of the freezer.</li>
+    <li><b class="ui">ADD THE WEEK</b>, by a week's heading, puts the whole week in at once.</li>
+    <li>Changing a day's dishes updates its event; marking it away or emptying it removes the event.</li>
+  </ul>
+  <h3>In Settings</h3>
+  <ul>
+    <li><b class="ui">AUTOMATICALLY ADD TO CALENDAR</b>: every day you plan goes in by itself.</li>
+    <li><b class="ui">AUTOMATICALLY REMIND ME FOR MAIN MEALS</b>: days with a Main-course recipe get the evening-before reminder.</li>
+    <li>Switching either on also catches up the days you've already planned. Switching off changes nothing already in the calendar.</li>
+    <li><b class="ui">REMIND AT</b> sets the reminder time (20:00 to start with). <b class="ui">SYNC NOW</b> brings everything into step.</li>
+    <li><b class="ui">DISCONNECT</b> stops the app updating the calendar. The calendar and its events stay in Google.</li>
+  </ul>
+</section>
+
+<section id="shopping">
+  <h2>7. Shopping</h2>
+  <p><b class="ui">SHOPPING</b> adds up every ingredient the week's planned dishes need, scaled to each day's servings and
+    sorted into aisles.</p>
+  <ul>
+    <li id="shopping-both">Choose <b>this week</b>, <b>next week</b> or <b class="ui">BOTH WEEKS</b> from the list at the top.
+      Both weeks keeps its own ticks.</li>
+    <li>Tick items as they go in the trolley. Ticks show on every device, so two people can shop from the same list.</li>
+    <li><b class="ui">HIDE TICKED</b> tidies the list; <b class="ui">CLEAR TICKS</b> unticks everything.</li>
+    <li>If the list thinks two names are the same thing it asks <i>Same as …?</i>: <b class="ui">MERGE</b> adds them
+      together from now on, <b class="ui">KEEP APART</b> stops it asking.</li>
+    <li><b class="ui">⇄ POSSIBLE SWAPS</b> at the bottom lists alternatives you've saved.</li>
+    <li><b class="ui">PRINT / A4 PDF</b> or <b class="ui">EXPORT PNG</b> to take it with you. Ticked items are left off the picture.</li>
+  </ul>
+</section>
+
+<section id="history">
+  <h2>8. History and the food diary</h2>
+  <p><b class="ui">HISTORY</b> is a month calendar of what you've eaten. Tap a day to see it; tap a dish to open its recipe.</p>
+  <ul>
+    <li>Cooked recipes arrive here when you tick the last column of their diagram.</li>
+    <li id="diary-entry"><b class="ui">+ ENTRY</b> logs something with no recipe card, such as a takeaway or a meal out: what it was,
+      the date and, if you like, the meal.</li>
+    <li><b class="ui">REMOVE</b> takes an entry out.</li>
+    <li><b class="ui">CSV</b> downloads the whole diary for a spreadsheet.</li>
+    <li>The <b>STATS</b> panel shows totals, your current streak and what you cook most.</li>
+  </ul>
+</section>
+
+<section id="adding">
+  <h2>9. Adding a recipe</h2>
+  <p><b class="ui">NEW RECIPE</b> at the foot of the sidebar opens the form.</p>
+  <ol>
+    <li>Paste a converted recipe into the box (it's read straight away), or use <b class="ui">WRITE ONE BY HAND</b> for a
+      starting template. <b class="ui">PARSE &amp; PREVIEW</b> reads it again after changes.</li>
+    <li>Look over <b>WHAT THE APP READ</b> and the checks underneath. They're advice only; nothing stops you saving.</li>
+    <li>For a recipe from a website, <b class="ui">COMPARE WITH SOURCE</b> (it often runs by itself) lists the page's ingredients
+      beside yours. If the site won't allow it, <b class="ui">OPEN SOURCE ↗</b>, copy its ingredient list, paste it in and
+      <b class="ui">COMPARE PASTED LIST</b>. When it's right, <b class="ui">VALIDATE INGREDIENT LIST</b>.</li>
+    <li>From a book or a card? <b class="ui">ADD PHOTO OR PDF</b> keeps the page with the recipe, and
+      <b class="ui">CHECKED AGAINST THE PHOTO</b> records that you've checked it.</li>
+    <li>Fill in the source and servings (both needed), then <b class="ui">SAVE RECIPE</b>.</li>
+  </ol>
+  <p class="tip"><b class="ui">SCALE TO SERVE</b> in the form changes the recipe for good. To cook a different amount just once,
+    use <b class="ui">COOK FOR</b> on the recipe page instead.</p>
+</section>
+
+<section id="settings">
+  <h2>10. Settings</h2>
+  <ul>
+    <li><b class="ui">INGREDIENTS</b>: look up how the shopping list names an ingredient and which aisle it goes in; teach it that
+      two words are the same (<b class="ui">WORD MATCHES</b>); move an ingredient to another aisle (<b class="ui">SHOPPING AISLES</b>);
+      and keep your <b class="ui">SWAPS</b>.</li>
+    <li><b class="ui">LIBRARY</b>: <b class="ui">LIBRARY CHECK</b> lists recipes still to be checked against their source; tidy
+      <b class="ui">SOURCES</b> and <b class="ui">KEYWORDS</b>; look after recipe photos.</li>
+    <li><b class="ui">APP</b>: which day weeks start on, light or dark (<b class="ui">APPEARANCE</b>), and Google Calendar.</li>
+    <li><b class="ui">HELP</b>: this guide.</li>
+  </ul>
+</section>
+
+<section id="trouble">
+  <h2>11. When something goes wrong</h2>
+  <h3 id="offline">The OFFLINE bar</h3>
+  <p>No connection. Carry on: changes are kept on the device and sent when you're back, and you'll see
+    <i>Back online — sending your changes.</i></p>
+  <h3><i>Couldn't save …</i></h3>
+  <p>A change didn't reach the server. It's kept and tried again with your next change. If it keeps happening, check the connection.</p>
+  <h3>The UPDATE bar</h3>
+  <p>A new version arrived part-way. Tap <b class="ui">RELOAD</b>.</p>
+  <h3>Another device looks out of date</h3>
+  <p>Switch to another app and back, or reload. The app picks up other devices' changes when you return to it.</p>
+  <h3>A photo won't show</h3>
+  <p>It needs a connection, and a photo added on another device shows once its upload has finished.</p>
+  <h3>The calendar says there's a problem</h3>
+  <p>Look in Settings → APP → CALENDAR. Try <b class="ui">SYNC NOW</b>; if it says Google no longer accepts the connection,
+    <b class="ui">CONNECT GOOGLE CALENDAR</b> again. Nothing in your plan is lost.</p>
+</section>
+
+<section id="admin">
+  <h2>12. Backups and admin</h2>
+  <ul>
+    <li><b class="ui">EXPORT DATA</b> (foot of the sidebar) downloads a backup of everything. Keep one before any big change.</li>
+    <li><b class="ui">IMPORT DATA</b> restores a backup. It <b>replaces everything, on every device</b>, so use it with care.</li>
+    <li><b class="ui">SIGN OUT</b> is at the foot of the sidebar too.</li>
+    <li>Settings → LIBRARY → RECIPE PHOTOS: <b class="ui">RE-HOST EXTERNAL IMAGES</b> copies web photos into your own storage, and
+      <b class="ui">CHECK STORED IMAGES</b> checks they're all intact.</li>
+  </ul>
+  <h3>The recipe text, in brief</h3>
+  <p>Recipes are plain text. Header lines first, then groups of ingredients that go in together, then stages: each stage is one
+    column of the diagram, and <b>MERGE</b> joins groups into the next box, with a time in square brackets.</p>
+<pre>TITLE: My recipe
+SOURCE: Personal recipe
+SERVINGS: 4
+TAGS: course=Main
+
+GROUP base:
+2 onions, sliced
+1 tbsp rapeseed oil
+
+GROUP finish:
+1 lemon, juiced
+
+STAGE:
+MERGE base -> cooked: soften the onions [10 min]
+
+STAGE:
+MERGE cooked, finish -> dish: stir in the lemon and serve [instant]</pre>
+  <p>Groups that are merged must sit next to each other, and anything added at the end gets a group of its own.
+    <code>NOTES:</code>, <code>TIPS:</code>, <code>STORING:</code> and <code>FREEZING:</code> sections can follow.</p>
+</section>
+
+<footer>
+  Last updated 10 October 2026 · <a href="./">Open the app</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a>
+</footer>
+</main>
+</body>
+</html>
