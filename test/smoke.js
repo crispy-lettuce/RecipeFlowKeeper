@@ -3492,9 +3492,9 @@ const check = (name, pass, detail) => {
   check('layout E: Settings has three tabs; Ingredients holds the lookup, word matches, aisles, swaps and dictionary, and SWAPS has left the sidebar',
         stIng.join('|') === 'INGREDIENT LOOKUP|WORD MATCHES|SHOPPING AISLES|SWAPS|DICTIONARY' && !stNav.includes('swaps') && stNav.includes('settings'),
         JSON.stringify([stIng, stNav]));
-  /* CALENDAR joined App on 9 Oct 2026 (P3 PR 2), and RECIPE SHARING on 10 Oct; before their migrations each only says it is waiting. */
-  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, calendar and sharing; the last tab is remembered',
-        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|CALENDAR|RECIPE SHARING' && stKept.join('|') === stApp.join('|'),
+  /* CALENDAR joined App on 9 Oct 2026 (P3 PR 2), RECIPE SHARING and BACKUP TO GOOGLE DRIVE on 10 Oct; before their migrations each only says it is waiting. */
+  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, calendar, sharing and Drive backup; the last tab is remembered',
+        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
         JSON.stringify([stLib, stApp, stKept]));
   const stDict = () => page.evaluate(() => ({ list: !document.getElementById('dictionaryList').hidden, btn: document.getElementById('dictionaryToggle').hidden ? '' : document.getElementById('dictionaryToggle').textContent.trim(),
     rows: [...document.querySelectorAll('#dictionaryList .dict-row')].filter(r => r.offsetParent !== null).length }));
@@ -4797,6 +4797,89 @@ const check = (name, pass, detail) => {
         shGone.switchText.length === 0 && shGone.titles.length === 4 && await sh.evaluate(() => Object.keys(shared.recipes).length === 0 && state.library === null),
         JSON.stringify(shGone));
   await sh.close();
+
+  /* ---- The weekly backup to Google Drive (10 Oct 2026, docs/PLAN-DRIVE-BACKUP.md) ----
+     Before docs/migrations/add-drive-backup.md (the main page: no calendar_connections at all, as the default fixture), then on
+     fresh pages whose connection row has the drive_* columns, with or without the Drive permission, saved or not lately. */
+  console.log('\nBackup to Google Drive');
+  const drPre = await page.evaluate(() => { showView('settings'); showSettingsTab('app');
+    const t = document.getElementById('driveSettings').textContent.replace(/\s+/g, ' ').trim(); showView('recipes');
+    return { text: t, button: !!document.getElementById('driveSaveBtn'), calls: window.__INVOKES__.filter(c => c.name === 'drive-backup').length }; });
+  check('    before the database change: Settings says it is waiting, offers no button, and nothing is ever sent',
+        /Waiting for the database change/.test(drPre.text) && !drPre.button && drPre.calls === 0, JSON.stringify(drPre));
+
+  const DR_HOUSE = '286a8a12-c12a-4b83-afbc-0912533f6b1c';
+  const DR_CAL = 'https://www.googleapis.com/auth/calendar.app.created';
+  const DR_DRIVE = 'https://www.googleapis.com/auth/drive.file';
+  const drDaysAgo = n => new Date(FIXTURE_NOW - n * 86400000).toISOString();
+  const drConn = over => Object.assign({ household_id: DR_HOUSE, connected: true, google_email: 'cook@example.test', calendar_id: 'made-up@group.calendar.google.com',
+    scope: `openid ${DR_CAL} ${DR_DRIVE} email`, connected_at: drDaysAgo(20), last_sync_at: null, last_error: null, updated_at: drDaysAgo(20),
+    drive_folder_id: null, drive_backup_at: null, drive_last_error: null }, over || {});
+  const drPage = async (conn, label) => {
+    const p = await browser.newPage();
+    p.on('pageerror', e => errors.push('PAGEERROR (drive, ' + label + '): ' + e.message));
+    await p.addInitScript(c => { window.__STUB_EXTRA__ = { calendar_connections: [c] };
+      window.__DRIVE_REPLY__ = { data: { ok: true, name: 'kitchen-backup-2026-09-22.json', at: '2026-09-22T09:00:05.000Z', deleted: 0 }, error: null };
+      window.__INVOKE_REPLY__ = call => call.name === 'drive-backup' ? window.__DRIVE_REPLY__ : { data: { ok: true, put: 0, deleted: 0 }, error: null }; }, conn);
+    await p.clock.setFixedTime(FIXTURE_NOW);
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1500);
+    return p;
+  };
+  const drState = p => p.evaluate(() => { showView('settings'); showSettingsTab('app');
+    const calls = window.__INVOKES__.filter(c => c.name === 'drive-backup');
+    return { text: document.getElementById('driveSettings').textContent.replace(/\s+/g, ' ').trim(),
+      save: !!document.getElementById('driveSaveBtn'), reconnect: !!document.getElementById('driveReconnectBtn'),
+      calls: calls.length, sameFile: calls.length ? calls.every(c => JSON.stringify(c.body) === JSON.stringify({ backup: exportPayload() })) : null,
+      toast: (document.querySelector('.toast') || {}).textContent || '' }; });
+
+  // Connected before Drive was asked for: no Drive permission.
+  const drNo = await drPage(drConn({ scope: `openid ${DR_CAL} email` }), 'no permission');
+  await drNo.evaluate(() => { window.goToGoogle = url => { window.__WENT__ = url; };
+    const r = window.__INVOKE_REPLY__; window.__INVOKE_REPLY__ = c => c.name === 'calendar-auth' ? { data: { url: 'https://accounts.example.test/consent' }, error: null } : r(c); });
+  const drNoS = await drState(drNo);
+  /* Clicked in the page: if the button is wrongly missing, the check below fails by name rather than the run dying on a timeout. */
+  await drNo.evaluate(() => { const b = document.getElementById('driveReconnectBtn'); if(b) b.click(); });
+  await drNo.waitForTimeout(200);
+  const drNoGo = await drNo.evaluate(() => ({ went: window.__WENT__, auth: window.__INVOKES__.filter(c => c.name === 'calendar-auth').map(c => c.body.action) }));
+  check('    connected without the Drive permission: nothing is sent, and CONNECT AGAIN FOR DRIVE goes to Google as CONNECT does',
+        drNoS.calls === 0 && drNoS.reconnect && !drNoS.save && /without permission for Drive/.test(drNoS.text)
+        && drNoGo.went === 'https://accounts.example.test/consent' && JSON.stringify(drNoGo.auth) === JSON.stringify(['start']), JSON.stringify([drNoS, drNoGo]));
+  await drNo.close();
+
+  // Allowed and never saved: the first load saves once, the same file EXPORT DATA makes.
+  const drNew = await drPage(drConn(), 'never saved');
+  const drNewS = await drState(drNew);
+  check('    allowed and never saved: the first load sends one backup, the very payload EXPORT DATA downloads, and says so',
+        drNewS.calls === 1 && drNewS.sameFile === true && /This week's backup is saved in Google Drive/.test(drNewS.toast)
+        && /Last saved to Drive/.test(drNewS.text) && drNewS.save, JSON.stringify(drNewS));
+  await drNew.evaluate(async () => { await refreshLibrary(); await refreshLibrary(); });
+  const drAgain = await drState(drNew);
+  check('    coming back to the tab does not send another, even though the stub still says never saved (once per load)',
+        drAgain.calls === 1, JSON.stringify(drAgain));
+  await drNew.click('#driveSaveBtn');
+  await drNew.waitForTimeout(300);
+  const drHand = await drState(drNew);
+  check('    SAVE TO DRIVE NOW sends one at any time and names the file in its toast',
+        drHand.calls === 2 && drHand.sameFile === true && drHand.toast === 'Saved to Google Drive as kitchen-backup-2026-09-22.json', JSON.stringify(drHand));
+  await drNew.evaluate(() => { window.__DRIVE_REPLY__ = { data: { error: 'Drive would not take the file (500)' }, error: null }; });
+  await drNew.click('#driveSaveBtn');
+  await drNew.waitForTimeout(300);
+  const drFail = await drState(drNew);
+  check('    a failed save says why, by hand in a toast and in Settings as the last problem',
+        drFail.calls === 3 && /Couldn't save to Google Drive: Drive would not take the file \(500\)/.test(drFail.toast)
+        && /Last problem: Drive would not take the file \(500\)/.test(drFail.text), JSON.stringify(drFail));
+  await drNew.close();
+
+  // Saved three days ago: nothing by itself. Eight days ago: one.
+  const drRecent = await drPage(drConn({ drive_backup_at: drDaysAgo(3) }), 'saved 3 days ago');
+  const drRecentS = await drState(drRecent);
+  await drRecent.close();
+  const drOld = await drPage(drConn({ drive_backup_at: drDaysAgo(8) }), 'saved 8 days ago');
+  const drOldS = await drState(drOld);
+  await drOld.close();
+  check('    saved three days ago, nothing is sent by itself; saved eight days ago, the load sends one',
+        drRecentS.calls === 0 && /Last saved to Drive/.test(drRecentS.text) && drOldS.calls === 1, JSON.stringify([drRecentS.calls, drOldS.calls]));
 
   const failed = checks.filter(c => !c.pass).length;
   console.log(`\n${checks.length} checks, ${failed} failed`);

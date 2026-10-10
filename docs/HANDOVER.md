@@ -2073,6 +2073,31 @@ STOP SHARING without asking (the first version of that check died on a timeout i
 a stopped share's recipes kept. *Not verified:* anything against the live database (the migration is not applied), the real
 `sb.rpc` answers and storage policies, the photo copy against real Storage, and two real households; that is tablet step 43a.
 
+**A weekly backup to Google Drive (10 Oct 2026; `docs/PLAN-DRIVE-BACKUP.md`).** Asked once Google was connected for the
+calendar; answered the same day: the app's own export, weekly and by hand, into the household's own Drive, the export file only.
+The nightly dump stays the real backup. `drive-backup` (new) takes the export from the app, so the file is exactly EXPORT DATA's
+(`exportPayload()`, now shared by both), names it as the download is, replaces a same-day file, keeps the newest 8, and deletes only
+files of its own name pattern; it records `drive_backup_at`, `drive_last_error` and `drive_folder_id` on `calendar_connections`
+(`docs/migrations/add-drive-backup.md`). `calendar-auth` asks for `drive.file` beside the calendar; the calendar still connects if
+Drive is unticked. The app: Settings → APP → BACKUP TO GOOGLE DRIVE (waiting / connect Google first / CONNECT AGAIN FOR DRIVE /
+last saved, SAVE TO DRIVE NOW); `maybeWeeklyDriveBackup()` after the load and the tab-return refresh, once per page load, when the
+last save is a week old and nothing is unsent. DISCONNECT's question now says the Drive backup stops too. Also corrected in
+`docs/INFRASTRUCTURE.md`: `add_recipe_sharing` recorded as applied (checked 16:15 UTC), the calendar functions as deployed, and the
+deployed versions as seen at 16:45 UTC.
+
+*Verified by.* The migration on a scratch Postgres 16 (applies as a non-superuser owner; the check queries; the undo). `node
+test/core.test.js` 143, exit 0. `node test/build.js && node test/smoke.js` **472** (465 before), exit 0, no console or page errors:
+7 new checks, before the migration and on fresh pages connected with and without Drive, saved never, 3 and 8 days ago. A new `node
+test/drive-backup.js`, 11 checks, exit 0, in CI, lifted from the function; `node test/calendar-push.js` 31 (one new: CONNECT asks
+for the calendar and `drive.file` and nothing wider). `node test/help-guide.js` 6, exit 0. **Nineteen mutations, each failing by
+name:** eleven in the functions (the scope matched as a substring, the date in UTC, a non-export accepted, no size limit, one file
+too many kept, no sort, never replacing today's file, deleting any file, the upload's closing boundary, the file not pretty-printed,
+CONNECT not asking for Drive) and eight in the app (Drive offered before the migration, or without the permission; a different
+payload; the weekly save on every tab return; a two-day week; the file name left out of the toast; a failure not recorded; no save
+at start-up). One check died on a timeout instead of failing by name under its mutation, and was changed to click in the page.
+*Not verified:* anything against Google or the live database: the consent with two permissions, the folder, the upload, the tidy,
+and the token's Drive scope. That is tablet step 44a, after the household's steps in the plan's §4.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export
