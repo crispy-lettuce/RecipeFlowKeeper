@@ -4778,7 +4778,9 @@ const check = (name, pass, detail) => {
   await sh.click('#sharingSettings [data-stop-share]');
   await sh.waitForTimeout(150);
   const shKept = await sh.evaluate(() => ({ stops: window.__RPCS__.filter(c => c.name === 'stop_sharing_with').length, list: shared.iShareWith.length }));
-  await sh.click('#sharingSettings [data-stop-share]');
+  /* Clicked in the page, not by Playwright: if Cancel had not kept the row, there is no button left, and the check below
+     must fail by name rather than the run dying on a timeout. */
+  await sh.evaluate(() => { const b = document.querySelector('#sharingSettings [data-stop-share]'); if(b) b.click(); });
   await sh.waitForTimeout(200);
   const shStop = await sh.evaluate(() => ({ stops: window.__RPCS__.filter(c => c.name === 'stop_sharing_with').map(c => c.args), list: shared.iShareWith.length,
     confirms: window.__CONFIRMS__, text: document.getElementById('sharingSettings').textContent }));

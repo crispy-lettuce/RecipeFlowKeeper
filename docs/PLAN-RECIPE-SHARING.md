@@ -3,8 +3,8 @@
 **Asked for on 10 Oct 2026**, when the household wanted to share the app with a new household of close family: "Is it practical
 that one household could browse another household's recipes? (Preferred) Or would one household have to 'send' them to the
 second household? … it is important that each household has their own recipe database. … this app will only be used by myself
-plus one or two close family members, so we can be a little more free." **Answered the same day; the database change and the
-new-household steps are written, the app's side is being built.**
+plus one or two close family members, so we can be a little more free." **Answered the same day; built the same day (the migration,
+the new-household steps and the app, in one PR); the household applies the migration first.**
 
 ## 1. What was decided
 
