@@ -538,6 +538,16 @@ removed page was deleted), and no listed page missing.*
     one row for the pre-made dish with `premade = true` and `meal_type = 'dinner'`. Undo: tap PRE-MADE · DINNER to make it fresh;
     REMOVE the diary entry in HISTORY.
 
+41b. **Fresh or freezer, and the Planner on a phone (new 10 Oct; 41a found finishing a pre-made dish's recipe logged it twice).**
+    (1) *PRE-MADE on today's dish*, choose Dinner: HISTORY has it once, FROM THE FREEZER. (2) *Open its recipe and tick the last
+    column:* it asks "Cooked fresh, or from the freezer?" Choose FROM THE FREEZER: HISTORY still has it once, and ticking the last
+    column off and on again does not ask again. (3) *Reload the page (the answer is kept until then), open the recipe and tick the
+    last column:* it asks again; choose COOKED FRESH. It asks which meal; HISTORY now has it once, cooked, with no freezer mark; the
+    Planner shows it without PRE-MADE and with ✓ COOKED, and it is back on the shopping list. (4) *A fresh dish of today's,
+    finished in its recipe:* no question, logged as before. (5) *The Planner on a phone:* each dish's name is readable, with
+    its pills on the line below when they don't fit. **Read-only afterwards:** today's `recipe_logs` for the dish is one row,
+    `premade = false`; the day's `planner_days.premade` slot is `''`. Undo: REMOVE the entry in HISTORY.
+
 42a. **The how-to guide (new 10 Oct; `help.html`).** Reads only. (1) *Settings:* a fourth tab, HELP, after APP. It shows HOW-TO
     GUIDE and QUICK ANSWERS and nothing else; leave Settings and come back, and HELP is still the tab shown. (2) *OPEN THE GUIDE ↗:*
     the guide opens in a new browser tab, in the same light or dark as the app; the app's tab is where it was. (3) *Two QUICK

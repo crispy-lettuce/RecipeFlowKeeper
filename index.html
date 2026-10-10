@@ -1378,6 +1378,9 @@
     .shortlist-panel{ width:100%; border-left:none; border-top:1px solid var(--line); overflow:visible; padding:18px; }
     .day-row{ flex-wrap:wrap; }
     .day-recipe-row{ flex-wrap:wrap; }
+    /* The title's flex basis is 0, so without a floor it never makes the row wrap: on a phone the pills took the line
+       and squeezed the name to a letter. With one, the pills wrap under it instead. */
+    .day-recipe-title{ min-width:min(12em, 100%); }
 
     .shop-wrap{ padding:18px; overflow:visible; }
     .shop-head{ flex-direction:column; }
@@ -1908,6 +1911,20 @@
     <div class="meal-type-row" id="premadeChoices"></div>
     <div class="mini-actions">
       <button class="link-btn" id="premadeCancel">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- Finishing the flow of a dish down as PRE-MADE today (tablet step 41a, 10 Oct): it is already in the diary from the
+     freezer, so ask before logging it a second time as cooked. Closing it means "from the freezer": nothing is lost. -->
+<div class="modal-overlay" id="freshOrFreezerOverlay">
+  <div class="mini-panel" role="dialog" aria-modal="true" aria-labelledby="freshOrFreezerHeading">
+    <h2 id="freshOrFreezerHeading">Cooked fresh, or from the freezer?</h2>
+    <p class="subtle"><span id="freshOrFreezerWhat"></span> is down as pre-made today, and in the food diary as eaten from the
+      freezer. If you cooked it fresh instead, that entry is changed to cooked and it goes back on the shopping list.</p>
+    <div class="mini-actions">
+      <button class="btn" id="freshOrFreezerFreezer">FROM THE FREEZER</button>
+      <button class="btn" id="freshOrFreezerFresh">COOKED FRESH</button>
     </div>
   </div>
 </div>
@@ -4970,7 +4987,7 @@ function renderGroupViewer(){
          the same flow, so ticking here and opening it on its own keeps
          your place either way. */
       tickKey: recipe.id,
-      onComplete: ()=> logRecipeUsed(recipe.id)
+      onComplete: ()=> finishRecipe(recipe.id)
       // showTimeline deliberately omitted — the group's own combined
       // timeline strip above already covers this recipe's steps; a
       // second, single-recipe timeline per card would be redundant.
@@ -5160,7 +5177,7 @@ function renderViewer(){
   mountFlow(mount, parsedForView, {
     tickKey: recipe.id,
     /* Nothing is logged for one of theirs: our diary is of our recipes, and theirs is not in our library to log. */
-    onComplete: theirs ? ()=> showToast('Not logged: add it to our recipes to plan, shop for or log it') : ()=> logRecipeUsed(recipe.id),
+    onComplete: theirs ? ()=> showToast('Not logged: add it to our recipes to plan, shop for or log it') : ()=> finishRecipe(recipe.id),
     showTimeline: true
   });
 }
@@ -5199,6 +5216,59 @@ function logRecipeUsed(id, date){
   if(state.view === 'planner') renderPlanner();
   promptForMealType(entry.id, recipes[idx].title, id);
 }
+
+/* Finishing a recipe's flow, in the viewer or a group. Usually that is logRecipeUsed. But a dish down as PRE-MADE today
+   is already in the diary from the freezer (logDuePremade), and on tablet step 41a (10 Oct) finishing its flow logged it
+   a second time, as cooked. So for that dish it asks which it was. Asked once per dish and day in this page: unticking
+   and ticking the last column again does not ask again. */
+const freshOrFreezerAnswered = new Set();
+let freshOrFreezerAsk = null;
+function finishRecipe(id){
+  const recipe = loadRecipes().find(r=> r.id === id);
+  if(!recipe) return;
+  const today = todayStr();
+  if((recipe.history || []).includes(today)) return;
+  /* Answered "from the freezer" already: it is in the diary, so nothing more. ("Fresh" put it in the history above.) */
+  const key = `${today}|${id}`;
+  if(freshOrFreezerAnswered.has(key)) return;
+  const idx = planEntries(loadPlan()[today]).findIndex(e=> e.recipeId === id && e.premade);
+  if(idx === -1){ logRecipeUsed(id); return; }
+  freshOrFreezerAsk = { id, date: today, idx, key };
+  document.getElementById('freshOrFreezerWhat').textContent = recipe.title || 'This dish';
+  document.getElementById('freshOrFreezerOverlay').classList.add('open');
+  document.getElementById('freshOrFreezerFreezer').focus();
+}
+function closeFreshOrFreezer(){
+  const ask = freshOrFreezerAsk;
+  freshOrFreezerAsk = null;
+  document.getElementById('freshOrFreezerOverlay').classList.remove('open');
+  if(ask) freshOrFreezerAnswered.add(ask.key);
+  return ask;
+}
+/* Cooked fresh after all: the plan was wrong for today, so the plan and the diary are put right rather than given a second entry.
+   PRE-MADE goes off that dish, and the freezer entry made for it is removed by its own id, the one logDuePremade gave
+   it, so nothing written by hand can be touched. (Switching PRE-MADE off on the Planner keeps that entry: there nobody
+   has said it was wrong.) Then the ordinary cooked log, with its meal question and note box. */
+function cookedFreshInstead(ask){
+  const ids = planRecipeIds(loadPlan()[ask.date]);
+  if(ids[ask.idx] !== ask.id){ logRecipeUsed(ask.id); return; }
+  const occurrence = ids.slice(0, ask.idx + 1).filter(x=> x === ask.id).length;
+  const freezerId = premadeLogId(HOUSEHOLD_ID, ask.date, ask.id, occurrence);
+  setPlanPremadeAt(ask.date, ask.idx, '');
+  deleteDiaryEntry(freezerId);
+  updateSidebarCounts();
+  logRecipeUsed(ask.id);
+}
+document.getElementById('freshOrFreezerFresh').addEventListener('click', ()=>{
+  const ask = closeFreshOrFreezer();
+  if(ask) cookedFreshInstead(ask);
+});
+document.getElementById('freshOrFreezerFreezer').addEventListener('click', ()=>{
+  if(closeFreshOrFreezer()) showToast('Already in the food diary, from the freezer');
+});
+document.getElementById('freshOrFreezerOverlay').addEventListener('click', e=>{
+  if(e.target.id === 'freshOrFreezerOverlay' && closeFreshOrFreezer()) showToast('Already in the food diary, from the freezer');
+});
 
 /* ---- PRE-MADE meals into the diary (docs/PLAN-FOOD-DIARY.md) ----
    Every pre-made item on today or an earlier day is written to the diary once, with its meal, as eaten from the freezer.
