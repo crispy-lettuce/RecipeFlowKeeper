@@ -79,8 +79,8 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **Tablet step 39a**, cooking notes.
 - **P3:** tablet and phone steps 40a and 40b (the SQL and both PRs are in, 9 Oct).
 - **Read the how-to guide** and say what to change; then tablet step 42a once its PR merges.
-- **PRE-MADE / COOKED ✓ (live 10 Oct):** tablet step 41a (done 10 Oct; it found the double entry). After the fresh-or-freezer PR
-  merges: tablet step 41b.
+- **PRE-MADE / COOKED ✓ (live 10 Oct):** tablet steps 41a and 41b both done 10 Oct (41a found the double entry; #80 fixed it,
+  and 41b's COOKED FRESH was seen in the database at 22:13 UTC). Nothing left here.
 - **Recipe sharing (merged 10 Oct):** make the new household (`docs/ONBOARDING.md` §4), then name each household and SHARE from
   Settings → APP; tablet step 43a.
 - **The Drive backup (live 10 Oct):** look in Google Drive for RecipeWrangler backups and download one file (tablet step 44a, (3)).

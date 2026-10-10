@@ -2160,8 +2160,13 @@ FRESH; a fresh dish logged at once.
 A ninth: the guide's new COOKED FRESH label renamed in the app made `help-guide.js` fail. It first passed, because a code
 comment quoted the label, so the comments were reworded.
 
-*Not verified:* the group viewer calling `finishRecipe` (no check covers it), anything against the live database, and the
-tablet itself. That is step 41b.
+*Not verified:* the group viewer calling `finishRecipe` (no check covers it).
+
+**Tablet step 41b done by the household, 10 Oct, after #80 merged (21:37 UTC).** Read-only at 22:13 UTC: the dish's 20:40
+freezer row and the 20:41 double entry are both gone; it has one row for today, cooked, dinner, written 22:05:59; today's
+`planner_days.premade` reads `['', '']`, saved 22:05:56; tomorrow's pre-made dinner is untouched. That is COOKED FRESH doing
+all three things at once. The FROM THE FREEZER branch and the phone layout rest on the smoke checks and the household's
+word.
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
