@@ -49,7 +49,7 @@ function corsHeaders(req: Request): Record<string, string> {
   };
 }
 
-type PlanRow = { plan_date: string; is_blank: boolean; recipe_ids: string[]; servings: number[]; calendar: boolean; calendar_remind: boolean };
+type PlanRow = { plan_date: string; is_blank: boolean; recipe_ids: string[]; servings: number[]; calendar: boolean; calendar_remind: boolean; premade?: string[] };
 type SyncInput = { household: string; rows: PlanRow[]; titles: Titles; remindAt: number; today: string;
   dates?: string[]; all?: boolean; existingIds?: string[] };
 type EventBody = Record<string, unknown>;
@@ -57,7 +57,7 @@ type SyncAction = { op: 'put' | 'delete'; id: string; date: string; event?: Even
 type Titles = Record<string, string>;
 // deno-lint-ignore no-explicit-any
 type Body = any;
-type DayItem = { title: string; serves: number };
+type DayItem = { title: string; serves: number; frozen: boolean };
 type SyncRequest = { dates?: string[]; all?: boolean; error?: string };
 /* The pure section below keeps every parameter's type to one name, with no
    commas or braces in it: test/calendar-push.js strips the types with the
@@ -124,10 +124,15 @@ function eventForDay(household: string, row: PlanRow, titles: Titles, remindAt: 
     const title = titles[rid];
     if (!title) return;
     const n = Number((row.servings || [])[i]);
-    items.push({ title: String(title).trim(), serves: Number.isInteger(n) && n > 0 ? n : 0 });
+    /* PRE-MADE (docs/PLAN-FOOD-DIARY.md): a slot holding a meal means this one comes out of the freezer. Before
+       docs/migrations/add-premade.md the column is absent, and every item reads as fresh. */
+    const frozen = !!(Array.isArray(row.premade) && row.premade[i]);
+    items.push({ title: String(title).trim(), serves: Number.isInteger(n) && n > 0 ? n : 0, frozen });
   });
   if (!items.length) return null;
-  const description = items.map(it => it.serves ? `${it.title}, for ${it.serves}` : it.title).join('\n')
+  /* The description says which come out of the freezer: the evening-before reminder is the one that matters for them.
+     The title stays the recipes' names. */
+  const description = items.map(it => (it.serves ? `${it.title}, for ${it.serves}` : it.title) + (it.frozen ? ' (from the freezer)' : '')).join('\n')
     + `\n\nPlanned in RecipeWrangler: ${APP_URL}`;
   return {
     id: calendarEventId(household, row.plan_date),
@@ -292,7 +297,8 @@ Deno.serve(async (req: Request) => {
   }
 
   const today = londonToday(new Date());
-  let q = admin.from('planner_days').select('plan_date, is_blank, recipe_ids, servings, calendar, calendar_remind').eq('household_id', household);
+  /* Every column, so `premade` is read once its migration is in, and naming it before then cannot break the sync. */
+  let q = admin.from('planner_days').select('*').eq('household_id', household);
   q = ask.all ? q.gte('plan_date', today) : q.in('plan_date', ask.dates!);
   const { data: rows, error: rowsErr } = await q;
   if (rowsErr) return json({ error: `could not read the Planner: ${rowsErr.message}` });

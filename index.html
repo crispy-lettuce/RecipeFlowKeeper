@@ -639,6 +639,13 @@
   /* Lit up only when this day asks for a different number than the recipe
      is written for — otherwise it's just quiet information. */
   .day-recipe-serves.on{ border-color:var(--plum); color:var(--plum); }
+  /* PRE-MADE and COOKED ✓ (docs/PLAN-FOOD-DIARY.md): drawn as the SERVES pill is, beside it. */
+  .day-recipe-premade, .day-recipe-cooked{
+    flex:none; border:1px solid var(--line); background:none; border-radius:999px; padding:3px 9px; cursor:pointer;
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; color:var(--ink-soft);
+  }
+  .day-recipe-premade.on{ border-color:var(--sage); color:var(--sage); background:rgba(124,148,115,.12); }
+  .day-recipe-cooked.done{ border-color:var(--sage); color:var(--sage); cursor:default; }
   /* The calendar push (P3): the day's two switches, quiet until on, like the headcount above. */
   .day-cal{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
   .day-cal-btn{
@@ -1866,6 +1873,7 @@
             <li><a href="help.html#keep-awake" target="_blank" rel="noopener">How do I stop the screen going off while I cook?</a></li>
             <li><a href="help.html#adding" target="_blank" rel="noopener">How do I add a new recipe?</a></li>
             <li><a href="help.html#sharing" target="_blank" rel="noopener">How do I share our recipes with family?</a></li>
+            <li><a href="help.html#premade" target="_blank" rel="noopener">How do I plan a meal from the freezer?</a></li>
             <li><a href="help.html#converter" target="_blank" rel="noopener">How do we convert our own recipes for the app?</a></li>
             <li><a href="help.html#drive-backup" target="_blank" rel="noopener">How do I keep a backup in my Google Drive?</a></li>
             <li><a href="help.html#offline" target="_blank" rel="noopener">What does the OFFLINE bar mean?</a></li>
@@ -1886,6 +1894,20 @@
       <textarea id="mealTypeNote" rows="2" placeholder="How did it go? Saved with the recipe, dated today."></textarea></label>
     <div class="mini-actions">
       <button class="link-btn" id="mealTypeSkip">SKIP</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRE-MADE (docs/PLAN-FOOD-DIARY.md): which meal a planned dish from the freezer will be, asked when it is switched on,
+     so the diary entry made on the day says so. Cancel leaves it fresh. -->
+<div class="modal-overlay" id="premadeOverlay">
+  <div class="mini-panel" role="dialog" aria-modal="true" aria-labelledby="premadeHeading">
+    <h2 id="premadeHeading">Which meal is it for?</h2>
+    <p class="subtle"><span id="premadeWhat"></span> comes out of the freezer. On its day it goes into the food diary by itself,
+      as this meal, and it is left off the shopping list.</p>
+    <div class="meal-type-row" id="premadeChoices"></div>
+    <div class="mini-actions">
+      <button class="link-btn" id="premadeCancel">CANCEL</button>
     </div>
   </div>
 </div>
@@ -2903,7 +2925,9 @@ async function hydrate(opts){
        log could only ever be a cooked recipe; an ad-hoc diary entry (H2) is
        a row with no recipe_id, and filtering them out at the source would
        make them invisible to the app that just wrote them. */
-    sb.from('recipe_logs').select('id, recipe_id, cooked_on, meal_type, note, title'),
+    /* Every column since PRE-MADE (docs/PLAN-FOOD-DIARY.md): `premade` is read once its migration is in, and naming
+       it before then would fail the whole load. */
+    sb.from('recipe_logs').select('*'),
     sb.from('keywords').select('name').order('sort_order'),
     sb.from('planner_days').select('*'),
     sb.from('shortlist_items').select('*').order('date_added', {ascending:false}),
@@ -2947,7 +2971,9 @@ async function hydrate(opts){
      screen and the CSV read this. Recipe-backed rows appear in both. */
   const historyById = {};
   logs.data.forEach(l=>{
-    if(!l.recipe_id) return;
+    /* A portion eaten from the freezer is in the diary but is not cooking: it stays out of the recipe's history, so
+       "last cooked", times cooked and the streak count only real cooking (docs/PLAN-FOOD-DIARY.md). */
+    if(!l.recipe_id || l.premade) return;
     (historyById[l.recipe_id] = historyById[l.recipe_id] || []).push(l.cooked_on);
   });
   Object.values(historyById).forEach(dates=>dates.sort());
@@ -2964,8 +2990,12 @@ async function hydrate(opts){
   planner.data.forEach(row=>{
     cache.plan[row.plan_date] = row.is_blank
       ? {blank:true}
-      : withCalendarFlags({recipeIds: row.recipe_ids || [], servings: row.servings || []}, !!row.calendar, !!row.calendar_remind);
+      : withCalendarFlags(withPremade({recipeIds: row.recipe_ids || [], servings: row.servings || []}, row.premade), !!row.calendar, !!row.calendar_remind);
   });
+  /* select('*') names every column, so a `premade` key on any planner or diary row says docs/migrations/add-premade.md is
+     in. Until it is, the Planner offers no PRE-MADE switch and no save names the column. A household with neither yet
+     finds out from its first saved day. */
+  premadeAvailable = planner.data.some(row=> 'premade' in row) || logs.data.some(row=> 'premade' in row);
   rebuildCalendarDates();
   cache.shortlist = shortlist.data.map(row=>({
     id: row.id, text: row.text || '', dateAdded: row.date_added, recipeId: row.recipe_id
@@ -3048,7 +3078,9 @@ function rowToDiaryEntry(row){
     title: row.title || '',
     cookedOn: row.cooked_on,
     mealType: row.meal_type || null,
-    note: row.note || ''
+    note: row.note || '',
+    /* Present only when true, so an ordinary entry keeps the shape it always had, in the cache and in exports. */
+    ...(row.premade ? { premade: true } : {})
   };
 }
 
@@ -3071,22 +3103,30 @@ function diaryEntryTitle(entry, recipesById){
    lets the meal-type prompt (H1) update the row it just created while the
    insert is still in flight, and keeps every loader and saver in this
    file synchronous, as the rest of them are. */
-function addDiaryEntry({ recipeId = null, title = '', cookedOn, mealType = null, note = '' }){
+function addDiaryEntry({ recipeId = null, title = '', cookedOn, mealType = null, note = '', id = null, premade = false }){
   const entry = {
     /* uid(), not a second copy of it: the inline version here lacked the
-       `window.crypto &&` guard and produced a value no uuid column accepts. */
-    id: uid(),
-    recipeId, title: title.trim(), cookedOn, mealType, note
+       `window.crypto &&` guard and produced a value no uuid column accepts. A pre-made entry brings its own id,
+       worked out from the planned day (premadeLogId), so that two devices write the same row. */
+    id: id || uid(),
+    recipeId, title: title.trim(), cookedOn, mealType, note,
+    ...(premade ? { premade: true } : {})
   };
   cache.diary = cache.diary.concat([entry]);
   /* Assumed unsaved until the insert says otherwise — see unsavedDiaryIds. */
   unsavedDiaryIds.add(entry.id);
   queueWrite('the food diary', async ()=>{
-    const { error } = await sb.from('recipe_logs').insert({
+    const row = {
       id: entry.id, household_id: HOUSEHOLD_ID,
       recipe_id: entry.recipeId, title: entry.title || null,
       cooked_on: entry.cookedOn, meal_type: entry.mealType, note: entry.note || null
-    });
+    };
+    /* A pre-made entry is an upsert that leaves an existing row alone: another device may have written the same one
+       first, and that is the same meal, not a second one. The column is named only on these, which exist only once
+       the migration is in. */
+    const { error } = premade
+      ? await sb.from('recipe_logs').upsert([{ ...row, premade: true }], { onConflict: 'id', ignoreDuplicates: true })
+      : await sb.from('recipe_logs').insert(row);
     if(error) throw error;
     unsavedDiaryIds.delete(entry.id);
   });
@@ -3140,12 +3180,13 @@ function deleteDiaryEntry(id){
   const entry = cache.diary.find(e=>e.id === id);
   if(!entry) return false;
   cache.diary = cache.diary.filter(e=>e.id !== id);
-  if(entry.recipeId){
+  /* A pre-made entry never added to the recipe's history, so removing it takes nothing out of it either. */
+  if(entry.recipeId && !entry.premade){
     const recipes = loadRecipes();
     const r = recipes.find(x=>x.id === entry.recipeId);
     if(r && (r.history||[]).includes(entry.cookedOn)){
       const stillLogged = cache.diary.some(e=>
-        e.recipeId === entry.recipeId && e.cookedOn === entry.cookedOn);
+        e.recipeId === entry.recipeId && e.cookedOn === entry.cookedOn && !e.premade);
       if(!stillLogged) r.history = r.history.filter(d=>d !== entry.cookedOn);
     }
   }
@@ -3574,7 +3615,9 @@ async function replaceAllDiary(recipeList, diaryList){
         title: (e.title||'').trim() || null,
         cooked_on: e.cookedOn,
         meal_type: MEAL_TYPES.indexOf(e.mealType) === -1 ? null : e.mealType,
-        note: e.note || null
+        note: e.note || null,
+        /* On every row once the column exists: a batch upsert writes a missing key as null, which the column refuses. */
+        ...(premadeAvailable ? { premade: !!e.premade } : {})
       }));
 
     if(rows.length){
@@ -3683,6 +3726,8 @@ async function pushPlan(p){
     is_blank: !!entry.blank,
     recipe_ids: planRecipeIds(entry),
     servings: planServings(entry),
+    /* PRE-MADE on every row once the column exists: a batch upsert writes a missing key as null. */
+    ...(premadeAvailable ? { premade: planPremade(entry) } : {}),
     /* A restore says what the plan is, switches included, so the server is told the same as the cache.
        Only once the columns exist (calendarAvailable); the importer then brings the calendar into step. */
     ...(calendarAvailable ? calendarColumns(entry) : {}),
@@ -3719,6 +3764,7 @@ function savePlanDay(dateStr){
     const row = {
       household_id: HOUSEHOLD_ID, plan_date: dateStr, is_blank: !!entry.blank,
       recipe_ids: planRecipeIds(entry), servings: planServings(entry),
+      ...(premadeAvailable ? { premade: planPremade(entry) } : {}),
       /* Named only once the migration is in, like recipeToRow's source_check: before it, a row naming a
          column that does not exist would fail every Planner save. A blank day sends both as false. */
       ...(calendarAvailable ? calendarColumns(entry) : {}),
@@ -3760,11 +3806,29 @@ function planServings(entry){
   const raw = (entry && Array.isArray(entry.servings)) ? entry.servings : [];
   return ids.map((_, i)=> parseInt(raw[i], 10) || 0);
 }
-/* The two arrays read as one list of entries. planRecipeIds stays as it was
+/* Whether docs/migrations/add-premade.md is in: set by hydrate from the rows it reads. */
+let premadeAvailable = false;
+/* PRE-MADE per entry (docs/PLAN-FOOD-DIARY.md): '' for a meal cooked fresh, or the meal it is eaten as when it comes
+   out of the freezer. Padded like planServings, so an older tab that writes only recipe_ids reads back as all fresh. */
+function planPremade(entry){
+  const ids = planRecipeIds(entry);
+  const raw = (entry && Array.isArray(entry.premade)) ? entry.premade : [];
+  return ids.map((_, i)=> MEAL_TYPES.includes(raw[i]) ? raw[i] : '');
+}
+/* Kept on the entry only while some item is pre-made, as the calendar flags are only while on: an ordinary day keeps
+   exactly the shape it always had, in the cache and in exports. */
+function withPremade(entry, premade){
+  const list = Array.isArray(premade) ? premade : [];
+  if(list.some(m=> MEAL_TYPES.includes(m))) entry.premade = list.slice(0, planRecipeIds(entry).length);
+  else delete entry.premade;
+  return entry;
+}
+/* The arrays read as one list of entries. planRecipeIds stays as it was
    so the call sites that only want ids are untouched. */
 function planEntries(entry){
   const servings = planServings(entry);
-  return planRecipeIds(entry).map((recipeId, i)=> ({ recipeId, servings: servings[i] }));
+  const premade = planPremade(entry);
+  return planRecipeIds(entry).map((recipeId, i)=> ({ recipeId, servings: servings[i], premade: premade[i] }));
 }
 function setPlanBlank(dateStr){ const p = loadPlan(); p[dateStr] = {blank:true}; return savePlanDay(dateStr); }
 function clearPlanDay(dateStr){ const p = loadPlan(); delete p[dateStr]; return savePlanDay(dateStr); }
@@ -3772,9 +3836,11 @@ function addPlanRecipe(dateStr, recipeId){
   const p = loadPlan();
   const ids = planRecipeIds(p[dateStr]);
   const servings = planServings(p[dateStr]);
+  const premade = planPremade(p[dateStr]);
   ids.push(recipeId);
   servings.push(0); // as written, until someone says otherwise
-  p[dateStr] = keepCalendarFlags(p[dateStr], {recipeIds: ids, servings});
+  premade.push(''); // cooked fresh, until someone says otherwise
+  p[dateStr] = keepCalendarFlags(p[dateStr], withPremade({recipeIds: ids, servings}, premade));
   /* The one place a recipe is put on a day (the card picker and the shortlist both come here), so the one
      place the automatic toggles act. Before the save, which then writes the day and queues its sync. */
   applyCalendarAuto(p[dateStr]);
@@ -3789,8 +3855,25 @@ function setPlanServingsAt(dateStr, index, people){
   if(index < 0 || index >= ids.length) return true;
   const servings = planServings(entry);
   servings[index] = parseInt(people, 10) || 0;
-  p[dateStr] = keepCalendarFlags(entry, {recipeIds: ids, servings});
+  p[dateStr] = keepCalendarFlags(entry, withPremade({recipeIds: ids, servings}, planPremade(entry)));
   return savePlanDay(dateStr);
+}
+/* PRE-MADE on or off for one item, by its place on the day. On ('breakfast' … 'snack') is also a moment the automatic
+   reminder acts, since a meal from the freezer is the one that needs the evening-before reminder most. Then anything
+   now due goes into the diary (logDuePremade): switching a meal on for today logs it at once. */
+function setPlanPremadeAt(dateStr, index, meal){
+  const p = loadPlan();
+  const entry = p[dateStr];
+  if(!entry || !premadeAvailable) return true;
+  const ids = planRecipeIds(entry);
+  if(index < 0 || index >= ids.length) return true;
+  const premade = planPremade(entry);
+  premade[index] = MEAL_TYPES.includes(meal) ? meal : '';
+  p[dateStr] = keepCalendarFlags(entry, withPremade({recipeIds: ids, servings: planServings(entry)}, premade));
+  if(premade[index]) applyCalendarAuto(p[dateStr]);
+  const saved = savePlanDay(dateStr);
+  logDuePremade();
+  return saved;
 }
 /* Removes by list position, not by id — if the same recipe is assigned
    to a day twice on purpose (e.g. a doubled batch), removing "the one you
@@ -3801,9 +3884,11 @@ function removePlanRecipeAt(dateStr, index){
   if(!entry) return true;
   const ids = planRecipeIds(entry);
   const servings = planServings(entry);
+  const premade = planPremade(entry);
   ids.splice(index, 1);
   servings.splice(index, 1); // in lockstep, or every later entry's servings shift up one
-  if(ids.length) p[dateStr] = keepCalendarFlags(entry, {recipeIds: ids, servings}); else delete p[dateStr];
+  premade.splice(index, 1);
+  if(ids.length) p[dateStr] = keepCalendarFlags(entry, withPremade({recipeIds: ids, servings}, premade)); else delete p[dateStr];
   return savePlanDay(dateStr);
 }
 
@@ -3858,7 +3943,8 @@ function applyCalendarAuto(entry){
   const ids = planRecipeIds(entry);
   if(!ids.length) return false;
   const st = cache.settings || {};
-  const remind = !!st.calendarAutoRemind && ids.some(isMainCourse);
+  /* A Main course, or a meal of any course coming out of the freezer: that one most needs the evening-before reminder. */
+  const remind = !!st.calendarAutoRemind && (ids.some(isMainCourse) || planPremade(entry).some(Boolean));
   let changed = false;
   if((st.calendarAuto || remind) && !entry.calendar){ entry.calendar = true; changed = true; }
   if(remind && !entry.remind){ entry.remind = true; changed = true; }
@@ -5083,13 +5169,16 @@ function renderViewer(){
    rather than as an array on the recipe — the food diary (ad-hoc entries,
    meal types) builds on the same rows. The in-memory recipe keeps its
    `history` array so everything that reads it stays as it was. */
-function logRecipeUsed(id){
+/* `date` is today when the flow is finished, or the Planner day COOKED ✓ was tapped on (docs/PLAN-FOOD-DIARY.md):
+   the same entry, the same prompt, for the day it was eaten. */
+function logRecipeUsed(id, date){
   const recipes = loadRecipes();
   const idx = recipes.findIndex(r=>r.id === id);
   if(idx === -1) return;
-  const today = todayStr();
+  const today = date || todayStr();
   if(recipes[idx].history.includes(today)) return;
   recipes[idx].history.push(today);
+  recipes[idx].history.sort();
   /* The log is written first and the meal type asked for afterwards, not
      the other way round.
 
@@ -5103,9 +5192,56 @@ function logRecipeUsed(id){
      The id is generated client-side by addDiaryEntry precisely so the
      prompt can target this row while its insert is still in flight. */
   const entry = addDiaryEntry({ recipeId: id, cookedOn: today });
-  showToast(`Logged "${recipes[idx].title}" as cooked today`);
-  renderViewer();
+  showToast(`Logged "${recipes[idx].title}" as cooked ${today === todayStr() ? 'today' : formatDate(today)}`);
+  /* Only the screen it was logged from is redrawn. renderViewer from anywhere else would look for a recipe that is not
+     open and take the page back to RECIPES. */
+  if(state.view === 'viewer') renderViewer();
+  if(state.view === 'planner') renderPlanner();
   promptForMealType(entry.id, recipes[idx].title, id);
+}
+
+/* ---- PRE-MADE meals into the diary (docs/PLAN-FOOD-DIARY.md) ----
+   Every pre-made item on today or an earlier day is written to the diary once, with its meal, as eaten from the freezer.
+   Run after the load, after the tab-return refresh and after a PRE-MADE change. Nothing is ever taken out again here:
+   once in the diary an entry belongs to the diary, and plans changed before the day arrives leave nothing behind. */
+/* The row's id from the day itself: the household, the date, the recipe and which of that recipe's places on the day
+   it is. Two devices working it out at once get the same id, and the upsert keeps one row. Four FNV-1a passes with
+   different seeds make 128 bits, written as a uuid. Not a security measure, only a stable name. */
+function premadeLogId(household, date, recipeId, occurrence){
+  const text = ['premade', household, date, recipeId, occurrence].join('|');
+  const part = seed=>{
+    let h = seed >>> 0;
+    for(let i = 0; i < text.length; i++){ h ^= text.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return h.toString(16).padStart(8, '0');
+  };
+  const hex = part(0x811c9dc5) + part(0x01000193) + part(0x9e3779b9) + part(0x85ebca6b);
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-8${hex.slice(13,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
+}
+function logDuePremade(){
+  if(!premadeAvailable || !HOUSEHOLD_ID) return 0;
+  const plan = loadPlan(), today = todayStr();
+  const have = new Set(loadDiary().map(e=> e.id));
+  const library = new Set(loadRecipes().map(r=> r.id));
+  let added = 0;
+  Object.keys(plan).sort().forEach(date=>{
+    if(date > today) return;
+    const seen = {};
+    planEntries(plan[date]).forEach(({ recipeId, premade })=>{
+      const n = seen[recipeId] = (seen[recipeId] || 0) + 1;
+      /* A recipe since deleted has nothing to log against: recipe_logs needs it. */
+      if(!premade || !library.has(recipeId)) return;
+      const id = premadeLogId(HOUSEHOLD_ID, date, recipeId, n);
+      if(have.has(id)) return;
+      addDiaryEntry({ id, recipeId, cookedOn: date, mealType: premade, premade: true });
+      have.add(id);
+      added++;
+    });
+  });
+  if(added){
+    showToast(`Logged ${added} meal${added === 1 ? '' : 's'} from the freezer`);
+    if(state.view === 'history') renderHistory();
+  }
+  return added;
 }
 
 /* ---- H1: meal type at the point of logging ----
@@ -5476,7 +5612,8 @@ function renderPlannerDays(){
            travels with each row regardless of sort order, since that's
            what removal and "view" need to target the right entry. */
         const entryServings = planServings(entry);
-        const items = ids.map((id, idx)=>({ idx, serves: entryServings[idx], recipe: recipes.find(r=>r.id===id) }));
+        const entryPremade = planPremade(entry);
+        const items = ids.map((id, idx)=>({ idx, serves: entryServings[idx], premade: entryPremade[idx], recipe: recipes.find(r=>r.id===id) }));
         items.sort((a,b)=>
           courseSortIndex(a.recipe && a.recipe.tags && a.recipe.tags.course) -
           courseSortIndex(b.recipe && b.recipe.tags && b.recipe.tags.course)
@@ -5486,7 +5623,7 @@ function renderPlannerDays(){
         const isGroupingThisDay = state.groupingDate === iso;
         const groupingSel = state.groupingSelection || [];
 
-        const rows = items.map(({idx, serves, recipe})=>{
+        const rows = items.map(({idx, serves, premade, recipe})=>{
           if(!recipe){
             return `<div class="day-recipe-row">
               <span class="day-away">Recipe removed</span>
@@ -5512,6 +5649,8 @@ function renderPlannerDays(){
             ${course ? `<span class="day-recipe-course${tone}">${escapeHtml(course.toUpperCase())}</span>` : ''}
             <span class="day-recipe-time">${escapeHtml((recipe.time||'').toUpperCase())}</span>
             ${servesPill(recipe, serves, idx)}
+            ${premadePill(premade, idx)}
+            ${cookedPill(recipe, iso, todayIso, premade, idx)}
             <button class="day-recipe-remove" data-action="removeOne" data-idx="${idx}" aria-label="Remove from this day">×</button>
           </div>`;
         }).join('');
@@ -5633,6 +5772,59 @@ function servesPill(recipe, serves, idx){
     title="Cooking for ${target}${overridden ? ` — written for ${base}` : ''}. Tap to change.">SERVES ${target}</button>`;
 }
 
+/* PRE-MADE, once docs/migrations/add-premade.md is in: off, or on with the meal it will be eaten as. */
+function premadePill(premade, idx){
+  if(!premadeAvailable) return '';
+  return premade
+    ? `<button class="day-recipe-premade on" data-action="premade" data-idx="${idx}" aria-pressed="true"
+        title="Comes out of the freezer, as ${MEAL_TYPE_LABELS[premade].toLowerCase()}. Tap to make it fresh again.">PRE-MADE · ${MEAL_TYPE_LABELS[premade].toUpperCase()}</button>`
+    : `<button class="day-recipe-premade" data-action="premade" data-idx="${idx}" aria-pressed="false"
+        title="Already cooked, coming out of the freezer">PRE-MADE</button>`;
+}
+/* COOKED ✓ on today and past days, for a meal cooked fresh: the same log as finishing the recipe's flow, for this day.
+   Once that recipe is logged for that day it says so and does nothing more. A pre-made meal is logged by itself instead,
+   and a future day has not been eaten yet. */
+function cookedPill(recipe, iso, todayIso, premade, idx){
+  if(premade || iso > todayIso) return '';
+  return (recipe.history || []).includes(iso)
+    ? `<span class="day-recipe-cooked done" title="In the food diary for this day">✓ COOKED</span>`
+    : `<button class="day-recipe-cooked" data-action="cooked" data-idx="${idx}" title="Log it as cooked on this day">COOKED ✓</button>`;
+}
+
+/* The meal for a dish switched to PRE-MADE: which day and which item, while the question is open. */
+let premadeAsk = null;
+function askPremadeMeal(date, idx){
+  const ent = planEntries(loadPlan()[date])[idx];
+  if(!ent) return;
+  const recipe = loadRecipes().find(r=> r.id === ent.recipeId);
+  premadeAsk = { date, idx };
+  document.getElementById('premadeWhat').textContent = recipe ? recipe.title : 'This dish';
+  renderMealTypeButtons(document.getElementById('premadeChoices'), null);
+  document.getElementById('premadeOverlay').classList.add('open');
+  const first = document.querySelector('#premadeChoices .meal-type-btn');
+  if(first) first.focus();
+}
+function closePremadeAsk(){
+  premadeAsk = null;
+  document.getElementById('premadeOverlay').classList.remove('open');
+}
+document.getElementById('premadeChoices').addEventListener('click', e=>{
+  const btn = e.target.closest('.meal-type-btn');
+  if(!btn || !premadeAsk) return;
+  const { date, idx } = premadeAsk;
+  closePremadeAsk();
+  setPlanPremadeAt(date, idx, btn.dataset.meal);
+  renderPlanner();
+  updateSidebarCounts();
+  /* One toast that says both, since logDuePremade's own would be replaced by this one at once. */
+  const meal = MEAL_TYPE_LABELS[btn.dataset.meal].toLowerCase();
+  showToast(date <= todayStr()
+    ? `Pre-made, as ${meal}: in the food diary as eaten from the freezer, and off the shopping list`
+    : `Pre-made, as ${meal}: off the shopping list, and into the food diary on the day`);
+});
+document.getElementById('premadeCancel').addEventListener('click', closePremadeAsk);
+document.getElementById('premadeOverlay').addEventListener('click', e=>{ if(e.target.id === 'premadeOverlay') closePremadeAsk(); });
+
 function initPlannerListeners(){
   document.getElementById('dayList').addEventListener('click', e=>{
     /* Before the day-row test: the week label sits outside every day row. */
@@ -5651,7 +5843,7 @@ function initPlannerListeners(){
        on the headcount button, which would otherwise never be reachable
        while something is selected. */
     if(state.selectedShortlistId && state.groupingDate !== date
-       && !e.target.closest('[data-action="setServes"], [data-action="calToggle"], [data-action="calRemind"]')){
+       && !e.target.closest('[data-action="setServes"], [data-action="calToggle"], [data-action="calRemind"], [data-action="premade"], [data-action="cooked"]')){
       const item = loadShortlist().find(i=>i.id === state.selectedShortlistId);
       if(item && item.recipeId){
         addPlanRecipe(date, item.recipeId);
@@ -5742,6 +5934,23 @@ function initPlannerListeners(){
       }
     } else if(action === 'viewGroup'){
       openGroup(actionEl.dataset.groupId, 'planner');
+    } else if(action === 'premade'){
+      const idx = parseInt(actionEl.dataset.idx, 10);
+      const ent = planEntries(loadPlan()[date])[idx];
+      if(!ent) return;
+      if(ent.premade){
+        /* Off at once: nothing to ask. A diary entry already made for a past or today's day stays, as the diary's own. */
+        setPlanPremadeAt(date, idx, '');
+        renderPlanner();
+        updateSidebarCounts();
+        showToast('Cooked fresh again. It\'s back on the shopping list.');
+      } else {
+        askPremadeMeal(date, idx);
+      }
+    } else if(action === 'cooked'){
+      const ids = planRecipeIds(loadPlan()[date]);
+      const id = ids[parseInt(actionEl.dataset.idx, 10)];
+      if(id) logRecipeUsed(id, date);
     } else if(action === 'calToggle'){
       const entry = loadPlan()[date];
       setPlanCalendar(date, !(entry && entry.calendar));
@@ -5944,7 +6153,9 @@ function buildShoppingList(weekDays){
 
   weekDays.forEach(d=>{
     const entry = plan[isoLocal(d)];
-    planEntries(entry).forEach(({recipeId, servings})=>{
+    planEntries(entry).forEach(({recipeId, servings, premade})=>{
+      /* A meal coming out of the freezer has nothing to buy (docs/PLAN-FOOD-DIARY.md). */
+      if(premade) return;
       const recipe = recipes.find(r=>r.id === recipeId);
       if(!recipe) return; // orphaned reference — nothing to shop for, skip quietly
       recipeTitles.add(recipe.title);
@@ -6334,6 +6545,7 @@ function historyByDate(recipes){
       id: e.recipeId,
       recipeId: e.recipeId,
       adHoc: !e.recipeId,
+      premade: !!e.premade,
       mealType: e.mealType,
       title: diaryEntryTitle(e, byId)
     });
@@ -6495,7 +6707,8 @@ function renderHistoryDayDetail(){
            statement that there is nothing behind it. */
         const name = e.adHoc
           ? `<span>${escapeHtml(e.title)}</span><span class="diary-kind">AD HOC</span>`
-          : `<button class="day-recipe-title" data-recipe-id="${e.recipeId}">${escapeHtml(e.title)}</button>`;
+          : `<button class="day-recipe-title" data-recipe-id="${e.recipeId}">${escapeHtml(e.title)}</button>`
+            + (e.premade ? `<span class="diary-kind">FROM THE FREEZER</span>` : '');
         return `<div class="history-day-recipe${e.adHoc ? ' diary-adhoc' : ''}">
           <span>${name}${tag}</span>
           <button class="link-btn" data-delete-log="${e.logId}" aria-label="Remove this entry">REMOVE</button>
@@ -7583,7 +7796,8 @@ function calendarAutoToggles(){
       <p class="subtle">${words}</p>
     </div>`;
   return toggle('calAutoAdd', !!st.calendarAuto, 'AUTOMATICALLY ADD TO CALENDAR', 'Each day you plan goes into the calendar.')
-       + toggle('calAutoRemind', !!st.calendarAutoRemind, 'AUTOMATICALLY REMIND ME FOR MAIN MEALS', 'Days with a Main course get the evening-before reminder.');
+       + toggle('calAutoRemind', !!st.calendarAutoRemind, 'AUTOMATICALLY REMIND ME FOR MAIN MEALS',
+           premadeAvailable ? 'Days with a Main course or a pre-made meal get the evening-before reminder.' : 'Days with a Main course get the evening-before reminder.');
 }
 
 /* ---- Recipe sharing between households (docs/PLAN-RECIPE-SHARING.md) ----
@@ -9736,7 +9950,7 @@ function exportDiaryCsv(){
       e.cookedOn,
       e.mealType ? MEAL_TYPE_LABELS[e.mealType] : '',
       diaryEntryTitle(e, byId),
-      e.recipeId ? 'Recipe' : 'Ad hoc',
+      e.recipeId ? (e.premade ? 'Recipe, from the freezer' : 'Recipe') : 'Ad hoc',
       recipe && recipe.tags ? (recipe.tags.course || '') : '',
       recipe ? diaryIngredientSummary(recipe) : ''
     ].map(csvCell).join(',');
@@ -9790,7 +10004,8 @@ function importAllData(file){
           id: e.id, recipeId: e.recipeId || null, title: e.title || '',
           cookedOn: e.cookedOn,
           mealType: MEAL_TYPES.indexOf(e.mealType) === -1 ? null : e.mealType,
-          note: e.note || ''
+          note: e.note || '',
+          ...(premadeAvailable && e.premade ? { premade: true } : {})
         }));
     }
     queueWrite('cooking history', ()=> replaceAllDiary(data.recipes, Array.isArray(data.diary) ? data.diary : null), { whole: true });
@@ -9934,6 +10149,7 @@ async function startApp(){
   /* Apart from hydrate, so nothing about sharing can sign anyone out; it redraws what it changes when it lands. */
   loadSharing();
   maybeWeeklyDriveBackup();
+  logDuePremade();
   /* Once, after the first load that succeeds. */
   if(!calendarReturnHandled){ calendarReturnHandled = true; handleCalendarReturn(calendarReturn); }
 }
@@ -9981,6 +10197,7 @@ async function refreshLibrary(){
   renderHome();
   loadSharing();
   maybeWeeklyDriveBackup();
+  logDuePremade();
   return true;
 }
 

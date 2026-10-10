@@ -4881,6 +4881,198 @@ const check = (name, pass, detail) => {
   check('    saved three days ago, nothing is sent by itself; saved eight days ago, the load sends one',
         drRecentS.calls === 0 && /Last saved to Drive/.test(drRecentS.text) && drOldS.calls === 1, JSON.stringify([drRecentS.calls, drOldS.calls]));
 
+  /* ---- PRE-MADE meals and COOKED ✓ (10 Oct 2026, docs/PLAN-FOOD-DIARY.md) ----
+     Before docs/migrations/add-premade.md (the main page: no `premade` key on any row), then on a fresh page whose planner and
+     diary rows carry the columns. The fixture plans Test Pasta today and Pasta + Soup tomorrow. */
+  console.log('\nPRE-MADE and COOKED ✓');
+  const pmIso = off => page.evaluate(o => { const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + o); return isoLocal(d); }, off);
+  const PM_TODAY = await pmIso(0), PM_TOMORROW = await pmIso(1), PM_YESTERDAY = await pmIso(-1);
+  const PM_R1 = '11111111-1111-4111-8111-111111111111', PM_R2 = '22222222-2222-4222-8222-222222222222';
+  const pmDrain = p => p.evaluate(async () => { let t; do { t = writeQueue; await t; } while(t !== writeQueue); });
+  const pmPre = await page.evaluate(async ([today]) => {
+    showView('planner');
+    const m = window.__WRITES__.length;
+    setPlanServingsAt(today, 0, 0);
+    let t; do { t = writeQueue; await t; } while(t !== writeQueue);
+    const row = window.__WRITES__.slice(m).filter(w => w.table === 'planner_days').flatMap(w => w.rows || [])[0] || {};
+    const todayRow = document.querySelector(`.day-row[data-date="${today}"]`);
+    return { available: premadeAvailable, pills: document.querySelectorAll('#dayList .day-recipe-premade').length,
+      key: 'premade' in row, cooked: todayRow ? todayRow.querySelectorAll('[data-action="cooked"]').length : -1 };
+  }, [PM_TODAY]);
+  check('    before the database change: no PRE-MADE switch, and a Planner save never names the column; COOKED ✓ needs no change and is offered today',
+        !pmPre.available && pmPre.pills === 0 && !pmPre.key && pmPre.cooked === 1, JSON.stringify(pmPre));
+  const pmFuture = await page.evaluate(t => document.querySelector(`.day-row[data-date="${t}"]`).querySelectorAll('[data-action="cooked"]').length, PM_TOMORROW);
+  check('    COOKED ✓ is not offered on a day still to come', pmFuture === 0, String(pmFuture));
+  let pmM = await page.evaluate(() => window.__WRITES__.length);
+  await page.click(`.day-row[data-date="${PM_TODAY}"] [data-action="cooked"]`);
+  await page.waitForTimeout(300);
+  await pmDrain(page);
+  const pmCooked = await page.evaluate(([m, today, r1]) => {
+    const ins = window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs');
+    const rows = ins.flatMap(w => Array.isArray(w.rows) ? w.rows : [w.rows]);
+    return { ops: ins.map(w => w.op), rows: rows.map(r => ({ recipe: r.recipe_id === r1, on: r.cooked_on, premade: 'premade' in r })),
+      today, prompt: document.getElementById('mealTypeOverlay').classList.contains('open'), view: state.view,
+      done: (document.querySelector(`.day-row[data-date="${today}"] .day-recipe-cooked.done`) || {}).textContent || '',
+      history: loadRecipes().find(r => r.id === r1).history.includes(today) };
+  }, [pmM, PM_TODAY, PM_R1]);
+  await page.evaluate(() => closeMealTypePrompt());
+  check('    COOKED ✓ logs the recipe for that day exactly as finishing the flow does, asks which meal, stays on the Planner, then reads ✓ COOKED',
+        JSON.stringify(pmCooked.ops) === JSON.stringify(['insert']) && pmCooked.rows.length === 1 && pmCooked.rows[0].recipe
+        && pmCooked.rows[0].on === PM_TODAY && !pmCooked.rows[0].premade && pmCooked.prompt && pmCooked.view === 'planner'
+        && pmCooked.done === '✓ COOKED' && pmCooked.history, JSON.stringify(pmCooked));
+  pmM = await page.evaluate(() => window.__WRITES__.length);
+  const pmPast = await page.evaluate(async ([m, y, r2]) => { logRecipeUsed(r2, y); let t; do { t = writeQueue; await t; } while(t !== writeQueue);
+    closeMealTypePrompt();
+    const rows = window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs').flatMap(w => Array.isArray(w.rows) ? w.rows : [w.rows]);
+    const h = loadRecipes().find(r => r.id === r2).history;
+    return { on: rows.map(r => r.cooked_on), toast: document.querySelector('.toast').textContent, sorted: h.join() === h.slice().sort().join() };
+  }, [pmM, PM_YESTERDAY, PM_R2]);
+  check('    logging a recipe for an earlier day writes that day, says the date, and keeps its history in order',
+        JSON.stringify(pmPast.on) === JSON.stringify([PM_YESTERDAY]) && !/cooked today/.test(pmPast.toast) && pmPast.sorted, JSON.stringify(pmPast));
+
+  // After the migration: a fresh page whose rows carry the columns.
+  const pmPage = await browser.newPage();
+  pmPage.on('pageerror', e => errors.push('PAGEERROR (pre-made): ' + e.message));
+  await pmPage.addInitScript(([today, tomorrow, yesterday, r1, r2]) => {
+    const H = '286a8a12-c12a-4b83-afbc-0912533f6b1c';
+    window.__STUB_EXTRA__ = {
+      planner_days: [
+        { household_id: H, plan_date: today, is_blank: false, recipe_ids: [r1], servings: [], premade: [] },
+        { household_id: H, plan_date: tomorrow, is_blank: false, recipe_ids: [r1, r2], servings: [], premade: [] }
+      ],
+      recipe_logs: [
+        { id: 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', household_id: H, recipe_id: r1, cooked_on: '2026-09-15', meal_type: 'dinner', note: null, title: null, premade: false },
+        { id: 'aaaaaaaa-9999-4999-8999-aaaaaaaaaaaa', household_id: H, recipe_id: r2, cooked_on: yesterday, meal_type: 'lunch', note: null, title: null, premade: true }
+      ]
+    };
+  }, [PM_TODAY, PM_TOMORROW, PM_YESTERDAY, PM_R1, PM_R2]);
+  await pmPage.clock.setFixedTime(FIXTURE_NOW);
+  await pmPage.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await pmPage.waitForTimeout(1500);
+  const pmLoad = await pmPage.evaluate(([y, r2]) => ({ available: premadeAvailable,
+    r2history: loadRecipes().find(r => r.id === r2).history, diary: loadDiary().filter(e => e.premade).map(e => e.cookedOn),
+    kindInDay: (() => { state.historySelectedDate = y; showView('history'); return document.getElementById('historyDayDetail').textContent; })() }), [PM_YESTERDAY, PM_R2]);
+  check('    a diary entry eaten from the freezer is in the diary, marked FROM THE FREEZER, and not in the recipe\'s cooking history',
+        pmLoad.available && JSON.stringify(pmLoad.diary) === JSON.stringify([PM_YESTERDAY]) && !pmLoad.r2history.includes(PM_YESTERDAY)
+        && /FROM THE FREEZER/.test(pmLoad.kindInDay), JSON.stringify(pmLoad));
+  /* Each row's name with its whole description (amounts included), so a halved amount shows as a change. */
+  const pmShop = () => pmPage.evaluate(() => buildShoppingList(groupDaysByWeek(dayList())[0] || []).categories
+    .flatMap(c => c.items.map(i => i.name + ' ' + JSON.stringify(i))));
+  await pmPage.evaluate(() => showView('planner'));
+  const pmShopBefore = await pmShop();
+  pmM = await pmPage.evaluate(() => window.__WRITES__.length);
+  await pmPage.click(`.day-row[data-date="${PM_TODAY}"] [data-action="premade"]`);
+  await pmPage.waitForTimeout(200);
+  const pmAsk = await pmPage.evaluate(() => ({ open: document.getElementById('premadeOverlay').classList.contains('open'),
+    what: document.getElementById('premadeWhat').textContent, meals: document.querySelectorAll('#premadeChoices .meal-type-btn').length }));
+  await pmPage.click('#premadeChoices .meal-type-btn[data-meal="dinner"]');
+  await pmPage.waitForTimeout(200);
+  await pmDrain(pmPage);
+  const pmOn = await pmPage.evaluate(([m, today, r1]) => {
+    const ws = window.__WRITES__.slice(m);
+    const plan = ws.filter(w => w.table === 'planner_days' && w.op === 'upsert').flatMap(w => w.rows).filter(r => r.plan_date === today);
+    const logs = ws.filter(w => w.table === 'recipe_logs');
+    return { plan: plan.map(r => r.premade), logs: logs.map(w => ({ op: w.op, opts: w.opts, rows: w.rows })),
+      pill: (document.querySelector(`.day-row[data-date="${today}"] .day-recipe-premade`) || {}).textContent || '',
+      cookedBtn: document.querySelectorAll(`.day-row[data-date="${today}"] [data-action="cooked"]`).length,
+      history: loadRecipes().find(r => r.id === r1).history.includes(today),
+      expectId: premadeLogId('286a8a12-c12a-4b83-afbc-0912533f6b1c', today, r1, 1), toast: document.querySelector('.toast').textContent };
+  }, [pmM, PM_TODAY, PM_R1]);
+  check('    PRE-MADE asks which meal first, then saves that meal in the item\'s slot and reads PRE-MADE · DINNER, with no COOKED ✓ beside it',
+        pmAsk.open && pmAsk.what === 'Test Pasta' && pmAsk.meals === 4 && JSON.stringify(pmOn.plan) === JSON.stringify([['dinner']])
+        && pmOn.pill.trim() === 'PRE-MADE · DINNER' && pmOn.cookedBtn === 0, JSON.stringify([pmAsk, pmOn.plan, pmOn.pill]));
+  const pmLog = pmOn.logs.length === 1 ? pmOn.logs[0] : null;
+  const pmRow = pmLog && pmLog.rows && pmLog.rows[0];
+  check('    today\'s pre-made meal goes into the diary at once: one upsert that ignores a duplicate, its own worked-out id, the meal, premade, and no cooking history',
+        pmLog && pmLog.op === 'upsert' && pmLog.opts && pmLog.opts.ignoreDuplicates === true && pmLog.opts.onConflict === 'id'
+        && pmRow.id === pmOn.expectId && pmRow.premade === true && pmRow.meal_type === 'dinner' && pmRow.cooked_on === PM_TODAY
+        && pmRow.recipe_id === PM_R1 && !pmOn.history && /in the food diary as eaten from the freezer/.test(pmOn.toast), JSON.stringify([pmOn.logs, pmOn.toast]));
+  const pmShopAfter = await pmShop();
+  const pmPasta = list => list.find(n => /^Dried pasta /.test(n)) || '';
+  check('    and its ingredients are off the week\'s shopping list: the pasta row now buys only tomorrow\'s, still fresh',
+        pmPasta(pmShopBefore) && pmPasta(pmShopAfter) && pmPasta(pmShopBefore) !== pmPasta(pmShopAfter)
+        && /600/.test(pmPasta(pmShopBefore)) && /300/.test(pmPasta(pmShopAfter)) && !/600/.test(pmPasta(pmShopAfter)),
+        JSON.stringify([pmPasta(pmShopBefore), pmPasta(pmShopAfter)]));
+  const pmOnlyToday = await pmPage.evaluate(today => buildShoppingList([new Date(today + 'T00:00:00')]).totalItems, PM_TODAY);
+  check('    a day whose only meal is pre-made has nothing to buy', pmOnlyToday === 0, String(pmOnlyToday));
+  pmM = await pmPage.evaluate(() => window.__WRITES__.length);
+  const pmAgain = await pmPage.evaluate(async m => { const n = logDuePremade(); let t; do { t = writeQueue; await t; } while(t !== writeQueue);
+    return { n, logs: window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs').length }; }, pmM);
+  const pmIds = await pmPage.evaluate(([today, r1]) => { const H = '286a8a12-c12a-4b83-afbc-0912533f6b1c';
+    const a = premadeLogId(H, today, r1, 1);
+    return { same: a === premadeLogId(H, today, r1, 1), uuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(a),
+      differs: new Set([a, premadeLogId(H, today, r1, 2), premadeLogId(H, '2026-01-01', r1, 1), premadeLogId(H.replace('2', '3'), today, r1, 1)]).size === 4 }; }, [PM_TODAY, PM_R1]);
+  check('    running it again writes nothing, and the id is the same on any device for the same day and place, and different otherwise',
+        pmAgain.n === 0 && pmAgain.logs === 0 && pmIds.same && pmIds.uuid && pmIds.differs, JSON.stringify([pmAgain, pmIds]));
+  pmM = await pmPage.evaluate(() => window.__WRITES__.length);
+  const pmLater = await pmPage.evaluate(async ([m, tomorrow]) => {
+    setPlanPremadeAt(tomorrow, 1, 'lunch'); let t; do { t = writeQueue; await t; } while(t !== writeQueue);
+    const logsAfterOn = window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs').length;
+    removePlanRecipeAt(tomorrow, 1); do { t = writeQueue; await t; } while(t !== writeQueue);
+    const ws = window.__WRITES__.slice(m);
+    const rows = ws.filter(w => w.table === 'planner_days' && w.op === 'upsert').flatMap(w => w.rows).filter(r => r.plan_date === tomorrow);
+    return { logsAfterOn, logs: ws.filter(w => w.table === 'recipe_logs').length, last: rows[rows.length - 1] };
+  }, [pmM, PM_TOMORROW]);
+  check('    a day still to come is not logged; removing its pre-made dish before the day leaves nothing behind, and the slots stay in step',
+        pmLater.logsAfterOn === 0 && pmLater.logs === 0 && JSON.stringify(pmLater.last.recipe_ids) === JSON.stringify([PM_R1])
+        && JSON.stringify(pmLater.last.premade) === JSON.stringify(['']), JSON.stringify(pmLater));
+  pmM = await pmPage.evaluate(() => window.__WRITES__.length);
+  await pmPage.click(`.day-row[data-date="${PM_TODAY}"] [data-action="premade"]`);
+  await pmPage.waitForTimeout(200);
+  await pmDrain(pmPage);
+  const pmOff = await pmPage.evaluate(([m, today]) => {
+    const ws = window.__WRITES__.slice(m);
+    return { plan: ws.filter(w => w.table === 'planner_days').flatMap(w => w.rows || []).map(r => r.premade),
+      logs: ws.filter(w => w.table === 'recipe_logs').map(w => w.op), kept: loadDiary().filter(e => e.premade && e.cookedOn === today).length,
+      open: document.getElementById('premadeOverlay').classList.contains('open') };
+  }, [pmM, PM_TODAY]);
+  check('    tapping PRE-MADE · DINNER again makes it fresh at once, with no question; the diary entry already made stays',
+        JSON.stringify(pmOff.plan) === JSON.stringify([['']]) && pmOff.logs.length === 0 && pmOff.kept === 1 && !pmOff.open, JSON.stringify(pmOff));
+  const pmDel = await pmPage.evaluate(([today, r1]) => {
+    const e = loadDiary().find(x => x.premade && x.cookedOn === today);
+    const r = loadRecipes().find(x => x.id === r1);
+    r.history.push(today); r.history.sort();
+    deleteDiaryEntry(e.id);
+    return r.history.includes(today);
+  }, [PM_TODAY, PM_R1]);
+  check('    removing a pre-made entry from the diary leaves the recipe\'s own cooking that day alone', pmDel === true, String(pmDel));
+  const pmRemind = await pmPage.evaluate(([today, r2]) => {
+    calendarAvailable = true; calendarConn = { connected: true }; calendarAutoAvailable = true;
+    cache.settings.calendarAutoRemind = true; cache.settings.calendarAuto = false;
+    const r = loadRecipes().find(x => x.id === r2); const course = r.tags.course; r.tags.course = 'Side';
+    const fresh = { recipeIds: [r2], servings: [0] }, frozen = { recipeIds: [r2], servings: [0], premade: ['lunch'] };
+    const out = { fresh: applyCalendarAuto(fresh), frozen: applyCalendarAuto(frozen), flags: [frozen.calendar, frozen.remind] };
+    r.tags.course = course; calendarAvailable = false; calendarConn = null; calendarAutoAvailable = false; cache.settings.calendarAutoRemind = false;
+    return out;
+  }, [PM_TODAY, PM_R2]);
+  check('    AUTOMATICALLY REMIND ME FOR MAIN MEALS also reminds for a pre-made Side, and not for a fresh one',
+        pmRemind.fresh === false && pmRemind.frozen === true && pmRemind.flags[0] === true && pmRemind.flags[1] === true, JSON.stringify(pmRemind));
+  const pmExport = await pmPage.evaluate(([today, tomorrow]) => {
+    setPlanPremadeAt(tomorrow, 0, 'snack');
+    const x = exportPayload();
+    return { plan: x.plan[tomorrow].premade, plainDay: 'premade' in x.plan[today], diary: x.diary.filter(e => e.premade).length,
+      ordinary: x.diary.filter(e => !e.premade).every(e => !('premade' in e)) };
+  }, [PM_TODAY, PM_TOMORROW]);
+  const pmBackup = await pmPage.evaluate(() => JSON.stringify(exportPayload()));
+  pmM = await pmPage.evaluate(() => window.__WRITES__.length);
+  pmPage.once('dialog', d => d.accept());
+  await pmPage.setInputFiles('#importFileInput', { name: 'kitchen-backup-pm.json', mimeType: 'application/json', buffer: Buffer.from(pmBackup) });
+  await pmPage.waitForTimeout(1200);
+  await pmDrain(pmPage);
+  const pmImp = await pmPage.evaluate(([m, tomorrow]) => {
+    const ws = window.__WRITES__.slice(m);
+    const logs = ws.filter(w => w.table === 'recipe_logs' && w.op === 'upsert').flatMap(w => w.rows);
+    const plan = ws.filter(w => w.table === 'planner_days' && w.op === 'upsert').flatMap(w => w.rows);
+    return { logsAll: logs.length && logs.every(r => typeof r.premade === 'boolean'), logsPm: logs.filter(r => r.premade).length,
+      planAll: plan.length && plan.every(r => Array.isArray(r.premade)), planPm: (plan.find(r => r.plan_date === tomorrow) || {}).premade,
+      cache: loadDiary().filter(e => e.premade).length };
+  }, [pmM, PM_TOMORROW]);
+  check('    EXPORT DATA carries PRE-MADE on the day and on the diary entry only where set, and IMPORT DATA writes it back on every row',
+        JSON.stringify(pmExport.plan) === JSON.stringify(['snack']) && !pmExport.plainDay && pmExport.diary === 1 && pmExport.ordinary
+        && pmImp.logsAll && pmImp.logsPm === 1 && pmImp.planAll && JSON.stringify(pmImp.planPm) === JSON.stringify(['snack']) && pmImp.cache === 1,
+        JSON.stringify([pmExport, pmImp]));
+  await pmPage.close();
+
   const failed = checks.filter(c => !c.pass).length;
   console.log(`\n${checks.length} checks, ${failed} failed`);
   console.log(errors.length ? '\nERRORS:\n' + errors.join('\n') : 'no console/page errors');

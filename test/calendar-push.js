@@ -98,6 +98,12 @@ const evR = sync.eventForDay(HH, day('2026-10-05', { calendar_remind: true }), t
 check('with REMIND ME on: one pop-up, 240 minutes before (20:00 the evening before)',
       evR && evR.reminders.useDefault === false && evR.reminders.overrides.length === 1
       && evR.reminders.overrides[0].method === 'popup' && evR.reminders.overrides[0].minutes === 240, evR && JSON.stringify(evR.reminders));
+/* PRE-MADE (10 Oct 2026, docs/PLAN-FOOD-DIARY.md): a meal from the freezer says so in the description, and only that one. */
+const evPm = sync.eventForDay(HH, day('2026-10-05', { recipe_ids: [R1, R2], servings: [4, 0], premade: ['dinner', ''] }), titles, 1200);
+check('a pre-made meal says "(from the freezer)" beside its own line only, and the title is unchanged',
+      evPm && evPm.description.startsWith('Invented Bean Hotpot, for 4 (from the freezer)\nPretend Flatbreads\n\n')
+      && evPm.summary === 'Invented Bean Hotpot + Pretend Flatbreads'
+      && !sync.eventForDay(HH, day('2026-10-05'), titles, 1200).description.includes('freezer'), evPm && JSON.stringify(evPm.description));
 check('the household\'s own reminder time is used', sync.eventForDay(HH, day('2026-10-05', { calendar_remind: true }), titles, 1080).reminders.overrides[0].minutes === 360);
 check('a recipe since deleted is left out; a day with none left has no event',
       sync.eventForDay(HH, day('2026-10-05', { recipe_ids: [GONE, R2], servings: [2, 2] }), titles, 1200).summary === 'Pretend Flatbreads'
