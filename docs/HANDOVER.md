@@ -2098,6 +2098,16 @@ at start-up). One check died on a timeout instead of failing by name under its m
 *Not verified:* anything against Google or the live database: the consent with two permissions, the folder, the upload, the tidy,
 and the token's Drive scope. That is tablet step 44a, after the household's steps in the plan's §4.
 
+**Converting your own recipes, in the guide (10 Oct 2026).** Asked by the household for a second household that will convert its
+own recipes: link to the instructions rather than copy them into the guide, since the file is long and revised over time.
+`help.html` §9 gains "Converting your own recipes" (`#converter`): download `converter/conversion-instructions.md` from GitHub, add it
+to a project in the Claude app, give it a page, a photo or text, paste its reply into NEW RECIPE; download it again now and then.
+Settings → HELP gains a QUICK ANSWER for it. *Verified by.* `node test/help-guide.js` **7** (6 before), exit 0: a new check that
+every link from the guide to a file in this repo names a file that exists, seen failing by name under two mutations (the path
+misspelt; both links removed). `node test/core.test.js` 143 and `node test/build.js && node test/smoke.js` 472, each exit 0.
+*Not verified:* how GitHub Pages would serve the `.md` file itself (Pages was unreachable from the session), which is why the
+guide links to GitHub rather than to the app's own site; and the Claude app's own steps, which are described in plain words.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export

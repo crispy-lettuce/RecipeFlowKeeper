@@ -107,7 +107,7 @@ throw rather than pass vacuously. After a change to `source-ingredients`, or to 
 in `core.js`, run `node test/source-ingredients.js` (12 checks, lifted the same way). After a change to
 `calendar-auth` or `calendar-sync`, run `node test/calendar-push.js` (31 checks, lifted the same way); after a change to
 `drive-backup`, `node test/drive-backup.js` (11 checks). After changing
-an on-screen label, or `help.html`, run `node test/help-guide.js` (6 checks).
+an on-screen label, or `help.html`, run `node test/help-guide.js` (7 checks).
 
 ## Things that will bite
 
