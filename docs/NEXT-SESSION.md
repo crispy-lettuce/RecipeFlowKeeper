@@ -17,9 +17,10 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **Library:** 34 recipes. 2 carry a stored comparison with their source, 1 of them validated; 6 are BBC Good Food, five of which
   were rebuilt from another edition before the 29 Sep rule (the household's job below). 1 recipe has a source photo.
 - **Cooking diary:** 116 entries. **Word matches:** 15. **Household aisles:** 1. **Swaps:** 2. **Cooking notes:** none yet (R4 built 30 Sep).
-- **Tests:** `node test/core.test.js` 143 checks; `node test/build.js && node test/smoke.js` 472 checks (418 until P3 PR 2, 437 until the
-  calendar toggles, both 9 Oct; 447 until the HELP tab, 448 until recipe sharing, 465 until the Drive backup, all 10 Oct).
-  `node test/calendar-push.js` 31 checks; `node test/drive-backup.js` 11 checks; `node test/help-guide.js` 7 checks. `offline-harness` runs
+- **Tests:** `node test/core.test.js` 143 checks; `node test/build.js && node test/smoke.js` 487 checks (418 until P3 PR 2, 437 until the
+  calendar toggles, both 9 Oct; 447 until the HELP tab, 448 until recipe sharing, 465 until the Drive backup, 472 until PRE-MADE,
+  all 10 Oct).
+  `node test/calendar-push.js` 32 checks; `node test/drive-backup.js` 11 checks; `node test/help-guide.js` 7 checks. `offline-harness` runs
   both on every PR and is required on `main`.
 - **Schema:** `add_calendar_auto` (the P3 toggles) was applied by the household on 9 Oct, before #72 merged. The one before it,
   `add_calendar_push`, was applied 9 Oct, before the household connected the calendar at 17:52 UTC (`docs/INFRASTRUCTURE.md`;
@@ -57,8 +58,8 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
    table, `docs/ARCHITECTURE.md` §4, `docs/HANDOVER.md`).
 5. **The how-to guide (10 Oct):** `help.html`, opened from Settings → HELP. Drafted for the household to read; then one PR.
    Keep it true: a renamed button or a new everyday feature updates it in the same PR (`test/help-guide.js`).
-6. **PRE-MADE meals and COOKED ✓ (10 Oct, planned, waiting for the household's review):** the food diary fed from the Planner.
-   The plan is in the session's plan file and becomes `docs/PLAN-FOOD-DIARY.md` with its first PR.
+6. **PRE-MADE meals and COOKED ✓ (10 Oct, approved and built):** the food diary fed from the Planner, `docs/PLAN-FOOD-DIARY.md`.
+   The SQL, `docs/migrations/add-premade.md`, is the household's to apply first; then merge, then redeploy `calendar-sync`.
 7. **A new household, and sharing recipes with it (10 Oct, answered):** `docs/ONBOARDING.md` §4 makes the household from an
    email address; `docs/PLAN-RECIPE-SHARING.md` lets either household browse the other's recipes and copy them. The SQL,
    `docs/migrations/add-recipe-sharing.md`, is the household's to apply first; then the app's side. **Merged 10 Oct (#74), the SQL
@@ -79,7 +80,7 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **Tablet step 39a**, cooking notes.
 - **P3:** tablet and phone steps 40a and 40b (the SQL and both PRs are in, 9 Oct).
 - **Read the how-to guide** and say what to change; then tablet step 42a once its PR merges.
-- **Review the PRE-MADE / COOKED ✓ plan** (10 Oct).
+- **PRE-MADE / COOKED ✓:** the steps in `docs/PLAN-FOOD-DIARY.md` §5 (the SQL, merge, redeploy `calendar-sync`); tablet step 41a.
 - **Recipe sharing (merged 10 Oct):** make the new household (`docs/ONBOARDING.md` §4), then name each household and SHARE from
   Settings → APP; tablet step 43a.
 - **The Drive backup (live 10 Oct):** look in Google Drive for RecipeWrangler backups and download one file (tablet step 44a, (3)).

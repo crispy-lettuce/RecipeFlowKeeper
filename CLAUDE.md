@@ -88,7 +88,7 @@ node test/build.js && node test/smoke.js
 
 `core.test.js` is 143 checks in Node, in about two seconds: the pure functions, the dictionary, the
 shopping list's naming rules, and the rules that keep `core.js` and `index.html` apart. The smoke
-suite is 472 checks. **Run both,
+suite is 487 checks. **Run both,
 always** — `smoke.js` loads what `build.js` wrote, so skipping the build
 tests your previous edit and reports a pass or a failure that belongs to code you have changed.
 
@@ -105,7 +105,7 @@ node test/image-integrity.js
 It lifts the code out of the real source rather than copying it, so a signature change makes it
 throw rather than pass vacuously. After a change to `source-ingredients`, or to `sourceFidelity`
 in `core.js`, run `node test/source-ingredients.js` (12 checks, lifted the same way). After a change to
-`calendar-auth` or `calendar-sync`, run `node test/calendar-push.js` (31 checks, lifted the same way); after a change to
+`calendar-auth` or `calendar-sync`, run `node test/calendar-push.js` (32 checks, lifted the same way); after a change to
 `drive-backup`, `node test/drive-backup.js` (11 checks). After changing
 an on-screen label, or `help.html`, run `node test/help-guide.js` (7 checks).
 

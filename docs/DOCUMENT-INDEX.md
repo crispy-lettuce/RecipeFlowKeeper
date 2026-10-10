@@ -105,6 +105,13 @@ useful with no Claude Code session and no prior context at all.
 
 ---
 
+### `docs/migrations/add-premade.md` — a schema change, written 10 Oct 2026, not applied yet
+**What:** `planner_days.premade` (per planned dish: fresh, or the meal it is eaten as from the freezer) and `recipe_logs.premade`,
+for `docs/PLAN-FOOD-DIARY.md`. Who applies it and when (before merging, and before redeploying `calendar-sync`), how to check it and
+how to undo it. Tested on a scratch Postgres. DDL only, no data.
+
+**Use it when:** applying it (the household), checking it, or undoing it.
+
 ### `docs/migrations/add-drive-backup.md` — a schema change, applied by the household 10 Oct 2026
 **What:** three columns on `calendar_connections` (`drive_folder_id`, `drive_backup_at`, `drive_last_error`) where the
 `drive-backup` function records the weekly backup to Google Drive (`docs/PLAN-DRIVE-BACKUP.md`). Who applies it and when, why on
@@ -343,6 +350,14 @@ handful of` reading; `canned`/`tinned`).
 **Use it when:** starting the review, or answering those three decisions.
 
 **Don't:** look for the recipe's lines in it. They are left out on purpose (this repo is public).
+
+---
+
+### `docs/PLAN-FOOD-DIARY.md` — the food diary from the Planner: PRE-MADE meals and COOKED ✓ (10 Oct 2026; approved and built)
+**What:** why (3 of 27 past planned days had a diary entry), the household's four answers, how PRE-MADE and COOKED ✓ behave, the
+data, what was left for later (a freezer stock count, "didn't happen", ad-hoc entries from the Planner), and §5, the household's steps.
+
+**Use it when:** setting it up, running tablet step 41a, or answering "why isn't this in last cooked?".
 
 ---
 

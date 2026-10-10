@@ -526,6 +526,18 @@ removed page was deleted), and no listed page missing.*
     the tablet (they belong to the household). **What no test can judge: whether "Main" in the course tags matches what the household
     means by a main meal, recipe by recipe.** Undo: switch the toggles off and the days off by hand; or the page's undo SQL.
 
+41a. **PRE-MADE meals and COOKED ✓ (new 10 Oct; `docs/PLAN-FOOD-DIARY.md`; only after `docs/migrations/add-premade.md` is
+    applied and `calendar-sync` redeployed).** (1) *Before:* note the shopping list's amount for one ingredient of today's dish.
+    (2) *PRE-MADE on today's dish:* it asks which meal; choose Dinner. It reads PRE-MADE · DINNER, the toast says it's in the food
+    diary, and the shopping list's amount drops by that dish's share. (3) *HISTORY, today:* the dish is there, Dinner, marked FROM
+    THE FREEZER; its recipe card's "last cooked" has not changed. (4) *Leave the tab and come back*, and on a second device: still
+    one diary entry, not two. (5) *PRE-MADE on tomorrow's dish:* nothing in the diary yet; tomorrow it appears by itself once the app
+    is opened. (6) *COOKED ✓ on another of today's dishes:* the meal question and the note box, then ✓ COOKED; HISTORY shows it
+    without the freezer mark. (7) *Calendar:* with AUTOMATICALLY REMIND ME FOR MAIN MEALS on, a pre-made dish of any course gets
+    the evening-before reminder, and the event's description says "(from the freezer)". **Read-only afterwards:** `recipe_logs` has
+    one row for the pre-made dish with `premade = true` and `meal_type = 'dinner'`. Undo: tap PRE-MADE · DINNER to make it fresh;
+    REMOVE the diary entry in HISTORY.
+
 42a. **The how-to guide (new 10 Oct; `help.html`).** Reads only. (1) *Settings:* a fourth tab, HELP, after APP. It shows HOW-TO
     GUIDE and QUICK ANSWERS and nothing else; leave Settings and come back, and HELP is still the tab shown. (2) *OPEN THE GUIDE ↗:*
     the guide opens in a new browser tab, in the same light or dark as the app; the app's tab is where it was. (3) *Two QUICK

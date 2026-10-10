@@ -47,7 +47,7 @@ button it names (marked `<b class="ui">`) still appears in `index.html`, and eve
 from the guide's contents lands on a section that exists. Since 10 Oct it also checks that every link from the guide to a file in this repo (the conversion
 instructions, on GitHub) names a file that exists.
 
-`node test/calendar-push.js` (31 checks, no browser) tests the calendar push's two Edge Functions,
+`node test/calendar-push.js` (32 checks, no browser) tests the calendar push's two Edge Functions,
 `calendar-sync` and `calendar-auth`, lifted from their real source the same way: the event's id,
 its all-day dates, the 20:00 reminder's minutes, which days a sync writes or deletes, what a sync
 request may ask for, the consent link, the way back to the app and the id_token's email. Nothing
@@ -77,7 +77,7 @@ node test/core.test.js
 `build.js` inlines the real `core.js` into the built page, so the smoke suite below tests exactly
 what Pages serves.
 
-**472 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
+**487 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, the automatic image
 re-host on save, what happens when you come back to the tab (online, offline, mid-save, after a
