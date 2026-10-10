@@ -6,7 +6,7 @@ time, a status row for the Google connection, and somewhere safe for the Google 
 *(A markdown page rather than a `.sql` file because `.gitignore` excludes `*.sql`, on purpose: nothing that looks like a data dump
 may be committed to this public repo. It carries DDL only and no data.)*
 
-**Not applied yet.**
+**Applied by the household on 9 Oct 2026** (`docs/INFRASTRUCTURE.md`); its check queries were run read-only that day. *(Until 10 Oct this line said not applied.)*
 
 ## Who and when
 

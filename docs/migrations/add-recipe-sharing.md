@@ -7,7 +7,7 @@ plans, the diary, notes, shopping ticks and the calendar are never shared.
 *(A markdown page rather than a `.sql` file because `.gitignore` excludes `*.sql`, on purpose: nothing that looks like a data dump
 may be committed to this public repo. It carries DDL only and no data.)*
 
-**Not applied yet.** Tested on 10 Oct 2026 on a scratch Postgres 16 built to the live shape (roles, `auth.users`, `auth.uid()`,
+**Applied by the household on 10 Oct 2026**, before PR #74 merged; its check queries run read-only at 16:15 UTC (`docs/INFRASTRUCTURE.md`). Tested before that, on 10 Oct 2026, on a scratch Postgres 16 built to the live shape (roles, `auth.users`, `auth.uid()`,
 the households, members and recipes tables with their live policies), applied as a non-superuser like the live `postgres`:
 it applies; before a share the viewer gets no rows and its own `select` returns only its own recipes; SHARE refuses an unknown
 email, its own household, a two-household account and an account with no household, and succeeds once, harmlessly twice; the

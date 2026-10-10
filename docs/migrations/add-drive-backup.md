@@ -3,7 +3,7 @@
 For `docs/PLAN-DRIVE-BACKUP.md` (10 Oct 2026). Three columns on the Google connection's status row, where the `drive-backup`
 Edge Function records where it keeps the backups and when it last saved one. DDL only, no data.
 
-**Not applied yet.** Tested on 10 Oct 2026 on a scratch Postgres 16 with `calendar_connections` as
+**Applied by the household on 10 Oct 2026**, before PR #75 merged; checked read-only at 17:47 UTC (`docs/INFRASTRUCTURE.md`). Tested before that, on 10 Oct 2026, on a scratch Postgres 16 with `calendar_connections` as
 `add-calendar-push.md` made it (policy, grants, owned by a non-superuser like the live `postgres`): it applies, the check queries
 below give what they say (the one `select` grant covers the new columns), and the undo runs.
 
