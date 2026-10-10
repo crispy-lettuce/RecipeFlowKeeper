@@ -105,6 +105,14 @@ useful with no Claude Code session and no prior context at all.
 
 ---
 
+### `docs/migrations/add-recipe-sharing.md` — a schema change, written 10 Oct 2026, not applied yet
+**What:** `docs/PLAN-RECIPE-SHARING.md`'s database side: `recipe_shares` (one row per "this household lets that one browse its
+recipes"), `recipes.copied_from`, and six `security definer` functions (SHARE by email, STOP SHARING, the two lists, the shared
+recipes, the household's name). The `recipes` policies are not widened, and why. Who applies it and when, how to check it and how
+to undo it. Tested on a scratch local Postgres built to the live shape, not on the live database. DDL only, no data.
+
+**Use it when:** applying it (the household, before merging the app's side), checking it, or undoing it.
+
 ### `docs/migrations/add-calendar-auto.md` — a schema change, applied by the household 9 Oct 2026
 **What:** the P3 follow-up (`docs/PLAN-CALENDAR-PUSH.md` §11): `household_settings.calendar_auto` and `calendar_auto_remind`, the
 two automatic calendar toggles, off by default. Who applies it and when, why it is safe in either order, how to check it and how to
@@ -145,17 +153,18 @@ until it has been applied.
 
 ---
 
-### `docs/ONBOARDING.md` — adding a family member
+### `docs/ONBOARDING.md` — adding a family member, or a new household
 **What:** The three steps to add someone to the household (create their account, link them with
 one guarded SQL statement, give them the app's address), what they see if the link is missing,
 and why the app has no sign-up form of its own to do any of this instead. Part of PR 7, Sharing.
+**§4 (10 Oct 2026)** makes a separate household, with its own empty app, from an email address:
+one guarded statement, then optionally SHARE recipes (`docs/PLAN-RECIPE-SHARING.md`).
 
 **Use it when:** actually adding someone. Written 28 Sep 2026, part one of three for PR 7 — RLS
 hardening and the weekly live-backend test are the other two, tracked separately in
 `docs/NEXT-SESSION.md`.
 
-**Don't:** use it as a case for a second, genuinely separate household — it says why that's a
-bigger decision, not a variation on these steps.
+**Don't:** put one account in two households; every part of the app assumes one.
 
 ---
 
@@ -327,6 +336,15 @@ handful of` reading; `canned`/`tinned`).
 **Use it when:** starting the review, or answering those three decisions.
 
 **Don't:** look for the recipe's lines in it. They are left out on purpose (this repo is public).
+
+---
+
+### `docs/PLAN-RECIPE-SHARING.md` — browsing another household's recipes (10 Oct 2026; answered the same day)
+**What:** The household's question and answers: each household keeps its own recipe database; another household can be let
+browse the whole library read-only, switched on from Settings on each side; ADD TO OUR RECIPES makes an independent copy. Why the
+`recipes` policies stay as they are, the build in four steps, and what is left for later.
+
+**Use it when:** building or checking the app's side, or answering "can they see our …?" (only recipes, never anything else).
 
 ---
 

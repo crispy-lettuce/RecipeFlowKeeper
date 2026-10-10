@@ -59,7 +59,10 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
    Keep it true: a renamed button or a new everyday feature updates it in the same PR (`test/help-guide.js`).
 6. **PRE-MADE meals and COOKED ✓ (10 Oct, planned, waiting for the household's review):** the food diary fed from the Planner.
    The plan is in the session's plan file and becomes `docs/PLAN-FOOD-DIARY.md` with its first PR.
-7. **Optional, not planned:** a "download all source files" backup (neither the JSON export nor the nightly `pg_dump` holds the
+7. **A new household, and sharing recipes with it (10 Oct, answered):** `docs/ONBOARDING.md` §4 makes the household from an
+   email address; `docs/PLAN-RECIPE-SHARING.md` lets either household browse the other's recipes and copy them. The SQL,
+   `docs/migrations/add-recipe-sharing.md`, is the household's to apply first; then the app's side.
+8. **Optional, not planned:** a "download all source files" backup (neither the JSON export nor the nightly `pg_dump` holds the
    files); drawing a PDF's pages inside the app, if opening it in the browser proves awkward on the tablet (38d will tell).
 
 ## Things that are the household's to do
@@ -74,6 +77,8 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **P3:** tablet and phone steps 40a and 40b (the SQL and both PRs are in, 9 Oct).
 - **Read the how-to guide** and say what to change; then tablet step 42a once its PR merges.
 - **Review the PRE-MADE / COOKED ✓ plan** (10 Oct).
+- **Recipe sharing:** apply `docs/migrations/add-recipe-sharing.md`, make the new household (`docs/ONBOARDING.md` §4), then
+  name each household and SHARE from Settings → APP once the app's side is merged; tablet step 43a.
 - **The converter.** The conversion project in the Claude app holds **one file, `converter/conversion-instructions.md`**; its
   master copy is the one in this repo. After any change to that file here, reload it into the project. The other files under
   `converter/` stay in git as the project's reference and test material (`test-set.md` is how a change to the instructions is
