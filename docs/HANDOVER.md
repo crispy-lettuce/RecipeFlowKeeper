@@ -2132,6 +2132,37 @@ tightened: the Viewer redraw (the test had a recipe open from earlier), the slot
 question (a timeout instead of a named failure). *Not verified:* anything against the live database or Google, and two devices at
 once for real; that is tablet step 41a after the household's steps in the plan's §5.
 
+**Fresh or freezer?, and the Planner row on a phone (10 Oct 2026; `docs/PLAN-FOOD-DIARY.md` §2a).** Tablet step 41a found that
+finishing the flow of a dish down as PRE-MADE today logged it a second time, as cooked (read-only: 20:40 and 20:41 UTC). The
+household asked for a question. Finishing a flow, in the viewer or a group, now goes through `finishRecipe`. For a dish
+pre-made today it asks "Cooked fresh, or from the freezer?":
+- FROM THE FREEZER, or closing the question, adds nothing.
+- COOKED FRESH switches PRE-MADE off, deletes that dish's freezer entry by the id `premadeLogId` gave it, and logs it as cooked
+  with the meal question.
+
+The answer is kept until the page reloads. On a phone the Planner squeezed a dish's name to one letter. The title now keeps
+`min(12em, 100%)` inside the 860 px block, so the pills wrap below it; the tablet's row is unchanged where it fits.
+
+*Verified by.* `node test/core.test.js` 143, `node test/build.js && node test/smoke.js` **492** (487 before) and
+`node test/help-guide.js` 7, each exit 0, with no console or page errors. Five new smoke checks, on a fresh page whose day is a
+pre-made dish and a fresh one: the layout at 412 and 800 px; the question asked and nothing logged; FROM THE FREEZER; COOKED
+FRESH; a fresh dish logged at once.
+
+**Eight mutations, each failing by name:**
+- the CSS floor removed, or made `flex-basis:100%`;
+- the viewer still calling `logRecipeUsed`;
+- the answer not remembered;
+- no delete;
+- PRE-MADE left on;
+- a fresh dish not logged (caught by the older meal-prompt checks);
+- FROM THE FREEZER logging.
+
+A ninth: the guide's new COOKED FRESH label renamed in the app made `help-guide.js` fail. It first passed, because a code
+comment quoted the label, so the comments were reworded.
+
+*Not verified:* the group viewer calling `finishRecipe` (no check covers it), anything against the live database, and the
+tablet itself. That is step 41b.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export
