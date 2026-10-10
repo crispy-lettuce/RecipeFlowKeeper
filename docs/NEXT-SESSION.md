@@ -17,8 +17,8 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **Library:** 34 recipes. 2 carry a stored comparison with their source, 1 of them validated; 6 are BBC Good Food, five of which
   were rebuilt from another edition before the 29 Sep rule (the household's job below). 1 recipe has a source photo.
 - **Cooking diary:** 116 entries. **Word matches:** 15. **Household aisles:** 1. **Swaps:** 2. **Cooking notes:** none yet (R4 built 30 Sep).
-- **Tests:** `node test/core.test.js` 143 checks; `node test/build.js && node test/smoke.js` 448 checks (418 until P3 PR 2, 437 until the
-  calendar toggles, both 9 Oct; 447 until the HELP tab, 10 Oct).
+- **Tests:** `node test/core.test.js` 143 checks; `node test/build.js && node test/smoke.js` 465 checks (418 until P3 PR 2, 437 until the
+  calendar toggles, both 9 Oct; 447 until the HELP tab, 448 until recipe sharing, both 10 Oct).
   `node test/calendar-push.js` 30 checks; `node test/help-guide.js` 6 checks. `offline-harness` runs
   both on every PR and is required on `main`.
 - **Schema:** `add_calendar_auto` (the P3 toggles) was applied by the household on 9 Oct, before #72 merged. The one before it,

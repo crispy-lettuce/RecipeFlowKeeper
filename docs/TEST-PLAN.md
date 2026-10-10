@@ -533,6 +533,20 @@ removed page was deleted), and no listed page missing.*
     button it names is on screen as written. (5) *Print it from the browser:* A4, with no heading left alone at the foot of a page.
     **What no test can judge: whether the wording makes sense to someone who has never used the app.** Undo: nothing to undo.
 
+43a. **Sharing recipes between households (new 10 Oct; `docs/PLAN-RECIPE-SHARING.md`; only after
+    `docs/migrations/add-recipe-sharing.md` is applied and the second household made, `docs/ONBOARDING.md` §4).** Two devices,
+    one signed in to each household. (1) *Before:* Settings → APP → RECIPE SHARING shows a name box, SHARE and "Nobody yet";
+    RECIPES has no switch. (2) *Name:* type our household's name, SAVE; the toast repeats it. (3) *SHARE:* type an email that has
+    no account: the toast says so and nothing is listed. Type the other household's email: it is listed under SHARED WITH, with
+    STOP SHARING. (4) *On their device:* leave the tab and come back. Settings says we share with them; RECIPES has OUR RECIPES and
+    〈OUR NAME〉'S RECIPES. Choose ours: our recipes, with photos; their own library and sidebar count are unchanged. (5) *Open one
+    of ours there:* no EDIT, DELETE, FAVOURITE, SHORTLIST or cooking notes; COOK FOR works; tick to the last column: "Not logged",
+    and their diary has nothing new. (6) *ADD TO OUR RECIPES:* their copy opens as theirs, with the photo; back in our library
+    the card says ALREADY IN OUR RECIPES. Plan the copy on a day: it is on their shopping list, not ours. (7) *STOP SHARING* on
+    ours, after the confirmation; on their device, after leaving the tab and coming back, the switch has gone, and their copy
+    stays. **Read-only afterwards:** the copy is a `recipes` row of their household with `copied_from` set; ours is untouched.
+    Undo: STOP SHARING; delete the copy on their side if it is not wanted.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

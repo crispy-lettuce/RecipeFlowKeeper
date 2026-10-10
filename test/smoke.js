@@ -3492,9 +3492,9 @@ const check = (name, pass, detail) => {
   check('layout E: Settings has three tabs; Ingredients holds the lookup, word matches, aisles, swaps and dictionary, and SWAPS has left the sidebar',
         stIng.join('|') === 'INGREDIENT LOOKUP|WORD MATCHES|SHOPPING AISLES|SWAPS|DICTIONARY' && !stNav.includes('swaps') && stNav.includes('settings'),
         JSON.stringify([stIng, stNav]));
-  /* CALENDAR joined App on 9 Oct 2026 (P3 PR 2); before the migration it only says it is waiting. */
-  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance and calendar; the last tab is remembered',
-        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|CALENDAR' && stKept.join('|') === stApp.join('|'),
+  /* CALENDAR joined App on 9 Oct 2026 (P3 PR 2), and RECIPE SHARING on 10 Oct; before their migrations each only says it is waiting. */
+  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, calendar and sharing; the last tab is remembered',
+        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|CALENDAR|RECIPE SHARING' && stKept.join('|') === stApp.join('|'),
         JSON.stringify([stLib, stApp, stKept]));
   const stDict = () => page.evaluate(() => ({ list: !document.getElementById('dictionaryList').hidden, btn: document.getElementById('dictionaryToggle').hidden ? '' : document.getElementById('dictionaryToggle').textContent.trim(),
     rows: [...document.querySelectorAll('#dictionaryList .dict-row')].filter(r => r.offsetParent !== null).length }));
@@ -4599,6 +4599,202 @@ const check = (name, pass, detail) => {
   await page.evaluate(async () => { const D = window.__STUB_DATA__; D.recipes = D.recipes.filter(r => !/^auto-/.test(r.id));
     delete D.household_settings[0].calendar_auto; delete D.household_settings[0].calendar_auto_remind; delete D.calendar_connections;
     window.__INVOKE_REPLY__ = null; await hydrate(); showView('recipes'); renderHome(); });
+
+  /* ---- Recipe sharing between households (10 Oct 2026, docs/PLAN-RECIPE-SHARING.md) ----
+     Before docs/migrations/add-recipe-sharing.md is applied (the main page: every function reads as not created), and
+     after it, on a fresh page whose database functions answer as another household, "The Testers", sharing with us. */
+  console.log('\nRecipe sharing');
+  await page.evaluate(() => { showView('settings'); showSettingsTab('app'); });
+  const shPre = await page.evaluate(async () => {
+    const m = window.__WRITES__.length;
+    const r1 = loadRecipes().find(r => r.title === 'Test Pasta');
+    saveRecipe({ ...r1 });
+    let t; do { t = writeQueue; await t; } while(t !== writeQueue);
+    const row = window.__WRITES__.slice(m).filter(w => w.table === 'recipes').flatMap(w => w.rows)[0] || {};
+    showView('recipes');
+    return { available: shared.available, problem: shared.problem, signouts: window.__SIGNOUTS__,
+      text: document.getElementById('sharingSettings').textContent.replace(/\s+/g, ' ').trim(),
+      switchHidden: document.getElementById('librarySwitch').hidden,
+      calls: window.__RPCS__.map(c => c.name).filter((n, i, a) => a.indexOf(n) === i).sort(),
+      copiedKey: 'copied_from' in row, rowId: row.id === r1.id };
+  });
+  check('    before the database change: Settings says it is waiting, no library switch, only the two list calls made, nobody signed out',
+        !shPre.available && shPre.problem === 'missing' && /Waiting for the database change/.test(shPre.text) && !/SHARE\b/.test(shPre.text.replace(/RECIPE SHARING/g, ''))
+        && shPre.switchHidden && JSON.stringify(shPre.calls) === JSON.stringify(['households_i_share_with', 'households_sharing_with_me']) && shPre.signouts === 0,
+        JSON.stringify(shPre));
+  check('    an ordinary save of a recipe never names copied_from', shPre.rowId && !shPre.copiedKey, JSON.stringify(shPre));
+
+  const sh = await browser.newPage();
+  sh.on('pageerror', e => errors.push('PAGEERROR (sharing): ' + e.message));
+  await sh.route('**/storage/v1/object/public/recipe-images/**', route =>
+    route.fulfill({ status: 200, contentType: 'image/jpeg', body: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0xff, 0xd9]) }));
+  await sh.addInitScript(() => {
+    const THEM = '99999999-9999-4999-8999-999999999999';
+    window.__THEM__ = THEM;
+    window.__STUB_EXTRA__ = { households: [{ id: '286a8a12-c12a-4b83-afbc-0912533f6b1c', name: 'Household' }] };
+    const flow = (title, course, kw, extra) => [`TITLE: ${title}`, 'SOURCE: Made Up', ...extra, 'SERVINGS: 2', `TAGS: course=${course}, ${kw}`, '',
+      'GROUP a:', '200 g invented beans', '', 'STAGE:', 'MERGE a -> warm: Warm through [5 min]', '', 'STAGE:', 'MERGE warm -> done: Serve [instant]'].join('\n');
+    window.__THEIR_ROWS__ = () => {
+      const img = SELF_HOST_PREFIX + THEM + '/bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb.jpg';
+      return [
+        { id: 'bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb', title: 'Test Bean Pot', source: 'Made Up', source_url: null, image_url: img, time_text: '20 min',
+          servings: 2, equipment: '', tags: { course: 'Main', keywords: ['Beans'] }, syntax: flow('Test Bean Pot', 'Main', 'Beans', [`IMAGE: ${img}`]),
+          date_added: '2026-09-01', source_check: null },
+        { id: 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb', title: 'Test Flapjack', source: 'Made Up', source_url: null, image_url: null, time_text: '40 min',
+          servings: 2, equipment: '', tags: { course: 'Baking', keywords: ['Oats'] }, syntax: flow('Test Flapjack', 'Baking', 'Oats', []),
+          date_added: '2026-09-02', source_check: null },
+        { id: 'bbbbbbbb-3333-4333-8333-bbbbbbbbbbbb', title: 'Their Traybake', source: 'Test Kitchen', source_url: 'https://example.com/traybake', image_url: null,
+          time_text: '50 min', servings: 4, equipment: '', tags: { course: 'Main', keywords: ['Batch'] }, syntax: flow('Their Traybake', 'Main', 'Batch', []),
+          date_added: '2026-09-03', source_check: null }
+      ];
+    };
+    window.__RPC_REPLY__ = call => {
+      const a = call.args || {};
+      if(call.name === 'households_i_share_with') return { data: [], error: null };
+      if(call.name === 'households_sharing_with_me') return { data: [{ household_id: THEM, name: 'The Testers', recipes: 3 }], error: null };
+      if(call.name === 'shared_recipes') return { data: a.p_owner === THEM ? window.__THEIR_ROWS__() : [], error: null };
+      if(call.name === 'share_recipes_with') return { data: a.p_email === 'cook@example.test' ? { ok: true, household: THEM, name: 'The Testers' } : { error: 'No account uses that email' }, error: null };
+      if(call.name === 'stop_sharing_with') return { data: null, error: null };
+      if(call.name === 'set_household_name') return { data: String(a.p_name || '').trim().slice(0, 40) || null, error: null };
+      return null;
+    };
+  });
+  await sh.clock.setFixedTime(FIXTURE_NOW);
+  await sh.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await sh.waitForTimeout(1500);
+  const shDrain = () => sh.evaluate(async () => { let t; do { t = writeQueue; await t; } while(t !== writeQueue); await new Promise(r => setTimeout(r, 50)); });
+  const shGrid = () => sh.evaluate(() => ({
+    titles: [...document.querySelectorAll('#recipeGrid .rcard-title')].map(e => e.textContent),
+    buttons: document.querySelectorAll('#recipeGrid [data-shortlist], #recipeGrid [data-favourite]').length,
+    copied: [...document.querySelectorAll('#recipeGrid .rcard')].filter(c => c.querySelector('.rcard-copied')).map(c => c.querySelector('.rcard-title').textContent),
+    switchText: [...document.querySelectorAll('#librarySwitch button')].map(b => b.textContent + (b.classList.contains('on') ? '*' : '')),
+    side: document.getElementById('sideCount').textContent, ours: cache.recipes.length,
+    theirsInCache: cache.recipes.some(r => /^bbbbbbbb/.test(r.id)) }));
+  const shOurs = await shGrid();
+  check('    another household shares with us: RECIPES shows OUR RECIPES · THE TESTERS\' RECIPES, ours chosen and our cards as before',
+        JSON.stringify(shOurs.switchText) === JSON.stringify(['OUR RECIPES*', "THE TESTERS' RECIPES"]) && shOurs.titles.length === 3
+        && shOurs.titles.every(t => /^Test (Pasta|Soup|Traybake)$/.test(t)) && shOurs.buttons === 6, JSON.stringify(shOurs));
+  await sh.click('#librarySwitch button:has-text("TESTERS")');
+  await sh.waitForTimeout(300);
+  const shTheirs = await shGrid();
+  const shFetch = await sh.evaluate(() => window.__RPCS__.filter(c => c.name === 'shared_recipes').map(c => c.args));
+  check('    choosing theirs fetches shared_recipes for that household and shows their three, without shortlist or favourite buttons',
+        JSON.stringify(shFetch) === JSON.stringify([{ p_owner: '99999999-9999-4999-8999-999999999999' }]) && shTheirs.titles.length === 3
+        && shTheirs.titles.includes('Test Flapjack') && shTheirs.buttons === 0 && shTheirs.switchText[1] === "THE TESTERS' RECIPES*", JSON.stringify([shFetch, shTheirs]));
+  check('    our library is untouched: still three recipes, none of theirs in it, and the sidebar counts ours',
+        shTheirs.ours === 3 && !shTheirs.theirsInCache && shTheirs.side === '3 RECIPES SAVED', JSON.stringify(shTheirs));
+  check('    their card for a page we already have says ALREADY IN OUR RECIPES, and no other does',
+        JSON.stringify(shTheirs.copied) === JSON.stringify(['Their Traybake']), JSON.stringify(shTheirs.copied));
+  await sh.fill('#searchInput', 'flapjack');
+  await sh.waitForTimeout(200);
+  const shSearch = await shGrid();
+  await sh.fill('#searchInput', '');
+  await sh.waitForTimeout(200);
+  check('    search works on their library', JSON.stringify(shSearch.titles) === JSON.stringify(['Test Flapjack']), JSON.stringify(shSearch.titles));
+
+  await sh.click('#recipeGrid .rcard:has-text("Test Bean Pot")');
+  await sh.waitForTimeout(500);
+  const shView = await sh.evaluate(() => {
+    const vis = id => { const el = document.getElementById(id); return !!el && el.offsetParent !== null; };
+    return { theirs: document.getElementById('view-viewer').classList.contains('theirs'),
+      hidden: ['favouriteBtn', 'shortlistBtn', 'editRecipeBtn', 'deleteBtn', 'cookingNotes'].filter(vis),
+      add: vis('addToOursBtn') ? document.getElementById('addToOursBtn').textContent : '',
+      note: document.getElementById('viewerTheirsNote').textContent, meta: document.getElementById('viewerMeta').textContent,
+      cells: document.querySelectorAll('#flowMount .box-cell').length };
+  });
+  check('    their recipe opens read-only: FAVOURITE, SHORTLIST, EDIT, DELETE and the cooking notes hidden, ADD TO OUR RECIPES shown, the flow drawn',
+        shView.theirs && shView.hidden.length === 0 && shView.add === 'ADD TO OUR RECIPES' && /^From The Testers' recipes\. Add it to our recipes/.test(shView.note)
+        && /FROM THE TESTERS/.test(shView.meta) && !/COOKED|NEVER/.test(shView.meta) && shView.cells > 0, JSON.stringify(shView));
+  const shLogM = await sh.evaluate(() => ({ m: window.__WRITES__.length, diary: loadDiary().length }));
+  const shCells = sh.locator('#flowMount .box-cell');
+  await shCells.nth((await shCells.count()) - 1).click();
+  await sh.waitForTimeout(400);
+  await shDrain();
+  const shLog = await sh.evaluate(m => ({ writes: window.__WRITES__.slice(m.m).map(w => w.table), diary: loadDiary().length,
+    prompt: document.getElementById('mealTypeOverlay').classList.contains('open'), toast: (document.querySelector('.toast') || {}).textContent || '' }), shLogM);
+  check('    ticking the last column of theirs logs nothing: no write, no diary entry, no meal prompt, and a toast says why',
+        shLog.writes.length === 0 && shLog.diary === shLogM.diary && !shLog.prompt && /Not logged/.test(shLog.toast), JSON.stringify(shLog));
+
+  const shAddM = await sh.evaluate(() => window.__WRITES__.length);
+  await sh.click('#addToOursBtn');
+  await sh.waitForTimeout(300);
+  await shDrain();
+  const shAdd = await sh.evaluate(m => {
+    const ws = window.__WRITES__.slice(m);
+    const rows = ws.filter(w => w.table === 'recipes' && w.op === 'upsert').flatMap(w => w.rows);
+    const patches = ws.filter(w => w.table === 'recipes' && w.op === 'update').map(w => ({ patch: w.patch, eqs: w.eqs }));
+    const copy = cache.recipes.find(r => r.copiedFrom === 'bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb');
+    return { rows, patches, uploads: window.__STORAGE__.filter(c => c.op === 'upload').map(c => ({ bucket: c.bucket, path: c.path })),
+      copyId: copy && copy.id, image: copy && copy.imageUrl, imageLine: copy && /IMAGE: .*286a8a12/.test(copy.syntax), ours: cache.recipes.length,
+      keywords: window.__WRITES__.slice(m).filter(w => w.table === 'keywords').flatMap(w => w.rows.map(r => r.name)),
+      viewing: state.view, selected: state.selectedRecipeId, shared: state.viewerShared,
+      theirs: document.getElementById('view-viewer').classList.contains('theirs') };
+  }, shAddM);
+  const HOUSE_ID = '286a8a12-c12a-4b83-afbc-0912533f6b1c';
+  check('    ADD TO OUR RECIPES writes exactly one new recipes row, in our household, with copied_from, a new id and the same text',
+        shAdd.rows.length === 1 && shAdd.rows[0].household_id === HOUSE_ID && shAdd.rows[0].copied_from === 'bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb'
+        && shAdd.rows[0].id === shAdd.copyId && !/^bbbbbbbb/.test(shAdd.copyId) && shAdd.rows[0].title === 'Test Bean Pot' && shAdd.rows[0].favourite === false
+        && !('source_photos' in shAdd.rows[0]) && shAdd.ours === 4 && JSON.stringify(shAdd.keywords) === JSON.stringify(['Beans']),
+        JSON.stringify([shAdd.rows.map(r => [r.household_id, r.copied_from, r.title, r.favourite]), shAdd.ours, shAdd.keywords]));
+  check('    its photo is copied into our own folder, and the copy points there (column and IMAGE: line both)',
+        JSON.stringify(shAdd.uploads) === JSON.stringify([{ bucket: 'recipe-images', path: `${HOUSE_ID}/${shAdd.copyId}.jpg` }])
+        && shAdd.image === `https://mhkayefzrtceesgizkjs.supabase.co/storage/v1/object/public/recipe-images/${HOUSE_ID}/${shAdd.copyId}.jpg` && shAdd.imageLine
+        && shAdd.patches.length === 1 && shAdd.patches[0].patch.image_url === shAdd.image && shAdd.patches[0].eqs.some(e => e.column === 'household_id' && e.value === HOUSE_ID),
+        JSON.stringify([shAdd.uploads, shAdd.image, shAdd.patches]));
+  check('    then our copy opens, as one of ours', shAdd.viewing === 'viewer' && shAdd.selected === shAdd.copyId && shAdd.shared === null && !shAdd.theirs,
+        JSON.stringify([shAdd.viewing, shAdd.shared, shAdd.theirs]));
+  await sh.evaluate(() => { state.library = '99999999-9999-4999-8999-999999999999'; showView('recipes'); });
+  await sh.waitForTimeout(200);
+  const shAfter = await shGrid();
+  check('    back in their library, the original now says ALREADY IN OUR RECIPES',
+        shAfter.copied.includes('Test Bean Pot') && shAfter.copied.includes('Their Traybake') && !shAfter.copied.includes('Test Flapjack'), JSON.stringify(shAfter.copied));
+
+  await sh.evaluate(() => { showView('settings'); showSettingsTab('app'); });
+  await sh.waitForTimeout(150);
+  const shSet = await sh.evaluate(() => document.getElementById('sharingSettings').textContent.replace(/\s+/g, ' ').trim());
+  check('    Settings shows our name, SHARE, nobody shared with yet, and that The Testers share with us',
+        /The Testers shares their recipes with us \(3 recipes\)/.test(shSet) && /Nobody yet/.test(shSet)
+        && await sh.inputValue('#shareName') === 'Household', shSet);
+  await sh.fill('#shareName', '  The Cooks  ');
+  await sh.click('#shareNameBtn');
+  await sh.waitForTimeout(200);
+  await sh.fill('#shareEmail', 'nobody@example.test');
+  await sh.click('#shareBtn');
+  await sh.waitForTimeout(200);
+  const shRefused = await sh.evaluate(() => ({ toast: document.querySelector('.toast').textContent, list: shared.iShareWith.length }));
+  await sh.fill('#shareEmail', 'cook@example.test');
+  await sh.click('#shareBtn');
+  await sh.waitForTimeout(200);
+  const shShared = await sh.evaluate(() => ({ toast: document.querySelector('.toast').textContent,
+    rows: [...document.querySelectorAll('#sharingSettings [data-stop-share]')].map(b => b.closest('li').textContent.replace(/\s+/g, ' ').trim()),
+    calls: window.__RPCS__.filter(c => /share_recipes_with|set_household_name/.test(c.name)) }));
+  check('    SAVE sends the name; SHARE sends the email, shows a refusal as given, and on success lists them with STOP SHARING',
+        JSON.stringify(shShared.calls) === JSON.stringify([{ name: 'set_household_name', args: { p_name: '  The Cooks  ' } },
+          { name: 'share_recipes_with', args: { p_email: 'nobody@example.test' } }, { name: 'share_recipes_with', args: { p_email: 'cook@example.test' } }])
+        && shRefused.toast === 'No account uses that email' && shRefused.list === 0 && /Sharing our recipes with The Testers/.test(shShared.toast)
+        && JSON.stringify(shShared.rows) === JSON.stringify(['The Testers STOP SHARING']) && await sh.inputValue('#shareName') === 'The Cooks',
+        JSON.stringify([shRefused, shShared]));
+  await sh.evaluate(() => { window.__CONFIRMS__ = []; window.confirm = msg => { window.__CONFIRMS__.push(msg); return window.__CONFIRMS__.length > 1; }; });
+  await sh.click('#sharingSettings [data-stop-share]');
+  await sh.waitForTimeout(150);
+  const shKept = await sh.evaluate(() => ({ stops: window.__RPCS__.filter(c => c.name === 'stop_sharing_with').length, list: shared.iShareWith.length }));
+  await sh.click('#sharingSettings [data-stop-share]');
+  await sh.waitForTimeout(200);
+  const shStop = await sh.evaluate(() => ({ stops: window.__RPCS__.filter(c => c.name === 'stop_sharing_with').map(c => c.args), list: shared.iShareWith.length,
+    confirms: window.__CONFIRMS__, text: document.getElementById('sharingSettings').textContent }));
+  check('    STOP SHARING asks first, does nothing on Cancel, and on OK calls stop_sharing_with for that household and drops it from the list',
+        shKept.stops === 0 && shKept.list === 1 && JSON.stringify(shStop.stops) === JSON.stringify([{ p_household: '99999999-9999-4999-8999-999999999999' }])
+        && shStop.list === 0 && /Stop letting The Testers browse our recipes/.test(shStop.confirms[0]) && /Nobody yet/.test(shStop.text), JSON.stringify([shKept, shStop]));
+
+  /* They stop sharing with us: the next load drops their library, and the switch goes. */
+  await sh.evaluate(async () => { state.library = '99999999-9999-4999-8999-999999999999';
+    const reply = window.__RPC_REPLY__; window.__RPC_REPLY__ = c => c.name === 'households_sharing_with_me' ? { data: [], error: null } : reply(c);
+    showView('recipes'); await loadSharing(); });
+  const shGone = await shGrid();
+  check('    when they stop sharing, the next load drops their recipes and the switch, and RECIPES is ours again',
+        shGone.switchText.length === 0 && shGone.titles.length === 4 && await sh.evaluate(() => Object.keys(shared.recipes).length === 0 && state.library === null),
+        JSON.stringify(shGone));
+  await sh.close();
 
   const failed = checks.filter(c => !c.pass).length;
   console.log(`\n${checks.length} checks, ${failed} failed`);

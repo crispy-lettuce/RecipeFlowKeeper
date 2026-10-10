@@ -1217,6 +1217,24 @@
   /* Settings' three tabs (showSettingsTab). Pinned, so another tab is one tap away however far down you are. */
   .settings-tabs{ position:sticky; top:0; z-index:5; background:var(--paper); display:flex; gap:8px; flex-wrap:wrap;
     padding:12px 0; border-bottom:1px solid var(--line); }
+  /* Recipe sharing (docs/PLAN-RECIPE-SHARING.md): the library switch above the grid, the mark on a card of theirs we
+     already hold, and the viewer's read-only state for one of theirs, where what would write to our library is hidden. */
+  .library-switch{ display:flex; flex-wrap:wrap; gap:8px; margin:14px 30px 0; }
+  .library-switch[hidden]{ display:none; }
+  .library-switch button{
+    border:1px solid var(--line); background:var(--card); color:var(--ink-soft); border-radius:var(--r);
+    padding:7px 12px; cursor:pointer; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.06em;
+  }
+  .library-switch button.on{ border-color:var(--plum); background:var(--plum-wash); color:var(--plum); }
+  .rcard-copied{
+    position:absolute; top:8px; left:8px; right:8px; z-index:2; padding:4px 6px; border-radius:var(--r);
+    background:var(--card-veil); border:1px solid var(--sage); color:var(--sage);
+    font-family:'IBM Plex Mono', monospace; font-size:9.5px; letter-spacing:.08em; text-align:center;
+  }
+  #view-viewer.theirs [data-ours-only], #view-viewer:not(.theirs) [data-theirs-only]{ display:none !important; }
+  .viewer-theirs-note{ margin:10px 30px 0; font-size:13.5px; color:var(--plum); }
+  .share-list{ margin:6px 0; padding-left:18px; }
+  .share-list li{ margin:6px 0; }
   .help-answers{ margin:0; padding-left:18px; }
   .help-answers li{ margin:6px 0; }
   .help-answers a{ color:var(--plum); }
@@ -1529,6 +1547,7 @@
         <div class="filter-rows" id="filterRows"></div>
       </div>
       <div id="pickBanner" class="assign-banner" style="display:none; margin:14px 30px 0;"></div>
+      <div id="librarySwitch" class="library-switch" role="group" aria-label="Whose recipes" hidden></div>
       <div class="grid" id="recipeGrid"></div>
     </section>
 
@@ -1543,15 +1562,17 @@
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
           <span class="toggle-label">KEEP AWAKE</span>
         </label>
-        <button class="btn" id="favouriteBtn">☆ FAVOURITE</button>
-        <button class="btn" id="shortlistBtn">+ SHORTLIST</button>
-        <button class="btn" id="editRecipeBtn">EDIT</button>
+        <button class="btn" id="favouriteBtn" data-ours-only>☆ FAVOURITE</button>
+        <button class="btn" id="shortlistBtn" data-ours-only>+ SHORTLIST</button>
+        <button class="btn" id="editRecipeBtn" data-ours-only>EDIT</button>
+        <button class="btn primary" id="addToOursBtn" data-theirs-only>ADD TO OUR RECIPES</button>
         <button class="btn" id="resetTicksBtn">RESET TICKS</button>
         <button class="btn cook-timeline-btn" data-cook-timeline>SHOW TIMELINE</button>
         <button class="btn" id="exportPngBtn">EXPORT PNG</button>
         <button class="btn" id="printBtn">PRINT / A4 PDF</button>
-        <button class="btn danger" id="deleteBtn">DELETE</button>
+        <button class="btn danger" id="deleteBtn" data-ours-only>DELETE</button>
       </div>
+      <p class="viewer-theirs-note" id="viewerTheirsNote" data-theirs-only></p>
       <div class="viewer-scale-row">
         <span class="scale-label">COOK FOR</span>
         <button class="scale-btn" data-viewer-serves="2">2</button>
@@ -1565,7 +1586,7 @@
       </div>
       <div id="viewerEquipmentWarning" class="equipment-warning" style="display:none;"></div>
       <div class="keep-awake-status" style="display:none;"></div>
-      <div class="viewer-body"><div id="flowMount"></div><section class="cooking-notes" id="cookingNotes" aria-label="Cooking notes"></section></div>
+      <div class="viewer-body"><div id="flowMount"></div><section class="cooking-notes" id="cookingNotes" aria-label="Cooking notes" data-ours-only></section></div>
     </section>
 
     <!-- ================= GROUP VIEWER ================= -->
@@ -1814,6 +1835,11 @@
           <div id="calendarSettings"></div>
         </div>
 
+        <div class="settings-block" data-settings-tab="app">
+          <div class="side-label">RECIPE SHARING</div>
+          <div id="sharingSettings"></div>
+        </div>
+
         <!-- The guide is a page of its own, help.html, served beside this one: one page with contents, so the browser's
              find and print work on it, and it can be read without signing in. It opens in a new tab so the app keeps its
              place. It needs a connection, like the rest of the app. Its anchors are checked by test/help-guide.js. -->
@@ -1834,6 +1860,7 @@
             <li><a href="help.html#cook-for" target="_blank" rel="noopener">How do I cook for more people this once?</a></li>
             <li><a href="help.html#keep-awake" target="_blank" rel="noopener">How do I stop the screen going off while I cook?</a></li>
             <li><a href="help.html#adding" target="_blank" rel="noopener">How do I add a new recipe?</a></li>
+            <li><a href="help.html#sharing" target="_blank" rel="noopener">How do I share our recipes with family?</a></li>
             <li><a href="help.html#offline" target="_blank" rel="noopener">What does the OFFLINE bar mean?</a></li>
           </ul>
         </div>
@@ -2820,7 +2847,11 @@ function recipeToRow(r){
        Sent only when the recipe has a list, for the same reason as source_check. A recipe whose last photo
        was removed carries an empty list, sent as null: leaving the key out would keep the old list, since
        a one-row upsert only writes the columns it names. */
-    ...(Array.isArray(r.sourcePhotos) ? { source_photos: r.sourcePhotos.length ? r.sourcePhotos : null } : {})
+    ...(Array.isArray(r.sourcePhotos) ? { source_photos: r.sourcePhotos.length ? r.sourcePhotos : null } : {}),
+    /* Recipe sharing (docs/PLAN-RECIPE-SHARING.md): the other household's recipe this one was copied from. Sent only on
+       a recipe that has one, which only ADD TO OUR RECIPES makes, so no ordinary save names the column before
+       docs/migrations/add-recipe-sharing.md is applied. Never cleared: a copy stays a copy. */
+    ...(r.copiedFrom ? { copied_from: r.copiedFrom } : {})
   };
 }
 function rowToRecipe(row, historyById){
@@ -2839,7 +2870,8 @@ function rowToRecipe(row, historyById){
     history: historyById[row.id] || [],
     dateAdded: row.date_added,
     sourceCheck: row.source_check || null,
-    sourcePhotos: Array.isArray(row.source_photos) && row.source_photos.length ? row.source_photos : null
+    sourcePhotos: Array.isArray(row.source_photos) && row.source_photos.length ? row.source_photos : null,
+    copiedFrom: row.copied_from || null
   };
 }
 
@@ -4273,6 +4305,8 @@ const state = {
   selectedRecipeId: null,
   addingKeyword: false,
   viewerReturnTo: 'recipes',   // 'recipes', 'planner', or 'history' — where the viewer's back-link goes
+  library: null,               // whose recipes RECIPES shows: null for ours, or the id of a household that shares with us
+  viewerShared: null,          // the household whose recipe the Viewer has open, read-only; null when it is one of ours
   selectedShortlistId: null,   // shortlist item currently picked, awaiting a day tap in the Planner
   pickingForDate: null,        // date string Home is currently picking a recipe for, if any
   shoppingWeekIndex: 0,        // which week-bucket the Shopping List is currently showing
@@ -4293,6 +4327,19 @@ const state = {
                                 // scaling (Add/Edit form) is a completely separate mechanism that writes
                                 // back to recipe.syntax; this only affects what's shown right now.
 };
+
+/* Recipe sharing between households (docs/PLAN-RECIPE-SHARING.md). Everything the app knows about another household's
+   recipes lives here, apart from `cache`: nothing in it is ours, nothing in it is ever saved, and keeping it out of
+   cache.recipes is what keeps their recipes out of our plan, shopping list, diary and export.
+     available       docs/migrations/add-recipe-sharing.md is in (its functions answer)
+     problem         why not, when not: 'missing' (not applied yet) or 'offline'
+     ourName         our household's name, as the other side sees it
+     sharingWithMe   [{id, name, count}] households that let us browse theirs
+     iShareWith      [{id, name}] households we let browse ours
+     recipes         owner id → their recipes, as rowToRecipe makes them, fetched when first shown
+     loading/failed  owner id → true while a fetch is out / when the last one failed */
+const shared = { loaded: false, available: false, problem: null, ourName: '', sharingWithMe: [], iShareWith: [],
+                 recipes: {}, loading: {}, failed: {} };
 
 function anyFilterActive(){
   return !!(state.text || state.keywords.length || state.savedView || state.source ||
@@ -4543,18 +4590,23 @@ function tagLine(r){
   return bits.join(' · ').toUpperCase();
 }
 
-function renderCard(r, shortlistedIds){
+function renderCard(r, shortlistedIds, theirs){
   const course = (r.tags && r.tags.course) || '';
   const tone = (course === 'Bread' || course === 'Baking') ? ' bread' : (course === 'Dessert' ? ' dessert' : '');
   const used = lastUsed(r);
-  const lastLabel = used ? 'LAST ' + formatDate(used).toUpperCase() : 'NEVER COOKED';
+  /* Their cooking is theirs: a card of another household's recipe says nothing about when it was cooked. */
+  const lastLabel = theirs ? '' : used ? 'LAST ' + formatDate(used).toUpperCase() : 'NEVER COOKED';
   const photo = r.imageUrl
     ? `<div class="rcard-photo"><img src="${escapeHtml(r.imageUrl)}" alt="" loading="lazy"></div>`
     : `<div class="rcard-photo empty">NO PHOTO YET</div>`;
   const shortlisted = shortlistedIds.has(r.id);
+  /* Shortlist and favourite write to our library, so a card of theirs has neither; it says instead whether we hold a copy. */
+  const marks = theirs
+    ? (ourCopyOf(r) ? `<div class="rcard-copied">ALREADY IN OUR RECIPES</div>` : '')
+    : `<button class="rcard-shortlist${shortlisted?' on':''}" data-shortlist="${r.id}" aria-label="${shortlisted?'On shortlist':'Add to shortlist'}">${shortlisted?'✓':'+'}</button>
+    <button class="rcard-favourite${r.favourite?' on':''}" data-favourite="${r.id}" aria-label="${r.favourite?'Remove from favourites':'Add to favourites'}">${r.favourite?'★':'☆'}</button>`;
   return `<div class="rcard" data-id="${r.id}" tabindex="0" role="button" aria-label="Open ${escapeHtml(r.title||'Untitled')}">
-    <button class="rcard-shortlist${shortlisted?' on':''}" data-shortlist="${r.id}" aria-label="${shortlisted?'On shortlist':'Add to shortlist'}">${shortlisted?'✓':'+'}</button>
-    <button class="rcard-favourite${r.favourite?' on':''}" data-favourite="${r.id}" aria-label="${r.favourite?'Remove from favourites':'Add to favourites'}">${r.favourite?'★':'☆'}</button>
+    ${marks}
     ${photo}
     <div class="rcard-tags${tone}">${escapeHtml(tagLine(r))}</div>
     <div class="rcard-title">${escapeHtml(r.title || 'Untitled')}</div>
@@ -4592,7 +4644,11 @@ function renderPickBanner(){
 }
 
 function renderHome(){
-  const recipes = loadRecipes();
+  /* Another household's library when the switch says so (docs/PLAN-RECIPE-SHARING.md), read from its own list and never
+     from cache.recipes. Ours while choosing a recipe for a Planner day, since only ours can go on the plan. */
+  const owner = homeLibrary();
+  const recipes = owner ? (shared.recipes[owner] || []) : loadRecipes();
+  renderLibrarySwitch(owner);
   renderFilterRows(recipes);
   renderPickBanner();
 
@@ -4607,10 +4663,18 @@ function renderHome(){
 
   document.getElementById('resultCount').textContent =
     recipes.length ? `${results.length} OF ${recipes.length}` : '';
+  const ours = loadRecipes().length;
   document.getElementById('sideCount').textContent =
-    `${recipes.length} RECIPE${recipes.length===1?'':'S'} SAVED`;
+    `${ours} RECIPE${ours===1?'':'S'} SAVED`;
 
   const grid = document.getElementById('recipeGrid');
+
+  if(owner && !recipes.length){
+    grid.innerHTML = `<div class="grid-empty"><p>${shared.loading[owner] ? 'Fetching their recipes…'
+      : shared.failed[owner] ? "Couldn't fetch their recipes just now. Choose them again above to try again."
+      : 'They have no recipes yet.'}</p></div>`;
+    return;
+  }
 
   if(!recipes.length){
     grid.innerHTML = `<div class="grid-empty">
@@ -4631,7 +4695,7 @@ function renderHome(){
   }
 
   const shortlistedIds = new Set(loadShortlist().filter(i=>i.recipeId).map(i=>i.recipeId));
-  grid.innerHTML = results.map(r=>renderCard(r, shortlistedIds)).join('');
+  grid.innerHTML = results.map(r=>renderCard(r, shortlistedIds, !!owner)).join('');
 }
 
 /* Card clicks/keypresses are handled by one delegated listener (see
@@ -4646,6 +4710,8 @@ function activateCard(id){
     renderPlanner();
     updateSidebarCounts();
     showToast(`Added to ${formatDayLabel(new Date(date+'T00:00:00'))}`);
+  } else if(homeLibrary()){
+    openSharedRecipe(homeLibrary(), id);
   } else {
     openRecipe(id);
   }
@@ -4710,6 +4776,7 @@ document.querySelectorAll('.saved-view').forEach(btn=>{
    ===================================================================== */
 function openRecipe(id, returnTo){
   state.selectedRecipeId = id;
+  state.viewerShared = null;
   state.viewerReturnTo = returnTo || 'recipes';
   state.viewerServes = null; // ad-hoc scaling always starts fresh — never remembered between visits
   showView('viewer');
@@ -4919,10 +4986,14 @@ function renderProvenance(recipe){
     : `<span class="prov-chip prov-${c.cls}" title="${escapeHtml(c.title)}">${escapeHtml(c.text.toUpperCase())}</span>`).join('');
 }
 function renderViewer(){
-  const recipe = loadRecipes().find(r=>r.id === state.selectedRecipeId);
+  const recipe = viewerRecipe();
   const mount = document.getElementById('flowMount');
   const meta = document.getElementById('viewerMeta');
   if(!recipe){ showView('recipes'); renderHome(); return; }
+  /* One of another household's recipes is read and cooked from, never changed: what would write to our library
+     (FAVOURITE, SHORTLIST, EDIT, DELETE, the cooking notes) is hidden by this class, and ADD TO OUR RECIPES shown. */
+  const theirs = state.viewerShared;
+  document.getElementById('view-viewer').classList.toggle('theirs', !!theirs);
 
   const backLabels = { planner: '← PLANNER', history: '← HISTORY' };
   document.getElementById('backToRecipes').textContent = backLabels[state.viewerReturnTo] || '← ALL RECIPES';
@@ -4940,8 +5011,11 @@ function renderViewer(){
   const scale = (baseServings && targetServings) ? targetServings / baseServings : 1;
   const bits = [recipe.source, recipe.time];
   if(targetServings) bits.push(`SERVES ${targetServings}${scale!==1 ? ` (SCALED FROM ${baseServings})` : ''}`);
-  bits.push(n ? `COOKED ${n}×` : 'NEVER COOKED');
-  if(used) bits.push('LAST ' + formatDate(used));
+  if(theirs) bits.push(`FROM ${sharedHouseholdName(theirs)}`);
+  else {
+    bits.push(n ? `COOKED ${n}×` : 'NEVER COOKED');
+    if(used) bits.push('LAST ' + formatDate(used));
+  }
   /* The source becomes a link when the recipe knows where it came from —
      the reason it's worth filling the field in at all. Built as HTML rather
      than text only for that link, so everything here is escaped, and only
@@ -4955,7 +5029,7 @@ function renderViewer(){
     : metaHtml;
 
   renderProvenance(recipe);
-  renderCookingNotes(recipe);
+  if(theirs) renderTheirsNote(recipe); else renderCookingNotes(recipe);
 
   const favBtn = document.getElementById('favouriteBtn');
   favBtn.classList.toggle('on', !!recipe.favourite);
@@ -4992,7 +5066,8 @@ function renderViewer(){
 
   mountFlow(mount, parsedForView, {
     tickKey: recipe.id,
-    onComplete: ()=> logRecipeUsed(recipe.id),
+    /* Nothing is logged for one of theirs: our diary is of our recipes, and theirs is not in our library to log. */
+    onComplete: theirs ? ()=> showToast('Not logged: add it to our recipes to plan, shop for or log it') : ()=> logRecipeUsed(recipe.id),
     showTimeline: true
   });
 }
@@ -7078,7 +7153,7 @@ function renderCookingNotes(recipe){
     (notes.length > COOK_NOTES_SHOWN
       ? `<button type="button" class="link-btn cn-more" data-note-more>${cookNotesUi.showAll ? 'SHOW THE LATEST ' + COOK_NOTES_SHOWN : 'SHOW ALL ' + notes.length + ' NOTES'}</button>` : '');
 }
-function currentViewerRecipe(){ return loadRecipes().find(r=> r.id === state.selectedRecipeId); }
+function currentViewerRecipe(){ return state.viewerShared ? null : loadRecipes().find(r=> r.id === state.selectedRecipeId); }
 document.getElementById('cookingNotes').addEventListener('click', e=>{
   const recipe = currentViewerRecipe();
   if(!recipe) return;
@@ -7438,6 +7513,7 @@ function renderSettings(){
   renderKeywordsList();
   renderSwaps();
   renderCalendarSettings();
+  renderSharingSettings();
   showSettingsTab(settingsTabStored());
 }
 
@@ -7501,6 +7577,258 @@ function calendarAutoToggles(){
   return toggle('calAutoAdd', !!st.calendarAuto, 'AUTOMATICALLY ADD TO CALENDAR', 'Each day you plan goes into the calendar.')
        + toggle('calAutoRemind', !!st.calendarAutoRemind, 'AUTOMATICALLY REMIND ME FOR MAIN MEALS', 'Days with a Main course get the evening-before reminder.');
 }
+
+/* ---- Recipe sharing between households (docs/PLAN-RECIPE-SHARING.md) ----
+   One household lets another browse its whole recipe library, read-only, and the other copies what it wants with
+   ADD TO OUR RECIPES. The recipes policies are not widened: hydrate reads recipes with no household filter, so a wider
+   policy would pour theirs into our library. Their recipes come only from shared_recipes(), which answers only when the
+   owner has shared with us, into `shared`, never into cache.recipes.
+
+   SHARE, STOP SHARING and the name are calls to the database's own functions, made at once rather than queued, like
+   CONNECT for the calendar: each answers with something to show (their household's name, or why not), and none is a
+   change to our library that could be kept and sent later. Offline, each says it could not be done. */
+async function loadSharing(){
+  let mine, theirs, named;
+  try {
+    [mine, theirs, named] = await Promise.all([
+      sb.rpc('households_i_share_with'),
+      sb.rpc('households_sharing_with_me'),
+      sb.from('households').select('id, name').eq('id', HOUSEHOLD_ID).maybeSingle()
+    ]);
+  } catch(e){
+    mine = theirs = { data: null, error: e };
+  }
+  const error = (mine && mine.error) || (theirs && theirs.error) || null;
+  shared.loaded = true;
+  shared.available = !error;
+  shared.problem = !error ? null : isNetworkFailure(error) ? 'offline' : 'missing';
+  if(error){
+    /* Offline keeps what was known; "not applied yet" knows nothing. */
+    if(shared.problem === 'missing'){ shared.sharingWithMe = []; shared.iShareWith = []; }
+    if(shared.problem === 'missing') console.warn('Recipe sharing is unavailable (has add-recipe-sharing been applied?)', error);
+  } else {
+    shared.iShareWith = (mine.data || []).map(h=> ({ id: h.household_id, name: h.name || 'Household' }));
+    shared.sharingWithMe = (theirs.data || []).map(h=> ({ id: h.household_id, name: h.name || 'Household', count: Number(h.recipes) || 0 }));
+  }
+  if(named && !named.error && named.data) shared.ourName = named.data.name || '';
+  /* A household that has stopped sharing takes its recipes with it, here and on screen. */
+  const still = new Set(shared.sharingWithMe.map(h=> h.id));
+  Object.keys(shared.recipes).forEach(id=>{ if(!still.has(id)) delete shared.recipes[id]; });
+  if(state.library && !still.has(state.library)) state.library = null;
+  if(state.view === 'recipes') renderHome();
+  if(state.view === 'viewer' && state.viewerShared && !still.has(state.viewerShared)){ state.viewerShared = null; showView('recipes'); }
+  if(state.view === 'settings') renderSharingSettings();
+}
+
+/* The household whose recipes RECIPES is showing, or null for ours. */
+function homeLibrary(){
+  if(state.pickingForDate || !state.library) return null;
+  return shared.sharingWithMe.some(h=> h.id === state.library) ? state.library : null;
+}
+function sharedHouseholdName(id){
+  const h = shared.sharingWithMe.find(x=> x.id === id);
+  return h ? h.name : 'another household';
+}
+/* "The Smiths" → "The Smiths'"; "Gran" → "Gran's". The switch says it in capitals: "THE SMITHS' RECIPES". */
+function possessive(name){
+  const n = String(name || 'Household').trim();
+  return n + (/s$/i.test(n) ? "'" : "'s");
+}
+function possessiveRecipes(name){ return possessive(name).toUpperCase() + ' RECIPES'; }
+/* Our copy of one of their recipes: one ADD TO OUR RECIPES made, or one of ours from the same page. */
+function ourCopyOf(theirRecipe){
+  const url = (theirRecipe.sourceUrl || '').trim();
+  return loadRecipes().find(r=> r.copiedFrom === theirRecipe.id || (url && (r.sourceUrl || '').trim() === url)) || null;
+}
+
+/* Shown only when another household shares with us, and not while choosing a recipe for a day. */
+function renderLibrarySwitch(owner){
+  const box = document.getElementById('librarySwitch');
+  if(!box) return;
+  if(!shared.sharingWithMe.length || state.pickingForDate){ box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  box.innerHTML = `<button type="button" data-library=""${!owner ? ' class="on"' : ''}>OUR RECIPES</button>` +
+    shared.sharingWithMe.map(h=> `<button type="button" data-library="${escapeHtml(h.id)}"${owner === h.id ? ' class="on"' : ''}>${escapeHtml(possessiveRecipes(h.name))}</button>`).join('');
+}
+document.getElementById('librarySwitch').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-library]');
+  if(!btn) return;
+  state.library = btn.dataset.library || null;
+  /* Fetched again each time theirs is chosen, so it is never older than the last look; what was fetched before stays
+     on screen meanwhile. */
+  if(state.library) fetchSharedRecipes(state.library);
+  renderHome();
+});
+
+async function fetchSharedRecipes(owner){
+  if(shared.loading[owner]) return;
+  shared.loading[owner] = true;
+  let res;
+  try { res = await sb.rpc('shared_recipes', { p_owner: owner }); }
+  catch(e){ res = { data: null, error: e }; }
+  shared.loading[owner] = false;
+  if(res.error){
+    shared.failed[owner] = true;
+    console.warn('Could not fetch the shared recipes', res.error);
+  } else {
+    delete shared.failed[owner];
+    shared.recipes[owner] = (res.data || []).map(row=> ({ ...rowToRecipe(row, {}), favourite: false }));
+  }
+  if(state.view === 'recipes' && homeLibrary() === owner) renderHome();
+}
+
+function openSharedRecipe(owner, id){
+  state.selectedRecipeId = id;
+  state.viewerShared = owner;
+  state.viewerReturnTo = 'recipes';
+  state.viewerServes = null;
+  showView('viewer');
+  renderViewer();
+}
+/* The recipe the Viewer has open: one of theirs, read-only, or one of ours. */
+function viewerRecipe(){
+  return state.viewerShared
+    ? (shared.recipes[state.viewerShared] || []).find(r=> r.id === state.selectedRecipeId)
+    : loadRecipes().find(r=> r.id === state.selectedRecipeId);
+}
+function renderTheirsNote(recipe){
+  const copy = ourCopyOf(recipe);
+  document.getElementById('viewerTheirsNote').textContent = copy
+    ? `From ${possessive(sharedHouseholdName(state.viewerShared))} recipes. We already have it as "${copy.title}".`
+    : `From ${possessive(sharedHouseholdName(state.viewerShared))} recipes. Add it to our recipes to plan, shop for or log it.`;
+  document.getElementById('addToOursBtn').textContent = copy ? 'OPEN OUR COPY' : 'ADD TO OUR RECIPES';
+}
+
+/* A copy of theirs, ours from now on: a new id, the same text and fields, unstarred and never cooked, with where it
+   came from. Their source photos are never shared, so the copy has none; their comparison with the source is of the
+   same lines, so it comes too. */
+function addSharedRecipeToOurs(){
+  const theirs = state.viewerShared && viewerRecipe();
+  if(!theirs) return;
+  const existing = ourCopyOf(theirs);
+  if(existing){ openRecipe(existing.id); return; }
+  const tags = JSON.parse(JSON.stringify(theirs.tags || { course: null, keywords: [] }));
+  const copy = {
+    id: uid(), title: theirs.title, source: theirs.source, sourceUrl: theirs.sourceUrl || '', imageUrl: theirs.imageUrl || '',
+    time: theirs.time || '', servings: theirs.servings, favourite: false, equipment: theirs.equipment || '', tags,
+    syntax: theirs.syntax, history: [], dateAdded: todayStr(), sourceCheck: theirs.sourceCheck || null, sourcePhotos: null,
+    copiedFrom: theirs.id
+  };
+  mergeKeywordVocab(tags.keywords || []);
+  if(!saveRecipe(copy)) return;
+  copySharedImage(copy.id, copy.imageUrl);
+  updateSidebarCounts();
+  state.library = null;
+  openRecipe(copy.id);
+  showToast(`Added "${copy.title}" to our recipes`);
+}
+document.getElementById('addToOursBtn').addEventListener('click', addSharedRecipeToOurs);
+
+/* Their photo, if it is in their folder of our Storage, is copied into ours, so our copy keeps its picture if they
+   delete theirs. Queued after the recipe's own save, like rehostImageFor, and named as the re-hosting names one
+   (household/recipe.ext). A photo elsewhere on the web stays where it is: the next save re-hosts it as any other.
+   A failure is not worth retrying or a toast: the copy keeps their link, which still shows. */
+function copySharedImage(recipeId, url){
+  if(!url || !url.startsWith(SELF_HOST_PREFIX) || url.startsWith(SELF_HOST_PREFIX + HOUSEHOLD_ID + '/')) return;
+  queueWrite('the recipe image', async ()=>{
+    try {
+      const res = await fetch(url);
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+      const ext = ((url.split('?')[0].match(/\.([a-z0-9]{2,5})$/i) || [])[1] || 'jpg').toLowerCase();
+      const path = `${HOUSEHOLD_ID}/${recipeId}.${ext}`;
+      const { error } = await sb.storage.from('recipe-images').upload(path, blob, { contentType: blob.type || undefined, upsert: true });
+      if(error) throw error;
+      applyRehostedUrl(recipeId, url, SELF_HOST_PREFIX + path);
+      const r = loadRecipes().find(x=> x.id === recipeId);
+      /* Both columns the re-hosting changes, as applyRehostedUrl changed them, and only if it did. */
+      if(r && r.imageUrl === SELF_HOST_PREFIX + path) patchRecipe(recipeId, { image_url: r.imageUrl, syntax: r.syntax });
+    } catch(e){
+      console.warn('Could not copy the photo; the copy keeps their link', e);
+    }
+  });
+}
+
+/* ---- Settings → App → RECIPE SHARING ---- */
+function renderSharingSettings(){
+  const box = document.getElementById('sharingSettings');
+  if(!box) return;
+  const intro = `<p class="subtle">Let another household of the family browse our recipes, and copy the ones they want into
+    their own. Only recipes: never the plan, the diary, notes or the shopping list.</p>`;
+  if(!shared.loaded){ box.innerHTML = intro + `<p class="subtle">Looking…</p>`; return; }
+  if(!shared.available){
+    box.innerHTML = intro + (shared.problem === 'offline'
+      ? `<p class="subtle">Can't reach the server just now.</p>`
+      : `<p class="subtle">Waiting for the database change (docs/migrations/add-recipe-sharing.md). Until it is applied
+         nothing here is sent anywhere.</p>`);
+    return;
+  }
+  const mine = shared.iShareWith.length
+    ? `<ul class="share-list">${shared.iShareWith.map(h=> `<li>${escapeHtml(h.name)}
+        <button type="button" class="btn small-danger" data-stop-share="${escapeHtml(h.id)}">STOP SHARING</button></li>`).join('')}</ul>`
+    : `<p class="subtle">Nobody yet.</p>`;
+  const theirs = shared.sharingWithMe.map(h=> `<p class="subtle">${escapeHtml(h.name)} shares their recipes with us
+      (${h.count} recipe${h.count === 1 ? '' : 's'}): choose ${escapeHtml(possessiveRecipes(h.name))} at the top of RECIPES.</p>`).join('');
+  box.innerHTML = intro + `
+    <label class="subtle" for="shareName">OUR HOUSEHOLD'S NAME, as the other side sees it</label>
+    <div class="alias-form">
+      <input type="text" id="shareName" maxlength="40" autocomplete="off" placeholder="e.g. The Smiths" value="${escapeHtml(shared.ourName)}">
+      <button type="button" class="btn" id="shareNameBtn">SAVE</button>
+    </div>
+    <label class="subtle" for="shareEmail">LET ANOTHER HOUSEHOLD BROWSE OUR RECIPES: the email someone there signs in with</label>
+    <div class="alias-form">
+      <input type="email" id="shareEmail" autocomplete="off" placeholder="name@example.com">
+      <button type="button" class="btn" id="shareBtn">SHARE</button>
+    </div>
+    <div class="subtle">SHARED WITH</div>
+    ${mine}
+    ${theirs}`;
+}
+
+async function shareRpc(name, args){
+  try { return await sb.rpc(name, args); }
+  catch(e){ return { data: null, error: e }; }
+}
+async function saveHouseholdName(){
+  const input = document.getElementById('shareName');
+  const { data, error } = await shareRpc('set_household_name', { p_name: input.value });
+  if(error){ showToast(`Couldn't save the name${error.message ? ': ' + error.message : ''}`); return; }
+  if(!data){ showToast('Give the household a name first'); input.focus(); return; }
+  shared.ourName = data;
+  renderSharingSettings();
+  showToast(`Saved. Other households see "${data}"`);
+}
+async function shareOurRecipes(){
+  const input = document.getElementById('shareEmail');
+  const email = input.value.trim();
+  if(!email){ showToast('Type the email someone in that household signs in with'); input.focus(); return; }
+  const { data, error } = await shareRpc('share_recipes_with', { p_email: email });
+  if(error || !data){ showToast(`Couldn't share${error && error.message ? ': ' + error.message : ''}`); return; }
+  if(data.error){ showToast(data.error); return; }
+  if(!shared.iShareWith.some(h=> h.id === data.household)) shared.iShareWith.push({ id: data.household, name: data.name || 'Household' });
+  renderSharingSettings();
+  showToast(`Sharing our recipes with ${data.name || 'that household'}`);
+}
+async function stopSharingWith(id){
+  const h = shared.iShareWith.find(x=> x.id === id);
+  if(!h) return;
+  if(!confirm(`Stop letting ${h.name} browse our recipes?\n\nAny they have already added to theirs stay theirs.`)) return;
+  const { error } = await shareRpc('stop_sharing_with', { p_household: id });
+  if(error){ showToast(`Couldn't stop sharing${error.message ? ': ' + error.message : ''}`); return; }
+  shared.iShareWith = shared.iShareWith.filter(x=> x.id !== id);
+  renderSharingSettings();
+  showToast(`${h.name} can no longer browse our recipes`);
+}
+document.getElementById('sharingSettings').addEventListener('click', e=>{
+  if(e.target.closest('#shareNameBtn')) saveHouseholdName();
+  else if(e.target.closest('#shareBtn')) shareOurRecipes();
+  else { const stop = e.target.closest('[data-stop-share]'); if(stop) stopSharingWith(stop.dataset.stopShare); }
+});
+document.getElementById('sharingSettings').addEventListener('keydown', e=>{
+  if(e.key !== 'Enter') return;
+  if(e.target.id === 'shareName'){ e.preventDefault(); saveHouseholdName(); }
+  if(e.target.id === 'shareEmail'){ e.preventDefault(); shareOurRecipes(); }
+});
 
 /* The one place the app leaves for Google. A function of its own so the tests can stand in for it. */
 function goToGoogle(url){ location.assign(url); }
@@ -9500,6 +9828,8 @@ async function startApp(){
   purgeOldFormatTicks();
   updateSidebarCounts();
   renderHome();
+  /* Apart from hydrate, so nothing about sharing can sign anyone out; it redraws what it changes when it lands. */
+  loadSharing();
   /* Once, after the first load that succeeds. */
   if(!calendarReturnHandled){ calendarReturnHandled = true; handleCalendarReturn(calendarReturn); }
 }
@@ -9545,6 +9875,7 @@ async function refreshLibrary(){
   purgeOldFormatTicks();
   updateSidebarCounts();
   renderHome();
+  loadSharing();
   return true;
 }
 
