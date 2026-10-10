@@ -58,8 +58,7 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
    table, `docs/ARCHITECTURE.md` §4, `docs/HANDOVER.md`).
 5. **The how-to guide (10 Oct):** `help.html`, opened from Settings → HELP. Drafted for the household to read; then one PR.
    Keep it true: a renamed button or a new everyday feature updates it in the same PR (`test/help-guide.js`).
-6. **PRE-MADE meals and COOKED ✓ (10 Oct, approved and built):** the food diary fed from the Planner, `docs/PLAN-FOOD-DIARY.md`.
-   The SQL, `docs/migrations/add-premade.md`, is the household's to apply first; then merge, then redeploy `calendar-sync`.
+6. **PRE-MADE meals and COOKED ✓ (10 Oct): live** (#78, SQL applied, `calendar-sync` v3). The food diary fed from the Planner, `docs/PLAN-FOOD-DIARY.md`.
 7. **A new household, and sharing recipes with it (10 Oct, answered):** `docs/ONBOARDING.md` §4 makes the household from an
    email address; `docs/PLAN-RECIPE-SHARING.md` lets either household browse the other's recipes and copy them. The SQL,
    `docs/migrations/add-recipe-sharing.md`, is the household's to apply first; then the app's side. **Merged 10 Oct (#74), the SQL
@@ -80,7 +79,7 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **Tablet step 39a**, cooking notes.
 - **P3:** tablet and phone steps 40a and 40b (the SQL and both PRs are in, 9 Oct).
 - **Read the how-to guide** and say what to change; then tablet step 42a once its PR merges.
-- **PRE-MADE / COOKED ✓:** the steps in `docs/PLAN-FOOD-DIARY.md` §5 (the SQL, merge, redeploy `calendar-sync`); tablet step 41a.
+- **PRE-MADE / COOKED ✓ (live 10 Oct):** tablet step 41a.
 - **Recipe sharing (merged 10 Oct):** make the new household (`docs/ONBOARDING.md` §4), then name each household and SHARE from
   Settings → APP; tablet step 43a.
 - **The Drive backup (live 10 Oct):** look in Google Drive for RecipeWrangler backups and download one file (tablet step 44a, (3)).

@@ -6,7 +6,7 @@ were eaten that way rather than cooked. DDL only, no data.
 *(A markdown page rather than a `.sql` file because `.gitignore` excludes `*.sql`, on purpose: nothing that looks like a data dump
 may be committed to this public repo.)*
 
-**Not applied yet.** Tested on 10 Oct 2026 on a scratch Postgres 16 with the two tables shaped as live and owned by a
+**Applied by the household on 10 Oct 2026**, before PR #78 merged; checked read-only at 20:03 UTC (`docs/INFRASTRUCTURE.md`). Tested before that, on 10 Oct 2026, on a scratch Postgres 16 with the two tables shaped as live and owned by a
 non-superuser like the live `postgres`: it applies; an existing day reads `premade = '{}'` and an existing diary row `false`; a day
 saved without naming the column (as the app does before this) gets `'{}'`, and a diary row `false`; a day can then store
 `'{dinner}'`; the check queries give what they say; the undo runs and leaves the tables as they were.
