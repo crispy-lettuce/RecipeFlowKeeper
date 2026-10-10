@@ -39,3 +39,5 @@ jobs:
       - run: node test/source-ingredients.js
       # The calendar push's two functions, lifted from their source (P3 PR 1, 1 Oct).
       - run: node test/calendar-push.js
+      # The how-to guide's button names and links, against the app (10 Oct).
+      - run: node test/help-guide.js

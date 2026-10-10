@@ -6,7 +6,8 @@ that save the household switching each day on by hand: AUTOMATICALLY ADD TO CALE
 *(A markdown page rather than a `.sql` file because `.gitignore` excludes `*.sql`, on purpose: nothing that looks like a data dump
 may be committed to this public repo. It carries DDL only and no data.)*
 
-**Not applied yet.**
+**Applied 9 Oct 2026** by the household from the SQL editor, before PR #72 merged. Checked read-only at 20:03 UTC: both
+columns `boolean`, not null, default false.
 
 ## Who and when
 

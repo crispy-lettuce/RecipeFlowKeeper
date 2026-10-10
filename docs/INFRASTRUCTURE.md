@@ -254,10 +254,14 @@ folder; the column `jsonb`, nullable, no default, with its list check; no `anon`
 `household_settings`, the `calendar_connections` table, `private.calendar_oauth_states`, and five service-role-only functions that
 keep the Google token in Vault) was applied the same way by the household on 9 Oct 2026, before their first connection (dated
 17:52:47 UTC). Seen read-only at 18:59 UTC that day: `household_settings.calendar_remind_at` exists and the household is connected.
-Its own page's check queries (grants, policies, the functions' execute rights) have not been run by a session yet.
-**Waiting to be applied: `add_calendar_auto`** (`docs/migrations/add-calendar-auto.md`, the P3 follow-up, 9 Oct 2026): two
-booleans on `household_settings`, `calendar_auto` and `calendar_auto_remind`, both off by default, for the two automatic toggles.
-The household applies it before merging that PR; merging first is safe, since the toggles stay hidden until the columns exist.
+Its own page's check queries were run read-only by a session on 9 Oct, before the household connected: the one `TO authenticated`
+select policy on `calendar_connections` and no other grant to `authenticated` but `SELECT`; the five `calendar_*` functions each
+executable by `service_role` only, not `anon` or `authenticated`; `private.calendar_oauth_states` present; no token in Vault yet.
+*(Until 10 Oct this paragraph said they had not been run; the session's own record says they had.)*
+`add_calendar_auto` (`docs/migrations/add-calendar-auto.md`, the P3 follow-up: `household_settings.calendar_auto` and
+`calendar_auto_remind`, both off by default, for the two automatic toggles) was applied the same way by the household on 9 Oct
+2026, before PR #72 merged (20:03 UTC). Checked read-only at 20:03 UTC: both `boolean`, not null, default false.
+Nothing is waiting to be applied.
 
 ---
 

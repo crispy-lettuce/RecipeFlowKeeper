@@ -42,6 +42,10 @@ feeds. Every page in it is made up; it proves nothing about whether a real site 
 block. `node tools/remeasure.js <export>` re-measures the whole library from an export kept
 outside the repo.
 
+`node test/help-guide.js` (6 checks, no browser) checks the how-to guide, `help.html`, against the app: every
+button it names (marked `<b class="ui">`) still appears in `index.html`, and every link from Settings → HELP and
+from the guide's contents lands on a section that exists.
+
 `node test/calendar-push.js` (30 checks, no browser) tests the calendar push's two Edge Functions,
 `calendar-sync` and `calendar-auth`, lifted from their real source the same way: the event's id,
 its all-day dates, the 20:00 reminder's minutes, which days a sync writes or deletes, what a sync
@@ -72,7 +76,7 @@ node test/core.test.js
 `build.js` inlines the real `core.js` into the built page, so the smoke suite below tests exactly
 what Pages serves.
 
-**447 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
+**448 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, the automatic image
 re-host on save, what happens when you come back to the tab (online, offline, mid-save, after a

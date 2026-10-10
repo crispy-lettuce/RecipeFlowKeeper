@@ -105,7 +105,7 @@ useful with no Claude Code session and no prior context at all.
 
 ---
 
-### `docs/migrations/add-calendar-auto.md` — a schema change, waiting to be applied (9 Oct 2026)
+### `docs/migrations/add-calendar-auto.md` — a schema change, applied by the household 9 Oct 2026
 **What:** the P3 follow-up (`docs/PLAN-CALENDAR-PUSH.md` §11): `household_settings.calendar_auto` and `calendar_auto_remind`, the
 two automatic calendar toggles, off by default. Who applies it and when, why it is safe in either order, how to check it and how to
 undo it. DDL only, no data.
@@ -429,6 +429,14 @@ instructions and compare. Also the record of which library faults have been fixe
 on 20 Sep. `test/validate-recipes.js` covers the other half.
 
 ---
+
+### `help.html` — the household's how-to guide (10 Oct 2026)
+**What:** One page beside the app, opened from Settings → HELP (OPEN THE GUIDE ↗, and QUICK ANSWERS linking to its sections):
+a week with the app, then a section per screen, what goes wrong, and backups. Written for the family's everyday use, with every
+button named exactly as it reads, marked `<b class="ui">`. It follows the app's light or dark setting, needs no sign-in, and
+prints to A4. `test/help-guide.js` checks the quoted buttons are still in `index.html` and the links land.
+
+**Use it when:** changing an on-screen label or adding a feature the family will use: update it in the same PR.
 
 ### `core.js` — the pure core (not a document, but read this entry)
 **What:** Since 25 Sep 2026, the second of the app's two files: the parser, layout, quantity,
