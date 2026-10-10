@@ -19,7 +19,7 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **Cooking diary:** 116 entries. **Word matches:** 15. **Household aisles:** 1. **Swaps:** 2. **Cooking notes:** none yet (R4 built 30 Sep).
 - **Tests:** `node test/core.test.js` 143 checks; `node test/build.js && node test/smoke.js` 472 checks (418 until P3 PR 2, 437 until the
   calendar toggles, both 9 Oct; 447 until the HELP tab, 448 until recipe sharing, 465 until the Drive backup, all 10 Oct).
-  `node test/calendar-push.js` 31 checks; `node test/drive-backup.js` 11 checks; `node test/help-guide.js` 6 checks. `offline-harness` runs
+  `node test/calendar-push.js` 31 checks; `node test/drive-backup.js` 11 checks; `node test/help-guide.js` 7 checks. `offline-harness` runs
   both on every PR and is required on `main`.
 - **Schema:** `add_calendar_auto` (the P3 toggles) was applied by the household on 9 Oct, before #72 merged. The one before it,
   `add_calendar_push`, was applied 9 Oct, before the household connected the calendar at 17:52 UTC (`docs/INFRASTRUCTURE.md`;

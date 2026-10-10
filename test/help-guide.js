@@ -45,6 +45,15 @@ const ownLinks = [...guide.matchAll(/href="#([^"]+)"/g)].map(m => m[1]);
 const ownBroken = ownLinks.filter(a => !ids.has(a));
 check('every entry in the guide\'s contents lands on a section that exists', ownLinks.length >= 10 && ownBroken.length === 0, ownBroken.join(', ') || ownLinks.length);
 
+/* ---- Links to this repo's own files land (10 Oct 2026) ----
+   The guide points a new household at converter/conversion-instructions.md on GitHub rather than copying it, so it is always the
+   current version. A file moved or renamed would leave that link dead without anyone noticing; this names it. */
+const REPO_FILE = /href="https:\/\/(?:github\.com\/crispy-lettuce\/RecipeFlowKeeper\/blob|raw\.githubusercontent\.com\/crispy-lettuce\/RecipeFlowKeeper)\/main\/([^"#?]+)"/g;
+const repoFiles = [...guide.matchAll(REPO_FILE)].map(m => decodeURIComponent(m[1]));
+const repoMissing = repoFiles.filter(f => !fs.existsSync(path.join(ROOT, f)));
+check('every link from the guide to a file in this repo names a file that exists (the conversion instructions among them)',
+      repoFiles.includes('converter/conversion-instructions.md') && repoMissing.length === 0, repoMissing.join(', ') || repoFiles.join(', '));
+
 const failed = checks.filter(c => !c.pass).length;
 console.log(`\n${checks.length} checks, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -42,9 +42,10 @@ feeds. Every page in it is made up; it proves nothing about whether a real site 
 block. `node tools/remeasure.js <export>` re-measures the whole library from an export kept
 outside the repo.
 
-`node test/help-guide.js` (6 checks, no browser) checks the how-to guide, `help.html`, against the app: every
+`node test/help-guide.js` (7 checks, no browser) checks the how-to guide, `help.html`, against the app: every
 button it names (marked `<b class="ui">`) still appears in `index.html`, and every link from Settings → HELP and
-from the guide's contents lands on a section that exists.
+from the guide's contents lands on a section that exists. Since 10 Oct it also checks that every link from the guide to a file in this repo (the conversion
+instructions, on GitHub) names a file that exists.
 
 `node test/calendar-push.js` (31 checks, no browser) tests the calendar push's two Edge Functions,
 `calendar-sync` and `calendar-auth`, lifted from their real source the same way: the event's id,

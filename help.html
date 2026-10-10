@@ -237,6 +237,26 @@
   </ol>
   <p class="tip"><b class="ui">SCALE TO SERVE</b> in the form changes the recipe for good. To cook a different amount just once,
     use <b class="ui">COOK FOR</b> on the recipe page instead.</p>
+
+  <h3 id="converter">Converting your own recipes</h3>
+  <p>The app reads recipes written in its own layout (groups of ingredients, then stages). Turning a web page, a photo of a book or a
+    card into that layout is done in the Claude app, by a project that follows the app's conversion instructions. A household new
+    to the app sets one up once:</p>
+  <ol>
+    <li>Download the instructions:
+      <a href="https://github.com/crispy-lettuce/RecipeFlowKeeper/blob/main/converter/conversion-instructions.md" target="_blank" rel="noopener">conversion-instructions.md on GitHub</a>
+      (the download button is at the top right of the file), or
+      <a href="https://raw.githubusercontent.com/crispy-lettuce/RecipeFlowKeeper/main/converter/conversion-instructions.md" target="_blank" rel="noopener">the plain file</a>
+      to save from the browser.</li>
+    <li>In the Claude app, make a new project, for example "Recipe conversion", and add that file to the project's files. That one
+      file is all it needs.</li>
+    <li>For each recipe, start a chat in that project and give it the web address, a photo of the page, or the recipe's text. It works
+      through the recipe and replies with the recipe in the app's layout.</li>
+    <li>Copy its reply, then <b class="ui">NEW RECIPE</b> here and paste it in, as above.</li>
+  </ol>
+  <p class="tip">The instructions are improved from time to time; the link above is always the latest. Every few months, download it
+    again and replace the file in the project. A recipe another household shares needs no converting: <b class="ui">ADD TO OUR RECIPES</b>
+    copies it as it is (<a href="#sharing">section 11</a>).</p>
 </section>
 
 <section id="settings">
