@@ -41,6 +41,25 @@ is the "get it out of the freezer" reminder these meals need most.
   beside that recipe (`calendar-sync`, redeployed by the household).
 - **Backups:** EXPORT DATA and IMPORT DATA carry both, and an older backup restores everything as fresh.
 
+## 2a. After tablet step 41a: fresh or freezer? (10 Oct)
+
+**What 41a found.** On 10 Oct (20:40–20:42 UTC, read-only) the household marked a dish PRE-MADE · DINNER for today, and it went into
+the diary from the freezer. Then they finished its recipe in the viewer, which logged it a second time, as cooked. They had not
+seen COOKED ✓ either: it is hidden on a pre-made dish, and the fresh dish read ✓ COOKED once its recipe was finished. The
+Planner row also squeezed a dish's name to one letter on a phone.
+
+**The household's answer: ask.** Finishing the flow (in the viewer or a group) of a dish down as PRE-MADE today asks "Cooked
+fresh, or from the freezer?" (`finishRecipe`):
+- **FROM THE FREEZER**, or closing the question, adds nothing, since the freezer entry is already there.
+- **COOKED FRESH** says the plan was wrong for today. It switches PRE-MADE off that dish, removes the freezer entry made for it
+  (by the id `logDuePremade` gave it, never by matching, so nothing written by hand is touched), and logs it as cooked with the
+  meal question and the note box. That differs from switching PRE-MADE off on the Planner, which keeps the entry: there nobody
+  has said it was wrong.
+- The answer is remembered for that dish and day until the page is reloaded, so unticking and re-ticking does not ask again.
+
+On a phone the dish's name keeps at least 12em and the pills wrap below it; the tablet's row is unchanged where it fits.
+Tablet step 41b.
+
 ## 3. Data
 
 `docs/migrations/add-premade.md`: `planner_days.premade text[]` (one slot per item: '' or the meal) and `recipe_logs.premade

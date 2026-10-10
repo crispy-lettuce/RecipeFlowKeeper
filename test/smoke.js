@@ -5083,6 +5083,109 @@ const check = (name, pass, detail) => {
         JSON.stringify([pmExport, pmImp]));
   await pmPage.close();
 
+  /* ---- Fresh or freezer? (tablet step 41a, 10 Oct 2026) ----
+     Finishing the flow of a dish down as PRE-MADE today logged it a second time, as cooked. Today here is Pasta (pre-made,
+     dinner) then Soup (fresh); the load puts Pasta in the diary from the freezer. Then the Planner row on a phone. */
+  console.log('\nFresh or freezer, and the Planner row on a phone');
+  const ff = await browser.newPage();
+  ff.on('pageerror', e => errors.push('PAGEERROR (fresh or freezer): ' + e.message));
+  await ff.addInitScript(([today, r1, r2]) => {
+    window.__STUB_EXTRA__ = {
+      planner_days: [{ household_id: '286a8a12-c12a-4b83-afbc-0912533f6b1c', plan_date: today, is_blank: false,
+        recipe_ids: [r1, r2], servings: [], premade: ['dinner', ''] }],
+      recipe_logs: []
+    };
+  }, [PM_TODAY, PM_R1, PM_R2]);
+  await ff.clock.setFixedTime(FIXTURE_NOW);
+  await ff.setViewportSize({ width: 412, height: 915 });
+  await ff.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await ff.waitForTimeout(1500);
+  const ffRow = () => ff.evaluate(today => {
+    showView('planner');
+    return [...document.querySelectorAll(`.day-row[data-date="${today}"] .day-recipe-row`)].map(row => {
+      const t = row.querySelector('.day-recipe-title').getBoundingClientRect();
+      const pill = row.querySelector('.day-recipe-premade').getBoundingClientRect();
+      return { title: Math.round(t.width), titleTop: Math.round(t.top), pillTop: Math.round(pill.top) };
+    });
+  }, PM_TODAY);
+  const ffPhone = await ffRow();
+  await ff.setViewportSize({ width: 800, height: 1280 });
+  const ffTablet = await ffRow();
+  await ff.setViewportSize({ width: 412, height: 915 });
+  check('    on a phone each dish keeps a readable name (the pills wrap under it); on the tablet a short one still has its pills beside it',
+        ffPhone.length === 2 && ffPhone.every(r => r.title >= 150) && ffTablet.length === 2 && Math.abs(ffTablet[1].pillTop - ffTablet[1].titleTop) < 12,
+        JSON.stringify({ ffPhone, ffTablet }));
+  const ffFreezerId = await ff.evaluate(([today, r1]) => premadeLogId(HOUSEHOLD_ID, today, r1, 1), [PM_TODAY, PM_R1]);
+  const ffDrain = () => pmDrain(ff);
+  /* The final column's cells, in the page: the last cell in the page is not always in the last column. Ticking each one
+     not yet done finishes the flow; unticking takes one off again. */
+  const ffFinal = untick => ff.evaluate(untick => {
+    const cells = [...document.querySelectorAll('#flowMount .box-cell')];
+    const last = Math.max(...cells.map(c => +c.dataset.col));
+    const finals = cells.filter(c => +c.dataset.col === last);
+    if(untick){ const c = finals.find(x => x.classList.contains('done')); if(c) c.click(); }
+    else finals.filter(c => !c.classList.contains('done')).forEach(c => c.click());
+  }, !!untick).then(() => ff.waitForTimeout(300));
+  const ffLastCell = () => ffFinal(false);
+  const ffAgain = async () => { await ffFinal(true); await ffFinal(false); };
+  const ffState = m => ff.evaluate(([m, today, r1, fid]) => {
+    const ws = window.__WRITES__.slice(m);
+    return { logs: ws.filter(w => w.table === 'recipe_logs').map(w => ({ op: w.op,
+        rows: (Array.isArray(w.rows) ? w.rows : w.rows ? [w.rows] : []).map(r => ({ on: r.cooked_on, premade: !!r.premade, recipe: r.recipe_id === r1 })) })),
+      plan: ws.filter(w => w.table === 'planner_days' && w.op === 'upsert').flatMap(w => w.rows).filter(r => r.plan_date === today).map(r => r.premade),
+      ask: document.getElementById('freshOrFreezerOverlay').classList.contains('open'),
+      what: document.getElementById('freshOrFreezerWhat').textContent,
+      prompt: document.getElementById('mealTypeOverlay').classList.contains('open'),
+      freezer: loadDiary().filter(e => e.premade && e.cookedOn === today).map(e => e.id),
+      cooked: loadDiary().filter(e => !e.premade && e.cookedOn === today && e.recipeId === r1).length,
+      history: loadRecipes().find(r => r.id === r1).history.includes(today),
+      toast: (document.querySelector('.toast') || {}).textContent || '' };
+  }, [m, PM_TODAY, PM_R1, ffFreezerId]);
+  await ff.evaluate(r1 => openRecipe(r1), PM_R1);
+  await ff.waitForTimeout(400);
+  let ffM = await ff.evaluate(() => window.__WRITES__.length);
+  await ffLastCell();
+  await ffDrain();
+  const ffAsk = await ffState(ffM);
+  check('    finishing the flow of a dish down as PRE-MADE today asks fresh or freezer, and logs nothing until it is answered',
+        ffAsk.ask && ffAsk.what === 'Test Pasta' && ffAsk.logs.length === 0 && !ffAsk.prompt
+        && JSON.stringify(ffAsk.freezer) === JSON.stringify([ffFreezerId]) && !ffAsk.history, JSON.stringify(ffAsk));
+  await ff.evaluate(() => { const b = document.getElementById('freshOrFreezerFreezer'); if(b) b.click(); });
+  await ff.waitForTimeout(200);
+  await ffAgain();
+  await ffDrain();
+  const ffFrozen = await ffState(ffM);
+  check('    FROM THE FREEZER adds nothing, the one freezer entry stays, and ticking the last column again does not ask again',
+        !ffFrozen.ask && ffFrozen.logs.length === 0 && ffFrozen.plan.length === 0 && !ffFrozen.prompt && ffFrozen.freezer.length === 1
+        && ffFrozen.cooked === 0 && /from the freezer/.test(ffFrozen.toast), JSON.stringify(ffFrozen));
+  // The other answer, as if asked afresh.
+  await ff.evaluate(() => freshOrFreezerAnswered.clear());
+  ffM = await ff.evaluate(() => window.__WRITES__.length);
+  await ffAgain();
+  await ff.evaluate(() => { const b = document.getElementById('freshOrFreezerFresh'); if(b) b.click(); });
+  await ff.waitForTimeout(300);
+  await ffDrain();
+  const ffFresh = await ffState(ffM);
+  const ffDeleted = await ff.evaluate(([m, fid]) => window.__WRITES__.slice(m).some(w => w.table === 'recipe_logs' && w.op === 'delete'
+    && JSON.stringify(w).includes(fid)), [ffM, ffFreezerId]);
+  check('    COOKED FRESH takes PRE-MADE off the dish, removes its freezer entry by its own id, and logs it as cooked with the meal question',
+        ffDeleted && JSON.stringify(ffFresh.plan) === JSON.stringify([['', '']]) && ffFresh.freezer.length === 0 && ffFresh.cooked === 1 && ffFresh.history
+        && ffFresh.logs.filter(l => l.op === 'insert').length === 1 && ffFresh.logs.filter(l => l.op === 'delete').length === 1
+        && ffFresh.prompt && !ffFresh.ask, JSON.stringify({ ffDeleted, ffFresh }));
+  await ff.evaluate(() => closeMealTypePrompt());
+  await ff.evaluate(r2 => openRecipe(r2), PM_R2);
+  await ff.waitForTimeout(400);
+  ffM = await ff.evaluate(() => window.__WRITES__.length);
+  await ffLastCell();
+  await ffDrain();
+  const ffSoup = await ff.evaluate(([m, today, r2]) => ({ ask: document.getElementById('freshOrFreezerOverlay').classList.contains('open'),
+    prompt: document.getElementById('mealTypeOverlay').classList.contains('open'),
+    rows: window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs').flatMap(w => Array.isArray(w.rows) ? w.rows : [w.rows])
+      .map(r => r.recipe_id === r2 && r.cooked_on === today && !r.premade) }), [ffM, PM_TODAY, PM_R2]);
+  check('    a dish cooked fresh as planned is logged at once, with no question',
+        !ffSoup.ask && ffSoup.prompt && JSON.stringify(ffSoup.rows) === '[true]', JSON.stringify(ffSoup));
+  await ff.close();
+
   const failed = checks.filter(c => !c.pass).length;
   console.log(`\n${checks.length} checks, ${failed} failed`);
   console.log(errors.length ? '\nERRORS:\n' + errors.join('\n') : 'no console/page errors');
