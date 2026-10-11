@@ -17,6 +17,11 @@ Nobody else checks these. Each one is here because it went wrong at least once.
    in `core.js`, and `core.js?v=` and `EXPECTED_CORE_VERSION` in `index.html`. Use today's date
    plus `.1`, or the next number if today already has one. `core.test.js` fails if the three
    disagree.
+2a. **A change the household will notice → a new entry at the top of `changelog.json`** (issue #91, 11 Oct): a
+   new `version` (today's date from `date -u` plus the next number), the date, the issue numbers, and what changed
+   in plain words with no recipe names. Set `APP_VERSION` in `index.html` to it; `core.test.js` fails if they
+   differ. The household reads it in Settings → HELP, and an open tab learns a new version is out from it, so a
+   change left out of it reaches both households unannounced. Documentation-only PRs add nothing.
 3. **Make every new check fail once.** Break the code it guards, see the check fail by name, then
    restore the code (`git diff` shows nothing). A check you have never seen fail proves nothing.
 4. **Take dates from `git log`, the database's timestamps or `date -u`**, never from memory or the
@@ -86,9 +91,9 @@ node test/core.test.js
 node test/build.js && node test/smoke.js
 ```
 
-`core.test.js` is 148 checks in Node, in about two seconds: the pure functions, the dictionary, the
+`core.test.js` is 152 checks in Node, in about two seconds: the pure functions, the dictionary, the
 shopping list's naming rules, and the rules that keep `core.js` and `index.html` apart. The smoke
-suite is 509 checks. **Run both,
+suite is 515 checks. **Run both,
 always** — `smoke.js` loads what `build.js` wrote, so skipping the build
 tests your previous edit and reports a pass or a failure that belongs to code you have changed.
 

@@ -54,6 +54,24 @@ const coreTag = pageSrc.indexOf('<script src="core.js');
 const mainScript = pageSrc.indexOf('const EXPECTED_CORE_VERSION');
 check('core.js loads before the page script that uses it', coreTag !== -1 && mainScript > coreTag);
 
+/* ---- The app's version and its change log (issue #91, 11 Oct 2026) ----
+   changelog.json is what the household reads in Settings → HELP and what an open tab asks to learn a new version is out,
+   so a malformed one, or one whose top entry is not the version the page says it is, would mislead both. */
+let changelog = null, changelogError = '';
+try { changelog = JSON.parse(fs.readFileSync(path.join(ROOT, 'changelog.json'), 'utf8')); } catch(e){ changelogError = e.message; }
+check('changelog.json reads as a list of entries', Array.isArray(changelog) && changelog.length > 0, changelogError);
+const clEntries = Array.isArray(changelog) ? changelog : [];
+const clBad = clEntries.filter(e => !/^\d{4}-\d{2}-\d{2}\.\d+$/.test(e.version || '') || !/^\d{4}-\d{2}-\d{2}$/.test(e.date || '')
+  || !Array.isArray(e.changes) || !e.changes.length || e.changes.some(c => typeof c !== 'string' || !c.trim()) || e.date > e.version.split('.')[0]
+  || (e.issues !== undefined && (!Array.isArray(e.issues) || e.issues.some(n => !Number.isInteger(n)))));
+check('every entry has a dated version (YYYY-MM-DD.n), its date, and at least one change in words', clBad.length === 0, JSON.stringify(clBad));
+const clOrder = (a, b) => { const [da, na] = a.split('.'), [db, nb] = b.split('.'); return da !== db ? (da < db ? -1 : 1) : (+na) - (+nb); };
+const clVersions = clEntries.map(e => e.version);
+check('the versions are all different, newest first',
+      new Set(clVersions).size === clVersions.length && clVersions.every((v, i) => i === 0 || clOrder(clVersions[i - 1], v) > 0), clVersions.join(', '));
+const appVersion = (pageSrc.match(/const APP_VERSION = '([^']+)'/) || [])[1];
+check('index.html is the version at the top of changelog.json', !!appVersion && appVersion === clVersions[0], `page ${appVersion}, log ${clVersions[0]}`);
+
 /* ---- The dictionary's master copy ---- */
 const { execFileSync } = require('child_process');
 let genOk = true, genOut = '';

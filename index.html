@@ -1099,6 +1099,9 @@
      a tablet, and a tap that seemed to do nothing was the first thing a new household reported. */
   .paste-read{ margin:10px 0 0; font-family:'IBM Plex Mono', monospace; font-size:11.5px; letter-spacing:.04em; color:var(--plum); }
   .paste-read[hidden]{ display:none; }
+  .whats-new-entry{ margin:0 0 12px; }
+  .whats-new-head{ font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.04em; color:var(--ink-mute); }
+  .whats-new-entry ul{ margin:4px 0 0; padding-left:20px; font-size:14px; line-height:1.45; color:var(--ink-soft); }
   /* Your own picture for a recipe (issue #92): beside IMAGE URL, a button, and the chosen photo small until SAVE. */
   .recipe-photo-upload{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:-4px 0 14px; }
   .recipe-photo-upload img{ width:96px; height:72px; object-fit:cover; border-radius:6px; border:1px solid var(--line); }
@@ -1547,7 +1550,7 @@
 
   <main class="stage">
     <div id="coreBar" class="offline-bar" role="alert" hidden>
-      <b>UPDATE</b><span>This page is part-way through an update.</span>
+      <b>UPDATE</b><span id="coreBarText">This page is part-way through an update.</span>
       <button class="btn" id="coreReloadBtn" style="margin-left:auto;">RELOAD</button>
     </div>
     <div id="offlineBar" class="offline-bar" role="status" aria-live="polite" hidden>
@@ -1874,6 +1877,13 @@
           <a class="btn" id="helpGuideLink" href="help.html" target="_blank" rel="noopener">OPEN THE GUIDE ↗</a>
         </div>
 
+        <div class="settings-block" data-settings-tab="help" id="whatsNewBlock">
+          <div class="side-label">VERSION AND WHAT'S NEW</div>
+          <p class="subtle">Version <b id="appVersion"></b>. What changed lately, newest first:</p>
+          <div id="whatsNewList"></div>
+          <a class="link-btn" href="https://github.com/crispy-lettuce/RecipeFlowKeeper/blob/main/changelog.json" target="_blank" rel="noopener">THE WHOLE LIST ↗</a>
+        </div>
+
         <div class="settings-block" data-settings-tab="help">
           <div class="side-label">QUICK ANSWERS</div>
           <ul class="help-answers" id="helpAnswers">
@@ -2064,6 +2074,11 @@
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
 const EXPECTED_CORE_VERSION = '2026-10-11.2';
+/* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
+   each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
+   the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
+   the two files arriving from Pages' cache out of step. */
+const APP_VERSION = '2026-10-11.4';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -2846,9 +2861,65 @@ window.addEventListener('online', ()=>{
   if(flushFailedWrites()) showToast('Back online — sending your changes.');
 });
 setOfflineBar(isOffline());
-if(coreMismatch()){
-  document.getElementById('coreBar').hidden = false;
-  document.getElementById('coreReloadBtn').addEventListener('click', ()=> location.reload());
+document.getElementById('coreReloadBtn').addEventListener('click', ()=> location.reload());
+if(coreMismatch()) document.getElementById('coreBar').hidden = false;
+
+/* ---- The version, what's new, and a newer version while a tab is open (issue #91, 11 Oct 2026) ----
+   Since a second household joined, every merge changes the app for two families within a minute, and a tab left open
+   kept running the old code with nothing to say so: the UPDATE bar above only ever caught core.js and index.html
+   arriving out of step, once, at load. changelog.json is now both the list the household reads in Settings → HELP and
+   the signal: its first entry is the newest version. It is asked for at start-up and on each return to the tab
+   (onSignedIn), at most once in ten minutes and never offline; a newer one turns the same bar on with its own words.
+   window.__CHANGELOG__, when a test sets it, stands in for the file: the test page is file://, which cannot fetch. */
+const VERSION_CHECK_MS = 10 * 60 * 1000;
+let changelogCache = null, lastVersionCheck = 0;
+/* "2026-10-11.10" is newer than "2026-10-11.9": the date as text, then the counter as a number. */
+function compareVersions(a, b){
+  const [da, na] = String(a).split('.'), [db, nb] = String(b).split('.');
+  return da !== db ? (da < db ? -1 : 1) : (parseInt(na, 10) || 0) - (parseInt(nb, 10) || 0);
+}
+function fetchChangelog(){
+  if(window.__CHANGELOG__ !== undefined){
+    window.__CHANGELOG_FETCHES__ = (window.__CHANGELOG_FETCHES__ || 0) + 1;
+    return window.__CHANGELOG__ ? Promise.resolve(window.__CHANGELOG__) : Promise.reject(new Error('no changelog'));
+  }
+  return fetch('changelog.json', { cache: 'no-store' }).then(r=> r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)));
+}
+async function checkForNewVersion(force){
+  if(isOffline()) return;
+  if(!force && Date.now() - lastVersionCheck < VERSION_CHECK_MS) return;
+  lastVersionCheck = Date.now();
+  try {
+    const log = await fetchChangelog();
+    if(!Array.isArray(log)) return;
+    changelogCache = log;
+    const latest = log[0] && log[0].version;
+    if(latest && compareVersions(latest, APP_VERSION) > 0){
+      document.getElementById('coreBarText').textContent = 'A new version is ready.';
+      document.getElementById('coreBar').hidden = false;
+    }
+  } catch(e){ /* offline, or Pages not answering: the next return to the tab asks again */ }
+  renderWhatsNew();
+}
+function renderWhatsNew(){
+  const v = document.getElementById('appVersion');
+  if(!v) return;
+  v.textContent = APP_VERSION;
+  const list = document.getElementById('whatsNewList');
+  if(!changelogCache){ list.innerHTML = `<p class="subtle">What's new needs a connection.</p>`; return; }
+  list.innerHTML = changelogCache.slice(0, 5).map(e=> `<div class="whats-new-entry">
+      <div class="whats-new-head">${escapeHtml(new Date(e.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }))} · ${escapeHtml(e.version)}${(e.issues || []).map(n=>
+        ` · <a href="https://github.com/crispy-lettuce/RecipeFlowKeeper/issues/${encodeURIComponent(n)}" target="_blank" rel="noopener">#${escapeHtml(String(n))}</a>`).join('')}</div>
+      <ul>${(e.changes || []).map(c=> `<li>${escapeHtml(c)}</li>`).join('')}</ul>
+    </div>`).join('');
+}
+/* Once per device after an update: one line to say so. Nothing on a first visit, when there is nothing to compare. */
+function noteVersionSeen(){
+  try {
+    const seen = localStorage.getItem('kitchen.lastSeenVersion');
+    if(seen && compareVersions(APP_VERSION, seen) > 0) showToast(`Updated to ${APP_VERSION}: see what's new in Settings → HELP`);
+    localStorage.setItem('kitchen.lastSeenVersion', APP_VERSION);
+  } catch(e){ /* blocked storage: no toast, nothing else lost */ }
 }
 
 /* Replace-the-whole-list push: whatever list the caller hands over becomes
@@ -8381,6 +8452,7 @@ function showSettingsTab(tab){
   if(!SETTINGS_TABS.includes(tab)) tab = 'ingredients';
   try { localStorage.setItem('kitchen.settingsTab', tab); } catch(e){ /* blocked storage is not fatal */ }
   document.querySelectorAll('#view-settings [data-settings-tab]').forEach(b=>{ b.hidden = b.dataset.settingsTab !== tab; });
+  if(tab === 'help'){ renderWhatsNew(); if(!changelogCache) checkForNewVersion(true); }
   document.querySelectorAll('[data-settings-tab-btn]').forEach(b=>{
     const on = b.dataset.settingsTabBtn === tab;
     b.classList.toggle('active', on);
@@ -10367,8 +10439,11 @@ async function refreshLibrary(){
 let loadInFlight = null;
 function onSignedIn(){
   if(!loadInFlight){
+    const first = !appStarted;
     loadInFlight = (appStarted ? refreshLibrary() : startApp())
       .finally(()=>{ loadInFlight = null; });
+    if(first) loadInFlight.then(()=> noteVersionSeen(), ()=>{});
+    checkForNewVersion();
   }
   return loadInFlight;
 }
