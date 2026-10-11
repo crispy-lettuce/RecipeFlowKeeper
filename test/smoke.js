@@ -3484,8 +3484,8 @@ const check = (name, pass, detail) => {
   await page.click('.navlink[data-view="settings"]');
   await page.waitForTimeout(300);
   const stHelpKept = await stShown();
-  check('    HELP shows the guide and the quick answers alone, opens help.html in a new tab, and is remembered like the other tabs',
-        stHelp.join('|') === 'HOW-TO GUIDE|QUICK ANSWERS' && stHelpLinks.guide === 'help.html' && stHelpLinks.guideTarget === '_blank'
+  check('    HELP shows the guide, the version and the quick answers alone, opens help.html in a new tab, and is remembered like the other tabs',
+        stHelp.join('|') === 'HOW-TO GUIDE|VERSION AND WHAT\'S NEW|QUICK ANSWERS' && stHelpLinks.guide === 'help.html' && stHelpLinks.guideTarget === '_blank'
         && stHelpLinks.guideShown && stHelpLinks.quick >= 6 && stHelpLinks.quickOk && stHelpKept.join('|') === stHelp.join('|'),
         JSON.stringify([stHelp, stHelpLinks, stHelpKept]));
   await page.click('[data-settings-tab-btn="ingredients"]');
@@ -5358,6 +5358,61 @@ const check = (name, pass, detail) => {
   check('    a photo another household uploaded is copied into our own folder when added to our recipes, never theirs',
         JSON.stringify(rpCopy.up) === JSON.stringify([rpCopy.mine.slice(rpCopy.mine.indexOf('recipe-images/') + 14)]) && rpCopy.image === rpCopy.mine, JSON.stringify(rpCopy));
   await rp.close();
+
+  /* ---- The version, what's new, and a newer version while a tab is open (issue #91, 11 Oct 2026) ----
+     The page's own APP_VERSION at the top of a made-up log of six entries; then a newer one, as if just merged. */
+  console.log('\nVersion and what\'s new');
+  const vnLog = ver => [ver, '2026-10-01.1', '2026-09-30.2', '2026-09-30.1', '2026-09-29.1', '2026-09-28.1'].map((v, i) => (
+    { version: v, date: v.split('.')[0], ...(i === 0 ? { issues: [91] } : {}), changes: [`Test change ${i + 1}`] }));
+  const vn = await browser.newPage();
+  vn.on('pageerror', e => errors.push('PAGEERROR (version): ' + e.message));
+  const vnApp = await (async () => { const m = require('fs').readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8').match(/const APP_VERSION = '([^']+)'/); return m && m[1]; })();
+  await vn.addInitScript(log => { window.__CHANGELOG__ = log; try { localStorage.setItem('kitchen.lastSeenVersion', '2000-01-01.1'); } catch(e){} }, vnLog(vnApp));
+  await vn.clock.setFixedTime(FIXTURE_NOW);
+  await vn.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await vn.waitForTimeout(1500);
+  const vnStart = await vn.evaluate(() => ({ toast: (document.querySelector('.toast') || {}).textContent || '', seen: localStorage.getItem('kitchen.lastSeenVersion'),
+    bar: !document.getElementById('coreBar').hidden, fetches: window.__CHANGELOG_FETCHES__ || 0, app: APP_VERSION }));
+  check('    the first load on a newer version says so once, and remembers it on this device; the same version shows no bar',
+        new RegExp('^Updated to ' + vnStart.app.replace(/\./g, '\\.') + ': see what\'s new').test(vnStart.toast) && vnStart.seen === vnStart.app && !vnStart.bar && vnStart.fetches >= 1,
+        JSON.stringify(vnStart));
+  const vnHelp = await vn.evaluate(() => { showView('settings'); showSettingsTab('help');
+    return { version: document.getElementById('appVersion').textContent, entries: [...document.querySelectorAll('#whatsNewList .whats-new-entry')].map(e => e.textContent.replace(/\s+/g, ' ').trim()),
+      link: (document.querySelector('#whatsNewList a') || {}).href || '' }; });
+  check('    Settings → HELP shows the version and the five newest entries, with a link to the issue',
+        vnHelp.version === vnStart.app && vnHelp.entries.length === 5 && /Test change 1/.test(vnHelp.entries[0]) && !vnHelp.entries.some(e => /Test change 6/.test(e))
+        && /\/issues\/91$/.test(vnHelp.link), JSON.stringify(vnHelp));
+  const vnNewer = vnStart.app.split('.')[0] + '.' + (parseInt(vnStart.app.split('.')[1], 10) + 9);
+  const vnReturn = await vn.evaluate(async newer => {
+    window.__CHANGELOG_FETCHES__ = 0; lastVersionCheck = 0;
+    window.__CHANGELOG__ = [{ version: newer, date: newer.split('.')[0], changes: ['Test newer'] }];
+    await onSignedIn(); await new Promise(r => setTimeout(r, 50));
+    const first = { fetches: window.__CHANGELOG_FETCHES__, bar: !document.getElementById('coreBar').hidden, text: document.getElementById('coreBarText').textContent };
+    await onSignedIn(); await new Promise(r => setTimeout(r, 50));
+    return { ...first, after: window.__CHANGELOG_FETCHES__ };
+  }, vnNewer);
+  check('    returning to a tab when a newer version is out turns the UPDATE bar on, and two returns in ten minutes ask once',
+        vnReturn.fetches === 1 && vnReturn.bar && vnReturn.text === 'A new version is ready.' && vnReturn.after === 1, JSON.stringify({ vnNewer, vnReturn }));
+  await vn.context().setOffline(true);
+  const vnOff = await vn.evaluate(async () => { window.__CHANGELOG_FETCHES__ = 0; lastVersionCheck = 0; await checkForNewVersion(true); return window.__CHANGELOG_FETCHES__; });
+  await vn.context().setOffline(false);
+  check('    offline, it does not ask', vnOff === 0, String(vnOff));
+  const vnNone = await vn.evaluate(async () => { changelogCache = null; window.__CHANGELOG__ = null; lastVersionCheck = 0;
+    showSettingsTab('ingredients'); showSettingsTab('help'); await new Promise(r => setTimeout(r, 50));
+    return { version: document.getElementById('appVersion').textContent, list: document.getElementById('whatsNewList').textContent.trim() }; });
+  check('    with no log to be had, HELP still shows the version and says what\'s new needs a connection',
+        vnNone.version === vnStart.app && vnNone.list === "What's new needs a connection.", JSON.stringify(vnNone));
+  await vn.close();
+  const vf = await browser.newPage();
+  vf.on('pageerror', e => errors.push('PAGEERROR (version, first visit): ' + e.message));
+  await vf.clock.setFixedTime(FIXTURE_NOW);
+  await vf.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await vf.waitForTimeout(1500);
+  const vfFirst = await vf.evaluate(() => ({ toast: (document.querySelector('.toast') || {}).textContent || '', seen: localStorage.getItem('kitchen.lastSeenVersion'), app: APP_VERSION,
+    bar: !document.getElementById('coreBar').hidden, barText: document.getElementById('coreBarText').textContent }));
+  check('    a first visit shows no update line, only remembers the version; the bar keeps its own words for a half-arrived update',
+        !/^Updated to/.test(vfFirst.toast) && vfFirst.seen === vfFirst.app && !vfFirst.bar && vfFirst.barText === 'This page is part-way through an update.', JSON.stringify(vfFirst));
+  await vf.close();
 
   const failed = checks.filter(c => !c.pass).length;
   console.log(`\n${checks.length} checks, ${failed} failed`);

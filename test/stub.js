@@ -122,6 +122,10 @@
      That is not hypothetical: the missing `update()` above did exactly
      that. A test sets window.__INVOKE_REPLY__ to control the response, so
      the error path is reachable and not just the happy one. */
+  /* changelog.json (issue #91): the page asks for it through window.__CHANGELOG__ when that is set. The real file by
+     default, so a page that is not testing the version sees the version it is; a test sets its own before load
+     (addInitScript), or null for a file that cannot be had. */
+  if(window.__CHANGELOG__ === undefined) window.__CHANGELOG__ = window.__CHANGELOG_FILE__;
   window.__INVOKES__ = [];
   window.__INVOKE_REPLY__ = window.__INVOKE_REPLY__ || null; // one set by addInitScript (a fresh page) is kept
   function invoke(name, opts){

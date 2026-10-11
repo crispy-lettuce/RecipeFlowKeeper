@@ -605,6 +605,14 @@ removed page was deleted), and no listed page missing.*
     recipe's `image_url` is `…/recipe-images/<our household>/<recipe id>.jpg?v=…`, and that file exists. Undo: paste the
     old link back into IMAGE URL and SAVE.
 
+48a. **The version and what's new (new 11 Oct; issue #91).** Reads only. (1) *The first time the app opens after this
+    merges:* one toast, "Updated to 2026-10-11.4: see what's new in Settings → HELP" (on a device that had the app
+    before; a device opening it for the first time shows nothing). (2) *Settings → HELP:* VERSION AND WHAT'S NEW shows
+    the version and the five newest changes, with links to their issues. THE WHOLE LIST ↗ opens the file on GitHub.
+    (3) *Leave a tab open, and after the next PR merges* (a few minutes for Pages), switch away and back: the UPDATE bar
+    says "A new version is ready"; RELOAD brings it in, and step (1)'s toast names the new version. **The other
+    household** sees the same toast once, and the list. Undo: nothing to undo.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

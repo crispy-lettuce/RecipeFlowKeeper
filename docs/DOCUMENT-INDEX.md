@@ -502,6 +502,16 @@ prints to A4. `test/help-guide.js` checks the quoted buttons are still in `index
 
 **Use it when:** changing an on-screen label or adding a feature the family will use: update it in the same PR.
 
+### `changelog.json` — the app's version and what changed (11 Oct 2026, issue #91)
+**What:** Newest first, one entry per change the household would notice: a version (`YYYY-MM-DD.n`), its date, the issue
+numbers, and what changed in plain words. Its first version is the app's version: `APP_VERSION` in `index.html` must
+match, which `test/core.test.js` checks. The household reads the newest five in Settings → HELP, and an open tab learns
+a new version is out from it, at start-up and on each return, at most once in ten minutes. Starts at 10 Oct 2026; earlier
+history is in `docs/HANDOVER.md`.
+
+**Use it when:** shipping anything the household will notice: a new entry at the top, and `APP_VERSION` with it
+(`CLAUDE.md`, "Every session", 2a). No recipe names or lines in it: it is public, and the other household reads it too.
+
 ### `core.js` — the pure core (not a document, but read this entry)
 **What:** Since 25 Sep 2026, the second of the app's two files: the parser, layout, quantity,
 scaling and naming functions, and the ingredient dictionary's master copy. It touches nothing on

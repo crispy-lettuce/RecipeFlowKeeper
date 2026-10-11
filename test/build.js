@@ -105,6 +105,8 @@ html = html.replace(/<script src="https:\/\/cdnjs[^"]*"><\/script>\s*/g, '');
 html = html.replace(/<script src="https:\/\/cdn\.jsdelivr[^"]*"><\/script>\s*/g,
   `<script>window.html2canvas = function(){ return Promise.resolve(document.createElement('canvas')); };</script>\n` +
   `<script>window.__STUB_DATA__ = ${JSON.stringify(data)};</script>\n` +
+  /* The real change log, which the page asks for as changelog.json (issue #91); a file:// page cannot fetch it. */
+  `<script>window.__CHANGELOG_FILE__ = ${fs.readFileSync(path.join(__dirname, '..', 'changelog.json'), 'utf8').replace(/<\//g, '<\\/')};</script>\n` +
   `<script src="stub.js"></script>\n`);
 
 /* core.js is inlined rather than referenced: the built page lives in test/,
