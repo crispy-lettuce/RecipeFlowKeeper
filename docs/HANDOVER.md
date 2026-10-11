@@ -2205,6 +2205,38 @@ the first issues from the second household; planned and approved the same day.
 
 *Not verified:* the tablet itself (step 45a); the smooth scroll on Android Chrome.
 
+**Issue #90: a FROZEN aisle (11 Oct 2026).** Asked on GitHub on 11 Oct.
+
+*Measured before it was built, read-only, by household:*
+- the family: 2 ingredient lines say frozen (fries, raspberries). Both were under Other and move to Frozen, and their
+  names and shopping keys are unchanged;
+- the new household: 1 line (counted, not read);
+- the weekly test household: none.
+
+The household chose for a line that says frozen to move by itself.
+
+*What changed:*
+- `INGREDIENT_AISLES` and `SHOPPING_CATEGORIES` gain Frozen, last. The second list is also the shopping list's section
+  order, so it has to be in both, or items placed there would vanish from the list.
+- `AISLE_FIRST` sends any line saying "frozen" there before another keyword can claim it, so "frozen chicken" is not Meat
+  & Fish. The word stays in the name (`NEVER_IGNORE`), so ticks are kept.
+- No dictionary rows, since a row would name an ingredient and re-key ticks. `core.test.js` exempts Frozen from
+  "every aisle has rows", and the generator writes a sentence for the empty section instead of an empty table.
+- A household's own aisle still wins, and FROZEN is a choice in Settings → SHOPPING AISLES and the review.
+- The version is `2026-10-11.2`.
+
+*Verified by.*
+- `node test/core.test.js`: **148**, exit 0.
+- `node test/build.js && node test/smoke.js`: **502**, exit 0, no console or page errors.
+- `node test/help-guide.js` and `node test/ingredient-lines.js`: both exit 0.
+- **Four mutations, each failing by name:**
+  - no frozen-first rule;
+  - no Frozen section;
+  - Frozen not an aisle;
+  - Frozen first instead of last.
+
+*Not verified:* the tablet (step 46a), and the other household's line, which was counted only.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export
