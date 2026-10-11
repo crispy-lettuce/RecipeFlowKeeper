@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-09-30.1';
+const KITCHEN_CORE_VERSION = '2026-10-11.1';
 
 
 /* ======================= quantity split ======================= */
@@ -109,7 +109,7 @@ function parseTags(tagsRaw){
    looking at rather than silently treating "no data yet" and "no fixed
    answer" as identical.
 
-   The unit is intentionally minutes-only for this POC. If the parenthetical
+   Seconds, minutes and hours are read; minutes are the unit inside. If the bracket
    isn't recognisable as a number/range/"until", it's left alone — the whole
    original label just keeps whatever text was in the brackets, and duration
    stays null. A recipe author fumbling the format shouldn't lose their step
@@ -592,6 +592,29 @@ function computeTimeline(groups, stages){
   if(!anyRealDuration) return null; // nothing to show a timeline for — every step is the same unknown-length sliver
   const totalSpan = steps.length ? Math.max(...steps.map(s=>s.end)) : 0;
   return { steps, totalSpan };
+}
+
+/* Durations are minutes inside (see extractStepDuration), and read back in whichever unit reads best: whole seconds under
+   a minute, minutes under an hour, "Xh" or "Xh Ym" above. Under a minute was "0.3 min" until 11 Oct 2026 (issue #86): a
+   20-second step should say 20 sec. Above an hour the minutes are rounded before they are split, so 119.6 is "2h", never
+   "1h 60m". Moved here from index.html the same day so the strings have tests; nothing in it touches the page. */
+function formatMinutesForDisplay(n){
+  const secs = Math.round(n * 60);
+  if(secs < 60) return `${secs} sec`;
+  const tenths = Math.round(n * 10) / 10;
+  if(tenths < 60) return `${tenths % 1 === 0 ? tenths : tenths.toFixed(1)} min`;
+  const whole = Math.round(n), h = Math.floor(whole / 60), m = whole % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+/* A range under a minute at both ends says its unit once, "30–45 sec", as "4–5 min" would be written by hand. */
+function formatDuration(d){
+  if(!d) return '';
+  if(d.instant) return 'instant';
+  if(d.overnight) return 'overnight';
+  if(d.openEnded) return 'until done';
+  if(d.min === d.max) return formatMinutesForDisplay(d.min);
+  if(Math.round(d.max * 60) < 60) return `${Math.round(d.min * 60)}–${Math.round(d.max * 60)} sec`;
+  return `${formatMinutesForDisplay(d.min)}–${formatMinutesForDisplay(d.max)}`;
 }
 
 
@@ -1827,7 +1850,7 @@ if(typeof module !== 'undefined' && module.exports){
     KITCHEN_CORE_VERSION, INGREDIENT_AISLES, INGREDIENT_DICTIONARY,
     splitQty, parseTags, extractStepDuration, parseRecipe,
     withUpdatedHeaderLine, withUpdatedHeaderLines, changedHeaderKeys, tagsToLine, withUpdatedTitleLine, withUpdatedImageLine,
-    scaleRecipeSyntax, buildRows, computeColumns, computeTimeline,
+    scaleRecipeSyntax, buildRows, computeColumns, computeTimeline, formatMinutesForDisplay, formatDuration,
     parseFraction, normalizeUnit, toBaseUnit, formatShoppingQty, parseIngredientAmount,
     formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,

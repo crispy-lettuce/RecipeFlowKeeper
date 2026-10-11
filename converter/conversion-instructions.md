@@ -1,6 +1,6 @@
 # Recipe Conversion — Project Instructions
 
-*Revised 29 Sep 2026 — see the notes at the end for what changed and why.*
+*Revised 11 Oct 2026 — see the notes at the end for what changed and why.*
 
 Whenever a recipe is given here — a photo, a URL, or pasted text — convert it into
 GROUP / STAGE / MERGE syntax for the recipe merge-flow tool. Work through these
@@ -144,7 +144,7 @@ IMAGE: <hero image URL, only if the source is a webpage with one — omit entire
 TIME: <total time, e.g. "35 min" or "1 hr 40" — from stated prep+cook times>
 SERVINGS: <plain number — always present; ask if the source doesn't say>
 EQUIPMENT: <size-specific tin/tray/dish only, e.g. "20cm springform tin" — omit if only everyday kitchen equipment is needed>
-TAGS: course=<Breakfast/Main/Side/Dessert/Bread/Baking/Snack>, <any obvious meal-base keyword(s)>
+TAGS: course=<Breakfast/Main/Side/Dessert/Drink/Bread/Baking/Snack>, <any obvious meal-base keyword(s)>
 STEPS:
 <one-off prep with no ingredient — preheat oven, line tin>
 GROUP <handle>:
@@ -318,6 +318,12 @@ Report gaps as a short list (found → fixed), not a long essay.
   and when.
 
 ---
+
+## Revision note (11 Oct 2026)
+
+- **Drink** joins the courses on the TAGS line, for a cocktail, a milkshake or a smoothie (issue #93). The app offers it
+  in its COURSE filter and the edit form's course list from the same day. Nothing else changes; reload this file into
+  the conversion project.
 
 ## Revision note (30 Sep 2026)
 

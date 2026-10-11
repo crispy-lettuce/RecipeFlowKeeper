@@ -2168,6 +2168,43 @@ freezer row and the 20:41 double entry are both gone; it has one row for today, 
 all three things at once. The FROM THE FREEZER branch and the phone layout rest on the smoke checks and the household's
 word.
 
+**Issues #85, #86, #89, #93: parse feedback, seconds, COOKING MODE, Drink (11 Oct 2026).** Raised on GitHub on 11 Oct,
+the first issues from the second household; planned and approved the same day.
+- **#85, parse feedback.** PARSE & PREVIEW, a paste, or WRITE ONE BY HAND now does two things. It says beside the button
+  what was read ("Read N ingredients and M steps…"), and it scrolls the bands into view inside the dialog. Before, the
+  preview opened below a box that fills half the screen, and nothing seemed to happen. An empty box says "Paste a recipe
+  first". The other re-parses (RE-CHECK, scaling, undo, folding a note in) leave the page where it is, through a `reveal`
+  option only those three callers pass.
+- **#86, durations under a minute.** These read in whole seconds: "20 sec", and "30–45 sec" for a range.
+  - An hour or more is rounded before it is split, so 119.6 minutes is "2h", not "1h 60m".
+  - A timeline shorter than five minutes marks its ticks in seconds instead of "+0 min" five times.
+  - `formatMinutesForDisplay` and `formatDuration` moved into `core.js` with tests. The version is `2026-10-11.1` in all
+    three places.
+- **#89, the switch's name.** The KEEP AWAKE switch reads COOKING MODE, on the recipe and the group page, with its status
+  line and tooltip. Internal names (`.keep-awake`, `state.keepAwake`, the guide's `#keep-awake`) are unchanged; nothing
+  was stored under the old name.
+- **#93, the Drink course.** Drink joins the courses after Dessert. The converter's instructions list it too: each
+  household reloads `converter/conversion-instructions.md` into its own conversion project.
+
+*Verified by.*
+- `node test/core.test.js`: **145** (143 before), exit 0.
+- `node test/build.js && node test/smoke.js`: **500** (492 before), exit 0, no console or page errors.
+- `node test/help-guide.js`: 7, exit 0.
+- **Eleven mutations, each failing by name:**
+  - no seconds branch;
+  - the old split, giving "1h 60m";
+  - no seconds range;
+  - no scroll;
+  - no result line;
+  - RE-CHECK revealing;
+  - an empty box silent;
+  - no Drink;
+  - the old label;
+  - ticks rounded;
+  - a paste not revealing. The first run did not catch this one; a check that pastes was added and seen failing.
+
+*Not verified:* the tablet itself (step 45a); the smooth scroll on Android Chrome.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export
