@@ -2237,6 +2237,45 @@ The household chose for a line that says frozen to move by itself.
 
 *Not verified:* the tablet (step 46a), and the other household's line, which was counted only.
 
+**Issue #92: your own photo as a recipe's picture (11 Oct 2026).** Asked on GitHub on 11 Oct. UPLOAD PHOTO, beside IMAGE URL
+in the edit form, takes a picture from the device.
+- **Shrinking:** the browser shrinks it to 1600 px JPEG, reusing `shrinkSourcePhoto` with an edge of its own.
+- **When it is stored:** the upload is queued at SAVE, before the row, as source photos are, since a new recipe has no id
+  until then.
+- **Where:** `recipe-images/<household>/<recipe id>.jpg`, the name the re-host gives, under the only folder that
+  household's policies let it write.
+- **The address:** `image_url` and the `IMAGE:` line become that file's public address plus `?v=<time>`. Being under the
+  prefix, it is never sent to `rehost-images`.
+- **In the form:** a re-parse keeps the chosen photo, and typing a link lets it go. BEFORE YOU SAVE says "Stores your
+  photo as the recipe's picture".
+- No schema change and no Edge Function change. `docs/IMAGES.md` and `docs/INFRASTRUCTURE.md` no longer say the app
+  cannot upload or write Storage.
+
+*Verified by.*
+- `node test/core.test.js`: 148, exit 0.
+- `node test/build.js && node test/smoke.js`: **509** (502 before), exit 0, no console or page errors. The seven new
+  checks cover:
+  - the choice, BEFORE YOU SAVE, a re-parse, and a file that isn't a photo;
+  - the upload's bucket, path, type and size: 2400×1800 in, 1600×1200 stored;
+  - the address and its `?v=`, the file written before the row, and no re-host;
+  - a typed link letting the photo go;
+  - another household's uploaded photo, met by ADD TO OUR RECIPES, copied into our own folder. Its fetch is a stand-in,
+    so nothing reaches the network.
+- `node test/help-guide.js`: 7, exit 0, with the new label.
+- **Nine mutations, each failing by name:**
+  - no upload;
+  - the wrong folder;
+  - no `?v=`;
+  - a re-parse wiping it;
+  - no type check;
+  - full size;
+  - the upload after the row;
+  - a link not letting it go;
+  - no BEFORE YOU SAVE line.
+
+*Not verified:* the tablet's camera and gallery (step 47a); a real upload to the live bucket. The read-only check is
+after 47a.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export

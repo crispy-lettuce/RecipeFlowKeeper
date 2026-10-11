@@ -596,6 +596,15 @@ removed page was deleted), and no listed page missing.*
     cream, if you have it) and it moves to FROZEN on the list. **The other household:** one of their lines moves to FROZEN too
     (counted, not read). Undo: REMOVE the aisle in Settings.
 
+47a. **Your own photo as a recipe's picture (new 11 Oct; issue #92).** Writes one recipe row and stores one file, on SAVE.
+    (1) *EDIT a recipe of your own, UPLOAD PHOTO:* the tablet offers the camera or the gallery; take or pick one. It shows
+    small beside the button, IMAGE URL empties, and BEFORE YOU SAVE says "Stores your photo as the recipe's picture".
+    (2) *RE-CHECK:* the photo is still chosen. (3) *SAVE:* the card shows your photo; on the phone, after leaving the tab and
+    coming back, it shows there too. (4) *EDIT again, UPLOAD PHOTO with a different picture, SAVE:* the new one shows, not
+    the old. (5) *EDIT, choose a photo, then type a link in IMAGE URL:* the chosen photo goes. **Read-only afterwards:** the
+    recipe's `image_url` is `…/recipe-images/<our household>/<recipe id>.jpg?v=…`, and that file exists. Undo: paste the
+    old link back into IMAGE URL and SAVE.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

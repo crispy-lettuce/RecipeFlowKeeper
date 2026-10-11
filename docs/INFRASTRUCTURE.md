@@ -170,9 +170,11 @@ correctness decision, not a convenience one: the alternative, signed URLs, expir
 `image_url` is written verbatim into both the JSON export and the nightly `pg_dump`, so a
 signed URL would rot inside the backups.
 
-The app does not read or write Storage directly — the bytes are moved server-side and the app
-renders whatever is in `image_url`. It does, since 22 Sep, **call the Edge Function that moves
-them**, after a save and from two buttons in Settings. The single string it knows about Storage is
+The app moves a web photo through the Edge Function that re-hosts it: after a save, and from two
+buttons in Settings (since 22 Sep). It also writes this bucket directly, from the browser, in two
+places: ADD TO OUR RECIPES copies a shared recipe's photo into the household's own folder (10 Oct),
+and UPLOAD PHOTO stores a photo of the household's own at SAVE (11 Oct, issue #92). Both write only
+under `<household_id>/`, which is all the bucket's policies allow. The single string it knows about Storage is
 the public URL prefix it compares against, to decide whether a photo is already ours.
 `docs/IMAGES.md` is the runbook.
 
