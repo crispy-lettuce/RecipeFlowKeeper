@@ -5242,6 +5242,13 @@ const check = (name, pass, detail) => {
         iaOpts.select.indexOf('Drink') === iaOpts.select.indexOf('Dessert') + 1 && iaChips, JSON.stringify({ iaOpts, iaChips }));
   check('    the cooking switch reads COOKING MODE on the recipe and the group page, and KEEP AWAKE has gone',
         iaLabels.length === 2 && iaLabels.every(l => l === 'COOKING MODE'), JSON.stringify(iaLabels));
+  // Pasting is how most recipes arrive: it parses by itself, and has to show it as the button does.
+  await ia.evaluate(t => { openAddModal(); const ta = document.getElementById('importInput'); ta.value = t; ta.dispatchEvent(new Event('paste')); }, IA_RECIPE);
+  await ia.waitForTimeout(900);
+  const iaPaste = await iaInView();
+  const iaPasteLine = await ia.evaluate(() => !document.getElementById('parseResult').hidden);
+  check('    a paste shows what it read and brings the preview into view, as the button does',
+        iaPaste.inView && iaPaste.scroll > 0 && iaPasteLine, JSON.stringify({ iaPaste, iaPasteLine }));
   await ia.close();
 
   const failed = checks.filter(c => !c.pass).length;
