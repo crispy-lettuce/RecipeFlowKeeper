@@ -102,6 +102,14 @@ function multipartBody(boundary: string, metadata: Body, text: string): string {
     + `--${boundary}\r\nContent-Type: application/json\r\n\r\n${text}\r\n--${boundary}--`;
 }
 
+/* A connection the row says is live but Vault holds no token for: what a restore into a new project leaves (Vault is
+   in no backup), or a token removed by hand. Until 11 Oct 2026 this returned "not connected" and left the row saying
+   connected, so Settings kept showing CONNECTED with nothing behind it (the October review, F7). Now the row is put
+   right, and Settings offers CONNECT. */
+function staleConnection(connected: boolean, hasToken: boolean): boolean {
+  return connected === true && !hasToken;
+}
+
 /* ---- end pure ---- */
 
 async function googleAccessToken(refreshToken: string): Promise<{ token?: string; invalid?: boolean; error?: string }> {
@@ -175,11 +183,14 @@ Deno.serve(async (req: Request) => {
   const { data: conn } = await admin.from('calendar_connections').select('connected, scope, drive_folder_id')
     .eq('household_id', household).maybeSingle();
   const { data: refresh } = await admin.rpc('calendar_token_get', { p_household: household });
-  if (!conn?.connected || !refresh) return json({ error: 'Google is not connected', notConnected: true });
-  if (!hasDriveScope(conn.scope)) return json({ error: 'Google was connected without Drive: CONNECT again to allow it', noScope: true });
-
   const note = (fields: Record<string, unknown>) =>
     admin.from('calendar_connections').update({ ...fields, updated_at: new Date().toISOString() }).eq('household_id', household);
+  if (staleConnection(conn?.connected === true, !!refresh)) {
+    await note({ connected: false, last_error: 'The Google connection was lost: CONNECT again in Settings' });
+    return json({ error: 'The Google connection was lost', reconnect: true });
+  }
+  if (!conn?.connected || !refresh) return json({ error: 'Google is not connected', notConnected: true });
+  if (!hasDriveScope(conn.scope)) return json({ error: 'Google was connected without Drive: CONNECT again to allow it', noScope: true });
 
   const access = await googleAccessToken(refresh);
   if (access.invalid) {

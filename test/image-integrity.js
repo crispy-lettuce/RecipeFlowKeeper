@@ -51,12 +51,14 @@ function loadChecker() {
         .map(a => a.split(':')[0].trim()).filter(Boolean).join(', ')}) {`)
     // `const f = (i: number) => …` and other inline annotations
     .replace(/\(([A-Za-z_$][\w$]*)\s*:\s*[A-Za-z_$][\w$.<>|\[\] ]*\)\s*=>/g, '($1) =>')
-    .replace(/:\s*Uint8Array\b/g, '');
+    .replace(/:\s*Uint8Array\b/g, '')
+    // `let u: URL;` and `const x: T = …` (the address guard, lifted since 11 Oct 2026)
+    .replace(/\b(const|let)\s+([\w$]+)\s*:\s*[^=;\n]+(\s*[=;])/g, '$1 $2$3');
 
   const factory = new Function(js +
-    '\nreturn { jpegDimensions, imageIntegrity, isobmffTruncated, parseRecipeFilter, MIN_BYTES_PER_PIXEL };');
+    '\nreturn { jpegDimensions, imageIntegrity, isobmffTruncated, parseRecipeFilter, safePageUrl, MIN_BYTES_PER_PIXEL };');
   const out = factory();
-  for (const name of ['jpegDimensions', 'imageIntegrity', 'isobmffTruncated', 'parseRecipeFilter']) {
+  for (const name of ['jpegDimensions', 'imageIntegrity', 'isobmffTruncated', 'parseRecipeFilter', 'safePageUrl']) {
     if (typeof out[name] !== 'function') throw new Error(`${name} missing from ${SRC} — checks would be vacuous`);
   }
   if (typeof out.MIN_BYTES_PER_PIXEL !== 'number') throw new Error('MIN_BYTES_PER_PIXEL missing');
@@ -233,17 +235,27 @@ function check(name, condition, detail) {
         parseRecipeFilter({ recipeId: 12345 }) === null);
 }
 
-/* The checker is shared by both functions. If they drift apart, one of
-   them is running a check the other is not, which is exactly the sort of
-   quiet divergence this project's conventions are meant to prevent. */
+/* The address guard (the October review, F4). rehost-images fetches whatever image_url a recipe holds, so it refuses
+   what source-ingredients refuses, with the same function: if the two drift apart, one is running a check the other
+   is not. Until 11 Oct 2026 this block compared the image checker with find-recipe-image's, a function since removed
+   (F3). */
 {
   const other = fs.readFileSync(
-    path.join(__dirname, '..', 'supabase', 'functions', 'find-recipe-image', 'index.ts'), 'utf8');
+    path.join(__dirname, '..', 'supabase', 'functions', 'source-ingredients', 'index.ts'), 'utf8');
   const src = fs.readFileSync(SRC, 'utf8');
-  const slice = s => s.slice(s.indexOf('function jpegDimensions'), s.indexOf('function imageIntegrity')
-    + s.slice(s.indexOf('function imageIntegrity')).indexOf('\n}\n') + 3);
-  check('both Edge Functions carry an identical checker', slice(src) === slice(other));
+  const slice = s => { const at = s.indexOf('function safePageUrl'); return at < 0 ? '' : s.slice(at, at + s.slice(at).indexOf('\n}\n') + 3); };
+  check('rehost-images carries the same address guard as source-ingredients', slice(src) !== '' && slice(src) === slice(other));
+  const { safePageUrl } = loadChecker();
+  const refused = ['http://example.com/a.jpg', 'https://localhost./a.jpg', 'https://127.0.0.1/a.jpg', 'https://127.0.0.1.nip.io/a.jpg',
+    'https://abc.supabase.com/a.jpg', 'https://printer.local./a.jpg', 'https://user:pw@example.com/a.jpg'];
+  const let_in = refused.filter(u => safePageUrl(u) !== null);
+  check('and refuses what would reach inside a network, a trailing dot and a wildcard-DNS name included', let_in.length === 0, let_in.join(', '));
+  check('a public https image is still fetched', safePageUrl('https://images.example-recipes.co.uk/cake.jpg') === 'https://images.example-recipes.co.uk/cake.jpg');
+  check('its fetch follows redirects only by hand, checking each hop', /redirect: 'manual'/.test(slice2(src, 'async function fetchImage'))
+        && !/redirect: 'follow'/.test(slice2(src, 'async function fetchImage')) && /await fetchImage\(src\)/.test(src));
+  check('a caller cannot widen the sweep past 500 recipes', /const limit = Math\.min\(500, Math\.max\(1,/.test(src));
 }
+function slice2(s, head){ const at = s.indexOf(head); return at < 0 ? '' : s.slice(at, at + s.slice(at).indexOf('\n}\n') + 3); }
 
 console.log('');
 if (failures.length) {

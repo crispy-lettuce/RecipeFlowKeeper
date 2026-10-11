@@ -2318,6 +2318,42 @@ page cannot fetch it, and `stub.js` uses it unless a test supplies its own.
 
 *Not verified:* the bar appearing on the tablet after a real merge, through Pages' cache (step 48a).
 
+**The October review, PR 2: Edge Function hardening (11 Oct 2026; F3, F4, F27, F26, F7).** The second of the eight PRs in
+the plan made from `docs/REVIEW-2026-10-FINDINGS.md`.
+- **`find-recipe-image` removed (F3).** Nothing called it, and it fetched any address. The household deletes the deployed
+  function.
+- **`source-ingredients`' address guard (F27).**
+  - It allows a trailing dot, so `localhost.` is refused.
+  - It refuses `supabase.com` and `supabase.net` beside `.co` and `.in`.
+  - It refuses the public wildcard-DNS services by name (`nip.io`, `sslip.io`, `xip.io`, `localtest.me`, `lvh.me`), which
+    is all a check that does not resolve the address can do.
+  - The dead `includes(':')` is gone.
+- **`rehost-images` (F4).**
+  - It carries the same guard, character for character; `test/image-integrity.js` checks they are identical.
+  - It fetches through `fetchImage`, which follows redirects by hand and checks each hop, refuses a declared length over
+    10 MB before reading the body, and keeps the timer running until the body has arrived.
+  - `limit` is bounded to 1–500.
+  - The verify pass still follows redirects, but only ever reads the household's own stored files.
+- **`calendar-auth` (F26).** Google's callback checks that the person who tapped CONNECT is still a member of the household
+  before it exchanges the code.
+- **`calendar-sync` and `drive-backup` (F7).** A row that says connected with no token in Vault (what a restore into a new
+  project leaves) is marked not connected and answers `reconnect`, which the app already turns into CONNECT.
+- **The guide** says the Drive backups go to the Google account of whoever connected.
+
+*Verified by.*
+- `node test/source-ingredients.js`: 12, exit 0 (the refused list gained five addresses).
+- `node test/image-integrity.js`: **35** (31 before), exit 0.
+- `node test/calendar-push.js`: **35** (32 before), exit 0.
+- `node test/drive-backup.js`: **13** (11 before), exit 0.
+- `node test/core.test.js`, smoke (515) and `help-guide.js`: all exit 0.
+- **Nine mutations, each failing by name:** no trailing dot; `nip.io` allowed; `supabase.com` allowed; the two guards
+  drifting apart; redirects followed; `limit` unbounded; no membership check; never stale; stale not noted.
+- **`tsc --strict`** against stand-in Deno and Supabase declarations: each function has the same errors before and after
+  (pre-existing implicit `any`s), and no new ones.
+
+*Not verified:* the functions as deployed. The household redeploys four and deletes one (the PR lists them with their JWT
+settings); `get_edge_function` then shows the versions.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export

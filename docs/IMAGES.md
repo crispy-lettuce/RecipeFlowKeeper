@@ -226,8 +226,8 @@ Re-running the sweep will not do it — the sweep skips anything already self-ho
 what stops it re-fetching 29 images every time. You replace a photo by giving the recipe a new
 external URL, and the save does the rest.
 
-1. Find the image you want. Either right-click the photo on the source page → **Copy image
-   address**, or let `find-recipe-image` do it (below).
+1. Find the image you want: right-click the photo on the source page → **Copy image address**.
+   Or take or pick one of your own with **UPLOAD PHOTO** in the edit form (since 11 Oct 2026).
 2. In the app, open the recipe → **EDIT**.
 3. Paste it into the **IMAGE URL** field, replacing the `supabase.co/...` URL that is there.
 4. **Save.** That is the end of it. The card shows the new external image at once, the save queues
@@ -240,69 +240,11 @@ its URL *is* ours, so editing its title or its servings never fires a re-host ag
 
 ### Finding the right URL without a browser
 
-`find-recipe-image` reads the recipe's `SOURCE_URL:`, fetches that page, pulls out every
-candidate hero image — `og:image`, `twitter:image`, and any `schema.org` Recipe image — then
-**downloads each one to find out how big it really is** and ranks them. It also measures what the
-recipe currently has, so the comparison is like for like.
-
-```js
-const { data } = await sb.functions.invoke('find-recipe-image', {
-  body: { title: 'Tuscan Chicken Pasta' }
-});
-console.log('current:', data.currentImageBytes, 'bytes', data.currentImageProblem ?? 'ok');
-console.table(data.candidates.map(c => ({ KB: c.bytes && Math.round(c.bytes/1024), ok: c.ok, source: c.source, url: c.url, problem: c.problem ?? c.error })));
-```
-
-**Read the `ok` column, not just `KB`.** A candidate can be the largest and still be broken; the
-finder reports integrity (§2) on every candidate and on the recipe's current image so you do not
-pick the biggest corrupt one.
-
-Takes `title`, `recipeId`, or a bare `pageUrl` for something not in the library yet.
-
-**It reports; it does not choose.** A page usually offers several images and the largest is
-usually but not always the hero — a printable version or a step photo can outweigh it. Picking on
-byte count alone would be exactly the kind of guess the conventions here exist to prevent. It
-writes nothing: not to the recipe, not to storage.
-
-**For a recipe that has never had an image**, it is the same minus the overwriting: put a URL in
-the empty **IMAGE URL** field and save. Four recipes currently have no image at all. **Saving with
-the field empty asks for nothing** — there is no URL to fetch, so no call is made and nothing is
-reported.
-
-### Two things that make this work properly
-
-**The stored file is overwritten, but the URL changes.** Every recipe's image lives at a fixed
-path, `<household_id>/<recipe_id>.<ext>`, so a replacement overwrites the old file. Objects are
-served with `max-age=31536000` — a year — so an unchanged URL would mean every browser that had
-already seen the old photo went on showing it for a year. The sweep therefore appends a version
-token, `?v=<unix seconds>`, which changes on every re-host. Same path, new URL, cache busted, long
-caching kept for the common case.
-
-**The recipe text is updated too — everywhere, now.** Both the column and the `IMAGE:` line inside
-`syntax` are rewritten. `docs/ARCHITECTURE.md` §2 says the recipe text is the source of truth, and
-the app means it: `parseAndPreview()` repopulates the form from a parse, so a text still holding the
-old URL silently reverts the image the next time the recipe is parsed.
-
-The sweep had always done this. **The app's own save had not** — until 22 Sep, saving a recipe wrote
-the form's image URL to `image_url` and left the `IMAGE:` line alone, so changing a photo by hand
-produced a row whose column and text disagreed, and the disagreement healed itself in the wrong
-direction. It went unnoticed because the card reads the column, so the new photo appeared and the
-stale text only surfaced on a later edit. `withUpdatedImageLine` now reconciles the line on every
-save, in the same place the title line has always been reconciled. The §7 query that counts
-disagreements exists for precisely this class of fault.
-
-The original source is not lost: `SOURCE_URL:` still records the page the photo came from, which is
-where you would go for a better one.
-
-**Uploading a photo from your device: since 11 Oct 2026 (issue #92).** UPLOAD PHOTO beside IMAGE URL in the
-edit form takes a picture of your own. The browser shrinks it to 1600 px JPEG and uploads it at SAVE, before the
-row, to `recipe-images/<household_id>/<recipe id>.jpg`. That is the same name the re-host gives, in the folder only
-that household may write. `image_url` becomes the public address plus `?v=<time>`, so a replaced photo is never
-served stale. Being under the prefix, it is never sent to `rehost-images`. A file of another type that a re-host
-left under the same id (`.png`, `.webp`) is not removed; the orphan audit below finds it. Until 11 Oct there was no
-file picker, and a photo of your own had to be somewhere reachable by URL first.
-
----
+Until 11 Oct 2026 an Edge Function, `find-recipe-image`, read a recipe's source page and ranked
+its candidate hero images. Nothing in the app called it, and it fetched any address a signed-in
+account gave it, so the October review (F3) recommended removing it, and it was: the source left
+the repo and the household deleted the deployed function. Copy the image address in a browser
+instead, or use UPLOAD PHOTO.
 
 ## 4. Why it was a manual sweep until 22 Sep
 
@@ -479,16 +421,15 @@ is possible and small, if you ever want to photograph your own cooking.
 | One recipe reports `source returned 403` | That CDN refused us | The function already sends a browser User-Agent, which is what makes the other 28 work. If one host still refuses, download the image and host it somewhere reachable |
 | `not an image (content-type: text/html)` | The URL returns an error page, not a photo | The URL is wrong or the image has been removed. Find a new one |
 | Photo does not change after replacing it | Browser cache | Hard-reload. If it persists, check `image_url` has a **newer** `?v=` token than before. Note most images have **no token at all** — only 2 of 29 as of 22 Sep — because the token is added when a photo is re-hosted over an existing one, and the original sweep wrote each URL once. A missing token on an untouched image is normal, not a fault |
-| An image looks like a tiny blurry placeholder | The conversion captured a lazy-load thumbnail | Run `find-recipe-image` for that recipe, pick a candidate, replace it (§3) |
-| Photo renders correctly at the top and goes solid grey below | JPEG with an intact end marker but scan data that stops early | The density check catches these; the end-marker check did not. Run `find-recipe-image`, check `currentImageProblem` and each candidate's `problem`, pick one reporting `ok: true`, replace it (§3) |
+| An image looks like a tiny blurry placeholder | The conversion captured a lazy-load thumbnail | Copy the full-size image's address from the source page, or UPLOAD PHOTO, and replace it (§3) |
+| Photo renders correctly at the top and goes solid grey below | JPEG with an intact end marker but scan data that stops early | The density check catches these; the end-marker check did not. CHECK STORED IMAGES names it; replace it with another address or UPLOAD PHOTO (§3) |
 | Sweep reports `JPEG ends correctly but carries too little image data` | The density check — the file is terminated but not full | Working as intended. Find a different URL (§3). If you believe the photo is genuinely fine, check its bytes/pixel in `data.all` before changing the threshold |
 | Sweep reports `failed` with `truncated JPEG: no end-of-image marker` | The source is serving a broken file | Working as intended — it stopped rather than storing it. Find a different URL (§3) |
 | Sweep reports `failed` with `transfer truncated: server declared N bytes, got M` | The download died mid-flight | Usually transient. Re-run the sweep; if it repeats, the host is at fault and needs a different URL |
 | Saved a recipe and the photo is still on the source's server | The queued call failed — most often no connection at the moment of saving | You will have seen a "couldn't save…" toast. If the recipe's own save failed too, save any recipe once you're connected (a favourite tap will do) so the database has the new URL; then **Settings → RECIPE PHOTOS → RE-HOST EXTERNAL IMAGES** picks it up |
 | Restored a backup and everything is hotlinked again | Correct and expected. A restore does not go through the save path (§5) | Press **RE-HOST EXTERNAL IMAGES** once afterwards |
 | Edited a photo, and after a later edit the old one is back | The `image_url` column and the `IMAGE:` line in the recipe text disagree, so re-parsing reverts the column | Fixed on the save path since 22 Sep (§3). Run the third query in §7; if it is not 0, re-save the recipes it names |
-| `find-recipe-image` returns no candidates | The page hides its images behind JavaScript, or has no `og:image` | Fall back to right-click → Copy image address in a browser |
-| `source page returned 403` from `find-recipe-image` | The site blocks non-browser traffic harder than its CDN does | Same fallback — get the URL by hand and put it on the recipe |
+| Sweep reports `not a public https address` or `redirected somewhere this will not follow` | Since 11 Oct 2026 the sweep fetches only public https addresses, checking every redirect (the October review, F4) | Use the image's https address, or UPLOAD PHOTO |
 
 ---
 
@@ -557,8 +498,6 @@ deliberate: the density threshold is a judgement call, and a judgement call you 
 distribution behind is just a magic number. If a real photo ever trips it, the table is what tells
 you the threshold is wrong rather than the photo.
 
-For a single recipe, `find-recipe-image` reports the same check on its current image as
-`currentImageProblem`.
 
 ---
 
@@ -566,10 +505,10 @@ For a single recipe, `find-recipe-image` reports the same check on its current i
 
 | | |
 | --- | --- |
-| Function source | `supabase/functions/rehost-images/index.ts` (the sweep) and `supabase/functions/find-recipe-image/index.ts` (candidate finder, read-only) |
-| Deployed as | `rehost-images` (v8) and `find-recipe-image` (v4), both `verify_jwt: true`. **A deploy is a commit**: v8 went live from an uncommitted copy and the repo drifted for a day (`docs/REVIEW-ARCHITECTURE-FINDINGS.md` F4). Change the file, commit, then deploy |
+| Function source | `supabase/functions/rehost-images/index.ts` (the sweep). `find-recipe-image` was removed on 11 Oct 2026 (the October review, F3) |
+| Deployed as | `rehost-images`, `verify_jwt: true`; `docs/INFRASTRUCTURE.md` has its version. **A deploy is a commit**: v8 went live from an uncommitted copy and the repo drifted for a day (`docs/REVIEW-ARCHITECTURE-FINDINGS.md` F4). Change the file, commit, then deploy |
 | Called from | **The app**, on save (`rehostImageFor`) and from Settings (`runImageSweep`), and by hand from the console. v8 added the optional `recipeId`; a call without it behaves exactly as v7 |
-| Tests | `node test/image-integrity.js` — 31 checks over the integrity checker and `parseRecipeFilter`. The save path is covered by `node test/build.js && node test/smoke.js` |
+| Tests | `node test/image-integrity.js` — 34 checks over the integrity checker, `parseRecipeFilter` and the address guard. The save path is covered by `node test/build.js && node test/smoke.js` |
 | Bucket | `recipe-images` — **public**, 10 MB file limit, MIME allowlist of jpeg/png/webp/gif/avif |
 | Storage path | `<household_id>/<recipe_id>.<ext>` |
 | Public URL | `<project>/storage/v1/object/public/recipe-images/<path>`, with `?v=<unix seconds>` appended on re-host |

@@ -159,6 +159,11 @@ Deno.serve(async (req: Request) => {
     if (!st) return redirect(withOutcome(APP_URL, 'expired'));
     const back = safeReturnTo(st.return_to) ?? APP_URL;
     if (here.searchParams.get('error') || !here.searchParams.get('code')) return redirect(withOutcome(back, 'denied'));
+    /* The state names the household and the person who tapped CONNECT. Still a member of it, now? The state lasts ten
+       minutes, and a member removed in that time must not connect the household's Google (the October review, F26). */
+    const { data: stillMember } = await admin.from('household_members').select('household_id')
+      .eq('user_id', st.user_id).eq('household_id', st.household_id).maybeSingle();
+    if (!stillMember) return redirect(withOutcome(back, 'denied'));
 
     try {
       const tokRes = await fetch(GOOGLE_TOKEN_URL, {

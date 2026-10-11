@@ -54,7 +54,7 @@ const check = (name, pass, detail) => {
 };
 
 const sync = load('calendar-sync', ['calendarEventId', 'dateFromEventId', 'nextDate', 'reminderMinutes', 'londonToday',
-  'eventForDay', 'syncActions', 'parseSyncRequest']);
+  'eventForDay', 'syncActions', 'parseSyncRequest', 'staleConnection']);
 const auth = load('calendar-auth', ['consentUrl', 'safeReturnTo', 'withOutcome', 'emailFromIdToken', 'grantedEnough', 'requestedScope']);
 
 const HH = '0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0';
@@ -169,6 +169,27 @@ check('connecting needs the calendar permission ticked',
       auth.grantedEnough('openid https://www.googleapis.com/auth/calendar.app.created email')
       && auth.grantedEnough('https://www.googleapis.com/auth/calendar')
       && !auth.grantedEnough('openid email') && !auth.grantedEnough('https://www.googleapis.com/auth/calendar.events') && !auth.grantedEnough(undefined));
+
+/* ---- The October review, 11 Oct 2026 ----
+   F7: a row that says connected with no token behind it (after a restore into a new project, where Vault is empty) is
+   put right, not left saying connected. F26: Google's callback checks the person who tapped CONNECT is still a member of
+   the household before it stores anything. The callback is outside the lifted section, so its order is read from the
+   source: the membership read comes before the token exchange. */
+check('a connected row with no token is stale; a connected row with one, or a row not connected, is not',
+      sync.staleConnection(true, false) === true && sync.staleConnection(true, true) === false && sync.staleConnection(false, false) === false);
+{
+  const syncSrc = fs.readFileSync(path.join(FUNCS, 'calendar-sync', 'index.ts'), 'utf8');
+  const handler = syncSrc.slice(syncSrc.indexOf('/* ---- end pure ---- */'));
+  const at = handler.indexOf('if (staleConnection(');
+  check('calendar-sync marks such a row not connected, and says to connect again, before refusing',
+        at > 0 && /note\(\{ connected: false/.test(handler.slice(at, at + 300)) && /reconnect: true/.test(handler.slice(at, at + 400))
+        && at < handler.indexOf("return json({ error: 'Google Calendar is not connected'"));
+  const authSrc = fs.readFileSync(path.join(FUNCS, 'calendar-auth', 'index.ts'), 'utf8');
+  const cb = authSrc.slice(authSrc.indexOf("here.pathname.endsWith('/callback')"));
+  const member = cb.search(/from\('household_members'\)[\s\S]{0,120}\.eq\('user_id', st\.user_id\)\.eq\('household_id', st\.household_id\)/);
+  check('the Google callback checks the person is still in the household before it exchanges the code',
+        member > 0 && member < cb.indexOf('fetch(GOOGLE_TOKEN_URL') && /if \(!stillMember\) return redirect\(withOutcome\(back, 'denied'\)\)/.test(cb));
+}
 
 const failed = checks.filter(c => !c.pass).length;
 console.log(`\n${checks.length} checks, ${failed} failed`);

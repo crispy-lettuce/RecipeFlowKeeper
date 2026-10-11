@@ -26,7 +26,7 @@ const js = src.slice(from, to)
     (_, fname, args) => `function ${fname}(${args.split(',').map(a => a.split(':')[0].trim()).filter(Boolean).join(', ')}) {`)
   .replace(/\(([\w$]+)\s*:\s*[^()]*?\)\s*(:\s*[\w<>|\[\] ]+)?\s*=>/g, '($1) =>')
   .replace(/\b(const|let)\s+([\w$]+)\s*:\s*[^=;\n]+(\s*[=;])/g, '$1 $2$3');
-const NAMES = ['hasDriveScope', 'londonToday', 'backupFileName', 'parseBackupRequest', 'planBackupFiles', 'multipartBody'];
+const NAMES = ['hasDriveScope', 'londonToday', 'backupFileName', 'parseBackupRequest', 'planBackupFiles', 'multipartBody', 'staleConnection'];
 const fn = new Function(js + `\nreturn { ${NAMES.join(', ')}, KEEP_FILES, MAX_BYTES };`)();
 for(const n of NAMES) if(typeof fn[n] !== 'function') throw new Error(`${n} missing from ${FILE}: checks would be vacuous`);
 
@@ -84,6 +84,17 @@ const parts = body.split('--BOUNDARY');
 check('the upload is two parts, the file\'s details then its content, and closes its boundary',
       parts.length === 4 && /application\/json; charset=UTF-8\r\n\r\n\{"name":"kitchen-backup-2026-10-10.json","parents":\["folder1"\]\}/.test(parts[1])
       && /\r\n\r\n\{"app":"Kitchen"\}\r\n$/.test(parts[2]) && parts[3] === '--', JSON.stringify(body));
+
+/* ---- The October review, F7 (11 Oct 2026): a connected row with no token is put right ---- */
+check('a connected row with no token is stale; a connected row with one, or a row not connected, is not',
+      fn.staleConnection(true, false) === true && fn.staleConnection(true, true) === false && fn.staleConnection(false, false) === false);
+{
+  const handler = src.slice(src.indexOf('/* ---- end pure ---- */'));
+  const at = handler.indexOf('if (staleConnection(');
+  check('drive-backup marks such a row not connected, and says to connect again, before refusing',
+        at > 0 && /note\(\{ connected: false/.test(handler.slice(at, at + 300)) && /reconnect: true/.test(handler.slice(at, at + 400))
+        && at < handler.indexOf("return json({ error: 'Google is not connected'"));
+}
 
 const failed = checks.filter(c => !c.pass).length;
 console.log(`\n${checks.length} checks, ${failed} failed`);
