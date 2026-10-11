@@ -2208,7 +2208,7 @@ the first issues from the second household; planned and approved the same day.
 **Issue #90: a FROZEN aisle (11 Oct 2026).** Asked on GitHub on 11 Oct.
 
 *Measured before it was built, read-only, by household:*
-- the family: 2 ingredient lines say frozen (fries, raspberries). Both were under Other and move to Frozen, and their
+- the family: 2 ingredient lines say frozen. Both were under Other and move to Frozen, and their
   names and shopping keys are unchanged;
 - the new household: 1 line (counted, not read);
 - the weekly test household: none.
