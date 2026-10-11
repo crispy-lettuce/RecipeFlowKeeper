@@ -508,7 +508,7 @@ you the threshold is wrong rather than the photo.
 | Function source | `supabase/functions/rehost-images/index.ts` (the sweep). `find-recipe-image` was removed on 11 Oct 2026 (the October review, F3) |
 | Deployed as | `rehost-images`, `verify_jwt: true`; `docs/INFRASTRUCTURE.md` has its version. **A deploy is a commit**: v8 went live from an uncommitted copy and the repo drifted for a day (`docs/REVIEW-ARCHITECTURE-FINDINGS.md` F4). Change the file, commit, then deploy |
 | Called from | **The app**, on save (`rehostImageFor`) and from Settings (`runImageSweep`), and by hand from the console. v8 added the optional `recipeId`; a call without it behaves exactly as v7 |
-| Tests | `node test/image-integrity.js` — 34 checks over the integrity checker, `parseRecipeFilter` and the address guard. The save path is covered by `node test/build.js && node test/smoke.js` |
+| Tests | `node test/image-integrity.js` — 35 checks over the integrity checker, `parseRecipeFilter` and the address guard. The save path is covered by `node test/build.js && node test/smoke.js` |
 | Bucket | `recipe-images` — **public**, 10 MB file limit, MIME allowlist of jpeg/png/webp/gif/avif |
 | Storage path | `<household_id>/<recipe_id>.<ext>` |
 | Public URL | `<project>/storage/v1/object/public/recipe-images/<path>`, with `?v=<unix seconds>` appended on re-host |
