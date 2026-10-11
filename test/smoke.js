@@ -5186,6 +5186,64 @@ const check = (name, pass, detail) => {
         !ffSoup.ask && ffSoup.prompt && JSON.stringify(ffSoup.rows) === '[true]', JSON.stringify(ffSoup));
   await ff.close();
 
+  /* ---- Issues #85, #86, #89, #93 (11 Oct 2026) ----
+     On a tablet-sized page: the recipe box fills half the screen, so the preview opens out of sight (#85). A made-up
+     recipe with a 20-second step (#86). The switch's new name (#89) and the Drink course (#93). */
+  console.log('\nParse feedback, seconds, COOKING MODE, Drink');
+  const ia = await browser.newPage({ viewport: { width: 800, height: 1280 } });
+  ia.on('pageerror', e => errors.push('PAGEERROR (issues 85-93): ' + e.message));
+  await ia.clock.setFixedTime(FIXTURE_NOW);
+  await ia.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await ia.waitForTimeout(1500);
+  await ia.evaluate(() => openAddModal());
+  await ia.evaluate(() => document.getElementById('parseBtn').click());
+  await ia.waitForTimeout(300);
+  const iaEmpty = await ia.evaluate(() => ({ toast: (document.querySelector('.toast') || {}).textContent || '',
+    shown: document.getElementById('addForm').style.display, line: !document.getElementById('parseResult').hidden }));
+  check('    PARSE & PREVIEW with nothing pasted says so, rather than doing nothing',
+        /Paste a recipe first/.test(iaEmpty.toast) && iaEmpty.shown === 'none' && !iaEmpty.line, JSON.stringify(iaEmpty));
+  const IA_RECIPE = ['TITLE: Test Toast', 'SOURCE: Personal recipe', 'SERVINGS: 2', 'TAGS: course=Snack', '',
+    'GROUP bread:', '2 slices bread', '', 'GROUP top:', '1 tbsp butter', '',
+    'STAGE:', 'MERGE bread -> toast: toast the bread [20 sec]', '',
+    'STAGE:', 'MERGE toast, top -> done: butter it [30-45 sec]'].join('\n');
+  const iaInView = () => ia.evaluate(() => {
+    const ov = document.getElementById('addModalOverlay').getBoundingClientRect(), r = document.getElementById('addBands').getBoundingClientRect();
+    return { top: Math.round(r.top), inView: r.top >= ov.top - 2 && r.top < 200,
+      scroll: Math.round(document.getElementById('addModalOverlay').scrollTop) };
+  });
+  const iaBefore = await ia.evaluate(t => { document.getElementById('importInput').value = t; return document.getElementById('addModalOverlay').scrollTop; }, IA_RECIPE);
+  await ia.evaluate(() => document.getElementById('parseBtn').click());
+  await ia.waitForTimeout(900);
+  const iaRead = await iaInView();
+  const iaLine = await ia.evaluate(() => ({ hidden: document.getElementById('parseResult').hidden, text: document.getElementById('parseResult').textContent }));
+  check('    PARSE & PREVIEW says what it read beside the button, and brings the preview into view',
+        iaBefore === 0 && iaRead.inView && iaRead.scroll > 0 && !iaLine.hidden && /^Read 2 ingredients and 2 steps\. .*below/.test(iaLine.text),
+        JSON.stringify({ iaBefore, iaRead, iaLine }));
+  await ia.evaluate(() => { document.getElementById('addModalOverlay').scrollTop = 0; document.getElementById('recheckBtn').click(); });
+  await ia.waitForTimeout(900);
+  const iaQuiet = await iaInView();
+  check('    a re-parse nobody asked to see (RE-CHECK) leaves the page where it is', iaQuiet.scroll === 0 && !iaQuiet.inView, JSON.stringify(iaQuiet));
+  const iaBadges = await ia.evaluate(() => [...document.querySelectorAll('#addPreview .step-duration')].map(b => b.textContent.trim()));
+  check('    a 20-second step reads 20 SEC, and a range under a minute 30–45 SEC, not fractions of a minute',
+        JSON.stringify(iaBadges) === JSON.stringify(['20 SEC', '30–45 SEC']), JSON.stringify(iaBadges));
+  const iaTicks = await ia.evaluate(t => {
+    const p = parseRecipe(t), box = document.createElement('div');
+    box.innerHTML = buildTimelineHTML(computeTimeline(p.groups, p.stages));
+    return { ticks: [...box.querySelectorAll('.timeline-tick')].map(e => e.textContent), head: box.querySelector('.timeline-strip-head').textContent };
+  }, IA_RECIPE);
+  check('    a timeline under a minute marks its ticks in seconds, not "+0 min" five times',
+        iaTicks.ticks.length === 6 && new Set(iaTicks.ticks).size === 6 && iaTicks.ticks.slice(1).every(x => /^\+\d+ sec$/.test(x)) && /TOTAL: \d+ sec/.test(iaTicks.head),
+        JSON.stringify(iaTicks));
+  const iaOpts = await ia.evaluate(() => ({ select: [...document.querySelectorAll('#f-course option')].map(o => o.value) }));
+  await ia.evaluate(() => { const o = document.getElementById('addModalOverlay'); o.classList.remove('open'); document.body.style.overflow = ''; showView('recipes'); renderHome(); });
+  const iaChips = await ia.evaluate(() => !!document.querySelector('#filterRows .chip[data-cat="course"][data-val="Drink"]'));
+  const iaLabels = await ia.evaluate(() => [...document.querySelectorAll('.keep-awake-toggle')].map(t => (t.closest('label') || t.parentElement).textContent.trim()));
+  check('    Drink is a course: in the edit form\'s list after Dessert, and among the COURSE filters',
+        iaOpts.select.indexOf('Drink') === iaOpts.select.indexOf('Dessert') + 1 && iaChips, JSON.stringify({ iaOpts, iaChips }));
+  check('    the cooking switch reads COOKING MODE on the recipe and the group page, and KEEP AWAKE has gone',
+        iaLabels.length === 2 && iaLabels.every(l => l === 'COOKING MODE'), JSON.stringify(iaLabels));
+  await ia.close();
+
   const failed = checks.filter(c => !c.pass).length;
   console.log(`\n${checks.length} checks, ${failed} failed`);
   console.log(errors.length ? '\nERRORS:\n' + errors.join('\n') : 'no console/page errors');

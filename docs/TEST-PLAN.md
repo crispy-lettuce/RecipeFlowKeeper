@@ -474,7 +474,7 @@ removed page was deleted), and no listed page missing.*
 
 39a. **Cooking notes (new 30 Sep, R4).** Writes one note row per tap. (1) *Open a recipe:* under the diagram, COOKING NOTES.
     Type "Needed 10 min longer" and ADD A NOTE: it appears at the top with today's date, and the header shows NOTES · 1. (2)
-    *EDIT it, change the words, SAVE:* the date stays. *DELETE it:* UNDO brings it back. (3) *KEEP AWAKE on:* the box is still
+    *EDIT it, change the words, SAVE:* the date stays. *DELETE it:* UNDO brings it back. (3) *COOKING MODE on* (the switch called KEEP AWAKE until 11 Oct): the box is still
     there and the latest note shows; nothing to edit. (4) *Tick the last column:* the "Which meal?" prompt has ADD A NOTE; type
     one and pick Dinner: it is in the recipe's log, dated today. (5) *FOLD INTO NOTES on a note:* EDIT opens with it dated at the
     end of NOTES:, and BEFORE YOU SAVE says so; SAVE, and the note is in the recipe's own notes and gone from the log. (6)
@@ -515,7 +515,7 @@ removed page was deleted), and no listed page missing.*
     `docs/migrations/add-calendar-auto.md` is applied).** Writes the household's settings row, Planner rows, and events in the
     RecipeWrangler calendar. Before the migration, *Settings → App → CALENDAR* shows no toggles under REMIND AT: check that first.
     (1) *Settings → App → CALENDAR, connected:* under REMIND AT, AUTOMATICALLY ADD TO CALENDAR and AUTOMATICALLY REMIND ME FOR MAIN
-    MEALS, both off, in the KEEP AWAKE switch style. (2) *Note which upcoming planned days are not IN CALENDAR, then switch AUTOMATICALLY
+    MEALS, both off, in the COOKING MODE switch style. (2) *Note which upcoming planned days are not IN CALENDAR, then switch AUTOMATICALLY
     ADD TO CALENDAR on:* a toast says how many days were added; on the Planner each of those days now shows IN CALENDAR; a day marked
     away and any day before today are as they were. Within a few seconds the phone shows their all-day events. (3) *Plan a recipe on an
     empty day:* it is IN CALENDAR at once and its event appears. Switch that day off by hand, change its servings: it stays off. Add
@@ -578,6 +578,16 @@ removed page was deleted), and no listed page missing.*
     *A week later*, no tap needed: opening the app saves the next one. **Read-only afterwards:** `calendar_connections.drive_backup_at`
     is set and `drive_last_error` empty; `scope` includes `drive.file`. Undo: DISCONNECT stops it; delete the folder in Drive if
     unwanted. **Do not** IMPORT DATA as a test: it replaces everything.
+
+45a. **Parse feedback, seconds, COOKING MODE and Drink (new 11 Oct; issues #85, #86, #89, #93).** Writes nothing unless you save.
+    (1) *NEW RECIPE, then PARSE & PREVIEW with the box empty:* a toast says "Paste a recipe first". (2) *Paste a converted
+    recipe:* under the button, "Read N ingredients and M steps. The preview and the checks are below ↓", and the page scrolls
+    down to WHAT THE APP READ by itself. Close without saving. (3) *Open a recipe with a step under a minute* (or WRITE ONE BY
+    HAND, change a bracket to `[20 sec]`, PARSE & PREVIEW): the box reads 20 SEC, not 0.3 MIN. (4) *Open any recipe:* the
+    switch reads COOKING MODE; switching it on keeps the screen on and tidies the page as KEEP AWAKE did. (5) *EDIT a recipe:*
+    COURSE offers Drink, after Dessert; RECIPES has a DRINK filter. **The other household:** the converter's instructions now
+    list Drink; each household reloads `converter/conversion-instructions.md` into its own conversion project. Undo: nothing
+    to undo.
 
 ## Deferred to the tablet, after merging
 

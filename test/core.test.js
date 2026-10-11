@@ -889,6 +889,16 @@ check('tools/remeasure.js totals an export as the list does, and reports what to
 
 check('stock files under Pantry before chicken can claim it', only('500 ml chicken stock').category === 'Pantry', only('500 ml chicken stock').category);
 
+/* ---- Durations as the flow and the timeline show them (issue #86, 11 Oct 2026) ---- */
+const dur = b => core.formatDuration(core.extractStepDuration(`Step [${b}]`).duration);
+const durs = ['20 sec', '30-45 sec', '1 min', '90 sec', '8 min', '4–5 min', '1 hr 30', '2 hr', 'instant', 'overnight', 'until done'].map(dur);
+check('durations read in seconds under a minute, minutes under an hour, and hours above',
+      JSON.stringify(durs) === JSON.stringify(['20 sec', '30–45 sec', '1 min', '1.5 min', '8 min', '4 min–5 min', '1h 30m', '2h', 'instant', 'overnight', 'until done']),
+      JSON.stringify(durs));
+const mins = [1/3, 0.999, 59.97, 119.6, 60, 0].map(core.formatMinutesForDisplay);
+check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minutes is an hour',
+      JSON.stringify(mins) === JSON.stringify(['20 sec', '1 min', '1h', '2h', '1h', '0 sec']), JSON.stringify(mins));
+
 const failed = checks.filter(c => !c.pass).length;
 console.log(`\n${checks.length} checks, ${failed} failed`);
 process.exit(failed ? 1 : 0);

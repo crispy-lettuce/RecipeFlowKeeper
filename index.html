@@ -1095,6 +1095,11 @@
   .read-summary{ font-size:15px; line-height:1.5; color:var(--ink); }
   .link-btn{ margin-left:14px; background:none; border:none; padding:0; cursor:pointer; color:var(--plum);
     font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.06em; text-decoration:underline; }
+  /* What a parse read, beside the button that asked for it (issue #85): the preview opens below the box, out of sight on
+     a tablet, and a tap that seemed to do nothing was the first thing a new household reported. */
+  .paste-read{ margin:10px 0 0; font-family:'IBM Plex Mono', monospace; font-size:11.5px; letter-spacing:.04em; color:var(--plum); }
+  .paste-read[hidden]{ display:none; }
+  #addBands{ scroll-margin-top:16px; }
   .paste-help{ margin:8px 0 0; max-width:62ch; color:var(--ink-soft); font-size:13px; line-height:1.5; }
   /* Never silent staleness: once the text is edited after a parse, the bands say so and dim. */
   .stale-bar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 14px; margin-bottom:12px;
@@ -1308,7 +1313,7 @@
   .app.keep-awake.viewer-open.sidebar-peek .sidebar{ width:214px; border-right-width:1px; }
   .app.keep-awake.viewer-open .sidebar-peek-btn{ display:flex; }
 
-  /* COOKING MODE (B of docs/PLAN-LAYOUT.md, 30 Sep 2026). KEEP AWAKE also hides what is not used while
+  /* COOKING MODE (B of docs/PLAN-LAYOUT.md, 30 Sep 2026; the switch was labelled KEEP AWAKE until issue #89, 11 Oct). KEEP AWAKE also hides what is not used while
      cooking, which the household marked on a screenshot: the recipe's details, KEEP AWAKE, RESET TICKS, the
      status line and the grid stay; favourite, shortlist, edit, export, print, delete, the source chip and COOK
      FOR go (scale before you start; the meta line still says "SERVES 6 (SCALED FROM 4)"). Hidden, not removed:
@@ -1567,10 +1572,10 @@
         <button class="backlink" id="backToRecipes">← ALL RECIPES</button>
         <div class="viewer-meta" id="viewerMeta"></div>
         <div class="viewer-provenance" id="viewerProvenance"></div>
-        <label class="toggle-switch" title="Keep the screen from timing out while cooking">
+        <label class="toggle-switch" title="Cooking mode: keeps the screen on, hides what you don't need while cooking and pins the header">
           <input type="checkbox" class="keep-awake-toggle">
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          <span class="toggle-label">KEEP AWAKE</span>
+          <span class="toggle-label">COOKING MODE</span>
         </label>
         <button class="btn" id="favouriteBtn" data-ours-only>☆ FAVOURITE</button>
         <button class="btn" id="shortlistBtn" data-ours-only>+ SHORTLIST</button>
@@ -1604,10 +1609,10 @@
       <div class="viewer-head">
         <button class="backlink" id="backFromGroupViewer">← PLANNER</button>
         <div class="viewer-meta" id="groupViewerMeta"></div>
-        <label class="toggle-switch" title="Keep the screen from timing out while cooking">
+        <label class="toggle-switch" title="Cooking mode: keeps the screen on, hides what you don't need while cooking and pins the header">
           <input type="checkbox" class="keep-awake-toggle">
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          <span class="toggle-label">KEEP AWAKE</span>
+          <span class="toggle-label">COOKING MODE</span>
         </label>
         <button class="btn" id="groupResetTicksBtn">RESET TICKS</button>
         <button class="btn cook-timeline-btn" data-cook-timeline>SHOW TIMELINE</button>
@@ -1963,6 +1968,7 @@
     <textarea id="importInput" spellcheck="false" placeholder="TITLE: ...&#10;SOURCE: ...&#10;SOURCE_URL: ...&#10;IMAGE: ...&#10;TIME: ...&#10;TAGS: course=Main, Veg&#10;&#10;GROUP handle:&#10;...&#10;&#10;STAGE:&#10;MERGE ... -> ...: ..."></textarea>
     <button class="btn primary" id="parseBtn">PARSE &amp; PREVIEW</button>
     <button type="button" class="link-btn" id="handTemplateBtn">WRITE ONE BY HAND</button>
+    <p class="paste-read" id="parseResult" role="status" hidden></p>
     <p class="paste-help" id="pasteHelp">Pasting parses at once. From your conversion chat, or write one by hand. A recipe of your own has no source page, so it gets no source check and no photo unless you add a link.</p>
 
     <div class="add-form" id="addForm" style="display:none;">
@@ -2038,7 +2044,7 @@
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-09-30.1"></script>
+<script src="core.js?v=2026-10-11.1"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2046,7 +2052,7 @@
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-09-30.1';
+const EXPECTED_CORE_VERSION = '2026-10-11.1';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -2197,29 +2203,14 @@ function hexToRgba(hex, a){
 
 /* Step durations: moved to core.js on 25 Sep 2026 (PR 6a). */
 
+/* formatMinutesForDisplay and formatDuration are in core.js (11 Oct 2026, issue #86), where they have tests. */
+
 /* Small inline badge shown inside a flow-table box when the step carries
    timing data. Open-ended steps get a "~" glyph rather than a number,
    since showing nothing at all would look identical to a step with no
    timing data recorded — the distinction matters (see the comment on
    extractStepDuration) and needs to stay visible in the UI, not just in
    the underlying data. */
-/* Values are always stored internally as minutes (see extractStepDuration
-   — hours are converted at parse time), so all downstream sequencing math
-   only ever has one unit to deal with. Display converts back to whichever
-   reads better: minutes below an hour, "Xh" or "Xh Ym" at or above it. */
-function formatMinutesForDisplay(n){
-  if(n < 60) return `${n % 1 === 0 ? n : n.toFixed(1)} min`;
-  const h = Math.floor(n / 60), m = Math.round(n % 60);
-  return m ? `${h}h ${m}m` : `${h}h`;
-}
-function formatDuration(d){
-  if(!d) return '';
-  if(d.instant) return 'instant';
-  if(d.overnight) return 'overnight';
-  if(d.openEnded) return 'until done';
-  if(d.min === d.max) return formatMinutesForDisplay(d.min);
-  return `${formatMinutesForDisplay(d.min)}–${formatMinutesForDisplay(d.max)}`;
-}
 function durationBadge(d){
   if(!d) return '';
   const text = d.instant ? 'INSTANT'
@@ -2243,7 +2234,8 @@ function buildTimelineHTML(timeline){
   const TICK_COUNT = 5;
   let ticksHtml = '';
   for(let i=0;i<=TICK_COUNT;i++){
-    const t = Math.round((totalSpan / TICK_COUNT) * i);
+    /* Whole minutes, except on a strip shorter than five, where rounding made every tick "+0". */
+    const raw = (totalSpan / TICK_COUNT) * i, t = totalSpan < TICK_COUNT ? raw : Math.round(raw);
     const pct = (t / totalSpan) * 100;
     ticksHtml += `<div class="timeline-tick" style="left:${pct}%;">${i===0?'START':'+'+formatMinutesForDisplay(t)}</div>`;
   }
@@ -2323,7 +2315,8 @@ function buildGroupTimelineHTML(groupTimeline){
   const TICK_COUNT = 5;
   let ticksHtml = '';
   for(let i=0;i<=TICK_COUNT;i++){
-    const t = Math.round((totalSpan / TICK_COUNT) * i);
+    /* Whole minutes, except on a strip shorter than five, where rounding made every tick "+0". */
+    const raw = (totalSpan / TICK_COUNT) * i, t = totalSpan < TICK_COUNT ? raw : Math.round(raw);
     const pct = (t / totalSpan) * 100;
     ticksHtml += `<div class="timeline-tick" style="left:${pct}%;">${i===0?'START':'+'+formatMinutesForDisplay(t)}</div>`;
   }
@@ -4340,7 +4333,7 @@ function filterRecipes(recipes, q){
 
 /* Master tag lists: sensible defaults, plus anything already in the library. */
 const DEFAULT_TAGS = {
-  course:   ['Breakfast','Main','Side','Dessert','Bread','Baking','Snack']
+  course:   ['Breakfast','Main','Side','Dessert','Drink','Bread','Baking','Snack']
   /* protein used to live here as its own vocab list — removed along with
      the field itself; Chicken/Beef/Fish/Veg/Pulses/Pasta/Rice/Orzo/
      Risotto are ordinary keywords now. */
@@ -4349,8 +4342,9 @@ const DEFAULT_TAGS = {
    breakfast first, then meal components, then bread, then standalone
    bakes, then snacks last (not tied to a specific meal moment, same as
    baking isn't tied to dessert specifically). Anything with an
-   unrecognized or blank course sorts last of all. */
-const COURSE_ORDER = ['Breakfast','Main','Side','Dessert','Bread','Baking','Snack'];
+   unrecognized or blank course sorts last of all. A Drink (issue #93, 11 Oct 2026: a cocktail, a milkshake) goes with
+   the meal, after its dessert. */
+const COURSE_ORDER = ['Breakfast','Main','Side','Dessert','Drink','Bread','Baking','Snack'];
 function courseSortIndex(course){
   const i = COURSE_ORDER.indexOf(course);
   return i === -1 ? COURSE_ORDER.length : i;
@@ -5457,13 +5451,13 @@ function updateKeepAwakeStatus(){
 
   let text, isWarning = false;
   if(wakeLockSentinel){
-    text = `KEEP AWAKE ON — using the browser's native screen lock · running ${elapsedStr}`;
+    text = `COOKING MODE ON — screen kept on by the browser's native screen lock · running ${elapsedStr}`;
   } else if(usingWakeVideoFallback){
     const stillPlaying = !video.paused;
-    text = `KEEP AWAKE ON — using fallback method · video still playing: ${stillPlaying ? 'YES' : 'NO, IT STOPPED'} · running ${elapsedStr}`;
+    text = `COOKING MODE ON — screen kept on by the fallback method · video still playing: ${stillPlaying ? 'YES' : 'NO, IT STOPPED'} · running ${elapsedStr}`;
     isWarning = !stillPlaying;
   } else {
-    text = `KEEP AWAKE — unexpected state, neither method looks active · running ${elapsedStr}`;
+    text = `COOKING MODE — the screen may not stay on: neither method looks active · running ${elapsedStr}`;
     isWarning = true;
   }
   els.forEach(el=>{
@@ -7410,7 +7404,7 @@ document.getElementById('viewerProvenance').addEventListener('click', e=>{
 
 /* ---- COOKING NOTES in the viewer (R4) ----
    Under the recipe, newest first: three shown, SHOW ALL for the rest. ADD writes at once, as a favourite
-   does; EDIT changes the text, never the date; DELETE offers UNDO. While cooking (KEEP AWAKE) the box stays,
+   does; EDIT changes the text, never the date; DELETE offers UNDO. While cooking (COOKING MODE) the box stays,
    since mid-cook is when "this needs longer" is noticed, and the log folds to its latest line. Not part of
    PRINT or EXPORT PNG: they are the household's working notes, and the printout is the recipe. */
 const COOK_NOTES_SHOWN = 3;
@@ -7527,6 +7521,7 @@ function openAddModal(){
   document.getElementById('saveBtn').textContent = 'SAVE RECIPE';
   fillTagSelects();
   resetFormPhotos(null);
+  document.getElementById('parseResult').hidden = true;
   const overlay = document.getElementById('addModalOverlay');
   overlay.classList.add('open');
   overlay.scrollTop = 0;
@@ -7542,6 +7537,7 @@ function openEditModal(recipeId){
   if(!recipe) return;
   state.editingRecipeId = recipeId;
   pendingFold = null;
+  document.getElementById('parseResult').hidden = true;
   lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null; formValidated = null; aisleUndo = null;
 
   document.getElementById('modalTitle').textContent = 'Edit recipe';
@@ -7853,7 +7849,7 @@ function renderCalendarSettings(){
     </div>`;
 }
 
-/* The two automatic toggles, drawn as KEEP AWAKE is (the app's one switch style). Shown only once
+/* The two automatic toggles, drawn as the COOKING MODE switch is (the app's one switch style). Shown only once
    add-calendar-auto is applied, and only here, in the connected state. */
 function calendarAutoToggles(){
   const st = loadSettings() || {};
@@ -9098,9 +9094,13 @@ function scheduleBeforeSave(){
    comment describes. The box is outside #addForm, so it needs its own listener. */
 document.getElementById('importInput').addEventListener('input', scheduleBeforeSave);
 
-function parseAndPreview(){
+/* `reveal` is for a parse someone asked for (PARSE & PREVIEW, a paste, WRITE ONE BY HAND): it says what was read and
+   scrolls the preview into view. Every other caller (RE-CHECK, scaling, undo, folding a note in) re-parses what is
+   already on screen and leaves the page where it is. An event passed by a listener has no `reveal`, so it counts as not. */
+function parseAndPreview(opts){
+  const reveal = !!(opts && opts.reveal);
   const text = document.getElementById('importInput').value;
-  if(!text.trim()) return;
+  if(!text.trim()){ if(reveal) showToast('Paste a recipe first'); return; }
   const parsed = parseRecipe(text);
 
   fillTagSelects();
@@ -9136,8 +9136,15 @@ function parseAndPreview(){
   refreshScaleUndo();
   renderBeforeSave();
   autoCheckSource();
+  if(reveal){
+    const count = ingredientLinesOf(parsed).length, steps = parsed.stages.reduce((n, ops)=> n + ops.length, 0);
+    const line = document.getElementById('parseResult');
+    line.textContent = `Read ${count} ingredient${count === 1 ? '' : 's'} and ${steps} step${steps === 1 ? '' : 's'}. The preview and the checks are below ↓`;
+    line.hidden = false;
+    document.getElementById('addBands').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
 }
-document.getElementById('parseBtn').addEventListener('click', parseAndPreview);
+document.getElementById('parseBtn').addEventListener('click', ()=> parseAndPreview({ reveal: true }));
 
 /* ---- Checks where recipes come in (PR 6c-1, 28 Sep) ----
    Until this release nothing in the app looked at an ingredient line: the
@@ -9569,14 +9576,14 @@ function clearBandsStale(){
   document.getElementById('staleBar').style.display = 'none';
   document.getElementById('addBands').classList.remove('stale');
 }
-document.getElementById('importInput').addEventListener('paste', ()=>{ setTimeout(parseAndPreview, 0); });
+document.getElementById('importInput').addEventListener('paste', ()=>{ setTimeout(()=> parseAndPreview({ reveal: true }), 0); });
 document.getElementById('importInput').addEventListener('input', markBandsStale);
 document.getElementById('recheckBtn').addEventListener('click', parseAndPreview);
 document.getElementById('handTemplateBtn').addEventListener('click', ()=>{
   const ta = document.getElementById('importInput');
   if(ta.value.trim()){ showToast('Clear the box first'); return; }
   ta.value = HAND_TEMPLATE;
-  parseAndPreview();
+  parseAndPreview({ reveal: true });
 });
 /* A link typed or changed by hand is checked too, and the sections that follow it are redrawn. */
 document.getElementById('f-source-url').addEventListener('change', ()=>{
