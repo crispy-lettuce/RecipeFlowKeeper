@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-11.1';
+const KITCHEN_CORE_VERSION = '2026-10-11.2';
 
 
 /* ======================= quantity split ======================= */
@@ -757,7 +757,10 @@ const SHOPPING_CATEGORIES = [
   { name:'Pantry', keywords:['oil','flour','cornflour','cornstarch','sugar','honey','vinegar','sauce','stock','rice','pasta','noodle','bread','tin of','can of',
     'passata','gnocchi','linguine','spaghetti','penne','tagliatelle','fusilli','orzo','rigatoni','lasagne'] },
   { name:'Meat & Fish', keywords:['chicken','beef','pork','lamb','turkey','bacon','sausage','mince','fish','salmon','cod','tuna','prawn','shrimp'] },
-  { name:'Produce', keywords:['onion','garlic','potato','tomato','lemon','lime','parsley','coriander','cilantro','mint','basil','cucumber','carrot','celery','broccoli','spinach','lettuce','ginger','courgette','aubergine','mushroom','jalapeno','chilli','chili'] }
+  { name:'Produce', keywords:['onion','garlic','potato','tomato','lemon','lime','parsley','coriander','cilantro','mint','basil','cucumber','carrot','celery','broccoli','spinach','lettuce','ginger','courgette','aubergine','mushroom','jalapeno','chilli','chili'] },
+  /* Last, because this list is also the order of the shopping list's sections and the freezer is the end of a shop.
+     Its one keyword is matched first, in AISLE_FIRST, so "frozen chicken" is never claimed by Meat & Fish. */
+  { name:'Frozen', keywords:['frozen'] }
 ];
 /* Products whose name holds another aisle's keyword, asked before the
    keyword lists because those stop at the first aisle that matches: "egg"
@@ -768,7 +771,10 @@ const SHOPPING_CATEGORIES = [
 const AISLE_FIRST = [
   [/\begg noodles?\b/, 'Pantry'],
   [/\b(pepper|hot|chilli|chili) sauces?\b/, 'Pantry'],
-  [/\bcoconut (milk|cream)\b/, 'Pantry']
+  [/\bcoconut (milk|cream)\b/, 'Pantry'],
+  /* A line that says frozen is bought frozen, whatever it is (issue #90, 11 Oct 2026). Only the aisle: the word stays in
+     the name (NEVER_IGNORE), so a tick already made on "frozen peas" is kept. */
+  [/\bfrozen\b/, 'Frozen']
 ];
 function categorizeIngredient(rawName){
   const stripped = stripPrepWordsForCategorizing(rawName);
@@ -799,7 +805,10 @@ function categorizeIngredient(rawName){
    below. test/validate-recipes.js and test/ingredient-survey.js read it too,
    through the generated file, to report. *(Until that release this comment
    said the list did not use it yet.)* */
-const INGREDIENT_AISLES = ["Produce", "Meat & Fish", "Dairy & Eggs", "Pantry", "Spices & Seasoning"];
+/* Frozen (issue #90, 11 Oct 2026) has no dictionary rows: an ingredient is frozen because its line says so ("frozen peas",
+   see AISLE_FIRST), or because a household puts it there in Settings. A dictionary row would name it, and naming is
+   what keys the shopping ticks. */
+const INGREDIENT_AISLES = ["Produce", "Meat & Fish", "Dairy & Eggs", "Pantry", "Spices & Seasoning", "Frozen"];
 const INGREDIENT_DICTIONARY = [
   { aisle: "Produce", name: "garlic", also: "garlic clove(s)", countAs: "`3 garlic cloves`" },
   { aisle: "Produce", name: "onion", also: "white onion, brown onion, yellow onion", countAs: "`2 onions`" },

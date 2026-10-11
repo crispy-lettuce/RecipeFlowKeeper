@@ -24,6 +24,8 @@ function render(){
   INGREDIENT_AISLES.forEach((aisle, i) => {
     const rows = INGREDIENT_DICTIONARY.filter(r => r.aisle === aisle);
     const three = rows.some(r => r.countAs !== undefined);
+    /* An aisle with no names (Frozen, since 11 Oct 2026) says why, rather than showing the converter an empty table. */
+    if(!rows.length){ out.push('## ' + aisle, '', 'No names of its own. Keep the word "frozen" in a line that says it, e.g. "200 g frozen peas"; the app shops it here.', ''); return; }
     const head = three ? ['Write', 'Also written as', 'Count as'] : ['Write', 'Also written as'];
     out.push('## ' + aisle, '', row(head), row(head.map(() => '---')));
     rows.forEach(r => out.push(row(three ? [r.name, r.also, r.countAs || ''] : [r.name, r.also])));

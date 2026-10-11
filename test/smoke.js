@@ -5251,6 +5251,36 @@ const check = (name, pass, detail) => {
         iaPaste.inView && iaPaste.scroll > 0 && iaPasteLine, JSON.stringify({ iaPaste, iaPasteLine }));
   await ia.close();
 
+  /* ---- FROZEN (issue #90, 11 Oct 2026) ----
+     A made-up recipe planned today: a line that says frozen is shopped in a FROZEN section, last before Other, and FROZEN is
+     one of the aisles a household can choose in Settings. */
+  console.log('\nFROZEN aisle');
+  const fz = await browser.newPage();
+  fz.on('pageerror', e => errors.push('PAGEERROR (frozen): ' + e.message));
+  await fz.clock.setFixedTime(FIXTURE_NOW);
+  await fz.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await fz.waitForTimeout(1500);
+  const fzList = await fz.evaluate(async () => {
+    const d = new Date(); d.setHours(0,0,0,0); const today = isoLocal(d);
+    cache.recipes.push({ ...loadRecipes()[0], id: 'fzfzfzfz-0000-4000-8000-000000000001', title: 'Test Frozen Supper', history: [], favourite: false,
+      syntax: 'TITLE: Test Frozen Supper\nSERVINGS: 2\nGROUP a:\n200 g frozen peas\n1 onion\n\nSTAGE:\nMERGE a -> b: cook [5 min]' });
+    addPlanRecipe(today, 'fzfzfzfz-0000-4000-8000-000000000001');
+    let t; do { t = writeQueue; await t; } while(t !== writeQueue);
+    const list = buildShoppingList(groupDaysByWeek(dayList())[0] || []);
+    showView('shopping'); renderShopping();
+    const titles = [...document.querySelectorAll('#view-shopping .shop-category-title')].map(e => e.textContent.trim());
+    const frozenCat = list.categories.find(c => c.name === 'Frozen');
+    return { order: list.categories.map(c => c.name), titles, frozen: frozenCat ? frozenCat.items.map(i => i.name) : [] };
+  });
+  const fzNames = fzList.order.filter(n => n !== 'Other');
+  check('    a planned line that says frozen is shopped in a FROZEN section, the last before Other',
+        fzNames[fzNames.length - 1] === 'Frozen' && fzList.frozen.includes('Frozen peas') && fzList.titles.includes('FROZEN')
+        && !fzList.frozen.includes('Onion'), JSON.stringify(fzList));
+  const fzChoice = await fz.evaluate(() => { aisleOverridesAvailable = true; renderAisleOverridesList();
+    return [...document.querySelectorAll('#aisleOverride-aisle option')].map(o => o.value); });
+  check('    Settings → SHOPPING AISLES offers FROZEN', fzChoice.includes('Frozen'), JSON.stringify(fzChoice));
+  await fz.close();
+
   const failed = checks.filter(c => !c.pass).length;
   console.log(`\n${checks.length} checks, ${failed} failed`);
   console.log(errors.length ? '\nERRORS:\n' + errors.join('\n') : 'no console/page errors');
