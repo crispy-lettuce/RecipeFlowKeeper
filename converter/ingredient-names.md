@@ -243,3 +243,7 @@ library said "mince" when it was measured.
 | cardamom pods | green cardamom pods |
 | whole cloves | cloves (the spice) |
 | sesame seeds | |
+
+## Frozen
+
+No names of its own. Keep the word "frozen" in a line that says it, e.g. "200 g frozen peas"; the app shops it here.

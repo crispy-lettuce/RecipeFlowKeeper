@@ -67,8 +67,10 @@ check('the dictionary holds its 140 rows', D.length === 140, D.length);
 const names = D.map(r => r.name.toLowerCase());
 check('every name in the dictionary is written once', new Set(names).size === names.length,
       names.filter((n, i) => names.indexOf(n) !== i).join(', '));
-check('every row is in a listed aisle, and every aisle has rows',
-      D.every(r => core.INGREDIENT_AISLES.includes(r.aisle)) && core.INGREDIENT_AISLES.every(a => D.some(r => r.aisle === a)));
+/* Frozen alone has no rows (issue #90): a line is frozen because it says so, never by a name the dictionary gives it. */
+check('every row is in a listed aisle, and every aisle but Frozen has rows',
+      D.every(r => core.INGREDIENT_AISLES.includes(r.aisle)) && core.INGREDIENT_AISLES.every(a => a === 'Frozen' || D.some(r => r.aisle === a))
+      && !D.some(r => r.aisle === 'Frozen'));
 const decided = (n) => D.find(r => r.name === n);
 check('the household\'s 23 Sep decisions are in it (D7, D8, D9)',
       /\boil\b/.test(decided('vegetable oil').also) && decided('unsalted butter') && decided('sea salt') && /\bsoy sauce\b/.test(decided('light soy sauce').also));
@@ -328,7 +330,7 @@ check('word matches are applied in today\'s words, and one the rules make anyway
    An aisle replaces `category` once the key is final, and never the key. Made-up lines. */
 const aoLines = [{ recipeTitle: 'A', raw: '300 g smoked mackerel' }, { recipeTitle: 'A', raw: '1 onion' }, { recipeTitle: 'A', raw: '1 romano pepper' }, { recipeTitle: 'B', raw: '2 smoked mackerel fillets' }, { recipeTitle: 'B', raw: '4 lamb shanks' }];
 const aoMap = core.aisleOverrideMap([{ name: 'Smoked Mackerel', aisle: 'Meat & Fish' }, { name: 'onion', aisle: 'Pantry' }, { name: 'romano pepper', aisle: 'Pantry' }, { name: 'lamb shanks', aisle: 'Pantry' },
-  { name: 'kohlrabi', aisle: 'Frozen' }, { name: '', aisle: 'Pantry' }]);
+  { name: 'kohlrabi', aisle: 'Cellar' }, { name: '', aisle: 'Pantry' }]);
 check('aisleOverrideMap keys each name in today\'s words and drops an aisle the app does not have',
       aoMap.get('smoked mackerel') === 'Meat & Fish' && aoMap.get('onion') === 'Pantry' && aoMap.get('lamb shank') === 'Pantry' && !aoMap.has('kohlrabi') && aoMap.size === 4, JSON.stringify([...aoMap]));
 const aoPlain = core.aggregateShoppingLines(aoLines, null), aoSet = core.aggregateShoppingLines(aoLines, null, k => aoMap.get(k));
@@ -898,6 +900,22 @@ check('durations read in seconds under a minute, minutes under an hour, and hour
 const mins = [1/3, 0.999, 59.97, 119.6, 60, 0].map(core.formatMinutesForDisplay);
 check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minutes is an hour',
       JSON.stringify(mins) === JSON.stringify(['20 sec', '1 min', '1h', '2h', '1h', '0 sec']), JSON.stringify(mins));
+
+/* ---- FROZEN (issue #90, 11 Oct 2026) ----
+   A line that says frozen goes to Frozen, before any other keyword can claim it, and keeps its name, so its tick stays.
+   A household's own aisle still wins. Made-up lines. */
+const fzLines = ['200 g frozen peas', '400 g frozen chicken thighs', '150 g peas', '300 g frozen spinach'].map(raw => ({ recipeTitle: 'F', raw }));
+const fz = core.aggregateShoppingLines(fzLines, null);
+const fzRow = k => fz.find(i => i.key === k) || {};
+check('a line that says frozen is shopped under Frozen, even when another aisle\'s word is in it, and keeps its name',
+      fzRow('frozen pea').category === 'Frozen' && fzRow('frozen chicken thigh').category === 'Frozen' && fzRow('frozen spinach').category === 'Frozen'
+      && fzRow('pea').category !== 'Frozen' && fzRow('frozen pea').name === 'Frozen peas', JSON.stringify(fz.map(i => [i.key, i.category, i.name])));
+const fzSet = core.aggregateShoppingLines(fzLines, null, k => (k === 'frozen pea' ? 'Pantry' : k === 'pea' ? 'Frozen' : undefined));
+check('a household\'s own aisle wins over the word frozen, and Frozen can be chosen for anything',
+      (fzSet.find(i => i.key === 'frozen pea') || {}).category === 'Pantry' && (fzSet.find(i => i.key === 'pea') || {}).category === 'Frozen'
+      && core.aisleOverrideMap([{ name: 'ice cream', aisle: 'Frozen' }]).get('ice cream') === 'Frozen');
+check('Frozen is the last aisle, and the last section of the shopping list',
+      core.INGREDIENT_AISLES[core.INGREDIENT_AISLES.length - 1] === 'Frozen' && core.SHOPPING_CATEGORIES[core.SHOPPING_CATEGORIES.length - 1].name === 'Frozen');
 
 const failed = checks.filter(c => !c.pass).length;
 console.log(`\n${checks.length} checks, ${failed} failed`);

@@ -589,6 +589,13 @@ removed page was deleted), and no listed page missing.*
     list Drink; each household reloads `converter/conversion-instructions.md` into its own conversion project. Undo: nothing
     to undo.
 
+46a. **The FROZEN aisle (new 11 Oct; issue #90).** Writes one Settings row in (3) only. (1) *SHOPPING, a week with the frozen
+    fries or the frozen raspberries planned* (or any recipe whose line says frozen): those lines are under FROZEN, the last
+    section before OTHER, where they were under OTHER before; a tick already on one is still there. (2) *PRINT and PNG:* FROZEN
+    is in both. (3) *Settings → INGREDIENTS → SHOPPING AISLES:* the aisle list offers FROZEN; put something there (e.g. ice
+    cream, if you have it) and it moves to FROZEN on the list. **The other household:** one of their lines moves to FROZEN too
+    (counted, not read). Undo: REMOVE the aisle in Settings.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in
