@@ -294,9 +294,13 @@ disagreements exists for precisely this class of fault.
 The original source is not lost: `SOURCE_URL:` still records the page the photo came from, which is
 where you would go for a better one.
 
-**Uploading a file from your device is not supported.** There is no file picker; the app only ever
-takes a URL. If you have a photo of your own, it needs to be somewhere reachable by URL first. This
-was never in the Build Brief and has not been missed so far.
+**Uploading a photo from your device: since 11 Oct 2026 (issue #92).** UPLOAD PHOTO beside IMAGE URL in the
+edit form takes a picture of your own. The browser shrinks it to 1600 px JPEG and uploads it at SAVE, before the
+row, to `recipe-images/<household_id>/<recipe id>.jpg`. That is the same name the re-host gives, in the folder only
+that household may write. `image_url` becomes the public address plus `?v=<time>`, so a replaced photo is never
+served stale. Being under the prefix, it is never sent to `rehost-images`. A file of another type that a re-host
+left under the same id (`.png`, `.webp`) is not removed; the orphan audit below finds it. Until 11 Oct there was no
+file picker, and a photo of your own had to be somewhere reachable by URL first.
 
 ---
 

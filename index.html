@@ -1099,6 +1099,10 @@
      a tablet, and a tap that seemed to do nothing was the first thing a new household reported. */
   .paste-read{ margin:10px 0 0; font-family:'IBM Plex Mono', monospace; font-size:11.5px; letter-spacing:.04em; color:var(--plum); }
   .paste-read[hidden]{ display:none; }
+  /* Your own picture for a recipe (issue #92): beside IMAGE URL, a button, and the chosen photo small until SAVE. */
+  .recipe-photo-upload{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:-4px 0 14px; }
+  .recipe-photo-upload img{ width:96px; height:72px; object-fit:cover; border-radius:6px; border:1px solid var(--line); }
+  .recipe-photo-upload img[hidden], .recipe-photo-upload [hidden]{ display:none; }
   #addBands{ scroll-margin-top:16px; }
   .paste-help{ margin:8px 0 0; max-width:62ch; color:var(--ink-soft); font-size:13px; line-height:1.5; }
   /* Never silent staleness: once the text is edited after a parse, the bands say so and dim. */
@@ -1994,6 +1998,13 @@
         <label><span>TIME</span><input type="text" id="f-time" placeholder="e.g. 35 min"></label>
         <label><span>SERVINGS <span class="required">*</span></span><input type="number" id="f-servings" placeholder="e.g. 4" min="1" step="1"></label>
         <label><span>IMAGE URL</span><input type="text" id="f-image" placeholder="optional"></label>
+      </div>
+      <div class="recipe-photo-upload" id="recipePhotoBlock">
+        <button type="button" class="btn" id="uploadRecipePhotoBtn">UPLOAD PHOTO</button>
+        <input type="file" id="recipePhotoInput" accept="image/*" hidden>
+        <img id="recipePhotoPreview" alt="The photo chosen for this recipe" hidden>
+        <span class="hint" id="recipePhotoHint">Or a picture of your own instead of a link: it is shrunk and stored with the recipe when you save.</span>
+        <button type="button" class="link-btn" id="recipePhotoClear" hidden>USE A LINK INSTEAD</button>
       </div>
       <div class="field-row">
         <label><span>SOURCE URL</span><input type="text" id="f-source-url" placeholder="where this recipe came from — worth filling in, it's what makes a re-convert cheap"></label>
@@ -7182,11 +7193,11 @@ function removeSourcePhotoFiles(paths){
    way the camera held it (a phone photo is often stored sideways with a note saying so); an older
    browser that does not know the option is asked again without it. A white ground first, so a
    screenshot's transparent parts do not turn black as JPEG. */
-async function shrinkSourcePhoto(file){
+async function shrinkSourcePhoto(file, edge = SOURCE_PHOTO_EDGE){
   let bmp;
   try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
   catch(e){ bmp = await createImageBitmap(file); }
-  const scale = Math.min(1, SOURCE_PHOTO_EDGE / Math.max(bmp.width, bmp.height));
+  const scale = Math.min(1, edge / Math.max(bmp.width, bmp.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(bmp.width * scale));
   canvas.height = Math.max(1, Math.round(bmp.height * scale));
@@ -7250,7 +7261,74 @@ function resetFormPhotos(recipe){
   formPhotosRemoved = [];
   formPhotoChecked = null;
   renderFormPhotos();
+  clearRecipePhoto();
 }
+
+/* ---- Your own photo as the recipe's picture (issue #92, 11 Oct 2026) ----
+   Until now the picture was only ever a link: the source page's hero image, or one pasted in, copied into the
+   household's own folder of `recipe-images` after SAVE (rehost-images). A photo of your own goes straight there
+   instead, from the browser, as ADD TO OUR RECIPES already does (copySharedImage): `<household>/<recipe id>.jpg`, the
+   same name the re-host gives, under the folder the bucket's policies let only this household write. No schema
+   change: it is just an image_url under SELF_HOST_PREFIX, so nothing tries to re-host it. The photo is chosen into the
+   form and shown small; the upload is queued at SAVE, before the row, as source photos are, because a new recipe has
+   no id until then. Shrunk to 1600 px, which is more than a card ever shows, and always JPEG, which also turns an
+   iPhone's HEIC into something the bucket accepts. */
+const RECIPE_PHOTO_EDGE = 1600;
+const RECIPE_PHOTO_MAX_BYTES = 10 * 1024 * 1024;  // the bucket's own limit
+let pendingRecipePhoto = null;  // { blob, url } while chosen and not yet saved
+function renderRecipePhoto(){
+  const img = document.getElementById('recipePhotoPreview');
+  if(!img) return;
+  img.hidden = !pendingRecipePhoto;
+  if(pendingRecipePhoto) img.src = pendingRecipePhoto.url; else img.removeAttribute('src');
+  document.getElementById('recipePhotoClear').hidden = !pendingRecipePhoto;
+  document.getElementById('recipePhotoHint').textContent = pendingRecipePhoto
+    ? 'Your photo. It is stored as the recipe\'s picture when you save.'
+    : 'Or a picture of your own instead of a link: it is shrunk and stored with the recipe when you save.';
+  document.getElementById('f-image').placeholder = pendingRecipePhoto ? 'your photo, above' : 'optional';
+}
+function clearRecipePhoto(){
+  if(pendingRecipePhoto) URL.revokeObjectURL(pendingRecipePhoto.url);
+  pendingRecipePhoto = null;
+  renderRecipePhoto();
+}
+async function chooseRecipePhoto(file){
+  if(!file) return;
+  if(!/^image\//.test(file.type || '')){ showToast('That file isn\'t a photo'); return; }
+  let blob;
+  try { blob = await shrinkSourcePhoto(file, RECIPE_PHOTO_EDGE); }
+  catch(e){ showToast('Couldn\'t read that photo. Try a JPEG or PNG.'); return; }
+  if(blob.size > RECIPE_PHOTO_MAX_BYTES){ showToast('That photo is too large even after shrinking'); return; }
+  clearRecipePhoto();
+  pendingRecipePhoto = { blob, url: URL.createObjectURL(blob) };
+  document.getElementById('f-image').value = '';
+  renderRecipePhoto();
+  renderBeforeSave();
+}
+/* At SAVE: the address the photo will have, written into the recipe now, with a ?v= so a replaced photo is never
+   served from a cache that still holds the old one. */
+function stageRecipePhoto(recipeId){
+  if(!pendingRecipePhoto) return null;
+  const path = `${HOUSEHOLD_ID}/${recipeId}.jpg`;
+  return { path, blob: pendingRecipePhoto.blob, url: `${SELF_HOST_PREFIX}${path}?v=${Date.now()}` };
+}
+function uploadRecipePhoto(staged){
+  if(!staged) return;
+  queueWrite('the recipe photo', async ()=>{
+    const { error } = await sb.storage.from('recipe-images').upload(staged.path, staged.blob,
+      { contentType: 'image/jpeg', upsert: true, cacheControl: '31536000' });
+    if(error) throw error;
+  });
+}
+document.getElementById('uploadRecipePhotoBtn').addEventListener('click', ()=> document.getElementById('recipePhotoInput').click());
+document.getElementById('recipePhotoInput').addEventListener('change', e=>{
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  chooseRecipePhoto(file);
+});
+document.getElementById('recipePhotoClear').addEventListener('click', ()=>{ clearRecipePhoto(); renderBeforeSave(); });
+/* Typing a link means the link is wanted: the chosen photo is let go. */
+document.getElementById('f-image').addEventListener('input', e=>{ if(e.target.value.trim() && pendingRecipePhoto){ clearRecipePhoto(); renderBeforeSave(); } });
 /* Fills every [data-photo-path] under `root` once its link is known: a photo's <img> gets its picture, a
    PDF's OPEN link its address. One that cannot be shown (offline, or its upload has not landed yet) says so
    in its place. */
@@ -9044,7 +9122,8 @@ function beforeSaveLines(){
   const out = [];
   const keys = changedHeaderKeys(text, fields);
   if(keys.length) out.push(`Rewrites the ${wordList(keys.map(k=> k + ':'))} ${keys.length === 1 ? 'line' : 'lines'} to match the ${keys.length === 1 ? 'field' : 'fields'} above`);
-  if(needsRehosting(fields.imageUrl)) out.push('Copies the photo into your own storage after saving');
+  if(pendingRecipePhoto) out.push('Stores your photo as the recipe\'s picture');
+  else if(needsRehosting(fields.imageUrl)) out.push('Copies the photo into your own storage after saving');
   const vocab = new Set(loadKeywordVocab());
   const fresh = Array.from(new Set(fields.tags.keywords.filter(k=> !vocab.has(k))));
   if(fresh.length) out.push(`Adds to your keywords: ${fresh.join(', ')}`);
@@ -9110,7 +9189,8 @@ function parseAndPreview(opts){
   document.getElementById('f-time').value = parsed.time || '';
   document.getElementById('f-servings').value = parsed.servings || '';
   document.getElementById('f-equipment').value = parsed.equipment || '';
-  document.getElementById('f-image').value = parsed.imageUrl || '';
+  /* A photo chosen in the form outlives a re-parse: the text's IMAGE: line is rewritten from it at SAVE. */
+  if(!pendingRecipePhoto) document.getElementById('f-image').value = parsed.imageUrl || '';
   /* Only overwrite from a parse when the syntax actually carries a URL —
      otherwise pasting a recipe without one would wipe a link already typed. */
   if(parsed.sourceUrl) document.getElementById('f-source-url').value = parsed.sourceUrl;
@@ -9806,9 +9886,11 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
   /* Every header line is reconciled with the form, from the same values
      the row is built from. Until 22 Sep only TITLE: was; until 23 Sep only
      TITLE: and IMAGE: — see withUpdatedHeaderLines for what that cost. */
-  fields.syntax = withUpdatedHeaderLines(text, fields);
-  /* The id comes first now: a new photo is stored under it. */
+  /* The id comes first now: a new photo is stored under it, and the recipe's own photo is named by it. */
   const recipeId = state.editingRecipeId || uid();
+  const recipePhoto = stageRecipePhoto(recipeId);
+  if(recipePhoto) fields.imageUrl = recipePhoto.url;
+  fields.syntax = withUpdatedHeaderLines(text, fields);
   const photos = settleFormPhotos(recipeId);
   if(photos) fields.sourcePhotos = photos.list;
 
@@ -9825,6 +9907,7 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     const titleBefore = recipes[idx].title;
     recipes[idx] = { ...recipes[idx], ...fields };
     if(photos) uploadSourcePhotos(photos.uploads);
+    uploadRecipePhoto(recipePhoto);
     saveRecipe(recipes[idx]);
     /* Its days in the calendar carry the title, so they are rewritten: after the recipe's write, which is
        where calendar-sync reads the title from. */
@@ -9849,6 +9932,7 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
   } else {
     const recipe = { id: recipeId, ...fields, history: [], dateAdded: todayStr() };
     if(photos) uploadSourcePhotos(photos.uploads);
+    uploadRecipePhoto(recipePhoto);
     saveRecipe(recipe);
     rehostImageFor(recipe.id, fields.imageUrl || '');
     closeAddModal();

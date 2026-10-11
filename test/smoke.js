@@ -5281,6 +5281,84 @@ const check = (name, pass, detail) => {
   check('    Settings → SHOPPING AISLES offers FROZEN', fzChoice.includes('Frozen'), JSON.stringify(fzChoice));
   await fz.close();
 
+  /* ---- Your own photo as a recipe's picture (issue #92, 11 Oct 2026) ----
+     A made-up recipe and a drawn picture. The photo is chosen into the form, kept through a re-parse, uploaded by SAVE
+     before the row, into this household's own folder of recipe-images, and never sent to be re-hosted. */
+  console.log('\nUpload your own recipe photo');
+  const rp = await browser.newPage();
+  rp.on('pageerror', e => errors.push('PAGEERROR (recipe photo): ' + e.message));
+  await rp.clock.setFixedTime(FIXTURE_NOW);
+  await rp.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await rp.waitForTimeout(1500);
+  const rpPng = (w, h) => rp.evaluate(([w, h]) => new Promise(res => { const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d'); x.fillStyle = '#4a8'; x.fillRect(0, 0, w, h);
+    c.toBlob(b => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(b); }, 'image/png'); }), [w, h]);
+  const RP_RECIPE = ['TITLE: Test Garden Tart', 'SOURCE: Personal recipe', 'SERVINGS: 4', 'IMAGE: https://example.invalid/hero.jpg', 'TAGS: course=Main', '',
+    'GROUP a:', '1 sheet puff pastry', '200 g cherry tomatoes', '', 'STAGE:', 'MERGE a -> done: bake [25 min]'].join('\n');
+  await rp.evaluate(t => { openAddModal(); document.getElementById('importInput').value = t; parseAndPreview({ reveal: true }); }, RP_RECIPE);
+  await rp.waitForTimeout(300);
+  await rp.setInputFiles('#recipePhotoInput', [{ name: 'my-tart.png', mimeType: 'image/png', buffer: Buffer.from(await rpPng(2400, 1800), 'base64') }]);
+  await rp.waitForFunction(() => !!pendingRecipePhoto, null, { timeout: 5000 });
+  const rpChosen = await rp.evaluate(() => ({ preview: !document.getElementById('recipePhotoPreview').hidden, field: document.getElementById('f-image').value,
+    before: document.getElementById('addBeforeSave').textContent }));
+  check('    UPLOAD PHOTO shows the photo in the form, empties the link, and BEFORE YOU SAVE says it will be stored',
+        rpChosen.preview && rpChosen.field === '' && /Stores your photo as the recipe's picture/.test(rpChosen.before) && !/Copies the photo/.test(rpChosen.before),
+        JSON.stringify(rpChosen));
+  await rp.evaluate(() => document.getElementById('recheckBtn').click());
+  await rp.waitForTimeout(200);
+  const rpKept = await rp.evaluate(() => ({ kept: !!pendingRecipePhoto, field: document.getElementById('f-image').value }));
+  check('    a re-parse keeps the chosen photo, though the text still names a link', rpKept.kept && rpKept.field === '', JSON.stringify(rpKept));
+  await rp.setInputFiles('#recipePhotoInput', [{ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('not a picture') }]);
+  await rp.waitForTimeout(300);
+  const rpRefused = await rp.evaluate(() => ({ toast: (document.querySelector('.toast') || {}).textContent || '', kept: !!pendingRecipePhoto }));
+  check('    a file that is not a photo is refused, and the chosen photo stays', /isn't a photo/.test(rpRefused.toast) && rpRefused.kept, JSON.stringify(rpRefused));
+  const rpMark = await rp.evaluate(() => ({ s: window.__STORAGE__.length, l: window.__LOG__.length, w: window.__WRITES__.length, i: window.__INVOKES__.length }));
+  await rp.evaluate(() => document.getElementById('saveBtn').click());
+  await rp.waitForTimeout(300);
+  await pmDrain(rp);
+  const rpSaved = await rp.evaluate(async m => {
+    const r = loadRecipes().find(x => x.title === 'Test Garden Tart');
+    const ups = window.__STORAGE__.slice(m.s).filter(x => x.op === 'upload');
+    const row = window.__WRITES__.slice(m.w).filter(w => w.table === 'recipes').flatMap(w => Array.isArray(w.rows) ? w.rows : [w.rows]).find(x => x && x.title === 'Test Garden Tart') || {};
+    const log = window.__LOG__.slice(m.l).filter(l => /^(write-done:recipes|storage-done:upload)/.test(l));
+    const file = ups[0] && window.__STORAGE_FILES__[ups[0].path];
+    const dims = file ? await new Promise(res => { const im = new Image(); im.onload = () => res([im.naturalWidth, im.naturalHeight]); im.onerror = () => res(null); im.src = file; }) : null;
+    return { id: r && r.id, ups: ups.map(u => ({ bucket: u.bucket, path: u.path, type: u.contentType, upsert: u.upsert })), image: r && r.imageUrl, rowImage: row.image_url,
+      line: r && (r.syntax.split('\n').find(l => /^IMAGE:/.test(l)) || ''), log, dims, household: HOUSEHOLD_ID, prefix: SELF_HOST_PREFIX,
+      invokes: window.__INVOKES__.slice(m.i).map(c => c.name), photoLeft: !!pendingRecipePhoto };
+  }, rpMark);
+  const rpPath = rpSaved.id ? `${rpSaved.household}/${rpSaved.id}.jpg` : '?';
+  check('    SAVE uploads the photo, shrunk to 1600 px and as JPEG, to this household\'s own folder, named by the recipe',
+        rpSaved.ups.length === 1 && rpSaved.ups[0].bucket === 'recipe-images' && rpSaved.ups[0].path === rpPath && rpSaved.ups[0].type === 'image/jpeg'
+        && rpSaved.ups[0].upsert && JSON.stringify(rpSaved.dims) === '[1600,1200]', JSON.stringify(rpSaved));
+  check('    the recipe\'s picture and its IMAGE: line are that file\'s address with a ?v=, written after the file, and never sent to be re-hosted',
+        rpSaved.image && rpSaved.image.startsWith(rpSaved.prefix + rpPath + '?v=') && rpSaved.rowImage === rpSaved.image && rpSaved.line === 'IMAGE: ' + rpSaved.image
+        && rpSaved.log[0] === 'storage-done:upload' && rpSaved.log.includes('write-done:recipes') && !rpSaved.invokes.includes('rehost-images') && !rpSaved.photoLeft,
+        JSON.stringify(rpSaved));
+  // Typing a link afterwards means the link is wanted.
+  await rp.evaluate(() => openAddModal());
+  await rp.setInputFiles('#recipePhotoInput', [{ name: 'again.png', mimeType: 'image/png', buffer: Buffer.from(await rpPng(400, 300), 'base64') }]);
+  await rp.waitForFunction(() => !!pendingRecipePhoto, null, { timeout: 5000 });
+  await rp.evaluate(() => { const f = document.getElementById('f-image'); f.value = 'https://example.invalid/other.jpg'; f.dispatchEvent(new Event('input')); });
+  const rpLink = await rp.evaluate(() => ({ photo: !!pendingRecipePhoto, preview: !document.getElementById('recipePhotoPreview').hidden }));
+  check('    typing a link instead lets the chosen photo go', !rpLink.photo && !rpLink.preview, JSON.stringify(rpLink));
+  /* Another household's uploaded photo, as ADD TO OUR RECIPES meets it: copied into our own folder. The picture is
+     handed back by a stand-in fetch, so nothing here reaches the network. */
+  const rpCopy = await rp.evaluate(async () => {
+    const other = '11111111-2222-4333-8444-555555555555', url = `${SELF_HOST_PREFIX}${other}/abc.jpg?v=1760000000000`;
+    const realFetch = window.fetch;
+    window.fetch = async () => new Response(new Blob(['x'], { type: 'image/jpeg' }), { status: 200 });
+    const m = window.__STORAGE__.length;
+    loadRecipes().push({ id: 'rp-copy', title: 'RP Copy', imageUrl: url, syntax: 'TITLE: RP Copy\nIMAGE: ' + url, tags: { course: '', keywords: [] }, history: [] });
+    copySharedImage('rp-copy', url);
+    let t; do { t = writeQueue; await t; } while(t !== writeQueue);
+    window.fetch = realFetch;
+    return { up: window.__STORAGE__.slice(m).filter(x => x.op === 'upload').map(x => x.path), image: loadRecipes().find(r => r.id === 'rp-copy').imageUrl, mine: `${SELF_HOST_PREFIX}${HOUSEHOLD_ID}/rp-copy.jpg` };
+  });
+  check('    a photo another household uploaded is copied into our own folder when added to our recipes, never theirs',
+        JSON.stringify(rpCopy.up) === JSON.stringify([rpCopy.mine.slice(rpCopy.mine.indexOf('recipe-images/') + 14)]) && rpCopy.image === rpCopy.mine, JSON.stringify(rpCopy));
+  await rp.close();
+
   const failed = checks.filter(c => !c.pass).length;
   console.log(`\n${checks.length} checks, ${failed} failed`);
   console.log(errors.length ? '\nERRORS:\n' + errors.join('\n') : 'no console/page errors');
