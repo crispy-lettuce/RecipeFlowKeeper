@@ -2276,6 +2276,48 @@ in the edit form, takes a picture from the device.
 *Not verified:* the tablet's camera and gallery (step 47a); a real upload to the live bucket. The read-only check is
 after 47a.
 
+**Issue #91: the app's version and a change log (11 Oct 2026).** Asked on GitHub on 11 Oct, once a second household was on the
+app. The household chose a date version (`2026-10-11.4`), a list readable in the app, and history from 10 Oct.
+
+**`changelog.json`**, newest first: version, date, issue numbers and what changed, in plain words. It does two jobs:
+- **The list the household reads.** Settings → HELP gains VERSION AND WHAT'S NEW: the version, the five newest entries
+  with links to their issues, and THE WHOLE LIST ↗. With no connection it says so and still shows the version.
+- **The signal to an open tab.** Before, a tab left open ran old code with nothing to say so. The UPDATE bar caught only
+  a half-arrived `core.js`, once, at load.
+  - Now the log is asked for at start-up and on each return to the tab (`onSignedIn`), at most once in ten minutes and
+    never offline.
+  - A newer first version turns the same bar on with "A new version is ready". `compareVersions` reads `.10` as newer
+    than `.9`.
+  - The first load on a new version shows one line, "Updated to …", once per device. `localStorage`
+    `kitchen.lastSeenVersion` is a convenience only; a first visit shows nothing.
+
+*How the version is kept:*
+- `APP_VERSION` in `index.html` must equal the log's first version, and `core.test.js` checks it, with the log's shape
+  and order.
+- `CLAUDE.md` gains "Every session" 2a: a change the household will notice adds an entry.
+- `KITCHEN_CORE_VERSION` is unchanged in purpose.
+
+*The test harness:* `test/build.js` hands the real log to the test page (`window.__CHANGELOG_FILE__`), since a `file://`
+page cannot fetch it, and `stub.js` uses it unless a test supplies its own.
+
+*Verified by.*
+- `node test/core.test.js`: **152** (148 before), exit 0.
+- `node test/build.js && node test/smoke.js`: **515** (509 before), exit 0, no console or page errors.
+- `node test/help-guide.js`: 7, exit 0.
+- **Ten mutations, each failing by name:**
+  - versions compared as text;
+  - no ten-minute limit;
+  - asking offline;
+  - no update line;
+  - an update line on a first visit;
+  - six entries;
+  - the bar's old words;
+  - `APP_VERSION` out of step;
+  - no check on return;
+  - nothing shown without a log.
+
+*Not verified:* the bar appearing on the tablet after a real merge, through Pages' cache (step 48a).
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export
