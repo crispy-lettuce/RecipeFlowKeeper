@@ -51,14 +51,14 @@ Corrected 12 Oct 2026, the October review's F13 and Appendix B.)*
 | `docs/PLAN-LAYOUT.md` (30 Sep) | Edit dialog, cooking mode, step text, aisle box, Settings tabs | Done, PRs #57–#60; tablet 37a–37d |
 | VALIDATE INGREDIENT LIST, OPEN SOURCE (30 Sep) | Accepting a comparison's differences; the source page from Edit | Done, PR #62; tablet 38a |
 | `docs/PLAN-COOKING-NOTES.md` (30 Sep) | R4: dated cooking notes per recipe, after cooking, foldable into NOTES | Done, PR #67; tablet 39a passed 12 Oct |
-| `docs/PLAN-SOURCE-PHOTOS.md` (30 Sep) | The photo or PDF a recipe was converted from, kept privately; CHECKED AGAINST THE PHOTO | Done, PRs #63–#65; tablet 38b passed, 38c and 38d the household's |
+| `docs/PLAN-SOURCE-PHOTOS.md` (30 Sep) | The photo or PDF a recipe was converted from, kept privately; CHECKED AGAINST THE PHOTO | Done, PRs #63–#65; tablet 38b passed; 38c and 38d passed 12 Oct |
 | `docs/PLAN-CALENDAR-PUSH.md` (P3, 30 Sep) | Planned days in a RecipeWrangler Google calendar: IN CALENDAR, REMIND ME, ADD THE WEEK; the two automatic toggles (§11) | Done, PRs #69, #71, #72, both migrations applied and connected 9 Oct; tablet 40a passed 12 Oct, 40b the household's |
 | The how-to guide (10 Oct) | `help.html`, opened from Settings → HELP; converting your own recipes | Done, PRs #73, #77; tablet 42a passed 12 Oct |
 | `docs/PLAN-RECIPE-SHARING.md` (10 Oct) | A second household of the family, and browsing and copying each other's recipes | Done, PR #74, the SQL applied first; tablet 43a passed 12 Oct |
 | `docs/PLAN-DRIVE-BACKUP.md` (10 Oct) | The export file, weekly and by hand, into the household's own Drive | Done, PR #75, first saved 10 Oct 18:05 UTC; tablet 44a passed 12 Oct |
 | `docs/PLAN-FOOD-DIARY.md` (10 Oct) | PRE-MADE meals and COOKED ✓; fresh or freezer | Done, PRs #78, #80; tablet 41a and 41b |
 | Issues #85–#93 (11 Oct) | Parse feedback, seconds, COOKING MODE, Drink; FROZEN; your own photo; the version and change log | Done, PRs #96–#99; tablet 45a, 46a, 47a, 48a passed 12 Oct |
-| The October review, PRs 1–7 (`docs/REVIEW-2026-10-FINDINGS.md`, 11 Oct) | Backups, Edge Function hardening, the public repo and harness, lost changes, the write queue, several households, the parser and dictionary | Done, PrivateBackup#7, #102, #117–#121, 11–12 Oct; tablet 49a and 51a passed 12 Oct, 50a the household's. PR 8, the documents, in progress |
+| The October review, PRs 1–7 (`docs/REVIEW-2026-10-FINDINGS.md`, 11 Oct) | Backups, Edge Function hardening, the public repo and harness, lost changes, the write queue, several households, the parser and dictionary | Done, PrivateBackup#7, #102, #117–#121, 11–12 Oct; tablet 49a and 51a passed 12 Oct, 50a passed 12 Oct. PR 8, the documents, in progress |
 
 ---
 
@@ -70,10 +70,12 @@ Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all 
    F38 (#123) are merged, and the three functions #123 changed are redeployed and read back (`docs/INFRASTRUCTURE.md` §3).
 2. **The household's own issues**, once they have reviewed them: #87, #88, #94, #95, #100. Nothing is built for them until the
    household decides.
-3. **The household's tablet steps and library jobs**, in `docs/HOUSEHOLD-JOBS.md`: 38c, 38d, 40b and 50a; the BBC Good Food
-   validations; D6, the reconstructed recipes.
-4. **Optional, not planned:** a "download all source files" backup (the source files go into `PrivateBackup`'s weekly mirror
-   instead, 10 Oct); drawing a PDF's pages inside the app, if opening it in the browser proves awkward on the tablet (38d will tell).
+3. **The household's jobs**, in `docs/HOUSEHOLD-JOBS.md`: every tablet step has passed (12 Oct). Left: reload the converter
+   in both households, close #101, and two decisions. The BBC validations and D6 are dropped by the household (12 Oct): the
+   recipes will be cleared before full adoption.
+4. **#127**: a reminder in the app, per household, to reload the converter after a coded change to its instructions.
+5. **Optional, not planned:** a "download all source files" backup (the source files go into `PrivateBackup`'s weekly mirror
+   instead, 10 Oct); drawing a PDF's pages inside the app, not needed: 38d passed and the household is happy opening the PDF outside the app (12 Oct).
 
 Keep the how-to guide true: a renamed button or a new everyday feature updates `help.html` in the same PR (`test/help-guide.js`).
 

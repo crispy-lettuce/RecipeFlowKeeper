@@ -486,6 +486,8 @@ removed page was deleted), and no listed page missing.*
     tablet, the same recipe:* OPEN ↗ opens it in the tablet's PDF viewer. **What no test can judge: whether opening it outside
     the app is good enough on the tablet**, or whether pages drawn inside the app are worth adding.
 
+*38d reported passed by the household, 12 Oct: opening the PDF outside the app is fine. (The household asked whether only one page is kept, as the card read PAGE 1: the whole PDF is stored, every page; "PAGE 1" numbers the source files attached to the recipe, not the pages inside one.)*
+
 39a. **Cooking notes (new 30 Sep, R4).** Writes one note row per tap. (1) *Open a recipe:* under the diagram, COOKING NOTES.
     Type "Needed 10 min longer" and ADD A NOTE: it appears at the top with today's date, and the header shows NOTES · 1. (2)
     *EDIT it, change the words, SAVE:* the date stays. *DELETE it:* UNDO brings it back. (3) *COOKING MODE on* (the switch called KEEP AWAKE until 11 Oct): the box is still
@@ -505,6 +507,8 @@ removed page was deleted), and no listed page missing.*
     with a photo and no link that has not been checked reads "source photo not checked", and is. **What no test can judge:
     whether the photo and the lines sit close enough on the tablet to check one against the other.** A change to the
     ingredient lines takes the check away, as for a web recipe.
+
+*38c reported passed by the household, 12 Oct: checking the lines against an image of the source works as it is.*
 
 40a. **Planned meals in Google Calendar (new 9 Oct, P3 PR 2; only after `docs/migrations/add-calendar-push.md` is applied and
     both calendar functions are deployed, `docs/PLAN-CALENDAR-PUSH.md` §10).** Writes Planner rows and the household's settings
@@ -543,6 +547,8 @@ removed page was deleted), and no listed page missing.*
     nothing on the Planner changes. Plan another recipe: the day stays off. (6) *On the phone, open Settings:* the toggles show as set on
     the tablet (they belong to the household). **What no test can judge: whether "Main" in the course tags matches what the household
     means by a main meal, recipe by recipe.** Undo: switch the toggles off and the days off by hand; or the page's undo SQL.
+
+*40b reported passed by the household, 12 Oct: "Main" in the course tags matches what the household means by a main meal.*
 
 41a. **PRE-MADE meals and COOKED ✓ (new 10 Oct; `docs/PLAN-FOOD-DIARY.md`; only after `docs/migrations/add-premade.md` is
     applied and `calendar-sync` redeployed).** (1) *Before:* note the shopping list's amount for one ingredient of today's dish.
@@ -664,6 +670,8 @@ removed page was deleted), and no listed page missing.*
     reload either device, and the star is still there. (3) *Change APPEARANCE on one device while another has the app open,
     then change the week's first day on the other:* reload both, and both changes have stuck. **Read-only afterwards:** this
     household's `household_settings` row holds both changes. Undo: put the settings back as they were.
+
+*50a reported passed by the household, 12 Oct.*
 
 51a. **The parser and scaling (new 12 Oct; the October review's PR 7).** Writes nothing: nothing is saved. (1) *NEW RECIPE,
     paste this made-up recipe, PARSE & PREVIEW:*
