@@ -10,25 +10,36 @@ and the household decides when to merge. Before anything else, read the first th
 
 ---
 
-## Where things stand (30 Sep 2026)
+## Where things stand (12 Oct 2026)
 
-Checked against the database at 19:11 UTC and against `git log`. Check again before relying on a number.
+Checked against `git log` and, read-only, against the live project on 12 Oct (15:16 UTC). The library and diary counts in the
+first two lines are older, as dated there. Check again before relying on a number.
 
-- **Library:** 34 recipes. 2 carry a stored comparison with their source, 1 of them validated; 6 are BBC Good Food, five of which
-  were rebuilt from another edition before the 29 Sep rule (the household's job below). 1 recipe has a source photo.
-- **Cooking diary:** 116 entries. **Word matches:** 15. **Household aisles:** 1. **Swaps:** 2. **Cooking notes:** none yet (R4 built 30 Sep).
+- **Library:** 34 recipes on 30 Sep (19:11 UTC); 39 across the three households on 12 Oct. On 30 Sep, 2 carried a stored
+  comparison with their source, 1 of them validated; 6 are BBC Good Food, five of which were rebuilt from another edition before
+  the 29 Sep rule (the household's job below); 1 recipe had a source photo.
+- **Cooking diary:** 116 entries on 30 Sep (119 on 10 Oct, the October review). **Word matches:** 15. **Household aisles:** 1.
+  **Swaps:** 2 (all three on 30 Sep). **Cooking notes:** 2 rows in all on 12 Oct (R4 built 30 Sep).
 - **Tests:** `node test/core.test.js` 162 checks; `node test/build.js && node test/smoke.js` 547 checks (418 until P3 PR 2, 437 until the
   calendar toggles, both 9 Oct; 447 until the HELP tab, 448 until recipe sharing, 465 until the Drive backup, 472 until PRE-MADE, 487 until fresh or
   freezer, all 10 Oct; 492 until issues #85–#93, 500 until FROZEN, 502 until photo upload, 509 until the version and change log, 11 Oct; 515 until the network guard, 517 until the lost-changes fixes, 530 until the write queue, 537 until several households, 12 Oct).
   `node test/calendar-push.js` 35 checks; `node test/drive-backup.js` 13 checks; `node test/image-integrity.js` 35 checks;
   `node test/source-ingredients.js` 12 checks; `node test/help-guide.js` 7 checks. `offline-harness` runs
   both on every PR and is required on `main`.
-- **Schema:** `add_calendar_auto` (the P3 toggles) was applied by the household on 9 Oct, before #72 merged. The one before it,
+- **Schema:** 16 tables in `public` and 1 in `private`, row-level security on every one (12 Oct). Nothing is waiting: the last
+  page, `docs/migrations/harden-default-privileges.md`, was applied by the household on 12 Oct before #120 merged. `add_calendar_auto`
+  (the P3 toggles) was applied by the household on 9 Oct, before #72 merged. The one before it,
   `add_calendar_push`, was applied 9 Oct, before the household connected the calendar at 17:52 UTC (`docs/INFRASTRUCTURE.md`;
   read-only check 18:59 UTC: connected, 5 days switched on, 1 with a reminder).
-- **The family is one account, one household.** `docs/ONBOARDING.md` adds a second person. A second `households` row is the weekly
-  live test's own (`PrivateBackup`), never the family's. Leaked-password protection is a paid-plan feature and the household is on
-  the free plan: not an open item.
+- **Edge Functions:** five, all redeployed on 12 Oct after #102 (`docs/INFRASTRUCTURE.md` §3).
+  `find-recipe-image` is gone from the repo and the project.
+- **Three households, three accounts, three memberships** (12 Oct): the family's, the family's second (made by
+  `docs/ONBOARDING.md` §4), and the weekly live test's own (`PrivateBackup`). One recipe share is live. An account in two
+  households is refused at sign-in since #120. `docs/ONBOARDING.md` adds a person to a household. Leaked-password protection is a
+  paid-plan feature and the household is on the free plan: not an open item.
+
+*(Until 12 Oct this section was headed 30 Sep over lines from 9–12 Oct, and said the family was one account and one household.
+Corrected 12 Oct 2026, the October review's F13 and Appendix B.)*
 
 ### Plans, all finished
 
@@ -41,33 +52,39 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 | VALIDATE INGREDIENT LIST, OPEN SOURCE (30 Sep) | Accepting a comparison's differences; the source page from Edit | Done, PR #62; tablet 38a |
 | `docs/PLAN-COOKING-NOTES.md` (30 Sep) | R4: dated cooking notes per recipe, after cooking, foldable into NOTES | Done, PR #67; tablet 39a passed 12 Oct |
 | `docs/PLAN-SOURCE-PHOTOS.md` (30 Sep) | The photo or PDF a recipe was converted from, kept privately; CHECKED AGAINST THE PHOTO | Done, PRs #63–#65; tablet 38b passed, 38c and 38d the household's |
+| `docs/PLAN-CALENDAR-PUSH.md` (P3, 30 Sep) | Planned days in a RecipeWrangler Google calendar: IN CALENDAR, REMIND ME, ADD THE WEEK; the two automatic toggles (§11) | Done, PRs #69, #71, #72, both migrations applied and connected 9 Oct; tablet 40a passed 12 Oct, 40b the household's |
+| The how-to guide (10 Oct) | `help.html`, opened from Settings → HELP; converting your own recipes | Done, PRs #73, #77; tablet 42a passed 12 Oct |
+| `docs/PLAN-RECIPE-SHARING.md` (10 Oct) | A second household of the family, and browsing and copying each other's recipes | Done, PR #74, the SQL applied first; tablet 43a passed 12 Oct |
+| `docs/PLAN-DRIVE-BACKUP.md` (10 Oct) | The export file, weekly and by hand, into the household's own Drive | Done, PR #75, first saved 10 Oct 18:05 UTC; tablet 44a passed 12 Oct |
+| `docs/PLAN-FOOD-DIARY.md` (10 Oct) | PRE-MADE meals and COOKED ✓; fresh or freezer | Done, PRs #78, #80; tablet 41a and 41b |
+| Issues #85–#93 (11 Oct) | Parse feedback, seconds, COOKING MODE, Drink; FROZEN; your own photo; the version and change log | Done, PRs #96–#99; tablet 45a, 46a, 48a passed 12 Oct, 47a the household's |
+| The October review, PRs 1–7 (`docs/REVIEW-2026-10-FINDINGS.md`, 11 Oct) | Backups, Edge Function hardening, the public repo and harness, lost changes, the write queue, several households, the parser and dictionary | Done, PrivateBackup#7, #102, #117–#121, 11–12 Oct; tablet 49a passed 12 Oct, 50a and 51a the household's. PR 8, the documents, in progress |
 
 ---
 
 ## What is left, in order
 
-1. **The household's tablet passes:** `docs/TEST-PLAN.md` 38c (CHECKED AGAINST THE PHOTO) and 38d (PDF sources).
-2. **The household's data jobs** (below): compare and validate the BBC Good Food recipes; D6, the reconstructed recipes.
-3. **R4, dated cooking notes: merged 30 Sep** (PR #67; `docs/PLAN-COOKING-NOTES.md`). Tablet step 39a passed 12 Oct.
-4. **P3, the calendar push.** Answered 1 Oct (`docs/PLAN-CALENDAR-PUSH.md` §9): one all-day event per switched-on planned day in
-   a RecipeWrangler calendar, REMIND ME at 20:00 the evening before, ADD THE WEEK; DISCONNECT leaves the calendar. **PR 1** (the
-   migration, `calendar-auth`, `calendar-sync`, `test/calendar-push.js`) merged 1 Oct (#69); **PR 2, the app**, merged 9 Oct (#71):
-   the Planner's IN CALENDAR, REMIND ME and ADD THE WEEK, Settings → App → CALENDAR, and a sync after each Planner change to a
-   switched-on day. The household set it up and connected on 9 Oct. **The follow-up (§11, 9 Oct):** two toggles,
-   AUTOMATICALLY ADD TO CALENDAR and AUTOMATICALLY REMIND ME FOR MAIN MEALS, with `docs/migrations/add-calendar-auto.md`: apply the
-   SQL, then merge. Then tablet and phone steps 40a and 40b, and PR 3 records what they found (`docs/INFRASTRUCTURE.md`'s functions
-   table, `docs/ARCHITECTURE.md` §4, `docs/HANDOVER.md`).
-5. **The how-to guide (10 Oct):** `help.html`, opened from Settings → HELP. Drafted for the household to read; then one PR.
-   Keep it true: a renamed button or a new everyday feature updates it in the same PR (`test/help-guide.js`).
-6. **PRE-MADE meals and COOKED ✓ (10 Oct): live** (#78, SQL applied, `calendar-sync` v3). The food diary fed from the Planner, `docs/PLAN-FOOD-DIARY.md`.
-7. **A new household, and sharing recipes with it (10 Oct, answered):** `docs/ONBOARDING.md` §4 makes the household from an
-   email address; `docs/PLAN-RECIPE-SHARING.md` lets either household browse the other's recipes and copy them. The SQL,
-   `docs/migrations/add-recipe-sharing.md`, is the household's to apply first; then the app's side. **Merged 10 Oct (#74), the SQL
-   applied first.**
-8. **A weekly backup to Google Drive (10 Oct): live.** `docs/PLAN-DRIVE-BACKUP.md`. The export file, into the household's own
-   Drive, weekly and by hand; the nightly dump stays the real backup. Merged (#75), set up and first saved 10 Oct 18:05 UTC.
-9. **Optional, not planned:** a "download all source files" backup (the source files go into `PrivateBackup`'s weekly mirror
+Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all that is open.
+
+1. **The October review's PR 8, the documents** (in progress, 12 Oct): the status lines that said "not done" of finished
+   work (F13), `docs/INFRASTRUCTURE.md` and `docs/ARCHITECTURE.md` (F11, F12), the stated test counts (Appendices B and D), and
+   F34's wording in `CLAUDE.md` (agreed 12 Oct: merge first only when the app provably works without the change, and the
+   migration page says so). Documents only.
+2. **A small extra PR for the last items of #105 and #106**, not in the eight-PR plan: F37 (`source-ingredients` keeps its time
+   limit only until the page's headers arrive, and reads the whole page before checking its size) and F38 (the calendar's "sync
+   every day" has no cap). The household redeploys the functions it changes.
+3. **The household's own issues**, once they have reviewed them: #87, #88, #94, #95, #100. Nothing is built for them until the
+   household decides.
+4. **The household's tablet steps and library jobs**, in the next section: 38c, 38d, 40b, 47a, 50a and 51a; the BBC Good Food
+   validations; D6, the reconstructed recipes.
+5. **Optional, not planned:** a "download all source files" backup (the source files go into `PrivateBackup`'s weekly mirror
    instead, 10 Oct); drawing a PDF's pages inside the app, if opening it in the browser proves awkward on the tablet (38d will tell).
+
+Keep the how-to guide true: a renamed button or a new everyday feature updates `help.html` in the same PR (`test/help-guide.js`).
+
+*(Until 12 Oct this list still carried R4, P3, the guide, PRE-MADE, sharing and the Drive backup as work to do, with "apply the
+SQL, then merge" and "then one PR" for things merged 9–10 Oct. They are in the table above. Corrected 12 Oct 2026, the October
+review's F13.)*
 
 ## Things that are the household's to do
 
@@ -83,7 +100,7 @@ you finish one, tell the next session, and it takes the line out.
 - **47a:** your own photo as a recipe's picture.
 - **50a:** several households: the week-start question, a star kept through an EDIT, two devices' settings. #120 and its SQL
   are in, so it can be done now.
-- **51a:** the parser and scaling (PR 7), after it merges. Nothing is saved.
+- **51a:** the parser and scaling (PR 7, #121, merged 12 Oct). Nothing is saved.
 
 **3. Library jobs:**
 - **The BBC Good Food validations.** Compare the six BBC Good Food recipes with their real pages, then VALIDATE INGREDIENT LIST on
@@ -115,7 +132,6 @@ you finish one, tell the next session, and it takes the line out.
   - F38: the calendar's "sync every day" has no cap.
 
   A small extra PR. It needs you to redeploy two functions.
-- **Coming in PR 8 (the documents):** agree F34's wording, on when a PR may merge before its migration.
 
 **5. Things a session will check, read-only, with nothing for you to do:**
 - **The photo backup** (Sunday 18 Oct, or sooner if you dispatch it): its first run on the new mirror script.

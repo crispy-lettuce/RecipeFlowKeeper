@@ -12,8 +12,8 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 329 automated checks pass, plus 133 in Node (102 when this was
-written). But those checks run against a **stubbed** Supabase: every
+story that used to open this paragraph is history. 547 automated checks pass, plus 162 in Node (12 Oct 2026; 102 when this was
+written; until 12 Oct this line said 329 and 133, corrected 12 Oct 2026, the October review's Appendix B). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
 security, and the background write queue.
@@ -23,6 +23,11 @@ until 21 Sep; see `docs/INFRASTRUCTURE.md` §2. So something *is* deployed, and 
 database. Nothing in this plan writes anything the app itself wouldn't, but "nothing live can
 break" was never quite true.
 This pass is about earning the confidence to merge.
+
+*(Apart from the counts, this section is the context of 21 Sep, kept as history. Since then `main` has held the current build (PR #5,
+22 Sep), and sign-in, hydration, row-level security and the write queue have run against the real backend: in this pass, and
+in the weekly live check in `PrivateBackup` since 28 Sep (`docs/HANDOVER.md` §7). Noted 12 Oct 2026, the October review's
+Appendix B.)*
 
 **Scope of this plan:** run the branch locally, work the checklist below, report what fails.
 The tablet-only checks are listed but explicitly deferred to after the merge.
@@ -97,7 +102,7 @@ Some things that *will* still look wrong and aren't:
    deliberately refuse to guess occasion tags, leaving them for you to apply by hand, so these
    are vocabulary waiting to be used. Leave them.
 
-## A — Phase 1 foundations (never yet run against the real backend)
+## A — Phase 1 foundations (passed against the real backend, 21 Sep)
 
 1. **Sign in.** Expect the library to appear, 33 cards, no console errors.
 2. **Hard reload** (Ctrl/Cmd-Shift-R). Expect to stay signed in, still 33.
@@ -153,7 +158,7 @@ Some things that *will* still look wrong and aren't:
     Export PNG and Print at the top; Favourite, Edit and **OPEN →** per recipe; the nav highlight
     still on Planner. **OPEN →** then back should return you to the group with ticks intact.
 
-## B2 — Automatic image re-hosting (new 22 Sep, never run against the real backend)
+## B2 — Automatic image re-hosting (new 22 Sep; run on the live app 22 Sep)
 
 **Split into its own document: `docs/TEST-IMAGES.md`.** Eleven steps, about 25 minutes, needs a
 desktop because three of them want devtools or the SQL editor. It is kept separate because it is
@@ -164,7 +169,11 @@ change to how images are saved, without re-running everything else here.
 Its step 4 is the one to stop on. If a re-hosted photo reverts after an *unrelated* save, the
 feature is undoing itself silently and nothing on screen looks wrong.
 
-## C — Export and import (Phase 1 task, still open)
+## C — Export and import (Phase 1 task; round-tripped against the real backend 21 Sep)
+
+*(Until 12 Oct this heading said "still open", A's "never yet run against the real backend" and B2's "never run against the real
+backend". The 21 Sep pass ran A to C, export and import round-tripped with every table count intact, and `docs/TEST-IMAGES.md`
+was run on the live app on 22 Sep (`docs/HANDOVER.md` §2e and §7). Corrected 12 Oct 2026, the October review's F13.)*
 
 19. **Export.** Sidebar → EXPORT DATA. Open the file and confirm it has `version: 3`, a `diary`
     array carrying meal types and any ad-hoc entries, and `settings`
@@ -175,7 +184,9 @@ feature is undoing itself silently and nothing on screen looks wrong.
 **Keep that export file.** It is your undo for this whole session. The nightly backup in
 `PrivateBackup` is the other one.
 
-## D — Two devices at once (new 24 Sep, PR 5; never yet run)
+## D — Two devices at once (new 24 Sep, PR 5; run by the household 24 Sep, step 25 again 25 Sep)
+
+*(Said "never yet run" until 12 Oct; `docs/HANDOVER.md` §7, PR 5, records the run. Corrected 12 Oct 2026, the October review's F13.)*
 
 Until PR 5 every save pushed the whole cached table and deleted what it didn't hold, so a device
 whose cache was behind could delete another device's new recipe on its next favourite toggle.
@@ -694,6 +705,9 @@ Tell me the step number, what you saw, and anything red in the console. Useful t
   find it without you digging further.
 
 ## After a clean pass
+
+*(History: this section was written for the 21 Sep pass. That pass was clean and the merge it describes is long done;
+`main` is the trunk and production. Noted 12 Oct 2026, the October review's F13.)*
 
 Merging `claude/recipe-app-supabase-0z139o` into `main` is what puts it on the tablet, and is the
 go-live moment for the Supabase migration as a whole.

@@ -1,6 +1,8 @@
 # Proposal: a household-editable aisle override, in Settings
 
-**Written 28 Sep 2026, not started.** Raised by the household noticing "Sirloin Steak" on the
+**Written 28 Sep 2026, not started then. Built 29 Sep 2026** as PR 6 of `docs/PLAN-NEW-RECIPE-FLOW.md` (#49), its two
+settled choices kept (that plan's §9); the rest of this page is as written on 28 Sep. *(Corrected 12 Oct 2026, the October
+review's F13.)* Raised by the household noticing "Sirloin Steak" on the
 shopping list under **Other** instead of **Meat & Fish**, and asking the better question behind
 it: since this keeps happening — a past PR fixed 12 mis-aisled rows (25 Sep, PR #20), another
 moved one more (27 Sep, PR #22/6c-1) — could the household fix it themselves from Settings,

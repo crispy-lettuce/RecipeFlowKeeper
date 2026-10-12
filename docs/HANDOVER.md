@@ -32,7 +32,7 @@ verified status. **Nothing here is inferred from a previous summary.**
 | --- | --- | --- |
 | P1 | Servings + scale on the card | **Done.** Per-entry headcount, stored in a parallel `servings smallint[]` on `planner_days`, feeds that week's shopping list. |
 | P2 | Total time on cards | **Done, verified.** Planner rows (`day-recipe-time`) and Shortlist cards (`course · time`). This one was inherited, not built — confirmed present rather than assumed. |
-| P3 | Automatic calendar push | **Scoped 30 Sep 2026 in `docs/PLAN-CALENDAR-PUSH.md`; not built.** Until then it had never appeared in any task list. Phase 3 in the brief's own build order. Needs a Supabase Edge Function holding a Google OAuth refresh token — see §4. |
+| P3 | Automatic calendar push | **Done, 9 Oct 2026.** Scoped 30 Sep in `docs/PLAN-CALENDAR-PUSH.md` (until then it had never appeared in any task list; Phase 3 in the brief's own build order). PR 1, the migration and the `calendar-auth` and `calendar-sync` Edge Functions, merged 1 Oct (#69); PR 2, the app, merged 9 Oct (#71); the automatic toggles merged 9 Oct (#72). The household applied both migrations and connected Google on 9 Oct. Tablet step 40a passed 12 Oct; 40b is the household's. See §4. *(Until 12 Oct this row said "not built"; corrected 12 Oct 2026, the October review's F13.)* |
 
 ### Recipe viewing & editing
 
@@ -85,11 +85,11 @@ hasn't caught up yet.
 | Item | Status |
 | --- | --- |
 | Hosting (GitHub Pages) | **Live, verified 21 Sep.** Serving from `main` at `https://crispy-lettuce.github.io/RecipeFlowKeeper/`, confirmed by a browser screenshot and by the `pages build and deployment` workflow having one run per commit to `main`. **Every merge to `main` redeploys automatically** — there is no staging step. `main` holds the current build as of PR #5 (22 Sep). Two earlier claims in this document were wrong and are corrected in `docs/INFRASTRUCTURE.md` §2: `main` was never the pre-Supabase app during this project, and "nothing is deployed" was never true. |
-| Backend (Supabase) | **Done.** 13 tables, RLS enabled with policies on every one. |
+| Backend (Supabase) | **Done.** 16 tables in `public` and 1 in `private` (12 Oct 2026), row-level security on every one; every `public` table has policies, and `private.calendar_oauth_states` has none, reached only by the Edge Functions' service role. *(Until 12 Oct this row said 13 tables; corrected 12 Oct 2026, the October review's Appendix B.)* |
 | Household id on every table from day one | **Done, verified.** |
 | Backup to a separate private repo | **Done and genuinely working.** See §5. |
-| Images in Supabase Storage | **Done, 21 Sep** — 30 objects, 4,603 kB as of 23 Sep (29 on 22 Sep). See §2. Mirrored weekly to `PrivateBackup` since 23 Sep. |
-| Calendar reminders | **Not done** — P3, see §4. |
+| Images in Supabase Storage | **Done, 21 Sep** — 30 objects, 4,603 kB as of 23 Sep (29 on 22 Sep); 35 on 12 Oct, beside the private `recipe-sources` bucket's 4 source files. See §2. Mirrored weekly to `PrivateBackup` since 23 Sep. |
+| Calendar reminders | **Done, 9 Oct 2026** — P3, see §4. *(Said "Not done" until 12 Oct; corrected 12 Oct 2026, the October review's F13.)* |
 
 ### Brief's own open items
 
@@ -440,7 +440,8 @@ looks exactly like a real finding. `node test/build.js && node test/smoke.js`, a
 
 A restore from backup calls `replaceRecipesList` with the whole library and never touches the save
 handler, so nothing fires; a save made offline never reaches the function. Both are what the sweep
-is now for, and the sweep has moved out of the console into **Settings → RECIPE PHOTOS**.
+is now for, and the sweep has moved out of the console into **Settings → RECIPE PHOTOS** (Settings → LIBRARY →
+RECIPE PHOTOS since Layout E, 30 Sep; noted 12 Oct 2026, the October review's Appendix B).
 
 ### Still unverified against the real backend
 
@@ -612,7 +613,7 @@ two different recipes. Title similarity decided none of them; source and image d
 
 ---
 
-## 4. Calendar push (P3) — answered 1 Oct 2026; PRs 1 and 2 merged and connected 9 Oct; the automatic toggles built 9 Oct
+## 4. Calendar push (P3) — answered 1 Oct 2026; PRs 1 and 2 merged and connected 9 Oct; the automatic toggles merged 9 Oct
 
 Phase 3 in the brief. Recorded here because it appears in no task list anywhere and would
 otherwise be forgotten.
@@ -629,14 +630,19 @@ This explicitly **supersedes** the earlier downloadable `.ics` idea, which is in
 
 **Answered 1 Oct 2026** (its §9): the calendar is for reminders, not a food diary. One all-day event per switched-on day, REMIND ME
 at 20:00 the evening before, ADD THE WEEK, a RecipeWrangler calendar, and DISCONNECT leaving the calendar and its events.
-**PR 1 built 1 Oct:** the migration (`docs/migrations/add-calendar-push.md`, not applied), the `calendar-auth` and
-`calendar-sync` Edge Functions (not deployed), and `test/calendar-push.js`; merged 1 Oct (#69). **PR 2, the app, built 9 Oct:** the
+**PR 1 built 1 Oct:** the migration (`docs/migrations/add-calendar-push.md`, applied by the household 9 Oct), the `calendar-auth` and
+`calendar-sync` Edge Functions (deployed 9 Oct; v4 of each since 12 Oct), and `test/calendar-push.js`; merged 1 Oct (#69). **PR 2, the app, built 9 Oct:** the
 Planner's IN CALENDAR, REMIND ME and ADD THE WEEK, Settings → App → CALENDAR, and a sync queued after each Planner change to a
 switched-on day. It shows and sends nothing new until the migration is applied. What was verified is in §7; the real test is the
 household's tablet and phone pass, `docs/TEST-PLAN.md` step 40a. PR 2 merged 9 Oct (#71); the household applied the migration
 and connected the same day. **The follow-up, 9 Oct** (`docs/PLAN-CALENDAR-PUSH.md` §11): AUTOMATICALLY ADD TO CALENDAR and
-AUTOMATICALLY REMIND ME FOR MAIN MEALS, on two new `household_settings` columns (`docs/migrations/add-calendar-auto.md`, waiting),
-step 40b.
+AUTOMATICALLY REMIND ME FOR MAIN MEALS, on two new `household_settings` columns (`docs/migrations/add-calendar-auto.md`, applied
+by the household 9 Oct before #72 merged, and checked read-only at 20:03 UTC), step 40b. Step 40a passed on the tablet 12 Oct;
+40b is still to be reported.
+
+*(Until 12 Oct this section said the first migration was "not applied", the functions "not deployed" and `add-calendar-auto`
+"waiting", and §1 said P3 was "not built". All were done on 9 Oct (`docs/INFRASTRUCTURE.md` §3 and its list of migrations).
+Corrected 12 Oct 2026, the October review's F13.)*
 
 ---
 
@@ -657,22 +663,26 @@ in dependency order, the rebuild-without-dropping-the-schema path restores with 
 a fresh-project restore ends with row-level security verified for a new user, a stranger and
 `anon`. The photo backup is written and reviewed but has not run: its first run is the one
 after the merge. The runbook and the rehearsed/not-rehearsed table are `PrivateBackup/README.md`.
+*(13 tables then; 16 in `public` and 1 in `private` on 12 Oct 2026, so a data-only restore today has more tables to order.
+`PrivateBackup/README.md`, not this paragraph, is the runbook. Noted 12 Oct 2026, the October review's Appendix B.)*
 
 Getting there took three goes — the direct connection is IPv6-only and GitHub runners have no
 IPv6 route (fixed by using the **Session pooler**), and the runner's own `pg_dump` is older than
 the server (fixed by calling `/usr/lib/postgresql/17/bin/pg_dump` by full path). Both are
 documented in `PrivateBackup/README.md`; don't undo either.
 
-**The fragility:** `PrivateBackup` has exactly one branch — `claude/recipe-app-supabase-0z139o` —
-which is therefore its default branch, which is why the schedule fires. Renaming or deleting it
-during a tidy-up would silently stop backups. Worth renaming to `main` deliberately at some
-point, and confirming the schedule still fires afterwards.
+**The fragility:** `PrivateBackup`'s default branch is `claude/recipe-app-supabase-0z139o` (still so
+on 12 Oct 2026), which is why the schedule fires. Renaming or deleting it during a tidy-up would
+silently stop backups. Worth renaming to `main` deliberately at some point, and confirming the
+schedule still fires afterwards. *(Until 12 Oct this said it was the repo's only branch; the
+October review found a second remote branch on 10 Oct. The default is what matters. Corrected
+12 Oct 2026, the October review's Appendix B.)*
 
 ---
 
 ## 6. Corrections to the earlier record
 
-Thirty-four times now, something recorded as true wasn't. The pattern is worth more than the individual
+Thirty-five times now, something recorded as true wasn't. The pattern is worth more than the individual
 corrections: **every one was found by checking the real thing, and none by reading more carefully.**
 
 | Recorded | Actually | Found |
@@ -711,6 +721,7 @@ corrections: **every one was found by checking the real thing, and none by readi
 | `confectioners' sugar` listed as a spelling of icing sugar in the dictionary's file, and in `core.js`, since 23 Sep | Never indexed: the reader treated an apostrophe as a note and skipped it, so it totalled with nothing | 29 Sep, by probing US→UK pairs and asking what each keyed as |
 | §3 (20 Sep): two conversions carry a `⚠️ Source note`, "worth a glance against the original page before cooking from them" | For *No-Bake Chocolate Oat Bars* a glance was not enough. On the household's own comparison with the Allrecipes page, one of six source ingredients matches, one is a shaded refinement, one is a different product and **three are absent**, and the recipe has two the source lacks: not the same recipe. Nobody compared ingredient lists because nothing could (the source check arrived 27 Sep and `validate-recipes.js` never calls it). *Lasagne Loaded Fries* has the same shape and has not been compared. The converter's instructions cover an unreadable photo and say nothing of an unreadable URL. Full account in `docs/HANDOVER-CONVERSION-INTEGRITY.md` | 29 Sep, by the household's paste-box comparison of a US-source recipe |
 | PR #38 (7f): the `a big handful of …` change "re-keys nothing in the library (measured)" | Said before it was measured. Measured afterwards, on a copy in scratch: 0 of 466 lines change key and none has that shape, so the claim happened to be true. The wording was ahead of the evidence | 29 Sep, on rereading the PR against what had been run |
+| This file's §1 and §4, `NEXT-SESSION.md`, `TEST-PLAN.md`: P3 "not built", `add-calendar-auto` "waiting", `add-calendar-push` "not applied" and its functions "not deployed", the family "one account, one household", TEST-PLAN's B2 "never run against the real backend" and C "still open"; and stated test counts of 329 and 133 | All done: P3 built and connected 9 Oct, both calendar migrations applied 9 Oct and the functions deployed; three households; the image pass run 22 Sep and export and import round-tripped 21 Sep; 547 and 162 checks on 12 Oct. Each line was right when written and was never updated when the work landed. Corrected in place, each with a dated note | 10 Oct, the October review (F13, Appendices B and D), by reading `git log` and the live project; corrected 12 Oct |
 
 **The last one is the most instructive, because the verification itself was the thing that was
 wrong.** Every "the tests pass" statement in this repo was false for a day, and the reason it went
@@ -736,10 +747,11 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **329 checks** (since PR 5 of the add-recipe plan; `core.test.js` adds 133 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **547 checks** (12 Oct 2026; `core.test.js` adds 162 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
-Thursday.
+Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
+the October review's Appendix B and D. The entries below keep the counts of their own day.)*
 
 **PR 4, the faithful save (24 Sep 2026, PR #14, closing F5 and F7).** Verified by: 213 checks
 green locally and in CI; sixteen new checks assert on the row the app sent, not the cache; five
@@ -1054,9 +1066,12 @@ sign-in, `hydrate()`, RLS, and the background write queue, including the exact r
 found, all proven against the real backend in one run. `weekly-live-check.yml` now runs itself
 every Monday at 06:00 UTC; nothing further is owed here unless a future run goes red.
 
-**What it does not cover:** sign-in, hydration, row-level security and the background write
-queue are all stubbed. A green run is not a substitute for opening the real app. Keep Awake
-can't be tested outside a real tablet.
+**What the offline harness does not cover** (this live check covers the first four): in `smoke.js`,
+sign-in, hydration, row-level security and the background write queue are all stubbed. A green
+offline run is not a substitute for opening the real app. Keep Awake can't be tested outside a
+real tablet. *(Until 12 Oct this paragraph read as if it described the live check above it, which
+proves the opposite; it belongs to the offline harness. Corrected 12 Oct 2026, the October review's
+Appendix B.)*
 
 **7d, the paste box for COMPARE WITH SOURCE (28 Sep 2026, PR #35, merged 21:53 UTC).** Asked and answered
 at the start of the session: its own small PR. Two of the twelve source sites (Kitchen Sanctuary, 17
@@ -1898,7 +1913,9 @@ Vault installed, `pg_cron` and `pg_net` available but not installed. Not built.
 RecipeWrangler calendar, DISCONNECT leaving the calendar. `docs/migrations/add-calendar-push.md` (not applied), drafted from the live
 schema (read-only, 1 Oct: `vault.create_secret` and `update_secret` and their defaults, `postgres` able to read and delete
 `vault.secrets`, no secrets yet, the default privileges on `public`, the tables' owner). `supabase/functions/calendar-auth` and
-`calendar-sync` (not deployed). No `index.html` or `core.js` change.
+`calendar-sync` (not deployed). No `index.html` or `core.js` change. *(As of 1 Oct. The household applied the migration and
+deployed both functions on 9 Oct, and connected the same day (§4; `docs/INFRASTRUCTURE.md`). Noted 12 Oct 2026, the October
+review's F13.)*
 
 *Verified by.* `test/calendar-push.js` **30 checks**, exit 0, lifting both functions' pure parts from their source. **Thirty-seven
 mutations, all failing a check by name**, among them an id outside Google's alphabet, an event ending the same day, a timed event,
@@ -2072,6 +2089,9 @@ the photo copied but not saved to the row; the copy not opened; the "shares with
 STOP SHARING without asking (the first version of that check died on a timeout instead of failing by name, and was changed);
 a stopped share's recipes kept. *Not verified:* anything against the live database (the migration is not applied), the real
 `sb.rpc` answers and storage policies, the photo copy against real Storage, and two real households; that is tablet step 43a.
+*(As of the build. The household applied the migration on 10 Oct before #74 merged, and its check queries were run read-only at
+16:15 UTC (`docs/INFRASTRUCTURE.md`); `recipe_shares` holds one share on 12 Oct, and tablet step 43a passed 12 Oct. Noted 12 Oct
+2026, the October review's F13.)*
 
 **A weekly backup to Google Drive (10 Oct 2026; `docs/PLAN-DRIVE-BACKUP.md`).** Asked once Google was connected for the
 calendar; answered the same day: the app's own export, weekly and by hand, into the household's own Drive, the export file only.
@@ -2595,7 +2615,10 @@ merged first. Everything is in `core.js`; its version is `2026-10-12.1` in all t
 
 *Not verified:* the tablet (step 51a).
 
-**The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
+*The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
+2026, the October review's Appendix B.)*
+
+**21 Sep 2026: the full browser pass was completed** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export
 and import round-tripped with every table count intact.
@@ -2651,6 +2674,7 @@ and import round-tripped with every table count intact.
   IPv6 route) and the full path to `pg_dump` 17 (the runner's own is older than the server). Both
   took several failed runs to find; don't undo either.
 - **Recipe images re-host themselves on save, since 22 Sep** (§2d). The two cases that miss are a
-  restore from backup and a save made offline; **Settings → RECIPE PHOTOS** covers both. The
+  restore from backup and a save made offline; **Settings → LIBRARY → RECIPE PHOTOS** covers both
+  (the LIBRARY tab since 30 Sep; corrected 12 Oct 2026, the October review's Appendix B). The
   console sweep still works and still needs a hard-reload after it. `docs/IMAGES.md` is the
   runbook.

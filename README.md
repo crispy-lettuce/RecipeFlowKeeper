@@ -1,6 +1,6 @@
 # RecipeFlowKeeper
 
-A personal recipe app for one household. Recipes are stored as a **flow** rather than a list of
+A personal recipe app for a few households of one family, each with its own recipes. Recipes are stored as a **flow** rather than a list of
 steps — ingredients on the left, each column a moment in time, boxes merging as things come
 together — so you can prop a tablet up in the kitchen and tick your way through a cook.
 
@@ -8,12 +8,14 @@ It also plans meals across a fortnight, builds a shopping list from that plan (c
 quantities across recipes), scales any recipe to a number of people, and keeps a history of what
 was cooked when.
 
-Single HTML file, no build step, no framework. Data lives in Supabase.
+Two files, `index.html` and `core.js`, no build step, no framework. Data lives in Supabase.
 
-> **Status, September 2026:** live. `main` is the Supabase app and is production: GitHub Pages
+> **Status, 12 Oct 2026:** live. `main` is the Supabase app and is production: GitHub Pages
 > serves it, and every merge deploys. Work happens on short-lived branches merged by pull request.
 > Start with [`docs/DOCUMENT-INDEX.md`](docs/DOCUMENT-INDEX.md). *(Corrected 23 Sep 2026 — this
-> paragraph said "mid-migration, not merged" for ten days after it stopped being true.)*
+> paragraph said "mid-migration, not merged" for ten days after it stopped being true. Corrected again
+> 12 Oct 2026, the October review's F13: it said "Status, September 2026", and the line above it
+> "Single HTML file", which stopped being true on 25 Sep.)*
 
 ## Start here
 
@@ -46,9 +48,11 @@ You'll need the household login to get past the sign-in gate.
 ## Tests
 
 ```sh
-npm install playwright
+npm install --no-save playwright@1.63.0   # once; the version CI pins
+node test/core.test.js
 node test/build.js && node test/smoke.js
 ```
 
-237 checks against a stubbed backend, run by GitHub Actions on every pull request. See [`test/README.md`](test/README.md) for what it does and
-doesn't prove.
+162 checks in Node on `core.js`, then 547 in a browser against a stubbed backend; GitHub Actions runs both, and five
+smaller suites, on every pull request. See [`test/README.md`](test/README.md) for what they do and don't prove.
+*(Corrected 12 Oct 2026, the October review's Appendix B: this said 237, the smoke suite's size on 25 Sep.)*

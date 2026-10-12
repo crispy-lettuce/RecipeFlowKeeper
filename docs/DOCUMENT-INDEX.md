@@ -2,8 +2,10 @@
 
 Everything written for this project, what each is for, and when to read it. Start here.
 
-**Written 14 Sep 2026.** Every document listed was verified against the live code, database and
-GitHub at the time of writing.
+**Written 14 Sep 2026**, every document listed then verified against the live code, database and
+GitHub; entries have been added and changed since, and were last brought up to date on 12 Oct 2026
+against `git log` and the October review (`docs/REVIEW-2026-10-FINDINGS.md`, F13 and Appendix B).
+*(Corrected 12 Oct 2026: this said only "Written 14 Sep 2026", as if every entry dated from then.)*
 
 ---
 
@@ -19,7 +21,7 @@ GitHub at the time of writing.
 Then pick up work from **`docs/NEXT-SESSION.md`**: where things stand, what is left and in what
 order, and the household's own jobs. As of 30 Sep 2026 the app is live and in daily use and every
 agreed plan is built and merged, R4 (dated cooking notes, `docs/PLAN-COOKING-NOTES.md`) included.
-What remains is the household's data jobs and P3 (the calendar push, `docs/PLAN-CALENDAR-PUSH.md`: answered 1 Oct, PR 1 built,
+What remained then was the household's data jobs and P3 (the calendar push, `docs/PLAN-CALENDAR-PUSH.md`: answered 1 Oct, PR 1 built,
 merged; the app, PR 2, merged and connected 9 Oct; two automatic toggles, §11, built 9 Oct).
 
 **One thing to absorb before changing anything: `main` is production.** GitHub Pages serves from
@@ -88,9 +90,9 @@ self-hosted again. **Adding a recipe needs nothing** — since 22 Sep the app re
 itself on save (§5). The sweep is kept for the two cases that cannot reach: a restore, and a save
 made offline. It is a button in Settings, not a console command.
 
-**Don't:** expect a file picker. The app only ever takes a URL; there is no upload-from-device
-(§5 Option D covers what adding one would involve — it is smaller than it sounds, because no
-cross-origin fetch is involved).
+**Since 11 Oct** (issue #92, PR #98) the form also takes a photo from the device: UPLOAD PHOTO shrinks it and stores it
+in `recipe-images` on SAVE, with no Edge Function involved. *(Corrected 12 Oct 2026: this said the app only ever takes a
+URL and has no upload-from-device.)*
 
 ---
 
@@ -104,6 +106,14 @@ share and which must never leave a platform's settings screen.
 useful with no Claude Code session and no prior context at all.
 
 ---
+
+### `docs/migrations/harden-default-privileges.md` — a privileges change and a settings row, applied by the household 12 Oct 2026
+**What:** The October review's F35 and F23 (its PR 6, #120): a new table or sequence made from the dashboard in `public` no
+longer starts out granted to signed-out visitors (`anon`), and every household gets a `household_settings` row. A new function
+still needs its own revoke, and the page says why. Who applies it and when, how to check it and how to undo it. Tried first on
+a scratch Postgres 17 restored from the 11 Oct backup. No recipe data.
+
+**Use it when:** checking it is still in place, adding a table, or undoing it.
 
 ### `docs/migrations/add-premade.md` — a schema change, applied by the household 10 Oct 2026
 **What:** `planner_days.premade` (per planned dish: fresh, or the meal it is eaten as from the freezer) and `recipe_logs.premade`,
@@ -162,8 +172,8 @@ and when (the household, from the dashboard, **before** merging that PR), why it
 the column, how to check it and how to undo it. A markdown page and not a `.sql` file because `.gitignore` excludes
 `*.sql` on purpose. Carries no data.
 
-**Use it when:** applying the migration, or checking whether it has been. `docs/INFRASTRUCTURE.md` lists it as waiting
-until it has been applied.
+**Use it when:** checking it is still in place, or undoing it. Applied 29 Sep, so `docs/INFRASTRUCTURE.md` no longer lists it
+as waiting. *(Corrected 12 Oct 2026, the October review's F13: this said `INFRASTRUCTURE.md` lists it as waiting.)*
 
 ---
 
@@ -174,11 +184,14 @@ and why the app has no sign-up form of its own to do any of this instead. Part o
 **§4 (10 Oct 2026)** makes a separate household, with its own empty app, from an email address:
 one guarded statement, then optionally SHARE recipes (`docs/PLAN-RECIPE-SHARING.md`).
 
-**Use it when:** actually adding someone. Written 28 Sep 2026, part one of three for PR 7 — RLS
-hardening and the weekly live-backend test are the other two, tracked separately in
-`docs/NEXT-SESSION.md`.
+**Use it when:** actually adding someone, or making a household. Written 28 Sep 2026, part one of three for PR 7. The
+other two, RLS hardening and the weekly live-backend test, were done the same day (`docs/HANDOVER.md` §7, 7b and 7c);
+`docs/NEXT-SESSION.md` no longer tracks them. There are three households now: the family's, the weekly test's, and the
+family's second. *(Corrected 12 Oct 2026, the October review's F13: this said the other two were "tracked separately in
+`docs/NEXT-SESSION.md`".)*
 
-**Don't:** put one account in two households; every part of the app assumes one.
+**Don't:** put one account in two households; every part of the app assumes one, and since 12 Oct the app refuses to load
+for such an account.
 
 ---
 
@@ -190,9 +203,10 @@ check against and flags which failures would be serious.
 **Use it when:** running a regression pass. The full 20-step pass **was completed on 21 Sep
 2026** — the sentence that used to sit here, saying it had never been done, was true when
 written and stale within a week. What follows is the original framing, kept because it explains
-what the pass is for. Nothing in
-the Supabase rewrite has been confirmed working against the real backend by a human in a browser.
-The riskiest step is signing out and back in.
+what the pass is for: when it was written, nothing in the Supabase rewrite had been confirmed working
+against the real backend by a human in a browser, and the riskiest step was signing out and back in.
+*(Reworded 12 Oct 2026, the October review's Appendix B: it read as current, three lines after saying
+the pass was done.)*
 
 ---
 
@@ -244,9 +258,11 @@ It ends with twelve decisions for the household.
 
 **Use it when:** deciding what to build for the shopping list, or before changing `splitQty`,
 the converter's ingredient rules or word matches. Step 1 (the quantity reader) merged as PR #9 on
-23 Sep; step 3 is on PR #10; the rest waits on `docs/REVIEW-ARCHITECTURE-FINDINGS.md`, which
-changes the plan for the converter's naming rule. *(This line said "nothing implemented" until
-23 Sep.)*
+23 Sep and step 3 as PR #10 the same day, revised by `docs/REVIEW-ARCHITECTURE-FINDINGS.md` so the
+converter no longer renames to the dictionary; steps 4–6 were PR 6b (#19, 25 Sep); step 7, the line
+rewrite, was done in place on 27 Sep (6c-2). `docs/HANDOVER.md` §7 has each. *(This line said
+"nothing implemented" until 23 Sep, and "step 3 is on PR #10; the rest waits" until 12 Oct, corrected
+then for the October review's F13.)*
 
 **Don't:** look for the real lines here. They are in a private appendix that was handed to the
 household and is not in this repo.
@@ -297,16 +313,19 @@ for the deployed functions against the repo, the stated test counts, and every q
 **Use it when:** picking up any of its "Change now" items, before a restore, or before trusting a number in
 `INFRASTRUCTURE.md` or `HANDOVER.md` §1.
 
-**Don't:** take it as having changed anything. Fixes are described, not made.
+**Don't:** take it as having changed anything. Fixes are described, not made; the October review's PRs that made them
+(`PrivateBackup` #7, then #102, #117, #118, #119, #120 and #121 here) merged on 11 and 12 Oct, and the documents it
+corrects were brought up to date in place on 12 Oct.
 
 ---
 
-### `docs/PROPOSAL-AISLE-OVERRIDES.md` — a household-editable aisle override, not started
+### `docs/PROPOSAL-AISLE-OVERRIDES.md` — a household-editable aisle override (28 Sep 2026; built 29 Sep as PR 6 of the add-recipe plan)
 **What:** A design, checked against the running code, for letting the household move an
 ingredient into the right shopping-list aisle themselves from Settings — a form entry, not a code
 change and a PR — for the recurring case of something landing under Other or in the wrong aisle.
 Raised 28 Sep 2026 after "Sirloin Steak" was found under Other. Two design choices in it were
-settled with the household already; nothing else has been, and nothing has been built.
+settled with the household when it was written; the rest was settled and built the next day, through
+`docs/PLAN-NEW-RECIPE-FLOW.md`.
 
 **Use it when:** this is picked up. It names the exact new table, the `core.js` function to
 extend, and the existing Word Matches feature it mirrors and deliberately stays independent of.
@@ -314,11 +333,12 @@ Its last section sets out the general rules for every fact held about an ingredi
 matches, aisle, swaps and dictionary row. Each has one key and one home in Settings, and only
 naming facts re-key ticks.
 
-**Since 29 Sep** it is PR 6 of `docs/PLAN-NEW-RECIPE-FLOW.md`, built and merged (PR #49).
+**Since 29 Sep** it is PR 6 of `docs/PLAN-NEW-RECIPE-FLOW.md`, built and merged (PR #49). *(Corrected 12 Oct 2026, the
+October review's F13: the heading and the first paragraph still said "not started".)*
 
 ---
 
-### `docs/PROPOSAL-NEW-RECIPE-REVIEW.md` — a review when a new recipe comes in, not started
+### `docs/PROPOSAL-NEW-RECIPE-REVIEW.md` — a review when a new recipe comes in (28 Sep 2026; built 29-30 Sep through the add-recipe plan)
 **What:** A brainstorm and a phased design (A–D), checked against the code and the live library on
 28 Sep 2026. It adds an ON THE SHOPPING LIST section to the Add/Edit preview, showing:
 - a new recipe's names that are new to the library;
@@ -334,11 +354,12 @@ writing it:
 
 It lists five open decisions for the household.
 
-**Use it when:** this is picked up, or when anything is changed about how recipes come in. Phase A
-is read-only and needs no schema change; Phase C depends on `docs/PROPOSAL-AISLE-OVERRIDES.md`.
+**Use it when:** you want the reasoning behind the add form's review, or when anything is changed about how recipes
+come in. `docs/PLAN-NEW-RECIPE-FLOW.md` adopted it on 29 Sep, answered its five open decisions and built its phases
+(§9 there): A as PR 3 (#43), B as PR 4 (#44), C as PR 6 (#49), D as PR 8 (#53).
 
-**Don't:** treat it as agreed. Only the idea came from the household; the phases, the
-recommendations and the open decisions have not been put to them yet.
+**Don't:** read its phasing or its open decisions as current; the plan supersedes both. *(Corrected 12 Oct 2026, the
+October review's F13: this entry said "not started", and that nothing had been put to the household.)*
 
 ---
 
@@ -346,7 +367,8 @@ recommendations and the open decisions have not been put to them yet.
 **What:** **Rewritten 30 Sep 2026**, when every agreed plan was finished: where things stand (checked against the database),
 the finished plans in one table, what is left in order, the household's own jobs (including how the conversion project is kept:
 one file, `converter/conversion-instructions.md`, whose master is in this repo), a ready-to-paste prompt for the next session
-and alternative starting points. The history it used to carry is in `docs/HANDOVER.md` §7 and in git.
+and alternative starting points. The history it used to carry is in `docs/HANDOVER.md` §7 and in git. The household's
+outstanding tasks and checks in it were brought up to date on 12 Oct (#120).
 
 **Use it when:** starting a new session, or whenever you're unsure what should happen next.
 
@@ -433,7 +455,7 @@ and E (Settings in three tabs, Swaps moved in). Tablet steps are the 37 series o
 
 **Use it when:** building the next of those PRs, or asked why the viewer or Settings looks the way it does.
 
-### `docs/PLAN-NEW-RECIPE-FLOW.md` — adding a recipe as one flow (29 Sep 2026, decided; PRs 1–4 built and merged, PR 5 open for review)
+### `docs/PLAN-NEW-RECIPE-FLOW.md` — adding a recipe as one flow (29 Sep 2026, decided; all eight PRs built and merged by 30 Sep)
 **What:** The plan that makes the journey from a pasted conversion to a saved recipe one page
 with five bands, and gives Settings one place to see what the app knows about an ingredient. It
 opens with an audit of today's add path (every step, every data change, every missing check, each
@@ -450,8 +472,10 @@ supersedes the *phasing* of `docs/PROPOSAL-NEW-RECIPE-REVIEW.md` and adopts
 `docs/PROPOSAL-AISLE-OVERRIDES.md` as its PR 6; both proposals stay the design record for the
 reasoning behind them.
 
-**Don't:** treat it as done. PRs 1–4 are built and merged and PR 5 is open for review (each entry's "Built as" note
-says where the code differs from the text); PRs 6–8 are not built, and a plan closes no finding.
+**Don't:** read the PR texts as the code. All eight PRs, and PR 5b, are built and merged (PR 1 as #41 to PR 8 as #53,
+on 29 Sep, the last at 00:11 UTC on 30 Sep); each entry's "Built as" note says where the code differs from the text,
+and a plan closes no finding. *(Corrected 12 Oct 2026, the October review's F13: this said PR 5 was open for review and
+PRs 6–8 not built.)*
 
 ---
 
@@ -477,16 +501,17 @@ recognise, leaving raw bracket text visible in the diagram).
 ---
 
 ### `converter/test-set.md` — the converter's regression tests
-**What:** Nine deliberately awkward cases, each isolating one failure mode — a late addition, a
+**What:** Ten deliberately awkward cases, each isolating one failure mode — a late addition, a
 split ingredient, parallel prep, a zero-length step, a missing yield, and (since 23 Sep) the
 shape of ingredient lines, British English without over-specifying, and ingredients no list has seen,
-and (since 29 Sep) an address it cannot read — with what a correct
+(since 29 Sep) an address it cannot read, and (since 30 Sep) a page's text pasted in — with what a correct
 conversion must produce and what counts as a failure. Plus three audits of the real library. The
 first two (13 and 14 Sep) describe the pre-reprocess library and are history now; the third
 (20 Sep) re-runs all five tests against what's actually in the database.
 
-**Use it when:** you change `conversion-instructions.md`. Run all nine through the revised
+**Use it when:** you change `conversion-instructions.md`. Run all ten through the revised
 instructions and compare. Also the record of which library faults have been fixed and when.
+*(Corrected 12 Oct 2026, the October review's Appendix B: this said nine; the tenth was added 30 Sep.)*
 
 **Worth knowing:** these tests check what the *converter* writes, not what the app's parser
 *reads*. A batch can pass every rule here and still land wrong — which is exactly what happened
@@ -501,6 +526,20 @@ button named exactly as it reads, marked `<b class="ui">`. It follows the app's 
 prints to A4. `test/help-guide.js` checks the quoted buttons are still in `index.html` and the links land.
 
 **Use it when:** changing an on-screen label or adding a feature the family will use: update it in the same PR.
+
+### `privacy.html` — the privacy policy (9 Oct 2026)
+**What:** A short static page, served by Pages beside the app, that Google's consent screen needs before the app can ask
+for calendar and Drive access: what the app asks Google for and why, where the token is kept, that nothing is shared or
+sold, and how to disconnect. Brought up to date on 10 Oct for the Drive backup and sharing between households. Linked from
+the foot of `help.html`.
+
+**Use it when:** the app asks Google for anything new, or starts keeping or sharing anything new: change it in the same PR.
+
+### `terms.html` — the terms of service (9 Oct 2026)
+**What:** Its companion, for the same reason: what the app is (private, for a few households of one family, not offered to
+the public), using it, Google Calendar, and no warranty. Static, like `privacy.html`.
+
+**Use it when:** who the app is for, or what it does with Google, changes.
 
 ### `changelog.json` — the app's version and what changed (11 Oct 2026, issue #91)
 **What:** Newest first, one entry per change the household would notice: a version (`YYYY-MM-DD.n`), its date, the issue
@@ -521,11 +560,20 @@ the page. `test/core.test.js` tests it in Node, and `tools/generate-ingredient-n
 **Use it when:** changing how recipes are read, laid out, scaled or totalled, or adding a word
 to the dictionary. **Bump its version stamp and the page's together** (`CLAUDE.md` says why).
 
+### `converter/ingredient-names.md` — the app's ingredient dictionary, generated
+**What:** The dictionary in `core.js` written out as one table per aisle: each ingredient's name, the other spellings that
+total as it, and how a line for it is counted. **Generated:** `node tools/generate-ingredient-names.js` writes it from `INGREDIENT_DICTIONARY`, with the prose
+above the tables from `tools/ingredient-names-preamble.md`, and `test/core.test.js` fails if the two differ.
+
+**Use it when:** reading what the app already knows about an ingredient. **Don't** edit it by hand, and don't give it
+to the conversion project (see `converter/conversion-instructions.md` above).
+
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 418-check smoke suite, the 143 Node checks and the Edge Function checks, and an honest account of what it can't tell you
+**What:** How to run the 547-check smoke suite, the 162 Node checks, the five smaller suites CI also runs (the Edge Functions' and the help guide's), and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
+*(Corrected 12 Oct 2026, the October review's Appendix B and D: this said 418 and 143.)*
 
 **Use it when:** making any code change.
 

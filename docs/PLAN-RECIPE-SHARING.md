@@ -4,7 +4,9 @@
 that one household could browse another household's recipes? (Preferred) Or would one household have to 'send' them to the
 second household? … it is important that each household has their own recipe database. … this app will only be used by myself
 plus one or two close family members, so we can be a little more free." **Answered the same day; built the same day (the migration,
-the new-household steps and the app, in one PR); the household applies the migration first.**
+the new-household steps and the app, in one PR); the household applied the migration first, and PR #74 merged at 16:13 UTC
+on 10 Oct.** *(Corrected 12 Oct 2026, the October review: this said "the household applies the migration first", as if still
+to come.)*
 
 ## 1. What was decided
 
@@ -31,7 +33,7 @@ when the owner has shared with the caller's household. The details, and why each
 
 | Step | What | Who |
 | --- | --- | --- |
-| 1 | `docs/migrations/add-recipe-sharing.md`: `recipe_shares`, `recipes.copied_from`, and six functions (SHARE, STOP SHARING, the two lists, the shared recipes, the household's name). Tested on a scratch Postgres built to the live shape, 10 Oct | The household applies it |
+| 1 | `docs/migrations/add-recipe-sharing.md`: `recipe_shares`, `recipes.copied_from`, and six functions (SHARE, STOP SHARING, the two lists, the shared recipes, the household's name). Tested on a scratch Postgres built to the live shape, 10 Oct | The household; applied 10 Oct |
 | 2 | `docs/ONBOARDING.md` §4: a new household from an email address, one guarded statement. The privacy and terms pages say "a few households of one family" | Docs |
 | 3 | The app: Settings → APP → RECIPE SHARING (OUR HOUSEHOLD'S NAME, SHARE, SHARED WITH, STOP SHARING); RECIPES gains OUR RECIPES · 〈NAME〉'S RECIPES; their recipe opens read-only, cookable, with ADD TO OUR RECIPES; the photo is copied into our own folder; `help.html` gains a section | Merge, either side of step 1 |
 | 4 | Tablet step 43a: name the household, SHARE, browse from the other side, cook one read-only, ADD TO OUR RECIPES | The household |
