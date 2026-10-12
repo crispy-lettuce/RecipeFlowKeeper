@@ -254,6 +254,14 @@ function check(name, condition, detail) {
   check('its fetch follows redirects only by hand, checking each hop', /redirect: 'manual'/.test(slice2(src, 'async function fetchImage'))
         && !/redirect: 'follow'/.test(slice2(src, 'async function fetchImage')) && /await fetchImage\(src\)/.test(src));
   check('a caller cannot widen the sweep past 500 recipes', /const limit = Math\.min\(500, Math\.max\(1,/.test(src));
+  /* The October review, F37 (12 Oct 2026): a body is read only as far as the limit, by one function shared with
+     source-ingredients (whose test runs it), and the stored-photo check keeps its timer until the body is in. */
+  const capped = s => slice2(s, 'async function readCapped');
+  check('both functions read a body through the same capped reader', capped(src) !== '' && capped(src) === capped(other));
+  const verify = src.slice(src.indexOf('if (verify'), src.indexOf('return json({ verify: true'));
+  check('every image body goes through it, and no timer is cleared at the headers',
+        /readCapped\(res, MAX_BYTES\)/.test(slice2(src, 'async function fetchImage')) && /readCapped\(res, MAX_BYTES\)/.test(verify)
+        && !/\.arrayBuffer\(\)/.test(src) && !/\.finally\(\(\) => clearTimeout/.test(src), verify.length);
 }
 function slice2(s, head){ const at = s.indexOf(head); return at < 0 ? '' : s.slice(at, at + s.slice(at).indexOf('\n}\n') + 3); }
 

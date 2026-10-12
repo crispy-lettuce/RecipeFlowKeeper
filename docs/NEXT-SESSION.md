@@ -23,8 +23,8 @@ first two lines are older, as dated there. Check again before relying on a numbe
 - **Tests:** `node test/core.test.js` 162 checks; `node test/build.js && node test/smoke.js` 547 checks (418 until P3 PR 2, 437 until the
   calendar toggles, both 9 Oct; 447 until the HELP tab, 448 until recipe sharing, 465 until the Drive backup, 472 until PRE-MADE, 487 until fresh or
   freezer, all 10 Oct; 492 until issues #85–#93, 500 until FROZEN, 502 until photo upload, 509 until the version and change log, 11 Oct; 515 until the network guard, 517 until the lost-changes fixes, 530 until the write queue, 537 until several households, 12 Oct).
-  `node test/calendar-push.js` 35 checks; `node test/drive-backup.js` 13 checks; `node test/image-integrity.js` 35 checks;
-  `node test/source-ingredients.js` 12 checks; `node test/help-guide.js` 7 checks. `offline-harness` runs
+  `node test/calendar-push.js` 39 checks; `node test/drive-backup.js` 13 checks; `node test/image-integrity.js` 37 checks;
+  `node test/source-ingredients.js` 16 checks; `node test/help-guide.js` 7 checks. `offline-harness` runs
   both on every PR and is required on `main`.
 - **Schema:** 16 tables in `public` and 1 in `private`, row-level security on every one (12 Oct). Nothing is waiting: the last
   page, `docs/migrations/harden-default-privileges.md`, was applied by the household on 12 Oct before #120 merged. `add_calendar_auto`
@@ -70,9 +70,10 @@ Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all 
    work (F13), `docs/INFRASTRUCTURE.md` and `docs/ARCHITECTURE.md` (F11, F12), the stated test counts (Appendices B and D), and
    F34's wording in `CLAUDE.md` (agreed 12 Oct: merge first only when the app provably works without the change, and the
    migration page says so). Documents only.
-2. **A small extra PR for the last items of #105 and #106**, not in the eight-PR plan: F37 (`source-ingredients` keeps its time
-   limit only until the page's headers arrive, and reads the whole page before checking its size) and F38 (the calendar's "sync
-   every day" has no cap). The household redeploys the functions it changes.
+2. **The extra PR for the last items of #105 and #106** (opened 12 Oct), not in the eight-PR plan: F37 (a page or image body is
+   read only as far as its size limit, under a timer that runs until it is in) and F38 (SYNC NOW reaches 400 days ahead, inside a
+   100-second budget). After it merges the household redeploys `rehost-images`, `source-ingredients` and `calendar-sync`, and a
+   session reads the versions back and updates `docs/INFRASTRUCTURE.md`.
 3. **The household's own issues**, once they have reviewed them: #87, #88, #94, #95, #100. Nothing is built for them until the
    household decides.
 4. **The household's tablet steps and library jobs**, in the next section: 38c, 38d, 40b, 47a, 50a and 51a; the BBC Good Food
@@ -92,6 +93,9 @@ review's F13.)*
 you finish one, tell the next session, and it takes the line out.
 
 **1. Reload the app on each device**, since #120 merged (12 Oct, 13:47 UTC).
+
+**1a. After the F37/F38 PR merges: redeploy three Edge Functions** from their raw GitHub URLs, each with JWT verification
+**on**: `rehost-images`, `source-ingredients`, `calendar-sync`. Then tell a session, which reads the versions back.
 
 **2. Tablet and phone steps not yet reported back** (`docs/TEST-PLAN.md`):
 - **38c:** CHECKED AGAINST THE PHOTO.

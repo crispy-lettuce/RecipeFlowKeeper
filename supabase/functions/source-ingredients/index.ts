@@ -108,32 +108,59 @@ function extractRecipeIngredients(html: string): Found | null {
   return found;
 }
 
+/* A body read only as far as `max` bytes (the October review, F37). Until 12 Oct 2026 the whole body was buffered
+   with arrayBuffer() and measured afterwards, so a huge or endless page held the invocation, and its memory, to the
+   platform's limit before being refused. A declared length over `max` is refused unread; a body with no length, or
+   one that lies, is cut off once it passes `max`. Null means too large. Kept identical in rehost-images and
+   source-ingredients; test/image-integrity.js checks the two copies match. */
+async function readCapped(res: Response, max: number): Promise<Uint8Array | null> {
+  const declared = parseInt(res.headers.get('content-length') ?? '', 10);
+  if (declared > max) { await res.body?.cancel(); return null; }
+  if (!res.body) return new Uint8Array(0);
+  const reader = res.body.getReader();
+  const chunks: Array<Uint8Array> = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) { await reader.cancel(); return null; }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const c of chunks) { out.set(c, at); at += c.byteLength; }
+  return out;
+}
+
 /* ---- end pure ---- */
 
-const timedFetch = (url: string) => {
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
-  return fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html' }, signal: ctl.signal, redirect: 'manual' })
-    .finally(() => clearTimeout(timer));
-};
-
-/* Follows redirects by hand, so each hop is checked like the first. */
+/* Follows redirects by hand, so each hop is checked like the first. One timer covers every hop and the body: until
+   12 Oct 2026 it was cleared as each response's headers arrived, so a page that sent its headers and then trickled
+   its body was never timed out (the October review, F37). */
 async function fetchPage(start: string): Promise<{ html?: string; finalUrl?: string; error?: string }> {
   let url = start;
-  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    const res = await timedFetch(url);
-    if (res.status >= 300 && res.status < 400) {
-      const next = safePageUrl(new URL(res.headers.get('location') ?? '', url).toString());
-      if (!next) return { error: 'the page redirected somewhere this check will not follow' };
-      url = next;
-      continue;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html' }, signal: ctl.signal, redirect: 'manual' });
+      if (res.status >= 300 && res.status < 400) {
+        await res.body?.cancel();
+        const next = safePageUrl(new URL(res.headers.get('location') ?? '', url).toString());
+        if (!next) return { error: 'the page redirected somewhere this check will not follow' };
+        url = next;
+        continue;
+      }
+      if (!res.ok) { await res.body?.cancel(); return { error: `the source page returned ${res.status}` }; }
+      const buf = await readCapped(res, MAX_PAGE_BYTES);
+      if (!buf) return { error: 'the source page is too large to read' };
+      return { html: new TextDecoder().decode(buf), finalUrl: url };
     }
-    if (!res.ok) return { error: `the source page returned ${res.status}` };
-    const buf = new Uint8Array(await res.arrayBuffer());
-    if (buf.byteLength > MAX_PAGE_BYTES) return { error: 'the source page is too large to read' };
-    return { html: new TextDecoder().decode(buf), finalUrl: url };
+    return { error: 'too many redirects' };
+  } finally {
+    clearTimeout(timer);
   }
-  return { error: 'too many redirects' };
 }
 
 Deno.serve(async (req: Request) => {

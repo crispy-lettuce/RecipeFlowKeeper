@@ -34,6 +34,9 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const CALENDAR_API = 'https://www.googleapis.com/calendar/v3';
+/* The platform stops a function at 150 s of wall clock on this plan; the sync stops sending at 100 s so it can always
+   write down how far it got (the October review, F38). */
+const SYNC_BUDGET_MS = 100_000;
 const APP_URL = 'https://crispy-lettuce.github.io/RecipeFlowKeeper/';
 
 const ALLOWED_ORIGIN = /^https:\/\/crispy-lettuce\.github\.io$|^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
@@ -67,6 +70,11 @@ type SyncRequest = { dates?: string[]; all?: boolean; error?: string };
 /* ---- pure: lifted and tested by test/calendar-push.js ---- */
 
 const MAX_DATES = 62;
+/* How far ahead SYNC NOW ({ all: true }) reaches (the October review, F38). It walks every planned day from today
+   with one Google call or two each, plus every stray event of ours; with no end, a plan far enough ahead could run
+   the function into the platform's time limit before it recorded how the sync went. 400 days is more than a year of
+   planning; a day further out is still written when it changes, through the dates the app sends then. */
+const ALL_DAYS_AHEAD = 400;
 
 /* Google's event ids may use only base32hex: the digits and a to v. So the
    prefix is "meal" (no w), then the household's id without its dashes
@@ -96,6 +104,13 @@ function isIsoDate(s: unknown): boolean {
 function nextDate(date: string): string {
   const d = new Date(date + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/* The last day SYNC NOW reaches, counted the same way. */
+function lastAllDate(today: string): string {
+  const d = new Date(today + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + ALL_DAYS_AHEAD);
   return d.toISOString().slice(0, 10);
 }
 
@@ -173,8 +188,10 @@ function syncActions(input: SyncInput): SyncAction[] {
     for (const d of input.dates || []) consider.add(d);
   }
   const actions: SyncAction[] = [];
+  const last = input.all ? lastAllDate(input.today) : '';
   for (const date of [...consider].sort()) {
     if (date < input.today) continue;
+    if (last && date > last) continue;
     const id = calendarEventId(input.household, date);
     if (wanted.has(date)) actions.push({ op: 'put', id, date, event: wanted.get(date) });
     else actions.push({ op: 'delete', id, date });
@@ -227,7 +244,8 @@ async function listOwnEventIds(calendarId: string, token: string, household: str
   const prefix = eventIdPrefix(household);
   let pageToken = '';
   for (let page = 0; page < 20; page++) {
-    const q = new URLSearchParams({ timeMin: today + 'T00:00:00Z', maxResults: '250', singleEvents: 'true' });
+    const q = new URLSearchParams({ timeMin: today + 'T00:00:00Z', timeMax: nextDate(lastAllDate(today)) + 'T00:00:00Z',
+      maxResults: '250', singleEvents: 'true' });
     if (pageToken) q.set('pageToken', pageToken);
     const res = await fetch(`${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events?${q}`,
       { headers: { Authorization: `Bearer ${token}` } });
@@ -310,7 +328,7 @@ Deno.serve(async (req: Request) => {
   const today = londonToday(new Date());
   /* Every column, so `premade` is read once its migration is in, and naming it before then cannot break the sync. */
   let q = admin.from('planner_days').select('*').eq('household_id', household);
-  q = ask.all ? q.gte('plan_date', today) : q.in('plan_date', ask.dates!);
+  q = ask.all ? q.gte('plan_date', today).lte('plan_date', lastAllDate(today)) : q.in('plan_date', ask.dates!);
   const { data: rows, error: rowsErr } = await q;
   if (rowsErr) return json({ error: `could not read the Planner: ${rowsErr.message}` });
 
@@ -331,8 +349,12 @@ Deno.serve(async (req: Request) => {
   const actions = syncActions({ household, rows: rows ?? [], titles, remindAt: settings?.calendar_remind_at ?? 1200, today,
     dates: ask.dates, all: ask.all, existingIds });
   const failed: { date: string; op: string; status: number }[] = [];
-  let put = 0, deleted = 0;
+  let put = 0, deleted = 0, unsent = 0;
+  /* A time budget well inside the platform's limit, so the outcome is always recorded below even when Google is
+     slow: what is left is counted and named in last_error, and SYNC NOW again finishes it (F38, 12 Oct 2026). */
+  const deadline = Date.now() + SYNC_BUDGET_MS;
   for (const a of actions) {
+    if (Date.now() > deadline) { unsent = actions.length - put - deleted - failed.length; break; }
     let status = 0;
     try { status = a.op === 'put' ? await putEvent(conn.calendar_id, access.token, a) : await deleteEvent(conn.calendar_id, access.token, a); }
     catch { status = 0; }
@@ -341,9 +363,10 @@ Deno.serve(async (req: Request) => {
   }
   /* A 404 on the calendar itself means it was deleted in Google: say so in
      words, since only CONNECT again (which makes a new one) mends it. */
-  const lastError = !failed.length ? null
-    : failed.some(f => f.status === 404) ? 'The RecipeWrangler calendar is missing in Google: CONNECT again in Settings'
-    : `${failed.length} day${failed.length === 1 ? '' : 's'} could not be written (Google said ${failed[0].status || 'nothing'})`;
+  const lastError = failed.some(f => f.status === 404) ? 'The RecipeWrangler calendar is missing in Google: CONNECT again in Settings'
+    : failed.length ? `${failed.length} day${failed.length === 1 ? '' : 's'} could not be written (Google said ${failed[0].status || 'nothing'})`
+    : unsent ? `Google was slow: ${unsent} day${unsent === 1 ? ' was' : 's were'} not reached. SYNC NOW again to finish`
+    : null;
   await note({ last_sync_at: new Date().toISOString(), last_error: lastError });
-  return json(failed.length ? { error: lastError, put, deleted, failed } : { ok: true, put, deleted });
+  return json(lastError ? { error: lastError, put, deleted, failed, unsent } : { ok: true, put, deleted });
 });

@@ -2615,6 +2615,26 @@ merged first. Everything is in `core.js`; its version is `2026-10-12.1` in all t
 
 *Not verified:* the tablet (step 51a).
 
+**The October review's last two findings, F37 and F38 (12 Oct 2026; #105, #106).** Asked for by the household after PR 8
+(#122) merged; not in the eight-PR plan. Edge Functions only: nothing in the app changes, so no changelog entry.
+- **F37, `source-ingredients` and `rehost-images`.** A new `readCapped(res, max)`, one copy in each function and identical:
+  a declared length over the limit is refused unread, and a body with no length (or a false one) is cut off once it passes the
+  limit, instead of being buffered whole and measured after. `source-ingredients`' page fetch and `rehost-images`' stored-photo
+  check now keep their timer until the body is in; both were cleared at the headers. (`rehost-images`' external fetch had the
+  timer fixed in #102; it now reads through `readCapped` too.) `find-recipe-image`, the third function the finding named, is gone.
+- **F38, `calendar-sync`.** SYNC NOW (`{ all: true }`) reaches `ALL_DAYS_AHEAD` = 400 days: the Planner read, the Google
+  listing (`timeMax`) and `syncActions` all stop at `lastAllDate(today)`. A day further out is still written when the app sends
+  its date. The send loop stops at `SYNC_BUDGET_MS` = 100 s, well inside the platform's 150 s, counts what it did not reach, and
+  `note()` always records the outcome ("Google was slow: N days were not reached. SYNC NOW again to finish").
+- **Tests:** `source-ingredients.js` 16 (12 before: `readCapped` run on made-up streams, and the fetch read from source);
+  `image-integrity.js` 37 (35: the two copies identical, every image body through it); `calendar-push.js` 39 (35: the horizon,
+  the date path unaffected, the query and listing bounds, the budget). 14 mutations, each caught by name. `tsc --strict` over
+  the three files with stand-ins for Deno and supabase-js: no errors but the stand-ins' own, the same as on `main`.
+- **For the household:** redeploy the three functions, JWT verification on; `docs/INFRASTRUCTURE.md` lists them as waiting.
+
+*Not verified:* live. A slow or oversized page, and a plan 400 days ahead, cannot be made on demand; the versions are read
+back after the redeploy.
+
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*
 
