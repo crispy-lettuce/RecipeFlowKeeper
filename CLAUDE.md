@@ -42,7 +42,14 @@ Nobody else checks these. Each one is here because it went wrong at least once.
   (`docs/migrations/`, and `docs/INFRASTRUCTURE.md` lists it as waiting); the household applies it from
   the dashboard and only then merges. A session never runs DDL on the live database. The app must not
   send a column that does not exist yet on an ordinary save (`recipeToRow` leaves `source_check` out
-  when a recipe has none, for that reason).
+  when a recipe has none, for that reason). **The order may be reversed (merge first, apply after) only
+  when the app provably works without the change** (it reads the new column as optional and never
+  sends it on an ordinary save) **and the migration page says so and why.** It was done that way twice,
+  for `add-recipes-source-check` and `add-source-photos` (decided 12 Oct 2026, the October review's F34).
+- **A migration or a function deploy is not finished until `docs/INFRASTRUCTURE.md` says so.** Whoever
+  applies or deploys it, or the session that checks it afterwards, updates the card in the same PR or the
+  next one: what was applied, when, and how it was checked (12 Oct 2026, F11). The card is the one page
+  meant to be read with no session and no context, and it fell ten days behind.
 - **A change to how ingredients are named re-keys the household's ticks.** This means `shoppingLine`
   or a dictionary row. Re-measure the library first ("Re-measuring the live library" in
   `test/README.md`), then ask before shipping.
