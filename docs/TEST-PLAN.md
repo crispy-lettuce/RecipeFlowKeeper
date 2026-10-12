@@ -15,7 +15,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 547 automated checks pass, plus 162 in Node (12 Oct 2026; 102 when this was
+story that used to open this paragraph is history. 554 automated checks pass, plus 164 in Node (12 Oct 2026; 102 when this was
 written; until 12 Oct this line said 329 and 133, corrected 12 Oct 2026, the October review's Appendix B). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -700,6 +700,15 @@ removed page was deleted), and no listed page missing.*
     "tinned" as written is checked in `test/core.test.js` only. Undo: nothing to undo.
 
 *51a reported passed by the household, 12 Oct.*
+
+52a. **The converter reminder (new 12 Oct; #127; only after `docs/migrations/add-converter-ack.md`).** (1) *Open the app on the
+    tablet:* a gold CONVERTER bar under the top bar says the converter's instructions have changed, with version 2026-10-12.1.
+    *Tap PLANNER, then RECIPES:* both work with the bar still there. (2) *LATER:* the bar goes. *Reload:* it is back.
+    (3) *OPEN THE INSTRUCTIONS ↗:* GitHub shows `conversion-instructions.md`, whose first lines include "Version 2026-10-12.1".
+    Load it into this household's conversion project in the Claude app, then *DONE:* the bar goes, and a message says the
+    household has version 2026-10-12.1. *Reload:* it stays gone. (4) *On the phone, signed in to the same household, open or
+    reload the app:* no bar. **Read-only afterwards:** this household's `household_settings.converter_ack_version` is
+    `2026-10-12.1`. The other household sees the bar until someone there does the same. Undo: nothing to undo.
 
 ## Deferred to the tablet, after merging
 

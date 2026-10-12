@@ -593,6 +593,9 @@
     font-size:13px;
   }
   .offline-bar[hidden]{ display:none; }
+  /* The converter reminder (#127) carries three buttons, so on a phone it wraps rather than run off the edge. */
+  .converter-bar{ flex-wrap:wrap; }
+  .converter-bar-actions{ margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; }
   .offline-bar b{
     font-family:'IBM Plex Mono', monospace; font-size:10.5px; font-weight:500;
     letter-spacing:.1em; color:var(--gold);
@@ -1558,6 +1561,14 @@
       <b>UPDATE</b><span id="coreBarText">This page is part-way through an update.</span>
       <button class="btn" id="coreReloadBtn" style="margin-left:auto;">RELOAD</button>
     </div>
+    <div id="converterBar" class="offline-bar converter-bar" role="status" hidden>
+      <b>CONVERTER</b><span id="converterBarText"></span>
+      <span class="converter-bar-actions">
+        <a class="btn" id="converterOpenBtn" href="https://github.com/crispy-lettuce/RecipeFlowKeeper/blob/main/converter/conversion-instructions.md" target="_blank" rel="noopener">OPEN THE INSTRUCTIONS ↗</a>
+        <button class="btn" id="converterDoneBtn">DONE</button>
+        <button class="btn" id="converterLaterBtn">LATER</button>
+      </span>
+    </div>
     <div id="offlineBar" class="offline-bar" role="status" aria-live="polite" hidden>
       <b>OFFLINE</b><span>Changes you make are kept and sent when you're back.</span>
     </div>
@@ -2083,7 +2094,12 @@ const EXPECTED_CORE_VERSION = '2026-10-12.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-12.4';
+const APP_VERSION = '2026-10-12.5';
+/* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
+   the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
+   each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
+   .converter_ack_version). test/core.test.js fails if the file changes and the two are not moved. */
+const CONVERTER_VERSION = '2026-10-12.1';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -2910,6 +2926,33 @@ setOfflineBar(isOffline());
 document.getElementById('coreReloadBtn').addEventListener('click', ()=> location.reload());
 if(coreMismatch()) document.getElementById('coreBar').hidden = false;
 
+/* ---- The converter reminder (issue #127, 12 Oct 2026) ----
+   Each household loads converter/conversion-instructions.md into its own conversion project in the Claude app, and until
+   now nothing told it when a PR changed the file. When CONVERTER_VERSION moves past the version this household last
+   confirmed (household_settings.converter_ack_version), a bar says so on every load until someone in the household taps
+   DONE, on any device. It is a bar like the offline one, never a dialog: the app stays usable under it, as asked. LATER
+   hides it until the next load and writes nothing. Only coded changes count: the version moves with the file in the repo,
+   and test/core.test.js fails if the file changes without it. */
+let converterAckAvailable = false;
+let converterLater = false;
+function renderConverterReminder(){
+  const bar = document.getElementById('converterBar');
+  const due = converterAckAvailable && !converterLater && loadSettings().converterAckVersion !== CONVERTER_VERSION;
+  if(due) document.getElementById('converterBarText').textContent =
+    `The recipe converter's instructions have changed (version ${CONVERTER_VERSION}). Load the new file into your household's `
+    + `conversion project in the Claude app, then tap DONE.`;
+  bar.hidden = !due;
+}
+document.getElementById('converterDoneBtn').addEventListener('click', ()=>{
+  setSetting('converterAckVersion', CONVERTER_VERSION);
+  renderConverterReminder();
+  showToast(`Noted: your household has version ${CONVERTER_VERSION} of the converter instructions.`);
+});
+document.getElementById('converterLaterBtn').addEventListener('click', ()=>{
+  converterLater = true;
+  renderConverterReminder();
+});
+
 /* ---- The version, what's new, and a newer version while a tab is open (issue #91, 11 Oct 2026) ----
    Since a second household joined, every merge changes the app for two families within a minute, and a tab left open
    kept running the old code with nothing to say so: the UPDATE bar above only ever caught core.js and index.html
@@ -3168,8 +3211,12 @@ async function hydrate(opts){
     darkMode: (settings.data && settings.data.dark_mode) || 'system',
     remindAt: validRemindAt(settings.data && settings.data.calendar_remind_at),
     calendarAuto: !!(settings.data && settings.data.calendar_auto),
-    calendarAutoRemind: !!(settings.data && settings.data.calendar_auto_remind)
+    calendarAutoRemind: !!(settings.data && settings.data.calendar_auto_remind),
+    converterAckVersion: (settings.data && settings.data.converter_ack_version) || ''
   };
+  /* The same test for docs/migrations/add-converter-ack.md (#127): until the row carries the column, there is no reminder
+     and DONE has nothing to write, so the app behaves exactly as before the migration. */
+  converterAckAvailable = !!settings.data && 'converter_ack_version' in settings.data;
   /* select('*') names every column, so the row itself says whether docs/migrations/add-calendar-auto.md is in.
      Until it is, the two toggles stay hidden and no settings save names their columns. A household with no settings
      row has nothing to tell by, and was read as "not in" (F23: two of three households, when the review looked), so
@@ -3397,7 +3444,8 @@ const SETTING_COLUMNS = {
   darkMode: v=> ({ dark_mode: v || 'system' }),
   remindAt: v=> calendarAvailable ? { calendar_remind_at: validRemindAt(v) } : null,
   calendarAuto: v=> calendarAutoAvailable ? { calendar_auto: !!v } : null,
-  calendarAutoRemind: v=> calendarAutoAvailable ? { calendar_auto_remind: !!v } : null
+  calendarAutoRemind: v=> calendarAutoAvailable ? { calendar_auto_remind: !!v } : null,
+  converterAckVersion: v=> converterAckAvailable ? { converter_ack_version: String(v || '') } : null
 };
 function setSetting(key, value){
   cache.settings = { ...loadSettings(), [key]: value };
@@ -10551,6 +10599,7 @@ async function startApp(){
   purgeOldFormatTicks();
   updateSidebarCounts();
   renderHome();
+  renderConverterReminder();
   /* Apart from hydrate, so nothing about sharing can sign anyone out; it redraws what it changes when it lands. */
   loadSharing();
   maybeWeeklyDriveBackup();
@@ -10600,6 +10649,7 @@ async function refreshLibrary(){
   purgeOldFormatTicks();
   updateSidebarCounts();
   renderHome();
+  renderConverterReminder();
   loadSharing();
   maybeWeeklyDriveBackup();
   logDuePremade();

@@ -72,6 +72,25 @@ check('the versions are all different, newest first',
 const appVersion = (pageSrc.match(/const APP_VERSION = '([^']+)'/) || [])[1];
 check('index.html is the version at the top of changelog.json', !!appVersion && appVersion === clVersions[0], `page ${appVersion}, log ${clVersions[0]}`);
 
+/* ---- The converter's instructions (issue #127, 12 Oct 2026) ----
+   Each household loads converter/conversion-instructions.md into its own conversion project, and the app asks each
+   once to reload it when CONVERTER_VERSION moves. So a change to the file must move the version, or nobody is told.
+   The file's fingerprint is pinned here against its version: change the file, and this fails until the "Version" line
+   in the file and CONVERTER_VERSION in index.html are both moved on, and the new fingerprint (printed below) is put
+   here beside the new version. */
+const CONVERTER_PINNED = { version: '2026-10-12.1', sha256: '08705814aef035f3a71731479553324d867204ccfbdae7efa7ca1732751c8cc6' };
+{
+  const convSrc = fs.readFileSync(path.join(ROOT, 'converter', 'conversion-instructions.md'), 'utf8');
+  const convSha = require('crypto').createHash('sha256').update(convSrc).digest('hex');
+  const fileVersion = (convSrc.match(/^\*\*Version (\d{4}-\d{2}-\d{2}\.\d+)\.\*\*/m) || [])[1];
+  const pageConverter = (pageSrc.match(/const CONVERTER_VERSION = '([^']+)'/) || [])[1];
+  check('the converter instructions carry a version, and the app asks about the same one',
+        !!fileVersion && fileVersion === pageConverter, `file ${fileVersion}, index.html ${pageConverter}`);
+  check('    and the file has not changed since that version was set (change it, and move the version on)',
+        convSha === CONVERTER_PINNED.sha256 && fileVersion === CONVERTER_PINNED.version,
+        `file is ${convSha} at version ${fileVersion}; pinned ${CONVERTER_PINNED.sha256} at ${CONVERTER_PINNED.version}`);
+}
+
 /* ---- The dictionary's master copy ---- */
 const { execFileSync } = require('child_process');
 let genOk = true, genOut = '';

@@ -100,9 +100,9 @@ node test/core.test.js
 node test/build.js && node test/smoke.js
 ```
 
-`core.test.js` is 162 checks in Node, in about two seconds: the pure functions, the dictionary, the
+`core.test.js` is 164 checks in Node, in about two seconds: the pure functions, the dictionary, the
 shopping list's naming rules, and the rules that keep `core.js` and `index.html` apart. The smoke
-suite is 547 checks. **Run both,
+suite is 554 checks. **Run both,
 always** — `smoke.js` loads what `build.js` wrote, so skipping the build
 tests your previous edit and reports a pass or a failure that belongs to code you have changed.
 
@@ -166,6 +166,11 @@ an on-screen label, or `help.html`, run `node test/help-guide.js` (7 checks).
   app's preview and `validate-recipes.js`. A fault marked `affectsList` is shown in the preview;
   mark one only when the shopping list genuinely can't cope, or the preview nags about lines that
   are fine. The preview's checks are advice: never make one block a save.
+- **A change to `converter/conversion-instructions.md` moves three things together** (#127, 12 Oct): the file's own
+  `**Version …**` line, `CONVERTER_VERSION` in `index.html`, and `CONVERTER_PINNED` (version and sha256) in `test/core.test.js`.
+  Use today's date plus `.1`, or the next number. Moving the version is what puts the CONVERTER bar in front of every household
+  until each taps DONE, so a typo fix moves it too: an unannounced change is a converter project left behind. `core.test.js`
+  fails if the file changes without the pin, or if the file and the app disagree.
 - **The ingredient dictionary is edited in `core.js`, never in `converter/ingredient-names.md`.**
   That file is generated: `node tools/generate-ingredient-names.js`, then commit both.
 - **`help.html` is the household's how-to guide, and names buttons exactly as they read**, marked `<b class="ui">`.

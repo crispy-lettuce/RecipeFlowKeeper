@@ -20,14 +20,15 @@ first two lines are older, as dated there. Check again before relying on a numbe
   the 29 Sep rule (the household's job below); 1 recipe had a source photo.
 - **Cooking diary:** 116 entries on 30 Sep (119 on 10 Oct, the October review). **Word matches:** 15. **Household aisles:** 1.
   **Swaps:** 2 (all three on 30 Sep). **Cooking notes:** 2 rows in all on 12 Oct (R4 built 30 Sep).
-- **Tests:** `node test/core.test.js` 162 checks; `node test/build.js && node test/smoke.js` 547 checks (418 until P3 PR 2, 437 until the
+- **Tests:** `node test/core.test.js` 164 checks; `node test/build.js && node test/smoke.js` 554 checks (418 until P3 PR 2, 437 until the
   calendar toggles, both 9 Oct; 447 until the HELP tab, 448 until recipe sharing, 465 until the Drive backup, 472 until PRE-MADE, 487 until fresh or
-  freezer, all 10 Oct; 492 until issues #85–#93, 500 until FROZEN, 502 until photo upload, 509 until the version and change log, 11 Oct; 515 until the network guard, 517 until the lost-changes fixes, 530 until the write queue, 537 until several households, 12 Oct).
+  freezer, all 10 Oct; 492 until issues #85–#93, 500 until FROZEN, 502 until photo upload, 509 until the version and change log, 11 Oct; 515 until the network guard, 517 until the lost-changes fixes, 530 until the write queue, 537 until several households, 547 until the converter reminder, 12 Oct).
   `node test/calendar-push.js` 39 checks; `node test/drive-backup.js` 13 checks; `node test/image-integrity.js` 37 checks;
   `node test/source-ingredients.js` 16 checks; `node test/help-guide.js` 7 checks. `offline-harness` runs
   both on every PR and is required on `main`.
-- **Schema:** 16 tables in `public` and 1 in `private`, row-level security on every one (12 Oct). Nothing is waiting: the last
-  page, `docs/migrations/harden-default-privileges.md`, was applied by the household on 12 Oct before #120 merged. `add_calendar_auto`
+- **Schema:** 16 tables in `public` and 1 in `private`, row-level security on every one (12 Oct). Waiting:
+  `docs/migrations/add-converter-ack.md` (#127, either order). The page before it,
+  `docs/migrations/harden-default-privileges.md`, was applied by the household on 12 Oct before #120 merged. `add_calendar_auto`
   (the P3 toggles) was applied by the household on 9 Oct, before #72 merged. The one before it,
   `add_calendar_push`, was applied 9 Oct, before the household connected the calendar at 17:52 UTC (`docs/INFRASTRUCTURE.md`;
   read-only check 18:59 UTC: connected, 5 days switched on, 1 with a reminder).
@@ -73,7 +74,10 @@ Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all 
 3. **The household's jobs**, in `docs/HOUSEHOLD-JOBS.md`: every tablet step has passed (12 Oct). Left: reload the converter
    in both households, close #101, and two decisions. The BBC validations and D6 are dropped by the household (12 Oct): the
    recipes will be cleared before full adoption.
-4. **#127**: a reminder in the app, per household, to reload the converter after a coded change to its instructions.
+4. **#127, the converter reminder** (built 12 Oct): a bar in the app, per household, until someone taps DONE after reloading
+   the converter. It waits on `docs/migrations/add-converter-ack.md`; until that is applied the app shows nothing. A change to
+   `converter/conversion-instructions.md` moves its Version line, `CONVERTER_VERSION` in `index.html` and `CONVERTER_PINNED` in
+   `test/core.test.js` together (`CLAUDE.md`).
 5. **Optional, not planned:** a "download all source files" backup (the source files go into `PrivateBackup`'s weekly mirror
    instead, 10 Oct); drawing a PDF's pages inside the app, not needed: 38d passed and the household is happy opening the PDF outside the app (12 Oct).
 
