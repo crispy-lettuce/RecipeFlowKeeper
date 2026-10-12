@@ -2557,6 +2557,11 @@ nothing to deploy for it.
 
 *Not verified:* live. The SQL page is the household's to apply, and tablet step 50a is the household's.
 
+*After the merge (12 Oct).* The household applied the SQL page, then merged #120 at 13:47 UTC. Read-only at 13:47: `pg_default_acl`
+for `postgres` in `public` grants `anon` nothing on `S`, `f` or `r`, and no household is without a settings row. Issues #107,
+#108, #109 and #113 were closed with comments. The household reported tablet steps 39a, 40a, 42a, 43a, 44a, 45a, 46a, 48a and
+49a passed the same day (`docs/TEST-PLAN.md`); 38c, 38d, 40b, 47a and 50a are still to be reported.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export

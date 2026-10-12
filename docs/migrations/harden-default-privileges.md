@@ -5,7 +5,8 @@ For the October review's PR 6 (`docs/REVIEW-2026-10-FINDINGS.md`, F35 and F23; 1
 *(A markdown page rather than a `.sql` file because `.gitignore` excludes `*.sql`, on purpose: nothing that looks like a data dump
 may be committed to this public repo.)*
 
-**Waiting.** Not yet applied.
+**Applied** by the household from the dashboard on 12 Oct 2026, before #120 merged (13:47 UTC). Checked read-only at 13:47 UTC:
+the first check gave three rows (`S`, `f`, `r`), each `false`; the second gave `0`.
 
 ## Who and when
 

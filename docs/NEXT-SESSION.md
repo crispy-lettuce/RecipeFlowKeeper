@@ -39,7 +39,7 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 | Autocomplete (30 Sep) | The ingredient boxes' own dropdown in Settings and Swaps | Done, PRs #55–#56; tablet 36k |
 | `docs/PLAN-LAYOUT.md` (30 Sep) | Edit dialog, cooking mode, step text, aisle box, Settings tabs | Done, PRs #57–#60; tablet 37a–37d |
 | VALIDATE INGREDIENT LIST, OPEN SOURCE (30 Sep) | Accepting a comparison's differences; the source page from Edit | Done, PR #62; tablet 38a |
-| `docs/PLAN-COOKING-NOTES.md` (30 Sep) | R4: dated cooking notes per recipe, after cooking, foldable into NOTES | Done, PR #67; tablet 39a |
+| `docs/PLAN-COOKING-NOTES.md` (30 Sep) | R4: dated cooking notes per recipe, after cooking, foldable into NOTES | Done, PR #67; tablet 39a passed 12 Oct |
 | `docs/PLAN-SOURCE-PHOTOS.md` (30 Sep) | The photo or PDF a recipe was converted from, kept privately; CHECKED AGAINST THE PHOTO | Done, PRs #63–#65; tablet 38b passed, 38c and 38d the household's |
 
 ---
@@ -48,7 +48,7 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 
 1. **The household's tablet passes:** `docs/TEST-PLAN.md` 38c (CHECKED AGAINST THE PHOTO) and 38d (PDF sources).
 2. **The household's data jobs** (below): compare and validate the BBC Good Food recipes; D6, the reconstructed recipes.
-3. **R4, dated cooking notes: merged 30 Sep** (PR #67; `docs/PLAN-COOKING-NOTES.md`). Tablet step 39a is the household's.
+3. **R4, dated cooking notes: merged 30 Sep** (PR #67; `docs/PLAN-COOKING-NOTES.md`). Tablet step 39a passed 12 Oct.
 4. **P3, the calendar push.** Answered 1 Oct (`docs/PLAN-CALENDAR-PUSH.md` §9): one all-day event per switched-on planned day in
    a RecipeWrangler calendar, REMIND ME at 20:00 the evening before, ADD THE WEEK; DISCONNECT leaves the calendar. **PR 1** (the
    migration, `calendar-auth`, `calendar-sync`, `test/calendar-push.js`) merged 1 Oct (#69); **PR 2, the app**, merged 9 Oct (#71):
@@ -74,27 +74,15 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 **Brought up to date 12 Oct 2026**, while the October review's PRs were going in. These are yours; a session cannot do them. When
 you finish one, tell the next session, and it takes the line out.
 
-**1. Before merging #120 (several households):**
-- Apply `docs/migrations/harden-default-privileges.md` from the dashboard's SQL editor. Then run its two read-only checks: expect
-  three `false`, then `0`.
-- Merge #120, then reload the app on each device.
+**1. Reload the app on each device**, since #120 merged (12 Oct, 13:47 UTC).
 
 **2. Tablet and phone steps not yet reported back** (`docs/TEST-PLAN.md`):
 - **38c:** CHECKED AGAINST THE PHOTO.
 - **38d:** PDF sources.
-- **39a:** cooking notes.
-- **40a:** planned meals in Google Calendar.
 - **40b:** the automatic calendar toggles.
-- **42a:** the how-to guide (read it, and say what to change).
-- **43a:** recipe sharing between households.
-- **44a:** the weekly Drive backup (look in Google Drive for RecipeWrangler backups and download one file).
-- **45a:** parse feedback, seconds, COOKING MODE, Drink.
-- **46a:** the FROZEN aisle.
 - **47a:** your own photo as a recipe's picture.
-- **48a:** the version and what's new.
-- **49a:** lost changes (deleting a recipe, a freezer entry's REMOVE, a meal changed on a PRE-MADE dish).
-- **50a:** several households: the week-start question, a star kept through an EDIT, two devices' settings. Only after #120 and
-  its SQL.
+- **50a:** several households: the week-start question, a star kept through an EDIT, two devices' settings. #120 and its SQL
+  are in, so it can be done now.
 
 **3. Library jobs:**
 - **The BBC Good Food validations.** Compare the six BBC Good Food recipes with their real pages, then VALIDATE INGREDIENT LIST on
@@ -132,15 +120,18 @@ you finish one, tell the next session, and it takes the line out.
 
 **5. Things a session will check, read-only, with nothing for you to do:**
 - **The photo backup** (Sunday 18 Oct, or sooner if you dispatch it): its first run on the new mirror script.
-- **After #120:** the database's default privileges, and that every household has a settings row.
-- **Review issues:** close #113, and #107, #108 and #109 if their last items are in.
+- **Review issues:**
   - #111 and #112 stay open until PR 7.
   - #114 stays open until PR 8.
   - #101 (the whole review) stays open until the end.
-  - Closed on 12 Oct, with comments naming the PRs: #103, #104, #110 and #115.
+  - Closed on 12 Oct, with comments naming the PRs: #103, #104, #107, #108, #109, #110, #113 and #115.
 
 **Done, and off this list:**
 - Tablet steps 41a and 41b (PRE-MADE and COOKED ✓; 10 Oct).
+- Tablet steps 39a, 40a, 42a, 43a, 44a, 45a, 46a, 48a and 49a, all reported passed on 12 Oct.
+- `docs/migrations/harden-default-privileges.md`, applied before #120 merged (12 Oct). Checked read-only at 13:47 UTC: `postgres`'
+  default privileges in `public` grant `anon` nothing on tables, sequences or functions, and no household is without a settings
+  row.
 - The third household made (`docs/ONBOARDING.md`; three households live, 12 Oct).
 
 ---

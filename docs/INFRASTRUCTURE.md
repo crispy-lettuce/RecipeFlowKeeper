@@ -281,9 +281,11 @@ UTC). Checked read-only at 17:47 UTC: `drive_backup_at` `timestamp with time zon
 meals and COOKED ✓, `docs/PLAN-FOOD-DIARY.md`) was applied the same way by the household on 10 Oct 2026, before PR #78 merged (20:02
 UTC). Checked read-only at 20:03 UTC: `planner_days.premade` `ARRAY`, not null, default `'{}'::text[]`; `recipe_logs.premade`
 `boolean`, not null, default `false`. At 20:31 no day had a pre-made dish yet and no diary row was pre-made.
-**Waiting (12 Oct 2026):** `docs/migrations/harden-default-privileges.md` (the October review, F35 and F23). It makes new tables
-and sequences in `public` give `anon` nothing by default, and gives the one household without a `household_settings` row its
-row. The household applies it before merging PR 6.
+`docs/migrations/harden-default-privileges.md` (the October review, F35 and F23) was applied by the household on 12 Oct 2026,
+before #120 merged (13:47 UTC). New tables, sequences and functions that `postgres` makes in `public` give `anon` nothing by
+default (functions still reach everyone through `PUBLIC`, so a page that adds one keeps its revoke), and the one household
+without a `household_settings` row got its row. Checked read-only at 13:47 UTC: `pg_default_acl` for `postgres` in `public`
+shows no `anon` on `S`, `f` or `r`, and no household is without a settings row.
 
 ---
 
