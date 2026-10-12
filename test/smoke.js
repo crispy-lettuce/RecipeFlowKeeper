@@ -5430,10 +5430,207 @@ const check = (name, pass, detail) => {
         !/^Updated to/.test(vfFirst.toast) && vfFirst.seen === vfFirst.app && !vfFirst.bar && vfFirst.barText === 'This page is part-way through an update.', JSON.stringify(vfFirst));
   await vf.close();
 
+  /* ---- Lost changes, part 1 (12 Oct 2026, the October review's PR 4: F14, F15, F20, F32, F33, F39, F46) ----
+     Small ways a change was silently lost or undone. Each check below was seen failing against the code it guards. A
+     fresh page, so the main page's state is not disturbed; made-up recipes, copied from a fixture one under new ids. */
+  console.log('\nLost changes, part 1');
+  const lx = await browser.newPage();
+  lx.__label = 'lost changes';
+  /* The writes these checks have the server refuse are logged as failed: that is the point of them. */
+  lx.__expectConsole = /^Sync failed: recipes /;
+  /* A planner row carrying `premade` is what tells the app add-premade.md is in (premadeAvailable). */
+  await lx.addInitScript(() => { window.__STUB_EXTRA__ = { recipe_notes: [], planner_days: [{ household_id: '286a8a12-c12a-4b83-afbc-0912533f6b1c',
+    plan_date: '2026-01-05', is_blank: false, recipe_ids: ['11111111-1111-4111-8111-111111111111'], servings: [], premade: [] }] }; });
+  await lx.clock.setFixedTime(FIXTURE_NOW);
+  await lx.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await lx.waitForTimeout(1500);
+  const LC_HOUSE = '286a8a12-c12a-4b83-afbc-0912533f6b1c';
+  /* In the page: wait until the write queue has nothing left, including writes queued by writes. */
+  const lxDrain = () => lx.evaluate(async () => { let t; do { t = writeQueue; await t; } while(t !== writeQueue); });
+  const lxCopy = (title, extra) => lx.evaluate(([title, extra]) => {
+    const r = { ...loadRecipes().find(x => x.title === 'Test Pasta'), id: uid(), title, history: [], ...(extra || {}) };
+    saveRecipe(r);
+    return r.id;
+  }, [title, extra || null]);
+  const lxDay = off => lx.evaluate(o => { const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + o); return isoLocal(d); }, off);
+  const LC_TODAY = await lxDay(0), LC_LATER = await lxDay(10), LC_YESTERDAY = await lxDay(-1);
+  const LC_KEEP = await lx.evaluate(() => loadRecipes().find(x => x.title === 'Test Pasta').id);
+
+  // F14 and F20: deleting a recipe keeps the other dishes' PRE-MADE, and takes its diary rows out of the cache.
+  const lxGone = await lxCopy('LC Gone Soon');
+  await lx.evaluate(([day, today, keep, gone]) => {
+    addPlanRecipe(day, keep); addPlanRecipe(day, gone); setPlanPremadeAt(day, 0, 'dinner');
+    addDiaryEntry({ recipeId: gone, cookedOn: today });
+  }, [LC_LATER, LC_TODAY, LC_KEEP, lxGone]);
+  await lxDrain();
+  const lxM1 = await lx.evaluate(() => window.__WRITES__.length);
+  await lx.evaluate(id => deleteRecipe(id), lxGone);
+  await lxDrain();
+  const lxDel = await lx.evaluate(([m, day, gone]) => ({
+    ids: planRecipeIds(loadPlan()[day]), premade: planPremade(loadPlan()[day]),
+    written: window.__WRITES__.slice(m).filter(w => w.table === 'planner_days' && w.op === 'upsert').flatMap(w => w.rows).filter(r => r.plan_date === day).map(r => r.premade),
+    diary: loadDiary().filter(e => e.recipeId === gone).length, exported: exportPayload().diary.filter(e => e.recipeId === gone).length
+  }), [lxM1, LC_LATER, lxGone]);
+  check('deleting a recipe keeps PRE-MADE on the other dishes of its days, in the cache and in the Planner write (F14)',
+        JSON.stringify(lxDel.ids) === JSON.stringify([LC_KEEP]) && JSON.stringify(lxDel.premade) === '["dinner"]'
+        && lxDel.written.length > 0 && JSON.stringify(lxDel.written[lxDel.written.length - 1]) === '["dinner"]', JSON.stringify(lxDel));
+  check('    and its diary rows leave the cache, so an export taken at once carries none for a recipe it does not contain (F20)',
+        lxDel.diary === 0 && lxDel.exported === 0, JSON.stringify(lxDel));
+  // F20: a backup whose diary names a recipe the file does not hold restores the rest, without that row.
+  const LC_MISSING = 'dddddddd-0000-4000-8000-dddddddddddd';
+  const lxBackup = await lx.evaluate(([missing, today]) => JSON.stringify({
+    app: 'Kitchen', version: 3, recipes: loadRecipes(), plan: loadPlan(), shortlist: loadShortlist(), keywordVocab: loadKeywordVocab(),
+    shoppingChecked: loadShoppingChecked(), swaps: loadSwaps(), groups: loadGroups(), settings: loadSettings(), aliases: loadAliases(),
+    diary: loadDiary().concat([{ id: 'eeeeeeee-0000-4000-8000-eeeeeeeeeeee', recipeId: missing, title: '', cookedOn: today, mealType: 'dinner', note: '' }])
+  }), [LC_MISSING, LC_TODAY]);
+  /* Writes held back for the import, so the cache is read as the import set it, before its history write lands and
+     rebuilds it from the rows it sent: each holds a gap of its own, and the two are checked apart. */
+  const [lxM2, lxL2] = await lx.evaluate(() => { window.__WRITE_DELAY__ = 1500; return [window.__WRITES__.length, window.__LOG__.length]; });
+  lx.once('dialog', d => d.accept());
+  await lx.setInputFiles('#importFileInput', { name: 'lx-backup.json', mimeType: 'application/json', buffer: Buffer.from(lxBackup) });
+  await lx.waitForTimeout(500);
+  const lxImpEarly = await lx.evaluate(([missing, l]) => ({ cache: loadDiary().some(e => e.recipeId === missing), total: loadDiary().length,
+    sentYet: window.__LOG__.slice(l).includes('write-done:recipe_logs') }), [LC_MISSING, lxL2]);
+  await lx.evaluate(() => { window.__WRITE_DELAY__ = 0; });
+  await lxDrain();
+  const lxImp = await lx.evaluate(([m, missing]) => ({
+    cache: loadDiary().some(e => e.recipeId === missing), total: loadDiary().length,
+    sent: window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs' && w.op === 'upsert').flatMap(w => w.rows),
+  }), [lxM2, LC_MISSING]);
+  check('    a backup\'s diary row for a recipe the file does not hold is left out of the restore, in the cache and in the write (F20)',
+        !lxImpEarly.sentYet && !lxImpEarly.cache && lxImpEarly.total > 0 && !lxImp.cache && lxImp.total > 0 && lxImp.sent.length > 0
+        && !lxImp.sent.some(r => r.recipe_id === LC_MISSING), JSON.stringify({ early: lxImpEarly, cache: lxImp.cache, total: lxImp.total, sent: lxImp.sent.length }));
+
+  // F32: a refused row delete takes no source files with it; they go once the delete lands.
+  const lxPhotoPath = `${LC_HOUSE}/lx/p1.jpg`;
+  const lxPhotos = await lxCopy('LC With Photos', { sourcePhotos: [{ path: lxPhotoPath, added: '2026-09-01T10:00:00.000Z' }] });
+  await lxDrain();
+  const lxRefused = await lx.evaluate(async id => {
+    window.__WRITE_FAIL_TABLES__ = { recipes: 'refused' };
+    const s = window.__STORAGE__.length;
+    deleteRecipe(id);
+    let t; do { t = writeQueue; await t; } while(t !== writeQueue);
+    return { removes: window.__STORAGE__.slice(s).filter(x => x.op === 'remove').length, toast: document.querySelector('.toast').textContent };
+  }, lxPhotos);
+  const lxLanded = await lx.evaluate(async () => {
+    window.__WRITE_FAIL_TABLES__ = {};
+    const s = window.__STORAGE__.length, l = window.__LOG__.length;
+    flushFailedWrites();
+    let t; do { t = writeQueue; await t; } while(t !== writeQueue);
+    return { removes: window.__STORAGE__.slice(s).filter(x => x.op === 'remove').map(x => x.paths),
+      order: window.__LOG__.slice(l).filter(x => x === 'write-done:recipes' || x === 'storage-done:remove') };
+  });
+  check('a recipe delete the server refuses removes none of its source files, and says the server refused it rather than blaming the connection (F32)',
+        lxRefused.removes === 0 && /the server refused it/.test(lxRefused.toast) && !/check your connection/.test(lxRefused.toast), JSON.stringify(lxRefused));
+  check('    once the delete lands on a retry, its files go, after it',
+        lxLanded.removes.length === 1 && JSON.stringify(lxLanded.removes[0]) === JSON.stringify([lxPhotoPath])
+        && lxLanded.order.join(',') === 'write-done:recipes,storage-done:remove', JSON.stringify(lxLanded));
+
+  // F33: FOLD INTO NOTES deletes the note only once the recipe's save has landed.
+  const lxFoldRecipe = await lxCopy('LC Fold Target');
+  await lxDrain();
+  const lxNote = await lx.evaluate(id => addRecipeNote(id, 'A made-up note about resting it longer').id, lxFoldRecipe);
+  await lxDrain();
+  await lx.evaluate(([r, n]) => { foldNoteIntoRecipe(r, n); }, [lxFoldRecipe, lxNote]);
+  await lx.waitForTimeout(300);
+  const lxM3 = await lx.evaluate(() => { window.__WRITE_FAIL_TABLES__ = { recipes: 'refused' }; return window.__WRITES__.length; });
+  await lx.click('#saveBtn');
+  await lx.waitForTimeout(400);
+  await lxDrain();
+  const lxFoldRefused = await lx.evaluate(([m, n]) => ({
+    deletes: window.__WRITES__.slice(m).filter(w => w.table === 'recipe_notes' && w.op === 'delete').length,
+    inTab: loadRecipeNotes().some(x => x.id === n) }), [lxM3, lxNote]);
+  const lxFoldLanded = await lx.evaluate(async ([m, n]) => {
+    window.__WRITE_FAIL_TABLES__ = {};
+    const l = window.__LOG__.length;
+    flushFailedWrites();
+    let t; do { t = writeQueue; await t; } while(t !== writeQueue);
+    return { deletes: window.__WRITES__.slice(m).filter(w => w.table === 'recipe_notes' && w.op === 'delete').map(w => w.eqs.map(e => e.value)),
+      order: window.__LOG__.slice(l).filter(x => x === 'write-done:recipes' || x === 'write-done:recipe_notes') };
+  }, [lxM3, lxNote]);
+  check('FOLD INTO NOTES: a save the server refuses deletes no note from the server, though the note leaves this tab (F33)',
+        lxFoldRefused.deletes === 0 && !lxFoldRefused.inTab, JSON.stringify(lxFoldRefused));
+  check('    and the save\'s retry, once it lands, deletes that note, after it',
+        lxFoldLanded.deletes.length === 1 && JSON.stringify(lxFoldLanded.deletes[0]) === JSON.stringify([LC_HOUSE, lxNote])
+        && lxFoldLanded.order.join(',') === 'write-done:recipes,write-done:recipe_notes', JSON.stringify(lxFoldLanded));
+
+  // F39: a fresh and a pre-made copy of one recipe on a day; the fresh one taken off; no second freezer row.
+  const lxTwice = await lxCopy('LC Twice Today');
+  await lx.evaluate(([today, id]) => { addPlanRecipe(today, id); addPlanRecipe(today, id); setPlanPremadeAt(today, 1, 'dinner'); }, [LC_TODAY, lxTwice]);
+  await lxDrain();
+  await lx.evaluate(today => { removePlanRecipeAt(today, planRecipeIds(loadPlan()[today]).length - 2); logDuePremade(); }, LC_TODAY);
+  await lxDrain();
+  const lxRows = await lx.evaluate(([today, id]) => loadDiary().filter(e => e.recipeId === id && e.premade && e.cookedOn === today).map(e => e.mealType), [LC_TODAY, lxTwice]);
+  check('a day with a fresh and a pre-made copy of one recipe keeps one freezer row when the fresh copy is taken off (F39)',
+        JSON.stringify(lxRows) === '["dinner"]', JSON.stringify(lxRows));
+  // F39: the meal changed on the Planner is changed in the diary.
+  const lxM4 = await lx.evaluate(() => window.__WRITES__.length);
+  /* As the Planner does it: PRE-MADE off (the row stays), then on again as lunch. */
+  await lx.evaluate(([today, id]) => { const i = planRecipeIds(loadPlan()[today]).lastIndexOf(id); setPlanPremadeAt(today, i, ''); setPlanPremadeAt(today, i, 'lunch'); }, [LC_TODAY, lxTwice]);
+  await lxDrain();
+  const lxMeal = await lx.evaluate(([m, today, id]) => ({
+    diary: loadDiary().filter(e => e.recipeId === id && e.premade && e.cookedOn === today).map(e => e.mealType),
+    sent: window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs' && w.op === 'update').map(w => w.patch) }), [lxM4, LC_TODAY, lxTwice]);
+  check('    switching that dish off and on again as lunch changes the freezer row from dinner to lunch, in the cache and on the server',
+        JSON.stringify(lxMeal.diary) === '["lunch"]' && lxMeal.sent.some(p => p.meal_type === 'lunch'), JSON.stringify(lxMeal));
+  // F39: answered "from the freezer", then PRE-MADE switched off: finishing the flow logs it as cooked.
+  await lx.evaluate(id => finishRecipe(id), lxTwice);
+  await lx.waitForTimeout(200);
+  const lxAsked = await lx.evaluate(() => document.getElementById('freshOrFreezerOverlay').classList.contains('open'));
+  await lx.evaluate(() => document.getElementById('freshOrFreezerFreezer').click());
+  await lx.evaluate(([today, id]) => { const i = planRecipeIds(loadPlan()[today]).lastIndexOf(id); setPlanPremadeAt(today, i, ''); finishRecipe(id); }, [LC_TODAY, lxTwice]);
+  await lx.waitForTimeout(200);
+  const lxFinished = await lx.evaluate(([today, id]) => ({ history: loadRecipes().find(r => r.id === id).history.includes(today),
+    cooked: loadDiary().filter(e => e.recipeId === id && !e.premade && e.cookedOn === today).length }), [LC_TODAY, lxTwice]);
+  await lx.evaluate(() => { const b = document.querySelector('#mealTypeOverlay .meal-type-skip, #mealTypeSkip'); if(b) b.click(); });
+  check('    answered "from the freezer", then PRE-MADE switched off: finishing the flow again logs it as cooked (F39)',
+        lxAsked && lxFinished.history && lxFinished.cooked === 1, JSON.stringify({ lxAsked, lxFinished }));
+
+  // F15: REMOVE on a freezer entry the plan still marks PRE-MADE also takes PRE-MADE off, so it does not come back.
+  const lxYest = await lxCopy('LC Yesterday From The Freezer');
+  await lx.evaluate(([y, id]) => { addPlanRecipe(y, id); setPlanPremadeAt(y, planRecipeIds(loadPlan()[y]).lastIndexOf(id), 'lunch'); }, [LC_YESTERDAY, lxYest]);
+  await lxDrain();
+  const lxEntry = await lx.evaluate(([y, id]) => (loadDiary().find(e => e.recipeId === id && e.premade && e.cookedOn === y) || {}).id, [LC_YESTERDAY, lxYest]);
+  await lx.evaluate(y => { state.historySelectedDate = y; showView('history'); }, LC_YESTERDAY);
+  await lx.waitForTimeout(250);
+  let lxConfirm = '';
+  lx.once('dialog', d => { lxConfirm = d.message(); d.accept(); });
+  await lx.click(`[data-delete-log="${lxEntry}"]`);
+  await lx.waitForTimeout(250);
+  await lxDrain();
+  const lxBack = await lx.evaluate(([y, id, entry]) => {
+    const again = logDuePremade();
+    const i = planRecipeIds(loadPlan()[y]).lastIndexOf(id);
+    return { again, premade: planPremade(loadPlan()[y])[i], inDiary: loadDiary().some(e => e.id === entry) };
+  }, [LC_YESTERDAY, lxYest, lxEntry]);
+  check('REMOVE on a freezer entry says PRE-MADE comes off that dish, takes it off, and the next load does not bring the entry back (F15)',
+        !!lxEntry && /PRE-MADE comes off it on the Planner too/.test(lxConfirm) && lxBack.premade === '' && !lxBack.inDiary && lxBack.again === 0,
+        JSON.stringify({ lxEntry, lxConfirm, lxBack }));
+
+  // F46: a source file that cannot be had says to add it again through EDIT; a card whose picture will not load says so.
+  const lxMissing = await lxCopy('LC Missing Photo', { sourcePhotos: [{ path: `${LC_HOUSE}/lx/never-arrived.jpg`, added: '2026-09-01T10:00:00.000Z' }],
+    imageUrl: 'https://mhkayefzrtceesgizkjs.supabase.co/storage/v1/object/public/recipe-images/lx/never-arrived.jpg' });
+  await lxDrain();
+  await lx.evaluate(id => openRecipe(id, 'recipes'), lxMissing);
+  await lx.waitForTimeout(300);
+  await lx.evaluate(() => { const b = document.querySelector('[data-source-photos], .rv-source-photos, [data-photo-chip]'); if(b) b.click(); });
+  await lx.waitForTimeout(500);
+  const lxMissingText = await lx.evaluate(() => [...document.querySelectorAll('.photo-missing')].map(e => e.textContent));
+  await lx.evaluate(() => showView('recipes'));
+  await lx.waitForTimeout(600);
+  const lxCard = await lx.evaluate(() => { const c = [...document.querySelectorAll('.rcard')].find(x => /LC Missing Photo/.test(x.textContent));
+    const box = c && c.querySelector('.rcard-photo'); return box ? { broken: box.classList.contains('broken'), after: getComputedStyle(box, '::after').content } : null; });
+  check('a source photo that never arrived says to add it again through EDIT (F46)',
+        lxMissingText.length > 0 && lxMissingText.every(t => /add it again through EDIT/.test(t)), JSON.stringify(lxMissingText));
+  check('    and a card whose picture will not load shows the empty frame and PHOTO CAN\'T BE SHOWN, not a broken image',
+        !!lxCard && lxCard.broken && /PHOTO CAN'T BE SHOWN/.test(lxCard.after), JSON.stringify(lxCard));
+  await lx.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:
-     it shows as never answered or ERR_ABORTED, and is not counted. One that reached the network has an answer or a
+     it shows as never answered, as no response with no error (its page closed first: seen once in four runs side by
+     side, 12 Oct), or as ERR_ABORTED, and is not counted. One that reached the network has an answer or a
      network error of its own (a DNS or proxy failure), and is. The second check proves the first is not vacuous:
      the fixture's live Storage addresses were among them. */
   await page.waitForTimeout(300);
@@ -5442,7 +5639,7 @@ const check = (name, pass, detail) => {
     const r = await Promise.race([x.req.response().catch(() => null), new Promise(ok => setTimeout(() => ok('pending'), 500))]);
     x.fate = (x.req.failure() || {}).errorText || (r === 'pending' ? 'never answered' : r ? 'answered ' + r.status() : 'no response');
   }
-  const escaped = unhandled.filter(x => !/^(never answered|net::ERR_ABORTED)$/.test(x.fate));
+  const escaped = unhandled.filter(x => !/^(never answered|no response|net::ERR_ABORTED)$/.test(x.fate));
   check('no page reached the network: every request was refused or answered by the test',
         escaped.length === 0, [...new Set(escaped.map(x => x.page + ' ' + x.url + ' ' + x.fate))].slice(0, 5).join(', '));
   check(`    and the live project's addresses were among them (${net.seen.length} requests, ${opened} pages)`,

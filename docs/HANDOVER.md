@@ -2413,6 +2413,65 @@ the plan made from `docs/REVIEW-2026-10-FINDINGS.md`.
   - a changed console message on the offline-start page.
 
 
+**The October review, PR 4: lost changes, part 1 (12 Oct 2026; F14, F15, F20, F32, F33, F39, F46).** #117 (PR 3) merged first;
+nothing to deploy for it.
+- **Deleting a recipe (F14, F20, F32).**
+  - Other dishes on its days keep PRE-MADE. It used to be dropped, so a freezer dish came back fresh, onto the shopping
+    list.
+  - Its diary rows leave the cache, as they leave the server. An export taken at once no longer carries rows for a recipe
+    it does not contain.
+  - An import leaves out diary rows for a recipe the file does not restore, in the cache and in `replaceAllDiary`, as
+    the notes import already did.
+  - Its source files are removed only once the row delete lands: the removal is queued from inside that write. A refused
+    delete used to take the files and leave the recipe.
+  - `runWrite`'s toast tells a refusal ("the server refused it… if this keeps happening, reload") from a network failure
+    ("check your connection"), using `isNetworkFailure`.
+- **FOLD INTO NOTES (F33).** The note leaves the tab at once, but its row is deleted inside the recipe's own write, after
+  the upsert lands (`saveRecipe`'s new `landed` step). A refused save no longer loses the folded line.
+- **REMOVE on a freezer entry (F15).** If the plan still marks that dish PRE-MADE, the question says so, and PRE-MADE comes
+  off it. The next load no longer writes the entry back.
+- **PRE-MADE (F39).**
+  - The freezer row's id counts pre-made copies only (`premadeLogIdAt`). Measured before the change, across every
+    household: 3 planned days carry a PRE-MADE, none repeats a recipe, and there is 1 freezer row. So no logged row
+    changes its id.
+  - Switched on as a meal while its row is already in the diary as another (off, then on as lunch), the row changes to
+    match. This happens only at that moment, so a meal type changed by hand in History is never overwritten.
+  - "From the freezer" is remembered only while the dish is still PRE-MADE.
+  - The Planner has no direct meal change: tapping a pre-made dish turns it off. The first version of this fix assumed
+    there was one, and would never have run; the check follows the Planner's own off-then-on path.
+- **A picture that cannot be had (F46, and the #92 upload).**
+  - A recipe card whose image fails to load shows the empty frame and PHOTO CAN'T BE SHOWN, not a broken image. A
+    capture-phase `error` listener sets a class, and the `<img>` and its address stay.
+  - A missing source photo now also says "If it doesn't come back, add it again through EDIT."
+- **The stub.** `__WRITE_FAIL_TABLES__` refuses (or drops, as a network) one table's writes.
+- **PR 3's network check had a race of its own.** In four suites run side by side, one image request on the recipe-photo
+  page was dropped as its page closed: no answer and no error, so it had never been sent. It is now counted as held, like
+  a request never answered, and the check still fails by name when the catch-all is removed.
+- `changelog.json` **2026-10-12.1**. `help.html` (REMOVE on a freezer entry; switching PRE-MADE back on as another meal).
+  `TEST-PLAN.md` step 49a.
+
+*Verified by.*
+- `node test/core.test.js` 153, exit 0.
+- `node test/build.js && node test/smoke.js` **530** (517 before), exit 0, no console or page errors.
+- `help-guide.js` 7, exit 0.
+- **Thirteen mutations, each failing by name:**
+  - PRE-MADE dropped on delete;
+  - diary rows left in the cache;
+  - the import's cache filter undone (caught only once the check read the cache before the history write rebuilt it);
+  - the import's write filter undone;
+  - files removed beside the delete;
+  - the toast blaming the connection;
+  - the note deleted independently;
+  - every copy counted;
+  - the meal not corrected;
+  - the answered set checked first;
+  - PRE-MADE left on by REMOVE;
+  - no EDIT advice;
+  - the card not marked.
+- The network catch-all removed still fails by name.
+
+*Not verified:* the live app. Tablet step 49a covers it.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export

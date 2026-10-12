@@ -1,4 +1,11 @@
 [
+  { "version": "2026-10-12.1", "date": "2026-10-12",
+    "changes": ["Deleting a recipe no longer turns other PRE-MADE dishes on the same days back into fresh ones.",
+                "REMOVE on a meal from the freezer in History also takes PRE-MADE off that dish, so it doesn't come back.",
+                "Changing a PRE-MADE dish's meal (dinner to lunch) changes it in the food diary too.",
+                "FOLD INTO NOTES keeps the note until the recipe's save has gone through.",
+                "A recipe picture that can't be loaded shows PHOTO CAN'T BE SHOWN instead of a broken image, and a missing source photo says to add it again through EDIT.",
+                "A save the server refuses now says so, instead of blaming the connection."] },
   { "version": "2026-10-11.4", "date": "2026-10-11", "issues": [91],
     "changes": ["Settings → HELP shows the app's version and what's new, and an open tab now says when a new version is out: tap RELOAD."] },
   { "version": "2026-10-11.3", "date": "2026-10-11", "issues": [92],

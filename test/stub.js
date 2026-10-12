@@ -32,6 +32,11 @@
                          arrive before its migration, and the app must cope)
        __STUB_EXTRA__    tables merged over the fixture before anything reads it
                          (9 Oct, the calendar push: a page that boots connected)
+       __WRITE_FAIL_TABLES__  { table: 'network' | 'refused' }: that table's writes
+                         fail, as a dead network or as a server that answered and
+                         said no (a policy, a constraint), while every other table's
+                         land (12 Oct 2026, the October review's PR 4: a delete refused
+                         while the writes queued beside it went through)
 
      The failure is an error OBJECT with the browser's text as its message,
      not a thrown TypeError — that is what postgrest-js actually hands back,
@@ -39,6 +44,7 @@
   window.__LOG__ = [];
   window.__SIGNOUTS__ = 0;
   const NETWORK_ERROR = { message: 'TypeError: Failed to fetch', details: '', hint: '', code: '' };
+  const REFUSED_ERROR = { message: 'new row violates row-level security policy', details: null, hint: null, code: '42501' };
   /* No delay means no timer: a microtask, exactly as before these switches
      existed, so the timing every other check was written against is kept. */
   const later = (v, ms) => ms ? new Promise(r => setTimeout(() => r(v), ms)) : Promise.resolve(v);
@@ -92,7 +98,9 @@
      "a refresh stands down while a save has failed" needs those to be able
      to fail too, or it would pass against a save that never ran. */
   function settle(table){
-    const outcome = window.__WRITE_FAIL__ ? { error: NETWORK_ERROR } : { error: null };
+    const how = (window.__WRITE_FAIL_TABLES__ || {})[table];
+    const outcome = window.__WRITE_FAIL__ || how === 'network' ? { error: NETWORK_ERROR }
+      : how === 'refused' ? { error: REFUSED_ERROR } : { error: null };
     const done = later(outcome, window.__WRITE_DELAY__).then(v => { window.__LOG__.push('write-done:' + table); return v; });
     return { then(res, rej){ return done.then(res, rej); } };
   }
