@@ -1,4 +1,11 @@
 [
+  { "version": "2026-10-12.4", "date": "2026-10-12", "issues": [111, 112],
+    "changes": ["A sentence in the method or notes that starts with \"Merge\", \"Stage\" or \"Group\" is no longer reported as a line the app couldn't read.",
+                "Pints, quarts, ounces, pounds, fl oz and sticks of butter are now flagged as not metric when you check a recipe, as cups already were.",
+                "Two groups with the same name, or a step named like a group still in use, now show an error in the recipe's diagram instead of being drawn wrong.",
+                "Scaling a recipe keeps units as you wrote them (1 L stays L), and leaves a pinch, dash or handful alone unless it comes to a whole number.",
+                "The shopping list shows \"tinned\" when that's what the recipe says; it still adds up with \"canned\".",
+                "The dictionary now recognises long-grain rice, sweet paprika, coriander powder and free-range eggs, and word matches made one after another now all lead to the last name."] },
   { "version": "2026-10-12.3", "date": "2026-10-12",
     "changes": ["Changing the day weeks start on asks first, and clears the shopping ticks it would otherwise leave stuck in the old weeks.",
                 "Saving a recipe no longer undoes a favourite starred on another device, and changing one setting no longer changes the others back.",

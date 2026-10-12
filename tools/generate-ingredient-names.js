@@ -28,7 +28,9 @@ function render(){
     if(!rows.length){ out.push('## ' + aisle, '', 'No names of its own. Keep the word "frozen" in a line that says it, e.g. "200 g frozen peas"; the app shops it here.', ''); return; }
     const head = three ? ['Write', 'Also written as', 'Count as'] : ['Write', 'Also written as'];
     out.push('## ' + aisle, '', row(head), row(head.map(() => '---')));
-    rows.forEach(r => out.push(row(three ? [r.name, r.also, r.countAs || ''] : [r.name, r.also])));
+    /* A row's note is printed in brackets after its spellings, where it was written until 12 Oct 2026 (F19). */
+    const also = r => r.also + (r.note ? ' (' + r.note + ')' : '');
+    rows.forEach(r => out.push(row(three ? [r.name, also(r), r.countAs || ''] : [r.name, also(r)])));
     out.push('');
   });
   return out.join('\n');

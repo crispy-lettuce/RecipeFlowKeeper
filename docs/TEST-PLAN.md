@@ -649,6 +649,32 @@ removed page was deleted), and no listed page missing.*
     then change the week's first day on the other:* reload both, and both changes have stuck. **Read-only afterwards:** this
     household's `household_settings` row holds both changes. Undo: put the settings back as they were.
 
+51a. **The parser and scaling (new 12 Oct; the October review's PR 7).** Writes nothing: nothing is saved. (1) *ADD RECIPE,
+    paste this made-up recipe, PARSE & PREVIEW:*
+
+    ```
+    TITLE: Test 51a
+    SOURCE: test
+    SERVINGS: 2
+    GROUP a:
+    1 pint milk
+    1 pinch nutmeg
+    1 L water
+    GROUP a:
+    100 grams oats
+    STAGE:
+    MERGE a -> b: Warm [5 min]
+    NOTES:
+    Merge the two halves before serving
+    ```
+
+    The diagram says GROUP "a" is written more than once. "1 pint milk" is flagged as not metric. The NOTES sentence is
+    **not** listed as a line the app couldn't read. (2) *Change the second `GROUP a:` to `GROUP c:` and the MERGE to
+    `MERGE a, c -> b: Warm [5 min]`, PARSE & PREVIEW:* the error has gone. (3) *SCALE TO SERVE 4, APPLY:* the text reads
+    `2 pinches nutmeg`, `2 L water` and `200 grams oats`. (4) *UNDO SCALE, then SCALE TO SERVE 3, APPLY:* `1 pinch nutmeg`
+    is unchanged, and the water reads `1 1/2 L water`. Leave without saving. **Not on the tablet:** the shopping list showing
+    "tinned" as written is checked in `test/core.test.js` only. Undo: nothing to undo.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

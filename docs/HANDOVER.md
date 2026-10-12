@@ -2562,6 +2562,39 @@ for `postgres` in `public` grants `anon` nothing on `S`, `f` or `r`, and no hous
 #108, #109 and #113 were closed with comments. The household reported tablet steps 39a, 40a, 42a, 43a, 44a, 45a, 46a, 48a and
 49a passed the same day (`docs/TEST-PLAN.md`); 38c, 38d, 40b, 47a and 50a are still to be reported.
 
+**The October review, PR 7: the parser and the dictionary (12 Oct 2026; F17, F18, F41, F16, F19, F45).** #120 (PR 6)
+merged first. Everything is in `core.js`; its version is `2026-10-12.1` in all three places, and `changelog.json` is
+**2026-10-12.4** (#111, #112).
+- **Lines reported unreadable (F17).** In STEPS and NOTES a line is prose: only one written in the syntax's own shape
+  (`GROUP x-y:`, `STAGE 2:`, `MERGE a → b`) is reported. A misspelt GROUP straight after the steps still is.
+- **Not metric (F18).** Pint, quart, ounce, pound, fl oz and sticks of butter are flagged when they follow a bare number; a
+  stick of celery, a cinnamon stick and "500 g pound cake" are not.
+- **Diagram errors (F41).** A GROUP handle written twice, and a MERGE output named like a group or step still in play, are
+  errors in the diagram (and blockers in `validate-recipes.js`). A MERGE reusing its own input's name is still fine.
+- **Word-match chains (F16).** `ingredientMatchMap` follows each match to the end of its chain; a loop stops.
+- **Dictionary spellings (F19).** The reader splits an `also` cell only at commas outside brackets, and a note about a plain
+  spelling goes in the row's new `note` field. Now indexed: long-grain rice, sweet paprika, coriander powder, free-range
+  eggs; and the bacon note is no longer cut into a fake spelling. `tools/generate-ingredient-names.js` prints the note back
+  in brackets, so `converter/ingredient-names.md` is byte-for-byte unchanged and neither household needs to reload anything.
+- **Wording kept (F45).** The list shows "tinned" as written (the key is still folded, so it totals with "canned").
+  Scaling keeps the unit as typed, agreeing a spelled-out one with its number (`1 litre` ×2 is `2 litres`), and scales a
+  pinch, dash, handful, knob, squeeze or splash only to whole numbers, its word agreeing (`2 pinches`); otherwise the line is
+  left as written. The household chose each of these on 12 Oct.
+- **Measured live, read-only, before asking** (`tools/remeasure.js`'s method; every household counted, none read but ours):
+  - F17, F18 and F41 newly flag nothing in any household's library (34, 0 and 5 recipes).
+  - Shopping rows: 169 and 64, the same keys before and after, so **no tick is re-keyed**. One row in ours shows a
+    different name (the tinned line); no row changes aisle or amount.
+  - One recipe in ours scales differently (a pinch line); none in the others.
+- `TEST-PLAN.md` step 51a.
+
+*Verified by.*
+- `node test/core.test.js` **162** (153 before), exit 0; nine new checks, each seen failing under a mutation (see the PR).
+- `node test/build.js && node test/smoke.js` 547, exit 0, no console or page errors.
+- `help-guide.js` 7, exit 0; `node tools/generate-ingredient-names.js --check`, exit 0.
+- Every quoted line added to the tests compared with the live library: none is a real line.
+
+*Not verified:* the tablet (step 51a).
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export

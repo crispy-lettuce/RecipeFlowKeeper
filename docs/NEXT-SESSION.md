@@ -17,7 +17,7 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **Library:** 34 recipes. 2 carry a stored comparison with their source, 1 of them validated; 6 are BBC Good Food, five of which
   were rebuilt from another edition before the 29 Sep rule (the household's job below). 1 recipe has a source photo.
 - **Cooking diary:** 116 entries. **Word matches:** 15. **Household aisles:** 1. **Swaps:** 2. **Cooking notes:** none yet (R4 built 30 Sep).
-- **Tests:** `node test/core.test.js` 153 checks; `node test/build.js && node test/smoke.js` 547 checks (418 until P3 PR 2, 437 until the
+- **Tests:** `node test/core.test.js` 162 checks; `node test/build.js && node test/smoke.js` 547 checks (418 until P3 PR 2, 437 until the
   calendar toggles, both 9 Oct; 447 until the HELP tab, 448 until recipe sharing, 465 until the Drive backup, 472 until PRE-MADE, 487 until fresh or
   freezer, all 10 Oct; 492 until issues #85–#93, 500 until FROZEN, 502 until photo upload, 509 until the version and change log, 11 Oct; 515 until the network guard, 517 until the lost-changes fixes, 530 until the write queue, 537 until several households, 12 Oct).
   `node test/calendar-push.js` 35 checks; `node test/drive-backup.js` 13 checks; `node test/image-integrity.js` 35 checks;
@@ -83,6 +83,7 @@ you finish one, tell the next session, and it takes the line out.
 - **47a:** your own photo as a recipe's picture.
 - **50a:** several households: the week-start question, a star kept through an EDIT, two devices' settings. #120 and its SQL
   are in, so it can be done now.
+- **51a:** the parser and scaling (PR 7), after it merges. Nothing is saved.
 
 **3. Library jobs:**
 - **The BBC Good Food validations.** Compare the six BBC Good Food recipes with their real pages, then VALIDATE INGREDIENT LIST on
@@ -114,14 +115,12 @@ you finish one, tell the next session, and it takes the line out.
   - F38: the calendar's "sync every day" has no cap.
 
   A small extra PR. It needs you to redeploy two functions.
-- **Coming in PR 7 (the parser):** decide F45 (the wording the app shows and scales), and F16 and F19. F16 and F19 re-key shopping
-  ticks, so they come with a measurement across every household first.
 - **Coming in PR 8 (the documents):** agree F34's wording, on when a PR may merge before its migration.
 
 **5. Things a session will check, read-only, with nothing for you to do:**
 - **The photo backup** (Sunday 18 Oct, or sooner if you dispatch it): its first run on the new mirror script.
 - **Review issues:**
-  - #111 and #112 stay open until PR 7.
+  - #111 and #112 close when PR 7 merges.
   - #114 stays open until PR 8.
   - #101 (the whole review) stays open until the end.
   - Closed on 12 Oct, with comments naming the PRs: #103, #104, #107, #108, #109, #110, #113 and #115.
@@ -129,6 +128,8 @@ you finish one, tell the next session, and it takes the line out.
 **Done, and off this list:**
 - Tablet steps 41a and 41b (PRE-MADE and COOKED ✓; 10 Oct).
 - Tablet steps 39a, 40a, 42a, 43a, 44a, 45a, 46a, 48a and 49a, all reported passed on 12 Oct.
+- PR 7's decisions (12 Oct): F16 and F19 ship, measured first (0 shopping rows change in any household); F45 shows "tinned"
+  as written, keeps a scaled unit as typed, and leaves a pinch unscaled unless it comes to a whole number.
 - `docs/migrations/harden-default-privileges.md`, applied before #120 merged (12 Oct). Checked read-only at 13:47 UTC: `postgres`'
   default privileges in `public` grant `anon` nothing on tables, sequences or functions, and no household is without a settings
   row.

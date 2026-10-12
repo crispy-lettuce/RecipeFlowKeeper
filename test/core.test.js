@@ -111,6 +111,14 @@ check('every wording of a row totals with the row\'s own name, whatever the line
 check("an apostrophe is part of a spelling: confectioners' sugar, confectioner's sugar and confectioners sugar are one row, icing sugar",
       ["confectioners' sugar", "confectioner's sugar", 'confectioners sugar'].every(w => core.shoppingKeyForName(w) === 'icing sugar'),
       ["confectioners' sugar", "confectioner's sugar", 'confectioners sugar'].map(w => core.shoppingKeyForName(w)).join(' | '));
+/* F19 (October review): a note glued in brackets onto a plain spelling hid the
+   spelling, and the reader split notes at their inner commas. */
+const f19 = [['long-grain rice', 'long grain rice'], ['sweet paprika', 'paprika'], ['coriander powder', 'ground coriander'], ['free-range eggs', 'eggs']]
+  .filter(([w, row]) => core.shoppingKeyForName(w) !== core.shoppingKeyForName(row));
+check('a spelling whose note sits in the row\'s `note` is indexed: long-grain rice, sweet paprika, coriander powder, free-range eggs (F19)',
+      f19.length === 0, f19.map(([w]) => `${w} keys as ${core.shoppingKeyForName(w)}`).join('; '));
+const longWordings = pieces.flatMap(p => p.live.filter(w => w.split(/\s+/).length > 4).map(w => `${p.row}: ${w}`));
+check('    and a note is never cut at its own commas into a "spelling" (the bacon note was, until F19)', longWordings.length === 0, longWordings.join('; '));
 
 /* ---- Quantities ---- */
 const q = (line) => core.splitQty(line);
@@ -131,6 +139,16 @@ const scaled = core.scaleRecipeSyntax('SERVINGS: 2\n\nGROUP a:\n1 1/2 tsp ground
 check('scaling doubles a mixed number', /^3 tsp ground cumin$/m.test(scaled), scaled);
 check('scaling doubles both ends of a range', /^4-6 tbsp olive oil$/m.test(scaled), scaled);
 check('scaling doubles the pack count, not the pack size', /^6 x 400 g chopped tomatoes$/m.test(scaled), scaled);
+/* F45 (October review): a permanent scale from EDIT rewrites the household's own lines. */
+const sc1 = (line, m) => core.scaleRecipeSyntax('GROUP a:\n' + line, m).split('\n')[1];
+check('scaling keeps the unit as it was typed, agreeing a spelled-out one with its number (F45)',
+      sc1('1 L water', 2) === '2 L water' && sc1('100 grams flour', 2) === '200 grams flour' && sc1('1 litre stock', 2) === '2 litres stock'
+      && sc1('2 litres stock', 0.5) === '1 litre stock' && sc1('500g mince', 1.5) === '750g mince' && sc1('3 x 1 litre cartons', 2) === '6 x 1 litre cartons',
+      [sc1('1 L water', 2), sc1('100 grams flour', 2), sc1('1 litre stock', 2), sc1('2 litres stock', 0.5), sc1('500g mince', 1.5), sc1('3 x 1 litre cartons', 2)].join(' | '));
+check('    and scales a pinch, dash or handful only to a whole number, its word agreeing (F45)',
+      sc1('1 pinch nutmeg', 2) === '2 pinches nutmeg' && sc1('1 pinch nutmeg', 1.5) === '1 pinch nutmeg' && sc1('2 handfuls basil', 0.5) === '1 handful basil'
+      && sc1('1-2 dashes hot sauce', 2) === '2-4 dashes hot sauce' && sc1('2 onions', 1.5) === '3 onions',
+      [sc1('1 pinch nutmeg', 2), sc1('1 pinch nutmeg', 1.5), sc1('2 handfuls basil', 0.5), sc1('1-2 dashes hot sauce', 2), sc1('2 onions', 1.5)].join(' | '));
 check('scaling updates SERVINGS and leaves the step text alone', /^SERVINGS: 4$/m.test(scaled) && /Cook for 10 min \[10 min\]/.test(scaled), scaled);
 
 /* ---- Parsing and layout ---- */
@@ -143,6 +161,16 @@ const gap = core.parseRecipe('GROUP a:\n1 x\n\nGROUP b:\n1 y\n\nGROUP c:\n1 z\n\
 const gapErrors = core.computeColumns(gap.groups, gap.stages).errors;
 check('a merge across a gap is an error that names the stage', gapErrors.length === 1 && /Stage 1/.test(gapErrors[0]) && /adjacent/.test(gapErrors[0]), gapErrors.join(' | '));
 check('adjacent rows merge without an error', core.computeColumns(parsed.groups, parsed.stages).errors.length === 0);
+/* F41 (October review): each used to be laid out silently. */
+const colErrs = t => { const p = core.parseRecipe(t); return core.computeColumns(p.groups, p.stages).errors; };
+const twiceGroup = colErrs('GROUP a:\n1 x\n\nGROUP a:\n1 y\n\nSTAGE:\nMERGE a -> b: Join [instant]');
+check('a GROUP handle written twice is an error that names it (F41)', twiceGroup.length === 1 && /GROUP "a"/.test(twiceGroup[0]), twiceGroup.join(' | '));
+const liveOut = colErrs('GROUP a:\n1 x\n\nGROUP b:\n1 y\n\nSTAGE:\nMERGE a -> b: Fry [5 min]\nSTAGE:\nMERGE b -> c: Stir [instant]');
+const twoOut = colErrs('GROUP a:\n1 x\n\nGROUP b:\n1 y\n\nSTAGE:\nMERGE a -> x: Fry [5 min]\nMERGE b -> x: Wash [instant]');
+const reused = colErrs('GROUP a:\n1 x\n\nGROUP b:\n1 y\n\nSTAGE:\nMERGE a -> a: Fry [5 min]\nMERGE b -> x: Wash [instant]\nSTAGE:\nMERGE a, x -> c: Stir [instant]');
+check('    and so is a MERGE output named like a handle still in play, but not one reusing its own input',
+      liveOut.length === 1 && /Stage 1: "b"/.test(liveOut[0]) && twoOut.length === 1 && /"x"/.test(twoOut[0]) && reused.length === 0,
+      [liveOut, twoOut, reused].map(e => e.join(' / ')).join(' | '));
 
 /* ---- Header lines ---- */
 const rewritten = core.withUpdatedHeaderLines('TITLE: A\nSOURCE: S\n\nGROUP a:\n1 onion', {
@@ -301,7 +329,11 @@ const shapeCases = [
   ['3 tbsp honey or golden syrup', 'alternative!'], ['salt and pepper, to taste', 'two!'], ['1 cup rice', 'metric!'],
   ['400 ml tin plum tomatoes', 'container,tinMl!'], ['zest of 1/2 lemon', 'prep,amountInName!,noqty'],
   ['1 large onion, chopped', 'size'], ['75 g grated parmesan', 'prep'], ['grated parmesan', 'prep,noqty'],
-  ['400 g plum tomatoes (1 tin)', ''], ['3 tbsp golden syrup (or honey)', ''], ['1 onion', '']];
+  ['400 g plum tomatoes (1 tin)', ''], ['3 tbsp golden syrup (or honey)', ''], ['1 onion', ''],
+  /* F18: the units QTY_UNIT does not admit, each its own case so each is seen to fail. */
+  ['1 pint milk', 'metric!'], ['1 1/2 pints stock', 'metric!'], ['1 quart water', 'metric!'], ['8 ounces cheese', 'metric!'],
+  ['1 pound beef mince', 'metric!'], ['4 fl oz double cream', 'metric!'], ['2 sticks of butter', 'metric!'], ['1 stick butter', 'metric!'],
+  ['500 g pound cake', ''], ['1 stick celery', ''], ['2 cinnamon sticks', '']];
 const shapeWrong = shapeCases.filter(([l, want]) => faultCodes(l) !== want);
 check('each line fault is found, and marked ! only where the shopping list cannot cope', shapeWrong.length === 0,
       shapeWrong.map(([l, w]) => `${l}: ${faultCodes(l)} (want ${w})`).join('; '));
@@ -322,6 +354,12 @@ check('the parser reports the lines it reads past, and nothing it reads',
 check('    including a misspelt GROUP inside a group, the commonest case, which fell in as an ingredient',
       unreadOf('TITLE: X\nGROUP a:\n1 onion\nGROUP b-c:\n1 leek\nSTAGE:\nMERGE a -> done: Cook [5 min]') === 'GROUP b-c:',
       unreadOf('TITLE: X\nGROUP a:\n1 onion\nGROUP b-c:\n1 leek\nSTAGE:\nMERGE a -> done: Cook [5 min]'));
+/* F17 (October review): STEPS and NOTES are prose, so a sentence that starts
+   with a keyword is not a misspelt line; one written in the syntax's shape is. */
+const proseKeywords = 'TITLE: X\nSTEPS:\nStage the toppings before you start\nGROUP a-b:\nGROUP a:\n1 onion\nSTAGE:\nMERGE a -> d: Cook [5 min]\n'
+  + 'NOTES:\nMerge well before serving\nGroup the bowls by colour\nTIPS:\nSTAGE 2:\nMERGE a → b: Stir';
+check('    but a NOTES or STEPS sentence that starts "Merge", "Stage" or "Group" is not reported (F17)',
+      unreadOf(proseKeywords) === 'GROUP a-b:|STAGE 2:|MERGE a → b: Stir', unreadOf(proseKeywords));
 check('    without changing what it parses: a misspelt GROUP still lands where it always did',
       JSON.stringify(core.parseRecipe('GROUP a:\n1 onion\nGROUP b-c:\n1 leek').groups) === JSON.stringify([{ handle: 'a', items: ['1 onion', 'GROUP b-c:', '1 leek'] }]));
 /* A recipe's choice belongs to that recipe (decided 28 Sep): by the row's name
@@ -343,6 +381,16 @@ const wm = core.ingredientMatchMap([{ kind: 'ingredient', alias: 'Curly Kale', c
   { kind: 'source', alias: 'x', canonical: 'y' }]);
 check('word matches are applied in today\'s words, and one the rules make anyway falls away',
       wm.size === 1 && wm.get('curly kale') === 'kale', JSON.stringify([...wm]));
+/* F16 (October review): merge A into B, then B into C; A must reach C. Made-up names. */
+const chain = core.ingredientMatchMap([{ kind: 'ingredient', alias: 'purple sprouting', canonical: 'tenderstem' },
+  { kind: 'ingredient', alias: 'tenderstem', canonical: 'broccoli' }, { kind: 'ingredient', alias: 'romanesco', canonical: 'cauli' }, { kind: 'ingredient', alias: 'cauli', canonical: 'romanesco' }]);
+check('a chain of word matches is followed to its end, and a loop stops rather than hanging (F16)',
+      chain.get('purple sprouting') === 'broccoli' && chain.get('tenderstem') === 'broccoli' && chain.has('romanesco') && chain.has('cauli'), JSON.stringify([...chain]));
+const tinRow = core.aggregateShoppingLines([{ recipeTitle: 'A', raw: '400 g tinned peaches' }]);
+const tinBoth = core.aggregateShoppingLines([{ recipeTitle: 'A', raw: '400 g tinned peaches' }, { recipeTitle: 'B', raw: '200 g canned peaches' }]);
+check('a line written "tinned" is shown as written, and still totals with "canned" (F45)',
+      tinRow[0].name === 'Tinned peaches' && tinBoth.length === 1 && tinBoth[0].key === tinRow[0].key,
+      JSON.stringify([tinRow.map(i => [i.key, i.name]), tinBoth.map(i => [i.key, i.name])]));
 
 /* ---- PR 6 of the add-recipe plan, 29 Sep: the household's aisles ----
    An aisle replaces `category` once the key is final, and never the key. Made-up lines. */
