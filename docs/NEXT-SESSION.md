@@ -70,7 +70,7 @@ Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all 
    F38 (#123) are merged, and the three functions #123 changed are redeployed and read back (`docs/INFRASTRUCTURE.md` §3).
 2. **The household's own issues**, once they have reviewed them: #87, #88, #94, #95, #100. Nothing is built for them until the
    household decides.
-3. **The household's tablet steps and library jobs**, in the next section: 38c, 38d, 40b, 47a, 50a and 51a; the BBC Good Food
+3. **The household's tablet steps and library jobs**, in `docs/HOUSEHOLD-JOBS.md`: 38c, 38d, 40b, 47a, 50a and 51a; the BBC Good Food
    validations; D6, the reconstructed recipes.
 4. **Optional, not planned:** a "download all source files" backup (the source files go into `PrivateBackup`'s weekly mirror
    instead, 10 Oct); drawing a PDF's pages inside the app, if opening it in the browser proves awkward on the tablet (38d will tell).
@@ -83,63 +83,9 @@ review's F13.)*
 
 ## Things that are the household's to do
 
-**Brought up to date 12 Oct 2026**, while the October review's PRs were going in. These are yours; a session cannot do them. When
-you finish one, tell the next session, and it takes the line out.
-
-**1. Reload the app on each device**, since #120 merged (12 Oct, 13:47 UTC).
-
-**2. Tablet and phone steps not yet reported back** (`docs/TEST-PLAN.md`):
-- **38c:** CHECKED AGAINST THE PHOTO.
-- **38d:** PDF sources.
-- **40b:** the automatic calendar toggles.
-- **47a:** your own photo as a recipe's picture.
-- **50a:** several households: the week-start question, a star kept through an EDIT, two devices' settings. #120 and its SQL
-  are in, so it can be done now.
-- **51a:** the parser and scaling (PR 7, #121, merged 12 Oct). Nothing is saved.
-
-**3. Library jobs:**
-- **The BBC Good Food validations.** Compare the six BBC Good Food recipes with their real pages, then VALIDATE INGREDIENT LIST on
-  each that is right:
-  1. In Edit, tap OPEN SOURCE ↗.
-  2. Copy the page's ingredient list.
-  3. Paste it into COMPARE PASTED LIST.
-
-  Five were rebuilt from another edition before the 29 Sep rule. LIBRARY CHECK lists what is still to do.
-- **D6: repair the reconstructed recipes**, with a session, by the recipe-text rules in `CLAUDE.md`. You approve the exact lines,
-  the before and after go to `PrivateBackup`, and there is one guarded statement per recipe.
-- **The converter, in both households.** Reload `converter/conversion-instructions.md` into each household's conversion project in
-  the Claude app. The master copy is the one in this repo; reload it after any change here. The other files under `converter/`
-  stay in git as reference and test material, and are not loaded.
-- **Before any job that rewrites recipe text:** take a fresh export from the app's sidebar, kept outside the repo.
-
-**4. Decisions waiting on you:**
-- **Your own issues, left open for you to review:**
-  - #87, side dishes with no timings;
-  - #88, how the flow is meant to be followed;
-  - #94, the shopping list: PNG and print keeping the ticks, and an "audit" setting;
-  - #95, the INGREDIENTS settings tab as its lists grow;
-  - #100, moving to Cloudflare Pages.
-- **Two library recipe titles** are still named in `docs/IMAGES.md`, `docs/HANDOVER.md`, `docs/TEST-PLAN.md` and `rehost-images`'
-  comments. They tell the story of the two broken photos. Should they be taken out, or left?
-
-**5. Things a session will check, read-only, with nothing for you to do:**
-- **The photo backup** (Sunday 18 Oct, or sooner if you dispatch it): its first run on the new mirror script.
-- **Review issues:**
-  - Closed on 12 Oct, with comments naming the PRs: #103, #104, #105, #106, #107, #108, #109, #110, #111, #112, #113, #114
-    and #115. #101 (the whole review) is the household's to close.
-
-**Done, and off this list:**
-- Tablet steps 41a and 41b (PRE-MADE and COOKED ✓; 10 Oct).
-- Tablet steps 39a, 40a, 42a, 43a, 44a, 45a, 46a, 48a and 49a, all reported passed on 12 Oct.
-- The F37/F38 redeploys (#123): `rehost-images` v16, `source-ingredients` v6, `calendar-sync` v6, 17:05–17:06 UTC on 12 Oct, read
-  back in full. A first attempt a minute after the merge pasted the old code from a cached link; `docs/INFRASTRUCTURE.md` now says
-  to use the commit-pinned link.
-- PR 7's decisions (12 Oct): F16 and F19 ship, measured first (0 shopping rows change in any household); F45 shows "tinned"
-  as written, keeps a scaled unit as typed, and leaves a pinch unscaled unless it comes to a whole number.
-- `docs/migrations/harden-default-privileges.md`, applied before #120 merged (12 Oct). Checked read-only at 13:47 UTC: `postgres`'
-  default privileges in `public` grant `anon` nothing on tables, sequences or functions, and no household is without a settings
-  row.
-- The third household made (`docs/ONBOARDING.md`; three households live, 12 Oct).
+**Moved to `docs/HOUSEHOLD-JOBS.md` on 12 Oct 2026**, written as numbered steps the household can follow on the tablet. A
+session that adds a tablet step, or hears that one passed, updates that page in the same PR. Things a session checks with
+nothing for the household to do (the photo backup on Sunday 18 Oct) are listed there too.
 
 ---
 

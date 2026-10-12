@@ -53,6 +53,8 @@ Nobody else checks these. Each one is here because it went wrong at least once.
 - **A change to how ingredients are named re-keys the household's ticks.** This means `shoppingLine`
   or a dictionary row. Re-measure the library first ("Re-measuring the live library" in
   `test/README.md`), then ask before shipping.
+- **The household's jobs live in `docs/HOUSEHOLD-JOBS.md`**, as numbered steps with what each should show. A new tablet
+  step goes there as well as into `docs/TEST-PLAN.md`, and one reported passed comes off it, in the same PR.
 - **The only production writes a session makes** are single rows the household asks for, and
   recipe text changed as described below. Anything else, ask. A smaller PR is always fine.
 

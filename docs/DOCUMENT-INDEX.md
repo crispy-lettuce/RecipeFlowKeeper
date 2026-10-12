@@ -363,12 +363,22 @@ October review's F13: this entry said "not started", and that nothing had been p
 
 ---
 
+### `docs/HOUSEHOLD-JOBS.md` — the household's job list (12 Oct 2026)
+**What:** Everything only the household can do, as numbered steps with what each should show: reloading the app, the tablet
+and phone checks still to report, the library jobs, and the decisions waiting on them. Written for the household to follow
+on the tablet; `docs/TEST-PLAN.md` keeps the same checks in their fuller technical form, under the same numbers.
+
+**Use it when:** you are the household and want to know what to do next; or, as a session, after adding a tablet step or
+hearing that one passed (add or remove it here, in the same PR).
+
+---
+
 ### `docs/NEXT-SESSION.md` — where things stand, what is left, and how to start
 **What:** **Rewritten 30 Sep 2026**, when every agreed plan was finished: where things stand (checked against the database),
 the finished plans in one table, what is left in order, the household's own jobs (including how the conversion project is kept:
 one file, `converter/conversion-instructions.md`, whose master is in this repo), a ready-to-paste prompt for the next session
 and alternative starting points. The history it used to carry is in `docs/HANDOVER.md` §7 and in git. The household's
-outstanding tasks and checks in it were brought up to date on 12 Oct (#120).
+outstanding tasks and checks moved to `docs/HOUSEHOLD-JOBS.md` on 12 Oct.
 
 **Use it when:** starting a new session, or whenever you're unsure what should happen next.
 
