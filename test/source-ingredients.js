@@ -35,8 +35,8 @@ function load(){
     .replace(/\(([\w$]+)\s*:\s*[^()]*?\)\s*(:\s*[\w<>|\[\] ]+)?\s*=>/g, '($1) =>')
     // const X: T = …   and   let x: T = …   and   let x: T;
     .replace(/\b(const|let)\s+([\w$]+)\s*:\s*[^=;\n]+(\s*[=;])/g, '$1 $2$3');
-  const out = new Function(js + '\nreturn { safePageUrl, decodeEntities, cleanIngredient, extractRecipeIngredients };')();
-  for(const name of ['safePageUrl', 'decodeEntities', 'cleanIngredient', 'extractRecipeIngredients']){
+  const out = new Function(js + '\nreturn { safePageUrl, decodeEntities, cleanIngredient, extractRecipeIngredients, readCapped };')();
+  for(const name of ['safePageUrl', 'decodeEntities', 'cleanIngredient', 'extractRecipeIngredients', 'readCapped']){
     if(typeof out[name] !== 'function') throw new Error(`${name} missing from ${SRC} — checks would be vacuous`);
   }
   return out;
@@ -93,6 +93,36 @@ check('one source line written as two recipe lines is not a miss', f.matched.fil
 const dropped = core.sourceFidelity(['2 eggs', '100 g sugar', '1 tsp vanilla extract'], ['2 eggs', '100 g caster sugar']);
 check('a line left out shows on the source side only', dropped.sourceOnly.join('|') === '1 tsp vanilla extract' && !dropped.recipeOnly.length, JSON.stringify(dropped));
 
-const failed = checks.filter(c => !c.pass).length;
-console.log(`\n${checks.length} checks, ${failed} failed`);
-process.exit(failed ? 1 : 0);
+/* ---- How much of a page it reads (the October review, F37, 12 Oct 2026) ---- */
+/* A body made of `chunks` pieces of `size` bytes, counting how many were pulled and whether it was cancelled. */
+function body(chunks, size, headers){
+  const seen = { pulled: 0, cancelled: false };
+  const stream = new ReadableStream({
+    pull(ctl){ if(seen.pulled >= chunks) return ctl.close(); seen.pulled++; ctl.enqueue(new Uint8Array(size)); },
+    cancel(){ seen.cancelled = true; }
+  });
+  return { res: new Response(stream, { headers: headers || {} }), seen };
+}
+const src = fs.readFileSync(SRC, 'utf8');
+const fetchPageSrc = src.slice(src.indexOf('async function fetchPage'), src.indexOf('Deno.serve'));
+
+(async () => {
+  const small = body(3, 100);
+  const got = await fn.readCapped(small.res, 1000);
+  check('a page within the limit is read whole', got && got.byteLength === 300 && small.seen.pulled === 3, got && got.byteLength);
+  const declared = body(50, 100, { 'content-length': '5000' });
+  const refused = await fn.readCapped(declared.res, 1000);
+  check('one that declares more than the limit is refused unread', refused === null && declared.seen.pulled <= 1 && declared.seen.cancelled,
+        JSON.stringify(declared.seen));
+  const endless = body(1000, 100);
+  const cut = await fn.readCapped(endless.res, 1000);
+  check('one with no length that runs past the limit is cut off there, not read to the end', cut === null && endless.seen.pulled <= 12 && endless.seen.cancelled,
+        JSON.stringify(endless.seen));
+  check('the page fetch reads through it, under one timer that runs until the body is in',
+        /await readCapped\(res, MAX_PAGE_BYTES\)/.test(fetchPageSrc) && !/\.arrayBuffer\(\)/.test(fetchPageSrc)
+        && /\} finally \{\s*clearTimeout\(timer\);/.test(fetchPageSrc) && !/\.finally\(\(\) => clearTimeout/.test(src));
+
+  const failed = checks.filter(c => !c.pass).length;
+  console.log(`\n${checks.length} checks, ${failed} failed`);
+  process.exit(failed ? 1 : 0);
+})();

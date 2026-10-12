@@ -252,12 +252,38 @@ function safePageUrl(raw: unknown): string | null {
   return u.toString();
 }
 
+/* A body read only as far as `max` bytes (the October review, F37). Until 12 Oct 2026 the whole body was buffered
+   with arrayBuffer() and measured afterwards, so a huge or endless page held the invocation, and its memory, to the
+   platform's limit before being refused. A declared length over `max` is refused unread; a body with no length, or
+   one that lies, is cut off once it passes `max`. Null means too large. Kept identical in rehost-images and
+   source-ingredients; test/image-integrity.js checks the two copies match. */
+async function readCapped(res: Response, max: number): Promise<Uint8Array | null> {
+  const declared = parseInt(res.headers.get('content-length') ?? '', 10);
+  if (declared > max) { await res.body?.cancel(); return null; }
+  if (!res.body) return new Uint8Array(0);
+  const reader = res.body.getReader();
+  const chunks: Array<Uint8Array> = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) { await reader.cancel(); return null; }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const c of chunks) { out.set(c, at); at += c.byteLength; }
+  return out;
+}
+
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 /* An image fetched as source-ingredients fetches a page: every redirect followed by hand and checked with
-   safePageUrl, so a public address cannot bounce the fetch inside the network; a body whose declared length is already
-   too large refused before it is read; and the timer running until the body has arrived, not just the headers (it was
-   cleared at the headers until 11 Oct 2026, the October review, F4 and F37). */
+   safePageUrl, so a public address cannot bounce the fetch inside the network; the body read through readCapped, so
+   one declared too large is refused unread and one that streams past MAX_BYTES is cut off (12 Oct 2026); and the
+   timer running until the body has arrived, not just the headers (it was cleared at the headers until 11 Oct 2026,
+   the October review, F4 and F37). */
 const MAX_REDIRECTS = 4;
 async function fetchImage(start: string): Promise<{ res?: Response; bytes?: Uint8Array; error?: string }> {
   let url = safePageUrl(start);
@@ -275,9 +301,9 @@ async function fetchImage(start: string): Promise<{ res?: Response; bytes?: Uint
         continue;
       }
       if (!res.ok) { await res.body?.cancel(); return { error: `source returned ${res.status}` }; }
-      const declared = parseInt(res.headers.get('content-length') ?? '', 10);
-      if (declared > MAX_BYTES) { await res.body?.cancel(); return { error: `too large (${declared} bytes)` }; }
-      return { res, bytes: new Uint8Array(await res.arrayBuffer()) };
+      const bytes = await readCapped(res, MAX_BYTES);
+      if (!bytes) return { error: `too large (over ${MAX_BYTES} bytes)` };
+      return { res, bytes };
     }
     return { error: 'too many redirects' };
   } finally {
@@ -389,18 +415,29 @@ Deno.serve(async (req: Request) => {
         continue;
       }
       try {
+        /* Our own Storage, so redirects are followed; but the timer now runs until the body is in, and the body is
+           read only as far as MAX_BYTES (cleared at the headers and read whole until 12 Oct 2026, the October
+           review, F37). */
         const ctl = new AbortController();
         const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
         const res = await fetch(src, { headers: { 'Accept': 'image/*' }, signal: ctl.signal, redirect: 'follow' })
-          .finally(() => clearTimeout(timer));
+          .catch(e => { clearTimeout(timer); throw e; });
+        let read: Uint8Array | null = null;
+        try {
+          if (res.ok) read = await readCapped(res, MAX_BYTES);
+          else await res.body?.cancel();
+        } finally {
+          clearTimeout(timer);
+        }
         if (!res.ok) {
           const problem = `stored object returned ${res.status}`;
           broken.push({ id: r.id, title: r.title, problem, image_url: src });
           all.push({ id: r.id, title: r.title, ok: false, problem });
           continue;
         }
+        if (!read) throw new Error(`too large (over ${MAX_BYTES} bytes)`);
         const declared = res.headers.get('content-length');
-        const bytes = new Uint8Array(await res.arrayBuffer());
+        const bytes = read;
         const problem = imageIntegrity(bytes, declared === null ? null : parseInt(declared, 10));
         const dim = jpegDimensions(bytes);
         const bpp = dim ? bytes.byteLength / (dim.w * dim.h) : null;

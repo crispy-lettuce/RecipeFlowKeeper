@@ -54,7 +54,7 @@ const check = (name, pass, detail) => {
 };
 
 const sync = load('calendar-sync', ['calendarEventId', 'dateFromEventId', 'nextDate', 'reminderMinutes', 'londonToday',
-  'eventForDay', 'syncActions', 'parseSyncRequest', 'staleConnection']);
+  'eventForDay', 'syncActions', 'parseSyncRequest', 'staleConnection', 'lastAllDate']);
 const auth = load('calendar-auth', ['consentUrl', 'safeReturnTo', 'withOutcome', 'emailFromIdToken', 'grantedEnough', 'requestedScope']);
 
 const HH = '0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0';
@@ -124,6 +124,27 @@ const stray = sync.calendarEventId(HH, '2026-10-20'), other = sync.calendarEvent
 const all = sync.syncActions(Object.assign({}, base, { rows, all: true, existingIds: [stray, other, sync.calendarEventId(HH, '2026-10-05'), 'someoneselsesevent'] }));
 check('SYNC NOW: every day from today, plus deleting this household\'s events that no longer match, and nothing else',
       ops(all) === 'put:2026-10-05 delete:2026-10-06 delete:2026-10-07 delete:2026-10-08 delete:2026-10-20', ops(all));
+/* The October review, F38 (12 Oct 2026): SYNC NOW stops 400 days out; a day further ahead is still written when the
+   app sends its date. */
+const edge = sync.lastAllDate(today);
+const farRows = [day('2026-10-05'), day(edge), day(sync.nextDate(edge))];
+const farIds = [sync.calendarEventId(HH, edge), sync.calendarEventId(HH, sync.nextDate(edge))];
+const far = sync.syncActions(Object.assign({}, base, { rows: farRows, all: true, existingIds: farIds }));
+check('SYNC NOW reaches 400 days ahead and no further, for planned days and stray events alike',
+      edge === '2027-11-09' && ops(far) === `put:2026-10-05 put:${edge}`, edge + ' ' + ops(far));
+check('    while a day beyond that is still written when it is asked about by date',
+      ops(sync.syncActions(Object.assign({}, base, { rows: farRows, dates: [sync.nextDate(edge)] }))) === `put:${sync.nextDate(edge)}`);
+{
+  const src = fs.readFileSync(path.join(FUNCS, 'calendar-sync', 'index.ts'), 'utf8');
+  const handler = src.slice(src.indexOf('/* ---- end pure ---- */'));
+  const loop = handler.slice(handler.indexOf('const deadline'), handler.indexOf('await note({ last_sync_at'));
+  check('the Planner read and the calendar listing stop at the same day',
+        /q\.gte\('plan_date', today\)\.lte\('plan_date', lastAllDate\(today\)\)/.test(handler)
+        && /timeMax: nextDate\(lastAllDate\(today\)\)/.test(handler));
+  check('the sync stops sending inside a time budget, counts what is left, and always records how it went',
+        /if \(Date\.now\(\) > deadline\) \{ unsent = /.test(loop) && /: unsent \?/.test(handler)
+        && /const SYNC_BUDGET_MS = 100_000;/.test(src) && loop.length > 0);
+}
 
 /* ---- What the app may ask for ---- */
 check('a list of real dates is accepted, in order, without repeats',

@@ -252,6 +252,12 @@ each last deployed between 07:34 and 07:37 UTC that day. *(History: on 10 Oct, 1
 `find-recipe-image` v6, `source-ingredients` v3, `calendar-sync` v2 and `calendar-auth` v1, later than this table said then; the
 October review diffed all six against the repo that night, its Appendix C.)*
 
+**Waiting to be redeployed (12 Oct 2026):** `rehost-images`, `source-ingredients` and `calendar-sync`, all with JWT
+verification on, for the October review's F37 and F38 (#105, #106): a body read only as far as its size limit with the
+timer running until it is in, and SYNC NOW reaching 400 days ahead inside a 100-second budget. Until they are redeployed the
+live copies are the v14, v4 and v4 above, which work as before without these limits. Whoever redeploys them updates this
+paragraph and the table with the new versions, read back with `get_edge_function`.
+
 **These are deployed straight to Supabase, not through GitHub Pages**, which is why the image
 fixes reached the live app without a merge. A change to their source in this repo is a record,
 not a deployment — the two can drift, and have.
