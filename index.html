@@ -2083,7 +2083,7 @@ const EXPECTED_CORE_VERSION = '2026-10-11.2';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-12.1';
+const APP_VERSION = '2026-10-12.2';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -2801,27 +2801,65 @@ let writeQueue = Promise.resolve();
    is the import, which passes {whole: true} and clears everything under
    its label when it succeeds — the server then provably matches the cache.
    Writes are re-run in the order they were queued, before the new one, so
-   a retried toggle can never overtake the toggle that followed it. */
+   a retried toggle can never overtake the toggle that followed it.
+
+   That held only against the write that set off the retry (the October
+   review, F5). A retry that failed again went back on the pile, the new
+   write landed, and the next write of anything re-ran the old one, which
+   could then land over the newer change to the same row and put it back.
+   So since 12 Oct 2026 a write to one row carries a key naming it
+   (opts.key): 'table:row' for a write of the whole row (an upsert, an
+   insert, a delete), 'table:row#columns' for some of its columns (a
+   favourite, a meal type). When a write lands, every older failed write it
+   covers leaves the pile: a whole-row write covers its row's writes of any
+   kind, a partial one only the same columns. That is safe because the newer
+   write was built from the cache, which already held the older change, and
+   the refresh cannot replace the cache while anything is unsent. A write's
+   follow-up (opts.after) runs once it lands, or, if it is dropped as
+   covered, once the write that covered it lands. An unkeyed write (an
+   import, a write of several rows, a call to a function) is retried as
+   before. */
 let localChanges = 0;
+let writeSeq = 0;
 const unsentLabels = new Set();
 const failedWrites = [];
 /* A failed re-host loses nothing: the recipe row keeps the URL it had,
    which still displays, and the sweep or the next save tries again. */
 const NOTHING_LOST_LABELS = new Set(['the recipe image']);
 
+/* Whether `newer`, now landed, makes the older failed write `older` pointless to send (F5). `seq` is a guard, not a
+   path: the pile is always taken whole and in order, so an older write runs before a newer one and a newer failed
+   write is never on the pile while an older one lands. Kept so a change to that ordering cannot let an old write drop
+   a newer one; a mutation removing it cannot be caught by any check, for the same reason. */
+function writeCovers(newer, older){
+  if(!newer.key || !older.key || older.seq >= newer.seq) return false;
+  return older.key === newer.key || (!newer.key.includes('#') && older.key.startsWith(newer.key + '#'));
+}
+function runAfter(w){
+  if(!w.after) return;
+  try { w.after(); } catch(err){ console.error('After a write:', w.label, err); }
+}
 async function runWrite(w){
   try{
     await w.fn();
-    if(w.whole){
-      for(let i = failedWrites.length - 1; i >= 0; i--) if(failedWrites[i].label === w.label) failedWrites.splice(i, 1);
+    const covered = [];
+    for(let i = failedWrites.length - 1; i >= 0; i--){
+      const f = failedWrites[i];
+      if((w.whole && f.label === w.label) || writeCovers(w, f)) covered.unshift(failedWrites.splice(i, 1)[0]);
     }
-    if(!failedWrites.some(f => f.label === w.label)) unsentLabels.delete(w.label);
+    runAfter(w);
+    covered.forEach(runAfter);
+    new Set([w.label, ...covered.map(f => f.label)]).forEach(label=>{
+      if(!failedWrites.some(f => f.label === label)) unsentLabels.delete(label);
+    });
   }catch(err){
     console.error('Sync failed:', w.label, err);
     if(!NOTHING_LOST_LABELS.has(w.label)){
       unsentLabels.add(w.label);
       failedWrites.push(w);
     }
+    /* Waiting on an earlier write of the same thing that has not landed yet (F8): that one has said so already. */
+    if(err && err.pending) return;
     /* Only a network failure is the connection's fault (12 Oct 2026, F32). One the server answered and refused (a
        policy, a constraint, an error of ours) will not go through by trying again on better wifi, so it says so. */
     showToast(isNetworkFailure(err) ? `Couldn't save ${w.label} — check your connection`
@@ -2830,7 +2868,7 @@ async function runWrite(w){
 }
 function queueWrite(label, fn, opts){
   localChanges++;
-  const w = { label, fn, whole: !!(opts && opts.whole) };
+  const w = { label, fn, whole: !!(opts && opts.whole), key: (opts && opts.key) || null, after: (opts && opts.after) || null, seq: ++writeSeq };
   const retries = failedWrites.splice(0);
   writeQueue = writeQueue.then(async ()=>{
     for(const r of retries) await runWrite(r);
@@ -3229,7 +3267,7 @@ function addDiaryEntry({ recipeId = null, title = '', cookedOn, mealType = null,
       : await sb.from('recipe_logs').insert(row);
     if(error) throw error;
     unsavedDiaryIds.delete(entry.id);
-  });
+  }, { key: 'recipe_logs:' + entry.id });
   return entry;
 }
 
@@ -3259,9 +3297,14 @@ function updateDiaryEntry(id, changes){
        the insert not yet confirmed and silently dropped the update outright,
        while the "Tagged as X" toast fired anyway. Found live, not offline:
        the stub resolves a write on the same tick, so this never raced there. */
+    /* Still unsaved when this write's turn comes: its insert failed. Until 12 Oct 2026 this said so and returned,
+       which counted as landed, so the change was never retried and was lost under its own success toast once the
+       insert went through without it (the October review, F8). Now it throws, marked as waiting, and goes on the pile
+       behind the insert, to be sent after it. The insert's failure has already said so, so this adds no toast. */
     if(unsavedDiaryIds.has(id)){
-      showToast("That entry didn't save — check your connection and log it again");
-      return;
+      const waiting = new Error('The diary entry this changes has not been saved yet');
+      waiting.pending = true;
+      throw waiting;
     }
     const patch = {};
     if('mealType' in changes) patch.meal_type = next.mealType;
@@ -3270,7 +3313,7 @@ function updateDiaryEntry(id, changes){
     if('cookedOn' in changes) patch.cooked_on = next.cookedOn;
     const { error } = await sb.from('recipe_logs').update(patch).eq('id', id);
     if(error) throw error;
-  });
+  }, { key: 'recipe_logs:' + id + '#' + Object.keys(changes).sort().join(',') });
   return true;
 }
 
@@ -3293,7 +3336,7 @@ function deleteDiaryEntry(id){
   queueWrite('the food diary', async ()=>{
     const { error } = await sb.from('recipe_logs').delete().eq('id', id);
     if(error) throw error;
-  });
+  }, { key: 'recipe_logs:' + id });
   return true;
 }
 
@@ -3328,7 +3371,7 @@ function saveSettings(next){
       updated_at: new Date().toISOString()
     }, { onConflict: 'household_id' });
     if(error) throw error;
-  }, { whole: true });
+  }, { key: 'household_settings', whole: true });
 }
 function setSetting(key, value){
   return saveSettings({ ...loadSettings(), [key]: value });
@@ -3389,7 +3432,7 @@ function addAlias(kind, alias, canonical){
   return queueWrite('word matches', async ()=>{
     const { error } = await sb.from('aliases').upsert([row], { onConflict: 'household_id,kind,alias' });
     if(error) throw error;
-  });
+  }, { key: 'aliases:' + kind + '|' + alias });
 }
 /* Removed by the word, not the id, for the same reason: the id in the cache
    may not be the one the server ended up keeping. */
@@ -3402,7 +3445,7 @@ function removeAlias(id){
     const { error } = await sb.from('aliases').delete()
       .eq('household_id', HOUSEHOLD_ID).eq('kind', entry.kind).eq('alias', entry.alias);
     if(error) throw error;
-  });
+  }, { key: 'aliases:' + entry.kind + '|' + entry.alias });
 }
 /* A pair key is order-independent, so "is this pair settled?" gives the same
    answer whichever of the two names the shopping list happens to see first. */
@@ -3432,7 +3475,7 @@ function addAisleOverride(name, aisle){
   return queueWrite('shopping aisles', async ()=>{
     const { error } = await sb.from('aisle_overrides').upsert([row], { onConflict: 'household_id,name' });
     if(error) throw error;
-  });
+  }, { key: 'aisle_overrides:' + key });
 }
 /* Removed by the name, as a word match is, since the id in the cache may not
    be the one the server kept. */
@@ -3444,7 +3487,7 @@ function removeAisleOverride(id){
   return queueWrite('shopping aisles', async ()=>{
     const { error } = await sb.from('aisle_overrides').delete().eq('household_id', HOUSEHOLD_ID).eq('name', entry.name);
     if(error) throw error;
-  });
+  }, { key: 'aisle_overrides:' + entry.name });
 }
 /* ---- Cooking notes (R4, docs/PLAN-COOKING-NOTES.md, agreed "as suggested" 30 Sep 2026) ----
    A running log per recipe of how it went: "needed 10 min longer in our oven". One row per note in
@@ -3465,7 +3508,7 @@ function putRecipeNote(note){
   return queueWrite('cooking notes', async ()=>{
     const { error } = await sb.from('recipe_notes').upsert([row]);
     if(error) throw error;
-  });
+  }, { key: 'recipe_notes:' + note.id });
 }
 function addRecipeNote(recipeId, body){
   const text = String(body || '').trim();
@@ -3490,7 +3533,7 @@ function updateRecipeNote(id, body){
   return queueWrite('cooking notes', async ()=>{
     const { error } = await sb.from('recipe_notes').update({ body: text }).eq('household_id', HOUSEHOLD_ID).eq('id', id);
     if(error) throw error;
-  });
+  }, { key: 'recipe_notes:' + id + '#body' });
 }
 function deleteRecipeNote(id){
   const note = loadRecipeNotes().find(n=> n.id === id);
@@ -3503,7 +3546,7 @@ function queueRecipeNoteDelete(id){
   queueWrite('cooking notes', async ()=>{
     const { error } = await sb.from('recipe_notes').delete().eq('household_id', HOUSEHOLD_ID).eq('id', id);
     if(error) throw error;
-  });
+  }, { key: 'recipe_notes:' + id });
 }
 /* Whole-table replace. Import only — see pushList. */
 function replaceRecipeNotes(list){
@@ -3600,8 +3643,9 @@ function replaceRecipesList(list){
    person has just looked at every field: the row is what they confirmed.
    The row is built NOW, from the recipe as it is at the moment of saving,
    so a later edit to the cache cannot change what this write sends. */
-/* `landed`, when given, runs inside the same write once the row is stored, and again on a retry that lands, never
-   on a failure: for a change that must not reach the server before the recipe's own does (FOLD INTO NOTES). */
+/* `landed`, when given, runs once the row is stored (on a retry that lands, or once a later save of the recipe that
+   covers this one lands), never on a failure: for a change that must not reach the server before the recipe's own
+   does (FOLD INTO NOTES). */
 function saveRecipe(recipe, landed){
   const list = cache.recipes;
   const idx = list.findIndex(r => r.id === recipe.id);
@@ -3610,8 +3654,7 @@ function saveRecipe(recipe, landed){
   return queueWrite('recipes', async ()=>{
     const { error } = await sb.from('recipes').upsert([row]);
     if(error) throw error;
-    if(landed) landed();
-  });
+  }, { key: 'recipes:' + recipe.id, after: landed || null });
 }
 /* Several recipes, whole rows: the source merge and the keyword edits,
    which touch a field and its header line on every recipe that carries the
@@ -3633,7 +3676,7 @@ function patchRecipe(id, patch){
   return queueWrite('recipes', async ()=>{
     const { error } = await sb.from('recipes').update(row).eq('household_id', HOUSEHOLD_ID).eq('id', id);
     if(error) throw error;
-  });
+  }, { key: 'recipes:' + id + '#' + Object.keys(patch).sort().join(',') });
 }
 /* One recipe gone, and everything that pointed at it tidied — each as its
    own row write. Until 24 Sep the plan days and groups were left pointing
@@ -3654,13 +3697,12 @@ function deleteRecipe(id){
   cache.diary = cache.diary.filter(e => e.recipeId !== id);
   /* A recipe's source photos are its own, never shared (unlike a recipe image), so they go with it, but only once
      the row delete has landed (F32). They used to be queued beside it whatever happened to it, so a delete the server
-     refused left the recipe in place, naming files already gone. Queued from inside the write, they run after it. */
+     refused left the recipe in place, naming files already gone. Queued as the write's follow-up, they run after it. */
   const paths = gone && gone.sourcePhotos ? gone.sourcePhotos.map(p => p.path) : [];
   queueWrite('recipes', async ()=>{
     const { error } = await sb.from('recipes').delete().eq('household_id', HOUSEHOLD_ID).eq('id', id);
     if(error) throw error;
-    removeSourcePhotoFiles(paths);
-  });
+  }, { key: 'recipes:' + id, after: ()=> removeSourcePhotoFiles(paths) });
   const p = loadPlan();
   /* One call to the calendar for every switched-on day this touches, after all their Planner writes. */
   withCalendarBatch(()=> Object.keys(p).forEach(date => {
@@ -3887,12 +3929,12 @@ function savePlanDay(dateStr){
     queued = queueWrite('the plan', async ()=>{
       const { error } = await sb.from('planner_days').upsert([row], { onConflict: 'household_id,plan_date' });
       if(error) throw error;
-    });
+    }, { key: 'planner_days:' + dateStr });
   } else {
     queued = queueWrite('the plan', async ()=>{
       const { error } = await sb.from('planner_days').delete().eq('household_id', HOUSEHOLD_ID).eq('plan_date', dateStr);
       if(error) throw error;
-    });
+    }, { key: 'planner_days:' + dateStr });
   }
   /* After the Planner write, never before: calendar-sync reads the saved row, not what this page holds. */
   if((wasOn || nowOn) && calendarShown()) calendarDayChanged(dateStr);
@@ -4239,14 +4281,14 @@ function saveGroup(g){
   return queueWrite('meal groups', async ()=>{
     const { error } = await sb.from('meal_groups').upsert([row]);
     if(error) throw error;
-  });
+  }, { key: 'meal_groups:' + g.id });
 }
 function deleteGroup(groupId){
   cache.groups = cache.groups.filter(g => g.id !== groupId);
   return queueWrite('meal groups', async ()=>{
     const { error } = await sb.from('meal_groups').delete().eq('household_id', HOUSEHOLD_ID).eq('id', groupId);
     if(error) throw error;
-  });
+  }, { key: 'meal_groups:' + groupId });
 }
 function groupsForDate(dateIso){
   return loadGroups().filter(g=>g.dateIso===dateIso);
@@ -4292,7 +4334,7 @@ function addShortlistItem(item){
   return queueWrite('the shortlist', async ()=>{
     const { error } = await sb.from('shortlist_items').upsert([row]);
     if(error) throw error;
-  });
+  }, { key: 'shortlist_items:' + item.id });
 }
 function addShortlistNote(text){
   return addShortlistItem({id:uid(), text, dateAdded:todayStr(), recipeId:null});
@@ -4308,7 +4350,7 @@ function removeShortlistItem(id){
   return queueWrite('the shortlist', async ()=>{
     const { error } = await sb.from('shortlist_items').delete().eq('household_id', HOUSEHOLD_ID).eq('id', id);
     if(error) throw error;
-  });
+  }, { key: 'shortlist_items:' + id });
 }
 
 /* Every id this returns is stored in a Postgres `uuid` column, so the
@@ -6207,14 +6249,14 @@ function saveSwap(swap){
   return queueWrite('swaps', async ()=>{
     const { error } = await sb.from('ingredient_swaps').upsert([row]);
     if(error) throw error;
-  });
+  }, { key: 'ingredient_swaps:' + swap.id });
 }
 function deleteSwap(id){
   cache.swaps = cache.swaps.filter(s => s.id !== id);
   return queueWrite('swaps', async ()=>{
     const { error } = await sb.from('ingredient_swaps').delete().eq('household_id', HOUSEHOLD_ID).eq('id', id);
     if(error) throw error;
-  });
+  }, { key: 'ingredient_swaps:' + id });
 }
 function loadShoppingChecked(){ return cache.shoppingChecked; }
 /* Whole-table replace. Import only — see pushList. */
@@ -6243,7 +6285,7 @@ function saveTick(weekStartIso, itemKey, on){
       ? await sb.from('shopping_checked').upsert([row], { onConflict: 'household_id,week_start,item_key' })
       : await sb.from('shopping_checked').delete().eq('household_id', HOUSEHOLD_ID).eq('week_start', weekStartIso).eq('item_key', itemKey);
     if(error) throw error;
-  });
+  }, { key: 'shopping_checked:' + weekStartIso + '|' + itemKey });
 }
 /* Several ticks off at once — the UNTICK ALL button — as one delete naming
    exactly those keys, so a tick made on another device in the meantime,

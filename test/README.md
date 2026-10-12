@@ -85,7 +85,7 @@ node test/core.test.js
 `build.js` inlines the real `core.js` into the built page, so the smoke suite below tests exactly
 what Pages serves.
 
-**530 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
+**537 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, the automatic image
 re-host on save, what happens when you come back to the tab (online, offline, mid-save, after a
@@ -100,7 +100,8 @@ reads, completed writes and Edge Function calls (`invoke:<name>`) in order; `__A
 `SIGNED_IN` as a tab return does; `__SIGNOUTS__` counts sign-outs. All off by default. `calendar_connections` reads as not created
 (the live database before `add-calendar-push`) unless a test gives `__STUB_DATA__` rows for it, and `__STUB_EXTRA__`, set by
 `addInitScript`, puts tables into a fresh page's fixture before it loads. `__WRITE_FAIL_TABLES__` (12 Oct) fails one table's writes, as a dead network
-(`'network'`) or as a server that answered and refused (`'refused'`), while every other table's land.
+(`'network'`) or as a server that answered and refused (`'refused'`), while every other table's land; as
+`{ how, times }` it fails the next n writes and then lets them land, and `__WRITE_FAILS__` counts the failures.
 
 **`node test/build.js` first, every time.** `smoke.js` opens `test/app-under-test.html`, which
 `build.js` writes from `index.html`. Run `smoke.js` on its own after editing the app and you are
