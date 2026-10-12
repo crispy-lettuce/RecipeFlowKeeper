@@ -57,8 +57,8 @@ Corrected 12 Oct 2026, the October review's F13 and Appendix B.)*
 | `docs/PLAN-RECIPE-SHARING.md` (10 Oct) | A second household of the family, and browsing and copying each other's recipes | Done, PR #74, the SQL applied first; tablet 43a passed 12 Oct |
 | `docs/PLAN-DRIVE-BACKUP.md` (10 Oct) | The export file, weekly and by hand, into the household's own Drive | Done, PR #75, first saved 10 Oct 18:05 UTC; tablet 44a passed 12 Oct |
 | `docs/PLAN-FOOD-DIARY.md` (10 Oct) | PRE-MADE meals and COOKED ✓; fresh or freezer | Done, PRs #78, #80; tablet 41a and 41b |
-| Issues #85–#93 (11 Oct) | Parse feedback, seconds, COOKING MODE, Drink; FROZEN; your own photo; the version and change log | Done, PRs #96–#99; tablet 45a, 46a, 48a passed 12 Oct, 47a the household's |
-| The October review, PRs 1–7 (`docs/REVIEW-2026-10-FINDINGS.md`, 11 Oct) | Backups, Edge Function hardening, the public repo and harness, lost changes, the write queue, several households, the parser and dictionary | Done, PrivateBackup#7, #102, #117–#121, 11–12 Oct; tablet 49a passed 12 Oct, 50a and 51a the household's. PR 8, the documents, in progress |
+| Issues #85–#93 (11 Oct) | Parse feedback, seconds, COOKING MODE, Drink; FROZEN; your own photo; the version and change log | Done, PRs #96–#99; tablet 45a, 46a, 47a, 48a passed 12 Oct |
+| The October review, PRs 1–7 (`docs/REVIEW-2026-10-FINDINGS.md`, 11 Oct) | Backups, Edge Function hardening, the public repo and harness, lost changes, the write queue, several households, the parser and dictionary | Done, PrivateBackup#7, #102, #117–#121, 11–12 Oct; tablet 49a and 51a passed 12 Oct, 50a the household's. PR 8, the documents, in progress |
 
 ---
 
@@ -70,7 +70,7 @@ Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all 
    F38 (#123) are merged, and the three functions #123 changed are redeployed and read back (`docs/INFRASTRUCTURE.md` §3).
 2. **The household's own issues**, once they have reviewed them: #87, #88, #94, #95, #100. Nothing is built for them until the
    household decides.
-3. **The household's tablet steps and library jobs**, in `docs/HOUSEHOLD-JOBS.md`: 38c, 38d, 40b, 47a, 50a and 51a; the BBC Good Food
+3. **The household's tablet steps and library jobs**, in `docs/HOUSEHOLD-JOBS.md`: 38c, 38d, 40b and 50a; the BBC Good Food
    validations; D6, the reconstructed recipes.
 4. **Optional, not planned:** a "download all source files" backup (the source files go into `PrivateBackup`'s weekly mirror
    instead, 10 Oct); drawing a PDF's pages inside the app, if opening it in the browser proves awkward on the tablet (38d will tell).

@@ -633,6 +633,8 @@ removed page was deleted), and no listed page missing.*
     recipe's `image_url` is `…/recipe-images/<our household>/<recipe id>.jpg?v=…`, and that file exists. Undo: paste the
     old link back into IMAGE URL and SAVE.
 
+*47a reported passed by the household, 12 Oct.*
+
 48a. **The version and what's new (new 11 Oct; issue #91).** Reads only. (1) *The first time the app opens after this
     merges:* one toast, "Updated to 2026-10-11.4: see what's new in Settings → HELP" (on a device that had the app
     before; a device opening it for the first time shows nothing). (2) *Settings → HELP:* VERSION AND WHAT'S NEW shows
@@ -688,6 +690,8 @@ removed page was deleted), and no listed page missing.*
     `2 pinches nutmeg`, `2 L water` and `200 grams oats`. (4) *UNDO SCALE, then SCALE TO SERVE 3, APPLY:* `1 pinch nutmeg`
     is unchanged, and the water reads `1 1/2 L water`. Leave without saving. **Not on the tablet:** the shopping list showing
     "tinned" as written is checked in `test/core.test.js` only. Undo: nothing to undo.
+
+*51a reported passed by the household, 12 Oct.*
 
 ## Deferred to the tablet, after merging
 

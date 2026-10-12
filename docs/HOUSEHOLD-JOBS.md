@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 12 Oct 2026.**
+**Last brought up to date: 12 Oct 2026, 17:55 UTC.**
 
 These are the jobs only you can do. A session can't tap the tablet, make decisions for you, or deploy for you.
 
@@ -8,9 +8,9 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 - Each job has numbered steps.
 - Under a step, **You should see** says what the app should do.
-- When you finish a job, tell the next session, e.g. "51a passed" or "50a: step 2 didn't keep the star". The session takes the
+- When you finish a job, tell the next session, e.g. "50a passed" or "50a: step 2 didn't keep the star". The session takes the
   job off this page.
-- The numbers (51a, 50a …) match `docs/TEST-PLAN.md`, which keeps the fuller technical notes.
+- The numbers (50a, 38c …) match `docs/TEST-PLAN.md`, which keeps the fuller technical notes.
 
 ---
 
@@ -20,9 +20,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | --- | --- | --- | --- |
 | [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
 | [Close issue #101](#close-issue-101) | GitHub | 1 min | No |
-| [51a · Recipe checker and scaling](#51a--recipe-checker-and-scaling) | tablet | 5 min | No |
 | [50a · Settings and stars across devices](#50a--settings-and-stars-across-devices) | tablet + phone | 10 min | Yes, then put back |
-| [47a · Your own photo as a recipe's picture](#47a--your-own-photo-as-a-recipes-picture) | tablet + phone | 5 min | Yes |
 | [38d · A PDF as a recipe's source](#38d--a-pdf-as-a-recipes-source) | laptop + tablet | 10 min | Yes |
 | [38c · Checked against the photo](#38c--checked-against-the-photo) | tablet | 5 min | Yes |
 | [40b · Automatic calendar toggles](#40b--automatic-calendar-toggles) | tablet + phone | 15 min, plus the evening before a meal | Yes |
@@ -55,50 +53,6 @@ Every finding of the October review is now fixed and live.
 
 Do them in this order. The first ones are the quickest.
 
-### 51a · Recipe checker and scaling
-
-**Saves nothing.** You leave without saving.
-
-1. Tap **NEW RECIPE**.
-2. Paste this made-up recipe into the box:
-
-   ```
-   TITLE: Test 51a
-   SOURCE: test
-   SERVINGS: 2
-   GROUP a:
-   1 pint milk
-   1 pinch nutmeg
-   1 L water
-   GROUP a:
-   100 grams oats
-   STAGE:
-   MERGE a -> b: Warm [5 min]
-   NOTES:
-   Merge the two halves before serving
-   ```
-
-3. Tap **PARSE & PREVIEW**.
-   - **You should see:**
-     - The diagram says GROUP "a" is written more than once.
-     - "1 pint milk" is flagged as not metric.
-     - The NOTES sentence is **not** listed as a line the app couldn't read.
-4. In the text, change the second `GROUP a:` to `GROUP c:`.
-5. Change the MERGE line to `MERGE a, c -> b: Warm [5 min]`.
-6. Tap **PARSE & PREVIEW** again.
-   - **You should see:** the error has gone.
-7. In **SCALE TO SERVE**, type 4 and tap **APPLY**.
-   - **You should see** these lines in the text:
-     - `2 pinches nutmeg`
-     - `2 L water`
-     - `200 grams oats`
-8. Tap **UNDO SCALE**.
-9. In **SCALE TO SERVE**, type 3 and tap **APPLY**.
-   - **You should see:**
-     - `1 pinch nutmeg` is unchanged.
-     - The water reads `1 1/2 L water`.
-10. Leave without saving.
-
 ### 50a · Settings and stars across devices
 
 **Saves settings and a star.** Step 9 puts them back.
@@ -130,29 +84,6 @@ Do them in this order. The first ones are the quickest.
 **Put it back**
 
 9. Set **APPEARANCE**, **WEEK STARTS ON** and the star back as they were.
-
-### 47a · Your own photo as a recipe's picture
-
-**Saves the recipe and stores the photo.**
-
-1. Open one of your own recipes and tap **EDIT**.
-2. Tap **UPLOAD PHOTO**, then take a photo or pick one from the gallery.
-   - **You should see:**
-     - The photo shows small beside the button.
-     - **IMAGE URL** empties.
-     - **BEFORE YOU SAVE** says "Stores your photo as the recipe's picture".
-3. Tap **RE-CHECK**.
-   - **You should see:** the photo is still chosen.
-4. Tap **SAVE RECIPE**.
-   - **You should see:** the card shows your photo.
-5. On the **phone**, leave the app's tab and come back.
-   - **You should see:** the photo there too.
-6. **EDIT** again, **UPLOAD PHOTO** with a different picture, then **SAVE RECIPE**.
-   - **You should see:** the new photo, not the old one.
-7. **EDIT** again, choose a photo, then type a link into **IMAGE URL**.
-   - **You should see:** the chosen photo goes. Leave without saving.
-
-**To undo:** paste the old picture link back into **IMAGE URL** and **SAVE RECIPE**.
 
 ### 38d · A PDF as a recipe's source
 
@@ -321,7 +252,8 @@ Nothing is built for these until you decide:
 ## Recently done
 
 - **12 Oct:**
-  - Tablet steps 39a, 40a, 42a, 43a, 44a, 45a, 46a, 48a and 49a passed.
+  - Tablet steps 39a, 40a, 42a, 43a, 44a, 45a, 46a, 48a and 49a passed; then 47a (your own photo) and 51a (the recipe
+    checker and scaling).
   - The default-privileges SQL was applied.
   - Three Edge Functions were redeployed and checked.
   - The October review's issues were closed: all but #101.
