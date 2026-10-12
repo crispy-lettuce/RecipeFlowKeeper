@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-11.2';
+const KITCHEN_CORE_VERSION = '2026-10-12.1';
 
 
 /* ======================= quantity split ======================= */
@@ -45,8 +45,10 @@ const KITCHEN_CORE_VERSION = '2026-10-11.2';
    (docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md §2.2).
 
    DELIBERATELY NUMBERS AND MEASURES ONLY. Count words (pinch, clove, bunch)
-   are a shopping-list matter: taught here, scaling would write
-   "2 pinch salt", and every name that changes re-keys a tick. The unit
+   are a shopping-list matter, since every name that changes re-keys a tick.
+   Scaling still meets them as the first word of the rest, and since 12 Oct
+   2026 (the October review's F45) treats a pinch, dash or handful there as
+   scaleRecipeSyntax explains. The unit
    list gains only the long spellings normalizeUnit already maps
    ("grams", "litre"), which were unreachable before. */
 const QTY_NUM = '(?:\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+(?:\\.\\d+)?\\s?[¼½¾⅓⅔⅛⅜⅝⅞]|\\d+(?:\\.\\d+)?|[¼½¾⅓⅔⅛⅜⅝⅞])';
@@ -218,6 +220,14 @@ function parseRecipe(text){
      what is parsed: a line that fell into a group before still does. */
   const unread = [];
   const KEYWORD_LINE = /^(GROUP|STAGE|MERGE)\b/i;
+  /* In STEPS or NOTES a line is prose, so the loose test above flagged "Merge
+     well before serving" and "Stage the toppings first", and validate-recipes.js
+     then held the recipe back (the October review's F17). There, only a line
+     written in the syntax's own shape counts: the keyword in capitals, a GROUP or
+     STAGE ending in a colon, a MERGE with an arrow of some kind. STEPS comes
+     before the first GROUP, so a misspelt `GROUP a-b:` straight after the steps
+     still lands here and must still be reported. */
+  const KEYWORD_SHAPE = /^(GROUP\s+\S[^:]*:\s*$|STAGE\b[^:]*:\s*$|MERGE\s.*[>→])/;
   for(const raw of rawLines){
     const line = raw.trim();
     if(line==='') continue;
@@ -269,7 +279,8 @@ function parseRecipe(text){
     else if(mode==='notes-freezing') notes.freezing.push(line);
     else if(mode==='notes-tips') notes.tips.push(line);
     else if(mode==='group' && currentGroup) currentGroup.items.push(line);
-    if(KEYWORD_LINE.test(line)) unread.push({ line, why: 'looks like a GROUP, STAGE or MERGE line but is not written as one (a handle is letters, digits and _ only; the arrow is ->)' });
+    const prose = mode === 'steps' || mode.startsWith('notes-');
+    if(prose ? KEYWORD_SHAPE.test(line) : KEYWORD_LINE.test(line)) unread.push({ line, why: 'looks like a GROUP, STAGE or MERGE line but is not written as one (a handle is letters, digits and _ only; the arrow is ->)' });
     else if(mode === '' || mode === 'stage') unread.push({ line, why: mode === 'stage' ? 'inside a STAGE, but not a MERGE line' : 'not under any heading' });
   }
   return {title, source, sourceUrl, imageUrl, time, servings, equipment, tags: parseTags(tagsRaw), setup, notes, groups, stages, unread};
@@ -454,8 +465,32 @@ function scaleRecipeSyntax(syntaxText, multiplier){
     if(!qty) return line; // no recognisable leading quantity at all — a bare "salt to taste" style line, left as-is
     const parsed = parseIngredientAmount(qty);
     if(!parsed) return line; // quantity present but not a form we can scale confidently (e.g. "a pinch")
+    const scaledTop = (parsed.count !== undefined ? parsed.count : parsed.low !== undefined ? parsed.high : parsed.amount) * multiplier;
+    /* "1 pinch nutmeg" has no unit, so its number scaled like any other and a
+       permanent scale wrote "1 1/2 pinch nutmeg" (the October review's F45).
+       A pinch, a dash or a handful is scaled only when every number it comes to
+       is whole, and its word then agrees with the number; otherwise the line is
+       left as written, since half a pinch is still a pinch. */
+    const imprecise = !parsed.unit && rest.match(/^(pinch|dash|handful|knob|squeeze|splash)(es|s)?\b/i);
+    let restOut = rest;
+    if(imprecise){
+      const nums = parsed.low !== undefined ? [parsed.low, parsed.high] : [parsed.count !== undefined ? parsed.count : parsed.amount];
+      if(nums.some(n => Math.abs(n * multiplier - Math.round(n * multiplier)) > 1e-9)) return line;
+      const word = imprecise[1].toLowerCase();
+      const many = scaledTop > 1 ? (/(ch|sh)$/.test(word) || word === 'dash' ? word + 'es' : word + 's') : word;
+      restOut = many + rest.slice(imprecise[0].length);
+    }
+    /* The unit as it was typed, not normalised: until the October review (F45) a
+       permanent scale from EDIT rewrote "1 L water" as "2 l water" and "100 grams"
+       as "200 g". A spelled-out unit agrees with its new number ("1 litre" ×2 is
+       "2 litres"); an abbreviation is kept exactly. The list normalises either. */
+    const typed = (qty.match(/[a-zA-Z]+$/) || [''])[0];
+    const LONG_UNIT = /^(cup|teaspoon|tablespoon|gram|gramme|kilo|kilogram|millilitre|milliliter|litre|liter)s?$/i;
+    const agreeWith = parsed.count !== undefined ? parsed.each : scaledTop;
+    const unitWord = !parsed.unit ? '' : !LONG_UNIT.test(typed) ? typed
+      : typed.replace(/s$/i, '') + (agreeWith > 1 ? 's' : '');
     // keep a space between amount and unit only if the original had one ("3 tbsp" vs "500g")
-    const unitText = parsed.unit ? `${parsed.space ? ' ' : ''}${parsed.unit}` : '';
+    const unitText = parsed.unit ? `${parsed.space ? ' ' : ''}${unitWord}` : '';
     let rebuiltQty;
     if(parsed.count !== undefined){
       /* "3 x 125 g tins": more people means more tins, not bigger ones. */
@@ -466,7 +501,7 @@ function scaleRecipeSyntax(syntaxText, multiplier){
     } else {
       rebuiltQty = `${formatAmount(parsed.amount * multiplier)}${unitText}`;
     }
-    return (parsed.upTo ? 'up to ' : '') + rebuiltQty + ' ' + rest;
+    return (parsed.upTo ? 'up to ' : '') + rebuiltQty + ' ' + restOut;
   });
 
   let result = scaledLines.join('\n');
@@ -497,6 +532,16 @@ function buildRows(groups){
 function computeColumns(groups, stages){
   const {rows, ranges} = buildRows(groups);
   const errors = [];
+  /* Two GROUP blocks with one handle, or a MERGE whose output names a group or
+     step still in play, used to be laid out silently: the later one overwrote
+     the earlier in `ranges` or `active`, and rows were drawn that fed nothing
+     (the October review's F41). Reported, not repaired: which one was meant is
+     the household's call. */
+  const seenHandles = new Set();
+  groups.forEach(g=>{
+    if(seenHandles.has(g.handle)) errors.push(`GROUP "${g.handle}" is written more than once; give each group its own name.`);
+    seenHandles.add(g.handle);
+  });
   let active = {};
   groups.forEach((g,i)=>{
     if(!ranges[g.handle]) return;
@@ -527,6 +572,12 @@ function computeColumns(groups, stages){
     const carried = [];
     Object.keys(active).forEach(h=>{
       if(!consumed.has(h)) carried.push({ outputHandle:h, ...active[h], passthrough:true });
+    });
+    const outputs = new Set();
+    newBoxes.forEach(b=>{
+      if(outputs.has(b.outputHandle) || carried.some(c=>c.outputHandle === b.outputHandle))
+        errors.push(`Stage ${stageIdx+1}: "${b.outputHandle}" is already the name of a group or step still in use; give the MERGE a new name.`);
+      outputs.add(b.outputHandle);
     });
 
     const nextActive = {};
@@ -857,7 +908,7 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Meat & Fish", name: "lamb mince", also: "minced lamb, ground lamb" },
   { aisle: "Meat & Fish", name: "turkey mince", also: "minced turkey, ground turkey" },
   { aisle: "Meat & Fish", name: "chicken mince", also: "minced chicken, ground chicken" },
-  { aisle: "Dairy & Eggs", name: "eggs", also: "egg, large eggs, free-range eggs (write the size in brackets if it matters: `3 eggs (large)`)" },
+  { aisle: "Dairy & Eggs", name: "eggs", also: "egg, large eggs, free-range eggs", note: "write the size in brackets if it matters: `3 eggs (large)`" },
   { aisle: "Dairy & Eggs", name: "butter", also: "salted butter" },
   { aisle: "Dairy & Eggs", name: "unsalted butter", also: "" },
   { aisle: "Dairy & Eggs", name: "double cream", also: "heavy cream, heavy whipping cream, whipping cream is **not** the same" },
@@ -905,7 +956,7 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Pantry", name: "pumpkin seeds", also: "pepitas" },
   { aisle: "Pantry", name: "soda water", also: "club soda" },
   { aisle: "Pantry", name: "raspberry jam", also: "seedless raspberry jam, soft-set raspberry jam" },
-  { aisle: "Pantry", name: "long grain rice", also: "long-grain rice (write the **uncooked** amount, D4)" },
+  { aisle: "Pantry", name: "long grain rice", also: "long-grain rice", note: "write the **uncooked** amount, D4" },
   { aisle: "Pantry", name: "rigatoni", also: "dried rigatoni, pasta shapes (when rigatoni)" },
   { aisle: "Pantry", name: "spaghetti", also: "dried spaghetti" },
   { aisle: "Pantry", name: "orzo", also: "dried orzo" },
@@ -937,14 +988,14 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Spices & Seasoning", name: "garlic salt", also: "" },
   { aisle: "Spices & Seasoning", name: "garlic powder", also: "" },
   { aisle: "Spices & Seasoning", name: "ground ginger", also: "powdered ginger" },
-  { aisle: "Spices & Seasoning", name: "paprika", also: "sweet paprika (not smoked, which is its own item)" },
+  { aisle: "Spices & Seasoning", name: "paprika", also: "sweet paprika", note: "not smoked, which is its own item" },
   { aisle: "Spices & Seasoning", name: "smoked paprika", also: "" },
   { aisle: "Spices & Seasoning", name: "chilli flakes", also: "crushed chillies, red pepper flakes, chili flakes, chile flakes, crushed red pepper, crushed red pepper flakes, red chilli flakes" },
   { aisle: "Spices & Seasoning", name: "chilli powder", also: "mild chilli powder, hot chilli powder" },
   { aisle: "Spices & Seasoning", name: "cajun seasoning", also: "cajun spice mix, cajun spice" },
   { aisle: "Spices & Seasoning", name: "dried oregano", also: "oregano, *fresh oregano is its own item*" },
   { aisle: "Spices & Seasoning", name: "ground cumin", also: "cumin (when a powder)" },
-  { aisle: "Spices & Seasoning", name: "ground coriander", also: "coriander powder (bare \"coriander\" means the leaf, so write *fresh coriander* for that)" },
+  { aisle: "Spices & Seasoning", name: "ground coriander", also: "coriander powder", note: "bare \"coriander\" means the leaf, so write *fresh coriander* for that" },
   { aisle: "Spices & Seasoning", name: "ground cinnamon", also: "cinnamon (when a powder)" },
   { aisle: "Spices & Seasoning", name: "ground turmeric", also: "turmeric" },
   { aisle: "Spices & Seasoning", name: "cardamom pods", also: "green cardamom pods" },
@@ -1053,7 +1104,22 @@ function dictionaryKey(phrase){ return foldPlural(dropWords(squash(foldTin(Strin
 const DICTIONARY_NOTE = /[()*"`]|\b(when|not|is|its own|check)\b/i;
 function dictionaryPhrases(row){
   const live = [row.name], skipped = [];
-  String(row.also || '').split(/[,;]/).map(x => x.trim()).forEach(p => {
+  /* Split only at a comma or semicolon outside brackets. Splitting inside one cut
+     "bacon (in US recipes; in a British one it usually means back bacon, so
+     check)" into three, and the middle piece, with no note word of its own, was
+     indexed as a spelling. A note about a plain spelling goes in the row's `note`
+     (the October review's F19): glued on in brackets, it hid the spelling, so
+     "long-grain rice", "sweet paprika", "coriander powder" and "free-range eggs"
+     were written in the table and never indexed. tools/generate-ingredient-names.js
+     prints the note back in brackets, so the converter reads what it always did. */
+  const pieces = []; let depth = 0, cur = '';
+  for(const ch of String(row.also || '')){
+    if(ch === '(') depth++;
+    else if(ch === ')') depth = Math.max(0, depth - 1);
+    if(!depth && (ch === ',' || ch === ';')){ pieces.push(cur); cur = ''; } else cur += ch;
+  }
+  pieces.push(cur);
+  pieces.map(x => x.trim()).forEach(p => {
     if(p) (DICTIONARY_NOTE.test(p) ? skipped : live).push(p);
   });
   return { live, skipped };
@@ -1129,7 +1195,13 @@ function shoppingLine(rest, parsed){
   const key = row ? dictionaryKey(row.name) : name;
   /* What to show for a name the dictionary doesn't know: the line's own
      wording before its first comma, never the folded key ("chilli flake"). */
-  const display = row ? row.name : squash(dropWords(words.join(' '), DESCRIPTOR_WORDS));
+  let display = row ? row.name : squash(dropWords(words.join(' '), DESCRIPTOR_WORDS));
+  /* foldTin ran on the text the name was cut from, so a line written "tinned
+     peaches" showed as "Canned peaches", though foldTin's comment promised the
+     person's wording is what is shown (the October review's F45). The key stays
+     folded, so it still totals with "canned peaches"; only the shown name is put
+     back as it was written. */
+  if(!row && /\btinned\b/i.test(String(rest || ''))) display = display.replace(/\bcanned\b/g, 'tinned');
   const base = amount !== null ? toBaseUnit(amount, unit) : null;
   const spoon = SPOON_ML[unit] ? unit : null;
   return {
@@ -1384,7 +1456,14 @@ function ingredientLineFaults(line, qty, rest){
   if(/^(large|small|medium|big|heaped|level|generous|thumb-sized)\b/.test(first)) add('size', 'size word before the name', false);
   if(!PRODUCT_FORM.test(first) && (/^(minced|grated|chopped|diced|sliced|crushed|melted|softened|beaten)\b/.test(first)
      || /^(juice|zest|leaves|stalks)\s+(of|from)\b/.test(first))) add('prep', 'preparation before the name', false);
-  if(/\b(cups?|oz|ounces?|lbs?|pounds?|quarts?|pints?|sticks? of butter)\b/i.test(qty)) add('metric', 'not metric (convert cups, oz and lb)', true);
+  /* QTY_UNIT admits only cups, oz and lb of these, so "1 pint milk" splits as
+     1 of "pint milk" and the test on qty alone never saw it (the October
+     review's F18). The words are looked for at the start of the name too, but
+     only after a bare number, so "500 g pound cake" is not a pound; and a stick
+     counts only as butter's, never celery's or cinnamon's. */
+  if(/\b(cups?|oz|ounces?|lbs?|pounds?|quarts?|pints?|sticks? of butter)\b/i.test(qty)
+     || (/^[\d.\/\s]+$/.test(qty || '') && /^(pints?|quarts?|ounces?|pounds?|lbs?|fl\.?\s*oz|sticks?\s+(of\s+)?butter)\b/i.test(first)))
+    add('metric', 'not metric (convert cups, oz and lb)', true);
   if(qty && /^(tins?|cans?|jars?|packs?|packets?)\b/.test(first)) add('container', 'container word in the name (put "(1 tin)" in brackets)', false);
   /* New with the move: the two shapes the 6c-2 rewrite found that the list
      gets wrong, where the older checks only called them style. */
@@ -1734,6 +1813,18 @@ function ingredientMatchMap(aliases){
     if(a.kind !== 'ingredient') return;
     const from = shoppingKeyForName(a.alias), to = shoppingKeyForName(a.canonical);
     if(from && to && from !== to) map.set(from, to);
+  });
+  /* Followed to the end of the chain (the October review's F16). Merge A into B,
+     then later B into C: B's own lines went to C but A's still went to B, so a row
+     "B" came back holding only A's lines, and MERGE on it wrote B → C again, a
+     no-op, so it could never be closed from the list. A cycle (A → B, B → A) stops
+     where it would revisit a name, so each name still lands on one row. */
+  map.forEach((to, from) => {
+    const seen = new Set([from]);
+    let end = to;
+    while(map.has(end) && !seen.has(end)){ seen.add(end); end = map.get(end); }
+    if(seen.has(end)) end = to;
+    map.set(from, end);
   });
   return map;
 }

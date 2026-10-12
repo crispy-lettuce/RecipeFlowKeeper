@@ -481,6 +481,8 @@ removed page was deleted), and no listed page missing.*
     *PRINT:* no cooking notes on the page. **What no test can judge: whether the box is quick enough to use with wet hands,
     and whether notes are where you look for them.**
 
+*39a reported passed by the household, 12 Oct.*
+
 38c. **CHECKED AGAINST THE PHOTO (new 30 Sep).** Writes one recipe row, on SAVE. (1) *EDIT the recipe from 38b:* under AGAINST
     THE SOURCE, beside the photo, is CHECKED AGAINST THE PHOTO. Read the lines against the photo, then tap it: it says
     "Recorded as checked against the photo when you save" with UNDO, and BEFORE YOU SAVE says so. (2) *SAVE:* the viewer's chip
@@ -510,6 +512,8 @@ removed page was deleted), and no listed page missing.*
     calendar carries on, with no second RecipeWrangler. **What no test can judge: whether Android shows the 20:00 notification for
     an all-day event, and whether the event reads well on the phone's lock screen.** Undo: switch the days off (their events go),
     then DISCONNECT; delete the RecipeWrangler calendar in Google if wanted.
+
+*40a reported passed by the household, 12 Oct.*
 
 40b. **The automatic calendar toggles (new 9 Oct, `docs/PLAN-CALENDAR-PUSH.md` §11; only after
     `docs/migrations/add-calendar-auto.md` is applied).** Writes the household's settings row, Planner rows, and events in the
@@ -555,6 +559,8 @@ removed page was deleted), and no listed page missing.*
     button it names is on screen as written. (5) *Print it from the browser:* A4, with no heading left alone at the foot of a page.
     **What no test can judge: whether the wording makes sense to someone who has never used the app.** Undo: nothing to undo.
 
+*42a reported passed by the household, 12 Oct.*
+
 43a. **Sharing recipes between households (new 10 Oct; `docs/PLAN-RECIPE-SHARING.md`; only after
     `docs/migrations/add-recipe-sharing.md` is applied and the second household made, `docs/ONBOARDING.md` §4).** Two devices,
     one signed in to each household. (1) *Before:* Settings → APP → RECIPE SHARING shows a name box, SHARE and "Nobody yet";
@@ -569,6 +575,8 @@ removed page was deleted), and no listed page missing.*
     stays. **Read-only afterwards:** the copy is a `recipes` row of their household with `copied_from` set; ours is untouched.
     Undo: STOP SHARING; delete the copy on their side if it is not wanted.
 
+*43a reported passed by the household, 12 Oct.*
+
 44a. **The weekly backup to Google Drive (new 10 Oct; `docs/PLAN-DRIVE-BACKUP.md`; only after its §4 steps 1 to 4).** (1)
     *Before reconnecting:* Settings → APP → BACKUP TO GOOGLE DRIVE says Google was connected without Drive, and offers CONNECT AGAIN
     FOR DRIVE. (2) *Tap it:* Google asks again, now for the calendar and Drive files; leave both ticked. Back in the app the calendar
@@ -578,6 +586,8 @@ removed page was deleted), and no listed page missing.*
     *A week later*, no tap needed: opening the app saves the next one. **Read-only afterwards:** `calendar_connections.drive_backup_at`
     is set and `drive_last_error` empty; `scope` includes `drive.file`. Undo: DISCONNECT stops it; delete the folder in Drive if
     unwanted. **Do not** IMPORT DATA as a test: it replaces everything.
+
+*44a reported passed by the household, 12 Oct.*
 
 45a. **Parse feedback, seconds, COOKING MODE and Drink (new 11 Oct; issues #85, #86, #89, #93).** Writes nothing unless you save.
     (1) *NEW RECIPE, then PARSE & PREVIEW with the box empty:* a toast says "Paste a recipe first". (2) *Paste a converted
@@ -589,12 +599,16 @@ removed page was deleted), and no listed page missing.*
     list Drink; each household reloads `converter/conversion-instructions.md` into its own conversion project. Undo: nothing
     to undo.
 
+*45a reported passed by the household, 12 Oct.*
+
 46a. **The FROZEN aisle (new 11 Oct; issue #90).** Writes one Settings row in (3) only. (1) *SHOPPING, a week with a recipe whose
     ingredient line says frozen planned:* those lines are under FROZEN, the last
     section before OTHER, where they were under OTHER before; a tick already on one is still there. (2) *PRINT and PNG:* FROZEN
     is in both. (3) *Settings → INGREDIENTS → SHOPPING AISLES:* the aisle list offers FROZEN; put something there (e.g. ice
     cream, if you have it) and it moves to FROZEN on the list. **The other household:** one of their lines moves to FROZEN too
     (counted, not read). Undo: REMOVE the aisle in Settings.
+
+*46a reported passed by the household, 12 Oct.*
 
 47a. **Your own photo as a recipe's picture (new 11 Oct; issue #92).** Writes one recipe row and stores one file, on SAVE.
     (1) *EDIT a recipe of your own, UPLOAD PHOTO:* the tablet offers the camera or the gallery; take or pick one. It shows
@@ -613,6 +627,8 @@ removed page was deleted), and no listed page missing.*
     says "A new version is ready"; RELOAD brings it in, and step (1)'s toast names the new version. **The other
     household** sees the same toast once, and the list. Undo: nothing to undo.
 
+*48a reported passed by the household, 12 Oct.*
+
 49a. **Lost changes, part 1 (new 12 Oct; the October review's PR 4).** Uses a throwaway recipe you add and delete, and one
     Planner day. (1) *ADD a throwaway recipe (any made-up text). On a day next week, put it on with one other dish, and mark
     the other dish PRE-MADE · DINNER. Then DELETE the throwaway recipe:* the other dish still reads PRE-MADE · DINNER, and is
@@ -623,6 +639,8 @@ removed page was deleted), and no listed page missing.*
     **Read-only afterwards:** that day's `recipe_logs` row has `meal_type = 'lunch'`, and there is one, not two. Undo: take the
     dishes off the days, and REMOVE the diary entries you made.
 
+*49a reported passed by the household, 12 Oct.*
+
 50a. **Several households (new 12 Oct; the October review's PR 6; only after `docs/migrations/harden-default-privileges.md`).**
     (1) *Tick one item on the shopping list. Settings → APP, change the day weeks start on:* it asks first, saying the ticks
     will be cleared. *Cancel:* the day is as it was and the tick is still there. *Change it again and OK:* the tick has gone.
@@ -630,6 +648,32 @@ removed page was deleted), and no listed page missing.*
     reload either device, and the star is still there. (3) *Change APPEARANCE on one device while another has the app open,
     then change the week's first day on the other:* reload both, and both changes have stuck. **Read-only afterwards:** this
     household's `household_settings` row holds both changes. Undo: put the settings back as they were.
+
+51a. **The parser and scaling (new 12 Oct; the October review's PR 7).** Writes nothing: nothing is saved. (1) *ADD RECIPE,
+    paste this made-up recipe, PARSE & PREVIEW:*
+
+    ```
+    TITLE: Test 51a
+    SOURCE: test
+    SERVINGS: 2
+    GROUP a:
+    1 pint milk
+    1 pinch nutmeg
+    1 L water
+    GROUP a:
+    100 grams oats
+    STAGE:
+    MERGE a -> b: Warm [5 min]
+    NOTES:
+    Merge the two halves before serving
+    ```
+
+    The diagram says GROUP "a" is written more than once. "1 pint milk" is flagged as not metric. The NOTES sentence is
+    **not** listed as a line the app couldn't read. (2) *Change the second `GROUP a:` to `GROUP c:` and the MERGE to
+    `MERGE a, c -> b: Warm [5 min]`, PARSE & PREVIEW:* the error has gone. (3) *SCALE TO SERVE 4, APPLY:* the text reads
+    `2 pinches nutmeg`, `2 L water` and `200 grams oats`. (4) *UNDO SCALE, then SCALE TO SERVE 3, APPLY:* `1 pinch nutmeg`
+    is unchanged, and the water reads `1 1/2 L water`. Leave without saving. **Not on the tablet:** the shopping list showing
+    "tinned" as written is checked in `test/core.test.js` only. Undo: nothing to undo.
 
 ## Deferred to the tablet, after merging
 
