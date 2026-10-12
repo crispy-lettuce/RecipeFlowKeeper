@@ -1,4 +1,8 @@
 [
+  { "version": "2026-10-12.2", "date": "2026-10-12",
+    "changes": ["A change saved while the connection was failing can no longer be overwritten later by an older one when both finally go through.",
+                "A meal type chosen while the diary entry itself hadn't saved yet is now kept, and arrives after it.",
+                "A diary entry removed while it was still failing to save no longer comes back."] },
   { "version": "2026-10-12.1", "date": "2026-10-12",
     "changes": ["Deleting a recipe no longer turns other PRE-MADE dishes on the same days back into fresh ones.",
                 "REMOVE on a meal from the freezer in History also takes PRE-MADE off that dish, so it doesn't come back.",

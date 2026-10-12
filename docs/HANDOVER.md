@@ -2472,6 +2472,50 @@ nothing to deploy for it.
 
 *Not verified:* the live app. Tablet step 49a covers it.
 
+**The October review, PR 5: the write queue (12 Oct 2026; F5, F8).** #118 (PR 4) merged first.
+- **F5.** A write to one row carries a key, `'table:row'` for the whole row and `'table:row#cols'` for some columns.
+  When it lands, older failed writes it covers leave the pile instead of being retried over it. A whole-row write
+  covers its row's writes of any kind; a partial one covers only the same columns.
+  - 23 single-row writes carry keys: recipes, the diary, Planner days, settings, cooking notes, ticks, groups, the
+    shortlist, swaps, word matches and aisles.
+  - Imports, writes of several rows and function calls are unkeyed and retried as before.
+  - A write's follow-up moved from inside its function to `{ after }`, so it still runs when the write is covered by a
+    later one. These are FOLD INTO NOTES' note delete and a deleted recipe's file removal, both from PR 4.
+  - A diary delete also drops a still-failing insert of the same entry, which would otherwise have re-created what the
+    household removed.
+- **F8.** `updateDiaryEntry` throws, marked as waiting, while its entry's insert is unsaved, instead of returning as if
+  it had landed. The meal type goes on the pile behind the insert and arrives after it. It adds no toast of its own;
+  the insert's failure has already said so.
+- **The stub.** `__WRITE_FAIL_TABLES__[table] = { how, times }` fails the next n writes and then lets them land, and
+  `__WRITE_FAILS__` counts the failures.
+- `changelog.json` **2026-10-12.2**. `CLAUDE.md`'s line on `queueWrite` gives the key rule.
+
+*Verified by.*
+- `node test/core.test.js` 153, exit 0.
+- `node test/build.js && node test/smoke.js` **537** (530 before), exit 0, no console or page errors, also in a run
+  beside another.
+- `help-guide.js` 7, exit 0.
+- **Seven new checks:**
+  - a favourite on (refused twice) then off;
+  - two saves of one recipe;
+  - both saves failing, then retried in order;
+  - a favourite after a refused text save, which must not drop it;
+  - a meal type during a failing insert;
+  - a delete during a failing insert;
+  - FOLD INTO NOTES covered by a later save.
+- **Mutations, each failing by name:**
+  - nothing dropped;
+  - a partial write covering the whole row (survived at first, because that check read only the last upsert sent;
+    tightened to the order of every write);
+  - the follow-up lost when covered;
+  - `return` instead of `throw`;
+  - the diary delete unkeyed;
+  - the favourite patch unkeyed.
+- **One mutation survives, as expected:** removing the "older only" guard in `writeCovers`. The pile is always taken
+  whole and in order, so no path reaches it; the comment says so.
+
+*Not verified:* live. The failure needs a server error twice in a row, which no tablet step can make on demand.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export

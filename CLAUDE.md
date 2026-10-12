@@ -93,7 +93,7 @@ node test/build.js && node test/smoke.js
 
 `core.test.js` is 153 checks in Node, in about two seconds: the pure functions, the dictionary, the
 shopping list's naming rules, and the rules that keep `core.js` and `index.html` apart. The smoke
-suite is 530 checks. **Run both,
+suite is 537 checks. **Run both,
 always** — `smoke.js` loads what `build.js` wrote, so skipping the build
 tests your previous edit and reports a pass or a failure that belongs to code you have changed.
 
@@ -117,7 +117,10 @@ an on-screen label, or `help.html`, run `node test/help-guide.js` (7 checks).
 ## Things that will bite
 
 - **Every `load*`/`save*` is synchronous.** Writes queue in the background via `queueWrite`,
-  which always returns `true` immediately. Don't await them; don't make them async.
+  which always returns `true` immediately. Don't await them; don't make them async. A write to one row passes
+  `{ key }` (`'table:row'` for the whole row, `'table:row#cols'` for some columns): when it lands, older failed writes
+  it covers are dropped rather than retried over it (12 Oct, F5). A step that must follow a write goes in
+  `{ after }`, never inside its function, so it still runs when the write is covered.
 - **An exception inside `hydrate()` at start-up signs the user out** — any except a network
   failure. The failure mode is a login screen you can't escape. Use `.maybeSingle()` where a row
   might legitimately not exist.

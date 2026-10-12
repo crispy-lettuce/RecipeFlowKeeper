@@ -36,7 +36,11 @@
                          fail, as a dead network or as a server that answered and
                          said no (a policy, a constraint), while every other table's
                          land (12 Oct 2026, the October review's PR 4: a delete refused
-                         while the writes queued beside it went through)
+                         while the writes queued beside it went through). Or
+                         { how: 'network' | 'refused', times: n }: the next n writes
+                         to it fail, then they land (PR 5, the write queue: a write
+                         that fails twice and then lands). __WRITE_FAILS__ counts
+                         every failure by table.
 
      The failure is an error OBJECT with the browser's text as its message,
      not a thrown TypeError — that is what postgrest-js actually hands back,
@@ -97,8 +101,13 @@
      Now a favourite is an update and a removal is a delete, and a check on
      "a refresh stands down while a save has failed" needs those to be able
      to fail too, or it would pass against a save that never ran. */
+  window.__WRITE_FAILS__ = {};
   function settle(table){
-    const how = (window.__WRITE_FAIL_TABLES__ || {})[table];
+    let how = (window.__WRITE_FAIL_TABLES__ || {})[table];
+    if(how && typeof how === 'object'){
+      if(how.times > 0){ how.times--; how = how.how; } else how = null;
+    }
+    if(window.__WRITE_FAIL__ || how) window.__WRITE_FAILS__[table] = (window.__WRITE_FAILS__[table] || 0) + 1;
     const outcome = window.__WRITE_FAIL__ || how === 'network' ? { error: NETWORK_ERROR }
       : how === 'refused' ? { error: REFUSED_ERROR } : { error: null };
     const done = later(outcome, window.__WRITE_DELAY__).then(v => { window.__LOG__.push('write-done:' + table); return v; });

@@ -5626,6 +5626,171 @@ const check = (name, pass, detail) => {
         !!lxCard && lxCard.broken && /PHOTO CAN'T BE SHOWN/.test(lxCard.after), JSON.stringify(lxCard));
   await lx.close();
 
+  /* ---- The write queue (12 Oct 2026, the October review's PR 5: F5, F8) ----
+     A write that fails twice and then lands must not overtake a later write to the same row, and a diary change made
+     while its entry's insert is failing must arrive after it. The stub's { how, times } switch fails a table's next n
+     writes, then lets them land: the shape no earlier check could make. */
+  console.log('\nThe write queue');
+  const wq = await browser.newPage();
+  wq.__label = 'write queue';
+  /* Every write these checks fail on purpose is logged as failed, and the diary's waiting update says what it waits for. */
+  wq.__expectConsole = /^Sync failed: (recipes|the food diary|cooking notes) /;
+  await wq.addInitScript(() => { window.__STUB_EXTRA__ = { recipe_notes: [] }; });
+  await wq.clock.setFixedTime(FIXTURE_NOW);
+  await wq.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await wq.waitForTimeout(1500);
+  const wqDrain = () => wq.evaluate(async () => { let t; do { t = writeQueue; await t; } while(t !== writeQueue); });
+  const wqCopy = title => wq.evaluate(title => {
+    const r = { ...loadRecipes().find(x => x.title === 'Test Pasta'), id: uid(), title, history: [], favourite: false };
+    saveRecipe(r);
+    return r.id;
+  }, title);
+  /* A write to another table, so the pile is re-run, as any later tap would. */
+  const wqNudge = () => wq.evaluate(() => saveTick('2026-01-05', 'wq nudge ' + Math.random(), true));
+
+  // 1. F5: favourite on fails twice; favourite off lands; the old "on" never lands after it.
+  const wqFav = await wqCopy('WQ Favourite');
+  await wqDrain();
+  const wqM1 = await wq.evaluate(id => {
+    window.__WRITE_FAIL_TABLES__ = { recipes: { how: 'refused', times: 2 } };
+    const m = window.__WRITES__.length;
+    const r = cache.recipes.find(x => x.id === id);
+    r.favourite = true; patchRecipe(id, { favourite: true });
+    return m;
+  }, wqFav);
+  await wqDrain();
+  await wq.evaluate(id => { const r = cache.recipes.find(x => x.id === id); r.favourite = false; patchRecipe(id, { favourite: false }); }, wqFav);
+  await wqDrain();
+  await wqNudge(); await wqDrain();
+  await wqNudge(); await wqDrain();
+  const wqFavOut = await wq.evaluate(([m, id]) => ({
+    sent: window.__WRITES__.slice(m).filter(w => w.table === 'recipes' && w.op === 'update' && w.match && w.match.value === id).map(w => w.patch.favourite),
+    fails: window.__WRITE_FAILS__.recipes || 0, unsent: [...unsentLabels], pile: failedWrites.length }), [wqM1, wqFav]);
+  check('a favourite switched on (refused twice) then off: the last one sent is off, and the older on is never sent after it (F5)',
+        wqFavOut.fails === 2 && wqFavOut.sent[wqFavOut.sent.length - 1] === false && wqFavOut.sent.lastIndexOf(true) < wqFavOut.sent.indexOf(false)
+        && wqFavOut.pile === 0 && !wqFavOut.unsent.includes('recipes'), JSON.stringify(wqFavOut));
+
+  // 2. F5: two saves of one recipe's text; the first fails twice; the second's text is the last sent, the first never again.
+  const wqEdit = await wqCopy('WQ Edited Twice');
+  await wqDrain();
+  const wqM2 = await wq.evaluate(id => {
+    window.__WRITE_FAIL_TABLES__ = { recipes: { how: 'refused', times: 2 } };
+    const m = window.__WRITES__.length;
+    const r = { ...cache.recipes.find(x => x.id === id), equipment: 'first edit' };
+    saveRecipe(r);
+    return m;
+  }, wqEdit);
+  await wqDrain();
+  await wq.evaluate(id => saveRecipe({ ...cache.recipes.find(x => x.id === id), equipment: 'second edit' }), wqEdit);
+  await wqDrain();
+  await wqNudge(); await wqDrain();
+  const wqEditOut = await wq.evaluate(([m, id]) => window.__WRITES__.slice(m).filter(w => w.table === 'recipes' && w.op === 'upsert' && w.rows[0].id === id)
+    .map(w => w.rows[0].equipment), [wqM2, wqEdit]);
+  check('    two saves of one recipe, the first refused twice: the second is the last sent, and the first is not sent again after it',
+        wqEditOut[wqEditOut.length - 1] === 'second edit' && wqEditOut.lastIndexOf('first edit') < wqEditOut.indexOf('second edit'), JSON.stringify(wqEditOut));
+
+  // 2b. Both saves fail, then are retried in order: the older landing first never drops the newer one.
+  const wqBoth = await wqCopy('WQ Both Failed');
+  await wqDrain();
+  const wqM2b = await wq.evaluate(id => {
+    window.__WRITE_FAIL_TABLES__ = { recipes: { how: 'network', times: 3 } };
+    const m = window.__WRITES__.length;
+    saveRecipe({ ...cache.recipes.find(x => x.id === id), equipment: 'older' });
+    return m;
+  }, wqBoth);
+  await wqDrain();
+  await wq.evaluate(id => saveRecipe({ ...cache.recipes.find(x => x.id === id), equipment: 'newer' }), wqBoth);
+  await wqDrain();
+  await wq.evaluate(() => flushFailedWrites()); await wqDrain();
+  const wqBothOut = await wq.evaluate(([m, id]) => ({ sent: window.__WRITES__.slice(m).filter(w => w.table === 'recipes' && w.op === 'upsert' && w.rows[0].id === id)
+    .map(w => w.rows[0].equipment), pile: failedWrites.length }), [wqM2b, wqBoth]);
+  check('    both saves failing, then retried in order: the older lands first and the newer still lands after it',
+        wqBothOut.sent[wqBothOut.sent.length - 1] === 'newer' && wqBothOut.sent.slice(-2).join(',') === 'older,newer' && wqBothOut.pile === 0, JSON.stringify(wqBothOut));
+
+  // 3. A partial write never drops an older failed whole-row write: the text still arrives.
+  const wqPart = await wqCopy('WQ Text Then Star');
+  await wqDrain();
+  const wqM3 = await wq.evaluate(id => {
+    window.__WRITE_FAIL_TABLES__ = { recipes: { how: 'refused', times: 2 } };
+    const m = window.__WRITES__.length;
+    saveRecipe({ ...cache.recipes.find(x => x.id === id), equipment: 'text that must arrive' });
+    return m;
+  }, wqPart);
+  await wqDrain();
+  await wq.evaluate(id => { const r = cache.recipes.find(x => x.id === id); r.favourite = true; patchRecipe(id, { favourite: true }); }, wqPart);
+  await wqDrain();
+  await wqNudge(); await wqDrain();
+  /* Every write to this recipe in order: the save (refused), its retry (refused), the favourite, then the save again,
+     which is the one that lands. Reading only the last upsert would pass on a save that was refused twice and dropped. */
+  const wqPartOut = await wq.evaluate(([m, id]) => ({
+    order: window.__WRITES__.slice(m).filter(w => w.table === 'recipes' && ((w.rows && w.rows[0].id === id) || (w.match && w.match.value === id)))
+      .map(w => w.op === 'upsert' ? 'save:' + w.rows[0].equipment : w.op),
+    pile: failedWrites.length, unsent: [...unsentLabels] }), [wqM3, wqPart]);
+  check('    a favourite tapped after a refused save of the text does not drop that save: the text is sent again after it, and lands',
+        wqPartOut.order.join(',') === 'save:text that must arrive,save:text that must arrive,update,save:text that must arrive'
+        && wqPartOut.pile === 0 && !wqPartOut.unsent.includes('recipes'), JSON.stringify(wqPartOut));
+
+  // 4. F8: a meal type tapped while the entry's insert is failing arrives after it.
+  const wqM4 = await wq.evaluate(() => {
+    window.__WRITE_FAIL_TABLES__ = { recipe_logs: { how: 'network', times: 2 } };
+    const m = window.__WRITES__.length, l = window.__LOG__.length;
+    const e = addDiaryEntry({ recipeId: loadRecipes()[0].id, cookedOn: '2026-09-20' });
+    window.__WQ_ENTRY__ = e.id;
+    return [m, l];
+  });
+  await wqDrain();
+  await wq.evaluate(() => updateDiaryEntry(window.__WQ_ENTRY__, { mealType: 'lunch' }));
+  await wqDrain();
+  await wq.evaluate(() => flushFailedWrites());
+  await wqDrain();
+  const wqDiary = await wq.evaluate(([m]) => {
+    const id = window.__WQ_ENTRY__;
+    const ws = window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs');
+    return { order: ws.map(w => w.op + (w.op === 'update' ? ':' + w.patch.meal_type : '')),
+      cache: loadDiary().find(e => e.id === id).mealType, pile: failedWrites.length, unsent: [...unsentLabels], saved: !unsavedDiaryIds.has(id) };
+  }, wqM4);
+  check('a meal type tapped while its entry\'s insert is failing is sent after the insert lands, not dropped (F8)',
+        wqDiary.order[wqDiary.order.length - 2] === 'insert' && wqDiary.order[wqDiary.order.length - 1] === 'update:lunch'
+        && wqDiary.cache === 'lunch' && wqDiary.saved && wqDiary.pile === 0 && !wqDiary.unsent.includes('the food diary'), JSON.stringify(wqDiary));
+
+  // 5. A delete drops a failing insert: the entry the household removed is not created afterwards.
+  const wqM5 = await wq.evaluate(() => {
+    window.__WRITE_FAIL_TABLES__ = { recipe_logs: { how: 'network', times: 2 } };
+    const m = window.__WRITES__.length;
+    window.__WQ_GONE__ = addDiaryEntry({ recipeId: loadRecipes()[0].id, cookedOn: '2026-09-19' }).id;
+    return m;
+  });
+  await wqDrain();
+  await wq.evaluate(() => deleteDiaryEntry(window.__WQ_GONE__));
+  await wqDrain();
+  await wq.evaluate(() => flushFailedWrites()); await wqDrain();
+  await wqNudge(); await wqDrain();
+  const wqGone = await wq.evaluate(m => window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs').map(w => w.op), wqM5);
+  check('    an entry removed while its insert is failing: once the delete lands, the insert is never sent again',
+        wqGone[wqGone.length - 1] === 'delete' && wqGone.filter(o => o === 'insert').length === 2, JSON.stringify(wqGone));
+
+  // 6. A save's follow-up survives the save being covered: FOLD INTO NOTES still deletes its note, once.
+  const wqFold = await wqCopy('WQ Fold Covered');
+  await wqDrain();
+  const wqNote = await wq.evaluate(id => addRecipeNote(id, 'A made-up note for the queue').id, wqFold);
+  await wqDrain();
+  const wqM6 = await wq.evaluate(([id, n]) => {
+    window.__WRITE_FAIL_TABLES__ = { recipes: { how: 'refused', times: 2 } };
+    const m = window.__WRITES__.length;
+    cache.recipeNotes = loadRecipeNotes().filter(x => x.id !== n);
+    saveRecipe({ ...cache.recipes.find(x => x.id === id), equipment: 'folded' }, () => queueRecipeNoteDelete(n));
+    return m;
+  }, [wqFold, wqNote]);
+  await wqDrain();
+  await wq.evaluate(id => saveRecipe({ ...cache.recipes.find(x => x.id === id), equipment: 'folded, then edited' }), wqFold);
+  await wqDrain();
+  const wqFoldOut = await wq.evaluate(([m, n]) => window.__WRITES__.slice(m).filter(w => w.table === 'recipe_notes' && w.op === 'delete')
+    .map(w => w.eqs.map(e => e.value)[1]).filter(x => x === n).length, [wqM6, wqNote]);
+  check('    a save carrying FOLD INTO NOTES, covered by a later save before it landed: the note is still deleted, once',
+        wqFoldOut === 1, String(wqFoldOut));
+  await wq.evaluate(() => { window.__WRITE_FAIL_TABLES__ = {}; });
+  await wq.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:
