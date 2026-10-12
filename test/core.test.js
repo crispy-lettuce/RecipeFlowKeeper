@@ -935,6 +935,54 @@ check('a household\'s own aisle wins over the word frozen, and Frozen can be cho
 check('Frozen is the last aisle, and the last section of the shopping list',
       core.INGREDIENT_AISLES[core.INGREDIENT_AISLES.length - 1] === 'Frozen' && core.SHOPPING_CATEGORIES[core.SHOPPING_CATEGORIES.length - 1].name === 'Frozen');
 
+/* ---- The stub answers every query the app makes (12 Oct 2026, the October review, F47) ----
+   test/stub.js stands in for supabase-js, and a method the app chains that the stub lacks is a TypeError, which queueWrite
+   can swallow into a toast while the suite stays green: that is how a missing update() once hid a broken diary save
+   (stub.js says so). So every method the app chains onto sb.from(…), before and after update()/delete(), and onto
+   sb.storage.from(…), is listed from index.html's source and looked for in the stub. A query built in steps
+   (`let q = sb.from(t).delete()…; q = q.not(…)`) is followed through its variable. */
+{
+  const stubSrc = fs.readFileSync(path.join(ROOT, 'test', 'stub.js'), 'utf8');
+  const methodsOf = fn => {
+    const at = stubSrc.indexOf('function ' + fn + '(');
+    const body = at < 0 ? '' : stubSrc.slice(at, stubSrc.indexOf('\n  }\n', at));
+    return new Set([...body.matchAll(/^\s+(\w+)\s*\([^)]*\)\s*\{/gm)].map(m => m[1]));
+  };
+  const stub = { read: methodsOf('builder'), filter: methodsOf('filterChain'), storage: methodsOf('storageBucket') };
+  const closeParen = i => {
+    for (let d = 0; i < pageSrc.length; i++) {
+      const c = pageSrc[i];
+      if (c === '(') d++;
+      else if (c === ')') { if (--d === 0) return i + 1; }
+      else if (c === "'" || c === '"' || c === '`') { for (i++; i < pageSrc.length && pageSrc[i] !== c; i++) if (pageSrc[i] === '\\') i++; }
+    }
+    return i;
+  };
+  const used = { read: new Set(), filter: new Set(), storage: new Set() };
+  const follow = (i, phase) => {
+    for (;;) {
+      const m = /^\s*\.\s*([A-Za-z_]\w*)\s*\(/.exec(pageSrc.slice(i, i + 200));
+      if (!m) return phase;
+      used[phase].add(m[1]);
+      if (phase === 'read' && (m[1] === 'update' || m[1] === 'delete')) phase = 'filter';
+      i = closeParen(i + m[0].length - 1);
+    }
+  };
+  const builtIn = {};
+  for (const m of pageSrc.matchAll(/(?:\b(?:let|const)\s+(\w+)\s*=\s*)?\bsb\s*\.\s*(storage\s*\.\s*)?from\s*\(/g)) {
+    const end = follow(closeParen(m.index + m[0].length - 1), m[2] ? 'storage' : 'read');
+    if (m[1]) builtIn[m[1]] = end;
+  }
+  /* …and through a function that hands one back (sourcePhotoStore() is sb.storage.from(SOURCE_PHOTO_BUCKET)). */
+  for (const m of pageSrc.matchAll(/function\s+(\w+)\s*\(\)\s*\{\s*return\s+sb\s*\.\s*(storage\s*\.\s*)?from\s*\(/g))
+    for (const c of pageSrc.matchAll(new RegExp('\\b' + m[1] + '\\s*\\(\\s*\\)', 'g'))) follow(c.index + c[0].length, m[2] ? 'storage' : 'read');
+  for (const [v, phase] of Object.entries(builtIn))
+    for (const m of pageSrc.matchAll(new RegExp('\\b' + v + '\\s*=\\s*' + v + '\\b', 'g'))) follow(m.index + m[0].length, phase);
+  const lacking = Object.entries(used).flatMap(([k, set]) => [...set].filter(n => !stub[k].has(n)).map(n => k + ':' + n));
+  check('the stub defines every query method the app chains (' + Object.entries(used).map(([k, v]) => k + ' ' + v.size).join(', ') + ')',
+        used.read.size >= 8 && used.filter.has('eq') && used.filter.has('not') && used.storage.size >= 3 && lacking.length === 0, lacking.join(', '));
+}
+
 const failed = checks.filter(c => !c.pass).length;
 console.log(`\n${checks.length} checks, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -10,7 +10,7 @@ Nobody else checks these. Each one is here because it went wrong at least once.
 1. **Tests.** `node test/core.test.js`, then `node test/build.js && node test/smoke.js`. Read the
    exit code (`echo $?`), not the number of `ok` lines. Run `core.test.js` even for a
    documentation change, since it also checks the generated dictionary. The smoke suite needs
-   `npm install playwright` once; `.gitignore` keeps what that writes out of the repo. If it can't
+   `npm install --no-save playwright@1.63.0` once (the version CI pins); `.gitignore` keeps what that writes out of the repo. If it can't
    find a browser in a cloud session, set `PLAYWRIGHT_CHROMIUM` to the `chrome` under
    `/opt/pw-browsers/chromium-*/chrome-linux/`.
 2. **`core.js` changed → bump its version in all three places at once:** `KITCHEN_CORE_VERSION`
@@ -91,9 +91,9 @@ node test/core.test.js
 node test/build.js && node test/smoke.js
 ```
 
-`core.test.js` is 152 checks in Node, in about two seconds: the pure functions, the dictionary, the
+`core.test.js` is 153 checks in Node, in about two seconds: the pure functions, the dictionary, the
 shopping list's naming rules, and the rules that keep `core.js` and `index.html` apart. The smoke
-suite is 515 checks. **Run both,
+suite is 517 checks. **Run both,
 always** — `smoke.js` loads what `build.js` wrote, so skipping the build
 tests your previous edit and reports a pass or a failure that belongs to code you have changed.
 

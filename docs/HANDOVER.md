@@ -2351,8 +2351,67 @@ the plan made from `docs/REVIEW-2026-10-FINDINGS.md`.
 - **`tsc --strict`** against stand-in Deno and Supabase declarations: each function has the same errors before and after
   (pre-existing implicit `any`s), and no new ones.
 
-*Not verified:* the functions as deployed. The household redeploys four and deletes one (the PR lists them with their JWT
-settings); `get_edge_function` then shows the versions.
+*Deployed and checked, 12 Oct 2026.* #102 merged at 07:32 UTC, and the household redeployed all five between 07:34 and
+07:37.
+- `list_edge_functions` shows `find-recipe-image` gone.
+- The versions are `calendar-auth` 4 (JWT off), `calendar-sync` 4, `drive-backup` 2, `rehost-images` 14 and
+  `source-ingredients` 4, the last four with JWT on.
+- `get_edge_function` on each found every new piece: `fetchImage` with `redirect: 'manual'`, the shared guard with
+  `nip\.io` and the trailing `\.?$`, `stillMember`, `staleConnection` and `reconnect: true`.
+- Five to eight lines spread through each repo file were found in the deployed copy, whitespace aside. That is a
+  spot-check, not a full diff.
+- The same morning, PrivateBackup's first scheduled backup on the new workflow (04:15 UTC) passed every step. It logged
+  `dump: tables=16 policies=52; live: tables=16 policies=52`, and its prune removed only the oldest dump (14 Sep). The
+  photo backup's first run on the new mirror script is the weekly one on 18 Oct.
+
+**The October review, PR 3: the public repo and the test harness (12 Oct 2026; F9, F28, F29, F30, F47).**
+- **`index-old.html` removed (F9).** It was the pre-Supabase app, renamed on 17 Aug.
+  - Pages served it at the app's address with no sign-in, and its seed data held complete recipes.
+  - It stays in history, as the household chose.
+  - `ARCHITECTURE.md` and the 23 Sep review are corrected.
+  - `test/image-integrity.js` no longer names the two library recipes whose photos were broken. The docs that tell
+    that story (`IMAGES.md`, this file, `TEST-PLAN.md`) and `rehost-images`' comments still name them; they are titles,
+    not recipe lines, and were left.
+- **Nothing reaches the network (F30, F47).**
+  - Every page `smoke.js` opens now goes through one wrapper. It records page errors and console errors under the
+    page's label: secondary pages used to fail only on uncaught exceptions, so an app `console.error` there passed.
+  - The wrapper refuses every http(s) request, unless the test answers it itself.
+  - The last checks prove no request reached the network, and that the live Storage addresses were among those
+    refused.
+  - Until now every run fetched the fixture's images from the live project, as the edge logs showed.
+  - The only console error now allowed is the client-side block. The old allowances (the sandbox's TLS proxy, a
+    runner's DNS) are gone because nothing goes out.
+  - The offline-start page names the one error it exists to provoke.
+- **`help-guide.js` (F28).**
+  - It strips comments from `index.html`, then requires each of the guide's 100 labels as the whole text of an element
+    or a string.
+  - Two labels the app builds from a template (SOURCE PHOTO, CHECKED AGAINST THE PHOTO) are matched to that template.
+  - Six labels failed the new check:
+    - the guide now quotes `⇄ SUBSTITUTION RECOMMENDATIONS` as it reads;
+    - the REMIND AT label wraps its hint in a span, so it reads exactly as before;
+    - `image/*` in an accept list had been read as the start of a comment, which hid two other labels; JS comments are
+      now taken out only where they start a line or follow a space.
+  - Under the old check, renaming GO in the app alone passed.
+- **The stub (F47).** `core.test.js` lists every query method `index.html` chains onto `sb.from(…)` and
+  `sb.storage.from(…)`, following a query built in steps through its variable and `sourcePhotoStore()`. It fails if
+  `test/stub.js` lacks one.
+- **CI (F29).** Playwright is pinned to 1.63.0, the version installed locally, with `--no-save`. The header no longer
+  carries a check count. `permissions: contents: read`.
+
+*Verified by.*
+- `node test/core.test.js` **153** (152 before), exit 0.
+- `node test/build.js && node test/smoke.js` **517** (515 before), exit 0, no console or page errors.
+- `help-guide.js` 7, `image-integrity.js` 35, `source-ingredients.js` 12, `calendar-push.js` 35, `drive-backup.js` 13:
+  all exit 0.
+- **Seven mutations, each failing by name:**
+  - GO renamed in the app only;
+  - REMIND AT back inside a longer label;
+  - the CHECKED AGAINST template renamed;
+  - the stub without `in()`;
+  - the stub without `limit()`;
+  - the catch-all route removed;
+  - a changed console message on the offline-start page.
+
 
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all

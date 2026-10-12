@@ -2,12 +2,16 @@
 
 Boots the real `index.html` in a headless browser with a fake Supabase behind
 it, walks every screen, and fails on any console error or broken expectation.
-No network, no account, no touching the live database.
+No network, no account, no touching the live database. Since 12 Oct 2026 (the October review, F30) that is enforced
+rather than assumed: every page `smoke.js` opens refuses each http(s) request it makes, unless the test answers it
+itself, and the run ends by checking that none reached the network. Until then the fixture's images, which carry the
+live project's Storage address, were fetched from it on every run. Every page also fails the run on a console error,
+not just the main one (F47); a page there to provoke one names it (`__expectConsole`).
 
 ## Running it
 
 ```sh
-npm install playwright   # once
+npm install --no-save playwright@1.63.0   # once; the version CI pins
 node test/build.js       # bake a runnable copy against the stub
 node test/smoke.js       # walk it; exits non-zero on any failure
 ```
@@ -43,7 +47,9 @@ block. `node tools/remeasure.js <export>` re-measures the whole library from an 
 outside the repo.
 
 `node test/help-guide.js` (7 checks, no browser) checks the how-to guide, `help.html`, against the app: every
-button it names (marked `<b class="ui">`) still appears in `index.html`, and every link from Settings → HELP and
+button it names (marked `<b class="ui">`) is still the whole text of an element or string in `index.html`, comments
+left out (since 12 Oct, F28: it used to accept the label as a substring anywhere, comments included, so renaming GO
+passed), and every link from Settings → HELP and
 from the guide's contents lands on a section that exists. Since 10 Oct it also checks that every link from the guide to a file in this repo (the conversion
 instructions, on GitHub) names a file that exists.
 
@@ -63,12 +69,14 @@ Both scripts use whichever Chromium Playwright installs. Set
 
 **`test/core.test.js` — the pure core, in Node.** Since 25 Sep (PR 6a) the parser, layout,
 quantity, scaling and naming functions live in `core.js`, which loads in Node as well as the page.
-152 checks, about two seconds, no browser: the behaviour the app relies on, the shopping list's naming
+153 checks, about two seconds, no browser: the behaviour the app relies on, the shopping list's naming
 and totalling (since PR 6b: the ingredient review's §6 checks, numbered as they are there, each run
 once against the mutation it names), the dictionary's master
 copy against the generated `converter/ingredient-names.md`, and three rules about the split —
 `core.js` never touches the page, nothing is defined in both files, and the two version stamps
-agree. Run it first; CI does.
+agree. Since 12 Oct (F47) it also lists every query method `index.html` chains onto `sb.from(…)` and
+`sb.storage.from(…)` and fails if `stub.js` lacks one, which would otherwise be a TypeError `queueWrite` can swallow.
+Run it first; CI does.
 
 ```sh
 node test/core.test.js
@@ -77,7 +85,7 @@ node test/core.test.js
 `build.js` inlines the real `core.js` into the built page, so the smoke suite below tests exactly
 what Pages serves.
 
-**515 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
+**517 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, the automatic image
 re-host on save, what happens when you come back to the tab (online, offline, mid-save, after a

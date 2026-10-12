@@ -267,7 +267,7 @@ Keep Awake can only be tested on a real tablet.
 | `tools/generate-ingredient-names.js` | Writes `converter/ingredient-names.md` from the dictionary in `core.js`; `--check` fails if they differ. |
 | `tools/remeasure.js` | Totals an app export (kept **outside** the repo) with the app's own `core.js` and reports rows, likely splits, "Other" rows, lines the list can't total and lines the parser reads past. Refuses a file inside the repo. Run every ten or so new recipes (27 Sep). |
 | `supabase/functions/` | Edge Functions. `rehost-images` is the image re-hosting sweep (R7); `find-recipe-image` reports a page's candidate hero images and their real sizes, read-only; `source-ingredients` (27 Sep) returns a source page's own ingredient list, read-only, for the preview's source check. All need a signed-in caller. See `docs/IMAGES.md` and `docs/INFRASTRUCTURE.md`. |
-| `index-old.html` | The pre-Supabase version, kept for reference. **Not used, not served, not maintained** — don't edit it thinking it's live. |
+| ~~`index-old.html`~~ | **Removed 12 Oct 2026** (the October review, F9). The pre-Supabase version, renamed from `index.html` on 17 Aug. It was not "not served", as this row used to say: Pages served it at the app's address with `index-old.html` appended, with no sign-in, and its seed data carried complete recipes. It is still in git history (`git show c19020f:index-old.html`); the household chose not to rewrite history for it. |
 | `converter/` | Conversion instructions and the standing test set for writing recipes. |
 | `test/` | Offline test harness. |
 | `docs/` | Everything listed in `docs/DOCUMENT-INDEX.md` under "The documents". |
