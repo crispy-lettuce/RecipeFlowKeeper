@@ -6,7 +6,7 @@ browser's devtools.
 
 ## Why this is worth doing properly
 
-`node test/build.js && node test/smoke.js` passes 329 checks and **proves nothing here.** The
+`node test/build.js && node test/smoke.js` passes 547 checks (12 Oct 2026; it said 329 here until then) and **proves nothing here.** The
 suite replaces Supabase with a stub, so it can tell you the app *asks* for a re-host and what it
 does with the answer, but not that anything is ever copied, stored, or survives a reload. These
 eleven steps are the only thing that can.
@@ -18,9 +18,11 @@ failure mode that looks exactly like success — see "What step 4 is really test
 
 ## Before you start
 
-1. **Hard-reload the app.** Ctrl-Shift-R, or Cmd-Shift-R on a Mac. Then go to **SETTINGS** and
+1. **Hard-reload the app.** Ctrl-Shift-R, or Cmd-Shift-R on a Mac. Then go to **SETTINGS → LIBRARY** and
    check there is a **RECIPE PHOTOS** block with two buttons. **If it is not there, stop** — the
    deploy has not reached your browser and nothing below will mean anything.
+   *(RECIPE PHOTOS has been under the LIBRARY tab since 30 Sep; this step and steps 7 and 9 said SETTINGS alone until
+   12 Oct. Corrected 12 Oct 2026, the October review's Appendix B.)*
 2. **Take an export.** Sidebar → **EXPORT DATA**. Keep the file. It is your undo for this whole
    session; the nightly `PrivateBackup` dump is the other one.
 3. **Have a recipe page ready** that you don't mind adding — any recipe site with a decent photo.
@@ -134,7 +136,7 @@ select
 
 ### 7. Settings → CHECK STORED IMAGES
 
-**SETTINGS** → **RECIPE PHOTOS** → **CHECK STORED IMAGES**. Takes about a second per image, so
+**SETTINGS** → **LIBRARY** → **RECIPE PHOTOS** → **CHECK STORED IMAGES**. Takes about a second per image, so
 give it half a minute.
 
 **Expect:** *"All 30 stored photos are intact."* (or whatever your count is).
@@ -174,7 +176,7 @@ received it. So:
    database doesn't have your change — the toast was telling you so.
 2. Tap any recipe's favourite star twice (on, then off). Each of those saves sends the *whole*
    library, including the change that failed.
-3. **SETTINGS → RE-HOST EXTERNAL IMAGES.** Expect **"1 copied in"**, and the card to show the
+3. **SETTINGS → LIBRARY → RE-HOST EXTERNAL IMAGES.** Expect **"1 copied in"**, and the card to show the
    stored photo.
 
 *This step used to say "go back online, hard-reload, and expect 1 copied in". That could never

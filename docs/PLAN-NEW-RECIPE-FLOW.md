@@ -3,7 +3,10 @@
 **Written 29 Sep 2026** (date from `date -u`), in a planning session that changed no code. Checked
 against `main` at `55cd5a6` (PR #39) and the live database, read-only, the same day. The household
 answered the questions in §4 during the session, so this document is a set of decisions, not a
-proposal. **Nothing in it has been built.**
+proposal. **All eight PRs, and PR 5b, have since been built and merged** (PR 1 as #41 to PR 8 as #53, PR 5b
+as #48; 29 Sep, the last at 00:11 UTC on 30 Sep; each entry's "Built as" note in §8 says where the code differs
+from the text). *(Corrected 12 Oct 2026, the October review's F13: this said "Nothing in it has been built", true
+when written.)*
 
 **Who this is for.** An implementation session, probably on a less capable model, taking one PR at a
 time. Each PR entry in §8 is written to be self-contained: what to change, where, the exact rule,

@@ -32,8 +32,9 @@ which still displays. §2 has the detail.
 
 Two cases the save cannot cover — a **restore from backup**, and a save made **offline** — so the
 old sweep over every recipe is still there, as a catch-up. It is now a button:
-**Settings → RECIPE PHOTOS → RE-HOST EXTERNAL IMAGES**. The browser console is no longer needed for
-anything in normal use.
+**Settings → LIBRARY → RECIPE PHOTOS → RE-HOST EXTERNAL IMAGES**. The browser console is no longer needed for
+anything in normal use. *(The LIBRARY tab since 30 Sep; this page said Settings → RECIPE PHOTOS until 12 Oct. Corrected
+12 Oct 2026, the October review's Appendix B.)*
 
 **It cannot be done from the app's own page** because most recipe CDNs send no CORS headers, so
 the browser is not allowed to read the bytes. That is why there is a server-side function at
@@ -81,7 +82,7 @@ after adding a recipe normally.
 
 ### From Settings (the normal way)
 
-**Settings → RECIPE PHOTOS** has two buttons:
+**Settings → LIBRARY → RECIPE PHOTOS** has two buttons:
 
 | Button | What it does |
 | --- | --- |
@@ -426,7 +427,7 @@ is possible and small, if you ever want to photograph your own cooking.
 | Sweep reports `JPEG ends correctly but carries too little image data` | The density check — the file is terminated but not full | Working as intended. Find a different URL (§3). If you believe the photo is genuinely fine, check its bytes/pixel in `data.all` before changing the threshold |
 | Sweep reports `failed` with `truncated JPEG: no end-of-image marker` | The source is serving a broken file | Working as intended — it stopped rather than storing it. Find a different URL (§3) |
 | Sweep reports `failed` with `transfer truncated: server declared N bytes, got M` | The download died mid-flight | Usually transient. Re-run the sweep; if it repeats, the host is at fault and needs a different URL |
-| Saved a recipe and the photo is still on the source's server | The queued call failed — most often no connection at the moment of saving | You will have seen a "couldn't save…" toast. If the recipe's own save failed too, save any recipe once you're connected (a favourite tap will do) so the database has the new URL; then **Settings → RECIPE PHOTOS → RE-HOST EXTERNAL IMAGES** picks it up |
+| Saved a recipe and the photo is still on the source's server | The queued call failed — most often no connection at the moment of saving | You will have seen a "couldn't save…" toast. If the recipe's own save failed too, save any recipe once you're connected (a favourite tap will do) so the database has the new URL; then **Settings → LIBRARY → RECIPE PHOTOS → RE-HOST EXTERNAL IMAGES** picks it up |
 | Restored a backup and everything is hotlinked again | Correct and expected. A restore does not go through the save path (§5) | Press **RE-HOST EXTERNAL IMAGES** once afterwards |
 | Edited a photo, and after a later edit the old one is back | The `image_url` column and the `IMAGE:` line in the recipe text disagree, so re-parsing reverts the column | Fixed on the save path since 22 Sep (§3). Run the third query in §7; if it is not 0, re-save the recipes it names |
 | Sweep reports `not a public https address` or `redirected somewhere this will not follow` | Since 11 Oct 2026 the sweep fetches only public https addresses, checking every redirect (the October review, F4) | Use the image's https address, or UPLOAD PHOTO |
@@ -505,7 +506,7 @@ you the threshold is wrong rather than the photo.
 
 | | |
 | --- | --- |
-| Function source | `supabase/functions/rehost-images/index.ts` (the sweep). `find-recipe-image` was removed on 11 Oct 2026 (the October review, F3) |
+| Function source | `supabase/functions/rehost-images/index.ts` (the sweep). `find-recipe-image` was removed from the repo by #102 (merged 12 Oct 2026) and deleted from the project the same day (the October review, F3) |
 | Deployed as | `rehost-images`, `verify_jwt: true`; `docs/INFRASTRUCTURE.md` has its version. **A deploy is a commit**: v8 went live from an uncommitted copy and the repo drifted for a day (`docs/REVIEW-ARCHITECTURE-FINDINGS.md` F4). Change the file, commit, then deploy |
 | Called from | **The app**, on save (`rehostImageFor`) and from Settings (`runImageSweep`), and by hand from the console. v8 added the optional `recipeId`; a call without it behaves exactly as v7 |
 | Tests | `node test/image-integrity.js` — 35 checks over the integrity checker, `parseRecipeFilter` and the address guard. The save path is covered by `node test/build.js && node test/smoke.js` |

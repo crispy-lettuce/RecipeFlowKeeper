@@ -16,8 +16,11 @@ node test/build.js       # bake a runnable copy against the stub
 node test/smoke.js       # walk it; exits non-zero on any failure
 ```
 
-Since 23 Sep the same three commands run in GitHub Actions on every pull request and every push
-to `main` (`.github/workflows/tests.yml`), so the gate no longer depends on anyone remembering.
+Since 23 Sep these run in GitHub Actions on every pull request and every push to `main`
+(`.github/workflows/tests.yml`), so the gate no longer depends on anyone remembering. CI runs seven steps after the
+install: `core.test.js`, then `build.js` and `smoke.js`, then `image-integrity.js`, `source-ingredients.js`,
+`calendar-push.js`, `drive-backup.js` and `help-guide.js`. *(Corrected 12 Oct 2026, the October review's Appendix B:
+this said "the same three commands", and the page did not name `image-integrity.js` or `drive-backup.js`.)*
 Results print as each check runs; a crash prints `CRASH after N checks` and the last `ok` line
 names where it died.
 
@@ -39,6 +42,11 @@ pages' own ingredient lists, keyed by `TITLE:` and kept outside the repo, run th
 `core.js` run inside the page, not from a second reading of `converter/ingredient-names.md`, and a
 recipe whose text carries a `Source note` saying it was not read from its own page is a warning.
 
+`node test/image-integrity.js` (35 checks, no browser) tests the `rehost-images` Edge Function's image integrity checker
+(a JPEG whose scan data runs out early must fail, not pass on its end marker), its `parseRecipeFilter` and its address guard
+(`safePageUrl`), lifted from the real source rather than copied, so a changed signature throws instead of passing. Run it
+after any change to the image function.
+
 `node test/source-ingredients.js` (12 checks, no browser) tests the `source-ingredients` Edge
 Function's page reading — which addresses it refuses, and what it makes of a recipe page's
 Schema.org block — lifted from the real function source, and the source check in `core.js` it
@@ -53,11 +61,15 @@ passed), and every link from Settings → HELP and
 from the guide's contents lands on a section that exists. Since 10 Oct it also checks that every link from the guide to a file in this repo (the conversion
 instructions, on GitHub) names a file that exists.
 
-`node test/calendar-push.js` (32 checks, no browser) tests the calendar push's two Edge Functions,
+`node test/calendar-push.js` (35 checks, no browser) tests the calendar push's two Edge Functions,
 `calendar-sync` and `calendar-auth`, lifted from their real source the same way: the event's id,
 its all-day dates, the 20:00 reminder's minutes, which days a sync writes or deletes, what a sync
 request may ask for, the consent link, the way back to the app and the id_token's email. Nothing
 in it talks to Google; the household's first connection is that (`docs/TEST-PLAN.md` 40a).
+
+`node test/drive-backup.js` (13 checks, no browser) tests the `drive-backup` Edge Function, lifted the same way from the
+section of its source marked "pure": which file it accepts, what it names it, which old backups it removes, and the upload
+it builds. Nothing in it talks to Google either; the household's first SAVE TO DRIVE NOW is that (`docs/TEST-PLAN.md` 44a).
 
 `node test/shots.js` writes a PNG of each main screen, for eyeballing a layout
 change without a browser to hand.

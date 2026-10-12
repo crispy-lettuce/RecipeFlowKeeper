@@ -1,6 +1,8 @@
 # Proposal: a review when a new recipe comes in
 
-**Written 28 Sep 2026, not started.** Raised by the household while the aisle override
+**Written 28 Sep 2026, not started then. Built 29-30 Sep 2026** through `docs/PLAN-NEW-RECIPE-FLOW.md`, which adopted it,
+answered its five open decisions and mapped its phases to its own PRs (§9): A as PR 3 (#43), B as PR 4 (#44), C as PR 6
+(#49), D as PR 8 (#53). The rest of this page is as written on 28 Sep. *(Corrected 12 Oct 2026, the October review's F13.)* Raised by the household while the aisle override
 (`docs/PROPOSAL-AISLE-OVERRIDES.md`) was being written up. Each fix so far has been made after the
 fact and on its own: an aisle here, a word match there, a duplicate spotted by eye. The best moment
 to settle these things is the moment a recipe is added, while the person adding it is looking at

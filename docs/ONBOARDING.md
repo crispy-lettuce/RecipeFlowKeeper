@@ -5,6 +5,11 @@ one household, one membership row today; no insert policy on `households` or
 `household_members`; the app itself has no sign-up form, only sign-in. Part of PR 7 (Sharing),
 `docs/NEXT-SESSION.md`.
 
+*(Corrected 12 Oct 2026, the October review's Appendix B. There are three households now, three accounts and three
+membership rows: the households are the family's, the weekly live test's, and the family's second, made by §4. Each has a name of its own,
+set from Settings since 10 Oct. The line numbers below, the "one household" statements and what `hydrate()` does with an
+account in two are brought up to date in place.)*
+
 ---
 
 ## Answers first
@@ -34,14 +39,14 @@ Exactly this, and then they're signed out again:
 
 > Couldn't load your library — This account isn't linked to a household yet.
 
-(`hydrate()`, `index.html:2520`.) That's a real, checked error — not a guess at wording — and it
+(`hydrate()`, `index.html:3064`; the "Couldn't load your library" prefix is added at 10546.) That's a real, checked error — not a guess at wording — and it
 comes back every time they try to sign in until the `household_members` row exists and points at
 the household they should be in. It's not a broken account or a bug; it's exactly the state
 "created but not linked yet" looks like.
 
 ### Can they just sign themselves up through the app?
 
-No. The login screen (`index.html:1250`) only has email + password fields and a **Sign in**
+No. The login screen (`index.html:1500`; the **Sign in** button is at 1509) only has email + password fields and a **Sign in**
 button — there has never been a sign-up form. Whether the Supabase Auth *API* would accept a
 direct sign-up request from something other than this app is a separate, project-level setting
 (Authentication → Settings → **Allow new users to sign up**), unrelated to anything the app
@@ -53,32 +58,34 @@ settings page — that's the RLS-hardening PR, not this one.)
 
 Nothing yet. It's constrained to `'owner'` or `'member'` at the database level and defaults to
 `'member'`, but nothing in `index.html` reads it — `grep -rn "\.role\b" index.html` finds no
-hits. It's schema built ahead of a feature that isn't there, the same as `households.name`
-(`docs/ARCHITECTURE.md` §4). Leave it at the default; changing it changes nothing today.
+hits. It's schema built ahead of a feature that isn't there. (`households.name` was the same until 10 Oct; it is now
+the name other households see, set from Settings → APP → RECIPE SHARING through `set_household_name`, in
+`docs/migrations/add-recipe-sharing.md`.) Leave `role` at the default; changing it changes nothing today.
 
 ### What if they should see a *different* set of recipes, not the same one?
 
 Then they are a **new household**: their own recipes, plan, diary and settings, none of it
 visible to you or yours to them. §4 below has the steps (10 Oct 2026). The two households can
-still let each other *browse* their recipes and copy the ones they want, once
-`docs/migrations/add-recipe-sharing.md` is in (§4, last step).
+still let each other *browse* their recipes and copy the ones they want
+(`docs/migrations/add-recipe-sharing.md`, applied 10 Oct; §4, last step).
 
-One rule holds either way: **an account belongs to exactly one household.** `hydrate()` takes
-the first membership it finds, and the calendar and sharing functions refuse an account in two.
+One rule holds either way: **an account belongs to exactly one household.** Since 12 Oct `hydrate()` refuses an account
+in two, with a message, rather than taking the first membership it finds (the October review, F36); the `calendar-auth`,
+`calendar-sync` and `drive-backup` functions and the sharing SQL refuse one too.
 
 ---
 
 ## 1. The SQL, guarded
 
-Find the household first — there's only one, so this is safe to run alone and just look at:
+Find the household first. There are three (above), so pick yours by its name; the query only reads:
 
 ```sql
 select id, name from public.households;
 ```
 
-(As of 28 Sep 2026 that's `286a8a12-c12a-4b83-afbc-0912533f6b1c`, "Household" —
-`docs/INFRASTRUCTURE.md` §1 has the current value if this ever drifts; re-run the query rather
-than trust either document.)
+(As of 28 Sep 2026 that's `286a8a12-c12a-4b83-afbc-0912533f6b1c`, then named "Household"; the name is
+whatever the household has set since. `docs/INFRASTRUCTURE.md` §1 has the current value if this ever
+drifts; re-run the query rather than trust either document.)
 
 Find the new person's row, created in the dashboard in step 1 above:
 
@@ -127,7 +134,7 @@ join auth.users u on u.id = hm.user_id
 order by hm.created_at;
 ```
 
-This should list everyone in the household, the new row included, with today's date.
+This should list everyone in every household (the first column says which), the new row included, with today's date.
 
 ## 3. What this doesn't cover
 
@@ -172,8 +179,8 @@ dashboard and the SQL editor; the app has no sign-up.
 3. **Send them the app's address**, `https://crispy-lettuce.github.io/RecipeFlowKeeper/`. They sign
    in to an empty app; their settings take the defaults until they change one. Someone joining
    *their* household afterwards uses §1's steps with *their* household's id.
-4. **Optional: share recipes.** Once `docs/migrations/add-recipe-sharing.md` is applied and the app's
-   side is merged, either household can let the other browse its whole recipe library from
+4. **Optional: share recipes.** Since 10 Oct (`docs/migrations/add-recipe-sharing.md`, applied, and the
+   app's side, merged), either household can let the other browse its whole recipe library from
    Settings → APP → RECIPE SHARING (SHARE, with the other side's email). The other side reads, cooks
    from and copies (ADD TO OUR RECIPES); nothing else is shared, and STOP SHARING ends it.
 
