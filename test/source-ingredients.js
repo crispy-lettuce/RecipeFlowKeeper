@@ -56,7 +56,9 @@ const core = require(path.join(__dirname, '..', 'core.js'));
 check('a public https page is allowed', fn.safePageUrl('https://www.example-recipes.co.uk/cake') === 'https://www.example-recipes.co.uk/cake');
 const refused = ['http://www.example.com/cake', 'https://localhost/x', 'https://127.0.0.1/x', 'https://[::1]/x', 'https://10.0.0.5/x',
   'https://intranet/x', 'https://printer.local/x', 'https://abc.supabase.co/rest/v1/recipes', 'https://user:pw@example.com/x',
-  'file:///etc/passwd', 'javascript:alert(1)', '', null];
+  'file:///etc/passwd', 'javascript:alert(1)', '', null,
+  // the October review, F27 (11 Oct 2026): a trailing dot is the same name; wildcard DNS names any IP; Supabase's other domains
+  'https://localhost./x', 'https://printer.local./x', 'https://127.0.0.1.nip.io/x', 'https://10.0.0.5.sslip.io/x', 'https://abc.supabase.com/x'];
 const let_in = refused.filter(u => fn.safePageUrl(u) !== null);
 check('and nothing that would reach inside a network: http, IPs, local names, Supabase itself, credentials', let_in.length === 0, let_in.join(', '));
 

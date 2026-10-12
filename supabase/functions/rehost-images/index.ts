@@ -230,7 +230,60 @@ function parseRecipeFilter(body: { recipeId?: unknown }): string | null {
   return raw;
 }
 
+/* The address guard, the same function as source-ingredients' (test/image-integrity.js checks they are identical).
+   Until 11 Oct 2026 this function fetched any image_url it found, following redirects, from inside Supabase's
+   network, and then published what came back (the October review, F4). An image_url is written by the household's
+   own app, but it is still an address someone typed or a page supplied. */
+/* Only a public web page. This function fetches whatever address it is
+   given, from inside Supabase's network, so it refuses the addresses that
+   would make it a way in: anything but https, a bare IP address, and the
+   local names. Checked again on every redirect, because a public page can
+   redirect anywhere. */
+function safePageUrl(raw: unknown): string | null {
+  let u: URL;
+  try { u = new URL(String(raw || '').trim()); } catch { return null; }
+  if (u.protocol !== 'https:' || u.username || u.password) return null;
+  const host = u.hostname.toLowerCase();
+  if (!host.includes('.') || /^\[|^[\d.]+$/.test(host)) return null;
+  /* A trailing dot ("localhost.") is the same name to a resolver, so the endings allow one (the October review,
+     F27). The public wildcard-DNS services name any IP inside their own domain (127.0.0.1.nip.io is 127.0.0.1); they
+     are refused by name, which is all a check that does not resolve the address can do. */
+  if (/(^|\.)(localhost|local|internal|localdomain|home|lan|supabase\.(co|in|com|net)|nip\.io|sslip\.io|xip\.io|localtest\.me|lvh\.me)\.?$/.test(host)) return null;
+  return u.toString();
+}
+
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+/* An image fetched as source-ingredients fetches a page: every redirect followed by hand and checked with
+   safePageUrl, so a public address cannot bounce the fetch inside the network; a body whose declared length is already
+   too large refused before it is read; and the timer running until the body has arrived, not just the headers (it was
+   cleared at the headers until 11 Oct 2026, the October review, F4 and F37). */
+const MAX_REDIRECTS = 4;
+async function fetchImage(start: string): Promise<{ res?: Response; bytes?: Uint8Array; error?: string }> {
+  let url = safePageUrl(start);
+  if (!url) return { error: 'not a public https address' };
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'image/*' }, signal: ctl.signal, redirect: 'manual' });
+      if (res.status >= 300 && res.status < 400) {
+        await res.body?.cancel();
+        const next = safePageUrl(new URL(res.headers.get('location') ?? '', url).toString());
+        if (!next) return { error: 'the image redirected somewhere this will not follow' };
+        url = next;
+        continue;
+      }
+      if (!res.ok) { await res.body?.cancel(); return { error: `source returned ${res.status}` }; }
+      const declared = parseInt(res.headers.get('content-length') ?? '', 10);
+      if (declared > MAX_BYTES) { await res.body?.cancel(); return { error: `too large (${declared} bytes)` }; }
+      return { res, bytes: new Uint8Array(await res.arrayBuffer()) };
+    }
+    return { error: 'too many redirects' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /* CORS. The app calls this from the browser, cross-origin — the page is on
    github.io and the function is on supabase.co — so without a preflight
@@ -284,7 +337,8 @@ Deno.serve(async (req: Request) => {
   try { body = await req.json(); } catch { /* no body is fine — sweep everything */ }
   const dryRun = body.dryRun === true;
   const verify = body.verify === true;
-  const limit = typeof body.limit === 'number' ? body.limit : 500;
+  /* Bounded either way (the October review, F4): a caller's number can make the sweep smaller, never larger. */
+  const limit = Math.min(500, Math.max(1, Math.floor(typeof body.limit === 'number' && isFinite(body.limit) ? body.limit : 500)));
   /* One recipe, for the app's save-time call; null for the whole sweep. */
   let onlyRecipeId: string | null = null;
   try { onlyRecipeId = parseRecipeFilter(body); }
@@ -375,12 +429,9 @@ Deno.serve(async (req: Request) => {
     if (src.startsWith(selfHost)) { skipped++; report.push({ id: r.id, title: r.title, outcome: 'skipped', why: 'already self-hosted' }); continue; }
 
     try {
-      const ctl = new AbortController();
-      const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
-      const res = await fetch(src, { headers: { 'User-Agent': UA, 'Accept': 'image/*' }, signal: ctl.signal, redirect: 'follow' });
-      clearTimeout(timer);
-
-      if (!res.ok) throw new Error(`source returned ${res.status}`);
+      const got = await fetchImage(src);
+      if (got.error || !got.res || !got.bytes) throw new Error(got.error ?? 'no response');
+      const res = got.res;
       const ct = (res.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
       const ext = EXT[ct];
       /* Refuse anything that isn't a recognised image rather than storing
@@ -389,7 +440,7 @@ Deno.serve(async (req: Request) => {
       if (!ext) throw new Error(`not an image (content-type: ${ct || 'none'})`);
 
       const declared = res.headers.get('content-length');
-      const bytes = new Uint8Array(await res.arrayBuffer());
+      const bytes = got.bytes;
       if (bytes.byteLength === 0) throw new Error('empty response');
       if (bytes.byteLength > MAX_BYTES) throw new Error(`too large (${bytes.byteLength} bytes)`);
       /* Refuse a broken file rather than store it. A truncated photo looks

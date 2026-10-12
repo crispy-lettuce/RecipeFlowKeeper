@@ -55,8 +55,11 @@ function safePageUrl(raw: unknown): string | null {
   try { u = new URL(String(raw || '').trim()); } catch { return null; }
   if (u.protocol !== 'https:' || u.username || u.password) return null;
   const host = u.hostname.toLowerCase();
-  if (!host.includes('.') || /^\[|^[\d.]+$/.test(host) || host.includes(':')) return null;
-  if (/(^|\.)(localhost|local|internal|localdomain|home|lan|supabase\.co|supabase\.in)$/.test(host)) return null;
+  if (!host.includes('.') || /^\[|^[\d.]+$/.test(host)) return null;
+  /* A trailing dot ("localhost.") is the same name to a resolver, so the endings allow one (the October review,
+     F27). The public wildcard-DNS services name any IP inside their own domain (127.0.0.1.nip.io is 127.0.0.1); they
+     are refused by name, which is all a check that does not resolve the address can do. */
+  if (/(^|\.)(localhost|local|internal|localdomain|home|lan|supabase\.(co|in|com|net)|nip\.io|sslip\.io|xip\.io|localtest\.me|lvh\.me)\.?$/.test(host)) return null;
   return u.toString();
 }
 
