@@ -2635,6 +2635,13 @@ merged first. Everything is in `core.js`; its version is `2026-10-12.1` in all t
 *Not verified:* live. A slow or oversized page, and a plan 400 days ahead, cannot be made on demand; the versions are read
 back after the redeploy.
 
+*After the merge (#123, 17:00 UTC).* The household redeployed the three at 17:00–17:01 UTC, but from `main`'s raw links within a
+minute of the merge, which GitHub still served from cache: v15, v5 and v5 carried the old code (the same `ezbr_sha256` as v14, v4
+and v4; `source-ingredients` v5 read back with no `readCapped`). Redeployed from links pinned to the merge commit at
+17:05–17:06 UTC: **`rehost-images` v16, `source-ingredients` v6, `calendar-sync` v6**, JWT verification on, each read back in full
+with `get_edge_function` and carrying the change (and `calendar-sync` pasted without the added indentation). `INFRASTRUCTURE.md`
+records them and now says to use a commit-pinned link or wait five minutes. #105 and #106 closed.
+
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*
 
