@@ -154,7 +154,8 @@ dashboard and the SQL editor; the app has no sign-up.
    ```sql
    with u as (select id from auth.users where lower(email) = lower('<their email>')),
         fresh as (select u.id from u where not exists (select 1 from public.household_members m where m.user_id = u.id)),
-        h as (insert into public.households (name) select '<household name>' from fresh returning id)
+        h as (insert into public.households (name) select '<household name>' from fresh returning id),
+        s as (insert into public.household_settings (household_id) select id from h)
    insert into public.household_members (household_id, user_id, role)
    select h.id, fresh.id, 'owner' from h, fresh
    returning household_id, user_id, role;
@@ -165,6 +166,9 @@ dashboard and the SQL editor; the app has no sign-up.
    harmless. Tried on a scratch database built to the live shape on 10 Oct: a new email made one
    household and one owner row; running it again, an unknown email and an email already in a
    household each made nothing.
+   Since 12 Oct it also makes the household's settings row, with the defaults: without one, the
+   app could not tell whether the calendar toggles' columns exist and hid them (the October
+   review, F23). Tried the same way: one household, one owner, one settings row; run again, nothing.
 3. **Send them the app's address**, `https://crispy-lettuce.github.io/RecipeFlowKeeper/`. They sign
    in to an empty app; their settings take the defaults until they change one. Someone joining
    *their* household afterwards uses §1's steps with *their* household's id.
