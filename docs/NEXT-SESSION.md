@@ -66,19 +66,13 @@ Corrected 12 Oct 2026, the October review's F13 and Appendix B.)*
 
 Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all that is open.
 
-1. **The October review's PR 8, the documents** (in progress, 12 Oct): the status lines that said "not done" of finished
-   work (F13), `docs/INFRASTRUCTURE.md` and `docs/ARCHITECTURE.md` (F11, F12), the stated test counts (Appendices B and D), and
-   F34's wording in `CLAUDE.md` (agreed 12 Oct: merge first only when the app provably works without the change, and the
-   migration page says so). Documents only.
-2. **The extra PR for the last items of #105 and #106** (opened 12 Oct), not in the eight-PR plan: F37 (a page or image body is
-   read only as far as its size limit, under a timer that runs until it is in) and F38 (SYNC NOW reaches 400 days ahead, inside a
-   100-second budget). After it merges the household redeploys `rehost-images`, `source-ingredients` and `calendar-sync`, and a
-   session reads the versions back and updates `docs/INFRASTRUCTURE.md`.
-3. **The household's own issues**, once they have reviewed them: #87, #88, #94, #95, #100. Nothing is built for them until the
+1. **The October review is finished** (12 Oct): its eight PRs (`PrivateBackup`#7, #102, #117–#122) and the extra one for F37 and
+   F38 (#123) are merged, and the three functions #123 changed are redeployed and read back (`docs/INFRASTRUCTURE.md` §3).
+2. **The household's own issues**, once they have reviewed them: #87, #88, #94, #95, #100. Nothing is built for them until the
    household decides.
-4. **The household's tablet steps and library jobs**, in the next section: 38c, 38d, 40b, 47a, 50a and 51a; the BBC Good Food
+3. **The household's tablet steps and library jobs**, in the next section: 38c, 38d, 40b, 47a, 50a and 51a; the BBC Good Food
    validations; D6, the reconstructed recipes.
-5. **Optional, not planned:** a "download all source files" backup (the source files go into `PrivateBackup`'s weekly mirror
+4. **Optional, not planned:** a "download all source files" backup (the source files go into `PrivateBackup`'s weekly mirror
    instead, 10 Oct); drawing a PDF's pages inside the app, if opening it in the browser proves awkward on the tablet (38d will tell).
 
 Keep the how-to guide true: a renamed button or a new everyday feature updates `help.html` in the same PR (`test/help-guide.js`).
@@ -93,9 +87,6 @@ review's F13.)*
 you finish one, tell the next session, and it takes the line out.
 
 **1. Reload the app on each device**, since #120 merged (12 Oct, 13:47 UTC).
-
-**1a. After the F37/F38 PR merges: redeploy three Edge Functions** from their raw GitHub URLs, each with JWT verification
-**on**: `rehost-images`, `source-ingredients`, `calendar-sync`. Then tell a session, which reads the versions back.
 
 **2. Tablet and phone steps not yet reported back** (`docs/TEST-PLAN.md`):
 - **38c:** CHECKED AGAINST THE PHOTO.
@@ -130,24 +121,19 @@ you finish one, tell the next session, and it takes the line out.
   - #100, moving to Cloudflare Pages.
 - **Two library recipe titles** are still named in `docs/IMAGES.md`, `docs/HANDOVER.md`, `docs/TEST-PLAN.md` and `rehost-images`'
   comments. They tell the story of the two broken photos. Should they be taken out, or left?
-- **The last items of #105 and #106**, not in the eight-PR plan:
-  - F37: `source-ingredients` keeps its time limit only until the page's headers arrive, and reads the whole page before checking
-    its size.
-  - F38: the calendar's "sync every day" has no cap.
-
-  A small extra PR. It needs you to redeploy two functions.
 
 **5. Things a session will check, read-only, with nothing for you to do:**
 - **The photo backup** (Sunday 18 Oct, or sooner if you dispatch it): its first run on the new mirror script.
 - **Review issues:**
-  - #111 and #112 close when PR 7 merges.
-  - #114 stays open until PR 8.
-  - #101 (the whole review) stays open until the end.
-  - Closed on 12 Oct, with comments naming the PRs: #103, #104, #107, #108, #109, #110, #113 and #115.
+  - Closed on 12 Oct, with comments naming the PRs: #103, #104, #105, #106, #107, #108, #109, #110, #111, #112, #113, #114
+    and #115. #101 (the whole review) is the household's to close.
 
 **Done, and off this list:**
 - Tablet steps 41a and 41b (PRE-MADE and COOKED ✓; 10 Oct).
 - Tablet steps 39a, 40a, 42a, 43a, 44a, 45a, 46a, 48a and 49a, all reported passed on 12 Oct.
+- The F37/F38 redeploys (#123): `rehost-images` v16, `source-ingredients` v6, `calendar-sync` v6, 17:05–17:06 UTC on 12 Oct, read
+  back in full. A first attempt a minute after the merge pasted the old code from a cached link; `docs/INFRASTRUCTURE.md` now says
+  to use the commit-pinned link.
 - PR 7's decisions (12 Oct): F16 and F19 ship, measured first (0 shopping rows change in any household); F45 shows "tinned"
   as written, keeps a scaled unit as typed, and leaves a pinch unscaled unless it comes to a whole number.
 - `docs/migrations/harden-default-privileges.md`, applied before #120 merged (12 Oct). Checked read-only at 13:47 UTC: `postgres`'
