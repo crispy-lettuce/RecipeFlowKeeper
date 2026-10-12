@@ -1,5 +1,8 @@
 # Kitchen App — Verifying Phases 1 and 2 against the real backend
 
+> **Looking for what to do next?** `docs/HOUSEHOLD-JOBS.md` has the checks still waiting on the household as numbered steps,
+> easier to follow on the tablet. This page keeps the fuller technical record of every check, under the same numbers.
+
 > **This pass was completed on 21 Sep 2026.** All 20 steps passed against the real backend.
 > Two findings came out of it — PNG export truncating to one screenful, and a request that Keep
 > Awake collapse the sidebar — both fixed the same day; see `docs/HANDOVER.md` §7.
@@ -660,7 +663,7 @@ removed page was deleted), and no listed page missing.*
     then change the week's first day on the other:* reload both, and both changes have stuck. **Read-only afterwards:** this
     household's `household_settings` row holds both changes. Undo: put the settings back as they were.
 
-51a. **The parser and scaling (new 12 Oct; the October review's PR 7).** Writes nothing: nothing is saved. (1) *ADD RECIPE,
+51a. **The parser and scaling (new 12 Oct; the October review's PR 7).** Writes nothing: nothing is saved. (1) *NEW RECIPE,
     paste this made-up recipe, PARSE & PREVIEW:*
 
     ```
