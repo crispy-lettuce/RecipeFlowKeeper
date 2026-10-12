@@ -17,10 +17,11 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 - **Library:** 34 recipes. 2 carry a stored comparison with their source, 1 of them validated; 6 are BBC Good Food, five of which
   were rebuilt from another edition before the 29 Sep rule (the household's job below). 1 recipe has a source photo.
 - **Cooking diary:** 116 entries. **Word matches:** 15. **Household aisles:** 1. **Swaps:** 2. **Cooking notes:** none yet (R4 built 30 Sep).
-- **Tests:** `node test/core.test.js` 153 checks; `node test/build.js && node test/smoke.js` 537 checks (418 until P3 PR 2, 437 until the
+- **Tests:** `node test/core.test.js` 153 checks; `node test/build.js && node test/smoke.js` 547 checks (418 until P3 PR 2, 437 until the
   calendar toggles, both 9 Oct; 447 until the HELP tab, 448 until recipe sharing, 465 until the Drive backup, 472 until PRE-MADE, 487 until fresh or
-  freezer, all 10 Oct; 492 until issues #85–#93, 500 until FROZEN, 502 until photo upload, 509 until the version and change log, 11 Oct; 515 until the network guard, 517 until the lost-changes fixes, 530 until the write queue, 12 Oct).
-  `node test/calendar-push.js` 35 checks; `node test/drive-backup.js` 13 checks; `node test/help-guide.js` 7 checks. `offline-harness` runs
+  freezer, all 10 Oct; 492 until issues #85–#93, 500 until FROZEN, 502 until photo upload, 509 until the version and change log, 11 Oct; 515 until the network guard, 517 until the lost-changes fixes, 530 until the write queue, 537 until several households, 12 Oct).
+  `node test/calendar-push.js` 35 checks; `node test/drive-backup.js` 13 checks; `node test/image-integrity.js` 35 checks;
+  `node test/source-ingredients.js` 12 checks; `node test/help-guide.js` 7 checks. `offline-harness` runs
   both on every PR and is required on `main`.
 - **Schema:** `add_calendar_auto` (the P3 toggles) was applied by the household on 9 Oct, before #72 merged. The one before it,
   `add_calendar_push`, was applied 9 Oct, before the household connected the calendar at 17:52 UTC (`docs/INFRASTRUCTURE.md`;
@@ -70,25 +71,77 @@ Checked against the database at 19:11 UTC and against `git log`. Check again bef
 
 ## Things that are the household's to do
 
-- **Tablet passes 38c and 38d** (above).
-- **Compare the six BBC Good Food recipes with their real pages**, then VALIDATE INGREDIENT LIST on each that is right: in Edit,
-  OPEN SOURCE ↗, copy the page's ingredient list, paste it into COMPARE PASTED LIST. Five were rebuilt from another edition
-  before the 29 Sep rule (`docs/HANDOVER.md`, 30 Sep). LIBRARY CHECK lists what is still to do.
-- **D6: repair the reconstructed recipes**, together with a session, by the recipe-text rules in `CLAUDE.md` (the household
-  approves the exact lines; the before and after go to `PrivateBackup`; one guarded statement per recipe).
-- **Tablet step 39a**, cooking notes.
-- **P3:** tablet and phone steps 40a and 40b (the SQL and both PRs are in, 9 Oct).
-- **Read the how-to guide** and say what to change; then tablet step 42a once its PR merges.
-- **PRE-MADE / COOKED ✓ (live 10 Oct):** tablet steps 41a and 41b both done 10 Oct (41a found the double entry; #80 fixed it,
-  and 41b's COOKED FRESH was seen in the database at 22:13 UTC). Nothing left here.
-- **Recipe sharing (merged 10 Oct):** make the new household (`docs/ONBOARDING.md` §4), then name each household and SHARE from
-  Settings → APP; tablet step 43a.
-- **The Drive backup (live 10 Oct):** look in Google Drive for RecipeWrangler backups and download one file (tablet step 44a, (3)).
-- **The converter.** The conversion project in the Claude app holds **one file, `converter/conversion-instructions.md`**; its
-  master copy is the one in this repo. After any change to that file here, reload it into the project. The other files under
-  `converter/` stay in git as the project's reference and test material (`test-set.md` is how a change to the instructions is
-  checked), and are not loaded into the project.
-- **Before any job that rewrites recipe text:** a fresh export from the app's sidebar, kept outside the repo.
+**Brought up to date 12 Oct 2026**, while the October review's PRs were going in. These are yours; a session cannot do them. When
+you finish one, tell the next session, and it takes the line out.
+
+**1. Before merging #120 (several households):**
+- Apply `docs/migrations/harden-default-privileges.md` from the dashboard's SQL editor. Then run its two read-only checks: expect
+  three `false`, then `0`.
+- Merge #120, then reload the app on each device.
+
+**2. Tablet and phone steps not yet reported back** (`docs/TEST-PLAN.md`):
+- **38c:** CHECKED AGAINST THE PHOTO.
+- **38d:** PDF sources.
+- **39a:** cooking notes.
+- **40a:** planned meals in Google Calendar.
+- **40b:** the automatic calendar toggles.
+- **42a:** the how-to guide (read it, and say what to change).
+- **43a:** recipe sharing between households.
+- **44a:** the weekly Drive backup (look in Google Drive for RecipeWrangler backups and download one file).
+- **45a:** parse feedback, seconds, COOKING MODE, Drink.
+- **46a:** the FROZEN aisle.
+- **47a:** your own photo as a recipe's picture.
+- **48a:** the version and what's new.
+- **49a:** lost changes (deleting a recipe, a freezer entry's REMOVE, a meal changed on a PRE-MADE dish).
+- **50a:** several households: the week-start question, a star kept through an EDIT, two devices' settings. Only after #120 and
+  its SQL.
+
+**3. Library jobs:**
+- **The BBC Good Food validations.** Compare the six BBC Good Food recipes with their real pages, then VALIDATE INGREDIENT LIST on
+  each that is right:
+  1. In Edit, tap OPEN SOURCE ↗.
+  2. Copy the page's ingredient list.
+  3. Paste it into COMPARE PASTED LIST.
+
+  Five were rebuilt from another edition before the 29 Sep rule. LIBRARY CHECK lists what is still to do.
+- **D6: repair the reconstructed recipes**, with a session, by the recipe-text rules in `CLAUDE.md`. You approve the exact lines,
+  the before and after go to `PrivateBackup`, and there is one guarded statement per recipe.
+- **The converter, in both households.** Reload `converter/conversion-instructions.md` into each household's conversion project in
+  the Claude app. The master copy is the one in this repo; reload it after any change here. The other files under `converter/`
+  stay in git as reference and test material, and are not loaded.
+- **Before any job that rewrites recipe text:** take a fresh export from the app's sidebar, kept outside the repo.
+
+**4. Decisions waiting on you:**
+- **Your own issues, left open for you to review:**
+  - #87, side dishes with no timings;
+  - #88, how the flow is meant to be followed;
+  - #94, the shopping list: PNG and print keeping the ticks, and an "audit" setting;
+  - #95, the INGREDIENTS settings tab as its lists grow;
+  - #100, moving to Cloudflare Pages.
+- **Two library recipe titles** are still named in `docs/IMAGES.md`, `docs/HANDOVER.md`, `docs/TEST-PLAN.md` and `rehost-images`'
+  comments. They tell the story of the two broken photos. Should they be taken out, or left?
+- **The last items of #105 and #106**, not in the eight-PR plan:
+  - F37: `source-ingredients` keeps its time limit only until the page's headers arrive, and reads the whole page before checking
+    its size.
+  - F38: the calendar's "sync every day" has no cap.
+
+  A small extra PR. It needs you to redeploy two functions.
+- **Coming in PR 7 (the parser):** decide F45 (the wording the app shows and scales), and F16 and F19. F16 and F19 re-key shopping
+  ticks, so they come with a measurement across every household first.
+- **Coming in PR 8 (the documents):** agree F34's wording, on when a PR may merge before its migration.
+
+**5. Things a session will check, read-only, with nothing for you to do:**
+- **The photo backup** (Sunday 18 Oct, or sooner if you dispatch it): its first run on the new mirror script.
+- **After #120:** the database's default privileges, and that every household has a settings row.
+- **Review issues:** close #113, and #107, #108 and #109 if their last items are in.
+  - #111 and #112 stay open until PR 7.
+  - #114 stays open until PR 8.
+  - #101 (the whole review) stays open until the end.
+  - Closed on 12 Oct, with comments naming the PRs: #103, #104, #110 and #115.
+
+**Done, and off this list:**
+- Tablet steps 41a and 41b (PRE-MADE and COOKED ✓; 10 Oct).
+- The third household made (`docs/ONBOARDING.md`; three households live, 12 Oct).
 
 ---
 

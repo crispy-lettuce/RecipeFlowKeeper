@@ -1,4 +1,10 @@
 [
+  { "version": "2026-10-12.3", "date": "2026-10-12",
+    "changes": ["Changing the day weeks start on asks first, and clears the shopping ticks it would otherwise leave stuck in the old weeks.",
+                "Saving a recipe no longer undoes a favourite starred on another device, and changing one setting no longer changes the others back.",
+                "A recipe picture changed while RE-HOST EXTERNAL IMAGES was running keeps the change.",
+                "A shared recipe you have already added is recognised even when its web address is written slightly differently.",
+                "Restoring a backup no longer fails on a word match or shopping aisle set on another device since."] },
   { "version": "2026-10-12.2", "date": "2026-10-12",
     "changes": ["A change saved while the connection was failing can no longer be overwritten later by an older one when both finally go through.",
                 "A meal type chosen while the diary entry itself hadn't saved yet is now kept, and arrives after it.",

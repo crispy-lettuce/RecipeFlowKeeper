@@ -2083,7 +2083,7 @@ const EXPECTED_CORE_VERSION = '2026-10-11.2';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-12.2';
+const APP_VERSION = '2026-10-12.3';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -2977,9 +2977,12 @@ function noteVersionSeen(){
    delete any recipe it had never seen, cascading that recipe's cooking
    history (docs/REVIEW-ARCHITECTURE-FINDINGS.md F1). A restore from backup
    is the one place "this list is the truth" is what the person means. */
-async function pushList(table, rows){
+async function pushList(table, rows, onConflict){
   if(rows.length){
-    const { error } = await sb.from(table).upsert(rows);
+    /* onConflict names the table's natural key where it has one beside the id (word matches, aisles; F24): a row
+       settled on another device after the backup was taken has the same key under another id, and an upsert by id
+       then broke the unique key, so the whole restore of that table failed on every retry. */
+    const { error } = await sb.from(table).upsert(rows, onConflict ? { onConflict } : undefined);
     if(error) throw error;
   }
   let q = sb.from(table).delete().eq('household_id', HOUSEHOLD_ID);
@@ -3051,13 +3054,19 @@ function rowToRecipe(row, historyById){
    single field is assigned, so a refresh is applied whole or not at all —
    never half. */
 async function hydrate(opts){
+  /* Every membership, not the first one (12 Oct 2026, the October review, F36). The reads below are not filtered by
+     household, because row-level security already gives back only this account's, so an account in two households
+     got both libraries merged, and every write stamped whichever household came first. Nobody is in two, and the
+     app was never built for it, so it says so rather than guessing. */
   const { data: memberships, error: mErr } = await sb
-    .from('household_members').select('household_id').limit(1);
+    .from('household_members').select('household_id');
   if(mErr) throw mErr;
   if(!memberships.length) throw new Error("This account isn't linked to a household yet.");
-  HOUSEHOLD_ID = memberships[0].household_id;
+  if(new Set(memberships.map(m=> m.household_id)).size > 1)
+    throw new Error('This account belongs to more than one household. Ask whoever set it up to take it out of one.');
+  const household = memberships[0].household_id;
 
-  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides, recipeNotes, calendarRow] = await Promise.all([
+  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides, recipeNotes, calendarRow, autoColumns] = await Promise.all([
     sb.from('recipes').select('*'),
     /* Every column, and no recipe_id filter. The filter was here because a
        log could only ever be a cooked recipe; an ad-hoc diary entry (H2) is
@@ -3082,7 +3091,10 @@ async function hydrate(opts){
     /* The calendar push (P3): read apart like aisle_overrides. Until the household applies
        docs/migrations/add-calendar-push.md the table does not exist, and that must read as "not yet",
        never as a reason to sign anyone out. maybeSingle: a household that has never connected has no row. */
-    sb.from('calendar_connections').select('*').maybeSingle()
+    sb.from('calendar_connections').select('*').maybeSingle(),
+    /* Whether add-calendar-auto.md's columns exist, for a household with no settings row to tell by its shape (F23).
+       Read apart, like the two above: a failure means "not yet", never a sign-out. */
+    sb.from('household_settings').select('calendar_auto').limit(1)
   ]);
   for(const res of [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases]){
     if(res.error) throw res.error;
@@ -3095,6 +3107,8 @@ async function hydrate(opts){
      yet: no aisles, and Settings says so rather than offering a form whose
      writes would fail. */
   if(opts && opts.shouldApply && !opts.shouldApply()) return false;
+  /* Only now, after the refresh's veto: a vetoed refresh changes nothing at all (F36). */
+  HOUSEHOLD_ID = household;
 
   /* Two shapes from one query, deliberately.
 
@@ -3157,8 +3171,10 @@ async function hydrate(opts){
     calendarAutoRemind: !!(settings.data && settings.data.calendar_auto_remind)
   };
   /* select('*') names every column, so the row itself says whether docs/migrations/add-calendar-auto.md is in.
-     Until it is, the two toggles stay hidden and no settings save names their columns. */
-  calendarAutoAvailable = !!settings.data && 'calendar_auto' in settings.data;
+     Until it is, the two toggles stay hidden and no settings save names their columns. A household with no settings
+     row has nothing to tell by, and was read as "not in" (F23: two of three households, when the review looked), so
+     for it the column is asked about on its own. */
+  calendarAutoAvailable = settings.data ? 'calendar_auto' in settings.data : !autoColumns.error;
   /* The database is the source of truth; the boot script painted from the
      localStorage mirror. This is where the two are reconciled — on this
      device for the first time, or after the setting was changed on another,
@@ -3373,8 +3389,26 @@ function saveSettings(next){
     if(error) throw error;
   }, { key: 'household_settings', whole: true });
 }
+/* One setting, one column (12 Oct 2026, the October review, F42). saveSettings sends the whole row from this tab's
+   copy, so a tab that had not been reloaded since another device changed the week's first day wrote the old day back
+   when it changed DARK MODE. The whole row stays for the import, where the file is the truth. */
+const SETTING_COLUMNS = {
+  weekStartDay: v=> ({ week_start_day: v }),
+  darkMode: v=> ({ dark_mode: v || 'system' }),
+  remindAt: v=> calendarAvailable ? { calendar_remind_at: validRemindAt(v) } : null,
+  calendarAuto: v=> calendarAutoAvailable ? { calendar_auto: !!v } : null,
+  calendarAutoRemind: v=> calendarAutoAvailable ? { calendar_auto_remind: !!v } : null
+};
 function setSetting(key, value){
-  return saveSettings({ ...loadSettings(), [key]: value });
+  cache.settings = { ...loadSettings(), [key]: value };
+  const column = SETTING_COLUMNS[key] ? SETTING_COLUMNS[key](value) : null;
+  /* A column whose migration is not in yet is kept in this tab only, as saveSettings has always done for it. */
+  if(!column) return true;
+  return queueWrite('your settings', async ()=>{
+    const { error } = await sb.from('household_settings')
+      .upsert({ household_id: HOUSEHOLD_ID, ...column, updated_at: new Date().toISOString() }, { onConflict: 'household_id' });
+    if(error) throw error;
+  }, { key: 'household_settings#' + Object.keys(column)[0] });
 }
 
 /* ---- Aliases ----
@@ -3417,7 +3451,7 @@ function aliasToRow(a){
 function replaceAliases(list){
   cache.aliases = list;
   rebuildAliasMaps();
-  return queueWrite('word matches', ()=> pushList('aliases', list.map(aliasToRow)), { whole: true });
+  return queueWrite('word matches', ()=> pushList('aliases', list.map(aliasToRow), 'household_id,kind,alias'), { whole: true });
 }
 /* The table's real key is (kind, alias) — a word means one thing — so the
    upsert resolves on that, and a match already settled on another device
@@ -3564,7 +3598,7 @@ function noteDateLabel(iso){
 function replaceAisleOverrides(list){
   cache.aisleOverrides = list;
   rebuildAisleOverrideMap();
-  return queueWrite('shopping aisles', ()=> pushList('aisle_overrides', list.map(aisleOverrideToRow)), { whole: true });
+  return queueWrite('shopping aisles', ()=> pushList('aisle_overrides', list.map(aisleOverrideToRow), 'household_id,name'), { whole: true });
 }
 function isPairDistinct(kind, a, b){ return aliasMaps.distinct.has(kind + '_distinct|' + pairKeyFor(a, b)); }
 function applyIngredientAlias(name){ return aliasMaps.ingredient.get(name) || name; }
@@ -3650,21 +3684,31 @@ function saveRecipe(recipe, landed){
   const list = cache.recipes;
   const idx = list.findIndex(r => r.id === recipe.id);
   if(idx === -1) list.push(recipe); else list[idx] = recipe;
-  const row = recipeToRow(recipe);
+  /* Everything but the favourite (12 Oct 2026, the October review, F25). The form has no favourite field, so the value
+     here was only ever this tab's copy, and a tab left open since the morning wrote it over a star set elsewhere that
+     day. The star is patchRecipe's, an update of that column alone; a new recipe takes the column's default (not
+     starred). Keyed as part of the row for the same reason: a save never covers a favourite still waiting to land. */
+  const { favourite, ...row } = recipeToRow(recipe);
   return queueWrite('recipes', async ()=>{
     const { error } = await sb.from('recipes').upsert([row]);
     if(error) throw error;
-  }, { key: 'recipes:' + recipe.id, after: landed || null });
+  }, { key: 'recipes:' + recipe.id + '#text', after: landed || null });
 }
 /* Several recipes, whole rows: the source merge and the keyword edits,
    which touch a field and its header line on every recipe that carries the
    old value, and nothing else. */
 function saveRecipes(recipes){
   if(!recipes.length) return true;
-  const rows = recipes.map(recipeToRow);
+  /* The source, the tags and the text, as an update of each recipe, and nothing else (F25): a merge of a source name
+     or a keyword changes only those, and an upsert of every column of every recipe it touched wrote this tab's copy of
+     the rest (a star, a picture) over any change made elsewhere since it loaded. */
+  const at = new Date().toISOString();
+  const patches = recipes.map(r=> ({ id: r.id, patch: { source: r.source, tags: r.tags || {course:null, keywords:[]}, syntax: r.syntax, updated_at: at } }));
   return queueWrite('recipes', async ()=>{
-    const { error } = await sb.from('recipes').upsert(rows);
-    if(error) throw error;
+    for(const { id, patch } of patches){
+      const { error } = await sb.from('recipes').update(patch).eq('household_id', HOUSEHOLD_ID).eq('id', id);
+      if(error) throw error;
+    }
   });
 }
 /* Some columns of one recipe — the favourite toggle. An UPDATE of just
@@ -6301,7 +6345,8 @@ function clearTicks(weekStartIso, itemKeys){
    week, not by "this week"/"next week" — those labels shift meaning daily as
    the rolling window advances, but a given calendar week's key never changes,
    so progress made mid-week doesn't get scrambled. Changing the week-start
-   setting does re-key them, which is why ticks were cleared when it moved. */
+   setting re-keys them, so since 12 Oct 2026 the change asks and then clears
+   them (F40); until then they were left behind, unseen. */
 function toggleShoppingChecked(weekStartIso, itemKey){
   const all = loadShoppingChecked();
   if(!all[weekStartIso]) all[weekStartIso] = {};
@@ -8176,8 +8221,10 @@ function possessive(name){
 function possessiveRecipes(name){ return possessive(name).toUpperCase() + ' RECIPES'; }
 /* Our copy of one of their recipes: one ADD TO OUR RECIPES made, or one of ours from the same page. */
 function ourCopyOf(theirRecipe){
-  const url = (theirRecipe.sourceUrl || '').trim();
-  return loadRecipes().find(r=> r.copiedFrom === theirRecipe.id || (url && (r.sourceUrl || '').trim() === url)) || null;
+  /* Addresses compared as the add-recipe review compares them (F43): the same page with a trailing slash or a
+     tracking query is the same page, and read as "not ours", ADD TO OUR RECIPES made a second copy. */
+  const url = normalisedSourceUrl(theirRecipe.sourceUrl || '');
+  return loadRecipes().find(r=> r.copiedFrom === theirRecipe.id || (url && normalisedSourceUrl(r.sourceUrl || '') === url)) || null;
 }
 
 /* Shown only when another household shares with us, and not while choosing a recipe for a day. */
@@ -8563,9 +8610,23 @@ function showSettingsTab(tab){
 }
 document.querySelectorAll('[data-settings-tab-btn]').forEach(b=> b.addEventListener('click', ()=> showSettingsTab(b.dataset.settingsTabBtn)));
 
+/* A tick belongs to the week it was made in, keyed by that week's first day, so a new first day leaves every tick
+   under a key no list will ask for again (12 Oct 2026, the October review, F40). They used to be left there, unseen
+   and never deleted, while the comment on the key said they were cleared. Now the change asks first, and clears them. */
 document.getElementById('setWeekStart').addEventListener('change', e=>{
   const n = parseInt(e.target.value, 10);
-  if(isNaN(n)) return;
+  if(isNaN(n) || n === weekStartDay()) return;
+  const ticked = Object.entries(loadShoppingChecked()).filter(([week, items])=>
+    new Date(week + 'T00:00:00').getDay() !== n && Object.keys(items || {}).length);
+  if(ticked.length && !confirm(`Weeks will start on ${WEEKDAY_NAMES[n]}. The shopping items you've ticked will be cleared, `
+      + `because each tick belongs to a week starting on ${WEEKDAY_NAMES[weekStartDay()]}.`)){
+    e.target.value = String(weekStartDay());
+    return;
+  }
+  ticked.forEach(([week, items])=>{
+    clearTicks(week, Object.keys(items));
+    delete loadShoppingChecked()[week];
+  });
   setSetting('weekStartDay', n);
   showToast(`Weeks now start on ${WEEKDAY_NAMES[n]}`);
   updateSidebarCounts();
@@ -8603,7 +8664,9 @@ function runImageSweep(btnId, body, describe){
       report.forEach(row=>{
         if(row.outcome !== 'rehosted' || !row.to || !row.id) return;
         const r = loadRecipes().find(x=> x.id === row.id);
-        if(!r) return;
+        /* Only if the recipe still has the picture the sweep re-hosted, as applyRehostedUrl checks (F44): one changed
+           during the sweep is the household's newer choice, and the next save would have written the old one back. */
+        if(!r || (row.from && r.imageUrl !== row.from)) return;
         r.imageUrl = row.to;
         r.syntax = withUpdatedImageLine(r.syntax, row.to);
         changed++;
@@ -10583,7 +10646,10 @@ if(sb){
     if(event === 'SIGNED_IN') onSignedIn();
     /* Whoever signs in next — perhaps someone else — gets a full start,
        which is also what takes the sign-in screen away again. */
-    if(event === 'SIGNED_OUT'){ appStarted = false; showLoginGate(); }
+    /* A reload, as the SIGN OUT button does (12 Oct 2026, F31). This used to clear only a flag, so a session that
+       ended on its own kept the old account's cache and its unsent writes, which the next account to sign in on this
+       page would have sent as its own. */
+    if(event === 'SIGNED_OUT'){ appStarted = false; location.reload(); }
   });
 }
 

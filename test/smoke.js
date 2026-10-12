@@ -4245,13 +4245,15 @@ const check = (name, pass, detail) => {
   const calD0 = await page.evaluate(() => isoLocal(dayList()[0]));
   const calD1 = await page.evaluate(() => isoLocal(dayList()[1]));
   let calM = await calMark();
-  await page.evaluate(d => { setPlanServingsAt(d, 0, 6); setSetting('weekStartDay', 5); showView('planner'); }, calD0);
+  await page.evaluate(d => { setPlanServingsAt(d, 0, 6); setSetting('remindAt', 1200); showView('planner'); }, calD0);
   await calDrain();
   let calS = await calSince(calM);
   const calNcSwitches = await page.locator('#dayList .day-cal, #dayList .week-cal').count();
-  check('calendar, migration in but not connected: a Planner save sends the switch off, settings send 20:00, no switches show, nothing is synced',
+  /* Since 12 Oct 2026 (F42) a setting sends its own column only, so the reminder time is the one set here. */
+  check('calendar, migration in but not connected: a Planner save sends the switch off, settings send 20:00 and only that, no switches show, nothing is synced',
         calPlanRow(calS, calD0) && calPlanRow(calS, calD0).calendar === false && calPlanRow(calS, calD0).calendar_remind === false
-        && calS.settings.length && calS.settings[0].calendar_remind_at === 1200 && calNcSwitches === 0 && calS.syncs.length === 0,
+        && calS.settings.length && calS.settings[0].calendar_remind_at === 1200 && !('week_start_day' in calS.settings[0])
+        && calNcSwitches === 0 && calS.syncs.length === 0,
         JSON.stringify([calPlanRow(calS, calD0), calS.settings, calNcSwitches, calS.syncs]));
   await page.evaluate(() => { showView('settings'); showSettingsTab('app');
     window.__WENT__ = null; window.__REAL_GO__ = goToGoogle; window.goToGoogle = url => { window.__WENT__ = url; };
@@ -4504,12 +4506,12 @@ const check = (name, pass, detail) => {
   await autoSetup({ calendar_auto: false, calendar_auto_remind: false }, CAL_CONNECTED);
   const autoOffShown = await autoShown();
   autoM = await calMark();
-  await page.evaluate(([d, id]) => { addPlanRecipe(d, id); setSetting('weekStartDay', 5); }, [autoD3, AUTO_MAIN]);
+  await page.evaluate(([d, id]) => { addPlanRecipe(d, id); setSetting('calendarAuto', false); }, [autoD3, AUTO_MAIN]);
   await calDrain();
   autoS = await calSince(autoM);
-  check('    applied, connected, both off: the toggles show, off; adding a recipe leaves the day off and syncs nothing; settings send both as false',
+  check('    applied, connected, both off: the toggles show, off; adding a recipe leaves the day off and syncs nothing; the setting sends its own column, false',
         autoOffShown.add && autoOffShown.remind && calPlanRow(autoS, autoD3) && calPlanRow(autoS, autoD3).calendar === false && autoS.syncs.length === 0
-        && autoS.settings.length === 1 && autoS.settings[0].calendar_auto === false && autoS.settings[0].calendar_auto_remind === false,
+        && autoS.settings.length === 1 && autoS.settings[0].calendar_auto === false && !('calendar_auto_remind' in autoS.settings[0]),
         JSON.stringify([autoOffShown, calPlanRow(autoS, autoD3), autoS.syncs, autoS.settings]));
 
   // 3. AUTO ADD on.
@@ -4596,7 +4598,8 @@ const check = (name, pass, detail) => {
   autoS = await calSince(autoM);
   const autoPlanAfter = await page.evaluate(() => JSON.stringify(cache.plan));
   check('    switching either toggle off saves it and changes no day: no Planner write, no sync, the plan as it was',
-        autoS.settings.length === 2 && autoS.settings[1].calendar_auto === false && autoS.settings[1].calendar_auto_remind === false
+        autoS.settings.length === 2 && autoS.settings[0].calendar_auto === false && autoS.settings[1].calendar_auto_remind === false
+        && !('calendar_auto_remind' in autoS.settings[0]) && !('calendar_auto' in autoS.settings[1])
         && autoS.plan.length === 0 && autoS.syncs.length === 0 && autoPlanAfter === autoPlanBefore,
         JSON.stringify([autoS.settings, autoS.plan.length, autoS.syncs]));
 
@@ -4747,9 +4750,10 @@ const check = (name, pass, detail) => {
       theirs: document.getElementById('view-viewer').classList.contains('theirs') };
   }, shAddM);
   const HOUSE_ID = '286a8a12-c12a-4b83-afbc-0912533f6b1c';
+  /* No favourite in the row since 12 Oct 2026 (F25): a save never names it, and a new row takes the column's default, not starred. */
   check('    ADD TO OUR RECIPES writes exactly one new recipes row, in our household, with copied_from, a new id and the same text',
         shAdd.rows.length === 1 && shAdd.rows[0].household_id === HOUSE_ID && shAdd.rows[0].copied_from === 'bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb'
-        && shAdd.rows[0].id === shAdd.copyId && !/^bbbbbbbb/.test(shAdd.copyId) && shAdd.rows[0].title === 'Test Bean Pot' && shAdd.rows[0].favourite === false
+        && shAdd.rows[0].id === shAdd.copyId && !/^bbbbbbbb/.test(shAdd.copyId) && shAdd.rows[0].title === 'Test Bean Pot' && !('favourite' in shAdd.rows[0])
         && !('source_photos' in shAdd.rows[0]) && shAdd.ours === 4 && JSON.stringify(shAdd.keywords) === JSON.stringify(['Beans']),
         JSON.stringify([shAdd.rows.map(r => [r.household_id, r.copied_from, r.title, r.favourite]), shAdd.ours, shAdd.keywords]));
   check('    its photo is copied into our own folder, and the copy points there (column and IMAGE: line both)',
@@ -5790,6 +5794,129 @@ const check = (name, pass, detail) => {
         wqFoldOut === 1, String(wqFoldOut));
   await wq.evaluate(() => { window.__WRITE_FAIL_TABLES__ = {}; });
   await wq.close();
+
+  /* ---- Several households (12 Oct 2026, the October review's PR 6: F36, F31, F23, F24, F25, F42, F44, F40, F43) ----
+     Writes that carried more than their own change, and a sign-in and a sign-out that assumed one household and one
+     account. Fresh pages where the state needs one. */
+  console.log('\nSeveral households');
+  const HH_HOUSE = '286a8a12-c12a-4b83-afbc-0912533f6b1c';
+  const hhOpen = async (label, extra, init, expect) => {
+    const p = await browser.newPage();
+    p.__label = label;
+    if (expect) p.__expectConsole = expect;
+    if (init) await p.addInitScript(init);
+    await p.addInitScript(x => { if (x) window.__STUB_EXTRA__ = x; }, extra || null);
+    await p.clock.setFixedTime(FIXTURE_NOW);
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1500);
+    return p;
+  };
+  const hhDrain = p => p.evaluate(async () => { let t; do { t = writeQueue; await t; } while(t !== writeQueue); });
+
+  // F36: an account in two households is told so at sign-in, and nothing of either loads.
+  /* The app says so in the console too, as it does for any start-up that cannot load: that is this page's point. */
+  const hh2 = await hhOpen('two households', { household_members: [{ household_id: HH_HOUSE }, { household_id: '99999999-9999-4999-8999-999999999999' }] },
+    null, /^Could not load your library .*more than one household/);
+  const hh2Out = await hh2.evaluate(() => ({ gate: !document.getElementById('loginGate').hidden && getComputedStyle(document.getElementById('loginGate')).display !== 'none',
+    msg: (document.getElementById('loginError') || {}).textContent || '', cards: document.querySelectorAll('.rcard').length, household: HOUSEHOLD_ID }));
+  check('an account in two households is told so at sign-in, and neither household\'s library loads (F36)',
+        hh2Out.gate && /more than one household/.test(hh2Out.msg) && hh2Out.cards === 0 && !hh2Out.household, JSON.stringify(hh2Out));
+  await hh2.close();
+
+  // F31: a session that ends on its own reloads the page, as SIGN OUT does.
+  const hhOut = await hhOpen('signed out', null, () => { window.name = String((parseInt(window.name, 10) || 0) + 1); });
+  await hhOut.evaluate(() => window.__AUTH_CB__('SIGNED_OUT'));
+  await hhOut.waitForTimeout(1500);
+  const hhLoads = await hhOut.evaluate(() => window.name);
+  check('    a session that ends on its own reloads the page, so nothing of the old account is kept or sent (F31)', hhLoads === '2', hhLoads);
+  await hhOut.close();
+
+  // F23: a household with no settings row still has the automatic calendar toggles.
+  const hhNo = await hhOpen('no settings row', { household_settings: [] });
+  const hhAuto = await hhNo.evaluate(() => calendarAutoAvailable);
+  check('    a household with no settings row is not read as missing the calendar toggles\' columns (F23)', hhAuto === true, String(hhAuto));
+
+  // F42: one setting sends its own column, nothing else from this tab's copy.
+  const hhM1 = await hhNo.evaluate(() => window.__WRITES__.length);
+  await hhNo.evaluate(() => setSetting('darkMode', 'dark'));
+  await hhDrain(hhNo);
+  const hhSet = await hhNo.evaluate(m => window.__WRITES__.slice(m).filter(w => w.table === 'household_settings').map(w => Object.keys(w.rows || {}).sort().join(',')), hhM1);
+  check('    changing DARK MODE sends that column only, not the week\'s first day this tab last saw (F42)',
+        JSON.stringify(hhSet) === JSON.stringify(['dark_mode,household_id,updated_at']), JSON.stringify(hhSet));
+
+  // F25: a recipe save names no favourite; a source merge updates three columns of each recipe it touches.
+  const hhM2 = await hhNo.evaluate(() => window.__WRITES__.length);
+  await hhNo.evaluate(() => { const r = loadRecipes().find(x => x.title === 'Test Soup'); saveRecipe({ ...r }); saveRecipes([r]); });
+  await hhDrain(hhNo);
+  const hhSave = await hhNo.evaluate(m => {
+    const ws = window.__WRITES__.slice(m).filter(w => w.table === 'recipes');
+    return { upsert: ws.filter(w => w.op === 'upsert').map(w => 'favourite' in w.rows[0]),
+      updates: ws.filter(w => w.op === 'update').map(w => Object.keys(w.patch).sort().join(',')) };
+  }, hhM2);
+  check('    a recipe save never sends the favourite, and a source or keyword merge sends only source, tags and the text (F25)',
+        JSON.stringify(hhSave.upsert) === '[false]' && JSON.stringify(hhSave.updates) === JSON.stringify(['source,syntax,tags,updated_at']), JSON.stringify(hhSave));
+
+  // F24: restoring word matches and aisles upserts on their own keys.
+  const hhM3 = await hhNo.evaluate(() => window.__WRITES__.length);
+  await hhNo.evaluate(() => { replaceAliases([{ id: uid(), kind: 'ingredient', alias: 'made-up alias', canonical: 'made-up name' }]);
+    replaceAisleOverrides([{ id: uid(), name: 'made-up item', aisle: 'Pantry' }]); });
+  await hhDrain(hhNo);
+  const hhKeys = await hhNo.evaluate(m => window.__WRITES__.slice(m).filter(w => w.op === 'upsert').map(w => w.table + ':' + ((w.opts || {}).onConflict || 'id')), hhM3);
+  check('    restoring word matches and aisles upserts on their own keys, not the id (F24)',
+        hhKeys.includes('aliases:household_id,kind,alias') && hhKeys.includes('aisle_overrides:household_id,name'), JSON.stringify(hhKeys));
+
+  // F44: a picture changed while the sweep ran is not overwritten by the sweep's answer.
+  const hhSweep = await hhNo.evaluate(async () => {
+    const r = loadRecipes().find(x => x.title === 'Test Traybake');
+    const sent = r.imageUrl;
+    window.__INVOKE_REPLY__ = () => { r.imageUrl = 'https://example.test/chosen-during-sweep.jpg';
+      return { data: { report: [{ id: r.id, outcome: 'rehosted', from: sent, to: SELF_HOST_PREFIX + 'h/swept.jpg' }] }, error: null }; };
+    runImageSweep('rehostSweepBtn', {}, () => 'done');
+    await new Promise(res => setTimeout(res, 300));
+    window.__INVOKE_REPLY__ = null;
+    return r.imageUrl;
+  });
+  check('    a picture changed while the image sweep ran keeps the change, not the sweep\'s copy of the old one (F44)',
+        hhSweep === 'https://example.test/chosen-during-sweep.jpg', hhSweep);
+
+  // F43: their recipe from the same page, written with a trailing slash and a tracking query, is ours already.
+  const hhCopy = await hhNo.evaluate(() => {
+    const r = loadRecipes().find(x => x.title === 'Test Soup');
+    r.sourceUrl = 'https://example.test/recipes/soup';
+    const found = ourCopyOf({ id: 'theirs-1', sourceUrl: 'https://example.test/recipes/soup/?utm_source=made-up' });
+    return found ? found.title : null;
+  });
+  check('    a shared recipe from the same page, its address written differently, reads as already in our recipes (F43)',
+        hhCopy === 'Test Soup', String(hhCopy));
+  await hhNo.close();
+
+  // F40: changing the week's first day asks, then clears the ticks it would strand; cancelling changes nothing.
+  const hhWeek = await hhOpen('week start');
+  const hhTick = await hhWeek.evaluate(() => {
+    showView('settings');
+    const week = isoLocal(startOfWeek(new Date()));
+    toggleShoppingChecked(week, 'made-up item');
+    return { week, from: weekStartDay(), to: (weekStartDay() + 1) % 7 };
+  });
+  await hhDrain(hhWeek);
+  let hhAsk = '';
+  hhWeek.once('dialog', d => { hhAsk = d.message(); d.dismiss(); });
+  await hhWeek.evaluate(to => { const s = document.getElementById('setWeekStart'); s.value = String(to); s.dispatchEvent(new Event('change')); }, hhTick.to);
+  await hhWeek.waitForTimeout(200);
+  const hhKept = await hhWeek.evaluate(t => ({ start: weekStartDay(), select: document.getElementById('setWeekStart').value,
+    ticked: !!(loadShoppingChecked()[t.week] || {})['made-up item'] }), hhTick);
+  const hhM4 = await hhWeek.evaluate(() => window.__WRITES__.length);
+  hhWeek.once('dialog', d => d.accept());
+  await hhWeek.evaluate(to => { const s = document.getElementById('setWeekStart'); s.value = String(to); s.dispatchEvent(new Event('change')); }, hhTick.to);
+  await hhWeek.waitForTimeout(200);
+  await hhDrain(hhWeek);
+  const hhMoved = await hhWeek.evaluate(([m, t]) => ({ start: weekStartDay(), ticked: !!(loadShoppingChecked()[t.week] || {})['made-up item'],
+    deletes: window.__WRITES__.slice(m).filter(w => w.table === 'shopping_checked' && w.op === 'delete').map(w => [w.eqs.map(e => e.value)[1], (w.in || {}).values]) }), [hhM4, hhTick]);
+  check('changing the week\'s first day asks first; cancelling keeps the day and the ticks (F40)',
+        /ticked will be cleared/.test(hhAsk) && hhKept.start === hhTick.from && hhKept.select === String(hhTick.from) && hhKept.ticked, JSON.stringify({ hhAsk, hhKept }));
+  check('    and going ahead clears the ticks the old weeks held, on the server and in the tab',
+        hhMoved.start === hhTick.to && !hhMoved.ticked && hhMoved.deletes.some(d => d[0] === hhTick.week && (d[1] || []).includes('made-up item')), JSON.stringify(hhMoved));
+  await hhWeek.close();
 
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to

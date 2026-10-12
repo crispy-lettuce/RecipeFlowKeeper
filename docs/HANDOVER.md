@@ -2516,6 +2516,47 @@ nothing to deploy for it.
 
 *Not verified:* live. The failure needs a server error twice in a row, which no tablet step can make on demand.
 
+**The October review, PR 6: several households (12 Oct 2026; F36, F31, F23, F24, F25, F42, F44, F40, F43, F35).**
+#119 (PR 5) merged first.
+- **Sign-in and sign-out (F36, F31).**
+  - `hydrate` reads every membership. An account in two households is told so at sign-in, and nothing loads: the reads are
+    not filtered by household, so it used to get both libraries merged and write to whichever came first.
+  - `HOUSEHOLD_ID` is set only after the refresh's veto.
+  - `SIGNED_OUT` reloads the page, as SIGN OUT does.
+- **The calendar toggles with no settings row (F23).** When there is no row to tell by, the app asks separately whether
+  `calendar_auto` exists, and no longer hides the toggles. The SQL page gives the one household without a row its row, and
+  `ONBOARDING.md` §2 now makes it with the household.
+- **Restores (F24).** Word matches and aisles upsert on their natural keys through `pushList(…, onConflict)`.
+- **Writes that carried more than their change (F25, F42).**
+  - `saveRecipe` leaves out `favourite`: the live column defaults to `false`, read-only. It is keyed `recipes:<id>#text`, so
+    it never covers a favourite still waiting to land.
+  - `saveRecipes` (source and keyword merges) updates source, tags and the text of each recipe instead of upserting every
+    column.
+  - `setSetting` upserts its own column only (`SETTING_COLUMNS`). The import keeps the whole row.
+- **The image sweep (F44)** applies a re-hosted address only if the recipe still has the one it sent.
+- **The week's first day (F40).** Changing it asks first, then clears the ticks of every week key that no longer starts a
+  week, on the server and in the tab. The comment that said this already happened is corrected.
+- **Shared recipes (F43).** `ourCopyOf` compares `normalisedSourceUrl` on both sides. Left out: `shared_recipes()`
+  returning `copied_from`, a drop-and-create of a security-definer function for a case no household has hit.
+- **`docs/migrations/harden-default-privileges.md` (F35, F23), waiting.**
+  - New tables and sequences in `public` give `anon` nothing by default.
+  - New functions still reach everyone through Postgres's global `PUBLIC` default, which a rule for one schema cannot take
+    away, so each page that adds one keeps its revoke; the page says so.
+  - It also inserts the missing settings row.
+  - Tried on the scratch PG17 cluster, as the page records.
+- `changelog.json` **2026-10-12.3**; `help.html` (the week-start question); `TEST-PLAN.md` step 50a.
+- Four existing checks that asserted the old behaviour now assert the new: three on settings sending the whole row, one on
+  a new recipe's row naming `favourite`.
+
+*Verified by.*
+- `node test/core.test.js` 153, exit 0.
+- `node test/build.js && node test/smoke.js` **547** (537 before), exit 0, no console or page errors.
+- `help-guide.js` 7, exit 0.
+- Ten new checks.
+- Mutations: see the PR.
+
+*Not verified:* live. The SQL page is the household's to apply, and tablet step 50a is the household's.
+
 **The full browser pass was completed on 21 Sep** — all 20 steps of `docs/TEST-PLAN.md`, against
 the real backend, by a human in a browser. Sign-in, hydration, RLS and the write queue all
 worked; sign-out-and-back-in, the path that had most worried this document, was clean; export

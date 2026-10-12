@@ -623,6 +623,14 @@ removed page was deleted), and no listed page missing.*
     **Read-only afterwards:** that day's `recipe_logs` row has `meal_type = 'lunch'`, and there is one, not two. Undo: take the
     dishes off the days, and REMOVE the diary entries you made.
 
+50a. **Several households (new 12 Oct; the October review's PR 6; only after `docs/migrations/harden-default-privileges.md`).**
+    (1) *Tick one item on the shopping list. Settings → APP, change the day weeks start on:* it asks first, saying the ticks
+    will be cleared. *Cancel:* the day is as it was and the tick is still there. *Change it again and OK:* the tick has gone.
+    Change the day back. (2) *Star a recipe on the phone; then, on the tablet without reloading, EDIT that recipe and SAVE:*
+    reload either device, and the star is still there. (3) *Change APPEARANCE on one device while another has the app open,
+    then change the week's first day on the other:* reload both, and both changes have stuck. **Read-only afterwards:** this
+    household's `household_settings` row holds both changes. Undo: put the settings back as they were.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in
