@@ -2,7 +2,7 @@
  *
  * WHY THIS FILE EXISTS: the checker shipped with a false negative. It
  * verified that a JPEG ends with FFD9 and called that whole, which passed
- * Tuscan Chicken Pasta — a file with an intact marker chain whose
+ * one recipe's photo (22 Sep 2026) — a file with an intact marker chain whose
  * entropy-coded scan data ran out early, so it decoded to a photo on top
  * and grey below. A checker that can be wrong silently is worse than no
  * checker, because it launders a bad file as verified. This pins the
@@ -125,13 +125,13 @@ function check(name, condition, detail) {
 
 // --- imageIntegrity: the two truncation shapes ----------------------------
 {
-  // Classic Scones: cut off mid-stream, no end marker.
+  // The second broken photo found (22 Sep 2026): cut off mid-stream, no end marker.
   const noEoi = makeJpeg({ w: 800, h: 1200, scanBytes: 35000, withEoi: false });
   check('a JPEG with no end marker is caught',
     /no end-of-image marker/.test(imageIntegrity(noEoi, null) || ''));
 }
 {
-  /* Tuscan Chicken Pasta: marker chain intact, EOI present, scan data far
+  /* The first broken photo (22 Sep 2026): marker chain intact, EOI present, scan data far
      too short for the declared dimensions. This is the case the original
      checker passed, and the reason this file exists. */
   const terminated = makeJpeg({ w: 800, h: 1200, scanBytes: 10000 });

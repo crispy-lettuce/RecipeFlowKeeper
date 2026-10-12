@@ -7988,7 +7988,7 @@ function renderCalendarSettings(){
   box.innerHTML = intro + `<p class="subtle">Connected as ${escapeHtml(c.google_email || 'your Google account')}, calendar RecipeWrangler.
       ${c.last_sync_at ? `Last brought into step ${escapeHtml(calendarWhen(c.last_sync_at))}.` : 'Not brought into step yet.'}</p>
     ${problem}
-    <label class="subtle" for="calRemindAt">REMIND AT, the evening before</label>
+    <label class="subtle" for="calRemindAt">REMIND AT<span>, the evening before</span></label>
     <select class="sort" id="calRemindAt" aria-label="Reminder time, the evening before">${times.map(m=>
       `<option value="${m}"${m === at ? ' selected' : ''}>${formatRemindAt(m)}</option>`).join('')}</select>
     ${calendarAutoAvailable ? calendarAutoToggles() : ''}

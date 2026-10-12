@@ -582,7 +582,7 @@ way that will bite; **Low** = hygiene; **Info** = worth knowing.
   stay a readable name rather than become opaque. The old `name|unit` rows are deleted at
   start-up.*
 - **Daily backups at 04:00 UTC, 30 in the tree, all in history.** Right cadence for this data.
-- **`index-old.html`.** Referenced once, honestly, in `docs/ARCHITECTURE.md`; harmless.
+- **`index-old.html`.** Referenced once, honestly, in `docs/ARCHITECTURE.md`; harmless. *(Corrected 12 Oct 2026: it was not harmless. Pages served it, and it carried recipe text; the October review's F9. It was removed from the tree that day.)*
 - **The free tier.** Nothing here is near a limit.
 
 ---

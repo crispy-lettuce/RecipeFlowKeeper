@@ -25,29 +25,42 @@ const check = (name, pass, detail) => {
 
 (async () => {
   const browser = await chromium.launch(launchOpts);
-  const page = await browser.newPage();
   const errors = [];
-  page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
-  page.on('console', m => {
-    // Google Fonts is blocked by this sandbox's egress proxy — not an app fault.
-    /* Network errors this sandbox produces for anything outside it, none of
-       which is an app fault:
-         ERR_CERT_AUTHORITY_INVALID  the TLS-intercepting proxy, on Google Fonts
-         ERR_TUNNEL_CONNECTION_FAILED  the proxy refusing outbound entirely,
-             which is what the R3 fixture's external image URL hits — and that
-             fixture has to carry a real external URL, because "not yet
-             self-hosted" is the whole state it exists to represent.
-       The browser's message for these carries neither the URL nor the other
-       tokens, so each needs naming or the suite can never go green here.
-         ERR_NAME_NOT_RESOLVED  the same two fetches on a GitHub Actions
-             runner, which has no route to the fonts or to the fixture's
-             made-up host and says so by failing DNS. Found by the first CI
-             run, 23 Sep: 197 checks passed and the job still exited 1.
-       Everything else still fails the run. */
-    if (m.type() === 'error' && !/ERR_CONNECTION_RESET|ERR_BLOCKED|ERR_CERT_AUTHORITY_INVALID|ERR_TUNNEL_CONNECTION_FAILED|ERR_NAME_NOT_RESOLVED|fonts\.googleapis/.test(m.text())) {
-      errors.push('CONSOLE: ' + m.text());
-    }
-  });
+  /* Every page this suite opens goes through here (12 Oct 2026, the October review, F30 and F47). Two things used to be
+     true of the main page only, or of none:
+       - A console error failed the run only on the main page; the secondary pages listened for uncaught exceptions
+         alone, so an app console.error there passed.
+       - Nothing stopped a page reaching the network. The fixture's recipes carry image addresses under the live
+         project's public Storage prefix, as they must for SELF_HOST_PREFIX to match, and headless Chromium fetched
+         them: the live edge logs showed a burst of GETs from every smoke run, CI on a public repo's PRs included,
+         while tests.yml said nothing here touched the live project. Google Fonts and the R3 fixture's external
+         image went out too.
+     So every page now records page errors and console errors under its label (p.__label, set where it is opened;
+     p.__expectConsole names the one error a page is there to provoke),
+     and refuses every http(s) request as blocked by the client, which is also the only network error the console
+     filter lets through. A test that answers a request itself (page.route, which runs before this catch-all) still
+     can. Every request a page makes is listed, and the last checks prove each one was either refused here or
+     answered by the test: none reached the network. */
+  const net = { seen: [], handled: new Set() };
+  const openPage = browser.newPage.bind(browser);
+  let opened = 0;
+  browser.newPage = async (opts) => {
+    const p = await openPage(opts);
+    const n = ++opened;
+    const label = () => p.__label || 'page ' + n;
+    p.on('pageerror', e => errors.push(`PAGEERROR (${label()}): ` + e.message));
+    p.on('console', m => {
+      if (m.type() === 'error' && !/ERR_BLOCKED_BY_CLIENT/.test(m.text()) && !(p.__expectConsole && p.__expectConsole.test(m.text())))
+        errors.push(`CONSOLE (${label()}): ` + m.text());
+    });
+    p.on('request', r => { if (/^https?:/.test(r.url())) net.seen.push({ req: r, url: r.url(), page: label() }); });
+    const route = p.route.bind(p);
+    p.route = (url, handler, o) => route(url, (rt, req) => { net.handled.add(rt.request()); return handler(rt, req); }, o);
+    await route(/^https?:\/\//, rt => { net.handled.add(rt.request()); return rt.abort('blockedbyclient'); });
+    return p;
+  };
+  const page = await browser.newPage();
+  page.__label = 'main';
 
   /* The page's Date is pinned to the fixture's date (timers keep running).
      Without this the suite's meaning changed with the weekday — see
@@ -3009,6 +3022,9 @@ const check = (name, pass, detail) => {
   // Starting up offline: explain, keep the session, and recover without a password.
   const cold = await browser.newPage();
   const coldErrors = [];
+  cold.__label = 'offline start';
+  /* The app says so in the console when it cannot load at start-up; that is this page's whole point. */
+  cold.__expectConsole = /^Could not load your library/;
   cold.on('pageerror', e => coldErrors.push(e.message));
   await cold.addInitScript(() => { window.__READ_FAIL__ = true; });
   await cold.clock.setFixedTime(FIXTURE_NOW);
@@ -4192,7 +4208,7 @@ const check = (name, pass, detail) => {
 
   // Before the migration: a fresh page on the default fixture, exactly as the live app is today.
   const calPre = await browser.newPage();
-  calPre.on('pageerror', e => errors.push('PAGEERROR (calendar, before): ' + e.message));
+  calPre.__label = 'calendar, before';
   await calPre.clock.setFixedTime(FIXTURE_NOW);
   await calPre.goto('file://' + path.join(__dirname, 'app-under-test.html'));
   await calPre.waitForTimeout(1200);
@@ -4409,7 +4425,7 @@ const check = (name, pass, detail) => {
   // Coming back from Google: a fresh page at #calendar=<outcome>.
   const calReturn = async (outcome, conn) => {
     const p = await browser.newPage();
-    p.on('pageerror', e => errors.push('PAGEERROR (calendar, #' + outcome + '): ' + e.message));
+    p.__label = 'calendar, #' + outcome;
     await p.addInitScript(c => { window.__STUB_EXTRA__ = { calendar_connections: c };
       window.__INVOKE_REPLY__ = call => call.name === 'calendar-sync' ? { data: { ok: true, put: 0, deleted: 0 }, error: null } : { data: null, error: null }; }, conn);
     await p.clock.setFixedTime(FIXTURE_NOW);
@@ -4625,7 +4641,7 @@ const check = (name, pass, detail) => {
   check('    an ordinary save of a recipe never names copied_from', shPre.rowId && !shPre.copiedKey, JSON.stringify(shPre));
 
   const sh = await browser.newPage();
-  sh.on('pageerror', e => errors.push('PAGEERROR (sharing): ' + e.message));
+  sh.__label = 'sharing';
   await sh.route('**/storage/v1/object/public/recipe-images/**', route =>
     route.fulfill({ status: 200, contentType: 'image/jpeg', body: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0xff, 0xd9]) }));
   await sh.addInitScript(() => {
@@ -4817,7 +4833,7 @@ const check = (name, pass, detail) => {
     drive_folder_id: null, drive_backup_at: null, drive_last_error: null }, over || {});
   const drPage = async (conn, label) => {
     const p = await browser.newPage();
-    p.on('pageerror', e => errors.push('PAGEERROR (drive, ' + label + '): ' + e.message));
+    p.__label = 'drive, ' + label;
     await p.addInitScript(c => { window.__STUB_EXTRA__ = { calendar_connections: [c] };
       window.__DRIVE_REPLY__ = { data: { ok: true, name: 'kitchen-backup-2026-09-22.json', at: '2026-09-22T09:00:05.000Z', deleted: 0 }, error: null };
       window.__INVOKE_REPLY__ = call => call.name === 'drive-backup' ? window.__DRIVE_REPLY__ : { data: { ok: true, put: 0, deleted: 0 }, error: null }; }, conn);
@@ -4934,7 +4950,7 @@ const check = (name, pass, detail) => {
 
   // After the migration: a fresh page whose rows carry the columns.
   const pmPage = await browser.newPage();
-  pmPage.on('pageerror', e => errors.push('PAGEERROR (pre-made): ' + e.message));
+  pmPage.__label = 'pre-made';
   await pmPage.addInitScript(([today, tomorrow, yesterday, r1, r2]) => {
     const H = '286a8a12-c12a-4b83-afbc-0912533f6b1c';
     window.__STUB_EXTRA__ = {
@@ -5088,7 +5104,7 @@ const check = (name, pass, detail) => {
      dinner) then Soup (fresh); the load puts Pasta in the diary from the freezer. Then the Planner row on a phone. */
   console.log('\nFresh or freezer, and the Planner row on a phone');
   const ff = await browser.newPage();
-  ff.on('pageerror', e => errors.push('PAGEERROR (fresh or freezer): ' + e.message));
+  ff.__label = 'fresh or freezer';
   await ff.addInitScript(([today, r1, r2]) => {
     window.__STUB_EXTRA__ = {
       planner_days: [{ household_id: '286a8a12-c12a-4b83-afbc-0912533f6b1c', plan_date: today, is_blank: false,
@@ -5191,7 +5207,7 @@ const check = (name, pass, detail) => {
      recipe with a 20-second step (#86). The switch's new name (#89) and the Drink course (#93). */
   console.log('\nParse feedback, seconds, COOKING MODE, Drink');
   const ia = await browser.newPage({ viewport: { width: 800, height: 1280 } });
-  ia.on('pageerror', e => errors.push('PAGEERROR (issues 85-93): ' + e.message));
+  ia.__label = 'issues 85-93';
   await ia.clock.setFixedTime(FIXTURE_NOW);
   await ia.goto('file://' + path.join(__dirname, 'app-under-test.html'));
   await ia.waitForTimeout(1500);
@@ -5256,7 +5272,7 @@ const check = (name, pass, detail) => {
      one of the aisles a household can choose in Settings. */
   console.log('\nFROZEN aisle');
   const fz = await browser.newPage();
-  fz.on('pageerror', e => errors.push('PAGEERROR (frozen): ' + e.message));
+  fz.__label = 'frozen';
   await fz.clock.setFixedTime(FIXTURE_NOW);
   await fz.goto('file://' + path.join(__dirname, 'app-under-test.html'));
   await fz.waitForTimeout(1500);
@@ -5286,7 +5302,7 @@ const check = (name, pass, detail) => {
      before the row, into this household's own folder of recipe-images, and never sent to be re-hosted. */
   console.log('\nUpload your own recipe photo');
   const rp = await browser.newPage();
-  rp.on('pageerror', e => errors.push('PAGEERROR (recipe photo): ' + e.message));
+  rp.__label = 'recipe photo';
   await rp.clock.setFixedTime(FIXTURE_NOW);
   await rp.goto('file://' + path.join(__dirname, 'app-under-test.html'));
   await rp.waitForTimeout(1500);
@@ -5365,7 +5381,7 @@ const check = (name, pass, detail) => {
   const vnLog = ver => [ver, '2026-10-01.1', '2026-09-30.2', '2026-09-30.1', '2026-09-29.1', '2026-09-28.1'].map((v, i) => (
     { version: v, date: v.split('.')[0], ...(i === 0 ? { issues: [91] } : {}), changes: [`Test change ${i + 1}`] }));
   const vn = await browser.newPage();
-  vn.on('pageerror', e => errors.push('PAGEERROR (version): ' + e.message));
+  vn.__label = 'version';
   const vnApp = await (async () => { const m = require('fs').readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8').match(/const APP_VERSION = '([^']+)'/); return m && m[1]; })();
   await vn.addInitScript(log => { window.__CHANGELOG__ = log; try { localStorage.setItem('kitchen.lastSeenVersion', '2000-01-01.1'); } catch(e){} }, vnLog(vnApp));
   await vn.clock.setFixedTime(FIXTURE_NOW);
@@ -5404,7 +5420,7 @@ const check = (name, pass, detail) => {
         vnNone.version === vnStart.app && vnNone.list === "What's new needs a connection.", JSON.stringify(vnNone));
   await vn.close();
   const vf = await browser.newPage();
-  vf.on('pageerror', e => errors.push('PAGEERROR (version, first visit): ' + e.message));
+  vf.__label = 'version, first visit';
   await vf.clock.setFixedTime(FIXTURE_NOW);
   await vf.goto('file://' + path.join(__dirname, 'app-under-test.html'));
   await vf.waitForTimeout(1500);
@@ -5413,6 +5429,24 @@ const check = (name, pass, detail) => {
   check('    a first visit shows no update line, only remembers the version; the bar keeps its own words for a half-arrived update',
         !/^Updated to/.test(vfFirst.toast) && vfFirst.seen === vfFirst.app && !vfFirst.bar && vfFirst.barText === 'This page is part-way through an update.', JSON.stringify(vfFirst));
   await vf.close();
+
+  /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
+     answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
+     yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:
+     it shows as never answered or ERR_ABORTED, and is not counted. One that reached the network has an answer or a
+     network error of its own (a DNS or proxy failure), and is. The second check proves the first is not vacuous:
+     the fixture's live Storage addresses were among them. */
+  await page.waitForTimeout(300);
+  const unhandled = net.seen.filter(x => !net.handled.has(x.req));
+  for (const x of unhandled) {
+    const r = await Promise.race([x.req.response().catch(() => null), new Promise(ok => setTimeout(() => ok('pending'), 500))]);
+    x.fate = (x.req.failure() || {}).errorText || (r === 'pending' ? 'never answered' : r ? 'answered ' + r.status() : 'no response');
+  }
+  const escaped = unhandled.filter(x => !/^(never answered|net::ERR_ABORTED)$/.test(x.fate));
+  check('no page reached the network: every request was refused or answered by the test',
+        escaped.length === 0, [...new Set(escaped.map(x => x.page + ' ' + x.url + ' ' + x.fate))].slice(0, 5).join(', '));
+  check(`    and the live project's addresses were among them (${net.seen.length} requests, ${opened} pages)`,
+        net.seen.some(x => /^https:\/\/[a-z]+\.supabase\.co\//.test(x.url)));
 
   const failed = checks.filter(c => !c.pass).length;
   console.log(`\n${checks.length} checks, ${failed} failed`);
