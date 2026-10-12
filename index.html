@@ -296,6 +296,11 @@
   }
   .rcard-photo.empty{ border-style:dashed; background:none; }
   .rcard-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  /* A picture that will not load (an upload that never landed, a web image taken down): the empty frame and a word,
+     not the browser's broken-image mark. The img stays, so its address is still there to be put right. */
+  .rcard-photo.broken{ border-style:dashed; background:none; position:relative; }
+  .rcard-photo.broken img{ opacity:0; }
+  .rcard-photo.broken::after{ content:"PHOTO CAN'T BE SHOWN"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
   .rcard-tags{
     font-family:'IBM Plex Mono', monospace; font-size:10px;
     letter-spacing:.1em; color:var(--sage);
@@ -2078,7 +2083,7 @@ const EXPECTED_CORE_VERSION = '2026-10-11.2';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-11.4';
+const APP_VERSION = '2026-10-12.1';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -2817,7 +2822,10 @@ async function runWrite(w){
       unsentLabels.add(w.label);
       failedWrites.push(w);
     }
-    showToast(`Couldn't save ${w.label} — check your connection`);
+    /* Only a network failure is the connection's fault (12 Oct 2026, F32). One the server answered and refused (a
+       policy, a constraint, an error of ours) will not go through by trying again on better wifi, so it says so. */
+    showToast(isNetworkFailure(err) ? `Couldn't save ${w.label} — check your connection`
+      : `Couldn't save ${w.label}: the server refused it. It will be tried again, but if this keeps happening, reload.`);
   }
 }
 function queueWrite(label, fn, opts){
@@ -3488,11 +3496,14 @@ function deleteRecipeNote(id){
   const note = loadRecipeNotes().find(n=> n.id === id);
   cache.recipeNotes = loadRecipeNotes().filter(n=> n.id !== id);
   if(!note) return null;
+  queueRecipeNoteDelete(id);
+  return note;
+}
+function queueRecipeNoteDelete(id){
   queueWrite('cooking notes', async ()=>{
     const { error } = await sb.from('recipe_notes').delete().eq('household_id', HOUSEHOLD_ID).eq('id', id);
     if(error) throw error;
   });
-  return note;
 }
 /* Whole-table replace. Import only — see pushList. */
 function replaceRecipeNotes(list){
@@ -3589,7 +3600,9 @@ function replaceRecipesList(list){
    person has just looked at every field: the row is what they confirmed.
    The row is built NOW, from the recipe as it is at the moment of saving,
    so a later edit to the cache cannot change what this write sends. */
-function saveRecipe(recipe){
+/* `landed`, when given, runs inside the same write once the row is stored, and again on a retry that lands, never
+   on a failure: for a change that must not reach the server before the recipe's own does (FOLD INTO NOTES). */
+function saveRecipe(recipe, landed){
   const list = cache.recipes;
   const idx = list.findIndex(r => r.id === recipe.id);
   if(idx === -1) list.push(recipe); else list[idx] = recipe;
@@ -3597,6 +3610,7 @@ function saveRecipe(recipe){
   return queueWrite('recipes', async ()=>{
     const { error } = await sb.from('recipes').upsert([row]);
     if(error) throw error;
+    if(landed) landed();
   });
 }
 /* Several recipes, whole rows: the source merge and the keyword edits,
@@ -3633,15 +3647,20 @@ function patchRecipe(id, patch){
 function deleteRecipe(id){
   const gone = cache.recipes.find(r => r.id === id);
   cache.recipes = cache.recipes.filter(r => r.id !== id);
-  /* Its cooking notes go with it on the server (the foreign key cascades), so only the cache is tidied. */
+  /* Its cooking notes and its cooking history go with it on the server (both foreign keys cascade), so only the
+     cache is tidied. The history too since 12 Oct 2026 (the October review, F20): left in the cache, an export taken
+     before the next refresh wrote diary rows for a recipe the file did not contain, and restoring that file failed. */
   cache.recipeNotes = cache.recipeNotes.filter(n => n.recipeId !== id);
+  cache.diary = cache.diary.filter(e => e.recipeId !== id);
+  /* A recipe's source photos are its own, never shared (unlike a recipe image), so they go with it, but only once
+     the row delete has landed (F32). They used to be queued beside it whatever happened to it, so a delete the server
+     refused left the recipe in place, naming files already gone. Queued from inside the write, they run after it. */
+  const paths = gone && gone.sourcePhotos ? gone.sourcePhotos.map(p => p.path) : [];
   queueWrite('recipes', async ()=>{
     const { error } = await sb.from('recipes').delete().eq('household_id', HOUSEHOLD_ID).eq('id', id);
     if(error) throw error;
+    removeSourcePhotoFiles(paths);
   });
-  /* A recipe's source photos are its own, never shared (unlike a recipe image), so they go with it: after
-     the row, so the row never names a file already deleted. */
-  if(gone && gone.sourcePhotos) removeSourcePhotoFiles(gone.sourcePhotos.map(p => p.path));
   const p = loadPlan();
   /* One call to the calendar for every switched-on day this touches, after all their Planner writes. */
   withCalendarBatch(()=> Object.keys(p).forEach(date => {
@@ -3649,10 +3668,12 @@ function deleteRecipe(id){
     if(!entry || entry.blank) return;
     const ids = planRecipeIds(entry);
     if(!ids.includes(id)) return;
-    const servings = planServings(entry);
-    const keepIds = [], keepServings = [];
-    ids.forEach((rid, i) => { if(rid !== id){ keepIds.push(rid); keepServings.push(servings[i]); } });
-    if(keepIds.length) p[date] = keepCalendarFlags(entry, { recipeIds: keepIds, servings: keepServings }); else delete p[date];
+    const servings = planServings(entry), premade = planPremade(entry);
+    /* PRE-MADE kept in step with the rest (F14): it used to be dropped here, so deleting any recipe turned the
+       other dishes on its days from the freezer back into fresh ones, back on the shopping list. */
+    const keepIds = [], keepServings = [], keepPremade = [];
+    ids.forEach((rid, i) => { if(rid !== id){ keepIds.push(rid); keepServings.push(servings[i]); keepPremade.push(premade[i]); } });
+    if(keepIds.length) p[date] = keepCalendarFlags(entry, withPremade({ recipeIds: keepIds, servings: keepServings }, keepPremade)); else delete p[date];
     savePlanDay(date);
   }));
   loadGroups().filter(g => g.recipeIds.includes(id)).forEach(g => {
@@ -3698,9 +3719,10 @@ async function replaceAllDiary(recipeList, diaryList){
        Upsert rather than insert because a restore should replace rows that
        share an id, not collide with them — which is also what makes
        re-running a failed restore safe. */
+    const restored = new Set((recipeList || []).map(r=> r && r.id));
     const rows = diaryList
       .filter(e=> e && e.cookedOn && /^\d{4}-\d{2}-\d{2}$/.test(String(e.cookedOn))
-                  && (e.recipeId || (e.title||'').trim()))
+                  && (e.recipeId ? restored.has(e.recipeId) : (e.title||'').trim()))
       .map(e=>({
         id: e.id, household_id: HOUSEHOLD_ID,
         recipe_id: e.recipeId || null,
@@ -3964,6 +3986,12 @@ function setPlanPremadeAt(dateStr, index, meal){
   p[dateStr] = keepCalendarFlags(entry, withPremade({recipeIds: ids, servings: planServings(entry)}, premade));
   if(premade[index]) applyCalendarAuto(p[dateStr]);
   const saved = savePlanDay(dateStr);
+  /* Switched on as a meal while its freezer row is already in the diary as another (PRE-MADE off, which keeps the row,
+     then on again as lunch rather than dinner): the row is changed to match (12 Oct 2026, the October review, F39). The
+     toast has always said the diary has it as the meal chosen, and until then it kept the old one. Only here, at the
+     moment the household chooses the meal, so a meal type changed by hand in History is never overwritten later. */
+  const logged = premade[index] ? loadDiary().find(e=> e.id === premadeLogIdAt(dateStr, planEntries(p[dateStr]), index)) : null;
+  if(logged && logged.mealType !== meal) updateDiaryEntry(logged.id, { mealType: meal });
   logDuePremade();
   return saved;
 }
@@ -5304,11 +5332,13 @@ function finishRecipe(id){
   if(!recipe) return;
   const today = todayStr();
   if((recipe.history || []).includes(today)) return;
-  /* Answered "from the freezer" already: it is in the diary, so nothing more. ("Fresh" put it in the history above.) */
+  /* Answered "from the freezer" already: it is in the diary, so nothing more. ("Fresh" put it in the history above.)
+     Only while the dish is still PRE-MADE (F39): switched off since, finishing its flow is ordinary cooking again, and
+     used to log nothing and say nothing. */
   const key = `${today}|${id}`;
-  if(freshOrFreezerAnswered.has(key)) return;
   const idx = planEntries(loadPlan()[today]).findIndex(e=> e.recipeId === id && e.premade);
   if(idx === -1){ logRecipeUsed(id); return; }
+  if(freshOrFreezerAnswered.has(key)) return;
   freshOrFreezerAsk = { id, date: today, idx, key };
   document.getElementById('freshOrFreezerWhat').textContent = recipe.title || 'This dish';
   document.getElementById('freshOrFreezerOverlay').classList.add('open');
@@ -5326,10 +5356,9 @@ function closeFreshOrFreezer(){
    it, so nothing written by hand can be touched. (Switching PRE-MADE off on the Planner keeps that entry: there nobody
    has said it was wrong.) Then the ordinary cooked log, with its meal question and note box. */
 function cookedFreshInstead(ask){
-  const ids = planRecipeIds(loadPlan()[ask.date]);
-  if(ids[ask.idx] !== ask.id){ logRecipeUsed(ask.id); return; }
-  const occurrence = ids.slice(0, ask.idx + 1).filter(x=> x === ask.id).length;
-  const freezerId = premadeLogId(HOUSEHOLD_ID, ask.date, ask.id, occurrence);
+  const entries = planEntries(loadPlan()[ask.date]);
+  if(!entries[ask.idx] || entries[ask.idx].recipeId !== ask.id){ logRecipeUsed(ask.id); return; }
+  const freezerId = premadeLogIdAt(ask.date, entries, ask.idx);
   setPlanPremadeAt(ask.date, ask.idx, '');
   deleteDiaryEntry(freezerId);
   updateSidebarCounts();
@@ -5363,6 +5392,17 @@ function premadeLogId(household, date, recipeId, occurrence){
   const hex = part(0x811c9dc5) + part(0x01000193) + part(0x9e3779b9) + part(0x85ebca6b);
   return `${hex.slice(0,8)}-${hex.slice(8,12)}-8${hex.slice(13,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
 }
+/* The freezer row's id for the item at `index` on a day: which of that recipe's PRE-MADE places it is. Counted over the
+   pre-made copies only since 12 Oct 2026 (the October review, F39). Counted over every copy, a day holding a fresh and a
+   pre-made copy of one recipe gave the freezer row n = 2; taking the fresh one off made it n = 1, and the next run wrote
+   a second row. Measured before the change, across every household: no planned day with a PRE-MADE repeats a recipe,
+   so no row already logged changes its id. Null for an item that is not pre-made. */
+function premadeLogIdAt(date, entries, index){
+  const e = entries[index];
+  if(!e || !e.premade) return null;
+  const n = entries.slice(0, index + 1).filter(x=> x.recipeId === e.recipeId && x.premade).length;
+  return premadeLogId(HOUSEHOLD_ID, date, e.recipeId, n);
+}
 function logDuePremade(){
   if(!premadeAvailable || !HOUSEHOLD_ID) return 0;
   const plan = loadPlan(), today = todayStr();
@@ -5371,12 +5411,11 @@ function logDuePremade(){
   let added = 0;
   Object.keys(plan).sort().forEach(date=>{
     if(date > today) return;
-    const seen = {};
-    planEntries(plan[date]).forEach(({ recipeId, premade })=>{
-      const n = seen[recipeId] = (seen[recipeId] || 0) + 1;
+    const entries = planEntries(plan[date]);
+    entries.forEach(({ recipeId, premade }, i)=>{
       /* A recipe since deleted has nothing to log against: recipe_logs needs it. */
       if(!premade || !library.has(recipeId)) return;
-      const id = premadeLogId(HOUSEHOLD_ID, date, recipeId, n);
+      const id = premadeLogIdAt(date, entries, i);
       if(have.has(id)) return;
       addDiaryEntry({ id, recipeId, cookedOn: date, mealType: premade, premade: true });
       have.add(id);
@@ -6875,7 +6914,14 @@ function renderHistoryDayDetail(){
       const entry = loadDiary().find(x=>x.id === btn.dataset.deleteLog);
       if(!entry) return;
       const name = diaryEntryTitle(entry);
-      if(!confirm(`Remove "${name}" from ${label}?`)) return;
+      /* A freezer entry the plan still marks PRE-MADE would be written straight back by the next load (logDuePremade),
+         with a toast saying so (12 Oct 2026, the October review, F15). So REMOVE says it also takes PRE-MADE off that
+         dish on the Planner, and does. */
+      const day = entry.premade ? planEntries(loadPlan()[entry.cookedOn]) : [];
+      const planned = day.findIndex((_, i)=> premadeLogIdAt(entry.cookedOn, day, i) === entry.id);
+      if(!confirm(planned === -1 ? `Remove "${name}" from ${label}?`
+        : `Remove "${name}" from ${label}? It is planned as pre-made that day, so PRE-MADE comes off it on the Planner too, or it would come back.`)) return;
+      if(planned !== -1) setPlanPremadeAt(entry.cookedOn, planned, '');
       deleteDiaryEntry(entry.id);
       showToast(`Removed "${name}"`);
       renderHistory();
@@ -7400,6 +7446,17 @@ document.getElementById('recipePhotoInput').addEventListener('change', e=>{
 document.getElementById('recipePhotoClear').addEventListener('click', ()=>{ clearRecipePhoto(); renderBeforeSave(); });
 /* Typing a link means the link is wanted: the chosen photo is let go. */
 document.getElementById('f-image').addEventListener('input', e=>{ if(e.target.value.trim() && pendingRecipePhoto){ clearRecipePhoto(); renderBeforeSave(); } });
+/* A card's picture that fails to load says so (12 Oct 2026, the October review, F46, and the photo upload of #92): an
+   upload that never landed, because the tab closed before its retry, left the recipe naming a file that is not
+   there, shown as a broken image for ever. Error events do not bubble, so this listens in the capture phase. */
+document.addEventListener('error', e=>{
+  const box = e.target && e.target.tagName === 'IMG' && e.target.closest('.rcard-photo');
+  if(box) box.classList.add('broken');
+}, true);
+document.addEventListener('load', e=>{
+  const box = e.target && e.target.tagName === 'IMG' && e.target.closest('.rcard-photo');
+  if(box) box.classList.remove('broken');
+}, true);
 /* Fills every [data-photo-path] under `root` once its link is known: a photo's <img> gets its picture, a
    PDF's OPEN link its address. One that cannot be shown (offline, or its upload has not landed yet) says so
    in its place. */
@@ -7416,7 +7473,10 @@ function loadPhotoImages(root){
     }).catch(err=>{
       console.warn('Source file not shown', path, err);
       if(el.isConnected) el.replaceWith(Object.assign(document.createElement('div'), {
-        className: 'photo-missing', textContent: `Can't ${el.tagName === 'IMG' ? 'show this photo' : 'open this PDF'} now: offline, or it hasn't finished uploading.` }));
+        className: 'photo-missing', textContent: `Can't ${el.tagName === 'IMG' ? 'show this photo' : 'open this PDF'} now: offline, or it hasn't finished uploading.`
+          /* F46: an upload that never landed (the tab closed before its retry) leaves the recipe naming a file that will
+             never arrive, and this was all anyone ever saw. Now it says what to do. */
+          + ` If it doesn't come back, add it again through EDIT.` }));
     });
   });
 }
@@ -9980,15 +10040,18 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     recipes[idx] = { ...recipes[idx], ...fields };
     if(photos) uploadSourcePhotos(photos.uploads);
     uploadRecipePhoto(recipePhoto);
-    saveRecipe(recipes[idx]);
+    /* FOLD INTO NOTES: the note leaves the log only once the text carrying it is saved, and only if the line is
+       still there. It goes from this tab at once, but its row is deleted inside the recipe's own write, after the
+       upsert lands (12 Oct 2026, the October review, F33). It used to be a write of its own, queued after the save
+       whatever became of it, so a save the server refused while the delete landed left the line nowhere but this
+       tab: a reload lost it. Now a failed save keeps the note on the server, and its retry deletes it. */
+    const fold = foldToSave(fields.syntax);
+    if(fold) cache.recipeNotes = loadRecipeNotes().filter(n=> n.id !== fold.noteId);
+    saveRecipe(recipes[idx], fold ? ()=> queueRecipeNoteDelete(fold.noteId) : null);
     /* Its days in the calendar carry the title, so they are rewritten: after the recipe's write, which is
        where calendar-sync reads the title from. */
     if(titleBefore !== recipes[idx].title) syncRecipeCalendarDays(recipes[idx].id);
     if(photos) removeSourcePhotoFiles(photos.removals);
-    /* FOLD INTO NOTES: the note leaves the log only once the text carrying it is saved, and only if the
-       line is still there. After the recipe's write, so the note is never gone before its line is kept. */
-    const fold = foldToSave(fields.syntax);
-    if(fold) deleteRecipeNote(fold.noteId);
     /* Before closeAddModal() below, which nulls state.editingRecipeId. */
     rehostImageFor(state.editingRecipeId, fields.imageUrl || '');
     /* An edit can move the groups and stages around, and a tick is a
@@ -10231,8 +10294,12 @@ function importAllData(file){
        references recipes the file does not contain. Restoring that backup
        is the one case this file cannot recover from. */
     if(Array.isArray(data.diary)){
+      /* A row for a recipe the file does not restore is left out (12 Oct 2026, F20), as the notes below are: the
+         database refuses it, and the whole history write then failed and was retried for ever. replaceAllDiary
+         applies the same rule. */
+      const restored = new Set(data.recipes.map(r=> r && r.id));
       cache.diary = data.diary
-        .filter(e=> e && e.cookedOn && (e.recipeId || (e.title||'').trim()))
+        .filter(e=> e && e.cookedOn && (e.recipeId ? restored.has(e.recipeId) : (e.title||'').trim()))
         .map(e=>({
           id: e.id, recipeId: e.recipeId || null, title: e.title || '',
           cookedOn: e.cookedOn,

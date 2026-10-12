@@ -613,6 +613,16 @@ removed page was deleted), and no listed page missing.*
     says "A new version is ready"; RELOAD brings it in, and step (1)'s toast names the new version. **The other
     household** sees the same toast once, and the list. Undo: nothing to undo.
 
+49a. **Lost changes, part 1 (new 12 Oct; the October review's PR 4).** Uses a throwaway recipe you add and delete, and one
+    Planner day. (1) *ADD a throwaway recipe (any made-up text). On a day next week, put it on with one other dish, and mark
+    the other dish PRE-MADE · DINNER. Then DELETE the throwaway recipe:* the other dish still reads PRE-MADE · DINNER, and is
+    still off the shopping list. (2) *On yesterday's Planner day, put a dish on and mark it PRE-MADE · LUNCH:* the toast says
+    it's in the food diary. *HISTORY, yesterday, REMOVE that entry:* the question says PRE-MADE comes off it on the Planner
+    too; OK. Leave the tab and come back: the entry has not come back, and yesterday's dish no longer reads PRE-MADE.
+    (3) *Today, mark a dish PRE-MADE · DINNER, tap it again (fresh), then PRE-MADE · LUNCH:* HISTORY shows it once, as lunch.
+    **Read-only afterwards:** that day's `recipe_logs` row has `meal_type = 'lunch'`, and there is one, not two. Undo: take the
+    dishes off the days, and REMOVE the diary entries you made.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in
