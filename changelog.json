@@ -1,4 +1,6 @@
 [
+  { "version": "2026-10-13.8", "date": "2026-10-13", "issues": [142],
+    "changes": ["OFTEN WITH: a recipe now names what you have grouped it with before, any course, the most often first, two at most. On the Planner a + under the dish adds one to the day and groups it with the dish, as SERVE WITH does; × hides it until you next open the app."] },
   { "version": "2026-10-13.7", "date": "2026-10-13", "issues": [87],
     "changes": ["On the Planner, a dish that asks to be served with something you have a Side recipe for shows SERVE WITH: and a + button for each side. One tap puts the side on that day, for as many people as the dish, and groups the two so they open together, timed to finish together. × hides the offer until you next open the app."] },
   { "version": "2026-10-13.6", "date": "2026-10-13", "issues": [87],

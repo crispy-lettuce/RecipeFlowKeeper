@@ -6511,25 +6511,25 @@ const check = (name, pass, detail) => {
     return { a, b };
   });
   await hhDrain(so);
-  const soOffer = date => so.evaluate(d => [...document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-add`)].map(b => b.dataset.sideId + ':' + b.textContent.trim()), date);
+  const soOffer = date => so.evaluate(d => [...document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer.serve .day-side-add`)].map(b => b.dataset.sideId + ':' + b.textContent.trim()), date);
   const soA = await soOffer(soDays.a);
   check('SIDE OFFER: under a dish that asks for freekeh or flatbreads, the Planner offers + each side that fits',
         JSON.stringify(soA) === '["so-side:+ TEST PLAIN FREEKEH","so-bread:+ TEST FLATBREAD STACK"]', JSON.stringify(soA));
   const soPicking = await so.evaluate(d => {
     state.groupingDate = d; state.groupingSelection = []; renderPlanner();
-    const n = document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer`).length;
+    const n = document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer.serve`).length;
     state.groupingDate = null; renderPlanner();
     return n;
   }, soDays.a);
   check('    no offer while GROUP SOME TOGETHER is picking', soPicking === 0, String(soPicking));
   const soM0 = await so.evaluate(() => window.__WRITES__.length);
   await so.click(`.day-row[data-date="${soDays.a}"] [data-action="hideSides"]`);
-  const soHidden = await so.evaluate(([d, m]) => { const n = document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer`).length;
-    renderPlanner(); return { n, again: document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer`).length, writes: window.__WRITES__.length - m }; }, [soDays.a, soM0]);
+  const soHidden = await so.evaluate(([d, m]) => { const n = document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer.serve`).length;
+    renderPlanner(); return { n, again: document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer.serve`).length, writes: window.__WRITES__.length - m }; }, [soDays.a, soM0]);
   check('    × hides it for that dish on that day, writing nothing', soHidden.n === 0 && soHidden.again === 0 && soHidden.writes === 0, JSON.stringify(soHidden));
   await so.evaluate(() => { state.sideOffersHidden.clear(); renderPlanner(); });
   const soM1 = await so.evaluate(() => window.__WRITES__.length);
-  await so.click(`.day-row[data-date="${soDays.a}"] [data-side-id="so-side"]`);
+  await so.click(`.day-row[data-date="${soDays.a}"] .day-side-offer.serve [data-side-id="so-side"]`);
   await hhDrain(so);
   const soTap = await so.evaluate(([d, m]) => {
     const ws = window.__WRITES__.slice(m);
@@ -6537,7 +6537,7 @@ const check = (name, pass, detail) => {
     const g = groupContaining(d, 'so-main');
     return { tables: ws.map(w => w.table + ':' + w.op), planRows: plan.flatMap(w => w.rows || []).map(r => ({ date: r.plan_date, ids: r.recipe_ids, servings: r.servings, h: r.household_id === HOUSEHOLD_ID })),
       groupRows: groups.flatMap(w => w.rows || []).map(r => ({ ids: r.recipe_ids, h: r.household_id === HOUSEHOLD_ID })), group: g && g.recipeIds,
-      offer: document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer`).length, toast: (document.querySelector('.toast') || {}).textContent || '' };
+      offer: document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer.serve`).length, toast: (document.querySelector('.toast') || {}).textContent || '' };
   }, [soDays.a, soM1]);
   check('    a tap writes one planner_days row for that day (the side at the dish\'s 6, not its own 4) and one meal_groups row grouping the two',
         JSON.stringify(soTap.tables) === '["planner_days:upsert","meal_groups:upsert"]' && soTap.planRows.length === 1 && soTap.planRows[0].date === soDays.a
@@ -6546,7 +6546,7 @@ const check = (name, pass, detail) => {
         && /Test Plain Freekeh added to .*, cooking with Test Swede Bake\./.test(soTap.toast), JSON.stringify(soTap));
   check('    once a side for "freekeh or flatbreads" is on the day, nothing more is offered for it', soTap.offer === 0, JSON.stringify(soTap.offer));
   const soM2 = await so.evaluate(() => window.__WRITES__.length);
-  await so.click(`.day-row[data-date="${soDays.b}"] [data-side-id="so-bread"]`);
+  await so.click(`.day-row[data-date="${soDays.b}"] .day-side-offer.serve [data-side-id="so-bread"]`);
   await hhDrain(so);
   const soExt = await so.evaluate(([d, m]) => {
     const ws = window.__WRITES__.slice(m);
@@ -6556,9 +6556,76 @@ const check = (name, pass, detail) => {
   check('    a dish already in a group: that group gains the side, no group is deleted, and a side written for the same number keeps 0 (as written)',
         JSON.stringify(soExt.tables) === '["planner_days:upsert","meal_groups:upsert"]' && JSON.stringify(soExt.groups) === '[["so-main","so-other","so-bread"]]'
         && JSON.stringify(soExt.servings) === '[[0,0,0]]', JSON.stringify(soExt));
-  const soSideRow = await so.evaluate(d => document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-add`).length, soDays.b);
+  const soSideRow = await so.evaluate(d => document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer.serve .day-side-add`).length, soDays.b);
   check('    none under a Side, though this one says "serve with freekeh"', soSideRow === 0, String(soSideRow));
   await so.close();
+
+  // #142 OFTEN WITH: what a dish has been grouped with before, any course, once is enough; offered like SERVE WITH.
+  const ow = await hhOpen('often with');
+  const owDays = await ow.evaluate(() => {
+    const mk = (id, title, course, body) => loadRecipes().push({ id, title, source: 'Test', servings: 2, tags: { course, keywords: [] }, history: [],
+      syntax: `TITLE: ${title}\nSERVINGS: 2\n\nGROUP a:\n1 swede\n\nSTAGE:\nMERGE a -> b: ${body}` });
+    mk('ow-main', 'Test Swede Bake', 'Main', 'Bake, then serve with freekeh [40 min]');
+    mk('ow-side', 'Test Plain Freekeh', 'Side', 'Bubble gently [15 min]');
+    mk('ow-dhal', 'Test Swede Dhal', 'Main', 'Simmer gently [30 min]');
+    mk('ow-bread', 'Test Rye Loaf', 'Bread', 'Prove and bake [50 min]');
+    mk('ow-cake', 'Test Pear Cake', 'Dessert', 'Bake [35 min]');
+    mk('ow-lone', 'Test Lone Stew', 'Main', 'Stew [60 min]');
+    const day = n => { const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + n); return isoLocal(d); };
+    /* Past groups straight into the cache: the history being read, not a write under test. */
+    const g = (n, ...ids) => loadGroups().push({ id: 'ow-g' + n, dateIso: day(n), recipeIds: ids, name: '' });
+    g(-10, 'ow-main', 'ow-dhal'); g(-9, 'ow-main', 'ow-dhal'); g(-8, 'ow-main', 'ow-bread'); g(-7, 'ow-main', 'ow-cake'); g(-5, 'ow-main', 'ow-side');
+    g(-6, 'ow-main', 'ow-deleted-long-ago');
+    const a = day(2), b = day(3);
+    addPlanRecipe(a, 'ow-main'); addPlanRecipe(a, 'ow-dhal');
+    addPlanRecipe(b, 'ow-side');
+    return { a, b };
+  });
+  await hhDrain(ow);
+  const owView = await ow.evaluate(() => {
+    const line = id => { const el = document.getElementById(id); return el.hidden ? null : el.textContent.trim(); };
+    openRecipe('ow-main', 'recipes');
+    const main = { serve: line('viewerServeWith'), often: line('viewerOftenWith') };
+    openRecipe('ow-lone', 'recipes'); const lone = line('viewerOftenWith');
+    shared.recipes['ow-house'] = [{ ...loadRecipes().find(r => r.id === 'ow-main'), id: 'ow-theirs' }];
+    openSharedRecipe('ow-house', 'ow-theirs'); const theirs = line('viewerOftenWith');
+    delete shared.recipes['ow-house'];
+    return { main, lone, theirs };
+  }).catch(e => ({ main: { error: String(e).slice(0, 160) } }));
+  check('OFTEN WITH: the viewer names what the dish was grouped with, most days first then most recent, two at most; the deleted one and the SERVE WITH side are left out',
+        owView.main.serve === 'SERVE WITH: Test Plain Freekeh →' && owView.main.often === 'OFTEN WITH: Test Swede Dhal → · Test Pear Cake →', JSON.stringify(owView.main));
+  check('    nothing for a recipe never grouped, nor for another household\'s recipe', owView.lone === null && owView.theirs === null, JSON.stringify(owView));
+  await ow.evaluate(() => { showView('planner'); renderPlanner(); }).catch(e => check('    the Planner draws with OFTEN WITH', false, String(e).slice(0, 160)));
+  const owLines = date => ow.evaluate(d => [...document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer`)].map(l =>
+    l.querySelector('.day-side-offer-label').textContent + [...l.querySelectorAll('.day-side-add')].map(b => b.dataset.sideId).join(',')), date);
+  const owA = await owLines(owDays.a);
+  check('    on the Planner, under the dish: SERVE WITH and OFTEN WITH apart; a partner already on the day is not offered again',
+        JSON.stringify(owA) === '["SERVE WITH:ow-side","OFTEN WITH:ow-cake,ow-bread"]', JSON.stringify(owA));
+  const owB = await owLines(owDays.b);
+  check('    shown under a Side too (any course): the side offers the dish it was grouped with', JSON.stringify(owB) === '["OFTEN WITH:ow-main"]', JSON.stringify(owB));
+  await ow.click(`.day-row[data-date="${owDays.a}"] [data-action="hideSides"]`);
+  const owA2 = await owLines(owDays.a);
+  await ow.evaluate(() => { state.sideOffersHidden.clear(); renderPlanner(); });
+  check('    hiding SERVE WITH does not move its side into OFTEN WITH', JSON.stringify(owA2) === '["OFTEN WITH:ow-cake,ow-bread"]', JSON.stringify(owA2));
+  const owPick = await ow.evaluate(d => { state.groupingDate = d; state.groupingSelection = []; renderPlanner();
+    const n = document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer`).length; state.groupingDate = null; renderPlanner(); return n; }, owDays.a);
+  check('    no offer while GROUP SOME TOGETHER is picking', owPick === 0, String(owPick));
+  const owM0 = await ow.evaluate(() => window.__WRITES__.length);
+  await ow.click(`.day-row[data-date="${owDays.b}"] [data-action="hideOften"]`);
+  const owHid = await ow.evaluate(([d, m]) => ({ lines: document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer`).length, writes: window.__WRITES__.length - m }), [owDays.b, owM0]);
+  check('    its × hides it for that dish on that day, writing nothing', owHid.lines === 0 && owHid.writes === 0, JSON.stringify(owHid));
+  const owM1 = await ow.evaluate(() => window.__WRITES__.length);
+  await ow.click(`.day-row[data-date="${owDays.a}"] [data-side-id="ow-cake"]`);
+  await hhDrain(ow);
+  const owTap = await ow.evaluate(([d, m]) => {
+    const ws = window.__WRITES__.slice(m);
+    return { tables: ws.map(w => w.table + ':' + w.op), day: planRecipeIds(loadPlan()[d]), groups: groupsForDate(d).map(g => g.recipeIds),
+      often: [...document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-add`)].map(b => b.dataset.sideId) };
+  }, [owDays.a, owM1]);
+  check('    + writes the day and the group, one row each, and the dish is then not offered again',
+        JSON.stringify(owTap.tables) === '["planner_days:upsert","meal_groups:upsert"]' && JSON.stringify(owTap.day) === '["ow-main","ow-dhal","ow-cake"]'
+        && JSON.stringify(owTap.groups) === '[["ow-main","ow-cake"]]' && !owTap.often.includes('ow-cake'), JSON.stringify(owTap));
+  await ow.close();
 
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to

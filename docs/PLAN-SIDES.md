@@ -255,7 +255,7 @@ is made to fail once by breaking the code it guards. Any PR touching `core.js` b
 **Asked for on 13 Oct 2026**, after #87 was built: suggest not only the sides a recipe's own words call for (SERVE WITH),
 but also the recipes the household has **grouped** with it before, i.e. a common meal-prep pairing. It is a separate line,
 **OFTEN WITH**, so the reason for a suggestion is always clear: SERVE WITH comes from the recipe's text, OFTEN WITH from the
-household's own groups. Nothing is built yet.
+household's own groups. **Built 13 Oct 2026** (core 2026-10-13.4, app 2026-10-13.8; tablet step 60a), as below.
 
 ### 9.1 Decided by the household (13 Oct 2026)
 

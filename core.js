@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-13.3';
+const KITCHEN_CORE_VERSION = '2026-10-13.4';
 
 
 /* ======================= quantity split ======================= */
@@ -1549,6 +1549,26 @@ function servingCalls(parsed){
   Object.values(parsed && parsed.notes || {}).forEach(lines => (lines || []).forEach(l => prose(l, 'notes')));
   return calls;
 }
+/* OFTEN WITH (#142, 13 Oct 2026, docs/PLAN-SIDES.md §9): the recipes the household has grouped with this one, i.e. its
+   meal-prep pairings. Groups only, not days that merely held both or the diary: a group is the household saying "these are
+   cooked together". `times` counts distinct days (two groups on one day are one pairing), `last` is the latest; most times
+   first, then most recent, then the order given. Library, day and course are the page's to filter, as for matchSides. */
+function groupedWith(recipeId, groups){
+  const seen = new Map();
+  (groups || []).forEach(g=>{
+    const ids = new Set(g && g.recipeIds || []);
+    if(!ids.has(recipeId)) return;
+    ids.forEach(id=>{
+      if(id === recipeId) return;
+      const e = seen.get(id) || { id, days: new Set(), last: '' };
+      e.days.add(g.dateIso);
+      if(String(g.dateIso) > e.last) e.last = String(g.dateIso);
+      seen.set(id, e);
+    });
+  });
+  return [...seen.values()].map(e=> ({ id: e.id, times: e.days.size, last: e.last }))
+    .sort((a, b)=> b.times - a.times || (a.last < b.last ? 1 : a.last > b.last ? -1 : 0));
+}
 /* Words that describe how it is served, not what it is: "steamed rice" is any rice side. */
 const SIDE_DESCRIPTORS = new Set(['steamed', 'plain', 'warm', 'cooked', 'crusty', 'fresh', 'fluffy']);
 const sideWords = name => squash(String(name || '').toLowerCase()).split(' ').filter(w => w && !SIDE_DESCRIPTORS.has(w)).map(w => foldPlural(w));
@@ -2148,7 +2168,7 @@ if(typeof module !== 'undefined' && module.exports){
     KITCHEN_CORE_VERSION, INGREDIENT_AISLES, INGREDIENT_DICTIONARY,
     splitQty, parseTags, extractStepDuration, parseRecipe,
     withUpdatedHeaderLine, withUpdatedHeaderLines, changedHeaderKeys, tagsToLine, withUpdatedTitleLine, withUpdatedImageLine,
-    scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, lineUpTimelines, servingCalls, matchSides, formatMinutesForDisplay, formatDuration,
+    scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, lineUpTimelines, servingCalls, matchSides, groupedWith, formatMinutesForDisplay, formatDuration,
     parseFraction, normalizeUnit, toBaseUnit, formatShoppingQty, parseIngredientAmount,
     formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,

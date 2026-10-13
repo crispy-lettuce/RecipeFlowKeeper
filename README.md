@@ -53,6 +53,6 @@ node test/core.test.js
 node test/build.js && node test/smoke.js
 ```
 
-185 checks in Node on `core.js`, then 598 in a browser against a stubbed backend; GitHub Actions runs both, and five
+189 checks in Node on `core.js`, then 606 in a browser against a stubbed backend; GitHub Actions runs both, and five
 smaller suites, on every pull request. See [`test/README.md`](test/README.md) for what they do and don't prove.
 *(Corrected 12 Oct 2026, the October review's Appendix B: this said 237, the smoke suite's size on 25 Sep.)*

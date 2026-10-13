@@ -6,7 +6,7 @@ browser's devtools.
 
 ## Why this is worth doing properly
 
-`node test/build.js && node test/smoke.js` passes 598 checks (13 Oct 2026; it said 329 here until then) and **proves nothing here.** The
+`node test/build.js && node test/smoke.js` passes 606 checks (13 Oct 2026; it said 329 here until then) and **proves nothing here.** The
 suite replaces Supabase with a stub, so it can tell you the app *asks* for a re-host and what it
 does with the answer, but not that anything is ever copied, stored, or survives a reload. These
 eleven steps are the only thing that can.

@@ -15,7 +15,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 598 automated checks pass, plus 185 in Node (13 Oct 2026; 102 when this was
+story that used to open this paragraph is history. 606 automated checks pass, plus 189 in Node (13 Oct 2026; 102 when this was
 written; until 12 Oct this line said 329 and 133, corrected 12 Oct 2026, the October review's Appendix B). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -246,7 +246,7 @@ Use the week you are about to shop for.
     onions, butter and unsalted butter must each still be separate. A wrong join is the one fault
     that costs a missed ingredient at the shop, so note any, with both recipe names.
 29. **Aisles.** Red pepper, onions and garlic under Produce; chicken stock under Pantry; black
-    pepper under Spices. A few things still land in Other — that is known (36 of 185 across the
+    pepper under Spices. A few things still land in Other — that is known (36 of 189 across the
     whole library); note any you'd expect elsewhere.
 30. **Ticks start fresh, and stick.** Last week's ticks are gone (they were keyed the old way and
     are deleted at start-up). Tick three rows, reload: still ticked. Tick one on the tablet and
@@ -764,6 +764,13 @@ within each were not reported one by one.*
     already grouped with another dish:* the + adds the side to that same group. (6) *GROUP SOME TOGETHER on a day with an
     offer:* no offer while picking. (7) *×* the side off the day afterwards: the group dissolves, as for any dish. Writes the day
     and the group, which (7) undoes.
+60a. **OFTEN WITH (new 13 Oct; #142, `docs/PLAN-SIDES.md` §9).** (1) *Open a recipe you have grouped with another dish before:*
+    under the chips (below any SERVE WITH), **OFTEN WITH:** names what it was grouped with, two at most, the most often first;
+    tap one: it opens. (2) *A recipe never grouped:* no line. (3) *Put that recipe on a day from tomorrow on, alone:* under it,
+    **OFTEN WITH:** **+ <RECIPE>** and **×**. (4) *×:* the line goes, until the app is reloaded. Reload. (5) *Tap +:* it joins
+    the day at the dish's number and a **GROUPED:** badge holds both; the line goes. (6) *A Side you have grouped with a main:*
+    on its own on a day, it offers the main. (7) *Take what you added off again with its ×.* Writes the day and the group,
+    which (7) undoes.
 
 ## Deferred to the tablet, after merging
 
