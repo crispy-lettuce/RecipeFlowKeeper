@@ -277,7 +277,7 @@ for what is deployed and how to deploy.
 node test/core.test.js   # 164 checks on core.js in Node, about two seconds, no browser
 npm install --no-save playwright@1.63.0   # once; the version CI pins
 node test/build.js       # bake index.html (with core.js inlined) against the stub
-node test/smoke.js       # 557 checks; exits non-zero on failure
+node test/smoke.js       # 568 checks; exits non-zero on failure
 ```
 
 *(The counts are those of 12 Oct 2026; until then this block said 143 and 418. `CLAUDE.md` lists the five smaller suites

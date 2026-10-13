@@ -1,4 +1,7 @@
 [
+  { "version": "2026-10-13.2", "date": "2026-10-13", "issues": [94],
+    "changes": ["AUDIT at the top of the shopping list shows the tools for fixing it: MERGE WITH…, the Same as …? questions, and a new aisle picker on every row, with UNDO. Off, the list is just the list, and the button says how many questions are waiting. Each device remembers which.",
+                "Merging two rows on the list when only one is ticked now unticks the merged row, after saying so, so nothing still to buy is hidden."] },
   { "version": "2026-10-13.1", "date": "2026-10-13", "issues": [94],
     "changes": ["PRINT / A4 PDF now leaves ticked items off the shopping list, as EXPORT PNG already did, and both leave off an aisle with nothing left to buy. The PNG no longer shows MERGE WITH… links.",
                 "A recipe's source photos and PDFs are numbered FILE 1, FILE 2 and so on, instead of PAGE: a PDF of several pages is one file, kept whole."] },

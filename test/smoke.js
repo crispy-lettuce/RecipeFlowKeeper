@@ -1936,6 +1936,14 @@ const check = (name, pass, detail) => {
   await page.waitForTimeout(500);
   page.off('dialog', countShopDialog);
   check('opening the shopping list asks nothing', shopDialogs === 0, shopDialogs + ' dialogs');
+  /* Since #94 (13 Oct) the fixing tools are drawn only while AUDIT is on; off, its button counts the questions waiting. */
+  const auditOff = await page.evaluate(() => ({ tools: document.querySelectorAll('#shopBody .shop-tools').length,
+    label: document.getElementById('shopAuditBtn').textContent }));
+  await page.click('#shopAuditBtn');
+  await page.waitForTimeout(200);
+  const auditAsked = await page.evaluate(() => document.querySelectorAll('#shopBody .shop-suggest').length);
+  check('AUDIT off: no row carries the fixing tools, and the button counts the questions waiting (#94)',
+        auditOff.tools === 0 && auditAsked >= 1 && auditOff.label === `AUDIT · ${auditAsked}`, JSON.stringify({ auditOff, auditAsked }));
   const inline = await page.evaluate(() => {
     const row = [...document.querySelectorAll('#shopBody .shop-row')].find(r => r.querySelector('[data-merge-from="curly kale"]'));
     return row ? row.querySelector('.shop-suggest').textContent.replace(/\s+/g, ' ').trim()
@@ -2068,11 +2076,12 @@ const check = (name, pass, detail) => {
         joined.aliasWritesSince === 1 && joined.aliasCount === aliasesBefore + 1, JSON.stringify(joined));
   check('and joins the two rows the rules keep apart, keeping both parts',
         joined.rows.length === 1 && /200 g \+ 1 bunch/.test(joined.rows[0] || ''), JSON.stringify(joined));
-  // Tidy away the kale recipes, their plan entries and the matches.
+  // Tidy away the kale recipes, their plan entries and the matches, and end AUDIT.
   await page.evaluate((p) => {
     [p.a, p.b, p.c].forEach(id => deleteRecipe(id));
     loadAliases().filter(a => /kale|cavolo/.test(a.alias)).forEach(a => removeAlias(a.id));
   }, planned);
+  await page.click('#shopAuditBtn');
   await page.waitForTimeout(300);
 
   /* The page hands each line's group to the list, which is how an unmeasured
@@ -6042,6 +6051,161 @@ const check = (name, pass, detail) => {
   check('    nor does one whose database has no converter_ack_version column yet, and nothing sends it there',
         !cvNoColShown && cvNoColSent === 0, JSON.stringify({ cvNoColShown, cvNoColRow, cvNoColSent }));
   await cvNoCol.close();
+
+  /* ---- AUDIT on the shopping list (#94's second half, 13 Oct 2026, docs/PLAN-SHOPPING-AUDIT.md) ----
+     The fixing tools are drawn only while AUDIT is on, which this device remembers; an aisle pick writes one row by the
+     row's own key and never moves a tick; a merge that would hide an amount still to buy says so, then unticks it. */
+  console.log('\nAUDIT on the shopping list');
+  const auOpen = async (label, extra, init) => {
+    const p = await hhOpen(label, extra, init);
+    await p.evaluate(() => showView('shopping'));
+    await p.waitForTimeout(300);
+    return p;
+  };
+  const au = await auOpen('audit');
+  const auM0 = await au.evaluate(() => window.__WRITES__.length);
+  await au.click('#shopAuditBtn');
+  await au.waitForTimeout(200);
+  const auOn = await au.evaluate(m => {
+    const rows = [...document.querySelectorAll('#shopBody .shop-row')];
+    const fits = r => { const s = r.querySelector('.shop-aisle-select'), cat = r.closest('.shop-category').querySelector('.shop-category-title').textContent;
+      return !!s && (s.value ? s.value.toUpperCase() === cat : cat === 'OTHER'); };
+    return { label: document.getElementById('shopAuditBtn').textContent, pressed: document.getElementById('shopAuditBtn').getAttribute('aria-pressed'),
+      rows: rows.length, fitted: rows.filter(r => r.querySelector('.shop-merge-with') && fits(r)).length,
+      writes: window.__WRITES__.length - m, stored: localStorage.getItem('kitchen.shoppingAudit') };
+  }, auM0);
+  check('AUDIT on: every row shows MERGE WITH… and an aisle pick set to the aisle it is in, and nothing is written',
+        auOn.label === 'END AUDIT' && auOn.pressed === 'true' && auOn.rows > 1 && auOn.fitted === auOn.rows && auOn.writes === 0
+        && auOn.stored === 'on', JSON.stringify(auOn));
+  await au.reload();
+  await au.waitForTimeout(1500);
+  await au.evaluate(() => showView('shopping'));
+  await au.waitForTimeout(300);
+  const auKept = await au.evaluate(() => ({ label: document.getElementById('shopAuditBtn').textContent,
+    tools: document.querySelectorAll('#shopBody .shop-tools').length }));
+  check('    and this device remembers it after a reload', auKept.label === 'END AUDIT' && auKept.tools > 0, JSON.stringify(auKept));
+
+  // An aisle pick on BOTH WEEKS, on a ticked row: one row by the row's own key; the row moves, its tick stays; UNDO removes it.
+  await au.selectOption('#shopWeekSelect', 'both');
+  await au.waitForTimeout(300);
+  const auRow = await au.evaluate(() => {
+    const s = [...document.querySelectorAll('#shopBody .shop-aisle-select')].find(x => x.value && x.value !== 'Frozen');
+    const label = s.closest('.shop-row').querySelector('.shop-item');
+    return { key: s.dataset.aisleKey, tickKey: label.dataset.key, from: s.value };
+  });
+  await au.locator(`.shop-item[data-key="${auRow.tickKey}"] input`).check();
+  await au.waitForTimeout(200);
+  await hhDrain(au);
+  const auM1 = await au.evaluate(() => window.__WRITES__.length);
+  await au.selectOption(`.shop-aisle-select[data-aisle-key="${auRow.key}"]`, 'Frozen');
+  await au.waitForTimeout(300);
+  await hhDrain(au);
+  const auMoved = await au.evaluate(([m, r]) => {
+    const label = document.querySelector(`.shop-item[data-key="${r.tickKey}"]`);
+    const w = window.__WRITES__.slice(m);
+    return { writes: w.map(x => ({ table: x.table, op: x.op, name: x.rows && x.rows[0] && x.rows[0].name, aisle: x.rows && x.rows[0] && x.rows[0].aisle,
+        conflict: x.opts && x.opts.onConflict })),
+      aisle: label && label.closest('.shop-category').querySelector('.shop-category-title').textContent,
+      ticked: !!label && label.classList.contains('checked'),
+      undo: !!document.querySelector(`[data-shop-aisle-undo="${r.key}"]`) && /Moved to Frozen/.test(label.closest('.shop-row').textContent) };
+  }, [auM1, auRow]);
+  check('an aisle pick on BOTH WEEKS writes one aisle row by the row\'s own name; the row moves to that aisle with its tick kept',
+        auMoved.writes.length === 1 && auMoved.writes[0].table === 'aisle_overrides' && auMoved.writes[0].op === 'upsert'
+        && auMoved.writes[0].name === auRow.key && auMoved.writes[0].aisle === 'Frozen' && auMoved.writes[0].conflict === 'household_id,name'
+        && auMoved.aisle === 'FROZEN' && auMoved.ticked && auMoved.undo, JSON.stringify({ auRow, auMoved }));
+  const auM2 = await au.evaluate(() => window.__WRITES__.length);
+  await au.click(`[data-shop-aisle-undo="${auRow.key}"]`);
+  await au.waitForTimeout(300);
+  await hhDrain(au);
+  const auBack = await au.evaluate(([m, r]) => ({ writes: window.__WRITES__.slice(m).map(x => x.table + ':' + x.op),
+    aisle: document.querySelector(`.shop-item[data-key="${r.tickKey}"]`).closest('.shop-category').querySelector('.shop-category-title').textContent }), [auM2, auRow]);
+  check('    UNDO with no aisle of the household\'s own before removes the one it wrote, and the row goes back',
+        JSON.stringify(auBack.writes) === '["aisle_overrides:delete"]' && auBack.aisle === auRow.from.toUpperCase(), JSON.stringify(auBack));
+  // With an aisle of its own already: UNDO puts that back, rather than removing it.
+  await au.evaluate(k => { addAisleOverride(k, 'Pantry'); renderShopping(); }, auRow.key);
+  await hhDrain(au);
+  await au.selectOption(`.shop-aisle-select[data-aisle-key="${auRow.key}"]`, 'Frozen');
+  await au.waitForTimeout(200);
+  await hhDrain(au);
+  const auM3 = await au.evaluate(() => window.__WRITES__.length);
+  await au.click(`[data-shop-aisle-undo="${auRow.key}"]`);
+  await au.waitForTimeout(300);
+  await hhDrain(au);
+  const auPrior = await au.evaluate(m => window.__WRITES__.slice(m).map(x => x.table + ':' + x.op + ':' + (x.rows && x.rows[0] ? x.rows[0].aisle : '')), auM3);
+  check('    UNDO where the household had its own aisle puts that aisle back',
+        JSON.stringify(auPrior) === '["aisle_overrides:upsert:Pantry"]', JSON.stringify(auPrior));
+  await au.evaluate(k => { const o = loadAisleOverrides().find(x => x.name === k); if(o) removeAisleOverride(o.id); }, auRow.key);
+  await au.locator(`.shop-item[data-key="${auRow.tickKey}"] input`).uncheck();
+  await au.waitForTimeout(200);
+  await hhDrain(au);
+
+  // A merge where only the row merged into is ticked: it says so first, then the merged row is unticked.
+  await au.selectOption('#shopWeekSelect', '0');
+  await au.waitForTimeout(300);
+  const auPair = await au.evaluate(() => {
+    const labels = [...document.querySelectorAll('#shopBody .shop-item')];
+    return { from: labels[0].dataset.key, to: labels[1].dataset.key, toName: labels[1].dataset.name };
+  });
+  await au.locator(`.shop-item[data-key="${auPair.to}"] input`).check();
+  await au.waitForTimeout(200);
+  await hhDrain(au);
+  await au.click(`[data-merge-with="${auPair.from}"]`);
+  await au.fill('.shop-merge-filter', auPair.toName);
+  await au.waitForTimeout(150);
+  await au.click(`.shop-merge-option[data-key="${auPair.to}"]`);
+  await au.waitForTimeout(150);
+  const auWarn = await au.evaluate(() => (document.querySelector('.shop-merge-confirm') || {}).textContent || '');
+  const auM4 = await au.evaluate(() => window.__WRITES__.length);
+  await au.click('.shop-merge-confirm [data-merge-from]');
+  await au.waitForTimeout(300);
+  await hhDrain(au);
+  const auMerged = await au.evaluate(([m, p]) => ({
+    writes: window.__WRITES__.slice(m).map(x => x.table + ':' + x.op + (x.op === 'delete' ? ':' + (x.eqs || []).map(e => e.value).join('|') : '')),
+    ticked: !!(document.querySelector(`.shop-item[data-key="${p.to}"]`) || {}).classList && document.querySelector(`.shop-item[data-key="${p.to}"]`).classList.contains('checked') }), [auM4, auPair]);
+  check('a merge when only one of the two rows is ticked warns first, then unticks the merged row: one word match, one tick removed',
+        /merged row will be unticked/.test(auWarn) && auMerged.writes.length === 2 && auMerged.writes[0] === 'aliases:upsert'
+        && auMerged.writes[1].startsWith('shopping_checked:delete') && auMerged.writes[1].includes(auPair.to) && !auMerged.ticked,
+        JSON.stringify({ auWarn, auMerged }));
+  await au.evaluate(f => { loadAliases().filter(a => a.alias === f).forEach(a => removeAlias(a.id)); }, auPair.from);
+  await hhDrain(au);
+
+  // Print and the PNG never show the tools; on a phone nothing runs off the side.
+  await au.emulateMedia({ media: 'print' });
+  const auPrint = await au.evaluate(() => [...document.querySelectorAll('.shop-tools, #shopAuditBtn')].filter(e => e.getClientRects().length).length);
+  await au.emulateMedia({ media: null });
+  await au.setViewportSize({ width: 412, height: 900 });
+  await au.waitForTimeout(200);
+  const auPhone = await au.evaluate(() => ({ scroll: document.documentElement.scrollWidth,
+    right: Math.round(document.getElementById('shopAuditBtn').getBoundingClientRect().right) }));
+  check('    PRINT shows no tools in AUDIT, and at phone width nothing runs off the side, the AUDIT button included',
+        auPrint === 0 && auPhone.scroll <= 412 && auPhone.right <= 412, JSON.stringify({ auPrint, auPhone }));
+  await au.click('#shopAuditBtn');
+  await au.waitForTimeout(200);
+  const auEnded = await au.evaluate(() => ({ stored: localStorage.getItem('kitchen.shoppingAudit'), tools: document.querySelectorAll('#shopBody .shop-tools').length }));
+  check('    END AUDIT puts the list back and forgets it on this device', auEnded.stored === null && auEnded.tools === 0, JSON.stringify(auEnded));
+  await au.close();
+
+  // Blocked storage reads as off, without an error; a household whose aisle table is missing gets no pick.
+  const auBlocked = await auOpen('audit storage blocked', null, () => {
+    for (const fn of ['getItem', 'setItem', 'removeItem']) {
+      const real = Storage.prototype[fn];
+      Storage.prototype[fn] = function(k, ...rest){ if(k === 'kitchen.shoppingAudit') throw new Error('blocked'); return real.call(this, k, ...rest); };
+    }
+  });
+  const auB = await auBlocked.evaluate(() => { document.getElementById('shopAuditBtn').click();
+    return { label: document.getElementById('shopAuditBtn').textContent, tools: document.querySelectorAll('#shopBody .shop-tools').length }; });
+  check('with storage blocked AUDIT reads as off and a tap does no harm', /^AUDIT/.test(auB.label) && auB.tools === 0, JSON.stringify(auB));
+  await auBlocked.close();
+  const auNoTable = await auOpen('audit no aisle table', null, () => {
+    window.__MISSING_TABLES__ = ['aisle_overrides'];
+    localStorage.setItem('kitchen.shoppingAudit', 'on');
+  });
+  const auNT = await auNoTable.evaluate(() => ({ selects: document.querySelectorAll('.shop-aisle-select').length,
+    said: [...document.querySelectorAll('.shop-aisle')].every(s => /can't be set yet/.test(s.textContent)), rows: document.querySelectorAll('.shop-aisle').length }));
+  await auNoTable.evaluate(() => localStorage.removeItem('kitchen.shoppingAudit'));
+  check('    and where the aisle table is missing, no pick is offered, only a line saying so',
+        auNT.selects === 0 && auNT.rows > 0 && auNT.said, JSON.stringify(auNT));
+  await auNoTable.close();
 
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to

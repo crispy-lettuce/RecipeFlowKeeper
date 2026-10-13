@@ -15,7 +15,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 557 automated checks pass, plus 164 in Node (12 Oct 2026; 102 when this was
+story that used to open this paragraph is history. 568 automated checks pass, plus 164 in Node (12 Oct 2026; 102 when this was
 written; until 12 Oct this line said 329 and 133, corrected 12 Oct 2026, the October review's Appendix B). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -720,6 +720,13 @@ covers the first two.*
     Leave without saving. (3) *SHOPPING, tick one item, PRINT / A4 PDF:* the preview leaves the ticked item off and keeps the
     rest. (4) *Tick every item in one aisle, PRINT again:* that aisle's heading is gone too. (5) *EXPORT PNG:* the picture
     matches the print, with no MERGE WITH… links. Undo: untick what was ticked.
+
+54a. **AUDIT on the shopping list (new 13 Oct; #94's second half, `docs/PLAN-SHOPPING-AUDIT.md`).** (1) *SHOPPING:* no MERGE WITH…
+    on any row; AUDIT at the top (AUDIT · n if a Same as …? is waiting). (2) *AUDIT:* the button reads END AUDIT; each row shows
+    MERGE WITH… and its aisle with why. (3) *Tick an item, then move it to another aisle:* it moves, keeps its tick, and says
+    Moved to … · UNDO; *UNDO* puts it back. (4) *Reload:* still in AUDIT; the phone is not. (5) *On the phone, AUDIT:* nothing
+    runs off the side. (6) *PRINT / A4 PDF and EXPORT PNG in AUDIT:* no tools. (7) *END AUDIT.* Writes one aisle row in (3),
+    removed by UNDO; untick the item.
 
 ## Deferred to the tablet, after merging
 
