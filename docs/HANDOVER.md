@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **591 checks** (13 Oct 2026; `core.test.js` adds 185 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **598 checks** (13 Oct 2026; `core.test.js` adds 185 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -2849,6 +2849,27 @@ serve with them, none shows a line until it has sides (§5). The third household
 household 1 at 7 recipes naming a staple with a matching side; the detector finds 8.
 
 *Not verified:* the tablet and phone (step 58a).
+
+**The Planner's SERVE WITH offer (13 Oct 2026; #87 PR 2, `docs/PLAN-SIDES.md` §4.5–4.6, after #140). #87 is built.**
+- Under a non-Side dish on the Planner, `SERVE WITH: + <SIDE> ×` (`sideOfferHtml`, `planSideOffers`): the viewer's matches, less
+  any call already covered (a call is covered when any of its alternatives has a side on the day, so "rice or naan" with naan
+  planned offers nothing). Not in GROUP SOME TOGETHER; never on a past or AWAY day (the Planner draws no dish rows there).
+- **+** (`addSideToDay`): `addPlanRecipe(date, sideId, people)` with a new optional headcount, the main's planned number (0
+  when that is what the side is written for), in the day's one `planner_days` upsert; then the main's group gains the side
+  (`saveGroup`), or a new group of the two is made (`createGroup`): one `meal_groups` upsert, never a delete. A toast says so.
+- **×** hides the offer for that dish on that day in this tab (`state.sideOffersHidden`): no write, no column (§8 Q5).
+- `changelog.json` **2026-10-13.7**; `help.html` §4 `#side-offer` and a QUICK ANSWERS link; step **59a**. No `core.js` change.
+
+*Verified by.* `node test/core.test.js` 185, exit 0. `node test/build.js && node test/smoke.js` **598** (591 before), exit 0, no
+console or page errors: seven new checks (the offer under a dish asking for "freekeh or flatbreads"; none while picking a group;
+× hides it with no write; a tap writes one `planner_days` row, the side at the dish's 6 not its own 4, and one `meal_groups` row
+of the two, both in our household, with the toast; nothing more offered once covered; a grouped dish's group gains the side with
+no delete, and a side written for the dish's number keeps 0; none under a Side that itself says "serve with"). `help-guide.js`
+7, exit 0. Eleven mutations, each failing by name; the first run left one standing (an offer drawn while picking a group),
+because the check ran on a day with nothing left to offer, so it moved to the day with an offer, and a second (an offer under
+a Side) was made independent of the first. Every made-up line and title was checked against the library: 0 matches.
+
+*Not verified:* the tablet (step 59a).
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*

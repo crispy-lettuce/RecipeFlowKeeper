@@ -20,7 +20,7 @@ first two lines are older, as dated there. Check again before relying on a numbe
   the 29 Sep rule (the household's job below); 1 recipe had a source photo.
 - **Cooking diary:** 116 entries on 30 Sep (119 on 10 Oct, the October review). **Word matches:** 15. **Household aisles:** 1.
   **Swaps:** 2 (all three on 30 Sep). **Cooking notes:** 2 rows in all on 12 Oct (R4 built 30 Sep).
-- **Tests:** `node test/core.test.js` 185 checks; `node test/build.js && node test/smoke.js` 591 checks (418 until P3 PR 2, 437 until the
+- **Tests:** `node test/core.test.js` 185 checks; `node test/build.js && node test/smoke.js` 598 checks (418 until P3 PR 2, 437 until the
   calendar toggles, both 9 Oct; 447 until the HELP tab, 448 until recipe sharing, 465 until the Drive backup, 472 until PRE-MADE, 487 until fresh or
   freezer, all 10 Oct; 492 until issues #85–#93, 500 until FROZEN, 502 until photo upload, 509 until the version and change log, 11 Oct; 515 until the network guard, 517 until the lost-changes fixes, 530 until the write queue, 537 until several households, 547 until the converter reminder, 12 Oct; 554 until the printed list, 557 until AUDIT, 568 until the INGREDIENTS folds, 576 until PREPARATION, 13 Oct).
   `node test/calendar-push.js` 39 checks; `node test/drive-backup.js` 13 checks; `node test/image-integrity.js` 37 checks;

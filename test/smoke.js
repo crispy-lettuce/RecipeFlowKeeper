@@ -6515,6 +6515,13 @@ const check = (name, pass, detail) => {
   const soA = await soOffer(soDays.a);
   check('SIDE OFFER: under a dish that asks for freekeh or flatbreads, the Planner offers + each side that fits',
         JSON.stringify(soA) === '["so-side:+ TEST PLAIN FREEKEH","so-bread:+ TEST FLATBREAD STACK"]', JSON.stringify(soA));
+  const soPicking = await so.evaluate(d => {
+    state.groupingDate = d; state.groupingSelection = []; renderPlanner();
+    const n = document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer`).length;
+    state.groupingDate = null; renderPlanner();
+    return n;
+  }, soDays.a);
+  check('    no offer while GROUP SOME TOGETHER is picking', soPicking === 0, String(soPicking));
   const soM0 = await so.evaluate(() => window.__WRITES__.length);
   await so.click(`.day-row[data-date="${soDays.a}"] [data-action="hideSides"]`);
   const soHidden = await so.evaluate(([d, m]) => { const n = document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer`).length;
@@ -6549,14 +6556,8 @@ const check = (name, pass, detail) => {
   check('    a dish already in a group: that group gains the side, no group is deleted, and a side written for the same number keeps 0 (as written)',
         JSON.stringify(soExt.tables) === '["planner_days:upsert","meal_groups:upsert"]' && JSON.stringify(soExt.groups) === '[["so-main","so-other","so-bread"]]'
         && JSON.stringify(soExt.servings) === '[[0,0,0]]', JSON.stringify(soExt));
-  const soModes = await so.evaluate(d => {
-    state.groupingDate = d; state.groupingSelection = []; renderPlanner();
-    const grouping = document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer`).length;
-    state.groupingDate = null; renderPlanner();
-    const sideRow = [...document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-add`)].length;
-    return { grouping, sideRow };
-  }, soDays.b);
-  check('    no offer while GROUP SOME TOGETHER is picking, and none under a Side', soModes.grouping === 0 && soModes.sideRow === 0, JSON.stringify(soModes));
+  const soSideRow = await so.evaluate(d => document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-add`).length, soDays.b);
+  check('    none under a Side, though this one says "serve with freekeh"', soSideRow === 0, String(soSideRow));
   await so.close();
 
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or

@@ -1964,6 +1964,7 @@
             <li><a href="help.html#prep-steps" target="_blank" rel="noopener">How do I see when to chop things?</a></li>
             <li><a href="help.html#finish-together" target="_blank" rel="noopener">How do I get every dish ready at the same time?</a></li>
             <li><a href="help.html#serve-with" target="_blank" rel="noopener">How does a recipe know which side to suggest?</a></li>
+            <li><a href="help.html#side-offer" target="_blank" rel="noopener">How do I add the rice to the same day as the curry?</a></li>
             <li><a href="help.html#adding" target="_blank" rel="noopener">How do I add a new recipe?</a></li>
             <li><a href="help.html#sharing" target="_blank" rel="noopener">How do I share our recipes with family?</a></li>
             <li><a href="help.html#premade" target="_blank" rel="noopener">How do I plan a meal from the freezer?</a></li>
@@ -2149,7 +2150,7 @@ const EXPECTED_CORE_VERSION = '2026-10-13.3';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-13.6';
+const APP_VERSION = '2026-10-13.7';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -6008,7 +6009,8 @@ function groupDaysByWeek(days){
 /* SERVE WITH on the Planner (#87 PR 2, docs/PLAN-SIDES.md §4.5–4.6): under a dish that asks for rice, the sides that would
    do, one tap from being on the day and cooking with it. Not for a Side itself, nor once a call is covered: "rice or naan"
    is satisfied by either already being on the day. Only days shown are offered, and the Planner shows today onwards, so
-   never a past day; an AWAY day and GROUP SOME TOGETHER draw no dish rows to hang it from. × hides it in this tab only. */
+   never a past day; an AWAY day has no dish rows, and GROUP SOME TOGETHER draws its pick rows without it. × hides it in
+   this tab only. */
 function planSideOffers(iso, recipe, dayIds){
   if(((recipe.tags && recipe.tags.course) || '').toLowerCase() === 'side') return [];
   if(state.sideOffersHidden.has(iso + '|' + recipe.id)) return [];
