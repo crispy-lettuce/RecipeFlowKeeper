@@ -71,8 +71,8 @@ Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all 
    F38 (#123) are merged, and the three functions #123 changed are redeployed and read back (`docs/INFRASTRUCTURE.md` §3).
 2. **The household's own issues**, once they have reviewed them: #87, #88, #94, #95, #100. Nothing is built for them until the
    household decides.
-3. **The household's jobs**, in `docs/HOUSEHOLD-JOBS.md`: every tablet step but 52a has passed (12 Oct). Left: reload the
-   converter in each household and tap DONE (step 52a), close #101, and two decisions. The BBC validations and D6 are dropped by the household (12 Oct): the
+3. **The household's jobs**, in `docs/HOUSEHOLD-JOBS.md`: every tablet step has passed (52a, the last, on 13 Oct). Left: the
+   second family household reloads the converter and taps DONE, close #101, and two decisions. The BBC validations and D6 are dropped by the household (12 Oct): the
    recipes will be cleared before full adoption.
 4. **#127, the converter reminder** (#129, merged 13 Oct; its SQL applied the same day): a bar in the app, per household, until
    someone taps DONE after reloading the converter. A session can see who has confirmed, read-only:
