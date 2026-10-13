@@ -15,7 +15,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 576 automated checks pass, plus 171 in Node (13 Oct 2026; 102 when this was
+story that used to open this paragraph is history. 582 automated checks pass, plus 171 in Node (13 Oct 2026; 102 when this was
 written; until 12 Oct this line said 329 and 133, corrected 12 Oct 2026, the October review's Appendix B). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -733,6 +733,13 @@ covers the first two.*
     (2) *Tap WORD MATCHES:* it folds to one line. Leave Settings and come back: still folded. (3) *Type a word you know is in
     one swap:* SWAPS opens showing (1 OF …); the others read (0 OF …). (4) *Clear the box:* WORD MATCHES is folded again, as
     left. Open it again. (5) *Steps 1 and 2 on the phone:* nothing runs off the side. Writes nothing.
+
+56a. **Preparation as steps (new 13 Oct; #88, `docs/PLAN-PREP-STEPS.md`).** (1) *Open a recipe with "sliced" or "diced" lines:*
+    as today. (2) *Settings → APP → PREPARATION: AS STEPS IN THE FLOW; open it again:* each such line has a lighter step of its
+    own (e.g. *Thinly slice the …*) in the column before the step that uses it, and the hint above says PREPARATION SHOWN AS
+    STEPS. The timeline strip is unchanged. (3) *Tap the step that uses them:* the preparation steps tick too. (4) *The shopping
+    list:* unchanged. (5) *On the phone, open the same recipe:* as written (this device only). (6) *Set it back to BEFORE YOU
+    START.* Writes nothing.
 
 ## Deferred to the tablet, after merging
 

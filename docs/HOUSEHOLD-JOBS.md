@@ -22,6 +22,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | [53a: FILE labels and the printed list](#53a-file-labels-and-the-printed-shopping-list) | tablet | 5 min | Ticks only, undone at the end |
 | [54a: AUDIT on the shopping list](#54a-audit-on-the-shopping-list) | tablet and phone | 5 min | One aisle, undone by UNDO |
 | [55a: folding and searching INGREDIENTS](#55a-folding-and-searching-settings--ingredients) | tablet and phone | 3 min | No |
+| [56a: preparation as steps](#56a-preparation-as-steps) | tablet and phone | 5 min | No |
 | [Confirm the converter in the second household](#confirm-the-converter-in-the-second-household) | Claude app, then the app | 5 min | One tap |
 | [Choose what to build next](#your-own-issues-decided-13-oct) | — | — | — |
 
@@ -39,6 +40,23 @@ A new version goes live when the PR for #94's printed list and the FILE labels m
 ---
 
 ## App checks
+
+### 56a: preparation as steps
+
+After the #88 part 2 PR merges, and the app is reloaded.
+
+1. Open a recipe with lines like "…, thinly sliced" or "…, diced".
+   - **You should see:** the recipe as today.
+2. In **Settings → APP → PREPARATION**, choose **AS STEPS IN THE FLOW**, then open the recipe again.
+   - **You should see:** each such line has a lighter step of its own (for example *Thinly slice the leeks*), in the column
+     before the step that uses it; the line above the diagram starts **PREPARATION SHOWN AS STEPS**; the timeline is unchanged.
+3. Tap the step that uses them.
+   - **You should see:** the preparation steps tick too.
+4. Open **SHOPPING**.
+   - **You should see:** the list as before.
+5. On the phone, open the same recipe.
+   - **You should see:** it as written: the setting is for each device.
+6. If you prefer it as written, set **PREPARATION** back to **BEFORE YOU START (AS WRITTEN)**.
 
 ### 55a: folding and searching Settings → INGREDIENTS
 
@@ -122,7 +140,8 @@ You chose a direction for each on 13 Oct, and "defaults" on every plan's questio
 You chose the order on 13 Oct: #94, then #95, #88 and #87; #100 stays parked.
 
 - **#87, sides with no timings:** the app spots "serve with rice" and offers a matching side recipe for the same day.
-- **#88, when chopping is done:** a setting that turns "sliced", "diced" and the like into their own steps in the flow.
+- **#88, when chopping is done:** built: **PREPARATION** in Settings → APP turns "sliced", "diced" and the like into their own
+  steps in the flow (56a above).
 - **#94, the shopping list:** both halves built: ticked items left off print and PNG (53a above), and the **AUDIT** button
   (54a above).
 - **#95, the INGREDIENTS tab:** built: collapsible sections and a search (55a above).

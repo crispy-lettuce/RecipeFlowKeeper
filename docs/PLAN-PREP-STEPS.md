@@ -1,6 +1,6 @@
 # Preparation as steps in the flow (#88)
 
-**PR 1 built 13 Oct 2026** (`core.js` and its tests; nothing visible yet). `docs/HANDOVER.md` §7 has what was checked. One
+**Built 13 Oct 2026**, both PRs (part 1 #136, `core.js`; part 2 the setting and the drawing). `docs/HANDOVER.md` §7 has what was checked. One
 change from §4: there is no separate "ahead of time" list; those words are simply kept out of the action table, so they never
 read as a step (a guard that could not change the answer was dropped).
 
