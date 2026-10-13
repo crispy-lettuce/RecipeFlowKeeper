@@ -6447,6 +6447,53 @@ const check = (name, pass, detail) => {
         !ftCook.switchShown && ftCook.afterShow && JSON.stringify(ftCook.starts) === '["START FIRST","START AT +45 min"]', JSON.stringify(ftCook));
   await ft.close();
 
+  // #87 SERVE WITH: a recipe that says "serve with freekeh" names the library's Side of that name, read-only.
+  const sw = await hhOpen('serve with');
+  const swView = () => sw.evaluate(() => { const el = document.getElementById('viewerServeWith');
+    return { shown: !el.hidden && el.offsetParent !== null, text: el.textContent.trim(), links: [...el.querySelectorAll('[data-serve-with]')].map(b => b.dataset.serveWith) }; });
+  await sw.evaluate(() => {
+    const mk = (id, title, course, body) => loadRecipes().push({ id, title, source: 'Test', servings: 2, tags: { course, keywords: [] }, history: [],
+      syntax: `TITLE: ${title}\nSERVINGS: 2\n\nGROUP a:\n1 swede\n\nSTAGE:\nMERGE a -> b: ${body}` });
+    mk('sw-main', 'Test Swede Bake', 'Main', 'Bake, then serve with freekeh or flatbreads [40 min]');
+    mk('sw-other', 'Test Swede Mash', 'Main', 'Mash and serve hot [10 min]');
+    openRecipe('sw-main', 'recipes');
+  });
+  const swNone = await swView();
+  check('SERVE WITH: no Side in the library that matches, no line', !swNone.shown && swNone.links.length === 0, JSON.stringify(swNone));
+  await sw.evaluate(() => {
+    loadRecipes().push({ id: 'sw-side', title: 'Test Plain Freekeh', source: 'Test', servings: 2, tags: { course: 'Side', keywords: [] }, history: [],
+      syntax: 'TITLE: Test Plain Freekeh\nSERVINGS: 2\n\nGROUP a:\n100 g freekeh\n\nSTAGE:\nMERGE a -> b: Bubble gently [15 min]' });
+    openRecipe('sw-main', 'planner');
+  });
+  const swOne = await swView();
+  check('    with a Side whose title has the word, the viewer says SERVE WITH: and links it',
+        swOne.shown && /^SERVE WITH: Test Plain Freekeh →$/.test(swOne.text) && JSON.stringify(swOne.links) === '["sw-side"]', JSON.stringify(swOne));
+  const swOrder = await sw.evaluate(() => {
+    loadRecipes().push({ id: 'sw-side2', title: 'Test Freekeh Salad', source: 'Test', servings: 2, tags: { course: 'Side', keywords: [] },
+      history: ['2026-09-01', '2026-09-08'], syntax: 'TITLE: Test Freekeh Salad\nSERVINGS: 2\n\nGROUP a:\n100 g freekeh\n\nSTAGE:\nMERGE a -> b: Toss [5 min]' });
+    openRecipe('sw-main', 'planner');
+    const links = [...document.querySelectorAll('#viewerServeWith [data-serve-with]')].map(b => b.dataset.serveWith);
+    cache.recipes = cache.recipes.filter(r => r.id !== 'sw-side2');
+    openRecipe('sw-main', 'planner');
+    return links;
+  });
+  check('    of two sides that match as well, the more-cooked comes first', JSON.stringify(swOrder) === '["sw-side2","sw-side"]', JSON.stringify(swOrder));
+  await sw.click('#viewerServeWith [data-serve-with="sw-side"]');
+  const swOpened = await sw.evaluate(() => ({ id: state.selectedRecipeId, back: state.viewerReturnTo, line: document.getElementById('viewerServeWith').hidden }));
+  check('    the link opens the side, keeping the way back; the side itself asks for nothing',
+        swOpened.id === 'sw-side' && swOpened.back === 'planner' && swOpened.line, JSON.stringify(swOpened));
+  const swOthers = await sw.evaluate(() => {
+    openRecipe('sw-other', 'recipes');
+    const plain = document.getElementById('viewerServeWith').hidden;
+    shared.recipes['sw-house'] = [{ ...loadRecipes().find(r => r.id === 'sw-main'), id: 'sw-theirs' }];
+    openSharedRecipe('sw-house', 'sw-theirs');
+    const theirs = document.getElementById('viewerServeWith').hidden;
+    delete shared.recipes['sw-house'];
+    return { plain, theirs };
+  });
+  check('    a recipe with no serving phrase, and another household\'s recipe, show no line', swOthers.plain && swOthers.theirs, JSON.stringify(swOthers));
+  await sw.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:

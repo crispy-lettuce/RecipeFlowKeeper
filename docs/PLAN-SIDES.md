@@ -4,8 +4,8 @@
 has no timing, so it never appears in the flow or the combined timeline. **The household chose on 13 Oct** that the app should
 spot those phrases and offer a matching **side**: an ordinary recipe in the library (plain basmati rice, garlic naan), with its
 own timings, that can be added to the same Planner day so its steps join the combined flow. Scoped 13 Oct 2026 against `main`
-at `e11de60`. Line numbers are from that commit. §8 lists the questions for the household, answered 13 Oct. **Built so far:** PR 3, FINISH TOGETHER (13 Oct, §6); PRs 1 and 2
-are next.
+at `e11de60`. Line numbers are from that commit. §8 lists the questions for the household, answered 13 Oct. **Built so far:** PR 3, FINISH TOGETHER (13 Oct, §6), then PR 1, the
+detector and the viewer's SERVE WITH line (13 Oct); PR 2 is next.
 
 ## 1. What it is for
 
@@ -201,6 +201,11 @@ is made to fail once by breaking the code it guards. Any PR touching `core.js` b
    - *Smoke:* the line shows with links for a made-up main in `test/stub.js`, is absent with no Side in the library, and is
      absent on a shared recipe.
    - Changelog entry; help §4 paragraph; run `test/help-guide.js`.
+   - **Built 13 Oct 2026** (core 2026-10-13.3, app 2026-10-13.6; tablet step 58a), with four refinements found while building:
+     score 2 needs an item of two words or more, so "rice" → "Coconut rice" stays 1 as §4.3's example says; "plain" being a
+     descriptor, "basmati rice" → "Plain basmati rice" is 3, not 2; what follows `for`, `to`, `if`, `while`, `when`, `as` or
+     `so` is cut ("crusty bread for dipping" is "crusty bread"); and the page passes every recipe with its course, so the
+     Side-only rule is inside `matchSides`, where it is tested.
 2. **PR 2: the Planner offer.** The row, `addPlanRecipe`'s `servings` argument, and the two writes.
    - *Smoke:* the offer shows, then hides once the side is on the day; it is absent on past days, AWAY days and in grouping
      mode; × hides it with no write; a tap sends exactly one `planner_days` upsert for that date and one `meal_groups` upsert,

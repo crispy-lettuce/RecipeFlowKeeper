@@ -20,6 +20,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | --- | --- | --- | --- |
 | [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
 | [57a: FINISH TOGETHER](#57a-finish-together) | tablet and phone | 5 min | No |
+| [58a: SERVE WITH in a recipe](#58a-serve-with-in-a-recipe) | tablet and phone | 3 min | No |
 | [Confirm the converter in the second household](#confirm-the-converter-in-the-second-household) | Claude app, then the app | 5 min | One tap |
 | [Choose what to build next](#your-own-issues-decided-13-oct) | — | — | — |
 
@@ -37,6 +38,25 @@ A new version (2026-10-13.5, FINISH TOGETHER) went live when #138 merged.
 ---
 
 ## App checks
+
+### 58a: SERVE WITH in a recipe
+
+After the #87 SERVE WITH PR merges, and the app is reloaded.
+
+1. Open a main that says to serve it with something you have a **Side** recipe for (rice, naan, potatoes…).
+   - **You should see:** under the chips, **SERVE WITH:** and the side's name with an arrow; up to three, the one you have
+     cooked most first.
+2. Tap the name.
+   - **You should see:** that side's recipe. **←** goes back as before.
+3. Open a recipe whose only serving words are a garnish ("lime wedges, to serve") or "serve immediately".
+   - **You should see:** no SERVE WITH line.
+4. If sharing is on, open one of the other household's recipes.
+   - **You should see:** no SERVE WITH line.
+5. On the phone, step 1 again.
+   - **You should see:** the line wraps rather than running off the side.
+
+If a main names something you'd call a side but nothing shows, check the side's course is **Side** and its title (or a keyword)
+has that word.
 
 ### 57a: FINISH TOGETHER
 
@@ -88,7 +108,8 @@ You chose a direction for each on 13 Oct, and "defaults" on every plan's questio
 You chose the order on 13 Oct: #94, then #95, #88 and #87; #100 stays parked.
 
 - **#87, sides with no timings:** the app spots "serve with rice" and offers a matching side recipe for the same day.
-  Its third part, **FINISH TOGETHER** in the Group Viewer, is built (#138, 57a above); the other two are next.
+  **FINISH TOGETHER** in the Group Viewer is built (#138, 57a above), and the recipe's **SERVE WITH** line (58a above); the
+  Planner's offer to add the side is next.
 - **#88, when chopping is done:** built: **PREPARATION** in Settings → APP turns "sliced", "diced" and the like into their own
   steps in the flow (56a passed).
 - **#94, the shopping list:** both halves built: ticked items left off print and PNG (53a passed), and the **AUDIT** button

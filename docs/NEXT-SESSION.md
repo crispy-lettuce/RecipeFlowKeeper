@@ -20,7 +20,7 @@ first two lines are older, as dated there. Check again before relying on a numbe
   the 29 Sep rule (the household's job below); 1 recipe had a source photo.
 - **Cooking diary:** 116 entries on 30 Sep (119 on 10 Oct, the October review). **Word matches:** 15. **Household aisles:** 1.
   **Swaps:** 2 (all three on 30 Sep). **Cooking notes:** 2 rows in all on 12 Oct (R4 built 30 Sep).
-- **Tests:** `node test/core.test.js` 176 checks; `node test/build.js && node test/smoke.js` 586 checks (418 until P3 PR 2, 437 until the
+- **Tests:** `node test/core.test.js` 185 checks; `node test/build.js && node test/smoke.js` 591 checks (418 until P3 PR 2, 437 until the
   calendar toggles, both 9 Oct; 447 until the HELP tab, 448 until recipe sharing, 465 until the Drive backup, 472 until PRE-MADE, 487 until fresh or
   freezer, all 10 Oct; 492 until issues #85–#93, 500 until FROZEN, 502 until photo upload, 509 until the version and change log, 11 Oct; 515 until the network guard, 517 until the lost-changes fixes, 530 until the write queue, 537 until several households, 547 until the converter reminder, 12 Oct; 554 until the printed list, 557 until AUDIT, 568 until the INGREDIENTS folds, 576 until PREPARATION, 13 Oct).
   `node test/calendar-push.js` 39 checks; `node test/drive-backup.js` 13 checks; `node test/image-integrity.js` 37 checks;
@@ -70,7 +70,7 @@ Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all 
 1. **The October review is finished** (12 Oct): its eight PRs (`PrivateBackup`#7, #102, #117–#122) and the extra one for F37 and
    F38 (#123) are merged, and the three functions #123 changed are redeployed and read back (`docs/INFRASTRUCTURE.md` §3).
 2. **The household's own issues, decided 13 Oct ("defaults" on every plan), built in the order #94, #95, #88, #87:** #87 `docs/PLAN-SIDES.md`
-   (PR 3, FINISH TOGETHER, built 13 Oct as #138; PRs 1 and 2 next), #88
+   (PR 3, FINISH TOGETHER, built 13 Oct as #138; PR 1, SERVE WITH, built 13 Oct; PR 2, the Planner offer, next), #88
    `docs/PLAN-PREP-STEPS.md` (built 13 Oct), #94's AUDIT `docs/PLAN-SHOPPING-AUDIT.md` (built 13 Oct; its first half is #132), #95
    `docs/PLAN-INGREDIENTS-TAB.md` (built 13 Oct); #100 `docs/PLAN-PREVIEW-SITE.md` is parked. The household picks the order.
 3. **The household's jobs**, in `docs/HOUSEHOLD-JOBS.md`: every tablet step up to 56a has passed (53a–56a on 13 Oct). Left: the

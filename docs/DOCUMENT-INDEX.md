@@ -623,7 +623,7 @@ to the conversion project (see `converter/conversion-instructions.md` above).
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 586-check smoke suite, the 176 Node checks, the five smaller suites CI also runs (the Edge Functions' and the help guide's), and an honest account of what it can't tell you
+**What:** How to run the 591-check smoke suite, the 185 Node checks, the five smaller suites CI also runs (the Edge Functions' and the help guide's), and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 *(Corrected 12 Oct 2026, the October review's Appendix B and D: this said 418 and 143.)*
 
