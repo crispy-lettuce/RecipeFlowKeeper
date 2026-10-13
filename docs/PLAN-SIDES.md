@@ -4,8 +4,8 @@
 has no timing, so it never appears in the flow or the combined timeline. **The household chose on 13 Oct** that the app should
 spot those phrases and offer a matching **side**: an ordinary recipe in the library (plain basmati rice, garlic naan), with its
 own timings, that can be added to the same Planner day so its steps join the combined flow. Scoped 13 Oct 2026 against `main`
-at `e11de60`. Line numbers are from that commit. §8 lists the questions for the household, answered 13 Oct. **Built so far:** PR 3, FINISH TOGETHER (13 Oct, §6), then PR 1, the
-detector and the viewer's SERVE WITH line (13 Oct); PR 2 is next.
+at `e11de60`. Line numbers are from that commit. §8 lists the questions for the household, answered 13 Oct. **Built, 13 Oct:** PR 3, FINISH TOGETHER (#138); PR 1, the detector and
+the viewer's SERVE WITH line (#140); PR 2, the Planner offer. All three PRs of §6 are built.
 
 ## 1. What it is for
 
@@ -212,6 +212,8 @@ is made to fail once by breaking the code it guards. Any PR touching `core.js` b
      scoped to the household; the side is grouped with the main (an existing group is extended rather than a new one made);
      the headcount follows the main's.
    - Changelog; help; TEST-PLAN step (next free number in the 54 series) and the same step in `docs/HOUSEHOLD-JOBS.md`.
+   - **Built 13 Oct 2026** (app 2026-10-13.7; step 59a). A call is covered when any of its alternatives has a side on the day,
+     so "rice or naan" with naan planned offers nothing more. No `core.js` change.
 3. **PR 3: FINISH TOGETHER.** `lineUpTimelines` (`core.js`), the switch, START AT on each card.
    - *core.test.js:* a 60-minute main and a 15-minute side give offsets 0 and 45; `'start'` gives 0 and 0; a null timeline
      stays laneless; ABOUT is set when the long dish has an open-ended step.

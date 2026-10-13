@@ -21,6 +21,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
 | [57a: FINISH TOGETHER](#57a-finish-together) | tablet and phone | 5 min | No |
 | [58a: SERVE WITH in a recipe](#58a-serve-with-in-a-recipe) | tablet and phone | 3 min | No |
+| [59a: the Planner's SERVE WITH offer](#59a-the-planners-serve-with-offer) | tablet | 5 min | A side on a day, undone at the end |
 | [Confirm the converter in the second household](#confirm-the-converter-in-the-second-household) | Claude app, then the app | 5 min | One tap |
 | [Choose what to build next](#your-own-issues-decided-13-oct) | — | — | — |
 
@@ -38,6 +39,27 @@ A new version (2026-10-13.5, FINISH TOGETHER) went live when #138 merged.
 ---
 
 ## App checks
+
+### 59a: the Planner's SERVE WITH offer
+
+After the #87 Planner offer PR merges, and the app is reloaded. Do it after 58a.
+
+1. Put a main that shows SERVE WITH (58a) on a day from tomorrow onwards, and set **SERVES** to a number other than the
+   side's recipe is written for.
+   - **You should see:** under the main, **SERVE WITH:**, a **+** button for each side, and **×**.
+2. Tap **×**.
+   - **You should see:** the offer goes. Reload the page: it is back.
+3. Tap **+** and the side's name.
+   - **You should see:** a message that it was added, cooking with the main; the side on the day at the main's number;
+     a **GROUPED:** badge holding both; and no offer any more.
+4. Tap the **GROUPED:** badge.
+   - **You should see:** the two together, in **FINISH TOGETHER** (57a).
+5. On a day where the main is already grouped with another dish, tap **+** for a side.
+   - **You should see:** the side joins that same group.
+6. Tap **GROUP SOME TOGETHER** on a day with an offer.
+   - **You should see:** no offer while picking. Tap **CANCEL**.
+7. Take the sides off again with their **×**.
+   - **You should see:** the group goes too, as for any dish.
 
 ### 58a: SERVE WITH in a recipe
 
@@ -108,8 +130,8 @@ You chose a direction for each on 13 Oct, and "defaults" on every plan's questio
 You chose the order on 13 Oct: #94, then #95, #88 and #87; #100 stays parked.
 
 - **#87, sides with no timings:** the app spots "serve with rice" and offers a matching side recipe for the same day.
-  **FINISH TOGETHER** in the Group Viewer is built (#138, 57a above), and the recipe's **SERVE WITH** line (58a above); the
-  Planner's offer to add the side is next.
+  **FINISH TOGETHER** in the Group Viewer (#138, 57a above), the recipe's **SERVE WITH** line (#140, 58a above) and the
+  Planner's offer to add the side (59a above) are built: #87 is complete once 57a–59a pass.
 - **#88, when chopping is done:** built: **PREPARATION** in Settings → APP turns "sliced", "diced" and the like into their own
   steps in the flow (56a passed).
 - **#94, the shopping list:** both halves built: ticked items left off print and PNG (53a passed), and the **AUDIT** button

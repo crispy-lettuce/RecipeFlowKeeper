@@ -1,4 +1,6 @@
 [
+  { "version": "2026-10-13.7", "date": "2026-10-13", "issues": [87],
+    "changes": ["On the Planner, a dish that asks to be served with something you have a Side recipe for shows SERVE WITH: and a + button for each side. One tap puts the side on that day, for as many people as the dish, and groups the two so they open together, timed to finish together. × hides the offer until you next open the app."] },
   { "version": "2026-10-13.6", "date": "2026-10-13", "issues": [87],
     "changes": ["A recipe that says to serve it with something, such as rice or naan, now shows SERVE WITH: and the name of a Side recipe in your library that fits, under its chips. Tap the name to open it. Up to three are shown, the one you cook most first. A side needs its course set to Side and the word in its title or keywords."] },
   { "version": "2026-10-13.5", "date": "2026-10-13", "issues": [87],
