@@ -26,8 +26,8 @@ first two lines are older, as dated there. Check again before relying on a numbe
   `node test/calendar-push.js` 39 checks; `node test/drive-backup.js` 13 checks; `node test/image-integrity.js` 37 checks;
   `node test/source-ingredients.js` 16 checks; `node test/help-guide.js` 7 checks. `offline-harness` runs
   both on every PR and is required on `main`.
-- **Schema:** 16 tables in `public` and 1 in `private`, row-level security on every one (12 Oct). Waiting:
-  `docs/migrations/add-converter-ack.md` (#127, either order). The page before it,
+- **Schema:** 16 tables in `public` and 1 in `private`, row-level security on every one (12 Oct). Nothing is waiting:
+  the last page, `docs/migrations/add-converter-ack.md` (#127), was applied by the household on 13 Oct, after #129 merged. The one before it,
   `docs/migrations/harden-default-privileges.md`, was applied by the household on 12 Oct before #120 merged. `add_calendar_auto`
   (the P3 toggles) was applied by the household on 9 Oct, before #72 merged. The one before it,
   `add_calendar_push`, was applied 9 Oct, before the household connected the calendar at 17:52 UTC (`docs/INFRASTRUCTURE.md`;
@@ -71,11 +71,12 @@ Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all 
    F38 (#123) are merged, and the three functions #123 changed are redeployed and read back (`docs/INFRASTRUCTURE.md` §3).
 2. **The household's own issues**, once they have reviewed them: #87, #88, #94, #95, #100. Nothing is built for them until the
    household decides.
-3. **The household's jobs**, in `docs/HOUSEHOLD-JOBS.md`: every tablet step has passed (12 Oct). Left: reload the converter
-   in both households, close #101, and two decisions. The BBC validations and D6 are dropped by the household (12 Oct): the
+3. **The household's jobs**, in `docs/HOUSEHOLD-JOBS.md`: every tablet step but 52a has passed (12 Oct). Left: reload the
+   converter in each household and tap DONE (step 52a), close #101, and two decisions. The BBC validations and D6 are dropped by the household (12 Oct): the
    recipes will be cleared before full adoption.
-4. **#127, the converter reminder** (built 12 Oct): a bar in the app, per household, until someone taps DONE after reloading
-   the converter. It waits on `docs/migrations/add-converter-ack.md`; until that is applied the app shows nothing. A change to
+4. **#127, the converter reminder** (#129, merged 13 Oct; its SQL applied the same day): a bar in the app, per household, until
+   someone taps DONE after reloading the converter. A session can see who has confirmed, read-only:
+   `household_settings.converter_ack_version`. A change to
    `converter/conversion-instructions.md` moves its Version line, `CONVERTER_VERSION` in `index.html` and `CONVERTER_PINNED` in
    `test/core.test.js` together (`CLAUDE.md`).
 5. **Optional, not planned:** a "download all source files" backup (the source files go into `PrivateBackup`'s weekly mirror

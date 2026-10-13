@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 12 Oct 2026, late evening (#127).**
+**Last brought up to date: 13 Oct 2026, morning.**
 
 These are the jobs only you can do. A session can't tap the tablet, make decisions for you, or deploy for you.
 
@@ -20,7 +20,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | --- | --- | --- | --- |
 | [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
 | [Close issue #101](#close-issue-101) | GitHub | 1 min | No |
-| [Merge #127 and confirm the converter](#merge-127-and-confirm-the-converter) | dashboard, GitHub, Claude app | 10 min | One column, then one tap per household |
+| [Confirm the converter](#confirm-the-converter) | Claude app, then the app | 5 min per household | One tap per household |
 | [Decisions](#decisions-waiting-on-you) | — | — | — |
 
 ---
@@ -47,7 +47,7 @@ Every finding of the October review is now fixed and live.
 
 ### 52a: the converter reminder
 
-After [Merge #127 and confirm the converter](#merge-127-and-confirm-the-converter) step 1 (the SQL). Do it with step 4 there.
+Do it with [Confirm the converter](#confirm-the-converter) below: the SQL is in and #129 is merged (13 Oct), so the bar is live.
 
 1. Open the app on the tablet.
    - **You should see:** a gold **CONVERTER** bar near the top, saying the converter's instructions have changed, version
@@ -67,19 +67,16 @@ After [Merge #127 and confirm the converter](#merge-127-and-confirm-the-converte
 
 ## Library jobs
 
-### Merge #127 and confirm the converter
+### Confirm the converter
 
-This replaces "Reload the converter in both households": the app now asks each household itself, and remembers who has done it.
-The master copy is `converter/conversion-instructions.md` in this repo.
+The app now asks each household itself, and remembers who has done it. The master copy is `converter/conversion-instructions.md`
+in this repo.
 
-1. In the Supabase dashboard's SQL editor, run the statement in `docs/migrations/add-converter-ack.md` (on the PR's branch until
-   it merges), then its two checks.
-   - **You should see:** `converter_ack_version | text | YES`, then `3 | 0`.
-   - Either order is safe: merging first just means no bar until this is done.
-2. Merge the PR, then reload the app on every device.
-3. In each household: tap **OPEN THE INSTRUCTIONS ↗** on the bar, download the file, and in the Claude app replace the copy in
+1. Reload the app on every device.
+   - **You should see:** the gold **CONVERTER** bar.
+2. In each household: tap **OPEN THE INSTRUCTIONS ↗** on the bar, download the file, and in the Claude app replace the copy in
    that household's conversion project with it.
-4. In each household, back in the app, tap **DONE** (once per household, on any device). App check 52a above walks through it.
+3. In each household, back in the app, tap **DONE** (once per household, on any device). App check 52a above walks through it.
    - **You should see:** the bar goes for everyone in that household.
 
 The other files under `converter/` are reference material only. Don't load them.
@@ -115,6 +112,7 @@ Nothing is built for these until you decide:
 
 ## Recently done
 
+- **13 Oct:** #129 (the converter reminder, #127) merged, and its SQL applied: the column is there, read back by a session.
 - **12 Oct:**
   - Tablet steps 39a, 40a, 42a, 43a, 44a, 45a, 46a, 48a and 49a passed; then 47a (your own photo) and 51a (the recipe
     checker and scaling); then 50a, 38d, 38c and 40b. Every app check is done.
