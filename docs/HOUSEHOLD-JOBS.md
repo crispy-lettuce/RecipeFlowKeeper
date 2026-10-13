@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 13 Oct 2026, after #132 merged (plans filed).**
+**Last brought up to date: 13 Oct 2026, after #138 merged (FINISH TOGETHER).**
 
 These are the jobs only you can do. A session can't tap the tablet, make decisions for you, or deploy for you.
 
@@ -19,10 +19,6 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | Job | Where | Time | Saves anything? |
 | --- | --- | --- | --- |
 | [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
-| [53a: FILE labels and the printed list](#53a-file-labels-and-the-printed-shopping-list) | tablet | 5 min | Ticks only, undone at the end |
-| [54a: AUDIT on the shopping list](#54a-audit-on-the-shopping-list) | tablet and phone | 5 min | One aisle, undone by UNDO |
-| [55a: folding and searching INGREDIENTS](#55a-folding-and-searching-settings--ingredients) | tablet and phone | 3 min | No |
-| [56a: preparation as steps](#56a-preparation-as-steps) | tablet and phone | 5 min | No |
 | [57a: FINISH TOGETHER](#57a-finish-together) | tablet and phone | 5 min | No |
 | [Confirm the converter in the second household](#confirm-the-converter-in-the-second-household) | Claude app, then the app | 5 min | One tap |
 | [Choose what to build next](#your-own-issues-decided-13-oct) | — | — | — |
@@ -33,7 +29,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 ### Reload the app on every device
 
-A new version goes live when the PR for #94's printed list and the FILE labels merges.
+A new version (2026-10-13.5, FINISH TOGETHER) went live when #138 merged.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready**, tap **RELOAD**. Otherwise refresh the page.
@@ -44,7 +40,7 @@ A new version goes live when the PR for #94's printed list and the FILE labels m
 
 ### 57a: FINISH TOGETHER
 
-After the #87 FINISH TOGETHER PR merges, and the app is reloaded. You need a recipe whose course is **Side** (EDIT → COURSE) and
+#138 has merged: reload the app first. You need a recipe whose course is **Side** (EDIT → COURSE) and
 a longer recipe with timings, on the same Planner day, grouped with **GROUP SOME TOGETHER**.
 
 1. Tap the **GROUPED: …** badge.
@@ -60,74 +56,6 @@ a longer recipe with timings, on the same Planner day, grouped with **GROUP SOME
 5. On the phone, open the first group.
    - **You should see:** the two buttons wrap rather than run off the side.
 6. If you changed a recipe's course only for this, change it back.
-
-### 56a: preparation as steps
-
-After the #88 part 2 PR merges, and the app is reloaded.
-
-1. Open a recipe with lines like "…, thinly sliced" or "…, diced".
-   - **You should see:** the recipe as today.
-2. In **Settings → APP → PREPARATION**, choose **AS STEPS IN THE FLOW**, then open the recipe again.
-   - **You should see:** each such line has a lighter step of its own (for example *Thinly slice the leeks*), in the column
-     before the step that uses it; the line above the diagram starts **PREPARATION SHOWN AS STEPS**; the timeline is unchanged.
-3. Tap the step that uses them.
-   - **You should see:** the preparation steps tick too.
-4. Open **SHOPPING**.
-   - **You should see:** the list as before.
-5. On the phone, open the same recipe.
-   - **You should see:** it as written: the setting is for each device.
-6. If you prefer it as written, set **PREPARATION** back to **BEFORE YOU START (AS WRITTEN)**.
-
-### 55a: folding and searching Settings → INGREDIENTS
-
-After the #95 PR merges, and the app is reloaded.
-
-1. Open **Settings → INGREDIENTS**.
-   - **You should see:** **WORD MATCHES**, **SHOPPING AISLES** and **SWAPS** open, each with a count in brackets; **DICTIONARY**
-     is one line, (140).
-2. Tap **WORD MATCHES**, leave Settings, and come back.
-   - **You should see:** it folded to one line, and still folded.
-3. Type a word you know is in one of your swaps into **INGREDIENT LOOKUP**.
-   - **You should see:** SWAPS open, showing (1 OF …); the others folded, reading (0 OF …).
-4. Clear the box.
-   - **You should see:** WORD MATCHES folded again, as you left it. Tap it to open it again.
-5. Do steps 1 and 2 on the phone.
-   - **You should see:** nothing runs off the side of the screen.
-
-### 54a: AUDIT on the shopping list
-
-After the AUDIT PR merges, and the app is reloaded. Do it after 53a.
-
-1. Open **SHOPPING**.
-   - **You should see:** no **MERGE WITH…** on any row, and an **AUDIT** button at the top (it reads **AUDIT · 1** or more if
-     a "Same as …?" question is waiting).
-2. Tap **AUDIT**.
-   - **You should see:** the button reads **END AUDIT**; every row shows **MERGE WITH…** and its aisle, with why it is there.
-3. Tick an item, then pick another aisle for it.
-   - **You should see:** it moves to that aisle, still ticked, and says **Moved to … · UNDO**. Tap **UNDO**: it goes back.
-4. Reload the page.
-   - **You should see:** still in AUDIT. On the phone, the list is not.
-5. On the phone, tap **AUDIT**.
-   - **You should see:** nothing runs off the side of the screen.
-6. **PRINT / A4 PDF** and **EXPORT PNG** while in AUDIT.
-   - **You should see:** none of the tools on the page or in the picture.
-7. Tap **END AUDIT**, and untick the item.
-
-### 53a: FILE labels and the printed shopping list
-
-After the PR for the FILE labels and #94's printed list merges, and the app is reloaded.
-
-1. **EDIT** a recipe that has a source photo or PDF.
-   - **You should see:** under the photos, each one is labelled **FILE 1**, **FILE 2** and so on (it used to say PAGE).
-2. Open that recipe's source files from the viewer.
-   - **You should see:** **FILE 1 OF 2** (or however many) under each. Leave without saving.
-3. On **SHOPPING**, tick one item, then tap **PRINT / A4 PDF** and look at the preview.
-   - **You should see:** the ticked item is not on the page; everything else is. Cancel the print.
-4. Tick every item in one aisle, then **PRINT / A4 PDF** again.
-   - **You should see:** that aisle's heading has gone too. Cancel the print.
-5. Tap **EXPORT PNG** and open the picture.
-   - **You should see:** the same as the print: no ticked items, no empty aisle, and no **MERGE WITH…** links.
-6. Untick what you ticked.
 
 ---
 
@@ -160,11 +88,12 @@ You chose a direction for each on 13 Oct, and "defaults" on every plan's questio
 You chose the order on 13 Oct: #94, then #95, #88 and #87; #100 stays parked.
 
 - **#87, sides with no timings:** the app spots "serve with rice" and offers a matching side recipe for the same day.
+  Its third part, **FINISH TOGETHER** in the Group Viewer, is built (#138, 57a above); the other two are next.
 - **#88, when chopping is done:** built: **PREPARATION** in Settings → APP turns "sliced", "diced" and the like into their own
-  steps in the flow (56a above).
-- **#94, the shopping list:** both halves built: ticked items left off print and PNG (53a above), and the **AUDIT** button
-  (54a above).
-- **#95, the INGREDIENTS tab:** built: collapsible sections and a search (55a above).
+  steps in the flow (56a passed).
+- **#94, the shopping list:** both halves built: ticked items left off print and PNG (53a passed), and the **AUDIT** button
+  (54a passed).
+- **#95, the INGREDIENTS tab:** built: collapsible sections and a search (55a passed).
 - **#100, a preview site:** parked; the plan is about trying a change before it reaches the live app.
 
 ---
@@ -178,6 +107,7 @@ You chose the order on 13 Oct: #94, then #95, #88 and #87; #100 stays parked.
 ## Recently done
 
 - **13 Oct:**
+  - Tablet steps 53a, 54a, 55a and 56a passed.
   - The two recipe titles in the docs became "recipe A" and "recipe B", as you asked. Issue #101 is closed.
   - #129 (the converter reminder, #127) merged, and its SQL applied: the column is there, read back by a session.
   - Tablet step 52a passed. Your household reloaded the converter and tapped DONE; the database holds version 2026-10-12.1.

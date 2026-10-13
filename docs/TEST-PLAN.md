@@ -749,6 +749,9 @@ covers the first two.*
     on the phone:* the two buttons wrap rather than run off the side. Writes nothing (the course change in (1) is an ordinary
     edit; put it back if it was only for the test).
 
+*53a, 54a, 55a and 56a reported passed by the household, 13 Oct ("53a OK", "54a OK", "55a OK", "56a OK"). The steps
+within each were not reported one by one.*
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

@@ -2696,7 +2696,7 @@ screen is restored after; an aisle with everything ticked is left off both and s
 now read FILE. `help-guide.js` 7 and `image-integrity.js` 37, exit 0. Five mutations, each failing by name: the label left as
 PAGE, the print rule removed, the PNG hiding only the name, the PNG keeping `.shop-tools`, the aisle class never set.
 
-*Not verified:* the tablet (step 53a), and a real printer (the check emulates print media in Chromium).
+*Not verified:* a real printer (the check emulates print media in Chromium). Step 53a reported passed by the household, 13 Oct.
 
 **AUDIT on the shopping list (13 Oct 2026; #94's second half, `docs/PLAN-SHOPPING-AUDIT.md`, answered "defaults").**
 - **AUDIT** at the top of the list (after CLEAR TICKS) draws the fixing tools on every row: the existing *Same as …?* and
@@ -2721,7 +2721,7 @@ missing). The kale merge checks now turn AUDIT on first. `help-guide.js` 7, exit
 at that check): tools always drawn, no count, not remembered, no `try/catch`, the tick key used for the aisle, UNDO always
 deleting, no untick, no availability guard, no wrap, the print rule for the tools removed, no warning.
 
-*Not verified:* the tablet and phone (step 54a).
+Step 54a reported passed by the household, 13 Oct.
 
 **Settings → INGREDIENTS folds, and one search (13 Oct 2026; #95, `docs/PLAN-INGREDIENTS-TAB.md`, answered "defaults").**
 - WORD MATCHES, SHOPPING AISLES, SWAPS and DICTIONARY each fold under a heading (a full-width button, at least 44 px) that
@@ -2746,7 +2746,7 @@ by default, nothing stored, the jump not opening SWAPS, short headings, no no-ma
 without its `try/catch` crashes the suite at its check, and a search that stores its folds crashes it earlier, in the
 autocomplete checks, whose boxes it leaves folded: caught, though not by its own check.
 
-*Not verified:* the tablet and phone (step 55a).
+Step 55a reported passed by the household, 13 Oct.
 
 **Preparation as steps, PR 1: the derivation in `core.js` (13 Oct 2026; #88, `docs/PLAN-PREP-STEPS.md`, answered "defaults").**
 Nothing visible yet: PR 2 adds the per-device setting and draws it. No changelog entry (the household notices nothing).
@@ -2791,7 +2791,7 @@ Settings tabs check now lists PREPARATION. `help-guide.js` 7, exit 0. Nine mutat
 preview following; the timeline from the drawing; shared ticks; not stored; the Group Viewer ignoring it; no hint; no prep
 class), and blocked storage without its `try/catch` crashes the suite at its check.
 
-*Not verified:* the tablet (step 56a).
+Step 56a reported passed by the household, 13 Oct.
 
 **FINISH TOGETHER in the Group Viewer (13 Oct 2026; #87 PR 3, `docs/PLAN-SIDES.md` §4.4, built first as the plan allowed).**
 - **`lineUpTimelines(timelines, mode)`** in `core.js`, pure: in `'finish'` each recipe's lane is offset by the longest span less
@@ -2815,7 +2815,7 @@ always FINISH, no SERVE, the switch not stored, START AT never shown, start time
 strip not hidden, the start times hidden) and the guide's anchor removed. Every made-up line and title in the tests was
 checked against the library (counts only): 0 matches, after one step label that did match a library line was replaced.
 
-*Not verified:* the tablet and phone (step 57a).
+*Not verified:* the tablet and phone (step 57a). Merged as #138 at 13:04 UTC, 13 Oct.
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*
