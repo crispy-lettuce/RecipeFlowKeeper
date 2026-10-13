@@ -1050,6 +1050,58 @@ check('Frozen is the last aisle, and the last section of the shopping list',
         used.read.size >= 8 && used.filter.has('eq') && used.filter.has('not') && used.storage.size >= 3 && lacking.length === 0, lacking.join(', '));
 }
 
+/* ---- Preparation as steps (#88, 13 Oct 2026, docs/PLAN-PREP-STEPS.md) ----
+   Made-up lines only, each checked against the library when the plan was written. */
+{
+  const ps = l => (core.prepStepFor(l) || {}).label || null;
+  const seen = {
+    '2 leeks, thinly sliced': 'Thinly slice the leeks', '3 carrots, peeled and diced': 'Peel and dice the carrots',
+    '400 g potatoes, cut into 2cm chunks': 'Cut the potatoes into 2cm chunks', '1 lemon, zest only': 'Zest the lemon',
+    '1 bunch parsley, leaves only': 'Pick the parsley leaves', '2 eggs, beaten': 'Beat the eggs',
+    '1 swede, peeled and roughly chopped': 'Peel and roughly chop the swede',
+    '50 g butter, softened': null, 'black pepper, to taste': null, '500 ml vegetable stock': null,
+    '2 onions, chopped/crushed': null, '150 g grated cheddar': null, '100 g rice, divided': null, '1 tin beans, blitzed': null };
+  const wrong = Object.entries(seen).filter(([l, want]) => ps(l) !== want).map(([l, want]) => `${l} → ${ps(l)} (want ${want})`);
+  check('a line\'s preparation reads as a step only from the fixed table; ahead-of-time, notes and unknown words give none (#88)',
+        wrong.length === 0, wrong.join('; '));
+  const veg = 'TITLE: X\nSERVINGS: 2\n\nGROUP veg:\n2 carrots, diced\n2 celery sticks, diced\n1 onion\nGROUP liq:\n500 ml stock\n\n' +
+    'STAGE:\nMERGE veg -> soft: Soften [10 min]\nSTAGE:\nMERGE soft, liq -> soup: Simmer [20 min]';
+  const p1 = core.parseRecipe(veg);
+  const before = JSON.stringify(p1);
+  const d1 = core.withPrepSteps(p1);
+  check('    working the steps out leaves the recipe it was given exactly as it was', JSON.stringify(p1) === before);
+  const plain = core.parseRecipe('TITLE: Y\nSERVINGS: 2\n\nGROUP a:\n200 g rice\nGROUP b:\n400 ml water\n\nSTAGE:\nMERGE a -> a2: Rinse [instant]\n' +
+    'STAGE:\nMERGE a2, b -> c: Simmer [12 min]');
+  const plainCols = core.computeColumns(plain.groups, plain.stages);
+  const plainD = core.withPrepSteps(plain);
+  const colours = plainCols.columns.map(col => col.map(b => b.outputHandle + ':' + b.color).join(',')).join(' | ');
+  check('    a recipe with nothing to read lays out exactly as before, its colours included',
+        plainD === plain && JSON.stringify(core.computeColumns(plainD.groups, plainD.stages)) === JSON.stringify(plainCols)
+        && colours === `a2:#111,b:#222 | c:${MERGE_COLOR}`, colours);
+  const lay = core.computeColumns(d1.groups, d1.stages);
+  const rowsSame = JSON.stringify(core.buildRows(d1.groups).rows) === JSON.stringify(core.buildRows(p1.groups).rows);
+  const first = lay.columns[0].map(b => b.outputHandle + (b.prep ? ':prep:' + b.label : '') + ':' + b.color).join(',');
+  check('    rows never move; prep in the first stage gets a column of its own; same-step neighbours share one box in the group\'s colour',
+        rowsSame && !lay.errors.length && lay.columns.length === 3
+        && first === `veg~1~p:prep:Dice the carrots and celery sticks:#111,veg~2:#111,liq:#222`
+        && lay.columns[1][0].outputHandle === 'soft' && lay.columns[1][0].color === '#111', JSON.stringify({ rowsSame, errors: lay.errors, first }));
+  const later = core.parseRecipe('TITLE: Z\nSERVINGS: 2\n\nGROUP base:\n1 onion\nGROUP top:\n2 leeks, thinly sliced\n\n' +
+    'STAGE:\nMERGE base -> soft: Soften [10 min]\nSTAGE:\nMERGE soft, top -> done: Stir in [5 min]');
+  const dl = core.withPrepSteps(later);
+  const ll = core.computeColumns(dl.groups, dl.stages);
+  const quick = core.parseRecipe('TITLE: Q\nSERVINGS: 2\n\nGROUP base:\n1 onion\nGROUP top:\n2 leeks, thinly sliced\n\n' +
+    'STAGE:\nMERGE base -> soft: Tip in [instant]\nSTAGE:\nMERGE soft, top -> done: Stir in [5 min]');
+  const dq = core.withPrepSteps(quick);
+  check('    a step later in the recipe sits beside the step before it; after an all-instant stage it gets a column of its own',
+        !ll.errors.length && ll.columns.length === 2 && ll.columns[0].some(b => b.prep && b.label === 'Thinly slice the leeks')
+        && dq.stages.length === 3 && dq.stages[1].every(op => op.prep), JSON.stringify({ ll: ll.columns.length, dq: dq.stages.length }));
+  const broken = core.parseRecipe('TITLE: B\nSERVINGS: 2\n\nGROUP a:\n2 leeks, sliced\nGROUP a:\n1 onion\n\nSTAGE:\nMERGE a -> b: Cook [5 min]');
+  check('    a recipe with layout errors comes back as it is', core.withPrepSteps(broken) === broken);
+  check('    every ingredient line is still there, once, in order, so the shopping list reads the same',
+        JSON.stringify(d1.groups.flatMap(g => g.items)) === JSON.stringify(p1.groups.flatMap(g => g.items))
+        && JSON.stringify(dl.groups.flatMap(g => g.items)) === JSON.stringify(later.groups.flatMap(g => g.items)));
+}
+
 const failed = checks.filter(c => !c.pass).length;
 console.log(`\n${checks.length} checks, ${failed} failed`);
 process.exit(failed ? 1 : 0);

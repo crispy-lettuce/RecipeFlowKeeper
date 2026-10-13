@@ -274,7 +274,7 @@ for what is deployed and how to deploy.
 (`test/stub.js`) and walks every screen.
 
 ```sh
-node test/core.test.js   # 164 checks on core.js in Node, about two seconds, no browser
+node test/core.test.js   # 171 checks on core.js in Node, about two seconds, no browser
 npm install --no-save playwright@1.63.0   # once; the version CI pins
 node test/build.js       # bake index.html (with core.js inlined) against the stub
 node test/smoke.js       # 576 checks; exits non-zero on failure

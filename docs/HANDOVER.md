@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **576 checks** (13 Oct 2026; `core.test.js` adds 164 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **576 checks** (13 Oct 2026; `core.test.js` adds 171 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -2747,6 +2747,31 @@ without its `try/catch` crashes the suite at its check, and a search that stores
 autocomplete checks, whose boxes it leaves folded: caught, though not by its own check.
 
 *Not verified:* the tablet and phone (step 55a).
+
+**Preparation as steps, PR 1: the derivation in `core.js` (13 Oct 2026; #88, `docs/PLAN-PREP-STEPS.md`, answered "defaults").**
+Nothing visible yet: PR 2 adds the per-device setting and draws it. No changelog entry (the household notices nothing).
+- **`prepStepFor(line)`** reads the clause after an ingredient line's first comma against a fixed table of 27 participles
+  (sliced→slice … toasted→toast), each with an optional adverb of its own (*peeled and roughly chopped* → **Peel and roughly
+  chop the swede**), up to three joined by "and", plus *cut into …*, *zest only*, *juice only* and *leaves only*. Anything
+  else gives no step: tail notes, *divided*, ahead-of-time states (kept out of the table), preparation before the name.
+- **`withPrepSteps(parsed)`** splits each group with a step into parts, in order, so rows never move; each prepared part gets
+  a one-input MERGE marked `prep`, beside the step before the one that needs it, or in a column of its own before it when that
+  is the first stage or an all-`[instant]` one. The input is never changed; a recipe with layout errors comes back as it is.
+- **`computeColumns`** gives a split group its own colour (`paletteIndex`) and keeps it through a step that joins its parts
+  (`family`); a recipe with neither lays out exactly as before. The timeline is untouched (PR 2 keeps drawing it from the
+  recipe as written).
+- Core version **2026-10-13.1** in all three places.
+
+*Verified by.* `node test/core.test.js` **171** (164 before), exit 0: seven new checks. `node test/build.js && node
+test/smoke.js` 576, exit 0, no console or page errors. Ten mutations, each failing by name except one: a separate
+"ahead-of-time" guard could not change any answer (none of its words is in the table), so it was removed rather than kept
+untested. **Measured on the live library (read-only, counts only, by a subagent; no text left the database's answer file,
+deleted after):** 39 recipes, 0 with layout errors before or after, 0 whose ingredient lines changed, 0 whose input was
+changed, 0 exceptions; 34 gain 97 prep boxes; extra columns 0 / 1 / 2 in 20 / 15 / 4 recipes. Of 176 comma clauses, 99 were
+read before the adverb fix; the commonest unread shape was "ACT and ADV ACT" (14), which that fix now reads. Every made-up line
+in the tests was checked against the library: 0 matches.
+
+*Not verified:* anything on screen; that is PR 2.
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*

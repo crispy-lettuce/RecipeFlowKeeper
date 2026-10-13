@@ -1,5 +1,9 @@
 # Preparation as steps in the flow (#88)
 
+**PR 1 built 13 Oct 2026** (`core.js` and its tests; nothing visible yet). `docs/HANDOVER.md` §7 has what was checked. One
+change from §4: there is no separate "ahead of time" list; those words are simply kept out of the action table, so they never
+read as a step (a guard that could not change the answer was dropped).
+
 **Asked for in issue #88** (opened by a household member; the owner replied "The workflow is more about — you need these
 ingredients to go into this stage of the recipe. I'll have a think"). Today an ingredient's preparation ("leeks, sliced") is read as
 done before the stage that uses it: mise en place. The ask is a **setting**: keep that, or show the preparation as its own step in

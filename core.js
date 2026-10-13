@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-12.1';
+const KITCHEN_CORE_VERSION = '2026-10-13.1';
 
 
 /* ======================= quantity split ======================= */
@@ -543,9 +543,13 @@ function computeColumns(groups, stages){
     seenHandles.add(g.handle);
   });
   let active = {};
+  /* A group split by withPrepSteps (#88) keeps its own colour through `paletteIndex`, and its parts share a `family`,
+     so a step that joins them again keeps that colour too. Every other recipe has neither, and lays out as before. */
   groups.forEach((g,i)=>{
     if(!ranges[g.handle]) return;
-    active[g.handle] = { rowStart: ranges[g.handle].rowStart, rowSpan: ranges[g.handle].rowSpan, label:'', color: PALETTE[i % PALETTE.length] };
+    const pi = g.paletteIndex === undefined ? i : g.paletteIndex;
+    active[g.handle] = { rowStart: ranges[g.handle].rowStart, rowSpan: ranges[g.handle].rowSpan, label:'', color: PALETTE[pi % PALETTE.length],
+      family: g.family || g.handle };
   });
 
   const columns = [];
@@ -564,9 +568,12 @@ function computeColumns(groups, stages){
       }
       const rowStart = boxes[0].rowStart;
       const rowSpan = boxes.reduce((n,b)=>n+b.rowSpan,0);
-      const color = boxes.length>1 ? MERGE_COLOR : boxes[0].color;
+      const oneFamily = boxes.every(b=> b.family === boxes[0].family);
+      const color = boxes.length>1 && !oneFamily ? MERGE_COLOR : boxes[0].color;
+      const family = oneFamily ? boxes[0].family : op.output;
       op.inputs.forEach(h=>consumed.add(h));
-      newBoxes.push({ outputHandle:op.output, rowStart, rowSpan, label:op.label, duration:op.duration||null, color, passthrough:false });
+      newBoxes.push({ outputHandle:op.output, rowStart, rowSpan, label:op.label, duration:op.duration||null, color, family, passthrough:false,
+        ...(op.prep ? { prep:true } : {}) });
     });
 
     const carried = [];
@@ -581,14 +588,125 @@ function computeColumns(groups, stages){
     });
 
     const nextActive = {};
-    newBoxes.forEach(b=>{ nextActive[b.outputHandle] = {rowStart:b.rowStart, rowSpan:b.rowSpan, label:b.label, duration:b.duration, color:b.color}; });
-    carried.forEach(b=>{ nextActive[b.outputHandle] = {rowStart:b.rowStart, rowSpan:b.rowSpan, label:b.label, duration:b.duration, color:b.color}; });
+    newBoxes.forEach(b=>{ nextActive[b.outputHandle] = {rowStart:b.rowStart, rowSpan:b.rowSpan, label:b.label, duration:b.duration, color:b.color, family:b.family}; });
+    carried.forEach(b=>{ nextActive[b.outputHandle] = {rowStart:b.rowStart, rowSpan:b.rowSpan, label:b.label, duration:b.duration, color:b.color, family:b.family}; });
     active = nextActive;
 
     columns.push([...newBoxes, ...carried].sort((a,b)=>a.rowStart-b.rowStart));
   });
 
   return {rows, columns, errors};
+}
+
+/* ------------------------------- Preparation as steps (#88, 13 Oct 2026) -------------------------------
+   docs/PLAN-PREP-STEPS.md, answered "defaults". A line's preparation ("leeks, thinly sliced") is read as done before
+   the stage that uses it: mise en place. A device can instead have it drawn as a step of its own, Thinly slice the
+   leeks, beside the step before the one that needs it. Worked out here, at display time, from the text as written:
+   the converter already puts preparation after the first comma, so no recipe and no converter instruction changes,
+   and the shopping list, which reads parseRecipe's groups directly, never sees it.
+   Under-detects on purpose, as extractStepDuration does: a word not in the table gives no step. "Ahead of time" states
+   (softened, defrosted, soaked, cooked…) genuinely happen before you start, so they are kept out of the table and stay as
+   they are; add one only if it is something done at the moment it is needed. Preparation written
+   before the name ("150 g grated cheddar") is not read: it may be what you buy. No time is ever invented. */
+const PREP_ACTIONS = { sliced:'slice', diced:'dice', chopped:'chop', minced:'mince', grated:'grate', crushed:'crush',
+  peeled:'peel', deseeded:'deseed', halved:'halve', quartered:'quarter', cubed:'cube', shredded:'shred', trimmed:'trim',
+  torn:'tear', cored:'core', stoned:'stone', crumbled:'crumble', bashed:'bash', zested:'zest', juiced:'juice',
+  beaten:'beat', whisked:'whisk', sifted:'sift', drained:'drain', rinsed:'rinse', melted:'melt', toasted:'toast' };
+const PREP_ADVERBS = /^(finely|roughly|thinly|thickly|coarsely|lightly)\s+/;
+function prepStepFor(line){
+  const { rest } = splitQty(String(line || '').trim());
+  const plain = rest.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+  const comma = plain.indexOf(',');
+  if(comma < 0) return null;
+  let name = plain.slice(0, comma).trim().toLowerCase();
+  const clause = plain.slice(comma + 1).split(',')[0].trim().toLowerCase();
+  if(!name || !clause || TAIL_NOTES.test(clause) || /^divided\b/.test(clause)) return null;
+  const firstWord = name.split(' ')[0];
+  if(COUNT_UNITS[firstWord] && name.includes(' ')) name = name.slice(firstWord.length + 1);
+  const only = clause.match(/^(zest|juice|leaves) only$/);
+  if(only){
+    const key = only[1] + ' only';
+    return { key, label: only[1] === 'leaves' ? `Pick the ${name} leaves` : `${only[1][0].toUpperCase() + only[1].slice(1)} the ${name}`,
+      build: names=> only[1] === 'leaves' ? `Pick the ${prepJoinNames(names)} leaves` : `${only[1][0].toUpperCase() + only[1].slice(1)} the ${prepJoinNames(names)}` };
+  }
+  const cut = clause.match(/^(?:(finely|roughly|thinly|thickly)\s+)?cut into (.+)$/);
+  if(cut){
+    const adverb = cut[1] ? cut[1] + ' ' : '';
+    const build = names=> prepCap(`${adverb}cut the ${prepJoinNames(names)} into ${cut[2]}`);
+    return { key: clause, label: build([name]), build };
+  }
+  /* Each verb may carry its own adverb: "peeled and finely chopped" is Peel and finely chop (the commonest shape the
+     13 Oct measurement found unread). */
+  const parts = clause.split(/\s+and\s+/).map(p=>{
+    const adv = p.trim().match(PREP_ADVERBS);
+    const verb = PREP_ACTIONS[adv ? p.trim().slice(adv[0].length) : p.trim()];
+    return verb ? (adv ? adv[1] + ' ' : '') + verb : null;
+  });
+  if(parts.length > 3 || !parts.every(Boolean)) return null;
+  const verbs = parts.join(' and ');
+  const build = names=> prepCap(`${verbs} the ${prepJoinNames(names)}`);
+  return { key: verbs, label: build([name]), build };
+}
+function prepCap(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+function prepJoinNames(names){
+  return names.length < 2 ? (names[0] || '') : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+}
+/* The recipe as drawn with its preparation as steps. Rows never move: a group with prepared lines is split, in order,
+   into parts (runs of unprepared lines, and runs of adjacent lines with the same step), each a one-input MERGE where
+   it is prepared. The step that first uses the group takes the parts in its place; they are contiguous rows, so the
+   adjacency rule holds by construction. The input is never changed, and a recipe with layout errors comes back as it
+   is, so the errors are shown as today. */
+function withPrepSteps(parsed){
+  if(!parsed || !parsed.groups || !parsed.stages) return parsed;
+  if(computeColumns(parsed.groups, parsed.stages).errors.length) return parsed;
+  const stages = parsed.stages.map(st=> st.map(op=> ({ ...op, inputs: op.inputs.slice() })));
+  const firstUse = h=> stages.findIndex(st=> st.some(op=> op.inputs.includes(h)));
+  const instantStage = st=> st.length > 0 && st.every(op=> op.duration && op.duration.instant);
+  const alongside = {}, ownColumn = {};
+  const groups = [];
+  let any = false;
+  parsed.groups.forEach((g, i)=>{
+    const k = firstUse(g.handle);
+    const steps = k < 0 ? [] : g.items.map(prepStepFor);
+    if(!steps.some(Boolean)){ groups.push({ ...g, paletteIndex: i, family: g.handle }); return; }
+    any = true;
+    const runs = [];
+    g.items.forEach((item, j)=>{
+      const st = steps[j], key = st ? st.key : null, last = runs[runs.length - 1];
+      if(last && last.key === key) last.items.push(item);
+      else runs.push({ key, step: st, items: [item] });
+    });
+    const handles = [];
+    runs.forEach((run, n)=>{
+      const handle = `${g.handle}~${n + 1}`;
+      groups.push({ handle, items: run.items, paletteIndex: i, family: g.handle });
+      if(!run.key){ handles.push(handle); return; }
+      const names = run.items.map(it=> prepNameOf(it));
+      const op = { inputs: [handle], output: `${handle}~p`, label: run.step.build(names), duration: null, prep: true };
+      const target = k > 0 && !instantStage(stages[k - 1]) ? alongside : ownColumn;
+      const at = target === alongside ? k - 1 : k;
+      (target[at] = target[at] || []).push(op);
+      handles.push(op.output);
+    });
+    stages[k].forEach(op=>{
+      const at = op.inputs.indexOf(g.handle);
+      if(at >= 0) op.inputs.splice(at, 1, ...handles);
+    });
+  });
+  if(!any) return parsed;
+  const out = [];
+  stages.forEach((st, idx)=>{
+    if(ownColumn[idx]) out.push(ownColumn[idx]);
+    out.push(alongside[idx] ? st.concat(alongside[idx]) : st);
+  });
+  return { ...parsed, groups, stages: out };
+}
+function prepNameOf(line){
+  const { rest } = splitQty(String(line || '').trim());
+  let name = rest.replace(/\([^)]*\)/g, ' ').split(',')[0].replace(/\s+/g, ' ').trim().toLowerCase();
+  const firstWord = name.split(' ')[0];
+  if(COUNT_UNITS[firstWord] && name.includes(' ')) name = name.slice(firstWord.length + 1);
+  return name;
 }
 
 /* ------------------------------- Timeline (persistent strip) -------------------------------
@@ -1950,7 +2068,7 @@ if(typeof module !== 'undefined' && module.exports){
     KITCHEN_CORE_VERSION, INGREDIENT_AISLES, INGREDIENT_DICTIONARY,
     splitQty, parseTags, extractStepDuration, parseRecipe,
     withUpdatedHeaderLine, withUpdatedHeaderLines, changedHeaderKeys, tagsToLine, withUpdatedTitleLine, withUpdatedImageLine,
-    scaleRecipeSyntax, buildRows, computeColumns, computeTimeline, formatMinutesForDisplay, formatDuration,
+    scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, formatMinutesForDisplay, formatDuration,
     parseFraction, normalizeUnit, toBaseUnit, formatShoppingQty, parseIngredientAmount,
     formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,
