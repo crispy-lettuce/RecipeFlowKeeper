@@ -2672,6 +2672,9 @@ instructions, ask each household to reload them into its conversion project, wit
 
 *Not verified:* live. The SQL page is the household's to apply, and step 52a is the household's.
 
+*After the merge (#129, 02:24 UTC 13 Oct).* The household applied `add-converter-ack.md` afterwards (the column was not there at
+02:24) and reported both checks as expected. Checked read-only at 05:53 UTC: `converter_ack_version` `text`, nullable, no default; 3 households, 0 confirmed; granted to `authenticated` (and `postgres`, `service_role`), not to `anon`. Step 52a, the bar on the tablet, is still the household's.
+
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*
 

@@ -107,7 +107,7 @@ useful with no Claude Code session and no prior context at all.
 
 ---
 
-### `docs/migrations/add-converter-ack.md` — a schema change, waiting for the household (12 Oct 2026)
+### `docs/migrations/add-converter-ack.md` — a schema change, applied by the household 13 Oct 2026
 **What:** `household_settings.converter_ack_version`, the version of the converter instructions each household has said it
 loaded (#127). Either order is safe, and the page says why. Who applies it, how to check it and how to undo it. Tried first on a
 scratch Postgres 17. DDL only, no data.

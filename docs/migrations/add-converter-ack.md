@@ -6,7 +6,8 @@ change to `converter/conversion-instructions.md`. Tapping **DONE** records it he
 *(A markdown page rather than a `.sql` file because `.gitignore` excludes `*.sql`, on purpose: nothing that looks like a data dump
 may be committed to this public repo. It carries DDL only and no data.)*
 
-**Waiting.** Not yet applied.
+**Applied** by the household on 13 Oct 2026, after #129 merged (02:24 UTC), with both checks below as expected
+(`converter_ack_version | text | YES`, then `3 | 0`). Checked read-only by a session at 05:53 UTC: `converter_ack_version` `text`, nullable, no default; 3 households, 0 confirmed; granted to `authenticated` (and `postgres`, `service_role`), not to `anon`.
 
 ## Who and when
 
