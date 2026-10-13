@@ -338,6 +338,10 @@
   .meta-source-link{ color:inherit; text-decoration:underline; text-underline-offset:2px; }
   /* PR 5: what is recorded about the recipe's source, beside the link. Viewer only, never on a card. */
   .viewer-provenance{ flex-basis:100%; display:flex; flex-wrap:wrap; gap:8px; }
+  /* SERVE WITH (#87): the sides this recipe asks for, each opening that side's recipe. */
+  .viewer-serve-with{ flex-basis:100%; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.06em; color:var(--ink-mute); }
+  .viewer-serve-with[hidden]{ display:none; }
+  .serve-with-link{ background:none; border:0; padding:2px 0; font:inherit; letter-spacing:inherit; color:var(--ink); text-decoration:underline; cursor:pointer; }
   .viewer-provenance:empty{ display:none; }
   .prov-chip{ font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; padding:3px 8px;
     border:1px solid var(--line); border-radius:var(--r); color:var(--ink-soft); background:var(--well); }
@@ -1615,6 +1619,7 @@
         <button class="backlink" id="backToRecipes">← ALL RECIPES</button>
         <div class="viewer-meta" id="viewerMeta"></div>
         <div class="viewer-provenance" id="viewerProvenance"></div>
+        <div class="viewer-serve-with" id="viewerServeWith" hidden></div>
         <label class="toggle-switch" title="Cooking mode: keeps the screen on, hides what you don't need while cooking and pins the header">
           <input type="checkbox" class="keep-awake-toggle">
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
@@ -1954,6 +1959,7 @@
             <li><a href="help.html#keep-awake" target="_blank" rel="noopener">How do I stop the screen going off while I cook?</a></li>
             <li><a href="help.html#prep-steps" target="_blank" rel="noopener">How do I see when to chop things?</a></li>
             <li><a href="help.html#finish-together" target="_blank" rel="noopener">How do I get every dish ready at the same time?</a></li>
+            <li><a href="help.html#serve-with" target="_blank" rel="noopener">How does a recipe know which side to suggest?</a></li>
             <li><a href="help.html#adding" target="_blank" rel="noopener">How do I add a new recipe?</a></li>
             <li><a href="help.html#sharing" target="_blank" rel="noopener">How do I share our recipes with family?</a></li>
             <li><a href="help.html#premade" target="_blank" rel="noopener">How do I plan a meal from the freezer?</a></li>
@@ -2126,7 +2132,7 @@
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-13.2"></script>
+<script src="core.js?v=2026-10-13.3"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2134,12 +2140,12 @@
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-13.2';
+const EXPECTED_CORE_VERSION = '2026-10-13.3';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-13.5';
+const APP_VERSION = '2026-10-13.6';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -5413,6 +5419,22 @@ function renderProvenance(recipe){
     ? `<button type="button" class="prov-chip prov-${c.cls}" ${c.attr} title="${escapeHtml(c.title)}">${escapeHtml(c.text.toUpperCase())}</button>`
     : `<span class="prov-chip prov-${c.cls}" title="${escapeHtml(c.title)}">${escapeHtml(c.text.toUpperCase())}</span>`).join('');
 }
+/* SERVE WITH (#87, docs/PLAN-SIDES.md §4.5): the recipe says "serve with rice", and the library has a Side called rice.
+   Read-only: the viewer doesn't know which day it was opened from, so the offer to add one is the Planner's. Hidden for
+   another household's recipe, whose sides would be ours, not theirs. Most-cooked sides first, so ties go to the usual one. */
+function sideCandidates(){
+  /* matchSides keeps only course=Side, so the whole library goes in. */
+  return loadRecipes().map(r=> ({ id: r.id, title: r.title, keywords: (r.tags && r.tags.keywords) || [], course: (r.tags && r.tags.course) || '', n: useCount(r) }))
+    .sort((a, b)=> b.n - a.n);
+}
+function renderServeWith(recipe, theirs){
+  const el = document.getElementById('viewerServeWith');
+  const matches = theirs ? [] : matchSides(servingCalls(parseRecipe(recipe.syntax || '')), sideCandidates(), recipe.id);
+  const byId = new Map(loadRecipes().map(r=> [r.id, r]));
+  el.hidden = !matches.length;
+  el.innerHTML = matches.length ? 'SERVE WITH: ' + matches.map(m=> `<button type="button" class="serve-with-link" data-serve-with="${escapeHtml(m.sideId)}">${escapeHtml(byId.get(m.sideId).title)} →</button>`).join(' · ') : '';
+  el.querySelectorAll('[data-serve-with]').forEach(b=> b.addEventListener('click', ()=> openRecipe(b.dataset.serveWith, state.viewerReturnTo)));
+}
 function renderViewer(){
   const recipe = viewerRecipe();
   const mount = document.getElementById('flowMount');
@@ -5457,6 +5479,7 @@ function renderViewer(){
     : metaHtml;
 
   renderProvenance(recipe);
+  renderServeWith(recipe, theirs);
   if(theirs) renderTheirsNote(recipe); else renderCookingNotes(recipe);
 
   const favBtn = document.getElementById('favouriteBtn');

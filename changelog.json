@@ -1,4 +1,6 @@
 [
+  { "version": "2026-10-13.6", "date": "2026-10-13", "issues": [87],
+    "changes": ["A recipe that says to serve it with something, such as rice or naan, now shows SERVE WITH: and the name of a Side recipe in your library that fits, under its chips. Tap the name to open it. Up to three are shown, the one you cook most first. A side needs its course set to Side and the word in its title or keywords."] },
   { "version": "2026-10-13.5", "date": "2026-10-13", "issues": [87],
     "changes": ["Cooking several dishes together: above the group's timeline, FINISH TOGETHER lines the dishes up to be ready at the same moment. The longest dish says START FIRST and each shorter one when to begin it (START AT +45 min, say), and the last mark reads SERVE. START TOGETHER is the old view. A group with a Side opens finishing together; any other starts together. Nothing is saved."] },
   { "version": "2026-10-13.4", "date": "2026-10-13", "issues": [88],

@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **586 checks** (13 Oct 2026; `core.test.js` adds 176 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **591 checks** (13 Oct 2026; `core.test.js` adds 185 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -2816,6 +2816,35 @@ strip not hidden, the start times hidden) and the guide's anchor removed. Every 
 checked against the library (counts only): 0 matches, after one step label that did match a library line was replaced.
 
 *Not verified:* the tablet and phone (step 57a). Merged as #138 at 13:04 UTC, 13 Oct.
+
+**SERVE WITH in the recipe viewer (13 Oct 2026; #87 PR 1, `docs/PLAN-SIDES.md` §4.2–4.3 and §4.5, after #138).**
+- **`servingCalls(parsed)`** in `core.js`, pure: an ingredient line ending *to serve* (not *to serve 4*), *for serving*, *to
+  accompany* or *on the side*, by its shopping name; and in MERGE labels, `STEPS:` and every notes section, *serve(d) [it|this|
+  them] with / alongside / over / on a bed of X*, *with X on the side*, *X to accompany*, *accompanied by X*. X stops at
+  punctuation and at *for / to / if / while / when / as / so*, splits on commas, *or*, *and*, *and/or*, and loses a leading
+  *a, an, some, extra, plenty of, a bed of…*. `TAIL_NOTES` is untouched, so no shopping row is renamed and no tick re-keyed.
+- **`matchSides(calls, sides, selfId)`**: only `course=Side`, never the recipe itself. Score 3 for the title or a keyword, 2
+  when every word of a two-word-or-longer item is there, 1 for the head noun; descriptors (*steamed, plain, warm, cooked,
+  crusty, fresh, fluffy*) dropped and plurals folded on both sides. Two per phrase, three per dish, ties in the page's order.
+- **The viewer** shows `SERVE WITH: <side> →` under the chips (`#viewerServeWith`), most-cooked side first; each opens that
+  side with the same way back. Hidden when nothing matches and for another household's recipe. Read-only: nothing is written.
+- Core version **2026-10-13.3** in all three places; `changelog.json` **2026-10-13.6**; `help.html` §4 `#serve-with` and a
+  QUICK ANSWERS link; step **58a**; ARCHITECTURE §3 row; the plan notes four refinements found while building.
+
+*Verified by.* `node test/core.test.js` **185** (176 before), exit 0: nine new checks (each ingredient tail, by its shopping
+name; a MERGE label, STEPS and NOTES with alternatives, *a bed of* dropped and a stop at punctuation; *to serve 4*, *serves 6*,
+*serve immediately*, *serve hot* and *serve on warmed plates* unheard; *for dipping* cut; scores 3, 2, 1 in order; plurals and
+keywords; Side only, never itself, two and three; no match, no offer; three shopping keys pinned as before). `node
+test/build.js && node test/smoke.js` **591** (586 before), exit 0, no console or page errors: five new checks (no Side, no line;
+with one, the line and its link; the more-cooked first; the link opens the side keeping the way back; no line for a recipe
+without a phrase or for another household's). `help-guide.js` 7, exit 0. Twenty-three mutations, each failing by name (19 in
+`core.js`, 4 in the page); the first run left two standing (any course, the recipe itself) because the two-per-phrase cap hid
+them, and the check was rewritten until both failed. Every made-up word and title in the tests and the guide was checked
+against the library (counts only): 0 matches.
+*Live library:* a read-only count across the households (counts only) was running when this was pushed; its numbers follow
+in a later commit on this PR.
+
+*Not verified:* the tablet and phone (step 58a).
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*

@@ -15,7 +15,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 586 automated checks pass, plus 176 in Node (13 Oct 2026; 102 when this was
+story that used to open this paragraph is history. 591 automated checks pass, plus 185 in Node (13 Oct 2026; 102 when this was
 written; until 12 Oct this line said 329 and 133, corrected 12 Oct 2026, the October review's Appendix B). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -751,6 +751,11 @@ covers the first two.*
 
 *53a, 54a, 55a and 56a reported passed by the household, 13 Oct ("53a OK", "54a OK", "55a OK", "56a OK"). The steps
 within each were not reported one by one.*
+58a. **SERVE WITH in the recipe viewer (new 13 Oct; #87 PR 1, `docs/PLAN-SIDES.md` §4.2–4.3, §4.5).** (1) *Open a main that
+    says to serve it with something you have a Side recipe for (rice, naan, potatoes…):* under the chips, **SERVE WITH:** names
+    that side, or up to three, the one cooked most first. (2) *Tap a name:* that side's recipe opens; ← goes back as before.
+    (3) *A recipe whose only serving words are garnishes ("lime wedges, to serve") or "serve immediately":* no line. (4) *One of
+    another household's recipes (where sharing is on):* no line. (5) *On the phone:* the line wraps. Writes nothing.
 
 ## Deferred to the tablet, after merging
 

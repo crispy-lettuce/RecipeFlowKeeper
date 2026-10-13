@@ -1120,6 +1120,47 @@ check('Frozen is the last aisle, and the last section of the shopping list',
   check('    a longest dish with an open-ended step makes the start times ABOUT', core.lineUpTimelines([open, short], 'finish').about === true);
 }
 
+// #87: what a recipe asks to be served with, and which Side recipes would do (docs/PLAN-SIDES.md §4.2–4.3).
+{
+  const R = body => core.parseRecipe('TITLE: T\nSERVINGS: 2\n\n' + body);
+  const items = body => core.servingCalls(R(body)).map(c => c.where + ':' + c.items.join('|'));
+  check('servingCalls: an ingredient line ending "to serve", "for serving", "to accompany" or "on the side" is heard, by its shopping name',
+        JSON.stringify(items('GROUP a:\n2 flatbreads, to serve\n100 g freekeh, to accompany\npickled shallots, for serving\ncharred leeks on the side\n1 swede\n\nSTAGE:\nMERGE a -> b: Mix [2 min]'))
+        === JSON.stringify(['ingredient:flatbread', 'ingredient:freekeh', 'ingredient:pickled shallot', 'ingredient:charred leek']),
+        JSON.stringify(items('GROUP a:\n2 flatbreads, to serve\n100 g freekeh, to accompany\npickled shallots, for serving\ncharred leeks on the side\n1 swede\n\nSTAGE:\nMERGE a -> b: Mix [2 min]')));
+  const prose = items('GROUP a:\n1 swede\n\nSTAGE:\nMERGE a -> b: Bake, then serve over freekeh or jacket potatoes [40 min]\n\nSTEPS:\nHeat the oven. Serve it alongside flatbreads; keep warm.\n\nNOTES:\nGood accompanied by a bed of buttered greens, pickles and/or slaw.\nWith charred leeks on the side.\nWarm flatbreads to accompany.');
+  check('    a MERGE label, STEPS and NOTES are heard; "or", "and/or" and commas make alternatives; "a bed of" is dropped; it stops at punctuation',
+        JSON.stringify(prose) === JSON.stringify(['step:freekeh|jacket potatoes', 'step:flatbreads', 'notes:buttered greens|pickles|slaw', 'notes:charred leeks', 'notes:warm flatbreads']),
+        JSON.stringify(prose));
+  const quiet = items('GROUP a:\n1 swede, enough to serve 4\n\nSTAGE:\nMERGE a -> b: Serve immediately on warmed plates [2 min]\n\nSTEPS:\nThis is enough to serve 4. Serves 6.\n\nNOTES:\nServe hot.');
+  check('    "to serve 4", "serves 6", "serve immediately", "serve hot" and "serve on warmed plates" are not heard', quiet.length === 0, JSON.stringify(quiet));
+  check('    "crusty bread for dipping": what follows "for" or "to" is why, not what',
+        JSON.stringify(items('GROUP a:\n1 swede\n\nSTAGE:\nMERGE a -> b: Serve with crusty flatbreads for dipping [2 min]')) === '["step:crusty flatbreads"]');
+
+  const sides = [
+    { id: 's-pilaf', title: 'Freekeh pilaf', course: 'Side', keywords: [] },
+    { id: 's-plain', title: 'Plain freekeh', course: 'Side', keywords: [] },
+    { id: 's-jacket', title: 'Jacket potato', course: 'Side', keywords: [] },
+    { id: 's-pot', title: 'Jewelled grain pot', course: 'Side', keywords: ['Flatbread'] },
+    { id: 'm-pud', title: 'Freekeh pudding', course: 'Dessert', keywords: [] },
+    { id: 'self', title: 'Smoky freekeh', course: 'Side', keywords: [] },
+  ];
+  const m = (list, self) => core.matchSides([{ items: list, where: 'step' }], sides, self).map(x => x.sideId + ':' + x.score);
+  check('matchSides: 3 when the item is the title (descriptors like "plain" dropped), 2 when every word is in it, 1 on the last word; best first',
+        JSON.stringify(m(['steamed freekeh'])) === '["s-plain:3","s-pilaf:1"]' && JSON.stringify(m(['freekeh pilaf'])) === '["s-pilaf:3"]'
+        && JSON.stringify(m(['pilaf freekeh'])) === '["s-pilaf:2","s-plain:1"]', JSON.stringify([m(['steamed freekeh']), m(['freekeh pilaf']), m(['pilaf freekeh'])]));
+  check('    plurals fold ("jacket potatoes" is "Jacket potato"); a keyword matches ("flatbreads" finds the grain pot tagged Flatbread)',
+        JSON.stringify(m(['jacket potatoes'])) === '["s-jacket:3"]' && JSON.stringify(m(['flatbreads'])) === '["s-pot:3"]', JSON.stringify([m(['jacket potatoes']), m(['flatbreads'])]));
+  check('    only course=Side recipes, never the recipe itself, at most two per item and three per dish',
+        m(['pudding']).length === 0 && JSON.stringify(m(['smoky freekeh'])) === '["self:3","s-pilaf:1"]'
+        && !m(['smoky freekeh'], 'self').some(x => x.startsWith('self')) && m(['freekeh']).length === 2
+        && m(['freekeh', 'flatbreads', 'jacket potatoes']).length === 3, JSON.stringify([m(['pudding']), m(['smoky freekeh']), m(['smoky freekeh'], 'self'), m(['freekeh', 'flatbreads', 'jacket potatoes'])]));
+  check('    a phrase that matches no side offers nothing ("pickled shallot")', m(['pickled shallot']).length === 0);
+  check('    the shopping list names "to accompany" and "on the side" lines as before: no tick is re-keyed',
+        core.shoppingKeyForName('freekeh, to accompany') === 'freekeh' && core.shoppingKeyForName('buttered freekeh on the side') === 'buttered freekeh on the side'
+        && core.shoppingKeyForName('pickled shallots for serving') === 'pickled shallots for serving');
+}
+
 const failed = checks.filter(c => !c.pass).length;
 console.log(`\n${checks.length} checks, ${failed} failed`);
 process.exit(failed ? 1 : 0);

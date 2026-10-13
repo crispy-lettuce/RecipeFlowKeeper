@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-13.2';
+const KITCHEN_CORE_VERSION = '2026-10-13.3';
 
 
 /* ======================= quantity split ======================= */
@@ -1511,6 +1511,69 @@ function rowAlternatives(it){
    stored; the list uses this. No data is rewritten. */
 function shoppingKeyForName(name){ return shoppingLine(name, null).key; }
 
+/* ======================= serving calls and sides (#87) ======================= */
+
+/* "Rice, to serve" or "serve with rice or naan" (#87, 13 Oct 2026, docs/PLAN-SIDES.md §4.2). servingCalls reports what a
+   recipe asks to be served with; matchSides says which of the household's Side recipes would do. Detect broadly, offer
+   narrowly: "lime wedges, to serve" is heard and simply matches no side, so there is no stop-list of garnishes.
+   The ingredient tail is read here and never added to TAIL_NOTES: that would change how ingredients are named and re-key
+   the household's ticks. Prose patterns need "with", "alongside", "over" or "on a bed of" after "serve", so "serve
+   immediately", "serve on warmed plates" and "to serve 4" are never heard. */
+const SERVE_TAIL = /\b(to serve(?!\s*\d)|for serving|to accompany|on the side)\b/i;
+const SERVE_PROSE = [
+  /\bserved?\s+(?:it\s+|this\s+|them\s+)?(?:with|alongside|over|on a bed of)\s+([^.;:!?()]+)/gi,
+  /\bwith\s+([^.;:!?(),]+?)\s+on the side\b/gi,
+  /([^.;:!?(),]+?)\s+to accompany\b/gi,
+  /\baccompanied by\s+([^.;:!?()]+)/gi,
+];
+/* "Crusty bread for dipping", "rice to soak up the juices": what follows is why, not what. */
+const SERVE_CUT = /\s+(?:for|to|if|while|when|as|so)\s.*$/;
+const SERVE_LEAD = /^(?:(?:a bed of|a little|a few|plenty of|lots of|some|extra|an|a)\s+)+/; // longest first: "a bed of" before "a"
+function servingItems(text){
+  return String(text).toLowerCase().replace(SERVE_CUT, '').split(/,|\s+and\/or\s+|\s+or\s+|\s+and\s+/)
+    .map(x => squash(x.trim().replace(SERVE_LEAD, ''))).filter(Boolean);
+}
+function servingCalls(parsed){
+  const calls = [];
+  (parsed && parsed.groups || []).forEach(g => (g.items || []).forEach(raw => {
+    if(!SERVE_TAIL.test(raw)) return;
+    const { qty, rest } = splitQty(raw);
+    const key = shoppingLine(rest.replace(/\b(to accompany|on the side|for serving)\b.*$/i, ' '), parseIngredientAmount(qty)).key;
+    if(key) calls.push({ items: [key], where: 'ingredient' });
+  }));
+  const prose = (text, where) => SERVE_PROSE.forEach(re => {
+    for(const m of String(text).matchAll(re)){ const items = servingItems(m[1]); if(items.length) calls.push({ items, where }); }
+  });
+  (parsed && parsed.stages || []).forEach(st => st.forEach(op => prose(op.label || '', 'step')));
+  (parsed && parsed.setup || []).forEach(l => prose(l, 'step'));
+  Object.values(parsed && parsed.notes || {}).forEach(lines => (lines || []).forEach(l => prose(l, 'notes')));
+  return calls;
+}
+/* Words that describe how it is served, not what it is: "steamed rice" is any rice side. */
+const SIDE_DESCRIPTORS = new Set(['steamed', 'plain', 'warm', 'cooked', 'crusty', 'fresh', 'fluffy']);
+const sideWords = name => squash(String(name || '').toLowerCase()).split(' ').filter(w => w && !SIDE_DESCRIPTORS.has(w)).map(w => foldPlural(w));
+/* Score 3: the item is the side's title or a keyword; 2: every word of a two-word-or-longer item is there; 1: the item's
+   last word, its head noun, is ("rice" → "Coconut rice"). Only course=Side recipes, never the recipe itself; two sides per
+   alternative and three per dish, ties in the order given (the page gives most-cooked first). Advice only. */
+function matchSides(calls, sides, selfId){
+  const cands = (sides || []).filter(s => s && s.id !== selfId && String(s.course || '').toLowerCase() === 'side')
+    .map(s => { const names = [s.title, ...(s.keywords || [])].map(sideWords).filter(n => n.length);
+      return { id: s.id, names: names.map(n => n.join(' ')), words: new Set(names.flat()) }; });
+  const out = [];
+  (calls || []).forEach(c => (c.items || []).forEach(item => {
+    const w = sideWords(item);
+    if(!w.length) return;
+    const scored = cands.map(s => ({ s, score: s.names.includes(w.join(' ')) ? 3
+      : w.length > 1 && w.every(x => s.words.has(x)) ? 2 : s.words.has(w[w.length - 1]) ? 1 : 0 }))
+      .filter(x => x.score).sort((a, b) => b.score - a.score).slice(0, 2);
+    scored.forEach(({ s, score }) => {
+      if(out.length >= 3 || out.some(o => o.sideId === s.id)) return;
+      out.push({ item, sideId: s.id, score });
+    });
+  }));
+  return out;
+}
+
 /* Pairs worth asking about, strictly (review §2.6): the two names share
    their last word, one has exactly one word more, and that word is not one
    that changes what you buy. Measured: none wrong, where the old substring
@@ -2085,7 +2148,7 @@ if(typeof module !== 'undefined' && module.exports){
     KITCHEN_CORE_VERSION, INGREDIENT_AISLES, INGREDIENT_DICTIONARY,
     splitQty, parseTags, extractStepDuration, parseRecipe,
     withUpdatedHeaderLine, withUpdatedHeaderLines, changedHeaderKeys, tagsToLine, withUpdatedTitleLine, withUpdatedImageLine,
-    scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, lineUpTimelines, formatMinutesForDisplay, formatDuration,
+    scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, lineUpTimelines, servingCalls, matchSides, formatMinutesForDisplay, formatDuration,
     parseFraction, normalizeUnit, toBaseUnit, formatShoppingQty, parseIngredientAmount,
     formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,
