@@ -258,7 +258,8 @@ gives: `rehost-images` v16, `source-ingredients` v6 and `calendar-sync` v6 deplo
 October review diffed all six against the repo that night, its Appendix C.)*
 
 **Waiting to be redeployed: nothing** (12 Oct 2026, 17:06 UTC). The F37 and F38 redeploys (#123) are the table's v16, v6
-and v6.
+and v6. On 13 Oct the repo's `rehost-images` changed in comments only (two recipe titles became "recipe A"
+and "recipe B"): no redeploy is needed, and the deployed v16 still names them in its comments, which only the dashboard shows.
 
 **These are deployed straight to Supabase, not through GitHub Pages**, which is why the image
 fixes reached the live app without a merge. A change to their source in this repo is a record,

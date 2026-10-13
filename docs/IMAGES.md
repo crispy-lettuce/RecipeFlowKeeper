@@ -158,8 +158,11 @@ store it:
   Sanity `?w=1600`.
 - **Far too small.** Under about 20 KB means something is wrong, though not always the same
   thing. A lazy-load placeholder captured instead of the real photo is one cause; a file that is
-  simply broken at source is another. Tuscan Chicken Pasta was 10 KB and turned out to be the
+  simply broken at source is another. Recipe A's photo was 10 KB and turned out to be the
   second — its replacement is 257,931 bytes, 25× larger.
+
+*Recipe A and recipe B are the two library recipes whose photos broke; their titles were taken out of this public repo on
+13 Oct 2026, at the household's request.*
 
 ### Every download is checked for integrity
 
@@ -180,25 +183,25 @@ recommending it. Three independent checks, because they catch different faults:
   everything was verified. The code comment was honest about it; this document was not.
 
 Each of these has caught something the others did not, so none is redundant. The 22 Sep sweep is
-the worked example: **Classic Scones** is cut off with no `FFD9` at all, yet its density is a
-perfectly healthy 0.2036 — only the marker check sees it. **Tuscan Chicken Pasta** ends correctly
+the worked example: **Recipe B** is cut off with no `FFD9` at all, yet its density is a
+perfectly healthy 0.2036 — only the marker check sees it. **Recipe A** ends correctly
 and is starved of data at 0.011 — only the density check sees it.
 
 A failure is reported as `failed` with the reason, and the recipe is left alone rather than having
 a broken image written over a working one.
 
-**Why there are three, and why the third took two goes.** Tuscan Chicken Pasta rendered as a photo
+**Why there are three, and why the third took two goes.** Recipe A's photo rendered as a photo
 on the top 40% of the card with solid grey below. It had been stored, and had *passed
 verification*, because the check at the time compared the stored byte count against the byte count
 the dry run had seen. Both fetches returned exactly 10,515 bytes. They agreed with each other, and
 both were incomplete. **Agreement between two reads of the same bad source is not evidence of
 integrity** — only something that knows what a whole file looks like can tell you that.
 
-The end-marker check replaced it, and **still passed Tuscan Chicken Pasta**. The file's marker
+The end-marker check replaced it, and **still passed recipe A**. The file's marker
 chain is intact and `FFD9` is present; what ran out early is the entropy-coded scan data, which a
 decoder fills with mid-grey. An end marker proves a file was terminated, not that it is full.
 
-It did find a second broken image nobody had noticed — Classic Scones with Jam & Clotted Cream, 35
+It did find a second broken image nobody had noticed — recipe B's, 35
 KB with no end marker at all — so the weaker check was not useless, just insufficient.
 
 ### Where the 0.02 threshold comes from
@@ -208,7 +211,7 @@ Measured, not estimated. The full verify sweep of 22 Sep:
 | | bytes/pixel |
 | --- | --- |
 | The 27 whole images | 0.087 – 0.385 |
-| Tuscan Chicken Pasta (renders grey) | 0.011 |
+| Recipe A (renders grey) | 0.011 |
 
 So the threshold sits about 4× below the leanest real photo in the library and about 2× above the
 broken one. Clear of both, rather than finely balanced between them. If the library ever gains a

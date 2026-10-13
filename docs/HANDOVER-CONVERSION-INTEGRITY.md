@@ -88,8 +88,8 @@ about 05:24 UTC, read-only, kept in a scratch directory outside the repo.
    PoppyCooks 2, and one each from nine other sites; *Victoria Sandwich* has no source address.
    Three carry a ⚠️ note. The `source-ingredients` Edge Function is refused by Kitchen Sanctuary and
    Allrecipes (as recorded on 28 Sep; not re-tested today), so **18 recipes can only be compared by
-   pasting**. As far as this record shows, one real comparison had been done before this one (Tuscan
-   Chicken Pasta, Kitchen Sanctuary): it turned up a difference in a repeated pinch line, and the
+   pasting**. As far as this record shows, one real comparison had been done before this one (recipe A,
+   Kitchen Sanctuary): it turned up a difference in a repeated pinch line, and the
    household has not said how that was resolved. So of 34 recipes, **1 is known to differ from its
    source, 1 more is known to come from a stand-in source, 1 was compared and showed a difference
    whose outcome is not recorded, and 31 have never been compared**: not known to be fine.

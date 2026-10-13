@@ -457,7 +457,7 @@ the correct pattern the first audit blessed, not the incorrect one it flagged.
 
 ### One borderline, not called a failure
 
-**Classic Scones** warms the milk and stirs the vanilla and lemon juice into it within a single
+**Recipe B** warms the milk and stirs the vanilla and lemon juice into it within a single
 group: `MERGE wet -> wet_warm: Warm the milk in a jug ... until warm but not hot; stir in the
 vanilla and lemon juice [1 min]`. Strictly this is the test 1 shape — two moments inside one
 group. It is left alone because the stakes are nothing like the granola case: the milk is

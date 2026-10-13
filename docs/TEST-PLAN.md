@@ -15,7 +15,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 554 automated checks pass, plus 164 in Node (12 Oct 2026; 102 when this was
+story that used to open this paragraph is history. 557 automated checks pass, plus 164 in Node (12 Oct 2026; 102 when this was
 written; until 12 Oct this line said 329 and 133, corrected 12 Oct 2026, the October review's Appendix B). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -299,7 +299,7 @@ Functions → deploy a new function named exactly `source-ingredients`, paste
     and open Add: the box is empty. Nothing is saved and no request is made (the offline suite
     checks that nothing is sent), so with the connection off it should still work — not yet
     tried on a real device.
-36b. **The comparison that found the fault (new 28 Sep, PR 7e).** Re-run the Tuscan Chicken Pasta
+36b. **The comparison that found the fault (new 28 Sep, PR 7e).** Re-run recipe A's
     comparison with the same pasted list. Expect **one** flagged group: an amount mismatch on the
     ingredient the source lists in more places than the recipe does, naming the source's amounts and
     the recipe's. The line whose product had moved into brackets, which used to show as unmatched on
@@ -714,6 +714,12 @@ removed page was deleted), and no listed page missing.*
 phone. Read back by a session: that household's `converter_ack_version` is `2026-10-12.1`, written 06:19:13 UTC, with its other
 settings unchanged. PLANNER and RECIPES under the bar, LATER and the GitHub link were not reported one by one; the smoke suite
 covers the first two.*
+
+53a. **FILE labels and the printed shopping list (new 13 Oct; #94 and the household's 12 Oct question about PAGE 1).** (1) *EDIT a
+    recipe with a source photo or PDF:* each is captioned FILE 1, FILE 2… (2) *Its source files from the viewer:* FILE 1 OF n.
+    Leave without saving. (3) *SHOPPING, tick one item, PRINT / A4 PDF:* the preview leaves the ticked item off and keeps the
+    rest. (4) *Tick every item in one aisle, PRINT again:* that aisle's heading is gone too. (5) *EXPORT PNG:* the picture
+    matches the print, with no MERGE WITH… links. Undo: untick what was ticked.
 
 ## Deferred to the tablet, after merging
 
