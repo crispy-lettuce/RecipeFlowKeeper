@@ -21,6 +21,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
 | [53a: FILE labels and the printed list](#53a-file-labels-and-the-printed-shopping-list) | tablet | 5 min | Ticks only, undone at the end |
 | [54a: AUDIT on the shopping list](#54a-audit-on-the-shopping-list) | tablet and phone | 5 min | One aisle, undone by UNDO |
+| [55a: folding and searching INGREDIENTS](#55a-folding-and-searching-settings--ingredients) | tablet and phone | 3 min | No |
 | [Confirm the converter in the second household](#confirm-the-converter-in-the-second-household) | Claude app, then the app | 5 min | One tap |
 | [Choose what to build next](#your-own-issues-decided-13-oct) | — | — | — |
 
@@ -38,6 +39,22 @@ A new version goes live when the PR for #94's printed list and the FILE labels m
 ---
 
 ## App checks
+
+### 55a: folding and searching Settings → INGREDIENTS
+
+After the #95 PR merges, and the app is reloaded.
+
+1. Open **Settings → INGREDIENTS**.
+   - **You should see:** **WORD MATCHES**, **SHOPPING AISLES** and **SWAPS** open, each with a count in brackets; **DICTIONARY**
+     is one line, (140).
+2. Tap **WORD MATCHES**, leave Settings, and come back.
+   - **You should see:** it folded to one line, and still folded.
+3. Type a word you know is in one of your swaps into **INGREDIENT LOOKUP**.
+   - **You should see:** SWAPS open, showing (1 OF …); the others folded, reading (0 OF …).
+4. Clear the box.
+   - **You should see:** WORD MATCHES folded again, as you left it. Tap it to open it again.
+5. Do steps 1 and 2 on the phone.
+   - **You should see:** nothing runs off the side of the screen.
 
 ### 54a: AUDIT on the shopping list
 
@@ -108,7 +125,7 @@ You chose the order on 13 Oct: #94, then #95, #88 and #87; #100 stays parked.
 - **#88, when chopping is done:** a setting that turns "sliced", "diced" and the like into their own steps in the flow.
 - **#94, the shopping list:** both halves built: ticked items left off print and PNG (53a above), and the **AUDIT** button
   (54a above).
-- **#95, the INGREDIENTS tab:** collapsible sections and a search.
+- **#95, the INGREDIENTS tab:** built: collapsible sections and a search (55a above).
 - **#100, a preview site:** parked; the plan is about trying a change before it reaches the live app.
 
 ---

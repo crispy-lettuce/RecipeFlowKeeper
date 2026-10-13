@@ -93,6 +93,8 @@ the top of Settings, the last one used remembered per device.
 | Library | Library check, Sources, Keywords, Recipe photos |
 | App | Week starts on, Appearance |
 
+- *(Since 13 Oct, #95, `docs/PLAN-INGREDIENTS-TAB.md`: every list on the tab folds under its heading, which counts it, and
+  the dictionary's fold is now its heading, DICTIONARY (140), not SHOW ALL.)*
 - **The dictionary is folded** to one line ("SHOW ALL 140 ROWS"); typing in the lookup opens it to the matching rows, as it
   filters today.
 - **Swaps works as now**: the same form, list, EDIT and DELETE; the lookup's EDIT goes straight to it.

@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **568 checks** (13 Oct 2026; `core.test.js` adds 164 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **576 checks** (13 Oct 2026; `core.test.js` adds 164 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -2722,6 +2722,31 @@ at that check): tools always drawn, no count, not remembered, no `try/catch`, th
 deleting, no untick, no availability guard, no wrap, the print rule for the tools removed, no warning.
 
 *Not verified:* the tablet and phone (step 54a).
+
+**Settings → INGREDIENTS folds, and one search (13 Oct 2026; #95, `docs/PLAN-INGREDIENTS-TAB.md`, answered "defaults").**
+- WORD MATCHES, SHOPPING AISLES, SWAPS and DICTIONARY each fold under a heading (a full-width button, at least 44 px) that
+  counts what the list holds, kept-separate pairs included: `WORD MATCHES (15)`. Open at first: the first three; the dictionary
+  folded, its heading replacing SHOW ALL 140 ROWS (`#dictionaryToggle` and `dictionaryOpen` are gone). Remembered per device,
+  `kitchen.ingredientsOpen`, in `try/catch`; only a tap on a heading writes it.
+- **The INGREDIENT LOOKUP box is the tab's one search** (now `type="search"`): `renderIngredientsHeads` hides every list row
+  whose text, less its buttons, lacks what is typed, drops empty group labels, opens the sections with a match and folds the
+  rest to `(0 OF n)`; a folded one opened during a search says *Nothing here matches "…"*. Taps during a search are not stored,
+  so clearing the box puts every section back as left. It filters the rows each list has drawn and draws nothing itself, so
+  no list redraws another (the loop the plan warned of cannot arise). No search across other tabs (the plan's §2).
+- `showView('swaps')` (the lookup's EDIT) opens SWAPS first and remembers it open. Nothing writes to the database.
+- Two older autocomplete checks moved focus to a box that is now folded while the lookup holds text; they clear or blur first.
+- `changelog.json` **2026-10-13.3**; `help.html` §10; step **55a**; `PLAN-LAYOUT.md` E notes the change.
+
+*Verified by.* `node test/core.test.js` 164, exit 0. `node test/build.js && node test/smoke.js` **576** (568 before), exit 0, no
+console or page errors: seven new checks (counts against the cache with made-up rows; the opening state; a fold remembered over
+leaving Settings and a reload; a search opening the one section with a match at (1 OF n) and folding the rest; the no-match
+line; clearing restores, storing nothing; a jump to SWAPS opens it, 412 px with no sideways scroll and headings ≥ 40 px, and no
+writes), plus blocked storage. The dictionary check reads the heading. `help-guide.js` 7, exit 0. Nine mutations: seven fail by name (kept-separate pairs not counted, the dictionary open
+by default, nothing stored, the jump not opening SWAPS, short headings, no no-match line, no filtering), blocked storage
+without its `try/catch` crashes the suite at its check, and a search that stores its folds crashes it earlier, in the
+autocomplete checks, whose boxes it leaves folded: caught, though not by its own check.
+
+*Not verified:* the tablet and phone (step 55a).
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*

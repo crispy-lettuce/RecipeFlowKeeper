@@ -20,9 +20,9 @@ first two lines are older, as dated there. Check again before relying on a numbe
   the 29 Sep rule (the household's job below); 1 recipe had a source photo.
 - **Cooking diary:** 116 entries on 30 Sep (119 on 10 Oct, the October review). **Word matches:** 15. **Household aisles:** 1.
   **Swaps:** 2 (all three on 30 Sep). **Cooking notes:** 2 rows in all on 12 Oct (R4 built 30 Sep).
-- **Tests:** `node test/core.test.js` 164 checks; `node test/build.js && node test/smoke.js` 568 checks (418 until P3 PR 2, 437 until the
+- **Tests:** `node test/core.test.js` 164 checks; `node test/build.js && node test/smoke.js` 576 checks (418 until P3 PR 2, 437 until the
   calendar toggles, both 9 Oct; 447 until the HELP tab, 448 until recipe sharing, 465 until the Drive backup, 472 until PRE-MADE, 487 until fresh or
-  freezer, all 10 Oct; 492 until issues #85–#93, 500 until FROZEN, 502 until photo upload, 509 until the version and change log, 11 Oct; 515 until the network guard, 517 until the lost-changes fixes, 530 until the write queue, 537 until several households, 547 until the converter reminder, 12 Oct; 554 until the printed list, 557 until AUDIT, 13 Oct).
+  freezer, all 10 Oct; 492 until issues #85–#93, 500 until FROZEN, 502 until photo upload, 509 until the version and change log, 11 Oct; 515 until the network guard, 517 until the lost-changes fixes, 530 until the write queue, 537 until several households, 547 until the converter reminder, 12 Oct; 554 until the printed list, 557 until AUDIT, 568 until the INGREDIENTS folds, 13 Oct).
   `node test/calendar-push.js` 39 checks; `node test/drive-backup.js` 13 checks; `node test/image-integrity.js` 37 checks;
   `node test/source-ingredients.js` 16 checks; `node test/help-guide.js` 7 checks. `offline-harness` runs
   both on every PR and is required on `main`.
@@ -71,7 +71,7 @@ Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all 
    F38 (#123) are merged, and the three functions #123 changed are redeployed and read back (`docs/INFRASTRUCTURE.md` §3).
 2. **The household's own issues, decided 13 Oct ("defaults" on every plan), built in the order #94, #95, #88, #87:** #87 `docs/PLAN-SIDES.md`, #88
    `docs/PLAN-PREP-STEPS.md`, #94's AUDIT `docs/PLAN-SHOPPING-AUDIT.md` (built 13 Oct; its first half is #132), #95
-   `docs/PLAN-INGREDIENTS-TAB.md`; #100 `docs/PLAN-PREVIEW-SITE.md` is parked. The household picks the order.
+   `docs/PLAN-INGREDIENTS-TAB.md` (built 13 Oct); #100 `docs/PLAN-PREVIEW-SITE.md` is parked. The household picks the order.
 3. **The household's jobs**, in `docs/HOUSEHOLD-JOBS.md`: every tablet step has passed (52a, the last, on 13 Oct). Left: the
    second family household reloads the converter and taps DONE, and tablet step 53a (#132). #101 is closed and the recipe
    titles are scrubbed (#132). The BBC validations and D6 are dropped by the household (12 Oct): the

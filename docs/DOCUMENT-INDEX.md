@@ -427,7 +427,7 @@ row, and hides them otherwise. How a merge can hide a tick, and the untick-with-
 
 **Use it when:** building the AUDIT button. (The first half, ticked items off print and PNG, is #132.)
 
-### `docs/PLAN-INGREDIENTS-TAB.md` — folding and searching Settings → INGREDIENTS, #95 (13 Oct 2026; answered "defaults"; not built)
+### `docs/PLAN-INGREDIENTS-TAB.md` — folding and searching Settings → INGREDIENTS, #95 (13 Oct 2026; answered "defaults"; built the same day)
 **What:** each list folds under a heading with its count, remembered per device; the INGREDIENT LOOKUP box narrows every list
 at once. Why there is no search across all tabs. The redraw loop to avoid. One PR.
 
@@ -623,7 +623,7 @@ to the conversion project (see `converter/conversion-instructions.md` above).
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 568-check smoke suite, the 164 Node checks, the five smaller suites CI also runs (the Edge Functions' and the help guide's), and an honest account of what it can't tell you
+**What:** How to run the 576-check smoke suite, the 164 Node checks, the five smaller suites CI also runs (the Edge Functions' and the help guide's), and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 *(Corrected 12 Oct 2026, the October review's Appendix B and D: this said 418 and 143.)*
 
