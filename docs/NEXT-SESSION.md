@@ -69,10 +69,12 @@ Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all 
 
 1. **The October review is finished** (12 Oct): its eight PRs (`PrivateBackup`#7, #102, #117–#122) and the extra one for F37 and
    F38 (#123) are merged, and the three functions #123 changed are redeployed and read back (`docs/INFRASTRUCTURE.md` §3).
-2. **The household's own issues**, once they have reviewed them: #87, #88, #94, #95, #100. Nothing is built for them until the
-   household decides.
+2. **The household's own issues, decided 13 Oct ("defaults" on every plan), none built yet:** #87 `docs/PLAN-SIDES.md`, #88
+   `docs/PLAN-PREP-STEPS.md`, #94's AUDIT `docs/PLAN-SHOPPING-AUDIT.md` (its first half is #132), #95
+   `docs/PLAN-INGREDIENTS-TAB.md`; #100 `docs/PLAN-PREVIEW-SITE.md` is parked. The household picks the order.
 3. **The household's jobs**, in `docs/HOUSEHOLD-JOBS.md`: every tablet step has passed (52a, the last, on 13 Oct). Left: the
-   second family household reloads the converter and taps DONE, close #101, and two decisions. The BBC validations and D6 are dropped by the household (12 Oct): the
+   second family household reloads the converter and taps DONE, and tablet step 53a (#132). #101 is closed and the recipe
+   titles are scrubbed (#132). The BBC validations and D6 are dropped by the household (12 Oct): the
    recipes will be cleared before full adoption.
 4. **#127, the converter reminder** (#129, merged 13 Oct; its SQL applied the same day): a bar in the app, per household, until
    someone taps DONE after reloading the converter. A session can see who has confirmed, read-only:

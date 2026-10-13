@@ -407,6 +407,41 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
+### `docs/PLAN-SIDES.md` — sides for "serve with rice", #87 (13 Oct 2026; answered "defaults" the same day; not built)
+**What:** the app hears "serve with rice or naan" in a recipe (ingredient tails, steps and notes) and offers a matching `course=Side`
+recipe on the Planner; a tap adds it to the day and groups it with the dish. Adds FINISH TOGETHER to the Group Viewer, which
+today starts every dish at zero. Live counts (no text), three PRs, the household's five decisions.
+
+**Use it when:** building #87, or asking why a side was or wasn't offered.
+
+### `docs/PLAN-PREP-STEPS.md` — preparation as steps in the flow, #88 (13 Oct 2026; answered "defaults" the same day; not built)
+**What:** a per-device setting that turns "leeks, thinly sliced" into a step, **Thinly slice the leeks**, beside the step before
+the one that needs it. Worked out by the app from the text as written: no converter change, no recipe change, no re-keyed ticks.
+The word table, the layout rule, live counts, two PRs and seven decisions.
+
+**Use it when:** building #88, or adding a preparation word.
+
+### `docs/PLAN-SHOPPING-AUDIT.md` — AUDIT on the shopping list, #94's second half (13 Oct 2026; answered "defaults"; not built)
+**What:** an AUDIT button at the top of the list that shows "Same as …?", MERGE WITH… and a new aisle picker with UNDO on every
+row, and hides them otherwise. How a merge can hide a tick, and the untick-with-warning answer. One PR, eleven smoke checks.
+
+**Use it when:** building the AUDIT button. (The first half, ticked items off print and PNG, is #132.)
+
+### `docs/PLAN-INGREDIENTS-TAB.md` — folding and searching Settings → INGREDIENTS, #95 (13 Oct 2026; answered "defaults"; not built)
+**What:** each list folds under a heading with its count, remembered per device; the INGREDIENT LOOKUP box narrows every list
+at once. Why there is no search across all tabs. The redraw loop to avoid. One PR.
+
+**Use it when:** building #95.
+
+### `docs/PLAN-PREVIEW-SITE.md` — trying a change before it goes live, #100 (13 Oct 2026; **parked**)
+**What:** everything that depends on the site's address, the one-database catch (a preview writes real data), three options
+compared, and the recommendation: GitHub Pages stays live and Cloudflare Pages gives each PR a preview address. Household and
+session steps, and what is still to check.
+
+**Use it when:** #100 is picked up again.
+
+---
+
 ### `docs/PLAN-FOOD-DIARY.md` — the food diary from the Planner: PRE-MADE meals and COOKED ✓ (10 Oct 2026; approved, built and live)
 **What:** why (3 of 27 past planned days had a diary entry), the household's four answers, how PRE-MADE and COOKED ✓ behave, the
 data, what was left for later (a freezer stock count, "didn't happen", ad-hoc entries from the Planner), and §5, the household's steps.

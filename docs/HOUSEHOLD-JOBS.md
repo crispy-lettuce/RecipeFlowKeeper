@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 13 Oct 2026, morning (your answers on the five issues).**
+**Last brought up to date: 13 Oct 2026, after #132 merged (plans filed).**
 
 These are the jobs only you can do. A session can't tap the tablet, make decisions for you, or deploy for you.
 
@@ -21,7 +21,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
 | [53a: FILE labels and the printed list](#53a-file-labels-and-the-printed-shopping-list) | tablet | 5 min | Ticks only, undone at the end |
 | [Confirm the converter in the second household](#confirm-the-converter-in-the-second-household) | Claude app, then the app | 5 min | One tap |
-| [Decisions](#decisions-waiting-on-you) | — | — | — |
+| [Choose what to build next](#your-own-issues-decided-13-oct) | — | — | — |
 
 ---
 
@@ -76,11 +76,13 @@ The other files under `converter/` are reference material only. Don't load them.
 
 ---
 
-## Decisions waiting on you
+## Your own issues
 
-### Your own issues: decided 13 Oct, plans to read
+### Your own issues: decided 13 Oct
 
-You chose a direction for each on 13 Oct. Each plan comes as its own page in a later PR, with its own short questions:
+You chose a direction for each on 13 Oct, and "defaults" on every plan's questions. The plans are in `docs/`
+(`PLAN-SIDES.md`, `PLAN-PREP-STEPS.md`, `PLAN-SHOPPING-AUDIT.md`, `PLAN-INGREDIENTS-TAB.md`, `PLAN-PREVIEW-SITE.md`).
+Nothing waits on you here: tell a session which to build first.
 
 - **#87, sides with no timings:** the app spots "serve with rice" and offers a matching side recipe for the same day.
 - **#88, when chopping is done:** a setting that turns "sliced", "diced" and the like into their own steps in the flow.
