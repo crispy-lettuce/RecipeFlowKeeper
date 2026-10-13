@@ -249,3 +249,94 @@ is made to fail once by breaking the code it guards. Any PR touching `core.js` b
    (recommended), or FINISH TOGETHER for every group?
 5. **Dismissing an offer:** × hides it until the app is reloaded, with nothing stored (recommended), or "never for this
    recipe", remembered across devices? The second needs a new column, which you would apply first.
+
+## 9. OFTEN WITH: recipes grouped with the dish before (issue #142, planned 13 Oct 2026)
+
+**Asked for on 13 Oct 2026**, after #87 was built: suggest not only the sides a recipe's own words call for (SERVE WITH),
+but also the recipes the household has **grouped** with it before, i.e. a common meal-prep pairing. It is a separate line,
+**OFTEN WITH**, so the reason for a suggestion is always clear: SERVE WITH comes from the recipe's text, OFTEN WITH from the
+household's own groups. Nothing is built yet.
+
+### 9.1 Decided by the household (13 Oct 2026)
+
+1. **Evidence: meal groups only.** A recipe is "with" a dish when the two have been in one `meal_groups` row. Planner days
+   that merely held both, and the food diary, do not count: a group is the household saying "these are cooked together".
+2. **"Often" is once or more.** A single group is enough.
+3. **Any course** may be suggested, not only Sides (curry with dhal, soup with bread).
+4. **The same behaviour as SERVE WITH** (§4.5): on the Planner, a **+** under the dish and **×** to hide it in this tab; in the
+   recipe viewer, a read-only link; hidden for another household's recipe.
+5. **A tap writes only the same two rows as SERVE WITH** (§4.6): the day (`planner_days`, the recipe at the dish's
+   headcount) and the dish's group (`meal_groups`, extended, or a new group of the two). No new column, no SQL, nothing stored.
+
+### 9.2 Measured on the live library (read-only, counts only, 13 Oct 2026)
+
+| | Household 1 | Household 2 |
+| --- | --- | --- |
+| Meal groups (all on past days) | 8, from 16 Aug to 11 Oct | 0 |
+| Recipes with at least one grouped partner still in the library | 9 | 0 |
+| Suggestions in all (recipe → partner) | 12 | 0 |
+| Recipes with more than two partners (so some not shown) | 1 | 0 |
+| Partner references to recipes since deleted (skipped) | 6 | — |
+| Pairs grouped on two or more days | 1 | 0 |
+
+So at "once or more", OFTEN WITH would appear on 9 of household 1's 34 recipes, nearly always with one or two names.
+Household 2 sees nothing until it groups dishes.
+
+### 9.3 The pairing: `groupedWith(recipeId, groups)` in `core.js`, pure
+
+- Input: the recipe's id and every group (`{ id, dateIso, recipeIds }`, as `cache.groups` holds them, past and future).
+- Output: `[{ id, times, last }]`, one entry per other recipe that shares a group with it: `times` is the number of distinct
+  **days** the two were grouped (two groups on one day count once), `last` the latest such day.
+- Order: most times first, then most recent `last`, then the order of the groups given (stable).
+- The recipe never pairs with itself; a recipe listed twice in one group counts once.
+- Nothing about courses, the library or the day: the page filters those, as it does for `matchSides`.
+
+### 9.4 Where it appears, and what is left out
+
+The page takes `groupedWith`'s list and drops, in order:
+1. recipes no longer in the library (the 6 dangling references above);
+2. recipes already on that day (they are planned; the Planner's own group badge shows whether they are grouped);
+3. recipes already offered under SERVE WITH for the same dish (each recipe is offered once, under its stronger reason);
+4. then keeps the first **two**.
+
+- **Planner:** a second line under the dish, below SERVE WITH: `OFTEN WITH: + DHAL  + NAAN  ×`. Same rules as SERVE WITH:
+  today onwards, not on AWAY days, not while GROUP SOME TOGETHER is picking, not under a "Recipe removed" row. Unlike SERVE
+  WITH it **is** shown under a Side too, since "any course" was asked for and a pairing works both ways (a side planned first
+  can offer the main it usually goes with). Its × is its own (`state.oftenHidden`, the same `date|recipeId` key, this tab only).
+- **Recipe viewer:** `OFTEN WITH: Dhal → · Naan →` under SERVE WITH, each opening that recipe with the same way back. Hidden for
+  another household's recipe (their groups are not ours) and when the list is empty.
+- **Tap (+):** the same `addSideToDay` as SERVE WITH, renamed `addWithToDay`: the recipe goes on the day at the dish's headcount
+  (0 when that is the number it is written for), then joins the dish's group or makes a new group of the two. The toast says
+  *"Dhal added to Fri 17 Oct, cooking with Smoky bean pot."* (made-up names, checked: no library title has them).
+- **Once added** it is on the day, so rule 2 removes it from the line.
+
+### 9.5 Tests
+
+- *core.test.js:* two dishes grouped on two days score 2 and come before one grouped once; a tie goes to the more recent day;
+  two groups on one day count once; never itself; a recipe repeated in one group counts once; no groups, no list.
+- *Smoke* (fresh page, made-up recipes and groups on past days):
+  - the viewer shows OFTEN WITH with links, and nothing for another household's recipe or a recipe never grouped;
+  - the Planner shows `+` for a partner, not for one already on the day, nor one already under SERVE WITH;
+  - at most two names;
+  - a deleted partner is skipped;
+  - × hides the line with no write;
+  - a tap sends exactly one `planner_days` upsert and one `meal_groups` upsert, extending an existing group;
+  - shown under a Side; not while picking a group.
+- Every new check made to fail once; made-up lines checked against the library; changelog entry; `help.html` §4
+  `#often-with` and a QUICK ANSWERS link; tablet step **60a** in `docs/TEST-PLAN.md` and `docs/HOUSEHOLD-JOBS.md`;
+  `core.js` version bumped in all three places.
+
+### 9.6 Risks and limits
+
+- **Ungrouping erases the evidence.** UNGROUP deletes the group's row, and so does taking any of its dishes off the day
+  (`dissolveGroupsContainingOnDate`) or clearing the day. A pairing undone that way leaves no trace, so OFTEN WITH only knows
+  groups that stood. Keeping a history would need a new table (`group_history`: household, date, recipe ids, written when a
+  group is made), applied by the household first. **Not part of this plan**; worth deciding if OFTEN WITH proves useful.
+- **A one-off grouping is suggested for ever** (until it is ungrouped), because once is enough. If that nags, the threshold can
+  rise to 2 in one line.
+- **Old groups name deleted recipes** (6 today). They are skipped, never shown, and nothing is cleaned up in the database.
+- No schema, hydrate, write-queue, shopping-list or calendar change. No tick is re-keyed.
+
+### 9.7 Order
+
+One PR, after this plan is merged. If the household later wants the history kept (§9.6), that is a second PR with its SQL page.

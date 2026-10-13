@@ -407,12 +407,13 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
-### `docs/PLAN-SIDES.md` — sides for "serve with rice", #87 (13 Oct 2026; answered "defaults" the same day; not built)
+### `docs/PLAN-SIDES.md` — sides for "serve with rice", #87 (13 Oct 2026; built the same day, #138, #140, #141), and OFTEN WITH, #142 (§9, planned 13 Oct)
 **What:** the app hears "serve with rice or naan" in a recipe (ingredient tails, steps and notes) and offers a matching `course=Side`
-recipe on the Planner; a tap adds it to the day and groups it with the dish. Adds FINISH TOGETHER to the Group Viewer, which
-today starts every dish at zero. Live counts (no text), three PRs, the household's five decisions.
+recipe on the Planner; a tap adds it to the day and groups it with the dish. Adds FINISH TOGETHER to the Group Viewer.
+§9 plans OFTEN WITH: recipes previously grouped with the dish, any course, offered the same way. Live counts (no text), the
+PRs, the household's decisions.
 
-**Use it when:** building #87, or asking why a side was or wasn't offered.
+**Use it when:** asking why a side was or wasn't offered, or building #142.
 
 ### `docs/PLAN-PREP-STEPS.md` — preparation as steps in the flow, #88 (13 Oct 2026; answered "defaults"; both PRs built the same day)
 **What:** a per-device setting that turns "leeks, thinly sliced" into a step, **Thinly slice the leeks**, beside the step before
