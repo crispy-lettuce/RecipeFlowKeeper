@@ -162,10 +162,10 @@ same function for one recipe, and the sweep is kept as the catch-up — §2d.)*
    would silently revert its image to the CDN. The sweep now moves both, and the 29 already done
    were backfilled.
 
-**Both broken images are fixed, and the diagnosis they came with was wrong twice.** Tuscan
-Chicken Pasta was recorded here as a lazy-load placeholder. It was not: it was a truncated JPEG,
+**Both broken images are fixed, and the diagnosis they came with was wrong twice.** Recipe A's
+photo was recorded here as a lazy-load placeholder. It was not: it was a truncated JPEG,
 which rendered as a photo on the top 40% of the card and solid grey below. Chasing that turned up a
-second one nobody had noticed — Classic Scones, cut off mid-transfer at exactly 35 × 1024 bytes.
+second one nobody had noticed — recipe B's, cut off mid-transfer at exactly 35 × 1024 bytes.
 
 Both now carry whole files (257,931 and 35,613 bytes) and a full verify sweep reports 29 of 29
 whole. The Scones replacement is *smaller* than the file it replaced, which is the tell: the broken
@@ -692,7 +692,7 @@ corrections: **every one was found by checking the real thing, and none by readi
 | "`main` still serves the pre-Supabase app" — in four documents | `main` had been serving the Supabase rewrite since PR #1, 13 Sep | 21 Sep, before the merge |
 | "Nothing here is deployed and nothing live can break" | Pages had been live and sharing this database throughout | 21 Sep, same check |
 | Test plan's "Planned days 15" read as an on-screen expectation | A row count; every stored day was in the past, so an empty Planner was correct | 21 Sep, by the person running the pass |
-| Tuscan Chicken Pasta's image was "a lazy-load placeholder, cosmetic" | A truncated JPEG. Chasing it found a second broken image nobody had noticed | 22 Sep, from a screenshot of the card |
+| Recipe A's image was "a lazy-load placeholder, cosmetic" | A truncated JPEG. Chasing it found a second broken image nobody had noticed | 22 Sep, from a screenshot of the card |
 | Image re-hosting "verified against the dry run's byte counts" | That check cannot detect the fault it claims to — both reads fetch the same source | 22 Sep, while fixing the above |
 | "C3: 249 of 249 MERGE lines timed" | 242 of 242. The library holds 250; 8 are in the one recipe never converted | 22 Sep audit, by counting |
 | `INFRASTRUCTURE.md`: bucket "private, and currently empty"; "no Edge Functions deployed" | Public with 29 objects, and two functions live — both for six days | 22 Sep audit |
@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **554 checks** (12 Oct 2026; `core.test.js` adds 164 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **557 checks** (13 Oct 2026; `core.test.js` adds 164 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -1114,7 +1114,7 @@ running to fetch the live page reported "not live", and means nothing: this sand
 `github.io`, so it never saw the site.
 
 **7e, the source check that no longer calls a difference a match (28 Sep 2026, PR #37, merged 29 Sep at 05:06 UTC).**
-Found by the household on the first real use of the paste box: comparing Tuscan Chicken Pasta, two
+Found by the household on the first real use of the paste box: comparing recipe A, two
 lines came out *matched* that were not. The source listed one ingredient twice, with the same
 amount, beside a compound "salt and pepper" line; the recipe carried the doubled line once and the
 compound line split in two. The leftover second copy took the recipe's "pinch" line, because the two
@@ -2676,6 +2676,27 @@ instructions, ask each household to reload them into its conversion project, wit
 02:24) and reported both checks as expected. Checked read-only at 05:53 UTC: `converter_ack_version` `text`, nullable, no default; 3 households, 0 confirmed; granted to `authenticated` (and `postgres`, `service_role`), not to `anon`. Step 52a passed on the tablet the same morning: the bar appeared, DONE took it away for good (a reload, and the phone), and the
 household's row read back `2026-10-12.1` at 06:19:13 UTC with its other settings unchanged. The second family household has
 not confirmed yet; the live test's household never will, and no one sees its bar.
+
+**Ticked items off the printed list, FILE labels, and two titles scrubbed (13 Oct 2026; #94's first half).** The household's
+answers of 13 Oct.
+- **PRINT / A4 PDF leaves ticked items off** (`@media print` hides `.shop-row.checked` and `.shop-category.all-checked`), as
+  EXPORT PNG already meant to. The PNG hid only a ticked row's name, leaving its MERGE WITH… behind, and showed every row's
+  MERGE WITH…: it now hides the same two classes and `.shop-tools`. `renderShopping` sets both classes, so paper and PNG agree.
+- **Source files are FILE 1, FILE 2…** on the form and FILE 1 OF n in the viewer, not PAGE: a PDF of several pages is one file,
+  kept whole (the household's question at 38d).
+- **The two recipe titles** in `IMAGES.md`, `HANDOVER.md`, `TEST-PLAN.md`, `HANDOVER-CONVERSION-INTEGRITY.md`,
+  `converter/test-set.md` and `rehost-images`' comments are "recipe A" and "recipe B". Comments only in the function: no
+  redeploy (`INFRASTRUCTURE.md` says so). Old commits still hold them; history is not rewritten.
+- `changelog.json` **2026-10-13.1**; `help.html` §7 and §9; `TEST-PLAN.md` and `HOUSEHOLD-JOBS.md` step 53a; the job list's
+  #101 entry gone (closed) and its "two titles" decision done.
+
+*Verified by.* `node test/core.test.js` 164, exit 0. `node test/build.js && node test/smoke.js` **557** (554 before), exit 0, no
+console or page errors: print leaves the ticked row off and keeps the rest; the PNG does the same, with no MERGE WITH…, and the
+screen is restored after; an aisle with everything ticked is left off both and still shown on screen. Four existing checks
+now read FILE. `help-guide.js` 7 and `image-integrity.js` 37, exit 0. Five mutations, each failing by name: the label left as
+PAGE, the print rule removed, the PNG hiding only the name, the PNG keeping `.shop-tools`, the aisle class never set.
+
+*Not verified:* the tablet (step 53a), and a real printer (the check emulates print media in Chromium).
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*

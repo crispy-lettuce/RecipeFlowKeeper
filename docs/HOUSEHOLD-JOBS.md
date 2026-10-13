@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 13 Oct 2026, 06:25 UTC.**
+**Last brought up to date: 13 Oct 2026, morning (your answers on the five issues).**
 
 These are the jobs only you can do. A session can't tap the tablet, make decisions for you, or deploy for you.
 
@@ -19,7 +19,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | Job | Where | Time | Saves anything? |
 | --- | --- | --- | --- |
 | [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
-| [Close issue #101](#close-issue-101) | GitHub | 1 min | No |
+| [53a: FILE labels and the printed list](#53a-file-labels-and-the-printed-shopping-list) | tablet | 5 min | Ticks only, undone at the end |
 | [Confirm the converter in the second household](#confirm-the-converter-in-the-second-household) | Claude app, then the app | 5 min | One tap |
 | [Decisions](#decisions-waiting-on-you) | — | — | — |
 
@@ -29,23 +29,30 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 ### Reload the app on every device
 
-New versions went live on 12 Oct.
+A new version goes live when the PR for #94's printed list and the FILE labels merges.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready**, tap **RELOAD**. Otherwise refresh the page.
-
-### Close issue #101
-
-Every finding of the October review is now fixed and live.
-
-1. Open https://github.com/crispy-lettuce/RecipeFlowKeeper/issues/101.
-2. Tap **Close issue**.
 
 ---
 
 ## App checks
 
-**None waiting** (13 Oct 2026). A new one appears here when a change needs checking on the tablet.
+### 53a: FILE labels and the printed shopping list
+
+After the PR for the FILE labels and #94's printed list merges, and the app is reloaded.
+
+1. **EDIT** a recipe that has a source photo or PDF.
+   - **You should see:** under the photos, each one is labelled **FILE 1**, **FILE 2** and so on (it used to say PAGE).
+2. Open that recipe's source files from the viewer.
+   - **You should see:** **FILE 1 OF 2** (or however many) under each. Leave without saving.
+3. On **SHOPPING**, tick one item, then tap **PRINT / A4 PDF** and look at the preview.
+   - **You should see:** the ticked item is not on the page; everything else is. Cancel the print.
+4. Tick every item in one aisle, then **PRINT / A4 PDF** again.
+   - **You should see:** that aisle's heading has gone too. Cancel the print.
+5. Tap **EXPORT PNG** and open the picture.
+   - **You should see:** the same as the print: no ticked items, no empty aisle, and no **MERGE WITH…** links.
+6. Untick what you ticked.
 
 ---
 
@@ -71,22 +78,16 @@ The other files under `converter/` are reference material only. Don't load them.
 
 ## Decisions waiting on you
 
-### The two recipe titles in the docs
+### Your own issues: decided 13 Oct, plans to read
 
-Two library recipe titles are still named in `IMAGES.md`, `HANDOVER.md`, `TEST-PLAN.md` and the `rehost-images` comments. They
-tell the story of the two broken photos.
+You chose a direction for each on 13 Oct. Each plan comes as its own page in a later PR, with its own short questions:
 
-- **Decide:** scrub them, or leave them.
-
-### Your own issues
-
-Nothing is built for these until you decide:
-
-- **#87:** side dishes with no timings.
-- **#88:** how the flow is meant to be followed.
-- **#94:** the shopping list as a PNG, printing with ticks, and an "audit" setting.
-- **#95:** the INGREDIENTS settings tab getting long.
-- **#100:** moving to Cloudflare Pages.
+- **#87, sides with no timings:** the app spots "serve with rice" and offers a matching side recipe for the same day.
+- **#88, when chopping is done:** a setting that turns "sliced", "diced" and the like into their own steps in the flow.
+- **#94, the shopping list:** ticked items left off print and PNG is built (53a above); an **AUDIT** button on the list
+  for word matches and aisles is planned.
+- **#95, the INGREDIENTS tab:** collapsible sections and a search.
+- **#100, a preview site:** parked; the plan is about trying a change before it reaches the live app.
 
 ---
 
@@ -99,6 +100,7 @@ Nothing is built for these until you decide:
 ## Recently done
 
 - **13 Oct:**
+  - The two recipe titles in the docs became "recipe A" and "recipe B", as you asked. Issue #101 is closed.
   - #129 (the converter reminder, #127) merged, and its SQL applied: the column is there, read back by a session.
   - Tablet step 52a passed. Your household reloaded the converter and tapped DONE; the database holds version 2026-10-12.1.
 - **12 Oct:**

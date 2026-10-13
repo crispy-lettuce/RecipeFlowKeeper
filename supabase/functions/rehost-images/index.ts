@@ -84,8 +84,8 @@ function jpegDimensions(bytes: Uint8Array): { w: number; h: number } | null {
 /* Below this, a JPEG claiming to be a photograph is not carrying one.
  *
  * Measured, not guessed. A verify sweep of all 29 images on 22 Sep put the
- * 27 whole ones between 0.087 and 0.385 bytes/pixel, and Tuscan Chicken
- * Pasta — the one rendering grey below the top rows — at 0.011 against its
+ * 27 whole ones between 0.087 and 0.385 bytes/pixel, and recipe A — the
+ * one rendering grey below the top rows — at 0.011 against its
  * declared 1200x800. So 0.02 sits about 4x below the leanest real photo in
  * the library and about 2x above the broken one: clear of both, and not
  * finely balanced between them.
@@ -134,7 +134,7 @@ function isobmffTruncated(bytes: Uint8Array): string | null {
 
 /* Is this actually a complete image file?
  *
- * Added 22 Sep after Tuscan Chicken Pasta rendered as a photo on top and
+ * Added 22 Sep after recipe A's photo rendered as a photo on top and
  * grey below — the signature of a JPEG whose scanlines stop early. It had
  * been stored, and passed verification, because the check at the time
  * compared the stored byte count against the dry run's byte count. Both
@@ -165,7 +165,7 @@ function imageIntegrity(bytes: Uint8Array, contentLength: number | null): string
     while (e > 1 && at(e) === 0x00) e--;
     if (!(at(e - 1) === 0xFF && at(e) === 0xD9)) return 'truncated JPEG: no end-of-image marker';
     /* An end marker proves the file was terminated, not that it is full.
-       Tuscan Chicken Pasta had FFD9 and still rendered grey below the top
+       Recipe A's photo had FFD9 and still rendered grey below the top
        rows: the marker chain was intact and the entropy-coded scan data
        ran out early, which a decoder fills with mid-grey. Density is what
        separates that from a whole photo. */
@@ -395,8 +395,8 @@ Deno.serve(async (req: Request) => {
 
      WHY THIS IS A SEPARATE MODE. The sweep skips anything self-hosted, which
      is what makes it idempotent and cheap — and also means it can never
-     notice that something it stored months ago is broken. Tuscan Chicken
-     Pasta was stored truncated and stayed that way until a person looked at
+     notice that something it stored months ago is broken. Recipe A's
+     photo was stored truncated and stayed that way until a person looked at
      a card. The integrity check on the way in stops new ones; this is how
      you ask whether the existing library has others. Read-only. */
   if (verify) {

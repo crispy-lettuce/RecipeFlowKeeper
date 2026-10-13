@@ -507,6 +507,65 @@ const check = (name, pass, detail) => {
   await page.waitForTimeout(300);
   check('ticking sticks', (await page.locator('.shop-item.checked').count()) === 1);
 
+  /* #94 (13 Oct): ticked means "already have it", so the list taken to the shops, printed or as a PNG, leaves the row off,
+     MERGE WITH… and all, and an aisle with nothing left to buy goes too. The screen still shows both. */
+  const shopShown = (scope) => page.evaluate(sc => {
+    const root = sc ? document.querySelector(sc) : document;
+    const vis = el => el.getClientRects().length > 0;
+    const rows = [...root.querySelectorAll('.shop-row')];
+    const ticked = rows.filter(r => r.querySelector('.shop-item.checked'));
+    const unticked = rows.filter(r => !r.querySelector('.shop-item.checked'));
+    const full = [...root.querySelectorAll('.shop-category.all-checked')];
+    return { ticked: ticked.length, tickedShown: ticked.filter(vis).length, unticked: unticked.length,
+      untickedShown: unticked.filter(vis).length, fullAisles: full.length, fullShown: full.filter(vis).length,
+      toolsShown: [...root.querySelectorAll('.shop-tools')].filter(vis).length };
+  }, scope);
+  /* The PNG: html2canvas is the build's stub, so look at the page at the moment it is called, then once it has finished. */
+  const shopPng = () => page.evaluate(async () => {
+    const real = window.html2canvas, vis = el => el.getClientRects().length > 0;
+    let seen = null;
+    window.html2canvas = node => {
+      const rows = [...node.querySelectorAll('.shop-row')];
+      const ticked = rows.filter(r => r.querySelector('.shop-item.checked')), unticked = rows.filter(r => !r.querySelector('.shop-item.checked'));
+      seen = { tickedShown: ticked.filter(vis).length, unticked: unticked.length, untickedShown: unticked.filter(vis).length,
+        fullShown: [...node.querySelectorAll('.shop-category.all-checked')].filter(vis).length,
+        toolsShown: [...node.querySelectorAll('.shop-tools')].filter(vis).length };
+      return real(node);
+    };
+    document.getElementById('shopExportBtn').click();
+    await new Promise(r => setTimeout(r, 300));
+    window.html2canvas = real;
+    return { seen, tickedBack: [...document.querySelectorAll('.shop-row')].filter(r => r.querySelector('.shop-item.checked') && vis(r)).length };
+  });
+  await page.emulateMedia({ media: 'print' });
+  const shopPrint = await shopShown();
+  await page.emulateMedia({ media: null });
+  check('PRINT leaves ticked items off the shopping list, and keeps everything still to buy (#94)',
+        shopPrint.ticked === 1 && shopPrint.tickedShown === 0 && shopPrint.unticked > 0 && shopPrint.untickedShown === shopPrint.unticked,
+        JSON.stringify(shopPrint));
+  const shopPngOut = await shopPng();
+  check('    and so does EXPORT PNG, the whole row with its MERGE WITH…, which come back on screen afterwards',
+        !!shopPngOut.seen && shopPngOut.seen.tickedShown === 0 && shopPngOut.seen.unticked > 0
+        && shopPngOut.seen.untickedShown === shopPngOut.seen.unticked && shopPngOut.seen.toolsShown === 0 && shopPngOut.tickedBack === 1,
+        JSON.stringify(shopPngOut));
+  // Tick the rest of the tomato's aisle: the aisle's heading goes from both, then untick what was ticked here.
+  const shopAisleTicked = await page.evaluate(() => {
+    const cat = document.querySelector('.shop-item.checked').closest('.shop-category');
+    return [...cat.querySelectorAll('.shop-item:not(.checked)')].map(el => el.dataset.key);
+  });
+  for (const k of shopAisleTicked) { await page.locator(`.shop-item[data-key="${k}"] input`).check(); await page.waitForTimeout(150); }
+  await page.emulateMedia({ media: 'print' });
+  const shopAislePrint = await shopShown();
+  await page.emulateMedia({ media: null });
+  const shopAislePng = await shopPng();
+  const shopAisleScreen = await shopShown();
+  for (const k of shopAisleTicked) { await page.locator(`.shop-item[data-key="${k}"] input`).uncheck(); await page.waitForTimeout(150); }
+  const shopAisleAfter = await page.locator('.shop-item.checked').count();
+  check('    an aisle with everything ticked is left off both, heading and all, though the screen still shows it',
+        shopAislePrint.fullAisles === 1 && shopAislePrint.fullShown === 0 && shopAislePng.seen && shopAislePng.seen.fullShown === 0
+        && shopAisleScreen.fullShown === 1 && shopAisleAfter === 1,
+        JSON.stringify({ shopAislePrint, shopAislePng, shopAisleScreen, shopAisleAfter }));
+
   await page.click('#shopHideCheckedBtn');
   await page.waitForTimeout(300);
   check('hide ticked removes it from view', (await page.locator('.shop-item.checked').count()) === 0);
@@ -3657,7 +3716,7 @@ const check = (name, pass, detail) => {
   check('SOURCE PHOTOS: ADD PHOTO shrinks each picture to 2000 px on its long edge as a JPEG, shown as a NEW page, stored by nothing until SAVE',
         !spAddState.disabled && /kept privately/.test(spAddState.hint)
         && JSON.stringify(spShrunk) === JSON.stringify([{ w: 2000, h: 1000, type: 'image/jpeg', path: null }, { w: 923, h: 2000, type: 'image/jpeg', path: null }])
-        && spNewThumbs.length === 2 && spNewThumbs[0].caption === 'PAGE 1 · NEW VIEW REMOVE' && /^blob:/.test(spNewThumbs[1].src)
+        && spNewThumbs.length === 2 && spNewThumbs[0].caption === 'FILE 1 · NEW VIEW REMOVE' && /^blob:/.test(spNewThumbs[1].src)
         && spNewBand.includes('Stores 2 new source photos with the recipe') && (await anSince(spMark0)).length === 0 && (await spStorage(spSMark0)).length === 0,
         JSON.stringify([spAddState, spShrunk, spNewThumbs, spNewBand]));
   const spCompare = await page.evaluate(() => ({ lines: [...document.querySelectorAll('#sourcePhotoCompare li')].map(li => li.textContent),
@@ -3692,7 +3751,7 @@ const check = (name, pass, detail) => {
   const spSigned = await spStorage(spSMark2);
   check('    the viewer then shows a SOURCE PHOTOS · 2 chip, which opens both pages full screen by links signed for an hour',
         spChip && spChip.tag === 'BUTTON' && spChip.text === 'SOURCE PHOTOS · 2' && spViewer.open && /SP Hazelnut Loaf · SOURCE PHOTOS · 2/.test(spViewer.title)
-        && spViewer.pages.length === 2 && spViewer.pages.every(p => /^blob:/.test(p.src) && p.link === p.src) && /^PAGE 1 OF 2 · ADDED /.test(spViewer.pages[0].caption)
+        && spViewer.pages.length === 2 && spViewer.pages.every(p => /^blob:/.test(p.src) && p.link === p.src) && /^FILE 1 OF 2 · ADDED /.test(spViewer.pages[0].caption)
         && spSigned.length === 2 && spSigned.every(s => s.op === 'sign' && s.bucket === 'recipe-sources' && s.expiresIn === 3600) && JSON.stringify(spSigned.map(s => s.path)) === JSON.stringify(spPaths),
         JSON.stringify([spChip, spViewer, spSigned]));
   await page.click('#sourcePhotoBody .source-photo-full');
@@ -3718,7 +3777,7 @@ const check = (name, pass, detail) => {
   const spRm = (await spStorage(spSMark3)).filter(s => s.op === 'remove');
   const spRmOrder = await spLog(spLog3);
   check('    on Edit the stored pages show; REMOVE is named by BEFORE YOU SAVE and done by SAVE: the row without it first, then its file',
-        spStoredThumbs.length === 2 && spStoredThumbs[0].caption === 'PAGE 1 VIEW REMOVE' && spStoredThumbs.every(t => /^blob:/.test(t.src))
+        spStoredThumbs.length === 2 && spStoredThumbs[0].caption === 'FILE 1 VIEW REMOVE' && spStoredThumbs.every(t => /^blob:/.test(t.src))
         && spRmBand.includes('Deletes the source file you removed') && spRmBefore === 0
         && JSON.stringify((spRmRow.source_photos || []).map(p => p.path)) === JSON.stringify([spPaths[1]])
         && spRm.length === 1 && JSON.stringify(spRm[0].paths) === JSON.stringify([spPaths[0]]) && spRm[0].bucket === 'recipe-sources'
@@ -3925,7 +3984,7 @@ const check = (name, pass, detail) => {
         && pdfForm.photos[0].size === pdfBytes.length && /over 10 MB/.test(pdfForm.toast)
         && (await anSince(pdfMark0)).length === 0 && (await spStorage(pdfSMark0)).length === 0, JSON.stringify([pdfAccept, pdfForm.photos, pdfForm.toast]));
   check('    it shows as a PDF with its name and an OPEN link, beside the lines too, named by BEFORE YOU SAVE, and the check reads "against the PDF"',
-        pdfForm.thumbs.length === 1 && pdfForm.thumbs[0].caption === 'PAGE 1 · PDF · NEW REMOVE' && /^blob:/.test(pdfForm.thumbs[0].open)
+        pdfForm.thumbs.length === 1 && pdfForm.thumbs[0].caption === 'FILE 1 · PDF · NEW REMOVE' && /^blob:/.test(pdfForm.thumbs[0].open)
         && pdfForm.compare.card && pdfForm.compare.button === 'CHECKED AGAINST THE PDF' && pdfBand.includes('Stores the new source PDF with the recipe'),
         JSON.stringify([pdfForm.thumbs, pdfForm.compare, pdfBand]));
   await page.setInputFiles('#sourcePhotoInput', [{ name: 'renamed.pdf', mimeType: 'application/pdf', buffer: Buffer.from('<html></html>') }]);

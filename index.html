@@ -1456,6 +1456,8 @@
     .tablewrap table{ page-break-inside:auto; }
     .tablewrap tr, .shop-item, .shop-category{ page-break-inside:avoid; }
     .shop-tools{ display:none !important; }
+    /* Ticked means "already have it": the list taken to the shops leaves it off (#94, 13 Oct), as the PNG does. */
+    .shop-row.checked, .shop-category.all-checked{ display:none !important; }
     @page{ size:A4; margin:14mm; }
   }
 
@@ -2094,7 +2096,7 @@ const EXPECTED_CORE_VERSION = '2026-10-12.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-12.5';
+const APP_VERSION = '2026-10-13.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -2677,19 +2679,13 @@ function exportNodeAsPng(node, filename, opts){
     });
   });
 
+  /* The whole row goes, not just its name: until 13 Oct (#94) a ticked item's MERGE WITH… stayed behind in the PNG. The
+     classes are set by renderShopping, and print hides the same two (@media print), so paper and PNG agree. */
   if(opts.excludeChecked){
-    findAll('.shop-item.checked').forEach(el=>{
+    findAll('.shop-row.checked, .shop-category.all-checked').forEach(el=>{
       const prev = el.style.display;
       el.style.display = 'none';
       restoreFns.push(()=>{ el.style.display = prev; });
-    });
-    findAll('.shop-category').forEach(cat=>{
-      const stillVisible = Array.from(cat.querySelectorAll('.shop-item')).some(it=>it.style.display !== 'none');
-      if(!stillVisible){
-        const prev = cat.style.display;
-        cat.style.display = 'none';
-        restoreFns.push(()=>{ cat.style.display = prev; });
-      }
     });
   }
 
@@ -6629,7 +6625,7 @@ function renderShopping(){
         (noteFor.has(t) ? ` <span class="shop-item-alt">(${escapeHtml(noteFor.get(t).join('; '))})</span>` : '')).join(', ');
       const sg = suggestionFor.get(it.key);
       const k = escapeHtml(it.key);
-      return `<div class="shop-row">
+      return `<div class="shop-row${isChecked?' checked':''}">
       <label class="shop-item${isChecked?' checked':''}" data-key="${escapeHtml(storedKey)}" data-name="${escapeHtml(it.name)}">
         <input type="checkbox" ${isChecked?'checked':''}>
         <span class="shop-item-main">
@@ -6645,7 +6641,9 @@ function renderShopping(){
       </div>
     </div>`;
     }).join('');
-    return `<div class="shop-category">
+    /* Marked here, while the ticks are to hand, so print and the PNG can leave out an aisle with nothing left to buy (#94). */
+    const allTicked = cat.items.length && cat.items.every(it=> checkedForWeek[keyPrefix + it.key]);
+    return `<div class="shop-category${allTicked ? ' all-checked' : ''}">
       <div class="shop-category-title">${escapeHtml(cat.name.toUpperCase())}</div>
       ${rows}
     </div>`;
@@ -6802,7 +6800,7 @@ function initShoppingListeners(){
     exportNodeAsPng(
       document.querySelector('.shop-wrap'),
       `shopping-list-${labelBit}`,
-      { scrollFixSelectors: ['.shop-wrap'], hideSelectors: ['.shop-head-right'], excludeChecked: true }
+      { scrollFixSelectors: ['.shop-wrap'], hideSelectors: ['.shop-head-right', '.shop-tools'], excludeChecked: true }
     );
   });
 }
@@ -7634,7 +7632,7 @@ function renderFormPhotos(){
   if(!list) return;
   list.innerHTML = formPhotos.map((p, i)=>
     `<figure class="source-photo-thumb">${photoImgHtml(p, 'source-photo-img')}` +
-    `<figcaption>PAGE ${i + 1}${isPdfEntry(p) ? ' · PDF' : ''}${p.path ? '' : ' · NEW'}${isPdfEntry(p) ? '' : ` <button type="button" data-photo-view="${i}">VIEW</button>`}` +
+    `<figcaption>FILE ${i + 1}${isPdfEntry(p) ? ' · PDF' : ''}${p.path ? '' : ' · NEW'}${isPdfEntry(p) ? '' : ` <button type="button" data-photo-view="${i}">VIEW</button>`}` +
     ` <button type="button" data-photo-remove="${i}">REMOVE</button></figcaption></figure>`).join('');
   loadPhotoImages(list);
   addBtn.disabled = !sourcePhotosAvailable;
@@ -7716,7 +7714,7 @@ function openSourcePhotoViewer(photos, title, startAt){
   const body = document.getElementById('sourcePhotoBody');
   body.innerHTML = photos.map((p, i)=>
     `<figure class="source-photo-page" id="sourcePhotoPage${i}">${photoImgHtml(p, 'source-photo-full')}` +
-    `<figcaption>PAGE ${i + 1} OF ${n}${p.added ? ' · ADDED ' + escapeHtml(formatDate(isoLocal(new Date(p.added))).toUpperCase()) : ''}` +
+    `<figcaption>FILE ${i + 1} OF ${n}${p.added ? ' · ADDED ' + escapeHtml(formatDate(isoLocal(new Date(p.added))).toUpperCase()) : ''}` +
     (isPdfEntry(p) ? '' : ` · <a data-photo-open target="_blank" rel="noopener"${p.path ? '' : ` href="${escapeHtml(p.url)}"`}>OPEN FULL SIZE ↗</a>`) +
     `</figcaption></figure>`).join('');
   loadPhotoImages(body);
