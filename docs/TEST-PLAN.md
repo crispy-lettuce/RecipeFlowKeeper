@@ -15,7 +15,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 582 automated checks pass, plus 171 in Node (13 Oct 2026; 102 when this was
+story that used to open this paragraph is history. 586 automated checks pass, plus 176 in Node (13 Oct 2026; 102 when this was
 written; until 12 Oct this line said 329 and 133, corrected 12 Oct 2026, the October review's Appendix B). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -740,6 +740,14 @@ covers the first two.*
     STEPS. The timeline strip is unchanged. (3) *Tap the step that uses them:* the preparation steps tick too. (4) *The shopping
     list:* unchanged. (5) *On the phone, open the same recipe:* as written (this device only). (6) *Set it back to BEFORE YOU
     START.* Writes nothing.
+57a. **FINISH TOGETHER (new 13 Oct; #87 PR 3, `docs/PLAN-SIDES.md` §4.4).** (1) *Give one recipe the course Side, put it and a
+    longer timed recipe on one Planner day, group them and tap the GROUPED badge:* FINISH TOGETHER is lit above the timeline;
+    the side's lane ends where the main's does; the last mark reads SERVE; the main's header says START FIRST and the side's
+    START AT +… (ABOUT in front if the main has a step without a bracket time). (2) *Tap START TOGETHER:* both lanes start at
+    the left, the start times go, the last mark is a time again. (3) *Turn on COOKING MODE:* the timeline hides behind SHOW
+    TIMELINE; START AT stays on the side's header. (4) *A group with no Side:* opens in START TOGETHER, as before. (5) *The same
+    on the phone:* the two buttons wrap rather than run off the side. Writes nothing (the course change in (1) is an ordinary
+    edit; put it back if it was only for the test).
 
 ## Deferred to the tablet, after merging
 

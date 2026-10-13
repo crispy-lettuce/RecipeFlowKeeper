@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-13.1';
+const KITCHEN_CORE_VERSION = '2026-10-13.2';
 
 
 /* ======================= quantity split ======================= */
@@ -761,6 +761,23 @@ function computeTimeline(groups, stages){
   if(!anyRealDuration) return null; // nothing to show a timeline for — every step is the same unknown-length sliver
   const totalSpan = steps.length ? Math.max(...steps.map(s=>s.end)) : 0;
   return { steps, totalSpan };
+}
+
+/* FINISH TOGETHER (#87, 13 Oct 2026, docs/PLAN-SIDES.md §4.4). Every dish in a group starts at 0, so a 15-minute rice next
+   to a 60-minute curry was shown done 45 minutes early. In 'finish' mode each dish is shifted so all of them end together:
+   offset = longest span − its own, steps moved by it. 'start' is the old behaviour. A dish with no timing stays null (no
+   lane). `about` says the longest dish has an untimed or open-ended step, whose 2-minute stand-in makes every offset a guess. */
+function lineUpTimelines(timelines, mode){
+  const timed = (timelines || []).filter(Boolean);
+  const totalSpan = timed.length ? Math.max(...timed.map(t=> t.totalSpan)) : 0;
+  const longest = timed.find(t=> t.totalSpan === totalSpan);
+  const about = !!longest && longest.steps.some(s=> !s.duration || s.duration.openEnded);
+  const lanes = (timelines || []).map(t=>{
+    if(!t) return null;
+    const offset = mode === 'finish' ? totalSpan - t.totalSpan : 0;
+    return { offset, totalSpan: t.totalSpan, steps: t.steps.map(s=> ({ ...s, start: s.start + offset, end: s.end + offset })) };
+  });
+  return { lanes, totalSpan, about };
 }
 
 /* Durations are minutes inside (see extractStepDuration), and read back in whichever unit reads best: whole seconds under
@@ -2068,7 +2085,7 @@ if(typeof module !== 'undefined' && module.exports){
     KITCHEN_CORE_VERSION, INGREDIENT_AISLES, INGREDIENT_DICTIONARY,
     splitQty, parseTags, extractStepDuration, parseRecipe,
     withUpdatedHeaderLine, withUpdatedHeaderLines, changedHeaderKeys, tagsToLine, withUpdatedTitleLine, withUpdatedImageLine,
-    scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, formatMinutesForDisplay, formatDuration,
+    scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, lineUpTimelines, formatMinutesForDisplay, formatDuration,
     parseFraction, normalizeUnit, toBaseUnit, formatShoppingQty, parseIngredientAmount,
     formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,

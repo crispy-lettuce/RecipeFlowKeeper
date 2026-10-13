@@ -23,6 +23,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | [54a: AUDIT on the shopping list](#54a-audit-on-the-shopping-list) | tablet and phone | 5 min | One aisle, undone by UNDO |
 | [55a: folding and searching INGREDIENTS](#55a-folding-and-searching-settings--ingredients) | tablet and phone | 3 min | No |
 | [56a: preparation as steps](#56a-preparation-as-steps) | tablet and phone | 5 min | No |
+| [57a: FINISH TOGETHER](#57a-finish-together) | tablet and phone | 5 min | No |
 | [Confirm the converter in the second household](#confirm-the-converter-in-the-second-household) | Claude app, then the app | 5 min | One tap |
 | [Choose what to build next](#your-own-issues-decided-13-oct) | — | — | — |
 
@@ -40,6 +41,25 @@ A new version goes live when the PR for #94's printed list and the FILE labels m
 ---
 
 ## App checks
+
+### 57a: FINISH TOGETHER
+
+After the #87 FINISH TOGETHER PR merges, and the app is reloaded. You need a recipe whose course is **Side** (EDIT → COURSE) and
+a longer recipe with timings, on the same Planner day, grouped with **GROUP SOME TOGETHER**.
+
+1. Tap the **GROUPED: …** badge.
+   - **You should see:** **FINISH TOGETHER** lit above the timeline; the side's lane finishes where the main's does; the last
+     mark on the timeline reads **SERVE**; the main's header says **START FIRST**, the side's **START AT +…** (with **ABOUT** in
+     front if the main has a step without a time in brackets).
+2. Tap **START TOGETHER**.
+   - **You should see:** both lanes start at the left, the start times go, and the last mark is a time again.
+3. Turn on **COOKING MODE**.
+   - **You should see:** the timeline hidden behind **SHOW TIMELINE**; **START AT** still on the side's header.
+4. Open a group with no Side.
+   - **You should see:** it opens in **START TOGETHER**, as before.
+5. On the phone, open the first group.
+   - **You should see:** the two buttons wrap rather than run off the side.
+6. If you changed a recipe's course only for this, change it back.
 
 ### 56a: preparation as steps
 

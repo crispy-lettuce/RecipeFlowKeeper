@@ -6391,6 +6391,62 @@ const check = (name, pass, detail) => {
   check('with storage blocked recipes show as written, without an error', ppB.prep === 0 && ppB.cells > 0, JSON.stringify(ppB));
   await ppBlocked.close();
 
+  // #87 FINISH TOGETHER: a group with a Side lines its dishes up to finish together; START TOGETHER puts them back.
+  const ft = await hhOpen('finish together');
+  const ftView = () => ft.evaluate(() => {
+    const m = document.getElementById('view-group-viewer');
+    return { pressed: [...m.querySelectorAll('[data-group-lineup][aria-pressed="true"]')].map(b => b.dataset.groupLineup),
+      starts: [...m.querySelectorAll('.stacked-recipe-start')].map(e => e.textContent.trim()),
+      ticks: [...m.querySelectorAll('.timeline-strip .timeline-tick')].map(e => e.textContent.trim()),
+      lanes: [...m.querySelectorAll('.timeline-strip [data-recipe-id]')].map(e => e.dataset.recipeId + '@' + (e.style.left || '')) };
+  });
+  await ft.evaluate(() => {
+    const mk = (id, title, course, step) => loadRecipes().push({ id, title, source: 'Test', servings: 2, tags: { course, keywords: [] }, history: [],
+      syntax: `TITLE: ${title}\nSERVINGS: 2\n\nGROUP a:\n1 swede\n\nSTAGE:\nMERGE a -> b: ${step}` });
+    mk('ft-main', 'Test Long Dish', 'Main', 'Roast [60 min]');
+    mk('ft-side', 'Test Short Dish', 'Side', 'Bubble gently [15 min]');
+    const day = isoLocal(new Date());
+    addPlanRecipe(day, 'ft-main'); addPlanRecipe(day, 'ft-side');
+    createGroup(day, ['ft-main', 'ft-side']);
+    const g = loadGroups().find(x => x.recipeIds.includes('ft-side'));
+    openGroup(g.id, 'planner');
+  });
+  const ftFinish = await ftView();
+  check('FINISH TOGETHER: a group with a Side opens finishing together; the short dish says when to start it, and the last tick reads SERVE',
+        JSON.stringify(ftFinish.pressed) === '["finish"]' && JSON.stringify(ftFinish.starts) === '["START FIRST","START AT +45 min"]'
+        && ftFinish.ticks[ftFinish.ticks.length - 1] === 'SERVE', JSON.stringify(ftFinish));
+  await ft.click('#view-group-viewer [data-group-lineup="start"]');
+  const ftStart = await ftView();
+  check('    START TOGETHER puts both dishes at the start, with no start times and no SERVE',
+        JSON.stringify(ftStart.pressed) === '["start"]' && ftStart.starts.length === 0 && !ftStart.ticks.includes('SERVE')
+        && JSON.stringify(ftStart.lanes) !== JSON.stringify(ftFinish.lanes), JSON.stringify({ ftStart, ftFinish: ftFinish.lanes }));
+  const ftPlain = await ft.evaluate(() => {
+    state.groupLineUp = null;
+    loadRecipes().find(r => r.id === 'ft-side').tags.course = 'Main';
+    renderGroupViewer();
+    return [...document.querySelectorAll('#view-group-viewer [data-group-lineup][aria-pressed="true"]')].map(b => b.dataset.groupLineup);
+  });
+  check('    a group with no Side opens starting together, as before', JSON.stringify(ftPlain) === '["start"]', JSON.stringify(ftPlain));
+  // Cooking mode hides the strip, and with it the switch, behind SHOW TIMELINE; the start times stay on each dish.
+  const ftCook = await ft.evaluate(() => {
+    try{ localStorage.removeItem('kitchen.cookingTimeline'); }catch(e){}
+    state.groupLineUp = null;
+    loadRecipes().find(r => r.id === 'ft-side').tags.course = 'Side';
+    renderGroupViewer();
+    state.keepAwake = true; updateKeepAwakeStatus();
+    const shown = sel => { const e = document.querySelector(sel); return !!e && e.offsetParent !== null; };
+    const r = { switchShown: shown('#view-group-viewer [data-group-lineup="finish"]'),
+      starts: [...document.querySelectorAll('#view-group-viewer .stacked-recipe-start')].filter(e => e.offsetParent !== null).map(e => e.textContent.trim()) };
+    document.querySelector('#view-group-viewer .cook-timeline-btn').click();
+    r.afterShow = shown('#view-group-viewer [data-group-lineup="finish"]');
+    try{ localStorage.removeItem('kitchen.cookingTimeline'); }catch(e){}
+    state.keepAwake = false; updateKeepAwakeStatus();
+    return r;
+  });
+  check('    in cooking mode the switch waits behind SHOW TIMELINE, and the start times stay on each dish',
+        !ftCook.switchShown && ftCook.afterShow && JSON.stringify(ftCook.starts) === '["START FIRST","START AT +45 min"]', JSON.stringify(ftCook));
+  await ft.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:

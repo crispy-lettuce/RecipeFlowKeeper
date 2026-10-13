@@ -1,4 +1,6 @@
 [
+  { "version": "2026-10-13.5", "date": "2026-10-13", "issues": [87],
+    "changes": ["Cooking several dishes together: above the group's timeline, FINISH TOGETHER lines the dishes up to be ready at the same moment. The longest dish says START FIRST and each shorter one when to begin it (START AT +45 min, say), and the last mark reads SERVE. START TOGETHER is the old view. A group with a Side opens finishing together; any other starts together. Nothing is saved."] },
   { "version": "2026-10-13.4", "date": "2026-10-13", "issues": [88],
     "changes": ["New in Settings → APP: PREPARATION. Choose AS STEPS IN THE FLOW and a line such as \"leeks, thinly sliced\" gets a step of its own in the recipe's diagram, beside the step before the one that needs it, so you can chop while something cooks. It is for this device only; the recipe, the timeline and the shopping list don't change."] },
   { "version": "2026-10-13.3", "date": "2026-10-13", "issues": [95],

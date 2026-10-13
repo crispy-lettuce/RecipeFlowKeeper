@@ -593,6 +593,10 @@
     font-size:13px;
   }
   .offline-bar[hidden]{ display:none; }
+  /* FINISH TOGETHER (#87): the switch sits in the group strip's head; each dish says when to start it. */
+  .group-lineup{ display:inline-flex; gap:6px; flex-wrap:wrap; }
+  .group-lineup .btn[aria-pressed="true"]{ border-color:var(--ink); color:var(--ink); }
+  .stacked-recipe-start{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.06em; color:var(--gold); }
   /* Settings → INGREDIENTS folds (#95): each list's heading is a full-width button with its count; a folded section is
      that one line, and folded sections sit closer together. */
   .ingr-head{ display:flex; align-items:baseline; gap:6px; width:100%; min-height:44px; padding:0; background:none; border:none;
@@ -1949,6 +1953,7 @@
             <li><a href="help.html#cook-for" target="_blank" rel="noopener">How do I cook for more people this once?</a></li>
             <li><a href="help.html#keep-awake" target="_blank" rel="noopener">How do I stop the screen going off while I cook?</a></li>
             <li><a href="help.html#prep-steps" target="_blank" rel="noopener">How do I see when to chop things?</a></li>
+            <li><a href="help.html#finish-together" target="_blank" rel="noopener">How do I get every dish ready at the same time?</a></li>
             <li><a href="help.html#adding" target="_blank" rel="noopener">How do I add a new recipe?</a></li>
             <li><a href="help.html#sharing" target="_blank" rel="noopener">How do I share our recipes with family?</a></li>
             <li><a href="help.html#premade" target="_blank" rel="noopener">How do I plan a meal from the freezer?</a></li>
@@ -2121,7 +2126,7 @@
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-13.1"></script>
+<script src="core.js?v=2026-10-13.2"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2129,12 +2134,12 @@
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-13.1';
+const EXPECTED_CORE_VERSION = '2026-10-13.2';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-13.4';
+const APP_VERSION = '2026-10-13.5';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -2383,21 +2388,26 @@ function wireTimelineInteractions(container){
    therefore scoped to a specific recipe's own flow table (matched via
    data-recipe-id on the table's wrapping element), never a bare
    data-handle match against the whole screen. */
-function computeGroupTimeline(recipesWithParsed){
-  const perRecipe = recipesWithParsed.map((rp, i)=>{
-    const timeline = computeTimeline(rp.parsed.groups, rp.parsed.stages);
-    return { recipe: rp.recipe, parsed: rp.parsed, timeline, colour: PALETTE[i % PALETTE.length] };
-  });
-  const withTiming = perRecipe.filter(p => p.timeline);
-  if(!withTiming.length) return null; // nothing in the whole group has timing data — auto-hide, same rule as single-recipe
-
-  const totalSpan = Math.max(...withTiming.map(p => p.timeline.totalSpan));
-  return { perRecipe, totalSpan };
+function computeGroupTimeline(recipesWithParsed, mode){
+  const own = recipesWithParsed.map(rp=> computeTimeline(rp.parsed.groups, rp.parsed.stages));
+  if(!own.some(Boolean)) return null; // nothing in the whole group has timing data — auto-hide, same rule as single-recipe
+  /* START TOGETHER or FINISH TOGETHER (#87): the arithmetic is lineUpTimelines in core.js, where it has tests. */
+  const lined = lineUpTimelines(own, mode);
+  const perRecipe = recipesWithParsed.map((rp, i)=> ({ recipe: rp.recipe, parsed: rp.parsed, timeline: lined.lanes[i],
+    colour: PALETTE[i % PALETTE.length] }));
+  return { perRecipe, totalSpan: lined.totalSpan, about: lined.about, mode };
+}
+/* A group with a Side defaults to FINISH TOGETHER (decided 13 Oct: the rice should be ready with the curry); any other to
+   START TOGETHER, as before. The choice lasts for the tab and the group, and is never stored. */
+function groupLineUpMode(group, recipes){
+  if(state.groupLineUp && state.groupLineUp.id === group.id) return state.groupLineUp.mode;
+  return recipes.some(r=> ((r.tags && r.tags.course) || '').toLowerCase() === 'side') ? 'finish' : 'start';
 }
 
 function buildGroupTimelineHTML(groupTimeline){
-  const {perRecipe, totalSpan} = groupTimeline;
+  const {perRecipe, totalSpan, mode} = groupTimeline;
   if(totalSpan <= 0) return '';
+  const finishing = mode === 'finish';
 
   const TICK_COUNT = 5;
   let ticksHtml = '';
@@ -2405,7 +2415,7 @@ function buildGroupTimelineHTML(groupTimeline){
     /* Whole minutes, except on a strip shorter than five, where rounding made every tick "+0". */
     const raw = (totalSpan / TICK_COUNT) * i, t = totalSpan < TICK_COUNT ? raw : Math.round(raw);
     const pct = (t / totalSpan) * 100;
-    ticksHtml += `<div class="timeline-tick" style="left:${pct}%;">${i===0?'START':'+'+formatMinutesForDisplay(t)}</div>`;
+    ticksHtml += `<div class="timeline-tick" style="left:${pct}%;">${i===0?'START':finishing && i===TICK_COUNT?'SERVE':'+'+formatMinutesForDisplay(t)}</div>`;
   }
 
   const lanesHtml = perRecipe.map(({recipe, timeline, colour})=>{
@@ -2438,6 +2448,10 @@ function buildGroupTimelineHTML(groupTimeline){
   return `<div class="timeline-strip">
     <div class="timeline-strip-head">
       <span>OVERVIEW — TAP TO JUMP TO A STEP BELOW</span>
+      <span class="group-lineup">
+        <button type="button" class="btn" data-group-lineup="start" aria-pressed="${!finishing}">START TOGETHER</button>
+        <button type="button" class="btn" data-group-lineup="finish" aria-pressed="${finishing}">FINISH TOGETHER</button>
+      </span>
       <span>LONGEST: ${escapeHtml(formatMinutesForDisplay(totalSpan))}</span>
     </div>
     <div class="timeline-track">
@@ -4716,6 +4730,7 @@ const state = {
   groupingSelection: [],       // recipe ids currently ticked while groupingDate is active
   selectedGroupId: null,       // the meal-group id currently open in the Group Viewer, if any
   groupViewerReturnTo: null,   // where "← PLANNER" in the Group Viewer should navigate back to
+  groupLineUp: null,           // START/FINISH TOGETHER chosen for one group in this tab (#87); never stored
   viewerServes: null           // ad-hoc target headcount for the currently open Viewer recipe, null = the recipe's own —
                                 // deliberately session-only per the 14 Aug decision: resets to 1 every
                                 // time a recipe is opened, never saved to the recipe itself. Permanent
@@ -5237,8 +5252,17 @@ function renderGroupViewer(){
 
   meta.textContent = recipesWithParsed.map(rp=>rp.recipe.title).join('  ·  ').toUpperCase();
 
-  const groupTimeline = computeGroupTimeline(recipesWithParsed);
+  const lineUp = groupLineUpMode(group, recipesWithParsed.map(rp=> rp.recipe));
+  const groupTimeline = computeGroupTimeline(recipesWithParsed, lineUp);
   const timelineHtml = groupTimeline ? buildGroupTimelineHTML(groupTimeline) : '';
+  /* In FINISH TOGETHER each dish says when to start it. ABOUT when the longest dish has a step with no fixed time. */
+  const startAt = recipe=>{
+    if(!groupTimeline || groupTimeline.mode !== 'finish') return '';
+    const lane = groupTimeline.perRecipe.find(p=> p.recipe.id === recipe.id);
+    if(!lane || !lane.timeline) return '';
+    const text = lane.timeline.offset > 0 ? `START AT +${formatMinutesForDisplay(lane.timeline.offset)}` : 'START FIRST';
+    return `<span class="stacked-recipe-start">${groupTimeline.about ? 'ABOUT ' : ''}${escapeHtml(text)}</span>`;
+  };
 
   /* Each recipe gets its own sub-container so mountFlow can be reused
      as-is — same tick-to-complete behaviour, same "used" logging, same
@@ -5255,6 +5279,7 @@ function renderGroupViewer(){
         <span class="recipe-swatch" style="background:${colour};"></span>
         <h3>${escapeHtml(recipe.title)}</h3>
         ${serves ? `<span class="stacked-recipe-serves">SERVES ${serves}</span>` : ''}
+        ${startAt(recipe)}
         <span class="stacked-recipe-actions">
           <button class="btn" data-group-action="favourite">${recipe.favourite ? '★ FAVOURITE' : '☆ FAVOURITE'}</button>
           <button class="btn" data-group-action="edit">EDIT</button>
@@ -5284,6 +5309,10 @@ function renderGroupViewer(){
   });
 
   if(timelineHtml) wireGroupTimelineInteractions(mount);
+  mount.querySelectorAll('[data-group-lineup]').forEach(btn=> btn.addEventListener('click', ()=>{
+    state.groupLineUp = { id: group.id, mode: btn.dataset.groupLineup };
+    renderGroupViewer();
+  }));
 }
 
 document.getElementById('backFromGroupViewer').addEventListener('click', ()=>{
