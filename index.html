@@ -1891,9 +1891,19 @@
           <div class="side-label">APPEARANCE</div>
           <p class="subtle">Follow the system and the app changes when your device does,
             which on most tablets means it goes dark in the evening. Light and dark
-            override that. The choice is shared with the household, like every other
-            setting here.</p>
+            override that. The choice is shared with the household.</p>
           <select class="sort" id="setDarkMode" aria-label="Appearance"></select>
+        </div>
+
+        <div class="settings-block" data-settings-tab="app" id="prepStepsBlock">
+          <div class="side-label">PREPARATION</div>
+          <p class="subtle">How a recipe shows "leeks, thinly sliced": done before you start, as the recipe is written, or as a
+            step of its own in the flow, Thinly slice the leeks, beside the step before the one that needs it. Nothing in the
+            recipe changes. This device only.</p>
+          <select class="sort" id="setPrepSteps" aria-label="Preparation">
+            <option value="before">BEFORE YOU START (AS WRITTEN)</option>
+            <option value="steps">AS STEPS IN THE FLOW</option>
+          </select>
         </div>
 
         <div class="settings-block" data-settings-tab="app">
@@ -1938,6 +1948,7 @@
             <li><a href="help.html#diary-entry" target="_blank" rel="noopener">How do I log something I ate that has no recipe?</a></li>
             <li><a href="help.html#cook-for" target="_blank" rel="noopener">How do I cook for more people this once?</a></li>
             <li><a href="help.html#keep-awake" target="_blank" rel="noopener">How do I stop the screen going off while I cook?</a></li>
+            <li><a href="help.html#prep-steps" target="_blank" rel="noopener">How do I see when to chop things?</a></li>
             <li><a href="help.html#adding" target="_blank" rel="noopener">How do I add a new recipe?</a></li>
             <li><a href="help.html#sharing" target="_blank" rel="noopener">How do I share our recipes with family?</a></li>
             <li><a href="help.html#premade" target="_blank" rel="noopener">How do I plan a meal from the freezer?</a></li>
@@ -2123,7 +2134,7 @@ const EXPECTED_CORE_VERSION = '2026-10-13.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-13.3';
+const APP_VERSION = '2026-10-13.4';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -2503,9 +2514,10 @@ function buildFlowHTML(parsed){
       if(!box.label){
         html += `<td class="blank-cell" data-col="${c}" rowspan="${box.rowSpan}"></td>`;
       } else {
-        const bg = hexToRgba(box.color, box.passthrough ? 0.05 : 0.10);
+        /* A preparation step (#88) is a shade lighter than a cooking step, so the eye goes to the cooking first. */
+        const bg = hexToRgba(box.color, box.passthrough ? 0.05 : box.prep ? 0.06 : 0.10);
         const style = `background:${bg}; border-left:${box.passthrough?'3px dashed':'3px solid'} ${box.color}; color:${box.color};`;
-        html += `<td class="box-cell${box.passthrough?' passthrough':''}" data-col="${c}" data-row-start="${box.rowStart}" data-row-span="${box.rowSpan}" data-handle="${escapeHtml(box.outputHandle||'')}" rowspan="${box.rowSpan}" style="${style}">${escapeHtml(box.label)}${durationBadge(box.duration)}</td>`;
+        html += `<td class="box-cell${box.passthrough?' passthrough':''}${box.prep?' prep':''}" data-col="${c}" data-row-start="${box.rowStart}" data-row-span="${box.rowSpan}" data-handle="${escapeHtml(box.outputHandle||'')}" rowspan="${box.rowSpan}" style="${style}">${escapeHtml(box.label)}${durationBadge(box.duration)}</td>`;
       }
     }
     html += `</tr>`;
@@ -2573,9 +2585,20 @@ function viewerTickSet(key){
 }
 function clearViewerTicks(key){ delete state.viewerTicks[key]; }
 
+/* PREPARATION (#88, 13 Oct 2026, docs/PLAN-PREP-STEPS.md): whether this device draws "leeks, thinly sliced" as a step of
+   its own (withPrepSteps, core.js). Per device, as decided, like SHOW TIMELINE: the tablet at the hob and the laptop used for
+   planning want different things, and it changes only the drawing, so no column and nothing for the household to apply. */
+function prepStepsOn(){
+  try { return localStorage.getItem('kitchen.prepSteps') === 'steps'; } catch(e){ return false; }
+}
 function mountFlow(container, parsed, opts){
   opts = opts || {};
-  const {html, colCount} = buildFlowHTML(parsed);
+  /* Only the two viewers ask for it (opts.prepSteps). The Add/Edit preview shows the recipe as written, since it is there
+     to check the text; the timeline and the shopping list are always drawn from the recipe as written. */
+  const drawn = opts.prepSteps && prepStepsOn() ? withPrepSteps(parsed) : parsed;
+  const withPrep = drawn !== parsed;
+  const {html: flowHtml, colCount} = buildFlowHTML(drawn);
+  const html = withPrep ? flowHtml.replace('<p class="hint">', '<p class="hint">PREPARATION SHOWN AS STEPS (SETTINGS → APP) — ') : flowHtml;
 
   /* Timeline strip — only requested by the real Viewer (not the Add/Edit
      preview panel, where a full Gantt strip would be clutter for little
@@ -2607,7 +2630,8 @@ function mountFlow(container, parsed, opts){
      you doubled the recipe. Session-only, deliberately; a tick means
      "done just now", not something to find still set tomorrow. */
   const cellKey = cell => colOf(cell) + ':' + cell.dataset.rowStart + ':' + cell.dataset.rowSpan;
-  const ticks = opts.tickKey ? viewerTickSet(opts.tickKey) : null;
+  /* Columns move when preparation is drawn as steps, so each drawing keeps its own ticks: switching mid-cook loses neither. */
+  const ticks = opts.tickKey ? viewerTickSet(opts.tickKey + (withPrep ? '|prep' : '')) : null;
   if(ticks) cells.forEach(cell=>{ if(ticks.has(cellKey(cell))) cell.classList.add('done'); });
 
   cells.forEach(cell=>{
@@ -5251,6 +5275,7 @@ function renderGroupViewer(){
          the same flow, so ticking here and opening it on its own keeps
          your place either way. */
       tickKey: recipe.id,
+      prepSteps: true,
       onComplete: ()=> finishRecipe(recipe.id)
       // showTimeline deliberately omitted — the group's own combined
       // timeline strip above already covers this recipe's steps; a
@@ -5440,6 +5465,7 @@ function renderViewer(){
 
   mountFlow(mount, parsedForView, {
     tickKey: recipe.id,
+    prepSteps: true,
     /* Nothing is logged for one of theirs: our diary is of our recipes, and theirs is not in our library to log. */
     onComplete: theirs ? ()=> showToast('Not logged: add it to our recipes to plan, shop for or log it') : ()=> finishRecipe(recipe.id),
     showTimeline: true
@@ -8247,6 +8273,7 @@ function renderSettings(){
   document.getElementById('setDarkMode').innerHTML = THEME_MODES.map(m=>
     `<option value="${m}"${m === current ? ' selected' : ''}>${THEME_LABELS[m]}</option>`
   ).join('');
+  document.getElementById('setPrepSteps').value = prepStepsOn() ? 'steps' : 'before';
   renderIngredientLookup();
   renderAliasesList();
   renderAisleOverridesList();
@@ -8856,6 +8883,12 @@ document.getElementById('verifyImagesBtn').addEventListener('click', ()=>
       ? `All ${d.whole || 0} stored photos are intact.`
       : `${d.broken} of ${d.checked} need replacing: ${(d.report||[]).map(r=>r.title).join(', ')}`));
 
+/* PREPARATION: this device only, so it never reaches setSetting or the queue. Blocked storage keeps it as written. */
+document.getElementById('setPrepSteps').addEventListener('change', e=>{
+  try { if(e.target.value === 'steps') localStorage.setItem('kitchen.prepSteps', 'steps'); else localStorage.removeItem('kitchen.prepSteps'); } catch(err){}
+  e.target.value = prepStepsOn() ? 'steps' : 'before';
+  showToast(prepStepsOn() ? 'Preparation shows as steps in the flow, on this device' : 'Preparation shows as written, on this device');
+});
 document.getElementById('setDarkMode').addEventListener('change', e=>{
   const mode = e.target.value;
   if(THEME_MODES.indexOf(mode) === -1) return;

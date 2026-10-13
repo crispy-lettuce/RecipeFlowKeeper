@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **576 checks** (13 Oct 2026; `core.test.js` adds 171 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **582 checks** (13 Oct 2026; `core.test.js` adds 171 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -2772,6 +2772,26 @@ read before the adverb fix; the commonest unread shape was "ACT and ADV ACT" (14
 in the tests was checked against the library: 0 matches.
 
 *Not verified:* anything on screen; that is PR 2.
+
+**Preparation as steps, part 2: the setting and the drawing (13 Oct 2026; #88, after #136).**
+- **PREPARATION** in Settings → APP: BEFORE YOU START (AS WRITTEN), the default, or AS STEPS IN THE FLOW. This device only
+  (`kitchen.prepSteps`, `prepStepsOn()` in `try/catch`; blocked storage reads as written); never `setSetting`, never a column.
+  APPEARANCE's "like every other setting here" is reworded, since it stopped being true.
+- `mountFlow(…, { prepSteps: true })` from the recipe viewer and the Group Viewer only: they draw `withPrepSteps(parsed)`; the
+  Add/Edit preview, the timeline and the shopping list keep the recipe as written. A prep box is a shade lighter (`.prep`); the
+  hint starts PREPARATION SHOWN AS STEPS (SETTINGS → APP). Ticks are keyed `id|prep` while steps are drawn, so each drawing keeps
+  its own place; ticking the step that uses a preparation ticks it too (the existing overlap rule).
+- `changelog.json` **2026-10-13.4**; `help.html` §3 `#prep-steps` and a QUICK ANSWERS link; step **56a**; ARCHITECTURE §3 rows.
+
+*Verified by.* `node test/core.test.js` 171, exit 0. `node test/build.js && node test/smoke.js` **582** (576 before), exit 0, no
+console or page errors: six new checks (default as written, and the setting stored on the device with no household write; on,
+each prepared line a step in the column before, with the hint; the timeline identical; ticks flow back, are kept per drawing,
+and the last column still logs it; the Group Viewer follows, the preview and the shopping list do not; blocked storage). The
+Settings tabs check now lists PREPARATION. `help-guide.js` 7, exit 0. Nine mutations, each failing by name (never drawn; the
+preview following; the timeline from the drawing; shared ticks; not stored; the Group Viewer ignoring it; no hint; no prep
+class), and blocked storage without its `try/catch` crashes the suite at its check.
+
+*Not verified:* the tablet (step 56a).
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*

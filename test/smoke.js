@@ -3580,8 +3580,8 @@ const check = (name, pass, detail) => {
         stIng.join('|') === 'INGREDIENT LOOKUP|WORD MATCHES|SHOPPING AISLES|SWAPS|DICTIONARY' && !stNav.includes('swaps') && stNav.includes('settings'),
         JSON.stringify([stIng, stNav]));
   /* CALENDAR joined App on 9 Oct 2026 (P3 PR 2), RECIPE SHARING and BACKUP TO GOOGLE DRIVE on 10 Oct; before their migrations each only says it is waiting. */
-  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, calendar, sharing and Drive backup; the last tab is remembered',
-        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
+  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, preparation, calendar, sharing and Drive backup; the last tab is remembered',
+        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|PREPARATION|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
         JSON.stringify([stLib, stApp, stKept]));
   /* Since #95 (13 Oct) the dictionary's fold is its heading, DICTIONARY (n), like every list on the tab. */
   const stDict = () => page.evaluate(() => ({ list: document.getElementById('dictionaryList').offsetParent !== null,
@@ -6302,6 +6302,94 @@ const check = (name, pass, detail) => {
   check('with storage blocked the tab draws its defaults and a tap does no harm, without an error',
         igB.matches.open && igB.aisles.open && igB.swaps.open && !igB.dictionary.open && igB.dictionary.count.length > 0, JSON.stringify(igB));
   await igBlocked.close();
+
+  /* ---- Preparation as steps (#88 part 2, 13 Oct 2026, docs/PLAN-PREP-STEPS.md) ----
+     A device setting, drawn by the viewers only: the timeline, the Add/Edit preview and the shopping list read the recipe as
+     written. The recipe's lines are made up and were checked against the library (no match). */
+  console.log('\nPreparation as steps');
+  const pp = await hhOpen('prep steps');
+  const ppView = () => pp.evaluate(() => {
+    const m = document.getElementById('flowMount');
+    const strip = m.querySelector('.timeline-strip');
+    return { prep: [...m.querySelectorAll('.box-cell.prep')].map(c => ({ col: c.dataset.col, text: c.textContent.trim() })),
+      cols: Math.max(-1, ...[...m.querySelectorAll('.box-cell')].map(c => +c.dataset.col)) + 1,
+      hint: (m.querySelector('p.hint') || {}).textContent || '', strip: strip ? strip.outerHTML : null,
+      done: [...m.querySelectorAll('.box-cell.done, .ing-cell.done')].length };
+  });
+  await pp.evaluate(() => {
+    try{ localStorage.removeItem('kitchen.prepSteps'); }catch(e){}
+    loadRecipes().push({ id: 'pp-one', title: 'Test Prep Recipe', source: 'Test', servings: 2, tags: { course: '', keywords: [] }, history: [],
+      syntax: 'TITLE: Test Prep Recipe\nSERVINGS: 2\n\nGROUP base:\n1 onion\nGROUP top:\n2 leeks, thinly sliced\n3 carrots, peeled and diced\n' +
+        'GROUP liq:\n500 ml stock\n\nSTAGE:\nMERGE base -> soft: Soften [10 min]\nSTAGE:\nMERGE soft, top -> mixed: Stir in [5 min]\n' +
+        'STAGE:\nMERGE mixed, liq -> soup: Simmer [20 min]' });
+    openRecipe('pp-one', 'recipes');
+  });
+  await pp.waitForTimeout(200);
+  const ppBefore = await ppView();
+  const ppM0 = await pp.evaluate(() => window.__WRITES__.length);
+  await pp.evaluate(() => { showView('settings'); showSettingsTab('app'); });
+  await pp.selectOption('#setPrepSteps', 'steps');
+  await pp.waitForTimeout(150);
+  const ppSet = await pp.evaluate(m => ({ stored: localStorage.getItem('kitchen.prepSteps'),
+    writes: window.__WRITES__.slice(m).filter(w => w.table === 'household_settings').length }), ppM0);
+  check('as written by default; PREPARATION in Settings → APP is kept on this device and writes nothing to the household (#88)',
+        ppBefore.prep.length === 0 && !/PREPARATION SHOWN/.test(ppBefore.hint) && ppSet.stored === 'steps' && ppSet.writes === 0,
+        JSON.stringify({ ppBefore: { prep: ppBefore.prep, cols: ppBefore.cols }, ppSet }));
+  await pp.evaluate(() => openRecipe('pp-one', 'recipes'));
+  await pp.waitForTimeout(200);
+  const ppAfter = await ppView();
+  check('    on, the viewer draws each preparation as a step beside the step before the one that needs it, and says so',
+        JSON.stringify(ppAfter.prep.map(p => p.col + ':' + p.text)) === JSON.stringify(['0:Thinly slice the leeks', '0:Peel and dice the carrots'])
+        && /^PREPARATION SHOWN AS STEPS/.test(ppAfter.hint) && ppAfter.cols === ppBefore.cols, JSON.stringify({ prep: ppAfter.prep, cols: [ppBefore.cols, ppAfter.cols] }));
+  check('    the timeline is drawn from the recipe as written, unchanged', !!ppBefore.strip && ppAfter.strip === ppBefore.strip);
+  // Ticking the step that uses them ticks them too; each drawing keeps its own ticks; the last column still logs the recipe.
+  await pp.click('#flowMount .box-cell[data-handle="mixed"]');
+  await pp.waitForTimeout(100);
+  const ppTicked = await pp.evaluate(() => ({ prepDone: [...document.querySelectorAll('#flowMount .box-cell.prep')].every(c => c.classList.contains('done')),
+    done: document.querySelectorAll('#flowMount .done').length }));
+  await pp.evaluate(() => { localStorage.removeItem('kitchen.prepSteps'); openRecipe('pp-one', 'recipes'); });
+  await pp.waitForTimeout(150);
+  const ppPlainTicks = (await ppView()).done;
+  await pp.evaluate(() => { localStorage.setItem('kitchen.prepSteps', 'steps'); openRecipe('pp-one', 'recipes'); });
+  await pp.waitForTimeout(150);
+  const ppBack = (await ppView()).done;
+  await pp.click('#flowMount .box-cell[data-handle="soup"]');
+  await pp.waitForTimeout(200);
+  const ppLogged = await pp.evaluate(() => (loadRecipes().find(r => r.id === 'pp-one').history || []).includes(todayStr()));
+  check('    ticking the step that uses a preparation ticks it too; each drawing keeps its own ticks; the last column still logs it',
+        ppTicked.prepDone && ppTicked.done > 0 && ppPlainTicks === 0 && ppBack === ppTicked.done && ppLogged,
+        JSON.stringify({ ppTicked, ppPlainTicks, ppBack, ppLogged }));
+  // The Group Viewer follows the setting; the Add/Edit preview and the shopping list do not.
+  const ppGroup = await pp.evaluate(() => {
+    const day = isoLocal(new Date());
+    const other = loadRecipes().find(r => r.id !== 'pp-one' && r.syntax).id;
+    addPlanRecipe(day, 'pp-one'); addPlanRecipe(day, other);
+    createGroup(day, ['pp-one', other]);
+    const g = loadGroups().find(x => x.recipeIds.includes('pp-one'));
+    openGroup(g.id, 'planner');
+    const sub = document.getElementById('groupFlow-pp-one');
+    return { prep: sub ? sub.querySelectorAll('.box-cell.prep').length : -1 };
+  });
+  const ppPreview = await pp.evaluate(() => { openEditModal('pp-one');
+    const n = document.querySelectorAll('#addPreview .box-cell.prep').length; document.getElementById('closeAddModal').click(); return n; });
+  const ppShop = await pp.evaluate(() => {
+    const week = groupDaysByWeek(dayList())[0];
+    const on = JSON.stringify(buildShoppingList(week).categories);
+    localStorage.removeItem('kitchen.prepSteps');
+    const off = JSON.stringify(buildShoppingList(week).categories);
+    return on === off && /leek/.test(on);
+  });
+  check('    the Group Viewer follows the setting; the Add/Edit preview shows the recipe as written; the shopping list is the same either way',
+        ppGroup.prep === 2 && ppPreview === 0 && ppShop, JSON.stringify({ ppGroup, ppPreview, ppShop }));
+  await pp.close();
+  const ppBlocked = await hhOpen('prep storage blocked', null, () => {
+    const real = Storage.prototype.getItem;
+    Storage.prototype.getItem = function(k, ...rest){ if(k === 'kitchen.prepSteps') throw new Error('blocked'); return real.call(this, k, ...rest); };
+  });
+  const ppB = await ppBlocked.evaluate(() => { openRecipe(loadRecipes()[0].id, 'recipes');
+    return { prep: document.querySelectorAll('#flowMount .box-cell.prep').length, cells: document.querySelectorAll('#flowMount .box-cell').length }; });
+  check('with storage blocked recipes show as written, without an error', ppB.prep === 0 && ppB.cells > 0, JSON.stringify(ppB));
+  await ppBlocked.close();
 
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to

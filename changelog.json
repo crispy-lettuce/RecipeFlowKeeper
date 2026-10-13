@@ -1,4 +1,6 @@
 [
+  { "version": "2026-10-13.4", "date": "2026-10-13", "issues": [88],
+    "changes": ["New in Settings → APP: PREPARATION. Choose AS STEPS IN THE FLOW and a line such as \"leeks, thinly sliced\" gets a step of its own in the recipe's diagram, beside the step before the one that needs it, so you can chop while something cooks. It is for this device only; the recipe, the timeline and the shopping list don't change."] },
   { "version": "2026-10-13.3", "date": "2026-10-13", "issues": [95],
     "changes": ["In Settings → INGREDIENTS each list folds under its name, which shows how many it holds. Tap the name to fold or open it, and this device remembers. Typing in the lookup box now narrows every list at once."] },
   { "version": "2026-10-13.2", "date": "2026-10-13", "issues": [94],
