@@ -2841,8 +2841,12 @@ without a phrase or for another household's). `help-guide.js` 7, exit 0. Twenty-
 `core.js`, 4 in the page); the first run left two standing (any course, the recipe itself) because the two-per-phrase cap hid
 them, and the check was rewritten until both failed. Every made-up word and title in the tests and the guide was checked
 against the library (counts only): 0 matches.
-*Live library:* a read-only count across the households (counts only) was running when this was pushed; its numbers follow
-in a later commit on this PR.
+*Live library (read-only, counts only, by a subagent, 13 Oct; the rows were checked against the database's md5s and deleted
+after):* household 1, 34 recipes and 3 sides: 13 recipes say what to serve with them (30 phrases: 3 ingredient tails, 20 in
+steps, 7 in notes); **8 would show a SERVE WITH line**, one side each (scores 3 ×2, 2 ×1, 1 ×5); 5 are heard but match no side
+(garnishes and the like, as intended); no side matches itself; 0 errors. Household 2, 5 recipes and no sides: 4 say what to
+serve with them, none shows a line until it has sides (§5). The third household has no recipes. The plan's SQL count (§3) put
+household 1 at 7 recipes naming a staple with a matching side; the detector finds 8.
 
 *Not verified:* the tablet and phone (step 58a).
 
