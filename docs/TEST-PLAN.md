@@ -710,6 +710,11 @@ removed page was deleted), and no listed page missing.*
     reload the app:* no bar. **Read-only afterwards:** this household's `household_settings.converter_ack_version` is
     `2026-10-12.1`. The other household sees the bar until someone there does the same. Undo: nothing to undo.
 
+*52a reported passed by the household, 13 Oct: the bar appeared; DONE took it away, and it stayed gone after a reload and on the
+phone. Read back by a session: that household's `converter_ack_version` is `2026-10-12.1`, written 06:19:13 UTC, with its other
+settings unchanged. PLANNER and RECIPES under the bar, LATER and the GitHub link were not reported one by one; the smoke suite
+covers the first two.*
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

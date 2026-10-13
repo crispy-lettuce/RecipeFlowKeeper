@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 13 Oct 2026, morning.**
+**Last brought up to date: 13 Oct 2026, 06:25 UTC.**
 
 These are the jobs only you can do. A session can't tap the tablet, make decisions for you, or deploy for you.
 
@@ -20,7 +20,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | --- | --- | --- | --- |
 | [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
 | [Close issue #101](#close-issue-101) | GitHub | 1 min | No |
-| [Confirm the converter](#confirm-the-converter) | Claude app, then the app | 5 min per household | One tap per household |
+| [Confirm the converter in the second household](#confirm-the-converter-in-the-second-household) | Claude app, then the app | 5 min | One tap |
 | [Decisions](#decisions-waiting-on-you) | — | — | — |
 
 ---
@@ -45,39 +45,25 @@ Every finding of the October review is now fixed and live.
 
 ## App checks
 
-### 52a: the converter reminder
-
-Do it with [Confirm the converter](#confirm-the-converter) below: the SQL is in and #129 is merged (13 Oct), so the bar is live.
-
-1. Open the app on the tablet.
-   - **You should see:** a gold **CONVERTER** bar near the top, saying the converter's instructions have changed, version
-     2026-10-12.1.
-2. Tap **PLANNER**, then **RECIPES**.
-   - **You should see:** both open as usual, with the bar still there.
-3. Tap **LATER**, then reload the page.
-   - **You should see:** the bar goes, then comes back after the reload.
-4. Tap **OPEN THE INSTRUCTIONS ↗**.
-   - **You should see:** the file on GitHub, with "Version 2026-10-12.1" near the top.
-5. Load it into your household's conversion project (as in the job below), then tap **DONE** in the app.
-   - **You should see:** the bar goes, and a message says your household has version 2026-10-12.1. It stays gone after a reload.
-6. Open the app on the phone, signed in to the same household.
-   - **You should see:** no bar.
+**None waiting** (13 Oct 2026). A new one appears here when a change needs checking on the tablet.
 
 ---
 
 ## Library jobs
 
-### Confirm the converter
+### Confirm the converter in the second household
 
-The app now asks each household itself, and remembers who has done it. The master copy is `converter/conversion-instructions.md`
-in this repo.
+Your household has done this (13 Oct). The second family household still sees the gold **CONVERTER** bar until someone there
+does the same. The master copy is `converter/conversion-instructions.md` in this repo.
 
-1. Reload the app on every device.
-   - **You should see:** the gold **CONVERTER** bar.
-2. In each household: tap **OPEN THE INSTRUCTIONS ↗** on the bar, download the file, and in the Claude app replace the copy in
-   that household's conversion project with it.
-3. In each household, back in the app, tap **DONE** (once per household, on any device). App check 52a above walks through it.
-   - **You should see:** the bar goes for everyone in that household.
+1. On a device signed in to the second household, open the app.
+   - **You should see:** the gold **CONVERTER** bar, version 2026-10-12.1.
+2. Tap **OPEN THE INSTRUCTIONS ↗**, download the file, and in the Claude app replace the copy in that household's conversion
+   project with it.
+3. Back in the app, tap **DONE**.
+   - **You should see:** the bar goes, for everyone in that household.
+
+The weekly live test's own household never confirms, since no one uses it; nobody sees its bar.
 
 The other files under `converter/` are reference material only. Don't load them.
 
@@ -112,7 +98,9 @@ Nothing is built for these until you decide:
 
 ## Recently done
 
-- **13 Oct:** #129 (the converter reminder, #127) merged, and its SQL applied: the column is there, read back by a session.
+- **13 Oct:**
+  - #129 (the converter reminder, #127) merged, and its SQL applied: the column is there, read back by a session.
+  - Tablet step 52a passed. Your household reloaded the converter and tapped DONE; the database holds version 2026-10-12.1.
 - **12 Oct:**
   - Tablet steps 39a, 40a, 42a, 43a, 44a, 45a, 46a, 48a and 49a passed; then 47a (your own photo) and 51a (the recipe
     checker and scaling); then 50a, 38d, 38c and 40b. Every app check is done.
