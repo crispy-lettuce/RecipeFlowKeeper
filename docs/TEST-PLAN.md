@@ -756,6 +756,14 @@ within each were not reported one by one.*
     that side, or up to three, the one cooked most first. (2) *Tap a name:* that side's recipe opens; ← goes back as before.
     (3) *A recipe whose only serving words are garnishes ("lime wedges, to serve") or "serve immediately":* no line. (4) *One of
     another household's recipes (where sharing is on):* no line. (5) *On the phone:* the line wraps. Writes nothing.
+59a. **The Planner's SERVE WITH offer (new 13 Oct; #87 PR 2, `docs/PLAN-SIDES.md` §4.5–4.6).** (1) *Put a main that shows
+    SERVE WITH (58a) on a day from tomorrow on, cooking for a number other than its side is written for:* under it, **SERVE
+    WITH:** **+ <SIDE>** and **×**. (2) *Tap ×:* the offer goes; it stays gone until the app is reloaded. Reload. (3) *Tap
+    + <SIDE>:* a message says it was added, cooking with the main; the side is on the day at the main's number, and a
+    **GROUPED:** badge holds both. The offer has gone. (4) *Open the group:* FINISH TOGETHER (57a). (5) *A day where the main is
+    already grouped with another dish:* the + adds the side to that same group. (6) *GROUP SOME TOGETHER on a day with an
+    offer:* no offer while picking. (7) *×* the side off the day afterwards: the group dissolves, as for any dish. Writes the day
+    and the group, which (7) undoes.
 
 ## Deferred to the tablet, after merging
 

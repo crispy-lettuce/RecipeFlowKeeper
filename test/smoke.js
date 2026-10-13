@@ -6494,6 +6494,71 @@ const check = (name, pass, detail) => {
   check('    a recipe with no serving phrase, and another household\'s recipe, show no line', swOthers.plain && swOthers.theirs, JSON.stringify(swOthers));
   await sw.close();
 
+  // #87 the Planner's offer: under a dish that asks for freekeh, + the side, which joins the day and the dish's group.
+  const so = await hhOpen('side offer');
+  const soDays = await so.evaluate(() => {
+    const mk = (id, title, course, servings, body) => loadRecipes().push({ id, title, source: 'Test', servings, tags: { course, keywords: [] }, history: [],
+      syntax: `TITLE: ${title}\nSERVINGS: ${servings}\n\nGROUP a:\n1 swede\n\nSTAGE:\nMERGE a -> b: ${body}` });
+    mk('so-main', 'Test Swede Bake', 'Main', 2, 'Bake, then serve with freekeh or flatbreads [40 min]');
+    mk('so-other', 'Test Swede Mash', 'Main', 2, 'Mash [10 min]');
+    mk('so-side', 'Test Plain Freekeh', 'Side', 4, 'Bubble gently [15 min]');
+    mk('so-bread', 'Test Flatbread Stack', 'Side', 2, 'Griddle, then serve with freekeh [6 min]');
+    const day = n => { const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + n); return isoLocal(d); };
+    const a = day(2), b = day(3);
+    addPlanRecipe(a, 'so-main'); setPlanServingsAt(a, 0, 6);
+    addPlanRecipe(b, 'so-main'); addPlanRecipe(b, 'so-other'); createGroup(b, ['so-main', 'so-other']);
+    showView('planner'); renderPlanner();
+    return { a, b };
+  });
+  await hhDrain(so);
+  const soOffer = date => so.evaluate(d => [...document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-add`)].map(b => b.dataset.sideId + ':' + b.textContent.trim()), date);
+  const soA = await soOffer(soDays.a);
+  check('SIDE OFFER: under a dish that asks for freekeh or flatbreads, the Planner offers + each side that fits',
+        JSON.stringify(soA) === '["so-side:+ TEST PLAIN FREEKEH","so-bread:+ TEST FLATBREAD STACK"]', JSON.stringify(soA));
+  const soM0 = await so.evaluate(() => window.__WRITES__.length);
+  await so.click(`.day-row[data-date="${soDays.a}"] [data-action="hideSides"]`);
+  const soHidden = await so.evaluate(([d, m]) => { const n = document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer`).length;
+    renderPlanner(); return { n, again: document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer`).length, writes: window.__WRITES__.length - m }; }, [soDays.a, soM0]);
+  check('    × hides it for that dish on that day, writing nothing', soHidden.n === 0 && soHidden.again === 0 && soHidden.writes === 0, JSON.stringify(soHidden));
+  await so.evaluate(() => { state.sideOffersHidden.clear(); renderPlanner(); });
+  const soM1 = await so.evaluate(() => window.__WRITES__.length);
+  await so.click(`.day-row[data-date="${soDays.a}"] [data-side-id="so-side"]`);
+  await hhDrain(so);
+  const soTap = await so.evaluate(([d, m]) => {
+    const ws = window.__WRITES__.slice(m);
+    const plan = ws.filter(w => w.table === 'planner_days'), groups = ws.filter(w => w.table === 'meal_groups');
+    const g = groupContaining(d, 'so-main');
+    return { tables: ws.map(w => w.table + ':' + w.op), planRows: plan.flatMap(w => w.rows || []).map(r => ({ date: r.plan_date, ids: r.recipe_ids, servings: r.servings, h: r.household_id === HOUSEHOLD_ID })),
+      groupRows: groups.flatMap(w => w.rows || []).map(r => ({ ids: r.recipe_ids, h: r.household_id === HOUSEHOLD_ID })), group: g && g.recipeIds,
+      offer: document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer`).length, toast: (document.querySelector('.toast') || {}).textContent || '' };
+  }, [soDays.a, soM1]);
+  check('    a tap writes one planner_days row for that day (the side at the dish\'s 6, not its own 4) and one meal_groups row grouping the two',
+        JSON.stringify(soTap.tables) === '["planner_days:upsert","meal_groups:upsert"]' && soTap.planRows.length === 1 && soTap.planRows[0].date === soDays.a
+        && JSON.stringify(soTap.planRows[0].ids) === '["so-main","so-side"]' && JSON.stringify(soTap.planRows[0].servings) === '[6,6]' && soTap.planRows[0].h
+        && soTap.groupRows.length === 1 && JSON.stringify(soTap.groupRows[0].ids) === '["so-main","so-side"]' && soTap.groupRows[0].h
+        && /Test Plain Freekeh added to .*, cooking with Test Swede Bake\./.test(soTap.toast), JSON.stringify(soTap));
+  check('    once a side for "freekeh or flatbreads" is on the day, nothing more is offered for it', soTap.offer === 0, JSON.stringify(soTap.offer));
+  const soM2 = await so.evaluate(() => window.__WRITES__.length);
+  await so.click(`.day-row[data-date="${soDays.b}"] [data-side-id="so-bread"]`);
+  await hhDrain(so);
+  const soExt = await so.evaluate(([d, m]) => {
+    const ws = window.__WRITES__.slice(m);
+    const plan = ws.filter(w => w.table === 'planner_days').flatMap(w => w.rows || []);
+    return { tables: ws.map(w => w.table + ':' + w.op), groups: groupsForDate(d).map(g => g.recipeIds), servings: plan.map(r => r.servings) };
+  }, [soDays.b, soM2]);
+  check('    a dish already in a group: that group gains the side, no group is deleted, and a side written for the same number keeps 0 (as written)',
+        JSON.stringify(soExt.tables) === '["planner_days:upsert","meal_groups:upsert"]' && JSON.stringify(soExt.groups) === '[["so-main","so-other","so-bread"]]'
+        && JSON.stringify(soExt.servings) === '[[0,0,0]]', JSON.stringify(soExt));
+  const soModes = await so.evaluate(d => {
+    state.groupingDate = d; state.groupingSelection = []; renderPlanner();
+    const grouping = document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-offer`).length;
+    state.groupingDate = null; renderPlanner();
+    const sideRow = [...document.querySelectorAll(`.day-row[data-date="${d}"] .day-side-add`)].length;
+    return { grouping, sideRow };
+  }, soDays.b);
+  check('    no offer while GROUP SOME TOGETHER is picking, and none under a Side', soModes.grouping === 0 && soModes.sideRow === 0, JSON.stringify(soModes));
+  await so.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:

@@ -640,6 +640,10 @@
 
   .day-main{ flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; }
   .day-recipe-row{ display:flex; align-items:center; gap:10px; }
+  /* SERVE WITH under a dish (#87): the sides that would do, each one tap from joining the day and the dish's group. */
+  .day-side-offer{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin:2px 0 6px 18px; font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.06em; color:var(--ink-mute); }
+  .day-side-add{ background:none; border:1px dashed var(--line); padding:3px 8px; font:inherit; letter-spacing:inherit; color:var(--ink); cursor:pointer; }
+  .day-side-hide{ background:none; border:0; padding:2px 6px; font:inherit; color:var(--ink-mute); cursor:pointer; }
   .day-recipe-title{
     flex:1; min-width:0; background:none; border:none; padding:0; text-align:left; cursor:pointer;
     font-size:18px; font-weight:300; color:var(--ink);
@@ -4147,13 +4151,15 @@ function planEntries(entry){
 }
 function setPlanBlank(dateStr){ const p = loadPlan(); p[dateStr] = {blank:true}; return savePlanDay(dateStr); }
 function clearPlanDay(dateStr){ const p = loadPlan(); delete p[dateStr]; return savePlanDay(dateStr); }
-function addPlanRecipe(dateStr, recipeId){
+function addPlanRecipe(dateStr, recipeId, people){
   const p = loadPlan();
   const ids = planRecipeIds(p[dateStr]);
   const servings = planServings(p[dateStr]);
   const premade = planPremade(p[dateStr]);
   ids.push(recipeId);
-  servings.push(0); // as written, until someone says otherwise
+  /* As written, until someone says otherwise; a side offered on the Planner (#87) comes in at its main's headcount, in
+     this same single upsert rather than a second write. */
+  servings.push(parseInt(people, 10) || 0);
   premade.push(''); // cooked fresh, until someone says otherwise
   p[dateStr] = keepCalendarFlags(p[dateStr], withPremade({recipeIds: ids, servings}, premade));
   /* The one place a recipe is put on a day (the card picker and the shortlist both come here), so the one
@@ -4737,6 +4743,7 @@ const state = {
   selectedGroupId: null,       // the meal-group id currently open in the Group Viewer, if any
   groupViewerReturnTo: null,   // where "← PLANNER" in the Group Viewer should navigate back to
   groupLineUp: null,           // START/FINISH TOGETHER chosen for one group in this tab (#87); never stored
+  sideOffersHidden: new Set(), // 'date|recipeId' whose SERVE WITH offer was dismissed with ×, in this tab only (#87); never stored
   viewerServes: null           // ad-hoc target headcount for the currently open Viewer recipe, null = the recipe's own —
                                 // deliberately session-only per the 14 Aug decision: resets to 1 every
                                 // time a recipe is opened, never saved to the recipe itself. Permanent
@@ -5998,6 +6005,44 @@ function groupDaysByWeek(days){
   return buckets;
 }
 
+/* SERVE WITH on the Planner (#87 PR 2, docs/PLAN-SIDES.md §4.5–4.6): under a dish that asks for rice, the sides that would
+   do, one tap from being on the day and cooking with it. Not for a Side itself, nor once a call is covered: "rice or naan"
+   is satisfied by either already being on the day. Only days shown are offered, and the Planner shows today onwards, so
+   never a past day; an AWAY day and GROUP SOME TOGETHER draw no dish rows to hang it from. × hides it in this tab only. */
+function planSideOffers(iso, recipe, dayIds){
+  if(((recipe.tags && recipe.tags.course) || '').toLowerCase() === 'side') return [];
+  if(state.sideOffersHidden.has(iso + '|' + recipe.id)) return [];
+  const sides = sideCandidates();
+  const onDay = sides.filter(s=> dayIds.includes(s.id));
+  const open = servingCalls(parseRecipe(recipe.syntax || ''))
+    .filter(c=> !c.items.some(item=> matchSides([{ items: [item] }], onDay, recipe.id).length));
+  return matchSides(open, sides, recipe.id);
+}
+function sideOfferHtml(iso, recipe, dayIds, idx){
+  const offers = planSideOffers(iso, recipe, dayIds);
+  if(!offers.length) return '';
+  const byId = new Map(loadRecipes().map(r=> [r.id, r]));
+  return `<div class="day-side-offer">
+    <span class="day-side-offer-label">SERVE WITH:</span>
+    ${offers.map(o=> `<button class="day-side-add" data-action="addSide" data-idx="${idx}" data-side-id="${escapeHtml(o.sideId)}">+ ${escapeHtml((byId.get(o.sideId).title || '').toUpperCase())}</button>`).join('')}
+    <button class="day-side-hide" data-action="hideSides" data-idx="${idx}" aria-label="Not this time">×</button>
+  </div>`;
+}
+/* At most two writes, one row each: the day (the side at the main's headcount, 0 when that is what the side is written
+   for), then the group: the main's group gains the side, or a new group of the two is made. */
+function addSideToDay(date, mainIdx, sideId){
+  const ent = planEntries(loadPlan()[date])[mainIdx];
+  const recipes = loadRecipes();
+  const main = ent && recipes.find(r=> r.id === ent.recipeId);
+  const side = recipes.find(r=> r.id === sideId);
+  if(!main || !side) return;
+  const people = ent.servings || parseInt(main.servings, 10) || 0;
+  addPlanRecipe(date, sideId, people && people !== (parseInt(side.servings, 10) || 0) ? people : 0);
+  const group = groupContaining(date, main.id);
+  if(group) saveGroup({ ...group, recipeIds: [...group.recipeIds, sideId] });
+  else createGroup(date, [main.id, sideId]);
+  showToast(`${side.title} added to ${formatDate(date)}, cooking with ${main.title}.`);
+}
 function renderPlanner(){
   renderPlannerDays();
   renderShortlistPanel();
@@ -6075,7 +6120,7 @@ function renderPlannerDays(){
             ${premadePill(premade, idx)}
             ${cookedPill(recipe, iso, todayIso, premade, idx)}
             <button class="day-recipe-remove" data-action="removeOne" data-idx="${idx}" aria-label="Remove from this day">×</button>
-          </div>`;
+          </div>${sideOfferHtml(iso, recipe, ids, idx)}`;
         }).join('');
 
         const groupBadges = !isGroupingThisDay && dayGroups.length
@@ -6311,6 +6356,14 @@ function initPlannerListeners(){
       setPlanServingsAt(date, idx, people === base ? 0 : people);
       renderPlanner();
       updateSidebarCounts();
+    } else if(action === 'addSide'){
+      addSideToDay(date, parseInt(actionEl.dataset.idx, 10), actionEl.dataset.sideId);
+      renderPlanner();
+      updateSidebarCounts();
+    } else if(action === 'hideSides'){
+      const ent = planEntries(loadPlan()[date])[parseInt(actionEl.dataset.idx, 10)];
+      if(ent) state.sideOffersHidden.add(date + '|' + ent.recipeId);
+      renderPlanner();
     } else if(action === 'choose'){
       state.pickingForDate = date;
       showView('recipes');
