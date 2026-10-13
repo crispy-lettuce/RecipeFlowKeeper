@@ -5918,6 +5918,72 @@ const check = (name, pass, detail) => {
         hhMoved.start === hhTick.to && !hhMoved.ticked && hhMoved.deletes.some(d => d[0] === hhTick.week && (d[1] || []).includes('made-up item')), JSON.stringify(hhMoved));
   await hhWeek.close();
 
+  /* ---- The converter reminder (issue #127, 12 Oct 2026) ----
+     A bar, not a dialog, until someone in the household taps DONE; DONE sends its one column, LATER sends nothing, and a
+     household whose database has no converter_ack_version column never sees it. */
+  console.log('\nThe converter reminder');
+  const cvRow = ack => ({ household_settings: [{ household_id: HH_HOUSE, week_start_day: 5, dark_mode: 'system', converter_ack_version: ack }] });
+  const cvBar = p => p.evaluate(() => { const b = document.getElementById('converterBar');
+    return { shown: !b.hidden && getComputedStyle(b).display !== 'none', text: document.getElementById('converterBarText').textContent, version: CONVERTER_VERSION }; });
+  const cvDue = await hhOpen('converter due', cvRow(null));
+  const cvSeen = await cvBar(cvDue);
+  check('a household that has not confirmed this version of the converter instructions sees a bar naming it',
+        cvSeen.shown && cvSeen.text.includes(cvSeen.version) && /conversion project/.test(cvSeen.text), JSON.stringify(cvSeen));
+  /* Not modal: a real click on PLANNER (which Playwright refuses if anything covers the button) changes the view while the
+     bar shows, and the bar sits in the page's flow rather than over it. */
+  const cvClick = await cvDue.click('.navlink[data-view="planner"]', { timeout: 3000 }).then(() => true, e => String(e.message || e).split('\n')[0]);
+  const cvUse = await cvDue.evaluate(c => { const b = document.getElementById('converterBar');
+    return { clicked: c, planner: getComputedStyle(document.getElementById('view-planner')).display !== 'none', bar: !b.hidden,
+      position: getComputedStyle(b).position, overlays: [...document.querySelectorAll('.modal-overlay, dialog[open]')]
+        .filter(e => getComputedStyle(e).display !== 'none' && !e.hidden).length };
+  }, cvClick);
+  check('    and the app stays usable under it: the planner opens with the bar still there, and nothing is laid over the page',
+        cvUse.clicked === true && cvUse.planner && cvUse.bar && cvUse.position === 'static' && cvUse.overlays === 0, JSON.stringify(cvUse));
+  const cvM1 = await cvDue.evaluate(() => window.__WRITES__.length);
+  await cvDue.click('#converterDoneBtn');
+  await hhDrain(cvDue);
+  const cvDone = await cvDue.evaluate(m => ({ shown: !document.getElementById('converterBar').hidden,
+    sent: window.__WRITES__.slice(m).map(w => ({ table: w.table, op: w.op, rows: w.rows })) }), cvM1);
+  const cvSent = cvDone.sent.filter(w => w.table === 'household_settings');
+  check('    DONE hides it and records this version for the household, sending that one column and nothing else',
+        !cvDone.shown && cvDone.sent.length === 1 && cvSent.length === 1 && cvSent[0].op === 'upsert'
+        && Object.keys(cvSent[0].rows).sort().join(',') === 'converter_ack_version,household_id,updated_at'
+        && cvSent[0].rows.converter_ack_version === cvSeen.version && cvSent[0].rows.household_id === HH_HOUSE, JSON.stringify(cvDone));
+  // Another device taps DONE: this tab's next refresh reads the household's row and the bar goes.
+  await cvDue.close();
+  const cvOther = await hhOpen('converter done elsewhere', cvRow(null));
+  const cvBefore = (await cvBar(cvOther)).shown;
+  await cvOther.evaluate(() => { window.__STUB_DATA__.household_settings[0].converter_ack_version = CONVERTER_VERSION; return refreshLibrary(); });
+  await cvOther.waitForTimeout(300);
+  const cvAfter = (await cvBar(cvOther)).shown;
+  check('    once another device in the household has tapped DONE, this one\'s next refresh takes the bar away', cvBefore && !cvAfter,
+        JSON.stringify({ cvBefore, cvAfter }));
+  await cvOther.close();
+
+  const cvLater = await hhOpen('converter later', cvRow('2026-01-01.1'));
+  const cvM2 = await cvLater.evaluate(() => window.__WRITES__.length);
+  const cvOld = (await cvBar(cvLater)).shown;
+  await cvLater.click('#converterLaterBtn');
+  await hhDrain(cvLater);
+  const cvL = await cvLater.evaluate(m => ({ shown: !document.getElementById('converterBar').hidden, sent: window.__WRITES__.length - m }), cvM2);
+  check('an older confirmed version still asks; LATER hides the bar and sends nothing', cvOld && !cvL.shown && cvL.sent === 0,
+        JSON.stringify({ cvOld, cvL }));
+  await cvLater.close();
+
+  const cvUpToDate = await hhOpen('converter up to date', cvRow(cvSeen.version));
+  const cvNone = (await cvBar(cvUpToDate)).shown;
+  await cvUpToDate.close();
+  const cvNoCol = await hhOpen('converter no column');
+  const cvNoColShown = (await cvBar(cvNoCol)).shown;
+  const cvNoColRow = await cvNoCol.evaluate(() => { const w0 = window.__WRITES__.length; setSetting('converterAckVersion', 'x');
+    return window.__WRITES__.length - w0; });
+  await hhDrain(cvNoCol);
+  const cvNoColSent = await cvNoCol.evaluate(() => window.__WRITES__.filter(w => w.table === 'household_settings' && 'converter_ack_version' in (w.rows || {})).length);
+  check('a household that has confirmed this version sees no bar', !cvNone, String(cvNone));
+  check('    nor does one whose database has no converter_ack_version column yet, and nothing sends it there',
+        !cvNoColShown && cvNoColSent === 0, JSON.stringify({ cvNoColShown, cvNoColRow, cvNoColSent }));
+  await cvNoCol.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:

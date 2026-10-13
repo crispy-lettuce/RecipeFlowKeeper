@@ -81,12 +81,13 @@ Both scripts use whichever Chromium Playwright installs. Set
 
 **`test/core.test.js` — the pure core, in Node.** Since 25 Sep (PR 6a) the parser, layout,
 quantity, scaling and naming functions live in `core.js`, which loads in Node as well as the page.
-162 checks, about two seconds, no browser: the behaviour the app relies on, the shopping list's naming
+164 checks, about two seconds, no browser: the behaviour the app relies on, the shopping list's naming
 and totalling (since PR 6b: the ingredient review's §6 checks, numbered as they are there, each run
 once against the mutation it names), the dictionary's master
 copy against the generated `converter/ingredient-names.md`, and three rules about the split —
 `core.js` never touches the page, nothing is defined in both files, and the two version stamps
-agree. Since 12 Oct (F47) it also lists every query method `index.html` chains onto `sb.from(…)` and
+agree. Since 12 Oct (#127) it also fails when `converter/conversion-instructions.md` changes without its version, `CONVERTER_VERSION` and
+the pinned sha256 moving with it. Since 12 Oct (F47) it also lists every query method `index.html` chains onto `sb.from(…)` and
 `sb.storage.from(…)` and fails if `stub.js` lacks one, which would otherwise be a TypeError `queueWrite` can swallow.
 Run it first; CI does.
 
@@ -97,7 +98,7 @@ node test/core.test.js
 `build.js` inlines the real `core.js` into the built page, so the smoke suite below tests exactly
 what Pages serves.
 
-**547 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
+**554 checks.** It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, the automatic image
 re-host on save, what happens when you come back to the tab (online, offline, mid-save, after a

@@ -1,4 +1,6 @@
 [
+  { "version": "2026-10-12.5", "date": "2026-10-12", "issues": [127],
+    "changes": ["When the recipe converter's instructions change, a CONVERTER bar asks your household to load the new file into its conversion project in the Claude app. Tap DONE once it's done, on any device; LATER hides it until the app is next opened. It never stops you using the app."] },
   { "version": "2026-10-12.4", "date": "2026-10-12", "issues": [111, 112],
     "changes": ["A sentence in the method or notes that starts with \"Merge\", \"Stage\" or \"Group\" is no longer reported as a line the app couldn't read.",
                 "Pints, quarts, ounces, pounds, fl oz and sticks of butter are now flagged as not metric when you check a recipe, as cups already were.",

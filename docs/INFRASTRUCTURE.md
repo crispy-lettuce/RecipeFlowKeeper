@@ -351,7 +351,9 @@ default (functions still reach everyone through `PUBLIC`, so a page that adds on
 without a `household_settings` row got its row. Checked read-only at 13:47 UTC: `pg_default_acl` for `postgres` in `public`
 shows no `anon` on `S`, `f` or `r`, and no household is without a settings row.
 
-**Waiting to be applied: nothing** (12 Oct 2026; every page in `docs/migrations/` carries its "Applied" line). A PR that adds a
+**Waiting to be applied: `docs/migrations/add-converter-ack.md`** (#127, 12 Oct 2026): one nullable column,
+`household_settings.converter_ack_version`, for the converter reminder. Either order is safe, and the page says why: the app shows
+the reminder, and sends the column, only once the settings row carries it. Every other page carries its "Applied" line. A PR that adds a
 migration page lists it here as waiting, and the household applies it (first, unless the page says why the order may be
 reversed: `CLAUDE.md`); whoever applies it moves it into the list and
 paragraphs above, as the rule at the top of this card says.

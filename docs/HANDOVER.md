@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **547 checks** (12 Oct 2026; `core.test.js` adds 162 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **554 checks** (12 Oct 2026; `core.test.js` adds 164 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -2641,6 +2641,36 @@ and v4; `source-ingredients` v5 read back with no `readCapped`). Redeployed from
 17:05–17:06 UTC: **`rehost-images` v16, `source-ingredients` v6, `calendar-sync` v6**, JWT verification on, each read back in full
 with `get_edge_function` and carrying the change (and `calendar-sync` pasted without the added indentation). `INFRASTRUCTURE.md`
 records them and now says to use a commit-pinned link or wait five minutes. #105 and #106 closed.
+
+**The converter reminder (12 Oct 2026; #127).** Asked for by the household: when a coded change alters the converter's
+instructions, ask each household to reload them into its conversion project, without stopping anyone using the app.
+- **What the household sees.** A gold CONVERTER bar, in the page's flow like the OFFLINE bar (never a dialog), saying the
+  instructions have changed and naming the version, with OPEN THE INSTRUCTIONS ↗, DONE and LATER. DONE records the version for
+  the household (one tap, any device); LATER hides it until the app is next opened and writes nothing.
+- **Where the version lives.** `converter/conversion-instructions.md` now carries a `**Version 2026-10-12.1.**` line, and
+  `index.html` a matching `CONVERTER_VERSION`. `test/core.test.js` pins the file's sha256 with the version
+  (`CONVERTER_PINNED`): a change to the file without moving all three fails, which is what makes "only coded changes count" hold.
+  `CLAUDE.md` says so. This PR's own edit to the file (the Version line) is the first change it announces.
+- **The record.** `household_settings.converter_ack_version`, one nullable text column (`docs/migrations/add-converter-ack.md`,
+  waiting; tried on the scratch PG17 cluster). The app reads it from the settings row (`select('*')`), shows the bar and sends the
+  column only when the row carries it, so either order is safe and the page says so (the F34 rule). DONE goes through
+  `setSetting`, so it sends `household_id`, the column and `updated_at` only, keyed to that column; the import's whole-row
+  `saveSettings` does not send it. A refresh (coming back to the tab) re-reads the row, so a DONE on another device clears the bar.
+- `changelog.json` **2026-10-12.5**; `help.html`: section 9's tip and a new "The CONVERTER bar" under section 12;
+  `TEST-PLAN.md` step 52a, and `HOUSEHOLD-JOBS.md`, where it replaces "Reload the converter in both households".
+
+*Verified by.*
+- `node test/core.test.js` **164** (162 before), exit 0: the file's version agrees with the app's, and the file matches its pin.
+- `node test/build.js && node test/smoke.js` **554** (547 before), exit 0, no console or page errors: the bar shows and names the
+  version; a real click on PLANNER works under it and nothing is laid over the page; DONE sends that one column and hides it;
+  another device's DONE clears it on refresh; an older version still asks; LATER sends nothing; the current version, or no column,
+  shows nothing, and nothing sends the column where it doesn't exist.
+- `help-guide.js` 7, exit 0.
+- Nine mutations, each failing by name: the column detected from any row; DONE writing nothing; LATER writing; the bar never
+  shown; the column sent where it doesn't exist; the bar laid over the page; the refresh not redrawing it; the file changed
+  without its pin; the app's version differing from the file's.
+
+*Not verified:* live. The SQL page is the household's to apply, and step 52a is the household's.
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*

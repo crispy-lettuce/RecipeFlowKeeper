@@ -2,6 +2,9 @@
 
 *Revised 11 Oct 2026 — see the notes at the end for what changed and why.*
 
+**Version 2026-10-12.1.** The recipe app shows this number when it asks a household to reload these instructions into its
+conversion project, so a glance at the project's copy says whether it is the latest.
+
 Whenever a recipe is given here — a photo, a URL, or pasted text — convert it into
 GROUP / STAGE / MERGE syntax for the recipe merge-flow tool. Work through these
 stages in order every time; don't skip Check even for a simple recipe.

@@ -107,6 +107,13 @@ useful with no Claude Code session and no prior context at all.
 
 ---
 
+### `docs/migrations/add-converter-ack.md` — a schema change, waiting for the household (12 Oct 2026)
+**What:** `household_settings.converter_ack_version`, the version of the converter instructions each household has said it
+loaded (#127). Either order is safe, and the page says why. Who applies it, how to check it and how to undo it. Tried first on a
+scratch Postgres 17. DDL only, no data.
+
+**Use it when:** applying it (the household), checking it, or undoing it.
+
 ### `docs/migrations/harden-default-privileges.md` — a privileges change and a settings row, applied by the household 12 Oct 2026
 **What:** The October review's F35 and F23 (its PR 6, #120): a new table or sequence made from the dashboard in `public` no
 longer starts out granted to signed-out visitors (`anon`), and every household gets a `household_settings` row. A new function
@@ -581,7 +588,7 @@ to the conversion project (see `converter/conversion-instructions.md` above).
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 547-check smoke suite, the 162 Node checks, the five smaller suites CI also runs (the Edge Functions' and the help guide's), and an honest account of what it can't tell you
+**What:** How to run the 554-check smoke suite, the 164 Node checks, the five smaller suites CI also runs (the Edge Functions' and the help guide's), and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 *(Corrected 12 Oct 2026, the October review's Appendix B and D: this said 418 and 143.)*
 
