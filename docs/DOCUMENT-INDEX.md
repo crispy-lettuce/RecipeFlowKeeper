@@ -414,7 +414,7 @@ today starts every dish at zero. Live counts (no text), three PRs, the household
 
 **Use it when:** building #87, or asking why a side was or wasn't offered.
 
-### `docs/PLAN-PREP-STEPS.md` — preparation as steps in the flow, #88 (13 Oct 2026; answered "defaults" the same day; not built)
+### `docs/PLAN-PREP-STEPS.md` — preparation as steps in the flow, #88 (13 Oct 2026; answered "defaults"; PR 1, `core.js`, built the same day)
 **What:** a per-device setting that turns "leeks, thinly sliced" into a step, **Thinly slice the leeks**, beside the step before
 the one that needs it. Worked out by the app from the text as written: no converter change, no recipe change, no re-keyed ticks.
 The word table, the layout rule, live counts, two PRs and seven decisions.
@@ -623,7 +623,7 @@ to the conversion project (see `converter/conversion-instructions.md` above).
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 576-check smoke suite, the 164 Node checks, the five smaller suites CI also runs (the Edge Functions' and the help guide's), and an honest account of what it can't tell you
+**What:** How to run the 576-check smoke suite, the 171 Node checks, the five smaller suites CI also runs (the Edge Functions' and the help guide's), and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 *(Corrected 12 Oct 2026, the October review's Appendix B and D: this said 418 and 143.)*
 
