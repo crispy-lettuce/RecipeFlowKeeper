@@ -1102,6 +1102,24 @@ check('Frozen is the last aisle, and the last section of the shopping list',
         && JSON.stringify(dl.groups.flatMap(g => g.items)) === JSON.stringify(later.groups.flatMap(g => g.items)));
 }
 
+// #87 FINISH TOGETHER: a short dish starts late enough to be ready with the long one.
+{
+  const tl = t => { const p = core.parseRecipe(t); return core.computeTimeline(p.groups, p.stages); };
+  const long = tl('TITLE: L\nSERVINGS: 2\n\nGROUP a:\n1 swede\n\nSTAGE:\nMERGE a -> b: Roast [60 min]');
+  const short = tl('TITLE: S\nSERVINGS: 2\n\nGROUP a:\n100 g millet\n\nSTAGE:\nMERGE a -> b: Bubble gently [15 min]');
+  const fin = core.lineUpTimelines([long, short, null], 'finish');
+  const sta = core.lineUpTimelines([long, short, null], 'start');
+  check('lineUpTimelines: FINISH TOGETHER starts a 15-minute dish 45 minutes after a 60-minute one; both end together',
+        fin.totalSpan === 60 && fin.lanes[0].offset === 0 && fin.lanes[1].offset === 45
+        && fin.lanes[1].steps[0].start === 45 && fin.lanes[1].steps[0].end === 60, JSON.stringify(fin.lanes.map(l => l && l.offset)));
+  check('    START TOGETHER starts everything at 0, as before',
+        sta.lanes[0].offset === 0 && sta.lanes[1].offset === 0 && sta.lanes[1].steps[0].start === 0, JSON.stringify(sta.lanes.map(l => l && l.offset)));
+  check('    a dish with no timings stays without a lane', fin.lanes[2] === null && sta.lanes[2] === null);
+  check('    fixed timings are not ABOUT', fin.about === false);
+  const open = tl('TITLE: O\nSERVINGS: 2\n\nGROUP a:\n1 swede\n\nSTAGE:\nMERGE a -> b: Roast [45 min]\n\nSTAGE:\nMERGE b -> c: Rest [until set]');
+  check('    a longest dish with an open-ended step makes the start times ABOUT', core.lineUpTimelines([open, short], 'finish').about === true);
+}
+
 const failed = checks.filter(c => !c.pass).length;
 console.log(`\n${checks.length} checks, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -4,7 +4,8 @@
 has no timing, so it never appears in the flow or the combined timeline. **The household chose on 13 Oct** that the app should
 spot those phrases and offer a matching **side**: an ordinary recipe in the library (plain basmati rice, garlic naan), with its
 own timings, that can be added to the same Planner day so its steps join the combined flow. Scoped 13 Oct 2026 against `main`
-at `e11de60`. Line numbers are from that commit. §8 lists the questions for the household. No code has been written.
+at `e11de60`. Line numbers are from that commit. §8 lists the questions for the household, answered 13 Oct. **Built so far:** PR 3, FINISH TOGETHER (13 Oct, §6); PRs 1 and 2
+are next.
 
 ## 1. What it is for
 
@@ -212,6 +213,8 @@ is made to fail once by breaking the code it guards. Any PR touching `core.js` b
    - *Smoke:* the default is FINISH for a group with a Side and START otherwise; the switch moves the side's lane; START AT
      shows; KEEP AWAKE still shows the switch.
    - Changelog; help; a tablet step. PR 3 depends only on today's groups, so it can go first if the household prefers.
+   - **Built first, 13 Oct 2026** (core 2026-10-13.2, app 2026-10-13.5; tablet step 57a). In cooking mode the switch sits with
+     the timeline behind SHOW TIMELINE, and START AT stays on each dish's header.
 
 ## 7. Risks
 
@@ -228,7 +231,7 @@ is made to fail once by breaking the code it guards. Any PR touching `core.js` b
 
 ## 8. Decisions (answered 13 Oct 2026)
 
-**Answered by the household on 13 Oct 2026: "defaults on all plans", so each question below is decided as its recommended answer.** Nothing is built yet.
+**Answered by the household on 13 Oct 2026: "defaults on all plans", so each question below is decided as its recommended answer.** PR 3 is built (§6).
 
 1. **Which recipes are offered as sides:** every `course=Side` recipe (recommended), or only those also tagged with a keyword
    such as `Standard side`?

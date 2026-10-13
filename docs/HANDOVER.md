@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **582 checks** (13 Oct 2026; `core.test.js` adds 171 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **586 checks** (13 Oct 2026; `core.test.js` adds 176 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -2792,6 +2792,30 @@ preview following; the timeline from the drawing; shared ticks; not stored; the 
 class), and blocked storage without its `try/catch` crashes the suite at its check.
 
 *Not verified:* the tablet (step 56a).
+
+**FINISH TOGETHER in the Group Viewer (13 Oct 2026; #87 PR 3, `docs/PLAN-SIDES.md` §4.4, built first as the plan allowed).**
+- **`lineUpTimelines(timelines, mode)`** in `core.js`, pure: in `'finish'` each recipe's lane is offset by the longest span less
+  its own, steps shifted with it; in `'start'` every offset is 0, as before. A recipe with no timings stays without a lane.
+  `about` is set when the longest dish has an untimed or open-ended step, since those count as the 2-minute stand-in.
+  `computeGroupTimeline` calls it and passes `mode` and `about` through. Core version **2026-10-13.2** in all three places.
+- **The switch** START TOGETHER · FINISH TOGETHER in the strip's head. **Default:** FINISH when any dish's course is Side,
+  otherwise START (§8 Q4). The choice is `state.groupLineUp` (`{ id, mode }`), for that group in this tab only: no write, no
+  column, no storage. In FINISH the last tick reads SERVE, and each dish's header says START FIRST or START AT +…, with ABOUT in
+  front when `about`. In cooking mode the switch sits with the strip behind SHOW TIMELINE; the start times stay on the headers.
+- `changelog.json` **2026-10-13.5**; `help.html` §4 `#finish-together` and a QUICK ANSWERS link; step **57a**.
+
+*Verified by.* `node test/core.test.js` **176** (171 before), exit 0: five new checks (offsets 0 and 45 with both ending
+together; START gives 0 and 0; no timings, no lane; fixed timings not ABOUT; an open-ended step on the longest dish is ABOUT).
+`node test/build.js && node test/smoke.js` **586** (582 before), exit 0, no console or page errors: four new checks (a group
+with a Side opens in FINISH with START FIRST, START AT +45 min and SERVE; START TOGETHER moves the side's lane back to 0 and
+drops the start times and SERVE; a group with no Side opens in START; in cooking mode the switch waits behind SHOW TIMELINE
+while the start times stay). `help-guide.js` 7, exit 0. Thirteen mutations, each failing by name: four in `lineUpTimelines`
+(no offset, steps not shifted, never ABOUT, a laneless dish given a lane), six in the app (default always START, default
+always FINISH, no SERVE, the switch not stored, START AT never shown, start times in START mode), two in cooking mode (the
+strip not hidden, the start times hidden) and the guide's anchor removed. Every made-up line and title in the tests was
+checked against the library (counts only): 0 matches, after one step label that did match a library line was replaced.
+
+*Not verified:* the tablet and phone (step 57a).
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*

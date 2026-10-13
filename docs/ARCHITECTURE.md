@@ -154,6 +154,7 @@ refresh lands whole or not at all.
 | `prepStepFor(line)` | The step an ingredient line's preparation reads as ("2 leeks, thinly sliced" → *Thinly slice the leeks*), from a fixed table, or `null` (#88, 13 Oct 2026). |
 | `withPrepSteps(parsed)` | The recipe as drawn with preparation as steps: groups split in order, a one-input MERGE marked `prep` beside the step before the one that needs it. Used by the two viewers when the device's PREPARATION setting asks; never by the timeline, the preview or the shopping list. |
 | `computeTimeline(groups, stages)` | Derives each step's start/end from stage order plus durations. Returns `null` if no step has a real duration — which is why the timeline strip auto-hides. |
+| `lineUpTimelines(timelines, mode)` (`core.js`) | Lines a group's timelines up for the Group Viewer: `'start'` starts every dish at 0; `'finish'` offsets each by the longest span less its own, so all end together (#87, 13 Oct 2026). `about` says the longest dish has an untimed or open-ended step. |
 | `mountFlow(container, parsed, opts)` | Renders the diagram and wires tick-to-complete. `opts.tickKey` makes ticks survive a re-render. |
 | `scaleRecipeSyntax(text, multiplier)` | Rewrites quantities in the raw text. Callers compute `multiplier = target ÷ base`; nothing scales by a raw multiplier any more. |
 | `buildShoppingList(weekDays)` | Aggregates the plan into a shopping list. **Must stay side-effect free** — it runs on every planner change via `updateSidebarCounts()`. The naming and totalling are `aggregateShoppingLines` in `core.js` (since PR 6b); the page adds the week, the headcount, the household's word matches, the household's aisles (`applyAisleOverride`, PR 6 of the add-recipe plan) and each line's group, which says what a line with no amount is for ("+ extra to serve"). An aisle replaces a row's `category` after its key is final, so it never re-keys a tick. |
@@ -276,10 +277,10 @@ for what is deployed and how to deploy.
 (`test/stub.js`) and walks every screen.
 
 ```sh
-node test/core.test.js   # 171 checks on core.js in Node, about two seconds, no browser
+node test/core.test.js   # 176 checks on core.js in Node, about two seconds, no browser
 npm install --no-save playwright@1.63.0   # once; the version CI pins
 node test/build.js       # bake index.html (with core.js inlined) against the stub
-node test/smoke.js       # 582 checks; exits non-zero on failure
+node test/smoke.js       # 586 checks; exits non-zero on failure
 ```
 
 *(The counts are those of 12 Oct 2026; until then this block said 143 and 418. `CLAUDE.md` lists the five smaller suites
