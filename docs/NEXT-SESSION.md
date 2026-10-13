@@ -69,7 +69,8 @@ Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all 
 
 1. **The October review is finished** (12 Oct): its eight PRs (`PrivateBackup`#7, #102, #117–#122) and the extra one for F37 and
    F38 (#123) are merged, and the three functions #123 changed are redeployed and read back (`docs/INFRASTRUCTURE.md` §3).
-2. **The household's own issues, decided 13 Oct ("defaults" on every plan), built in the order #94, #95, #88, #87:** #87 `docs/PLAN-SIDES.md`
+2. **The household's own issues, decided 13 Oct ("defaults" on every plan), built in the order #94, #95, #88, #87.** Next: #142, OFTEN WITH
+   (recipes previously grouped with a dish), planned in `docs/PLAN-SIDES.md` §9 with the household's decisions of 13 Oct. #87 `docs/PLAN-SIDES.md`
    (PR 3, FINISH TOGETHER, built 13 Oct as #138; PR 1, SERVE WITH, #140; PR 2, the Planner offer, built 13 Oct: #87 is built), #88
    `docs/PLAN-PREP-STEPS.md` (built 13 Oct), #94's AUDIT `docs/PLAN-SHOPPING-AUDIT.md` (built 13 Oct; its first half is #132), #95
    `docs/PLAN-INGREDIENTS-TAB.md` (built 13 Oct); #100 `docs/PLAN-PREVIEW-SITE.md` is parked. The household picks the order.

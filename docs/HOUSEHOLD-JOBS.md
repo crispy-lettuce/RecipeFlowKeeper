@@ -132,6 +132,8 @@ You chose the order on 13 Oct: #94, then #95, #88 and #87; #100 stays parked.
 - **#87, sides with no timings:** the app spots "serve with rice" and offers a matching side recipe for the same day.
   **FINISH TOGETHER** in the Group Viewer (#138, 57a above), the recipe's **SERVE WITH** line (#140, 58a above) and the
   Planner's offer to add the side (59a above) are built: #87 is complete once 57a–59a pass.
+- **#142, OFTEN WITH:** recipes you have grouped with a dish before, offered the same way (any course, once is enough).
+  Planned 13 Oct with your decisions (`docs/PLAN-SIDES.md` §9); built next.
 - **#88, when chopping is done:** built: **PREPARATION** in Settings → APP turns "sliced", "diced" and the like into their own
   steps in the flow (56a passed).
 - **#94, the shopping list:** both halves built: ticked items left off print and PNG (53a passed), and the **AUDIT** button
