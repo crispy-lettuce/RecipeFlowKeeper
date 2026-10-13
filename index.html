@@ -1624,6 +1624,7 @@
         <div class="viewer-meta" id="viewerMeta"></div>
         <div class="viewer-provenance" id="viewerProvenance"></div>
         <div class="viewer-serve-with" id="viewerServeWith" hidden></div>
+        <div class="viewer-serve-with" id="viewerOftenWith" hidden></div>
         <label class="toggle-switch" title="Cooking mode: keeps the screen on, hides what you don't need while cooking and pins the header">
           <input type="checkbox" class="keep-awake-toggle">
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
@@ -1965,6 +1966,7 @@
             <li><a href="help.html#finish-together" target="_blank" rel="noopener">How do I get every dish ready at the same time?</a></li>
             <li><a href="help.html#serve-with" target="_blank" rel="noopener">How does a recipe know which side to suggest?</a></li>
             <li><a href="help.html#side-offer" target="_blank" rel="noopener">How do I add the rice to the same day as the curry?</a></li>
+            <li><a href="help.html#often-with" target="_blank" rel="noopener">Where does OFTEN WITH come from?</a></li>
             <li><a href="help.html#adding" target="_blank" rel="noopener">How do I add a new recipe?</a></li>
             <li><a href="help.html#sharing" target="_blank" rel="noopener">How do I share our recipes with family?</a></li>
             <li><a href="help.html#premade" target="_blank" rel="noopener">How do I plan a meal from the freezer?</a></li>
@@ -2137,7 +2139,7 @@
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-13.3"></script>
+<script src="core.js?v=2026-10-13.4"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2145,12 +2147,12 @@
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-13.3';
+const EXPECTED_CORE_VERSION = '2026-10-13.4';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-13.7';
+const APP_VERSION = '2026-10-13.8';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -4745,6 +4747,7 @@ const state = {
   groupViewerReturnTo: null,   // where "← PLANNER" in the Group Viewer should navigate back to
   groupLineUp: null,           // START/FINISH TOGETHER chosen for one group in this tab (#87); never stored
   sideOffersHidden: new Set(), // 'date|recipeId' whose SERVE WITH offer was dismissed with ×, in this tab only (#87); never stored
+  oftenHidden: new Set(),      // the same for OFTEN WITH (#142)
   viewerServes: null           // ad-hoc target headcount for the currently open Viewer recipe, null = the recipe's own —
                                 // deliberately session-only per the 14 Aug decision: resets to 1 every
                                 // time a recipe is opened, never saved to the recipe itself. Permanent
@@ -5443,6 +5446,21 @@ function renderServeWith(recipe, theirs){
   el.innerHTML = matches.length ? 'SERVE WITH: ' + matches.map(m=> `<button type="button" class="serve-with-link" data-serve-with="${escapeHtml(m.sideId)}">${escapeHtml(byId.get(m.sideId).title)} →</button>`).join(' · ') : '';
   el.querySelectorAll('[data-serve-with]').forEach(b=> b.addEventListener('click', ()=> openRecipe(b.dataset.serveWith, state.viewerReturnTo)));
 }
+/* OFTEN WITH (#142, docs/PLAN-SIDES.md §9): what this recipe has been grouped with, any course, once is enough. Old groups may
+   name recipes since deleted (6 when measured): those are skipped. A recipe already under SERVE WITH is offered once, there. */
+function oftenWith(recipe, exclude){
+  const byId = new Map(loadRecipes().map(r=> [r.id, r]));
+  return groupedWith(recipe.id, loadGroups()).filter(p=> byId.has(p.id) && !exclude.has(p.id)).slice(0, 2).map(p=> byId.get(p.id));
+}
+function renderOftenWith(recipe){
+  const el = document.getElementById('viewerOftenWith');
+  /* Another household's recipe has its own id, which none of our groups name, so it never shows a line: nothing to guard. */
+  const serve = matchSides(servingCalls(parseRecipe(recipe.syntax || '')), sideCandidates(), recipe.id).map(m=> m.sideId);
+  const list = oftenWith(recipe, new Set(serve));
+  el.hidden = !list.length;
+  el.innerHTML = list.length ? 'OFTEN WITH: ' + list.map(r=> `<button type="button" class="serve-with-link" data-often-with="${escapeHtml(r.id)}">${escapeHtml(r.title)} →</button>`).join(' · ') : '';
+  el.querySelectorAll('[data-often-with]').forEach(b=> b.addEventListener('click', ()=> openRecipe(b.dataset.oftenWith, state.viewerReturnTo)));
+}
 function renderViewer(){
   const recipe = viewerRecipe();
   const mount = document.getElementById('flowMount');
@@ -5488,6 +5506,7 @@ function renderViewer(){
 
   renderProvenance(recipe);
   renderServeWith(recipe, theirs);
+  renderOftenWith(recipe);
   if(theirs) renderTheirsNote(recipe); else renderCookingNotes(recipe);
 
   const favBtn = document.getElementById('favouriteBtn');
@@ -6012,8 +6031,11 @@ function groupDaysByWeek(days){
    never a past day; an AWAY day has no dish rows, and GROUP SOME TOGETHER draws its pick rows without it. × hides it in
    this tab only. */
 function planSideOffers(iso, recipe, dayIds){
-  if(((recipe.tags && recipe.tags.course) || '').toLowerCase() === 'side') return [];
   if(state.sideOffersHidden.has(iso + '|' + recipe.id)) return [];
+  return planSideMatches(recipe, dayIds);
+}
+function planSideMatches(recipe, dayIds){
+  if(((recipe.tags && recipe.tags.course) || '').toLowerCase() === 'side') return [];
   const sides = sideCandidates();
   const onDay = sides.filter(s=> dayIds.includes(s.id));
   const open = servingCalls(parseRecipe(recipe.syntax || ''))
@@ -6024,15 +6046,30 @@ function sideOfferHtml(iso, recipe, dayIds, idx){
   const offers = planSideOffers(iso, recipe, dayIds);
   if(!offers.length) return '';
   const byId = new Map(loadRecipes().map(r=> [r.id, r]));
-  return `<div class="day-side-offer">
+  return `<div class="day-side-offer serve">
     <span class="day-side-offer-label">SERVE WITH:</span>
     ${offers.map(o=> `<button class="day-side-add" data-action="addSide" data-idx="${idx}" data-side-id="${escapeHtml(o.sideId)}">+ ${escapeHtml((byId.get(o.sideId).title || '').toUpperCase())}</button>`).join('')}
     <button class="day-side-hide" data-action="hideSides" data-idx="${idx}" aria-label="Not this time">×</button>
   </div>`;
 }
+/* OFTEN WITH under the dish (#142): its grouped partners not already on the day nor under SERVE WITH (even a SERVE WITH line
+   hidden with ×: that is still the recipe's stronger reason). Shown under any course, a Side included, since a pairing works
+   both ways. The same + as SERVE WITH; its own ×, in this tab only. */
+function oftenOfferHtml(iso, recipe, dayIds, idx){
+  if(state.oftenHidden.has(iso + '|' + recipe.id)) return '';
+  const skip = new Set([...dayIds, ...planSideMatches(recipe, dayIds).map(m=> m.sideId)]);
+  const list = oftenWith(recipe, skip);
+  if(!list.length) return '';
+  return `<div class="day-side-offer often">
+    <span class="day-side-offer-label">OFTEN WITH:</span>
+    ${list.map(r=> `<button class="day-side-add" data-action="addSide" data-idx="${idx}" data-side-id="${escapeHtml(r.id)}">+ ${escapeHtml((r.title || '').toUpperCase())}</button>`).join('')}
+    <button class="day-side-hide" data-action="hideOften" data-idx="${idx}" aria-label="Not this time">×</button>
+  </div>`;
+}
 /* At most two writes, one row each: the day (the side at the main's headcount, 0 when that is what the side is written
-   for), then the group: the main's group gains the side, or a new group of the two is made. */
-function addSideToDay(date, mainIdx, sideId){
+   for), then the group: the main's group gains the side, or a new group of the two is made. SERVE WITH's + and OFTEN
+   WITH's (#142) both come here. */
+function addWithToDay(date, mainIdx, sideId){
   const ent = planEntries(loadPlan()[date])[mainIdx];
   const recipes = loadRecipes();
   const main = ent && recipes.find(r=> r.id === ent.recipeId);
@@ -6122,7 +6159,7 @@ function renderPlannerDays(){
             ${premadePill(premade, idx)}
             ${cookedPill(recipe, iso, todayIso, premade, idx)}
             <button class="day-recipe-remove" data-action="removeOne" data-idx="${idx}" aria-label="Remove from this day">×</button>
-          </div>${sideOfferHtml(iso, recipe, ids, idx)}`;
+          </div>${sideOfferHtml(iso, recipe, ids, idx)}${oftenOfferHtml(iso, recipe, ids, idx)}`;
         }).join('');
 
         const groupBadges = !isGroupingThisDay && dayGroups.length
@@ -6359,9 +6396,13 @@ function initPlannerListeners(){
       renderPlanner();
       updateSidebarCounts();
     } else if(action === 'addSide'){
-      addSideToDay(date, parseInt(actionEl.dataset.idx, 10), actionEl.dataset.sideId);
+      addWithToDay(date, parseInt(actionEl.dataset.idx, 10), actionEl.dataset.sideId);
       renderPlanner();
       updateSidebarCounts();
+    } else if(action === 'hideOften'){
+      const ent = planEntries(loadPlan()[date])[parseInt(actionEl.dataset.idx, 10)];
+      if(ent) state.oftenHidden.add(date + '|' + ent.recipeId);
+      renderPlanner();
     } else if(action === 'hideSides'){
       const ent = planEntries(loadPlan()[date])[parseInt(actionEl.dataset.idx, 10)];
       if(ent) state.sideOffersHidden.add(date + '|' + ent.recipeId);

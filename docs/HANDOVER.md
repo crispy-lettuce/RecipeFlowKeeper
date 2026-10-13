@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **598 checks** (13 Oct 2026; `core.test.js` adds 185 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **606 checks** (13 Oct 2026; `core.test.js` adds 189 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -2870,6 +2870,30 @@ because the check ran on a day with nothing left to offer, so it moved to the da
 a Side) was made independent of the first. Every made-up line and title was checked against the library: 0 matches.
 
 *Not verified:* the tablet (step 59a).
+
+**OFTEN WITH (13 Oct 2026; #142, `docs/PLAN-SIDES.md` §9, after #143).**
+- **`groupedWith(recipeId, groups)`** in `core.js`, pure: every recipe sharing a group with this one, `times` = distinct days
+  (two groups on one day count once), `last` = the latest; most times first, then most recent. Core **2026-10-13.4**.
+- **Viewer** `#viewerOftenWith` under SERVE WITH: two at most; deleted recipes skipped (6 references when measured); a recipe
+  already under SERVE WITH left out. Another household's recipe never shows a line (its id is in none of our groups).
+- **Planner** `oftenOfferHtml`, a second line under the dish, `.day-side-offer.often` (SERVE WITH's is now `.serve`): also
+  skips what is on the day and what SERVE WITH matches even when that line is hidden; shown under a Side too (any course, as
+  decided); not while picking a group; its own × (`state.oftenHidden`, this tab). **+** is SERVE WITH's: `addSideToDay`,
+  renamed `addWithToDay`, so the same two one-row writes.
+- `changelog.json` **2026-10-13.8**; `help.html` §4 `#often-with` and a QUICK ANSWERS link; step **60a**.
+
+*Verified by.* `node test/core.test.js` **189** (185 before), exit 0: four new checks (two days before one, a tie to the more
+recent; one day once, a repeat in a group once, never itself; both ways, and nothing from no groups; `last`). `node
+test/build.js && node test/smoke.js` **606** (598 before), exit 0, no console or page errors: eight new checks (the viewer's
+line with order, cap, the deleted and the SERVE WITH side left out; none for a recipe never grouped or another household's;
+the Planner's two lines apart, a partner on the day not offered; under a Side; hiding SERVE WITH doesn't move its side across;
+none while picking; × with no write; + writes one `planner_days` and one `meal_groups` row). #141's SIDE OFFER checks now look
+at the SERVE WITH line by its class, since a day can carry both. `help-guide.js` 7, exit 0. Seventeen mutations: fifteen
+failed by name at once; a theirs-guard could change nothing (another household's ids are in none of our groups) and was
+removed; "deleted not skipped" first crashed the suite in the check's setup, so the setup moved inside the check and it now
+fails by name. Every made-up title and line was checked against the library: 0 matches.
+
+*Not verified:* the tablet (step 60a).
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*

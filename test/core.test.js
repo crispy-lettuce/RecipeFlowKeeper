@@ -1161,6 +1161,22 @@ check('Frozen is the last aisle, and the last section of the shopping list',
         && core.shoppingKeyForName('pickled shallots for serving') === 'pickled shallots for serving');
 }
 
+// #142 OFTEN WITH: what a recipe has been grouped with before (docs/PLAN-SIDES.md §9.3).
+{
+  const G = (dateIso, ...recipeIds) => ({ dateIso, recipeIds });
+  const gw = (id, groups) => core.groupedWith(id, groups).map(x => x.id + ':' + x.times);
+  const groups = [G('2026-08-01', 'm', 'old'), G('2026-08-10', 'm', 'twice'), G('2026-08-20', 'm', 'twice'), G('2026-08-25', 'm', 'new'), G('2026-08-26', 'x', 'y')];
+  check('groupedWith: grouped on two days comes before once; a tie goes to the more recent day; a group without it adds nothing',
+        JSON.stringify(gw('m', groups)) === '["twice:2","new:1","old:1"]', JSON.stringify(gw('m', groups)));
+  check('    two groups on one day are one pairing, and a recipe listed twice in one group counts once; never itself',
+        JSON.stringify(gw('m', [G('2026-08-01', 'm', 'p', 'p', 'm'), G('2026-08-01', 'm', 'p')])) === '["p:1"]',
+        JSON.stringify(gw('m', [G('2026-08-01', 'm', 'p', 'p', 'm'), G('2026-08-01', 'm', 'p')])));
+  check('    it works both ways, and no groups gives nothing',
+        JSON.stringify(gw('old', groups)) === '["m:1"]' && gw('m', []).length === 0 && gw('m', null).length === 0);
+  check('    each partner says the last day they were grouped',
+        core.groupedWith('m', groups).find(x => x.id === 'twice').last === '2026-08-20');
+}
+
 const failed = checks.filter(c => !c.pass).length;
 console.log(`\n${checks.length} checks, ${failed} failed`);
 process.exit(failed ? 1 : 0);
