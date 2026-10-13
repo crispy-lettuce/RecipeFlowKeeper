@@ -1,5 +1,8 @@
 # Settings → INGREDIENTS: folding sections and one search (#95)
 
+**Built 13 Oct 2026**, the PR after #134; `docs/HANDOVER.md` §7 has what was checked. Search matches a row's own text, less
+its buttons; the "what the list calls it" match of §3 was left out as not needed.
+
 **Asked for by the household** in issue #95: the INGREDIENTS tab will get hard to read as its lists grow. On 13 Oct 2026 they
 chose **collapsible sections plus a search**, and asked: *"Should there be a 'main' search within this section that searches all
 tabs for instances?"* Planned 13 Oct 2026 (date from `date -u`) as a design only; nothing is built. §7 has the questions, each

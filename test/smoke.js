@@ -3374,8 +3374,10 @@ const check = (name, pass, detail) => {
   const acEsc = await acList('ingredientLookup');
   await acType('ingredientLookup', 'alm');
   const acBefore = await acList('ingredientLookup');
-  await page.focus('#aisleOverride-name');
+  /* Leaving the box: blurred directly, since the box it used to move to is folded while the lookup holds text (#95). */
+  await page.evaluate(() => document.activeElement.blur());
   const acBlur = await (async () => { await page.waitForTimeout(250); return acList('ingredientLookup'); })();
+  await acType('ingredientLookup', '');
   check('    it closes when the only name left is the one typed; the arrow keys and Enter pick; Escape and leaving the box close it',
         !acExact.shown && acKeys === acAlm.items[1] && !acEsc.shown && acBefore.shown && !acBlur.shown, JSON.stringify([acExact, acKeys, acAlm.items[1], acEsc.shown, acBefore.shown, acBlur.shown]));
   const acLibOnly = acExpect.dictionaryOnly.find(p => /^[a-z]/.test(p));
@@ -3410,6 +3412,7 @@ const check = (name, pass, detail) => {
   await acType('ingredientLookup', 'purs');
   const acAdded = await acList('ingredientLookup');
   await page.evaluate(b => { cache.aliases = JSON.parse(b); rebuildAliasMaps(); renderSettings(); }, acAliasesBefore);
+  await acType('ingredientLookup', '');  // the box below is folded while the lookup holds text (#95)
   await page.focus('#aisleOverride-name');
   await acType('ingredientLookup', 'purs');
   const acGone = await acList('ingredientLookup');
@@ -3580,7 +3583,9 @@ const check = (name, pass, detail) => {
   check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, calendar, sharing and Drive backup; the last tab is remembered',
         stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
         JSON.stringify([stLib, stApp, stKept]));
-  const stDict = () => page.evaluate(() => ({ list: !document.getElementById('dictionaryList').hidden, btn: document.getElementById('dictionaryToggle').hidden ? '' : document.getElementById('dictionaryToggle').textContent.trim(),
+  /* Since #95 (13 Oct) the dictionary's fold is its heading, DICTIONARY (n), like every list on the tab. */
+  const stDict = () => page.evaluate(() => ({ list: document.getElementById('dictionaryList').offsetParent !== null,
+    head: document.querySelector('[data-ingr-section="dictionary"] .ingr-count').textContent.trim(),
     rows: [...document.querySelectorAll('#dictionaryList .dict-row')].filter(r => r.offsetParent !== null).length }));
   const stFolded = await stDict();
   await page.fill('#ingredientLookup', 'almond meal');
@@ -3589,14 +3594,14 @@ const check = (name, pass, detail) => {
   await page.fill('#ingredientLookup', '');
   await page.waitForTimeout(80);
   const stRefolded = await stDict();
-  await page.click('#dictionaryToggle');
+  await page.click('[data-ingr-section="dictionary"]');
   const stOpen = await stDict();
-  await page.click('#dictionaryToggle');
+  await page.click('[data-ingr-section="dictionary"]');
   const stClosed = await stDict();
   const stCount = await page.evaluate(() => INGREDIENT_DICTIONARY.length);
-  check('    the dictionary is folded to SHOW ALL; typing in the lookup opens the rows that match, and SHOW ALL opens and closes the whole of it',
-        !stFolded.list && stFolded.rows === 0 && stFolded.btn === `SHOW ALL ${stCount} ROWS` && stTyped.list && stTyped.rows === 1 && stTyped.btn === ''
-        && !stRefolded.list && stOpen.list && stOpen.rows === stCount && stOpen.btn === 'HIDE THE DICTIONARY' && !stClosed.list,
+  check('    the dictionary is folded under its heading; typing in the lookup opens the rows that match, and the heading opens and closes the whole of it',
+        !stFolded.list && stFolded.rows === 0 && stFolded.head === `(${stCount})` && stTyped.list && stTyped.rows === 1 && stTyped.head === `(1 OF ${stCount})`
+        && !stRefolded.list && stOpen.list && stOpen.rows === stCount && !stClosed.list,
         JSON.stringify([stFolded, stTyped, stRefolded, stOpen, stClosed]));
   await page.click('[data-settings-tab-btn="app"]');
   await page.evaluate(() => { cache.swaps = cache.swaps.concat([{ id: 'st-swap', original: 'sea kale', replacement: 'curly kale', ratio: '1', notes: '' }]); showView('recipes'); showView('swaps'); });
@@ -6206,6 +6211,97 @@ const check = (name, pass, detail) => {
   check('    and where the aisle table is missing, no pick is offered, only a line saying so',
         auNT.selects === 0 && auNT.rows > 0 && auNT.said, JSON.stringify(auNT));
   await auNoTable.close();
+
+  /* ---- Settings → INGREDIENTS folds, and one search (#95, 13 Oct 2026, docs/PLAN-INGREDIENTS-TAB.md) ---- */
+  console.log('\nINGREDIENTS: folding and one search');
+  const igOpen = async (label, init) => {
+    const p = await hhOpen(label, null, init);
+    await p.evaluate(() => { try{ localStorage.removeItem('kitchen.ingredientsOpen'); }catch(e){}
+      cache.swaps = cache.swaps.concat([{ id: 'ig-swap', original: 'zebra quince', replacement: 'yellow quince', ratio: '1', notes: '' }]);
+      // Made-up rows, so each count has something to count: two word matches of different kinds, and one aisle.
+      cache.aliases = cache.aliases.concat([{ id: 'ig-a1', kind: 'ingredient', alias: 'violet carrot', canonical: 'carrot' },
+        { id: 'ig-a2', kind: 'ingredient_distinct', alias: 'blue cheese || cheese', canonical: '' }]);
+      cache.aisleOverrides = cache.aisleOverrides.concat([{ id: 'ig-o1', name: 'pink salt', aisle: 'Pantry' }]);
+      rebuildAliasMaps(); rebuildAisleOverrideMap();
+      showView('settings'); showSettingsTab('ingredients'); renderSettings(); });
+    await p.waitForTimeout(200);
+    return p;
+  };
+  const igState = p => p.evaluate(() => Object.fromEntries([...document.querySelectorAll('.ingr-head')].map(h => [h.dataset.ingrSection,
+    { open: h.getAttribute('aria-expanded') === 'true', bodyShown: !h.nextElementSibling.hidden, count: h.querySelector('.ingr-count').textContent.trim(),
+      tall: Math.round(h.getBoundingClientRect().height) }])));
+  const ig = await igOpen('ingredients tab');
+  const igM0 = await ig.evaluate(() => window.__WRITES__.length);
+  const igFresh = await igState(ig);
+  const igTotals = await ig.evaluate(() => ({ matches: loadAliases().length, aisles: loadAisleOverrides().length, swaps: loadSwaps().length, dictionary: INGREDIENT_DICTIONARY.length }));
+  check('each INGREDIENTS heading counts what its list holds, kept-separate pairs included (#95)',
+        igTotals.matches >= 2 && igTotals.aisles >= 1 && igTotals.swaps >= 1
+        && Object.keys(igTotals).every(k => igFresh[k] && igFresh[k].count === `(${igTotals[k]})`), JSON.stringify({ igFresh, igTotals }));
+  check('    on a fresh device WORD MATCHES, SHOPPING AISLES and SWAPS are open and the dictionary is folded',
+        igFresh.matches.open && igFresh.aisles.open && igFresh.swaps.open && !igFresh.dictionary.open
+        && igFresh.matches.bodyShown && !igFresh.dictionary.bodyShown, JSON.stringify(igFresh));
+  await ig.click('[data-ingr-section="matches"]');
+  await ig.waitForTimeout(100);
+  await ig.evaluate(() => { showView('recipes'); showView('settings'); });
+  await ig.reload();
+  await ig.waitForTimeout(1500);
+  await ig.evaluate(() => { showView('settings'); showSettingsTab('ingredients'); });
+  await ig.waitForTimeout(200);
+  const igKept = await igState(ig);
+  check('    a tap folds a section, and this device remembers it after leaving Settings and a reload',
+        !igKept.matches.open && !igKept.matches.bodyShown && igKept.aisles.open, JSON.stringify(igKept));
+  // One search: an invented word in one invented swap only.
+  await ig.evaluate(() => { cache.swaps = cache.swaps.concat([{ id: 'ig-swap', original: 'zebra quince', replacement: 'yellow quince', ratio: '1', notes: '' },
+    { id: 'ig-swap2', original: 'green fig', replacement: 'black fig', ratio: '1', notes: '' }]); renderSwaps(); });
+  await ig.fill('#ingredientLookup', 'zebra');
+  await ig.waitForTimeout(150);
+  const igFound = await igState(ig);
+  const igSwapRows = await ig.evaluate(() => [...document.querySelectorAll('#swapsList .source-row')].filter(r => !r.hidden).map(r => r.textContent.replace(/\s+/g, ' ').trim()));
+  await ig.click('[data-ingr-section="aisles"]');
+  await ig.waitForTimeout(100);
+  const igNone = await ig.evaluate(() => { const b = document.querySelector('[data-ingr-section="aisles"]').nextElementSibling;
+    return { shown: !b.hidden, said: (b.querySelector('.ingr-nomatch') || {}).hidden === false ? b.querySelector('.ingr-nomatch').textContent : '' }; });
+  check('typing in the lookup narrows every list: the one with a match opens at (1 OF n), the rest fold at (0 OF n)',
+        igFound.swaps.open && /^\(1 OF \d+\)$/.test(igFound.swaps.count) && igSwapRows.length === 1 && /zebra quince/.test(igSwapRows[0])
+        && !igFound.aisles.open && /^\(0 OF \d+\)$/.test(igFound.aisles.count) && !igFound.dictionary.open && /^\(0 OF \d+\)$/.test(igFound.dictionary.count)
+        && !igFound.matches.open, JSON.stringify({ igFound, igSwapRows }));
+  check('    a folded section opened during a search says nothing matches', igNone.shown && /Nothing here matches “zebra”/.test(igNone.said), JSON.stringify(igNone));
+  await ig.fill('#ingredientLookup', '');
+  await ig.waitForTimeout(150);
+  const igCleared = await igState(ig);
+  const igStored = await ig.evaluate(() => localStorage.getItem('kitchen.ingredientsOpen'));
+  check('    clearing the box puts every section back as this device left it, and the search stored nothing',
+        !igCleared.matches.open && igCleared.aisles.open && igCleared.swaps.open && !igCleared.dictionary.open
+        && igCleared.swaps.count === `(${igTotals.swaps + 1})` && JSON.parse(igStored).matches === false && JSON.parse(igStored).aisles === true,
+        JSON.stringify({ igCleared, igStored }));
+  // A jump to SWAPS opens it when folded; nothing here writes; nothing runs off a phone.
+  await ig.click('[data-ingr-section="swaps"]');
+  await ig.waitForTimeout(100);
+  await ig.evaluate(() => { showView('recipes'); showView('swaps'); });
+  await ig.waitForTimeout(150);
+  const igJump = await igState(ig);
+  await ig.setViewportSize({ width: 412, height: 900 });
+  await ig.waitForTimeout(150);
+  const igPhone = await ig.evaluate(() => document.documentElement.scrollWidth);
+  const igPhoneHeads = await igState(ig);
+  const igWrites = await ig.evaluate(m => window.__WRITES__.length - m, igM0);
+  check('    a jump to SWAPS opens it; at phone width nothing runs off the side and every heading is a good tap; folding and searching wrote nothing',
+        igJump.swaps.open && igPhone <= 412 && Object.values(igPhoneHeads).every(h => h.tall >= 40) && igWrites === 0,
+        JSON.stringify({ igJump: igJump.swaps, igPhone, igPhoneHeads, igWrites }));
+  await ig.evaluate(() => localStorage.removeItem('kitchen.ingredientsOpen'));
+  await ig.close();
+  const igBlocked = await igOpen('ingredients storage blocked', () => {
+    for (const fn of ['getItem', 'setItem']) {
+      const real = Storage.prototype[fn];
+      Storage.prototype[fn] = function(k, ...rest){ if(k === 'kitchen.ingredientsOpen') throw new Error('blocked'); return real.call(this, k, ...rest); };
+    }
+  });
+  await igBlocked.click('[data-ingr-section="dictionary"]');
+  await igBlocked.waitForTimeout(100);
+  const igB = await igState(igBlocked);
+  check('with storage blocked the tab draws its defaults and a tap does no harm, without an error',
+        igB.matches.open && igB.aisles.open && igB.swaps.open && !igB.dictionary.open && igB.dictionary.count.length > 0, JSON.stringify(igB));
+  await igBlocked.close();
 
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to

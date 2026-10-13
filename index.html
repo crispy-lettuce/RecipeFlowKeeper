@@ -593,6 +593,15 @@
     font-size:13px;
   }
   .offline-bar[hidden]{ display:none; }
+  /* Settings → INGREDIENTS folds (#95): each list's heading is a full-width button with its count; a folded section is
+     that one line, and folded sections sit closer together. */
+  .ingr-head{ display:flex; align-items:baseline; gap:6px; width:100%; min-height:44px; padding:0; background:none; border:none;
+    cursor:pointer; text-align:left; color:inherit; font:inherit; flex-wrap:wrap; }
+  .ingr-head .side-label{ margin-bottom:0; }
+  .ingr-count{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.06em; color:var(--ink-faint); }
+  .ingr-chevron{ margin-left:auto; color:var(--ink-faint); }
+  .ingr-body[hidden]{ display:none !important; }
+  .settings-block.ingr-folded{ margin-bottom:-22px; }   /* the tab's 34px gap less 22: 12px between folded sections */
   /* The converter reminder (#127) carries three buttons, so on a phone it wraps rather than run off the edge. */
   .converter-bar{ flex-wrap:wrap; }
   .converter-bar-actions{ margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; }
@@ -1271,9 +1280,8 @@
   .help-answers a{ color:var(--plum); }
   a.btn{ display:inline-block; text-decoration:none; }
   .settings-tabs .btn.active{ background:var(--plum); border-color:var(--plum); color:var(--on-accent); }
-  #dictionaryToggle{ margin-bottom:10px; }
   /* The hidden attribute loses to .sources-list's display:flex and the like without this. */
-  #view-settings .settings-block[hidden], #dictionaryList[hidden], #dictionaryToggle[hidden]{ display:none !important; }
+  #view-settings .settings-block[hidden], #dictionaryList[hidden]{ display:none !important; }
   .swap-row-detail{ font-size:12.5px; color:var(--ink-mute); margin-top:3px; }
   .swap-row-ratio{
     font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--ink-faint);
@@ -1750,13 +1758,15 @@
         <div class="settings-block" data-settings-tab="ingredients" id="ingredientLookupBlock">
           <div class="side-label">INGREDIENT LOOKUP</div>
           <p class="subtle">Type an ingredient as a recipe would write it, to see what the shopping list
-            calls it, where it goes and why, and what you have already told the app about it.</p>
-          <input type="text" id="ingredientLookup" autocomplete="off" placeholder="e.g. almond flour" aria-label="Ingredient to look up">
+            calls it, where it goes and why, and what you have already told the app about it. It also narrows
+            every list below to what matches.</p>
+          <input type="search" id="ingredientLookup" autocomplete="off" placeholder="e.g. almond flour" aria-label="Ingredient to look up">
           <div id="ingredientLookupOut"></div>
         </div>
 
-        <div class="settings-block" data-settings-tab="ingredients">
-          <div class="side-label">WORD MATCHES</div>
+        <div class="settings-block" data-settings-tab="ingredients" id="aliasesBlock">
+          <button type="button" class="ingr-head" data-ingr-section="matches" aria-expanded="true"><span class="side-label">WORD MATCHES</span><span class="ingr-count"></span><span class="ingr-chevron" aria-hidden="true">▾</span></button>
+          <div class="ingr-body">
           <p class="subtle">Things you've told the app are the same. Ingredient matches
             get added together on the shopping list; source matches stop you being asked
             about a spelling you've already settled.</p>
@@ -1772,10 +1782,13 @@
           </div>
           <p class="field-error" id="aliasError" style="display:none;"></p>
           <div id="aliasesList" class="sources-list"></div>
+          <p class="empty ingr-nomatch" hidden></p>
+          </div>
         </div>
 
         <div class="settings-block" data-settings-tab="ingredients" id="aisleOverridesBlock">
-          <div class="side-label">SHOPPING AISLES</div>
+<button type="button" class="ingr-head" data-ingr-section="aisles" aria-expanded="true"><span class="side-label">SHOPPING AISLES</span><span class="ingr-count"></span><span class="ingr-chevron" aria-hidden="true">▾</span></button>
+          <div class="ingr-body">
           <p class="subtle">Move something the shopping list puts in the wrong aisle. It applies to
             every recipe that uses the name. To total two names as one, match them in Word Matches
             first, then set one aisle here.</p>
@@ -1789,10 +1802,13 @@
           <p class="subtle" id="aisleOverrideNow" style="display:none;"></p>
           <p class="field-error" id="aisleOverrideError" style="display:none;"></p>
           <div id="aisleOverridesList" class="sources-list"></div>
+          <p class="empty ingr-nomatch" hidden></p>
+          </div>
         </div>
 
         <div class="settings-block" data-settings-tab="ingredients" id="swapsBlock">
-          <div class="side-label">SWAPS</div>
+<button type="button" class="ingr-head" data-ingr-section="swaps" aria-expanded="true"><span class="side-label">SWAPS</span><span class="ingr-count"></span><span class="ingr-chevron" aria-hidden="true">▾</span></button>
+          <div class="ingr-body">
           <p class="subtle" id="swapsSubtitle">Your own ingredient substitutions, built up over time. Each carries a
             scaling ratio. A swap applies wherever the shopping list would call an ingredient by the swap's name, so
             "butter" never catches "peanut butter".</p>
@@ -1809,14 +1825,17 @@
             <p class="field-error" id="swapError" style="display:none;"></p>
           </div>
           <div id="swapsList" class="swaps-list"></div>
+          <p class="empty ingr-nomatch" hidden></p>
+          </div>
         </div>
 
         <div class="settings-block" data-settings-tab="ingredients" id="dictionaryBlock">
-          <div class="side-label">DICTIONARY</div>
+<button type="button" class="ingr-head" data-ingr-section="dictionary" aria-expanded="true"><span class="side-label">DICTIONARY</span><span class="ingr-count"></span><span class="ingr-chevron" aria-hidden="true">▾</span></button>
+          <div class="ingr-body">
           <p class="subtle">The names and aisles the app knows by itself, each with the wordings it reads as
             that name. The lookup box above filters it. Changing a row is a code change; ask for it in a session.</p>
-          <button class="btn" id="dictionaryToggle" type="button"></button>
           <div id="dictionaryList" class="sources-list"></div>
+          </div>
         </div>
 
         <div class="settings-block" data-settings-tab="library" id="libraryCheck">
@@ -2104,7 +2123,7 @@ const EXPECTED_CORE_VERSION = '2026-10-12.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-13.2';
+const APP_VERSION = '2026-10-13.3';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -4726,6 +4745,9 @@ function showView(name){
   if(name === 'swaps'){
     showView('settings');
     showSettingsTab('ingredients');
+    /* What it jumps to is opened, and remembered as if its heading had been tapped (#95). */
+    storeIngredientsOpen('swaps', true);
+    renderIngredientsHeads();
     document.getElementById('swapsBlock').scrollIntoView({ block: 'start' });
     return;
   }
@@ -8858,6 +8880,7 @@ function renderAliasesList(){
   if(!matches.length && !distinct.length){
     list.innerHTML = `<p class="empty">No word matches yet. The shopping list will
       ask when it spots two names that look like the same ingredient.</p>`;
+    renderIngredientsHeads();
     return;
   }
 
@@ -8886,6 +8909,7 @@ function renderAliasesList(){
   }
 
   list.innerHTML = html;
+  renderIngredientsHeads();
 
   list.querySelectorAll('[data-forget]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -9009,7 +9033,7 @@ function renderIngredientLookup(){
   const out = document.getElementById('ingredientLookupOut');
   const r = ingredientLookup(input.value);
   renderDictionaryList(input.value);
-  if(!r){ out.innerHTML = ''; return; }
+  if(!r){ out.innerHTML = ''; renderIngredientsHeads(); return; }
   const lines = [
     `<div class="lookup-line" data-lookup="name">The list calls it: <b>${escapeHtml(r.name.toLowerCase())}</b>${r.known ? '' : ', your own wording'}</div>`,
     r.why === 'none'
@@ -9023,20 +9047,16 @@ function renderIngredientLookup(){
       : `<div class="lookup-line" data-lookup="swap">Swaps: none</div>`
   ];
   out.innerHTML = lines.join('');
+  renderIngredientsHeads();
 }
 /* Every row of the dictionary, by aisle, with the wordings it reads as that name (its live phrases;
    notes are left out). Filtered by the lookup box: a row shows when its name or a wording contains
    what is typed. */
-/* Folded to one button until it is asked for (30 Sep 2026): 140 rows made Settings mostly dictionary. Typing
-   in the lookup opens it to the rows that match, as it always filtered; SHOW ALL opens the whole of it. */
-let dictionaryOpen = false;
+/* Folded until it is asked for (30 Sep 2026): 140 rows made Settings mostly dictionary. Since #95 (13 Oct) the fold
+   is its heading, like every list on this tab, and typing in the lookup opens it to the rows that match. */
 function renderDictionaryList(filter){
   const q = String(filter || '').trim().toLowerCase();
   const list = document.getElementById('dictionaryList');
-  const toggle = document.getElementById('dictionaryToggle');
-  list.hidden = !(dictionaryOpen || q);
-  toggle.hidden = !!q;
-  toggle.textContent = dictionaryOpen ? 'HIDE THE DICTIONARY' : `SHOW ALL ${INGREDIENT_DICTIONARY.length} ROWS`;
   const html = INGREDIENT_AISLES.map(aisle=>{
     const rows = INGREDIENT_DICTIONARY.filter(r=> r.aisle === aisle)
       .map(r=> ({ r, live: dictionaryPhrases(r).live }))
@@ -9048,12 +9068,77 @@ function renderDictionaryList(filter){
       (x.live.length > 1 ? `<div class="swap-row-detail">also ${escapeHtml(x.live.slice(1).join(', '))}</div>` : '') + `</div></div>`).join('');
   }).join('');
   list.innerHTML = html || `<p class="empty">No row in the dictionary has that wording.</p>`;
+  renderIngredientsHeads();
 }
 document.getElementById('ingredientLookup').addEventListener('input', renderIngredientLookup);
-document.getElementById('dictionaryToggle').addEventListener('click', ()=>{
-  dictionaryOpen = !dictionaryOpen;
-  renderDictionaryList(document.getElementById('ingredientLookup').value);
-});
+
+/* ---- Folding and one search on Settings → INGREDIENTS (#95, 13 Oct 2026, docs/PLAN-INGREDIENTS-TAB.md) ----
+   Each list folds under its heading, which counts what it holds; this device remembers which are open
+   (kitchen.ingredientsOpen, in try/catch; WORD MATCHES, SHOPPING AISLES and SWAPS open and the dictionary folded
+   at first, as decided 30 Sep). The lookup box is the tab's one search: it narrows every list at once, opens the
+   sections with something matching and folds the rest to "(0 OF n)", without touching what is remembered, so
+   clearing it puts every section back as it was left. It filters the rows each list has already drawn and draws
+   nothing itself, so no list ever redraws another. Writes nothing to the database. */
+const INGR_DEFAULT_OPEN = { matches: true, aisles: true, swaps: true, dictionary: false };
+const INGR_LISTS = { matches: 'aliasesList', aisles: 'aisleOverridesList', swaps: 'swapsList', dictionary: 'dictionaryList' };
+let ingrSearchOpen = {};
+function ingredientsOpenStored(){
+  try{ return { ...INGR_DEFAULT_OPEN, ...(JSON.parse(localStorage.getItem('kitchen.ingredientsOpen') || '{}') || {}) }; }
+  catch(e){ return { ...INGR_DEFAULT_OPEN }; }
+}
+function storeIngredientsOpen(sec, open){
+  try{ localStorage.setItem('kitchen.ingredientsOpen', JSON.stringify({ ...ingredientsOpenStored(), [sec]: open })); }catch(e){}
+}
+/* The words a row is matched on: its own text, less its buttons' labels. */
+function ingrRowText(row){
+  const copy = row.cloneNode(true);
+  copy.querySelectorAll('button').forEach(b=> b.remove());
+  return copy.textContent.replace(/\s+/g, ' ').toLowerCase();
+}
+function renderIngredientsHeads(){
+  const q = String((document.getElementById('ingredientLookup') || {}).value || '').trim().toLowerCase();
+  const stored = ingredientsOpenStored();
+  if(!q) ingrSearchOpen = {};
+  document.querySelectorAll('.ingr-head').forEach(head=>{
+    const sec = head.dataset.ingrSection;
+    const list = document.getElementById(INGR_LISTS[sec]);
+    const body = head.nextElementSibling;
+    const rows = list ? [...list.querySelectorAll('.source-row')] : [];
+    let shown = rows.length;
+    let total = rows.length;
+    if(sec === 'dictionary'){
+      total = INGREDIENT_DICTIONARY.length;             // drawn already filtered by the lookup
+    } else {
+      rows.forEach(r=> { r.hidden = !!q && !ingrRowText(r).includes(q); });
+      shown = rows.filter(r=> !r.hidden).length;
+      // A group's label goes with the last of its rows.
+      list && list.querySelectorAll('.alias-group-label').forEach(label=>{
+        let el = label.nextElementSibling, any = false;
+        while(el && !el.classList.contains('alias-group-label')){ if(el.classList.contains('source-row') && !el.hidden) any = true; el = el.nextElementSibling; }
+        label.hidden = !!q && !any;
+      });
+    }
+    const unavailable = sec === 'aisles' && !aisleOverridesAvailable;
+    head.querySelector('.ingr-count').textContent = unavailable ? '' : q ? ` (${shown} OF ${total})` : ` (${total})`;
+    const open = q ? (sec in ingrSearchOpen ? ingrSearchOpen[sec] : shown > 0) : !!stored[sec];
+    head.setAttribute('aria-expanded', String(open));
+    head.querySelector('.ingr-chevron').textContent = open ? '▾' : '▸';
+    head.closest('.settings-block').classList.toggle('ingr-folded', !open);
+    body.hidden = !open;
+    const none = body.querySelector('.ingr-nomatch');
+    if(none){
+      none.hidden = !(q && shown === 0);
+      none.textContent = `Nothing here matches “${q}”.`;
+    }
+  });
+}
+document.querySelectorAll('.ingr-head').forEach(head=> head.addEventListener('click', ()=>{
+  const sec = head.dataset.ingrSection;
+  const open = head.getAttribute('aria-expanded') !== 'true';
+  if(String(document.getElementById('ingredientLookup').value || '').trim()) ingrSearchOpen[sec] = open;
+  else storeIngredientsOpen(sec, open);
+  renderIngredientsHeads();
+}));
 
 /* AUTOCOMPLETE on the ingredient boxes (asked for 30 Sep 2026: "to help make the process easier when you are
    trying to apply something or review an existing ingredient"). First built (PR #55) as a native <datalist>,
@@ -9210,6 +9295,7 @@ function renderAisleOverridesList(){
         <div class="alias-pair">${escapeHtml(o.name)}<span class="alias-arrow">in</span>${escapeHtml(o.aisle)}</div>
         <button class="btn small-danger" data-remove-aisle-override="${escapeHtml(o.id)}">REMOVE</button>
       </div>`).join('');
+  renderIngredientsHeads();
 }
 /* Where the name in the box goes now (D of docs/PLAN-LAYOUT.md, 30 Sep 2026): asked for so an aisle is not set
    blind. The answer is ingredientLookup's, the lookup's own, so the two never disagree. Typing a name sets the
@@ -9296,6 +9382,7 @@ function renderSwaps(){
 
   if(!swaps.length){
     list.innerHTML = `<p class="empty">No swaps yet — add your first one above.</p>`;
+    renderIngredientsHeads();
     return;
   }
 
@@ -9316,6 +9403,7 @@ function renderSwaps(){
       </div>
     </div>`;
   }).join('');
+  renderIngredientsHeads();
 
   list.querySelectorAll('[data-delete-swap]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
