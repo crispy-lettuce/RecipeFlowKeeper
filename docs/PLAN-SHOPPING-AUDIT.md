@@ -1,6 +1,6 @@
 # Fixing names and aisles from the shopping list (issue #94, second half)
 
-**Written 13 Oct 2026** (date from `date -u`) against `origin/main` at `e11de60`. **A plan, not built; nothing in the repo,
+**Built 13 Oct 2026** (the PR after #133; HANDOVER §7 has what was checked). **Written 13 Oct 2026** (date from `date -u`) against `origin/main` at `e11de60`. **A plan, not built; nothing in the repo,
 the database or GitHub was changed to write it.** Line numbers are `origin/main`'s. The first half of #94 (ticked items left
 off PRINT and the PNG) was in progress, uncommitted, in the same working tree when this was read (merged as #132, 13 Oct); §7 says where the two meet.
 

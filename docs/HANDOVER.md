@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **557 checks** (13 Oct 2026; `core.test.js` adds 164 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **568 checks** (13 Oct 2026; `core.test.js` adds 164 in Node) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -2697,6 +2697,31 @@ now read FILE. `help-guide.js` 7 and `image-integrity.js` 37, exit 0. Five mutat
 PAGE, the print rule removed, the PNG hiding only the name, the PNG keeping `.shop-tools`, the aisle class never set.
 
 *Not verified:* the tablet (step 53a), and a real printer (the check emulates print media in Chromium).
+
+**AUDIT on the shopping list (13 Oct 2026; #94's second half, `docs/PLAN-SHOPPING-AUDIT.md`, answered "defaults").**
+- **AUDIT** at the top of the list (after CLEAR TICKS) draws the fixing tools on every row: the existing *Same as …?* and
+  MERGE WITH…, and a new aisle pick set to the row's aisle, with why it is there. **Off, no row has tools**: until now they
+  showed on every row, always. Off, the button reads `AUDIT · n` when *Same as …?* questions are waiting. On, END AUDIT.
+- **Remembered on the device** (`localStorage 'kitchen.shoppingAudit'`, `shopAuditOn`/`setShopAudit`, in `try/catch`; blocked
+  storage reads as off). Never a column.
+- **The aisle pick** writes one row through `addAisleOverride(it.key, aisle)` — the row's own key, never the tick key, which
+  carries `both|` on BOTH WEEKS. The row moves and says *Moved to … · UNDO*; UNDO puts back the household's own earlier aisle
+  if it had one, or removes the one written (`shopAisleUndo`, per tab). No pick while `aisle_overrides` is missing.
+- **A merge where only one row is ticked** says so first (*The merged row will be unticked…*, on *Same as …?* and on MERGE
+  WITH…'s confirm line), and `mergeOnList` then unticks the merged (`to`) row with one `saveTick` delete when `to` was the ticked
+  one. Both MERGE paths go through it.
+- `.shop-head-right` wraps under 860 px. Print and PNG already hid the tools (#132). `buildShoppingList` is untouched.
+- `changelog.json` **2026-10-13.2**; `help.html` §7 (`#shopping-audit`) and a QUICK ANSWERS link; step **54a**.
+
+*Verified by.* `node test/core.test.js` 164, exit 0. `node test/build.js && node test/smoke.js` **568** (557 before), exit 0, no
+console or page errors: eleven new checks (off draws no tools and counts the question; on draws every row's tools with its aisle
+and writes nothing; remembered after a reload; BOTH WEEKS pick by the row's own name with the tick kept; UNDO both ways; the
+merge warning and its one untick; print, and 412 px with nothing off the side; END AUDIT forgets; storage blocked; table
+missing). The kale merge checks now turn AUDIT on first. `help-guide.js` 7, exit 0. Eleven mutations, each failing by name (blocked storage without its `try/catch` crashes the suite
+at that check): tools always drawn, no count, not remembered, no `try/catch`, the tick key used for the aisle, UNDO always
+deleting, no untick, no availability guard, no wrap, the print rule for the tools removed, no warning.
+
+*Not verified:* the tablet and phone (step 54a).
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*

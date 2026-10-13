@@ -820,6 +820,10 @@
   .shop-tools button{ background:none; border:none; cursor:pointer; padding:0; color:var(--plum);
     font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; text-decoration:underline; }
   .shop-tools .shop-merge-with{ color:var(--ink-faint); }
+  /* AUDIT's aisle line (#94): the row's aisle, why it is there, and a pick that moves it. */
+  .shop-aisle{ display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; color:var(--ink-faint); }
+  .shop-aisle select{ max-width:100%; font:inherit; }
+  .shop-aisle-warn{ color:var(--ink-faint); font-style:italic; }
   .shop-suggest b{ font-weight:500; color:var(--ink); }
   /* The filter box and its picked-but-not-yet-saved confirm step (6d-1):
      plain text controls, not the underlined-link look of the tools around
@@ -1404,6 +1408,8 @@
 
     .shop-wrap{ padding:18px; overflow:visible; }
     .shop-head{ flex-direction:column; }
+    /* Six controls since AUDIT (#94): on a phone they wrap rather than push the page sideways. */
+    .shop-head-right{ flex-wrap:wrap; }
 
     .history-wrap{ flex-direction:column; overflow:visible; }
     .history-calendar{ overflow:visible; padding:18px; }
@@ -1694,6 +1700,7 @@
             <select class="sort" id="shopWeekSelect" aria-label="Select week"></select>
             <button class="btn" id="shopHideCheckedBtn" aria-pressed="false">HIDE TICKED</button>
             <button class="btn" id="shopClearBtn">CLEAR TICKS</button>
+            <button class="btn" id="shopAuditBtn" aria-pressed="false">AUDIT</button>
             <button class="btn" id="shopExportBtn">EXPORT PNG</button>
             <button class="btn" id="shopPrintBtn">PRINT / A4 PDF</button>
           </div>
@@ -1908,6 +1915,7 @@
             <li><a href="help.html#planner" target="_blank" rel="noopener">How do I plan the week?</a></li>
             <li><a href="help.html#calendar" target="_blank" rel="noopener">How do I put a day in my Google Calendar?</a></li>
             <li><a href="help.html#shopping-both" target="_blank" rel="noopener">How do I shop for both weeks at once?</a></li>
+            <li><a href="help.html#shopping-audit" target="_blank" rel="noopener">How do I move something to another aisle?</a></li>
             <li><a href="help.html#diary-entry" target="_blank" rel="noopener">How do I log something I ate that has no recipe?</a></li>
             <li><a href="help.html#cook-for" target="_blank" rel="noopener">How do I cook for more people this once?</a></li>
             <li><a href="help.html#keep-awake" target="_blank" rel="noopener">How do I stop the screen going off while I cook?</a></li>
@@ -2096,7 +2104,7 @@ const EXPECTED_CORE_VERSION = '2026-10-12.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-13.1';
+const APP_VERSION = '2026-10-13.2';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -6565,6 +6573,20 @@ function renderShopping(){
         .filter(cat=> cat.items.length)
     : allCategories;
 
+  /* AUDIT (#94, 13 Oct 2026, docs/PLAN-SHOPPING-AUDIT.md): the fixing tools — "Same as …?", MERGE WITH… and the aisle
+     pick — are drawn only while it is on, so the list taken to the shop is just the list. Off, the button still counts
+     the questions waiting, so one is never missed. One suggestion per row at most, shown on the rarer spelling, asked
+     in place and answered when convenient — never a dialog (D10). */
+  const audit = shopAuditOn();
+  const namesByKey = new Map(allCategories.flatMap(c=> c.items.map(it=> [it.key, it.name])));
+  const suggestionFor = new Map();
+  (suggestions || []).forEach(sg=>{
+    if(namesByKey.has(sg.from) && namesByKey.has(sg.to) && !suggestionFor.has(sg.from)) suggestionFor.set(sg.from, sg);
+  });
+  const auditBtn = document.getElementById('shopAuditBtn');
+  auditBtn.textContent = audit ? 'END AUDIT' : suggestionFor.size ? `AUDIT · ${suggestionFor.size}` : 'AUDIT';
+  auditBtn.setAttribute('aria-pressed', String(audit));
+
   const hideBtn = document.getElementById('shopHideCheckedBtn');
   hideBtn.textContent = state.shoppingHideChecked ? 'SHOW TICKED' : 'HIDE TICKED';
   hideBtn.setAttribute('aria-pressed', String(state.shoppingHideChecked));
@@ -6605,13 +6627,6 @@ function renderShopping(){
     return;
   }
 
-  /* One suggestion per row at most, shown on the rarer spelling, asked in
-     place and answered when convenient — never a dialog (D10). */
-  const namesByKey = new Map(allCategories.flatMap(c=> c.items.map(it=> [it.key, it.name])));
-  const suggestionFor = new Map();
-  (suggestions || []).forEach(sg=>{
-    if(namesByKey.has(sg.from) && namesByKey.has(sg.to) && !suggestionFor.has(sg.from)) suggestionFor.set(sg.from, sg);
-  });
   body.innerHTML = categories.map(cat=>{
     const rows = cat.items.map(it=>{
       const storedKey = keyPrefix + it.key;
@@ -6633,12 +6648,14 @@ function renderShopping(){
           <span class="shop-item-recipes">${recipeList}</span>
         </span>
       </label>
-      <div class="shop-tools">
+      ${audit ? `<div class="shop-tools">
         ${sg ? `<span class="shop-suggest">Same as <b>${escapeHtml(namesByKey.get(sg.to))}</b>?
           <button data-merge-from="${k}" data-merge-to="${escapeHtml(sg.to)}">MERGE</button> ·
-          <button data-keep-from="${k}" data-keep-to="${escapeHtml(sg.to)}">KEEP APART</button></span>` : ''}
+          <button data-keep-from="${k}" data-keep-to="${escapeHtml(sg.to)}">KEEP APART</button>${
+          mergeUntickWarning(checkedForWeek, keyPrefix, sg.from, sg.to)}</span>` : ''}
         <button class="shop-merge-with" data-merge-with="${k}">MERGE WITH…</button>
-      </div>
+        ${shopAisleHtml(it)}
+      </div>` : ''}
     </div>`;
     }).join('');
     /* Marked here, while the ticks are to hand, so print and the PNG can leave out an aisle with nothing left to buy (#94). */
@@ -6683,6 +6700,49 @@ function renderShopping(){
   }
 }
 
+/* AUDIT is remembered on this device only (decided 13 Oct: on at home need not mean tools on the phone in the shop),
+   like the timeline's SHOW TIMELINE. A view preference, so never a column: storage that throws simply reads as off. */
+function shopAuditOn(){
+  try{ return localStorage.getItem('kitchen.shoppingAudit') === 'on'; }catch(e){ return false; }
+}
+function setShopAudit(on){
+  try{ if(on) localStorage.setItem('kitchen.shoppingAudit', 'on'); else localStorage.removeItem('kitchen.shoppingAudit'); }catch(e){}
+}
+/* The one aisle move UNDO can take back, held for this tab only, as the add form's review holds its own. `prior` is the
+   household's own aisle before the pick, so UNDO puts that back rather than always removing the override. */
+let shopAisleUndo = null;
+const SHOP_AISLE_WHY = { dictionary: 'from the dictionary', keyword: 'from a keyword rule', override: 'your own aisle', none: 'nothing places it' };
+/* The row's aisle line in AUDIT. The pick is keyed by the row's own key, never its stored tick key, which carries
+   `both|` on BOTH WEEKS. An aisle is applied after the key is final (core.js), so moving a row never re-keys its tick. */
+function shopAisleHtml(it){
+  if(!aisleOverridesAvailable) return `<span class="shop-aisle">Aisles can't be set yet</span>`;
+  if(shopAisleUndo && shopAisleUndo.key === it.key){
+    return `<span class="shop-aisle">Moved to <b>${escapeHtml(shopAisleUndo.aisle)}</b> · <button data-shop-aisle-undo="${escapeHtml(it.key)}">UNDO</button></span>`;
+  }
+  const current = INGREDIENT_AISLES.includes(it.category) ? it.category : '';
+  return `<span class="shop-aisle">Aisle: <select class="shop-aisle-select" data-aisle-key="${escapeHtml(it.key)}" aria-label="Aisle for ${escapeHtml(it.name)}">` +
+    (current ? '' : `<option value="" selected>AISLE…</option>`) +
+    INGREDIENT_AISLES.map(a=> `<option value="${escapeHtml(a)}"${a === current ? ' selected' : ''}>${escapeHtml(a)}</option>`).join('') +
+    `</select> ${escapeHtml(SHOP_AISLE_WHY[it.aisleWhy] || SHOP_AISLE_WHY.none)}</span>`;
+}
+/* A word match re-keys: the merged row takes the `to` key. If only one of the two is ticked on this list, the merged row
+   would either show ticked (hiding an amount still to buy, and leaving it off the printout since #132) or carry a tick
+   for something not bought — so the merge says so before it happens, and unticks the merged row (decided 13 Oct). */
+function mergeUntickWarning(ticks, prefix, from, to){
+  return !!(ticks || {})[prefix + from] !== !!(ticks || {})[prefix + to]
+    ? ` <span class="shop-aisle-warn">The merged row will be unticked, so check you have enough.</span>` : '';
+}
+function mergeOnList(from, to){
+  const body = document.getElementById('shopBody');
+  const weekStart = body.dataset.weekStart, prefix = body.dataset.keyPrefix || '';
+  const all = loadShoppingChecked(), ticks = all[weekStart] || {};
+  addAlias('ingredient', from, to);
+  if(ticks[prefix + to] && !ticks[prefix + from]){
+    delete ticks[prefix + to];
+    saveTick(weekStart, prefix + to, false);
+  }
+}
+
 /* ------------------------------- One-time listeners ------------------------------- */
 function initShoppingListeners(){
   document.getElementById('shopWeekSelect').addEventListener('change', e=>{
@@ -6713,6 +6773,12 @@ function initShoppingListeners(){
     renderShopping();
   });
 
+  document.getElementById('shopAuditBtn').addEventListener('click', ()=>{
+    setShopAudit(!shopAuditOn());
+    shopAisleUndo = null;
+    renderShopping();
+  });
+
   /* The inline answers. Both are remembered exactly as the dialogs'
      answers were — "same" as a word match, "not the same" as a pair to stop
      suggesting — and both are reversible in Settings → Word Matches. */
@@ -6722,10 +6788,20 @@ function initShoppingListeners(){
     const withBtn = e.target.closest('[data-merge-with]');
     const option = e.target.closest('.shop-merge-option');
     const cancelBtn = e.target.closest('.shop-merge-cancel');
+    const aisleUndoBtn = e.target.closest('[data-shop-aisle-undo]');
+    if(aisleUndoBtn){
+      const u = shopAisleUndo;
+      shopAisleUndo = null;
+      if(u && u.prior) addAisleOverride(u.key, u.prior);
+      else if(u){ const entry = loadAisleOverrides().find(o=> o.name === u.key); if(entry) removeAisleOverride(entry.id); }
+      renderAisleOverridesList();
+      renderShopping();
+      return;
+    }
     if(merge){
       /* Also reached from the confirm step below, whose MERGE button carries
          the same two data attributes — one place writes an ingredient match. */
-      addAlias('ingredient', merge.dataset.mergeFrom, merge.dataset.mergeTo);
+      mergeOnList(merge.dataset.mergeFrom, merge.dataset.mergeTo);
       renderAliasesList();
       renderShopping();
     } else if(keep){
@@ -6756,9 +6832,11 @@ function initShoppingListeners(){
       const to = option.dataset.key;
       const confirmBox = document.createElement('span');
       confirmBox.className = 'shop-merge-confirm';
+      const body = document.getElementById('shopBody');
       confirmBox.innerHTML = `Merge <b>${escapeHtml(box.dataset.mergeWithFromName)}</b> with <b>${escapeHtml(option.dataset.name)}</b>? `
         + `<button data-merge-from="${escapeHtml(from)}" data-merge-to="${escapeHtml(to)}">MERGE</button> · `
-        + `<button class="shop-merge-cancel">CANCEL</button>`;
+        + `<button class="shop-merge-cancel">CANCEL</button>`
+        + mergeUntickWarning(loadShoppingChecked()[body.dataset.weekStart], body.dataset.keyPrefix || '', from, to);
       box.replaceWith(confirmBox);
     } else if(cancelBtn){
       /* Writes nothing: back to the plain button, so cancelling costs
@@ -6787,6 +6865,19 @@ function initShoppingListeners(){
   });
 
   document.getElementById('shopBody').addEventListener('change', e=>{
+    const aisleSel = e.target.closest('.shop-aisle-select');
+    if(aisleSel){
+      const key = aisleSel.dataset.aisleKey;
+      if(!aisleSel.value) return;
+      const prior = loadAisleOverrides().find(o=> o.name === key);
+      shopAisleUndo = { key, aisle: aisleSel.value, prior: prior ? prior.aisle : null };
+      addAisleOverride(key, aisleSel.value);
+      renderAisleOverridesList();
+      renderShopping();
+      const moved = document.querySelector(`#shopBody [data-shop-aisle-undo="${CSS.escape(key)}"]`);
+      if(moved && moved.scrollIntoView) moved.scrollIntoView({ block: 'nearest' });
+      return;
+    }
     const label = e.target.closest('.shop-item');
     if(!label) return;
     toggleShoppingChecked(document.getElementById('shopBody').dataset.weekStart, label.dataset.key);

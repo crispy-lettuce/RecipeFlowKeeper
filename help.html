@@ -209,14 +209,20 @@
   <h2>7. Shopping</h2>
   <p><b class="ui">SHOPPING</b> adds up every ingredient the week's planned dishes need, scaled to each day's servings and
     sorted into aisles. A line that says frozen ("200 g frozen peas") is listed under <b>FROZEN</b>, at the end of the shop;
-    anything else can be moved there in Settings → <b class="ui">SHOPPING AISLES</b>.</p>
+    anything else can be moved there in Settings → <b class="ui">SHOPPING AISLES</b>, or from the list itself in
+    <b class="ui">AUDIT</b>.</p>
   <ul>
     <li id="shopping-both">Choose <b>this week</b>, <b>next week</b> or <b class="ui">BOTH WEEKS</b> from the list at the top.
       Both weeks keeps its own ticks.</li>
     <li>Tick items as they go in the trolley. Ticks show on every device, so two people can shop from the same list.</li>
     <li><b class="ui">HIDE TICKED</b> tidies the list; <b class="ui">CLEAR TICKS</b> unticks everything.</li>
-    <li>If the list thinks two names are the same thing it asks <i>Same as …?</i>: <b class="ui">MERGE</b> adds them
-      together from now on, <b class="ui">KEEP APART</b> stops it asking.</li>
+    <li id="shopping-audit"><b class="ui">AUDIT</b> at the top is for fixing the list, not shopping from it. While it is on, each
+      row shows <b class="ui">MERGE WITH…</b>, to join it to another name for good, and its aisle with why it is there: pick
+      another and the row moves (<b class="ui">UNDO</b> takes it back). If the list thinks two names are the same thing it
+      asks <i>Same as …?</i>: <b class="ui">MERGE</b> adds them together from now on, <b class="ui">KEEP APART</b> stops it
+      asking. Off, the button says how many questions are waiting, e.g. <i>AUDIT · 2</i>. <b class="ui">END AUDIT</b> hides
+      it all again; each device remembers which. Merging two rows when only one is ticked unticks the merged row, so check
+      you have enough. Moving an aisle never loses a tick.</li>
     <li><b class="ui">⇄ POSSIBLE SWAPS</b> at the bottom lists alternatives you've saved.</li>
     <li><b class="ui">PRINT / A4 PDF</b> or <b class="ui">EXPORT PNG</b> to take it with you. Ticked means you already have it, so ticked items are left off both,
       and so is an aisle with nothing left to buy.</li>

@@ -421,7 +421,7 @@ The word table, the layout rule, live counts, two PRs and seven decisions.
 
 **Use it when:** building #88, or adding a preparation word.
 
-### `docs/PLAN-SHOPPING-AUDIT.md` — AUDIT on the shopping list, #94's second half (13 Oct 2026; answered "defaults"; not built)
+### `docs/PLAN-SHOPPING-AUDIT.md` — AUDIT on the shopping list, #94's second half (13 Oct 2026; answered "defaults"; built the same day)
 **What:** an AUDIT button at the top of the list that shows "Same as …?", MERGE WITH… and a new aisle picker with UNDO on every
 row, and hides them otherwise. How a merge can hide a tick, and the untick-with-warning answer. One PR, eleven smoke checks.
 
@@ -623,7 +623,7 @@ to the conversion project (see `converter/conversion-instructions.md` above).
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 557-check smoke suite, the 164 Node checks, the five smaller suites CI also runs (the Edge Functions' and the help guide's), and an honest account of what it can't tell you
+**What:** How to run the 568-check smoke suite, the 164 Node checks, the five smaller suites CI also runs (the Edge Functions' and the help guide's), and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 *(Corrected 12 Oct 2026, the October review's Appendix B and D: this said 418 and 143.)*
 
