@@ -9,7 +9,7 @@ tablet step in `docs/TEST-PLAN.md`. Print and EXPORT PNG must still match the sc
 
 | Order | Change | Size | Status |
 | --- | --- | --- | --- |
-| 1 | **T**, colour tokens: contrast and the hard-coded `rgba()` | Small | **Built**, 14 Oct (pull request open) |
+| 1 | **T**, colour tokens: contrast and the hard-coded `rgba()` | Small | **Built and merged**, 14 Oct (#147) |
 | 2 | **S**, one type scale; mono only for quantities and times | Medium | Proposed |
 | 3 | **H**, 44px tap targets | Medium | Proposed |
 | 4 | **R**, one corner radius | Small | Proposed |

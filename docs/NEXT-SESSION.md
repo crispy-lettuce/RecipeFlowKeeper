@@ -85,7 +85,7 @@ Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all 
    `test/core.test.js` together (`CLAUDE.md`).
 5. **`docs/PLAN-READABILITY.md`** (proposed 14 Oct): five CSS-only changes to readability, built one PR at a time in this order, each
    its own job for a session: **T** colour tokens, **S** one type scale, **H** 44px tap targets, **R** one corner radius, **F** keyboard
-   focus. None changes data, `core.js`, markup or wording. **T is built** (14 Oct, pull request open; tablet step 61a is the
+   focus. None changes data, `core.js`, markup or wording. **T is built and merged** (14 Oct, #147; tablet step 61a is the
    household's); S, H, R and F are not started, and the household picks when each starts. Two things T left for the household
    to decide are in the plan's "Built as" note under T.
 6. **Optional, not planned:** a "download all source files" backup (the source files go into `PrivateBackup`'s weekly mirror
