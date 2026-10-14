@@ -74,8 +74,8 @@ Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all 
    (PR 3, FINISH TOGETHER, built 13 Oct as #138; PR 1, SERVE WITH, #140; PR 2, the Planner offer, built 13 Oct: #87 is built), #88
    `docs/PLAN-PREP-STEPS.md` (built 13 Oct), #94's AUDIT `docs/PLAN-SHOPPING-AUDIT.md` (built 13 Oct; its first half is #132), #95
    `docs/PLAN-INGREDIENTS-TAB.md` (built 13 Oct); #100 `docs/PLAN-PREVIEW-SITE.md` is parked. The household picks the order.
-3. **The household's jobs**, in `docs/HOUSEHOLD-JOBS.md`: every tablet step up to 56a has passed (53a–56a on 13 Oct). Left: the
-   second family household reloads the converter and taps DONE, and tablet step 60a (#142); 57a–59a passed 14 Oct. #101 is closed and the recipe
+3. **The household's jobs**, in `docs/HOUSEHOLD-JOBS.md`: every tablet step has passed (57a–60a on 14 Oct). **Testing is done in the household
+   that has confirmed the converter only** (decided 14 Oct); the other households' converter bar is theirs to sort out and is not tracked. #101 is closed and the recipe
    titles are scrubbed (#132). The BBC validations and D6 are dropped by the household (12 Oct): the
    recipes will be cleared before full adoption.
 4. **#127, the converter reminder** (#129, merged 13 Oct; its SQL applied the same day): a bar in the app, per household, until

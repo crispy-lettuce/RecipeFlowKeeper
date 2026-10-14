@@ -2893,7 +2893,7 @@ failed by name at once; a theirs-guard could change nothing (another household's
 removed; "deleted not skipped" first crashed the suite in the check's setup, so the setup moved inside the check and it now
 fails by name. Every made-up title and line was checked against the library: 0 matches.
 
-*Not verified:* the tablet (step 60a).
+Step 60a reported passed by the household, 14 Oct.
 
 *14 Oct 2026:* merged as #144 (20:21 UTC, 13 Oct). The household declined a group history (`PLAN-SIDES.md` §9.6): it does not
 expect to ungroup in practice, so no table is planned.
