@@ -11,9 +11,9 @@ tablet step in `docs/TEST-PLAN.md`. Print and EXPORT PNG must still match the sc
 | --- | --- | --- | --- |
 | 1 | **T**, colour tokens: contrast and the hard-coded `rgba()` | Small | **Built and merged**, 14 Oct (#147) |
 | 2 | **S**, one type scale; mono only for quantities and times | Medium | **Built and merged**, 14 Oct (#149) |
-| 3 | **H**, 44px tap targets | Medium | **Built**, 14 Oct |
+| 3 | **H**, 44px tap targets | Medium | **Built and merged**, 14 Oct (#150) |
 | 4 | **R**, one corner radius | Small | Proposed |
-| 5 | **F**, keyboard focus everywhere | Small | Proposed |
+| 5 | **F**, keyboard focus everywhere | Small | **Built**, 14 Oct |
 
 ## T. Colour tokens
 
@@ -188,6 +188,38 @@ controls look the same focused and unfocused.
   the frame `:focus-within{ outline:2px solid var(--plum); outline-offset:2px; }`.
 - `.kw-input`: border `--line` when idle, `--plum` plus the ring when focused.
 - **Check:** tabbing to `.kw-input` and to the search input changes the computed outline or the frame's outline.
+
+**Built as (14 Oct 2026).** The household said "go" to five lines that included the side-menu fix below. Measured on the app's made-up test
+data in Chromium at 1280×800; focus rings do not depend on the font, so the missing IBM Plex does not matter here as it did for S and H.
+
+- **The seven rules.** `outline:none` was on `.searchbar input`, `.kw-input`, `.shortlist-input`, `#importInput`, `.field-row input` and
+  `select`, `#sourcePasteInput`, and the login card's input. The search input keeps it, and its frame draws the ring instead
+  (`.searchbar:focus-within`: 2px `--plum`, offset 2px); the other six lost it, so the page's own ring shows on them. Their `:focus`
+  border-colour changes stay, so a focused field has the ring and the plum border. **A text field always matches `:focus-visible`, so a
+  tap into one draws the ring as well as a keyboard press**; the tablet will show it.
+- **`.kw-input`** is `--line` until it has focus and `--plum` then, as the plan says. The box is replaced the moment it loses focus, so its
+  idle border is rarely seen. `.shortlist-input` keeps its plum idle border (the plan does not mention it): focused and idle differ by the
+  ring alone.
+- **One rule beyond the plan's list:** `.sidebar :focus-visible{ outline-offset:-2px }`. The side menu is `overflow-y:auto`, which clips
+  sideways too, and its links fill its width, so a ring 2px outside a link lost its left and right edges. Measured: cut off on the menu's
+  links on all five screens walked before, on none after.
+- **Measured, by walking Tab on the made-up data** (light and dark gave the same counts): stops with no visible ring were 1 of 42 on
+  Recipes (the search box), 1 of 45 on the Planner (the Shortlist name box) and 4 of 31 in Settings (the four swap fields), 0 on Shopping
+  and History; the keyword box looked the same focused or not. After: 0 on every screen. The ring is `--plum` on the page: 9.9:1 against
+  `--paper` and 10.6:1 against `--card` in light, 6.7:1 and 6.3:1 in dark (3:1 is the bar for a focus indicator).
+- **Rings still cut off, left alone** (the measuring script flagged both; why is a guess): a **+ CHOOSE A RECIPE** button at the foot of the
+  Planner's scroll area, probably because the browser scrolls a tabbed-to button flush to the edge with no room for the offset; and the
+  Shortlist panel on History, which takes a Tab stop there, probably because Chromium makes a scrolling region focusable, and sits against
+  the window's edge. Neither was looked at on a screen.
+- **Checks.** Three in `test/core.test.js`: the only `outline:none` left in the stylesheet is the search input's; the search frame has the
+  2px plum ring and the side menu the inside offset; `.kw-input` is `--line` then `--plum`. Three in `test/smoke.js`: Tab walked over
+  Recipes, the Planner and both of Settings' working tabs, each on a page of its own (139 stops), every stop with a 2px plum ring on itself
+  or its frame, and the keyword box too; the same in the dark theme, with the dark theme's colour; and the side menu's rings inside the
+  menu. The walk must reach the search box, the Shortlist name box and a swap field or it fails. Its first form started Tab in the middle of
+  the page, never reached the search box, and so passed with that box's ring removed, which the mutation for it showed.
+- **Not covered by a browser check:** Shopping and History were walked in a throwaway script (0 stops without a ring), but `smoke.js` walks
+  Recipes, the Planner and Settings only; the login input and the source paste box were not on screen in the stub, so only the core check
+  sees them.
 
 ## Not in this plan
 

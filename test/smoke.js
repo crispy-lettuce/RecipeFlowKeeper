@@ -384,6 +384,79 @@ const check = (name, pass, detail) => {
   check('cooking mode at tablet width: the header controls fit on one line, and each information row adds at most one more',
         cookLines.controlsOnly === 1 && cookLines.withInfo <= cookLines.controlsOnly + cookLines.infoRows, JSON.stringify(cookLines));
 
+  /* ---- Keyboard focus (READABILITY F, 14 Oct 2026, docs/PLAN-READABILITY.md) ----
+     core.test.js reads the rules; this presses Tab on Recipes, Planner and Settings and looks at what is drawn on each stop. A stop
+     shows a ring when it has a 2px outline itself, or its frame has (the search bar). The keyword box only exists while it has focus, so
+     it is added by hand. In the side menu the ring must also stay inside the menu, which clips its sides. Each walk gets a page of its
+     own: Tab starts from wherever the last click or focus was, so on the long-lived page above it would start in the middle of the
+     screen and skip the search box (seen: it did, and removing the search bar's ring failed nothing). */
+  const MUST_SEE = ['input#searchInput', 'input#shortlistInput', 'input#swap-original'];   // a walk that never reached them proves nothing about them
+  const focusWalk = async dark => {
+    const res = { stops: 0, bare: [], wrong: [], sideStops: 0, sideClipped: [], kw: null, saw: new Set(), views: [] };
+    const probe = () => {
+      const e = document.activeElement; if (!e || e === document.body) return null;
+      let wrapped = false; if (!window.__fwFirst) window.__fwFirst = e; else if (window.__fwFirst === e) wrapped = true;   // Tab has come round to where it began
+      const sig = e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + (typeof e.className === 'string' && e.className.trim() ? '.' + e.className.trim().split(/\s+/)[0] : '');
+      const ringOf = x => { const c = getComputedStyle(x); return c.outlineStyle !== 'none' && parseFloat(c.outlineWidth) >= 2 ? c : null; };
+      const drawn = ringOf(e) || (e.closest('.searchbar') && ringOf(e.closest('.searchbar')));
+      const t = document.createElement('i'); t.style.color = 'var(--plum)'; document.body.appendChild(t);
+      const plum = getComputedStyle(t).color; t.remove();
+      const sb = e.closest('.sidebar'); let clipped = false;
+      if (sb && drawn) {
+        const off = parseFloat(drawn.outlineOffset) + parseFloat(drawn.outlineWidth), r = e.getBoundingClientRect(), s = sb.getBoundingClientRect();
+        const left = s.left + sb.clientLeft, right = left + sb.clientWidth;
+        clipped = r.left - off < left - .5 || r.right + off > right + .5;
+      }
+      return { sig, wrapped, drawn: !!drawn, colour: drawn ? drawn.outlineColor : null, plum, inSide: !!sb, clipped };
+    };
+    for (const [view, tab] of [['recipes'], ['planner'], ['settings', 'ingredients'], ['settings', 'app']]) {
+      const pg = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+      await pg.clock.setFixedTime(FIXTURE_NOW);
+      await pg.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+      await pg.waitForTimeout(1200);
+      if (dark) {
+        await pg.evaluate(() => { showView('settings'); showSettingsTab('app'); }); await pg.waitForTimeout(200);
+        await pg.selectOption('#setDarkMode', 'dark'); await pg.waitForTimeout(300);
+      }
+      await pg.evaluate(v => showView(v), view);
+      if (tab) await pg.evaluate(t => showSettingsTab(t), tab);   // Settings shows one tab at a time, and its swap fields and its appearance select are on different ones
+      await pg.waitForTimeout(400);
+      const tag = view + (tab ? '/' + tab : '') + ': ';
+      const take = async () => {
+        const p = await pg.evaluate(probe); if (!p) return null;
+        res.saw.add(p.sig.split('.')[0]);
+        if (!p.drawn) res.bare.push(tag + p.sig); else if (p.colour !== p.plum) res.wrong.push(tag + p.sig + ' ' + p.colour + ' not ' + p.plum);
+        if (p.inSide) { res.sideStops++; if (p.clipped) res.sideClipped.push(p.sig); }
+        return p;
+      };
+      let here = 0, last = [], ended = 'cap';
+      for (let i = 0; i < 150; i++) {
+        await pg.keyboard.press('Tab');
+        const p = await take(); if (!p) { ended = 'left the page'; break; } if (p.wrapped) { ended = 'wrapped'; break; }
+        res.stops++; here++; last.push(p.sig.split('.')[0]); if (last.length > 3) last.shift();
+      }
+      res.views.push(`${tag.slice(0, -2)} ${here} (${ended}, last ${last.join(' > ')})`);
+      if (view === 'recipes') {   // the keyword box is not in the tab order until + ADD is pressed, and then it has focus at once
+        await pg.click('#addKwBtn'); await pg.waitForTimeout(200);
+        res.kw = await take();
+      }
+      await pg.close();
+    }
+    return res;
+  };
+  const lightWalk = await focusWalk(false);
+  const unseen = w => MUST_SEE.filter(x => !w.saw.has(x));
+  check('keyboard focus: every Tab stop on Recipes, Planner and Settings shows a 2px plum ring, on itself or on its frame',
+        lightWalk.stops >= 60 && lightWalk.kw && lightWalk.kw.sig.startsWith('input#kwInput') && unseen(lightWalk).length === 0 && lightWalk.bare.length === 0 && lightWalk.wrong.length === 0,
+        `${lightWalk.stops} stops [${lightWalk.views.join('; ')}]` + (unseen(lightWalk).length ? '; never reached: ' + unseen(lightWalk).join(', ') : '') + (lightWalk.bare.length ? '; no ring: ' + lightWalk.bare.slice(0, 5).join(', ') : '') + (lightWalk.wrong.length ? '; wrong colour: ' + lightWalk.wrong.slice(0, 3).join(', ') : '') + (lightWalk.kw ? '' : '; the keyword box did not take focus'));
+  check('in the side menu the ring is drawn inside the link, so the menu does not cut its sides off',
+        lightWalk.sideStops >= 12 && lightWalk.sideClipped.length === 0, `${lightWalk.sideStops} stops` + (lightWalk.sideClipped.length ? '; cut off: ' + [...new Set(lightWalk.sideClipped)].slice(0, 4).join(', ') : ''));
+
+  const darkWalk = await focusWalk(true);
+  check('in the dark theme every Tab stop shows the dark theme\'s plum ring',
+        darkWalk.stops >= 60 && unseen(darkWalk).length === 0 && darkWalk.bare.length === 0 && darkWalk.wrong.length === 0 && darkWalk.kw && darkWalk.kw.plum !== lightWalk.kw.plum,
+        `${darkWalk.stops} stops, ring ${darkWalk.kw && darkWalk.kw.colour} against light ${lightWalk.kw && lightWalk.kw.colour}` + (unseen(darkWalk).length ? '; never reached: ' + unseen(darkWalk).join(', ') : '') + (darkWalk.bare.length ? '; no ring: ' + darkWalk.bare.slice(0, 5).join(', ') : '') + (darkWalk.wrong.length ? '; wrong colour: ' + darkWalk.wrong.slice(0, 3).join(', ') : ''));
+
   /* ---- The food diary (H1, H2, H3) ----
      The stub seeds one cooked recipe with a meal type, one without, and
      one ad-hoc entry, so every shape the diary holds is on screen. */

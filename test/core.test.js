@@ -195,6 +195,33 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
         tw === 44 && th === 26 && tt === 20 && +travel === tw - 2 - tt - 4, `track ${tw}x${th}, thumb ${tt}px, travel ${travel}px (should be ${tw - 2 - tt - 4})`);
 }
 
+/* ---- Keyboard focus (READABILITY F, 14 Oct 2026, docs/PLAN-READABILITY.md) ----
+   Seven rules used to turn the page's ring off on the control that has the focus: the keyword box looked the same focused or not.
+   Read from the stylesheet's source, as T's, S's and H's are; smoke.js tabs through the screens and looks at what is drawn. */
+{
+  const css = pageSrc.slice(pageSrc.indexOf('<style>') + 7, pageSrc.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => ({ sels: m[1].split(',').map(x => x.trim().replace(/\s+/g, ' ')), body: m[2] }));
+  const rule = sel => rules.find(r => r.sels.includes(sel));
+
+  /* A new field that sets outline:none is a control the keyboard cannot see. The search input is the one exception: its frame draws the ring. */
+  const off = rules.filter(r => /(?:^|[;\s])outline(?:-style)?\s*:\s*(?:none|0)(?![\d.])/.test(r.body)).map(r => r.sels.join(', '));
+  check("the only rule that turns the focus ring off is the search input's, whose frame draws it instead",
+        off.length === 1 && off[0] === '.searchbar input', off.length ? 'outline off on: ' + off.join(' | ') : 'no rule found');
+
+  /* The frame carries the search input's ring; the side menu clips its sides (overflow-y:auto), so its links draw theirs inside. */
+  const frame = rule('.searchbar:focus-within'), side = rule('.sidebar :focus-visible');
+  const frameOk = !!frame && /outline\s*:\s*2px solid var\(--plum\)/.test(frame.body) && /outline-offset\s*:\s*2px/.test(frame.body);
+  const sideOk = !!side && /outline-offset\s*:\s*-2px/.test(side.body);
+  check("the search bar's frame draws the ring, and the side menu draws it inside its links",
+        frameOk && sideOk, [frameOk ? '' : 'the search frame has no 2px plum ring', sideOk ? '' : 'the side menu has no inside ring'].filter(Boolean).join('; '));
+
+  /* The keyword box is replaced the moment it loses focus, so its idle border is rarely seen; the plan still asks for --line, then --plum. */
+  const kw = rule('.kw-input'), kwFocus = rule('.kw-input:focus');
+  check('the keyword box has a --line border until it has focus, and a --plum one then',
+        !!kw && /border\s*:\s*1px solid var\(--line\)/.test(kw.body) && !!kwFocus && /border-color\s*:\s*var\(--plum\)/.test(kwFocus.body),
+        kw ? kw.body.match(/border\s*:[^;]*/)?.[0] + ' / ' + (kwFocus ? kwFocus.body.trim() : 'no :focus rule') : 'no .kw-input rule');
+}
+
 /* ---- The converter's instructions (issue #127, 12 Oct 2026) ----
    Each household loads converter/conversion-instructions.md into its own conversion project, and the app asks each
    once to reload it when CONVERTER_VERSION moves. So a change to the file must move the version, or nobody is told.

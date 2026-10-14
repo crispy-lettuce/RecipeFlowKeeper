@@ -30,9 +30,9 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 ### Reload the app on every device
 
-The newest version is 2026-10-14.3 (bigger buttons). Once it has merged, reload on every device. The two before it,
-2026-10-14.1 (colours) and 2026-10-14.2 (bigger writing), were merged as #147 and #149 on 14 Oct, so they should already be
-live. Steps 61a, 62a and 63a are below.
+The newest version is 2026-10-14.4 (keyboard focus). Once it has merged, reload on every device. The three before it,
+2026-10-14.1 (colours), 2026-10-14.2 (bigger writing) and 2026-10-14.3 (bigger buttons), were merged as #147, #149 and #150 on
+14 Oct, so they should already be live. Steps 61a, 62a, 63a and 64a are below.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready**, tap **RELOAD**. Otherwise refresh the page.
@@ -97,6 +97,23 @@ Nothing is saved. Do this after the buttons pull request has merged and you have
 6. On the phone, look at the top bar's links, **NEW RECIPE** and the Planner's buttons. **You should see:** each comfortable to press.
 
 Tell the next session if anything is hard to hit, if something now needs scrolling that didn't, or if a screen feels too long.
+
+### 64a. A clear outline on the box you are typing in (new 14 Oct, `docs/PLAN-READABILITY.md` change F)
+
+Nothing is saved. Do this after the keyboard-focus pull request has merged and you have reloaded the app. The outline only shows a
+change you can see; a keyboard is optional, and only step 6 needs one.
+
+1. Open **RECIPES** and tap the search bar. **You should see:** a plum outline round the whole bar, with the cursor in it.
+2. Tap **+ ADD** beside the keywords. **You should see:** the keyword box with a plum outline while you type.
+3. Open **PLANNER** and tap the Shortlist name box. **You should see:** the same outline.
+4. Open **NEW RECIPE** and tap the paste box and the boxes below it. **You should see:** each with the outline when tapped.
+5. Open **SETTINGS** and tap a box on the INGREDIENTS tab and on the APP tab. **You should see:** the outline on each.
+6. With a keyboard attached, press **Tab** a few times in the side menu. **You should see:** each link outlined wholly inside its
+   row, not cut off at the menu's edges.
+7. **SETTINGS → APP → Appearance → Dark**, then look at 1 again, and put Appearance back. **You should see:** the outline in a lighter
+   plum.
+
+Tell the next session if any outline is hard to see, or if something now looks too busy.
 
 ---
 
