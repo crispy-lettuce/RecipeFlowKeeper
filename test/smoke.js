@@ -199,6 +199,83 @@ const check = (name, pass, detail) => {
   await page.waitForTimeout(300);
   await page.click('[data-settings-tab-btn="ingredients"]');  // the tab is remembered: leave Settings as the checks below expect
 
+  /* ---- Readability T (14 Oct 2026, docs/PLAN-READABILITY.md): the quiet inks can be read, in both themes ----
+     core.test.js checks the token values by arithmetic; this checks what lands on screen. Before T, 365 text elements
+     in the light theme and 225 in the dark were under 4.5:1 on the screens below, nearly all of them --ink-faint and
+     --ink-mute. Every element whose text colour is one of the three quiet inks is measured against its real background:
+     the translucent backgrounds of its ancestors composited onto each other, because a wash behind a label can take a
+     colour that passes on paper below 4.5:1 (faint text on a .06 plum wash was 4.47). An element faded by opacity (a day
+     outside the month, a step mid-fade) is left out: it is dimmed on purpose. Sage and gold used as text are not quiet inks;
+     they are still under 4.5:1 (25 elements in the light theme) and are left for a later change, because T is colour tokens
+     only. About 490 elements are measured in each theme; fewer than 300 means the walk missed a screen. */
+  const readInks = () => page.evaluate(() => {
+    const parse = c => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number); return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 }; };
+    const over = (f, b) => ({ r: f.r * f.a + b.r * (1 - f.a), g: f.g * f.a + b.g * (1 - f.a), b: f.b * f.a + b.b * (1 - f.a), a: 1 });
+    const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    const lum = c => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+    const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    const bgOf = el => {
+      const layers = [];
+      for (let e = el; e; e = e.parentElement) { const c = parse(getComputedStyle(e).backgroundColor); if (c && c.a > 0) { layers.push(c); if (c.a === 1) break; } }
+      return layers.reduceRight((under, layer) => over(layer, under), { r: 255, g: 255, b: 255, a: 1 });
+    };
+    const resolve = n => { const s = document.createElement('span'); s.style.color = 'var(--' + n + ')'; document.body.appendChild(s); const c = getComputedStyle(s).color; s.remove(); return c; };
+    const quiet = new Set(['ink-soft', 'ink-faint', 'ink-mute'].map(resolve));
+    let n = 0; const bad = [], seen = new Set();
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let t; (t = walker.nextNode()); ) {
+      const el = t.parentElement;
+      if (!el || seen.has(el) || !t.nodeValue.trim() || ['SCRIPT', 'STYLE', 'OPTION'].includes(el.tagName)) continue;
+      seen.add(el);
+      const cs = getComputedStyle(el);
+      if (!quiet.has(cs.color)) continue;
+      const r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1 || el.closest(':disabled')) continue;
+      let shown = true, op = 1;
+      for (let e = el; e; e = e.parentElement) { const c = getComputedStyle(e); if (c.display === 'none' || c.visibility === 'hidden') { shown = false; break; } op *= parseFloat(c.opacity); }
+      if (!shown || op < 0.99) continue;
+      n++;
+      const bg = bgOf(el), rt = ratio(parse(cs.color), bg);
+      if (rt < 4.5) bad.push(`${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/)[0] : ''} "${t.nodeValue.trim().slice(0, 18)}" ${rt.toFixed(2)}`);
+    }
+    const qty = [...document.querySelectorAll('.qty')].find(q => q.getBoundingClientRect().width > 0);
+    return { n, bad, qty: qty ? ratio(bgOf(qty), bgOf(qty.parentElement)) : null };
+  });
+  const walkInks = async () => {
+    const all = { n: 0, bad: [], qty: null };
+    const take = async view => { const r = await readInks(); all.n += r.n; all.bad.push(...r.bad.map(b => b + ' (' + view + ')')); if (r.qty !== null) all.qty = r.qty; };
+    await page.click('.navlink[data-view="recipes"]'); await page.waitForTimeout(300); await take('recipes');
+    await page.click('.rcard'); await page.waitForTimeout(600); await take('viewer');
+    for (const v of ['planner', 'shortlist', 'shopping', 'history', 'settings']) {
+      await page.click(`.navlink[data-view="${v}"]`); await page.waitForTimeout(400); await take(v);
+    }
+    for (const tab of ['ingredients', 'library', 'app', 'help']) {
+      await page.click(`[data-settings-tab-btn="${tab}"]`); await page.waitForTimeout(250); await take('settings/' + tab);
+    }
+    return all;
+  };
+  const inkLight = await walkInks();
+  check('light theme: every element in a quiet ink (soft, faint, mute) is at least 4.5:1 against its real background',
+        inkLight.n >= 300 && inkLight.bad.length === 0, `${inkLight.n} measured` + (inkLight.bad.length ? '; ' + inkLight.bad.slice(0, 6).join('; ') : ''));
+  await page.click('.navlink[data-view="settings"]');
+  await page.waitForTimeout(300);
+  await page.click('[data-settings-tab-btn="app"]');
+  await page.selectOption('#setDarkMode', 'dark');
+  await page.waitForTimeout(300);
+  const inkDark = await walkInks();
+  check('dark theme: every element in a quiet ink (soft, faint, mute) is at least 4.5:1 against its real background',
+        inkDark.n >= 300 && inkDark.bad.length === 0, `${inkDark.n} measured` + (inkDark.bad.length ? '; ' + inkDark.bad.slice(0, 6).join('; ') : ''));
+  /* The plum wash behind a quantity was dark plum at 9% in both themes: 1.03:1 against a dark card, so in the dark theme the
+     pill was not there at all. Now it is a token that has a dark value (1.18:1). 1.08:1 is the weakest wash the light theme
+     shows (today's Planner row, 1.08:1). */
+  check('dark theme: a quantity pill shows against the surface it sits on (at least 1.08:1)',
+        inkDark.qty !== null && inkDark.qty >= 1.08, inkDark.qty === null ? 'no .qty on screen' : `light ${inkLight.qty === null ? 'n/a' : inkLight.qty.toFixed(2)}, dark ${inkDark.qty.toFixed(2)}`);
+  await page.click('.navlink[data-view="settings"]');
+  await page.waitForTimeout(300);
+  await page.click('[data-settings-tab-btn="app"]');
+  await page.selectOption('#setDarkMode', 'system');
+  await page.waitForTimeout(300);
+  await page.click('[data-settings-tab-btn="ingredients"]');  // leave Settings as the checks below expect
+
   /* ---- The food diary (H1, H2, H3) ----
      The stub seeds one cooked recipe with a meal type, one without, and
      one ad-hoc entry, so every shape the diary holds is on screen. */

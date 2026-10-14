@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **606 checks** (13 Oct 2026; `core.test.js` adds 189 in Node) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **609 checks** (14 Oct 2026, 606 on 13 Oct; `core.test.js` adds 194 in Node, 189 on 13 Oct) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -2897,6 +2897,42 @@ Step 60a reported passed by the household, 14 Oct.
 
 *14 Oct 2026:* merged as #144 (20:21 UTC, 13 Oct). The household declined a group history (`PLAN-SIDES.md` §9.6): it does not
 expect to ungroup in practice, so no table is planned.
+
+**READABILITY T, colour tokens (14 Oct 2026; `docs/PLAN-READABILITY.md` change T, on `main` at `6652005`).** The household said
+"go" for T alone; S, H, R and F are still proposed. `index.html` CSS only: no markup, id, wording, `core.js`, `help.html` or
+schema change, and `core.js`'s version is unchanged.
+- **Inks.** `--ink-faint` is `#6F6759` (light; the plan said `#736B5C`, which is 4.3:1 on the Planner's group and day rows) and
+  `#938A79` (dark; it was 2.9:1 on a card). All 26 small-text uses of `--ink-mute` are `--ink-soft`, so `--ink-mute` is a fill only.
+  `.side-count` is `--ink-faint`.
+- **Washes.** The 30 `rgba()` literals in rules became 12 tokens with a dark value each (the plan's `--sage-wash`, `--danger-wash`
+  and `--ink-shadow`, and nine more); `--plum-wash`, shared by fourteen rules, is unchanged. The plan's "Built as" note has the
+  list and the reasons. In dark, the plum wash behind a quantity was 1.03:1 against its card and is 1.17:1; selected text had
+  no highlight and has one.
+- `changelog.json` **2026-10-14.1**; step **61a**. No `help.html` change: no label changed.
+
+*Verified by.* On `main`, before: `node test/core.test.js` **189**, exit 0; `node test/build.js && node test/smoke.js` **606**,
+exit 0. After: `core.test.js` **194** (five new checks), exit 0; smoke **609** (three new), exit 0, no console or page errors;
+`help-guide.js` 7, exit 0. Contrast was measured in a browser with a throwaway probe kept outside the repo, on the stub's
+made-up data at 1280×800, on the recipes, viewer, Planner, Shortlist, Shopping, History, Settings (four tabs) and the add
+dialog: text elements under 4.5:1, **light 365 → 25** (all sage or gold used as text, which T does not touch), **dark 225 → 0**,
+about 490 measured in each theme. Two things the probe caught: its first dark pass measured the light theme (the app overrides
+a stored theme on load; the suite switches it in Settings → APP), which showed as identical counts in both and was rerun; and a
+first dark sage alpha of .12 left two UNGROUP labels at 4.09:1, so it is .06. Eleven mutations (six on the core checks, five on the
+browser ones; they cover all eight new checks), each failing the right check by name: `core.test.js`: a literal `rgba()` back on the quantity pill; light `--ink-faint` back to `#A79E8D` (2.35:1) and dark back to
+`#6F6759` (3.14:1); `--ink-mute` set as a text colour; `.side-count` back on `--line-faint`; a token missing from the dark
+block (`--scrim`). `smoke.js`: the pill's literal back (dark 1.03:1 against 1.08); light and dark `--ink-faint` back (2.50 and
+2.91:1 on the sidebar's labels); today's Planner row on the shared wash (4.47:1 light, 4.39:1 dark); dark sage back to .12
+(4.09:1). Every mutation was restored and `index.html` compared byte-for-byte with the good copy.
+
+*Not verified.* The real tablet (61a is the household's). **EXPORT PNG and a print preview**: no `@media print` rule sets a
+colour and the export reads only `--paper` from the stylesheet, but no PNG or PDF was made here (html2canvas cannot load through
+the sandbox proxy). Hover, focus and error states the stub does not reach, and every dialog but the add form. Elements dimmed on
+purpose by opacity (7 in the light theme: days outside the month, a step mid-fade) are left out of the checks. The app against
+the real backend (smoke stubs Supabase). The by-eye judgements in the plan's "Built as" note come from a style agent's
+mock-ups, which this session did not see; its ratios were recomputed here and agree.
+
+*Left for the household to decide* (also in the plan): sage and gold used as text, 25 elements at 2.6 to 3.1:1; and a selected
+Shortlist item, which barely differs from an unselected one in either theme (as it did before T).
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*

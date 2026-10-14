@@ -9,7 +9,7 @@ tablet step in `docs/TEST-PLAN.md`. Print and EXPORT PNG must still match the sc
 
 | Order | Change | Size | Status |
 | --- | --- | --- | --- |
-| 1 | **T**, colour tokens: contrast and the hard-coded `rgba()` | Small | Proposed |
+| 1 | **T**, colour tokens: contrast and the hard-coded `rgba()` | Small | **Built**, 14 Oct (pull request open) |
 | 2 | **S**, one type scale; mono only for quantities and times | Medium | Proposed |
 | 3 | **H**, 44px tap targets | Medium | Proposed |
 | 4 | **R**, one corner radius | Small | Proposed |
@@ -29,6 +29,35 @@ Body text needs 4.5:1.
   `.rcard-favourite.on`, `.btn.on`, `.prov-chip.prov-warn`, `.day-recipe-premade.on`.
 - **Check:** no `rgba(` left outside `:root` blocks (a source grep in a test); in dark theme `.qty`'s background differs from
   `--card`.
+
+**Built as (14 Oct 2026).** The household said "go" for T alone, after a mock-up of five open questions, so S, H, R and F are
+still proposed. Measured first, on the app's made-up test data at 1280×800, every visible piece of text on the recipes, viewer,
+Planner, Shortlist, Shopping, History, Settings and add dialog, against its real background: **365 text elements in the light
+theme and 225 in the dark were under 4.5:1; after T, 25 and 0.** The 25 are all sage or gold used as text, which T does not
+touch (below).
+
+- **`--ink-faint` is `#6F6759` in the light theme, not the plan's `#736B5C`.** `#736B5C` is 4.67:1 on paper only; on the Planner's
+  group and day rows it is 4.3:1 (UNGROUP, SERVES n, ×). `#6F6759` is 4.95:1 on paper and clears 4.5:1 wherever small text sat
+  in the app. The mock-up could not tell the two apart side by side; the price is that "faint" is now almost "soft" (5.01:1),
+  so size, capitals and mono carry the difference. **Dark `--ink-faint`** (the plan said to re-check it) was 2.9:1 on a card and is
+  **`#938A79`**, within a hair of dark `--ink-mute`; the steps that show are still ink, soft and faint (14.2, 8.0, 5.1:1).
+- **All 26 small-text uses of `--ink-mute` are `--ink-soft`**: none of them was 18px or larger, so `--ink-mute` is now a fill only
+  (the numbered-step badge). `.side-count` is `--ink-faint`.
+- **The 30 `rgba()` literals became 12 tokens**, each with a dark value: the plan's `--sage-wash`, `--danger-wash` and
+  `--ink-shadow`, and nine it turned out to need (`--plum-wash-soft`, `--plum-select`, `--sage-wash-strong`, `--sage-line`,
+  `--danger-line`, `--ink-shadow-strong`, `--scrim`, `--photo-bar`, `--lane-stripe`). Each alpha is the lowest that keeps small
+  text on it at 4.5:1, and the dark ones are set for the same visibility as the light, not the same alpha (a light accent on a dark
+  ground shows far more per unit of alpha). `--plum-wash` is shared by fourteen rules and is unchanged; `--plum-wash-soft` is the
+  lighter one for today's Planner row, because faint text on the shared wash was 4.47:1. In the dark theme the plum wash behind a
+  quantity was 1.03:1 against its card (not there) and is now 1.17:1; selected text had no visible highlight and now has one.
+- **Checks:** five in `test/core.test.js` (no `rgba(` in a rule; the two quiet inks at 4.5:1 on paper and card in both themes;
+  no `color:var(--ink-mute)`; `.side-count`; every light token has a dark one) and three in `test/smoke.js` (every element in a
+  quiet ink at 4.5:1 against its composited background, per theme, about 490 elements each; the dark quantity pill shows).
+- **Not done, for the household to decide.** (1) **Sage and gold used as text** (a card's tags, a day's course label, the
+  group badge, the favourite star), 2.6 to 3.1:1. A mock-up of `#5A6D53` and `#816522` (4.5:1) showed sage reads olive-grey at
+  9 to 10.5px and close to `--ink-soft`; gold stays warm. It needs its own change and a dark check. (2) **A selected Shortlist
+  item** barely differs from an unselected one in either theme (its dashed border dominates); `--sage-wash-strong` on
+  `.sl-item.selected` would show it. It was already so before T.
 
 ## S. One type scale
 

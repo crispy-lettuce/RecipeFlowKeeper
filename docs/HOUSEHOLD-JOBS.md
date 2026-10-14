@@ -30,7 +30,8 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 ### Reload the app on every device
 
-The latest version, 2026-10-13.8 (OFTEN WITH), went live when #144 merged.
+The latest version, 2026-10-13.8 (OFTEN WITH), went live when #144 merged. The readability pull request (colours only,
+version 2026-10-14.1) goes live when it merges: reload then, and do 61a below.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready**, tap **RELOAD**. Otherwise refresh the page.
@@ -39,7 +40,25 @@ The latest version, 2026-10-13.8 (OFTEN WITH), went live when #144 merged.
 
 ## App checks
 
-None waiting: every step up to 60a has passed (14 Oct).
+### 61a. Quieter text is easier to read (new 14 Oct, `docs/PLAN-READABILITY.md` change T)
+
+Colours only: nothing moves. Do this after the readability pull request has merged and you have reloaded the app.
+
+1. In the light theme, open **RECIPES**. **You should see:** the small grey words (COURSE and SORT above the filters, the
+   "3 OF 3" count, the dashed chips, SAVED VIEWS and EXPORT DATA in the sidebar) a little darker than before, still the quietest
+   text on the page, and none of them hard to read.
+2. Open a recipe. **You should see:** the line under the title and the hint under the grid read clearly, and the quantity beside
+   each ingredient is still in its pale plum pill, no heavier than before.
+3. Open **PLANNER**. **You should see:** the day numbers, and SERVES n and × on a planned dish, read clearly; today's row has a
+   faint tint, as before.
+4. **SETTINGS → APP → Appearance → Dark**, then look at 1 to 3 again. **You should see:** the quantity pills now show as pills
+   (before, they did not show at all in dark); today's row is tinted; and dragging across a few words of a note shows a highlight.
+5. Put Appearance back to what it was.
+6. If you use them, **PRINT / A4 PDF** and **EXPORT PNG** on a recipe. **You should see:** the same as the screen, the small
+   grey words a little darker.
+
+The small green and gold words (a card's MAIN · VEG tags, a day's course label, the favourite star) are **not** changed. Tell
+the next session if any of them is hard to read, and whether anything now looks too dark or heavy.
 
 ---
 

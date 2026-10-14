@@ -50,9 +50,14 @@
     --card:#FBF8F0;
     --well:#EFE9DA;
     --ink:#2B2722;
+    /* READABILITY T (14 Oct 2026, docs/PLAN-READABILITY.md). Text must reach 4.5:1 on the surfaces it sits on. Measured on
+       the stub at 1280x800, 365 text elements in this theme and 225 in the dark one were under it, nearly all of them
+       --ink-faint (2.4:1 on paper) and --ink-mute (3.4:1). So --ink-soft (5.0:1 on paper) and --ink-faint (4.95:1) are the
+       two quiet text colours, and --ink-mute is no longer a text colour at all: it survives only as a fill (the numbered-step
+       badge). test/core.test.js fails if a rule sets its text colour to --ink-mute again. */
     --ink-soft:#6E665A;
     --ink-mute:#8A8172;
-    --ink-faint:#A79E8D;
+    --ink-faint:#6F6759;
     --line:#D8CFB8;
     --line-soft:#E3DCC8;
     --line-faint:#C9BFA6;
@@ -71,6 +76,28 @@
        has to be a token rather than a literal: it is a *surface*, so unlike
        the accent washes it cannot survive the background inverting. */
     --card-veil:rgba(251,248,240,.92);
+    /* Every tint, shadow and scrim is a token and none is written as an rgba() in a rule (test/core.test.js fails on one
+       outside :root). They used to be light-theme literals, so in the dark theme a plum wash was dark plum on a dark
+       ground (1.03:1 against its surface, i.e. not there). Each alpha is the lowest that keeps the small text on it at
+       4.5:1, and the dark ones are set for the same visibility as the light ones, not the same alpha: a light accent on a
+       dark ground shows far more per unit of alpha (sage at .12 was 1.25x the surface's luminance against 1.10x for the
+       light wash, and put faint text at 4.1:1, so it is .06). --plum-wash is shared by fourteen rules and stays as it was;
+       --plum-wash-soft is the lighter one for a row that carries faint text (today's row in the Planner). */
+    --plum-wash-soft:rgba(91,42,74,.045);
+    --plum-select:rgba(91,42,74,.15);
+    --sage-wash:rgba(124,148,115,.10);
+    --sage-wash-strong:rgba(124,148,115,.16);
+    --sage-line:rgba(124,148,115,.35);
+    --danger-wash:rgba(140,58,52,.08);
+    --danger-line:rgba(140,58,52,.28);
+    --ink-shadow:rgba(43,39,34,.12);
+    --ink-shadow-strong:rgba(43,39,34,.25);
+    --scrim:rgba(43,39,34,.45);
+    /* The source-photo viewer's bar sits on a surface that is near-black in both themes, so it is the same in both. */
+    --photo-bar:rgba(20,18,16,.96);
+    /* Diagonal stripes on an open-ended timeline lane: the lane is a dark plum here and a light one in the dark theme, so
+       the stripe is the colour that sits on an accent (--on-accent) in each. */
+    --lane-stripe:rgba(255,255,255,.18);
     --r:2px;
     color-scheme:light;
   }
@@ -104,7 +131,9 @@
     --ink:#EDE7DA;
     --ink-soft:#B8AE9C;
     --ink-mute:#958B7A;
-    --ink-faint:#6F6759;
+    /* #6F6759 was 2.9:1 on --card. 4.5:1 on every dark surface takes it to within a hair of --ink-mute, which no text uses
+       any more, so the steps that show are still ink, soft and faint (14.2, 8.0 and 5.1:1 on paper). */
+    --ink-faint:#938A79;
     --line:#3A352C;
     --line-soft:#2B2720;
     --line-faint:#4A4437;
@@ -117,6 +146,18 @@
     --danger:#E08A82;
     --on-accent:#1C1915;
     --card-veil:rgba(35,32,25,.92);
+    --plum-wash-soft:rgba(201,143,180,.07);
+    --plum-select:rgba(201,143,180,.28);
+    --sage-wash:rgba(157,190,146,.06);
+    --sage-wash-strong:rgba(157,190,146,.09);
+    --sage-line:rgba(157,190,146,.35);
+    --danger-wash:rgba(224,138,130,.10);
+    --danger-line:rgba(224,138,130,.30);
+    --ink-shadow:rgba(0,0,0,.35);
+    --ink-shadow-strong:rgba(0,0,0,.5);
+    --scrim:rgba(0,0,0,.6);
+    --photo-bar:rgba(20,18,16,.96);
+    --lane-stripe:rgba(28,25,21,.18);
     color-scheme:dark;
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
@@ -128,7 +169,7 @@
     -webkit-font-smoothing:antialiased;
   }
   input, select, button, textarea{ font-family:inherit; }
-  ::selection{ background:rgba(91,42,74,.15); }
+  ::selection{ background:var(--plum-select); }
   :focus-visible{ outline:2px solid var(--plum); outline-offset:2px; }
 
   .mono{ font-family:'IBM Plex Mono', monospace; }
@@ -156,7 +197,7 @@
     font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.08em;
     color:var(--ink-soft);
   }
-  .navlink:hover{ background:rgba(91,42,74,.04); }
+  .navlink:hover{ background:var(--plum-wash-soft); }
   .navlink.active{ background:var(--plum-wash); border-left-color:var(--plum); color:var(--plum); }
   .navlink .count{ color:var(--ink-faint); }
   .navlink.active .count{ color:var(--plum); }
@@ -177,7 +218,7 @@
   .side-spacer{ flex:1; }
   .side-count{
     padding:0 22px; font-family:'IBM Plex Mono', monospace;
-    font-size:9.5px; line-height:1.6; letter-spacing:.06em; color:var(--line-faint);
+    font-size:9.5px; line-height:1.6; letter-spacing:.06em; color:var(--ink-faint);
   }
   .new-recipe{
     margin:14px 22px 0; height:50px;
@@ -278,7 +319,7 @@
     font-size:15px; line-height:1; color:var(--ink-soft); cursor:pointer;
   }
   .rcard-shortlist:hover{ border-color:var(--plum); color:var(--plum); }
-  .rcard-shortlist.on{ border-color:var(--sage); color:var(--sage); background:rgba(124,148,115,.14); }
+  .rcard-shortlist.on{ border-color:var(--sage); color:var(--sage); background:var(--sage-wash-strong); }
   .rcard-favourite{
     position:absolute; top:8px; left:8px; z-index:2;
     width:27px; height:27px; border-radius:50%;
@@ -287,7 +328,7 @@
     font-size:15px; line-height:1; color:var(--ink-soft); cursor:pointer;
   }
   .rcard-favourite:hover{ border-color:var(--gold); color:var(--gold); }
-  .rcard-favourite.on{ border-color:var(--gold); color:var(--gold); background:rgba(176,138,46,.14); }
+  .rcard-favourite.on{ border-color:var(--gold); color:var(--gold); background:var(--gold-wash); }
   .rcard-photo{
     flex:1; min-height:0; border:1px solid var(--line-soft); background:var(--well);
     display:flex; align-items:center; justify-content:center; overflow:hidden;
@@ -316,7 +357,7 @@
   .rcard-foot{
     display:flex; justify-content:space-between; gap:10px;
     font-family:'IBM Plex Mono', monospace; font-size:10px;
-    letter-spacing:.06em; color:var(--ink-mute);
+    letter-spacing:.06em; color:var(--ink-soft);
   }
 
   .grid-empty{
@@ -339,14 +380,14 @@
   /* PR 5: what is recorded about the recipe's source, beside the link. Viewer only, never on a card. */
   .viewer-provenance{ flex-basis:100%; display:flex; flex-wrap:wrap; gap:8px; }
   /* SERVE WITH (#87): the sides this recipe asks for, each opening that side's recipe. */
-  .viewer-serve-with{ flex-basis:100%; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.06em; color:var(--ink-mute); }
+  .viewer-serve-with{ flex-basis:100%; font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.06em; color:var(--ink-soft); }
   .viewer-serve-with[hidden]{ display:none; }
   .serve-with-link{ background:none; border:0; padding:2px 0; font:inherit; letter-spacing:inherit; color:var(--ink); text-decoration:underline; cursor:pointer; }
   .viewer-provenance:empty{ display:none; }
   .prov-chip{ font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; padding:3px 8px;
     border:1px solid var(--line); border-radius:var(--r); color:var(--ink-soft); background:var(--well); }
   .prov-chip.prov-ok{ color:var(--ink); border-color:var(--sage); }
-  .prov-chip.prov-warn, .prov-chip.prov-red{ color:var(--danger); border-color:rgba(140,58,52,.28); background:rgba(140,58,52,.08); }
+  .prov-chip.prov-warn, .prov-chip.prov-red{ color:var(--danger); border-color:var(--danger-line); background:var(--danger-wash); }
   .prov-chip.prov-stale{ color:var(--ink); background:var(--gold-wash); }
   .meta-source-link:hover{ color:var(--plum); }
   .viewer-meta{
@@ -365,7 +406,7 @@
   }
   .viewer-scale-row .scale-label{
     font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.05em;
-    color:var(--ink-mute); margin-right:2px; flex:none;
+    color:var(--ink-soft); margin-right:2px; flex:none;
   }
   .scale-btn{
     font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.03em;
@@ -379,7 +420,7 @@
     background:var(--card); font-family:'Newsreader', Georgia, serif; font-size:13px;
   }
   .viewer-scale-row .scale-note{
-    font-size:12px; color:var(--ink-mute); font-style:italic; flex-basis:100%; margin-top:2px;
+    font-size:12px; color:var(--ink-soft); font-style:italic; flex-basis:100%; margin-top:2px;
   }
 
   .btn{
@@ -393,7 +434,7 @@
   .btn.primary{ background:var(--plum); border-color:var(--plum); color:var(--on-accent); }
   .btn.primary:hover{ background:var(--plum-lift); color:var(--on-accent); }
   .btn.danger:hover{ border-color:var(--danger); color:var(--danger); }
-  .btn.on{ border-color:var(--gold); color:var(--gold); background:rgba(176,138,46,.08); }
+  .btn.on{ border-color:var(--gold); color:var(--gold); background:var(--gold-wash); }
 
   .toggle-switch{
     display:flex; align-items:center; gap:8px; cursor:pointer; flex:none;
@@ -406,7 +447,7 @@
   }
   .toggle-thumb{
     position:absolute; top:2px; left:2px; width:15px; height:15px; border-radius:50%;
-    background:#fff; transition:transform .15s ease; box-shadow:0 1px 2px rgba(43,39,34,.25);
+    background:#fff; transition:transform .15s ease; box-shadow:0 1px 2px var(--ink-shadow-strong);
   }
   .toggle-switch input:checked + .toggle-track{ background:var(--plum); border-color:var(--plum); }
   .toggle-switch input:checked + .toggle-track .toggle-thumb{ transform:translateX(15px); }
@@ -419,7 +460,7 @@
     padding:7px 30px; background:var(--plum-wash); border-bottom:1px solid var(--line);
     font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.03em; color:var(--plum);
   }
-  .keep-awake-status.warn{ background:rgba(140,58,52,.09); color:var(--danger); }
+  .keep-awake-status.warn{ background:var(--danger-wash); color:var(--danger); }
 
   /* ============================= FLOW TABLE ============================= */
   .recipe-title{ font-size:26px; font-weight:300; margin-bottom:14px; }
@@ -447,7 +488,7 @@
   }
   .qty{
     font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--plum);
-    background:rgba(91,42,74,.09); padding:2px 6px; border-radius:var(--r);
+    background:var(--plum-wash); padding:2px 6px; border-radius:var(--r);
     margin-right:6px; white-space:nowrap;
   }
   .ing-swap-icon{
@@ -503,10 +544,10 @@
     font-size:8.5px; font-family:'IBM Plex Mono', monospace; color:var(--on-accent); padding:0 6px;
     white-space:nowrap; letter-spacing:.02em;
   }
-  .timeline-lane-abs.open-ended{ background-image:repeating-linear-gradient(135deg, rgba(255,255,255,.18) 0 4px, transparent 4px 8px); }
+  .timeline-lane-abs.open-ended{ background-image:repeating-linear-gradient(135deg, var(--lane-stripe) 0 4px, transparent 4px 8px); }
   .timeline-missing-note{
     margin-top:10px; padding-top:8px; border-top:1px solid var(--line-soft);
-    font-size:11.5px; color:var(--ink-mute); line-height:1.5;
+    font-size:11.5px; color:var(--ink-soft); line-height:1.5;
   }
   .box-cell.timeline-flash{ animation:timelineFlash .9s ease; }
   @keyframes timelineFlash{
@@ -551,9 +592,9 @@
   }
   ul.swap-list{ margin:0; padding-left:18px; }
   .swap-for{ color:var(--ink-faint); }
-  .swap-note{ color:var(--ink-mute); font-style:italic; }
+  .swap-note{ color:var(--ink-soft); font-style:italic; }
   .errors{
-    background:rgba(140,58,52,.07); border:1px solid rgba(140,58,52,.28);
+    background:var(--danger-wash); border:1px solid var(--danger-line);
     color:var(--danger); padding:12px 14px; border-radius:var(--r);
     font-size:13px; margin-bottom:14px;
   }
@@ -630,10 +671,10 @@
   }
   .day-row.assignable{ cursor:pointer; }
   .day-row.assignable:hover{ background:var(--plum-wash); }
-  .day-row.today{ background:rgba(91,42,74,.045); }
+  .day-row.today{ background:var(--plum-wash-soft); }
   .day-num{
     width:78px; flex:none; padding-top:2px;
-    font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.04em; color:var(--ink-mute);
+    font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.04em; color:var(--ink-soft);
   }
   .day-row.today .day-num{ color:var(--plum); font-weight:500; }
   .day-num .today-tag{ display:block; font-size:9.5px; letter-spacing:.08em; color:var(--plum); margin-top:2px; }
@@ -641,9 +682,9 @@
   .day-main{ flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; }
   .day-recipe-row{ display:flex; align-items:center; gap:10px; }
   /* SERVE WITH under a dish (#87): the sides that would do, each one tap from joining the day and the dish's group. */
-  .day-side-offer{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin:2px 0 6px 18px; font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.06em; color:var(--ink-mute); }
+  .day-side-offer{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin:2px 0 6px 18px; font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.06em; color:var(--ink-soft); }
   .day-side-add{ background:none; border:1px dashed var(--line); padding:3px 8px; font:inherit; letter-spacing:inherit; color:var(--ink); cursor:pointer; }
-  .day-side-hide{ background:none; border:0; padding:2px 6px; font:inherit; color:var(--ink-mute); cursor:pointer; }
+  .day-side-hide{ background:none; border:0; padding:2px 6px; font:inherit; color:var(--ink-soft); cursor:pointer; }
   .day-recipe-title{
     flex:1; min-width:0; background:none; border:none; padding:0; text-align:left; cursor:pointer;
     font-size:18px; font-weight:300; color:var(--ink);
@@ -657,7 +698,7 @@
   .day-recipe-course.bread{ color:var(--gold); }
   .day-recipe-time{
     flex:none; width:60px; text-align:right;
-    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.03em; color:var(--ink-mute);
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.03em; color:var(--ink-soft);
   }
   .day-recipe-serves{
     flex:none; background:none; border:1px solid transparent; border-radius:20px; cursor:pointer;
@@ -673,7 +714,7 @@
     flex:none; border:1px solid var(--line); background:none; border-radius:999px; padding:3px 9px; cursor:pointer;
     font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; color:var(--ink-soft);
   }
-  .day-recipe-premade.on{ border-color:var(--sage); color:var(--sage); background:rgba(124,148,115,.12); }
+  .day-recipe-premade.on{ border-color:var(--sage); color:var(--sage); background:var(--sage-wash-strong); }
   .day-recipe-cooked.done{ border-color:var(--sage); color:var(--sage); cursor:default; }
   /* The calendar push (P3): the day's two switches, quiet until on, like the headcount above. */
   .day-cal{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
@@ -711,11 +752,11 @@
   }
   .group-badge{
     display:flex; align-items:center; gap:8px; padding:6px 10px;
-    background:rgba(124,148,115,.10); border:1px solid rgba(124,148,115,.35); border-radius:var(--r);
+    background:var(--sage-wash); border:1px solid var(--sage-line); border-radius:var(--r);
     font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.03em; color:var(--sage);
     cursor:pointer; text-align:left; width:100%;
   }
-  .group-badge:hover{ background:rgba(124,148,115,.18); }
+  .group-badge:hover{ background:var(--sage-wash-strong); }
   .group-badge .group-tie{ background:var(--sage); width:3px; height:14px; margin:0; }
   .group-ungroup{
     margin-left:auto; background:none; border:none; cursor:pointer;
@@ -738,7 +779,7 @@
   .stacked-recipe-head h3{ font-size:18px; font-weight:600; margin:0; color:var(--ink); }
   .stacked-recipe-serves{
     font-family:'IBM Plex Mono', monospace; font-size:10.5px;
-    letter-spacing:.04em; color:var(--ink-mute); flex:none;
+    letter-spacing:.04em; color:var(--ink-soft); flex:none;
   }
   .stacked-recipe-actions{ display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
   .stacked-recipe-actions .btn{ padding:6px 10px; font-size:10px; }
@@ -777,7 +818,7 @@
     padding:12px 14px; display:flex; flex-direction:column; gap:4px; cursor:pointer;
   }
   .sl-item:hover{ border-color:var(--plum); }
-  .sl-item.selected{ border-color:var(--sage); background:rgba(124,148,115,.1); }
+  .sl-item.selected{ border-color:var(--sage); background:var(--sage-wash); }
   .sl-item.note{
     border-style:dashed; cursor:default; background:none;
   }
@@ -792,7 +833,7 @@
   }
   .sl-remove:hover{ color:var(--danger); }
   .sl-sub{
-    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; color:var(--ink-mute);
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; color:var(--ink-soft);
   }
   .sl-item.selected .sl-sub{ color:var(--sage); }
   .sl-empty{ font-size:13.5px; color:var(--ink-faint); line-height:1.6; }
@@ -825,11 +866,11 @@
   .shop-item-main{ display:flex; flex-direction:column; gap:3px; min-width:0; }
   .shop-item-name{ font-size:15px; color:var(--ink); }
   .shop-item-recipes{
-    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.04em; color:var(--ink-mute);
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.04em; color:var(--ink-soft);
   }
   .shop-item.checked .shop-item-name{ text-decoration:line-through; color:var(--ink-faint); }
   /* The other choice a recipe offers ("or honey"), quieter than the name. */
-  .shop-item-alt{ color:var(--ink-mute); font-size:13.5px; margin-left:6px; }
+  .shop-item-alt{ color:var(--ink-soft); font-size:13.5px; margin-left:6px; }
   .shop-item.checked .shop-item-recipes{ opacity:.6; }
   /* A row is the tick (the label) plus its quiet tools underneath: the
      inline "same as…?" and MERGE WITH…, kept outside the label so a tap on
@@ -880,10 +921,10 @@
   .history-day.other-month{ background:none; border-color:transparent; opacity:.4; }
   .history-day.today{ border-color:var(--plum); }
   .history-day.selected{ background:var(--plum-wash); border-color:var(--plum); }
-  .history-day.has-entries{ background:rgba(124,148,115,.09); }
+  .history-day.has-entries{ background:var(--sage-wash); }
   .history-day.has-entries.selected{ background:var(--plum-wash); }
   .history-day-num{
-    font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink-mute); flex:none;
+    font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink-soft); flex:none;
   }
   .history-day.today .history-day-num{ color:var(--plum); font-weight:500; }
   .history-day-info{
@@ -924,7 +965,7 @@
   }
   .hstat-weekday-table td:last-child{ color:var(--ink); }
   .hstat-weekday-empty{ color:var(--ink-faint); font-style:italic; }
-  .hstat-pie-note{ font-size:11.5px; color:var(--ink-mute); line-height:1.4; margin-top:4px; }
+  .hstat-pie-note{ font-size:11.5px; color:var(--ink-soft); line-height:1.4; margin-top:4px; }
   .hstat-pie-wrap{ display:flex; align-items:center; gap:14px; margin-top:10px; }
   .hstat-pie-wrap svg{ flex:none; }
   .hstat-legend{ display:flex; flex-direction:column; gap:5px; min-width:0; }
@@ -935,7 +976,7 @@
 
   /* ============================= MODAL ============================= */
   .modal-overlay{
-    position:fixed; inset:0; background:rgba(43,39,34,.45);
+    position:fixed; inset:0; background:var(--scrim);
     display:none; align-items:flex-start; justify-content:center;
     padding:40px 16px; z-index:100; overflow-y:auto;
   }
@@ -985,7 +1026,7 @@
   .photo-overlay{ position:fixed; inset:0; z-index:150; background:#141210; overflow:auto; display:none; }
   .photo-overlay.open{ display:block; }
   .photo-overlay-head{ position:sticky; top:0; display:flex; gap:16px; align-items:center; padding:12px 60px 12px 16px;
-    background:rgba(20,18,16,.96); color:#F4EFE6; font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.06em; }
+    background:var(--photo-bar); color:#F4EFE6; font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.06em; }
   .photo-overlay-tip{ color:#B8AFA2; font-size:10px; }
   .photo-overlay-head .modal-close{ top:8px; right:12px; }
   .source-photo-page{ margin:0 auto 24px; padding:0 8px; max-width:1200px; text-align:center; }
@@ -1016,14 +1057,14 @@
   .meal-type-btn.on{ border-color:var(--plum); background:var(--plum-wash); color:var(--plum); }
   .mini-actions{ display:flex; gap:10px; justify-content:flex-end; align-items:center; }
   .link-btn{
-    background:none; border:none; cursor:pointer; color:var(--ink-mute);
+    background:none; border:none; cursor:pointer; color:var(--ink-soft);
     font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.06em;
   }
   .link-btn:hover{ color:var(--plum); }
   .mini-field{ display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
   .mini-field span{
     font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.08em;
-    color:var(--ink-mute);
+    color:var(--ink-soft);
   }
   .mini-field input{
     padding:9px 10px; border:1px solid var(--line); border-radius:var(--r);
@@ -1037,7 +1078,7 @@
   .diary-adhoc{ border-left:2px solid var(--ink-faint); padding-left:10px; }
   .diary-meal-tag{
     font-family:'IBM Plex Mono', monospace; font-size:9.5px; letter-spacing:.08em;
-    color:var(--ink-mute); margin-left:8px; text-transform:uppercase;
+    color:var(--ink-soft); margin-left:8px; text-transform:uppercase;
   }
   .diary-kind{
     font-family:'IBM Plex Mono', monospace; font-size:9.5px; letter-spacing:.08em;
@@ -1084,7 +1125,7 @@
   .kw-suggest-list{
     position:absolute; top:100%; left:0; right:0; z-index:20; margin-top:4px;
     background:var(--card); border:1px solid var(--line); border-radius:var(--r);
-    max-height:190px; overflow-y:auto; box-shadow:0 6px 16px rgba(43,39,34,.12);
+    max-height:190px; overflow-y:auto; box-shadow:0 6px 16px var(--ink-shadow);
   }
   .kw-suggest-item{
     padding:9px 12px; font-size:13.5px; color:var(--ink); cursor:pointer;
@@ -1103,18 +1144,18 @@
   }
   .scale-label{
     font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.05em;
-    color:var(--ink-mute); margin-right:4px; flex:none;
+    color:var(--ink-soft); margin-right:4px; flex:none;
   }
   .scale-hint{
-    font-size:12.5px; color:var(--ink-mute); font-style:italic; flex-basis:100%; margin-top:4px;
+    font-size:12.5px; color:var(--ink-soft); font-style:italic; flex-basis:100%; margin-top:4px;
   }
   #f-scale-servings{
     padding:8px 10px; border:1px solid var(--line); border-radius:var(--r);
     background:var(--card); font-family:'Newsreader', Georgia, serif; font-size:14px;
   }
   .equipment-warning{
-    padding:12px 14px; margin-bottom:16px; background:rgba(140,58,52,.08);
-    border:1px solid rgba(140,58,52,.28); border-radius:var(--r);
+    padding:12px 14px; margin-bottom:16px; background:var(--danger-wash);
+    border:1px solid var(--danger-line); border-radius:var(--r);
     color:var(--danger); font-size:14px; line-height:1.5;
   }
   #addPreview{ margin:12px 0 20px; }
@@ -1133,7 +1174,7 @@
   .paste-read{ margin:10px 0 0; font-family:'IBM Plex Mono', monospace; font-size:11.5px; letter-spacing:.04em; color:var(--plum); }
   .paste-read[hidden]{ display:none; }
   .whats-new-entry{ margin:0 0 12px; }
-  .whats-new-head{ font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.04em; color:var(--ink-mute); }
+  .whats-new-head{ font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.04em; color:var(--ink-soft); }
   .whats-new-entry ul{ margin:4px 0 0; padding-left:20px; font-size:14px; line-height:1.45; color:var(--ink-soft); }
   /* Your own picture for a recipe (issue #92): beside IMAGE URL, a button, and the chosen photo small until SAVE. */
   .recipe-photo-upload{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:-4px 0 14px; }
@@ -1160,7 +1201,7 @@
   .rv-row code{ font-family:'IBM Plex Mono', monospace; font-size:13px; }
   .rv-row button{ margin-left:6px; background:none; border:none; padding:0; cursor:pointer; color:var(--plum);
     font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; text-decoration:underline; }
-  .rv-section.rv-red{ background:rgba(140,58,52,.08); border-color:rgba(140,58,52,.28); }
+  .rv-section.rv-red{ background:var(--danger-wash); border-color:var(--danger-line); }
   /* SAME AS…: the shopping list's MERGE WITH… box, so the names read as names, not actions.
      The filter is 16px so a tablet does not zoom on focus. */
   .rv-row .rv-sameas{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:4px; }
@@ -1204,7 +1245,7 @@
   .line-check .hint{ color:var(--ink-soft); font-size:13px; }
   .line-check button{ margin-left:6px; background:none; border:none; padding:0; cursor:pointer; color:var(--plum);
     font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.06em; text-decoration:underline; }
-  .line-checks.unread{ background:rgba(140,58,52,.08); border-color:rgba(140,58,52,.28); }
+  .line-checks.unread{ background:var(--danger-wash); border-color:var(--danger-line); }
   textarea#sourcePasteInput{
     width:100%; resize:vertical; box-sizing:border-box;
     font-family:'IBM Plex Mono', monospace; font-size:13px; line-height:1.5;
@@ -1215,7 +1256,7 @@
   textarea#sourcePasteInput:focus{ border-color:var(--plum); }
   .source-compare{ width:100%; border-collapse:collapse; font-size:13.5px; margin-top:6px; }
   .source-compare td{ padding:4px 6px; border-top:1px solid var(--line-soft); vertical-align:top; width:50%; }
-  .source-compare tr.miss td{ background:rgba(140,58,52,.08); }
+  .source-compare tr.miss td{ background:var(--danger-wash); }
   .source-compare tr.soft td{ background:var(--gold-wash); }
   .source-compare .why{ margin-top:2px; font-size:12px; color:var(--ink-soft); }
   .source-compare th{ text-align:left; font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.08em; font-weight:500; color:var(--ink-soft); padding:4px 6px; }
@@ -1254,7 +1295,7 @@
   .alias-pair .alias-arrow{ margin:0 8px; }
   .alias-group-label{
     font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:.1em;
-    color:var(--ink-mute); margin:14px 0 2px;
+    color:var(--ink-soft); margin:14px 0 2px;
   }
   .alias-group-label:first-child{ margin-top:0; }
 
@@ -1294,7 +1335,7 @@
   .settings-tabs .btn.active{ background:var(--plum); border-color:var(--plum); color:var(--on-accent); }
   /* The hidden attribute loses to .sources-list's display:flex and the like without this. */
   #view-settings .settings-block[hidden], #dictionaryList[hidden]{ display:none !important; }
-  .swap-row-detail{ font-size:12.5px; color:var(--ink-mute); margin-top:3px; }
+  .swap-row-detail{ font-size:12.5px; color:var(--ink-soft); margin-top:3px; }
   .swap-row-ratio{
     font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--ink-faint);
   }
@@ -1379,7 +1420,7 @@
     width:18px; height:64px; padding:0;
     border:1px solid var(--line); border-left:none;
     border-radius:0 var(--r) var(--r) 0;
-    background:var(--card); color:var(--ink-mute); cursor:pointer;
+    background:var(--card); color:var(--ink-soft); cursor:pointer;
     font-family:'IBM Plex Mono', monospace; font-size:11px; line-height:1;
   }
   .sidebar-peek-btn:hover{ color:var(--plum); border-color:var(--plum); }
@@ -1505,7 +1546,7 @@
   .login-card p{ color:var(--ink-soft); font-size:13px; margin-bottom:22px; }
   .login-card label{
     display:block; font-family:'IBM Plex Mono', monospace; font-size:10px;
-    letter-spacing:.1em; text-transform:uppercase; color:var(--ink-mute); margin-bottom:5px;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:5px;
   }
   .login-card input{
     width:100%; padding:9px 10px; margin-bottom:16px;
@@ -2152,7 +2193,7 @@ const EXPECTED_CORE_VERSION = '2026-10-13.4';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-13.8';
+const APP_VERSION = '2026-10-14.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
