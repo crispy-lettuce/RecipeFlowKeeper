@@ -15,7 +15,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 617 automated checks pass, plus 202 in Node (14 Oct 2026, after H; 613 and 199 after S, 609 and 194 after T, 606 and 189 on 13 Oct; 102 when this was
+story that used to open this paragraph is history. 620 automated checks pass, plus 205 in Node (14 Oct 2026, after F; 617 and 202 after H, 613 and 199 after S, 609 and 194 after T, 606 and 189 on 13 Oct; 102 when this was
 written; until 12 Oct this line said 329 and 133, corrected 12 Oct 2026, the October review's Appendix B). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -808,6 +808,12 @@ reported one by one.*
     row would leave them. (5) *The side menu:* SAVED VIEWS, NEW RECIPE, EXPORT DATA, IMPORT DATA and SIGN OUT are all in view without
     scrolling, each with room around it (look, don't tap SIGN OUT). (6) *On the phone:* the top bar's links, NEW RECIPE and the
     Planner's buttons are comfortable to press. Writes nothing.
+64a. **Keyboard focus (new 14 Oct; READABILITY F, `docs/PLAN-READABILITY.md`).** Looks only; nothing is saved. (1) *Recipes:* tap the search
+    bar. A plum outline now shows round the whole bar, and the cursor is in it. (2) Tap **+ ADD** beside the keywords. The keyword box has
+    a plum outline while you type. (3) *Planner:* tap the Shortlist name box. It has the outline too. (4) *The add-recipe screen:* the
+    paste box and the boxes below it each show the outline when tapped. (5) *Settings:* the same for the boxes on the INGREDIENTS and APP
+    tabs. (6) *The side menu:* if a keyboard is attached, press Tab and each link shows its outline wholly inside its row, not cut off at
+    the menu's edges. (7) *Dark theme:* (1) again; the outline is the lighter plum. Writes nothing.
 
 ## Deferred to the tablet, after merging
 

@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **617 checks** (14 Oct 2026, 613 after S, 609 after T and 606 on 13 Oct; `core.test.js` adds 202 in Node, 199 after S, 194 after T and 189 on 13 Oct) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **620 checks** (14 Oct 2026, 617 after H, 613 after S, 609 after T and 606 on 13 Oct; `core.test.js` adds 205 in Node, 202 after H, 199 after S, 194 after T and 189 on 13 Oct) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -3016,6 +3016,46 @@ notes' action buttons. The phone's Planner is 31% longer.
 
 *Left for the household to decide:* whether the Planner's +23% (+31% on the phone) and the 1280×720 sidebar scroll are a fair price for
 44px targets; R (one corner radius) and F (keyboard focus) are not started.
+
+**READABILITY F, keyboard focus (14 Oct 2026; `docs/PLAN-READABILITY.md` change F, built on `main` at `252047a`, after H).** The household said
+"go" to five lines that included a side-menu fix beyond the plan's list. `index.html` CSS only, plus `APP_VERSION`; no id, markup, wording,
+`core.js`, `help.html` or schema change, and `core.js`'s version is unchanged.
+- **What changed.** `outline:none` came off six controls that take focus themselves (the keyword box, the Shortlist name box, the add-recipe
+  paste box, the add-form and swap fields, the source paste box, the login field), so the page's 2px plum ring shows on them. The search
+  input keeps it, and its frame draws the ring (`.searchbar:focus-within`). `.kw-input` is `--line` until focused, then `--plum`. Beyond the
+  plan: `.sidebar :focus-visible{ outline-offset:-2px }`, because the side menu clips its sides and cut the ring off its links on every
+  screen. The plan's "Built as" note has the account.
+- `changelog.json` **2026-10-14.4**; step **64a**. No `help.html` change: no label changed.
+
+*Verified by.* On `main`, before: `core.test.js` **202**, exit 0; `node test/build.js && node test/smoke.js` **617**, exit 0. After, on the
+finished tree: `core.test.js` **205** (three new, one more than the five lines said, because the keyword box's border colours wanted a
+check of their own), exit 0; smoke **620** (three new), exit 0, no console or page errors; `help-guide.js` 7, exit 0. Measured by walking
+Tab on the harness's made-up data (a throwaway script outside the repo; light and dark gave the same counts): stops with no visible ring 1
+of 42 on Recipes, 1 of 45 on the Planner, 4 of 31 in Settings, 0 on Shopping and History, to 0 everywhere; rings cut off by the side menu
+on all five screens to none; the ring's contrast 9.9:1 and 10.6:1 in light, 6.7:1 and 6.3:1 in dark, against the page and card colours.
+**Fourteen mutations, each failing the right check by name.** `core.test.js` (eight, run in the repo and restored byte for byte): the
+keyword box, the add-form fields, the login field and the Shortlist box each given `outline:none` again (all four fail the first check,
+naming the rule); the search frame's ring removed and the side menu's inside offset removed (the second check, naming which); the keyword
+box's idle border back to plum and its `:focus` rule removed (the third). `smoke.js` (six, on scratch copies beside an unmutated control that
+passed all 620 with exit 0): the Shortlist box, the search frame, the keyword box and the swap fields each losing their ring (the light and
+the dark walks fail, naming the stop); the side menu's inside offset removed (the side-menu check alone); the dark theme's ring made white
+(the dark check alone, naming the colour). The smoke check had four faults of mine, all fixed before this record: it compared the keyword
+box's name without its class; my block left Settings on its App tab, which a later test (`page.fill`) timed out on, crashing the run after
+251 checks (the tab is remembered in `localStorage`); **its first walk started Tab in the middle of the page after the keyword step, never
+reached the search box, and so passed with that box's ring removed, which the mutation for it showed** (the walk now gets a page of its
+own per view and must reach the search box, the Shortlist box and a swap field); and a click at the corner to reset Tab's start worked on a
+fresh page but, in the long session, ended every walk in the same place after about 37 stops. I did not find out why, and dropped it. A
+harness quirk, not a fault of F: the parallel smoke runs share files in the OS temp directory (`kitchen-backup-check.json` and others), and
+one of seven crashed with "Unexpected end of JSON input" after 342 checks; rerun alone it gave the same two failures as expected and no crash.
+
+*Not verified.* The real tablet and a real keyboard (64a). A screen reader. The login field and the source paste box in a browser: neither
+was on screen in the stub, so only the core check sees them. Shopping, History and the Shortlist in `smoke.js` (walked once in a throwaway
+script, none without a ring, but the suite walks Recipes, the Planner and Settings only). Hover and error states. Two rings left cut off by
+a container's edge (a **+ CHOOSE A RECIPE** at the foot of the Planner's scroll area, and the Shortlist panel on History), seen only in the
+measuring script's numbers, not on a screen. The deployed page: the sandbox's proxy blocks `github.io`.
+
+*Left for the household to decide:* whether a ring on every tapped text field is wanted. A text field always matches `:focus-visible`, so
+the ring shows on a tap as well as a Tab; hiding it for touch would take script. R (one corner radius) is not started.
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*

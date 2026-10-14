@@ -1,4 +1,7 @@
 [
+  { "version": "2026-10-14.4", "date": "2026-10-14",
+    "changes": ["You can now see where the keyboard is: press Tab and the box, button or link that has focus gets a clear plum outline. That includes the search box, the keyword box, the Shortlist name box, the boxes on the add-a-recipe screen and the ones in Settings, which showed no sign of focus before. Tapping into a text box draws the outline too.",
+                "In the side menu the outline is drawn inside each link, so the edge of the menu no longer cuts it off."] },
   { "version": "2026-10-14.3", "date": "2026-10-14",
     "changes": ["Buttons are bigger and easier to hit with a thumb: every button on a recipe, in the Planner and in the side menu is now fingertip-sized, including the small × buttons, the filter chips, the servings buttons and the cooking-mode switch. The star and + on a recipe card look the same but answer a tap in a larger area, and the search bar can be tapped anywhere along its height.",
                 "Some screens take a little more room: the filter area and the buttons above a recipe are taller, and the Planner is longer, though its rows now sit closer together. The side menu's spacing was tightened to keep it on one screen."] },

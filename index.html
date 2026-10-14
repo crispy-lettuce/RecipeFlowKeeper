@@ -182,6 +182,8 @@
   }
   input, select, button, textarea{ font-family:inherit; }
   ::selection{ background:var(--plum-select); }
+  /* READABILITY F: this ring is the one signal that says where the keyboard is, so nothing that can take focus turns it off with
+     outline:none. The search input is the single exception, because its frame draws the ring instead (below). */
   :focus-visible{ outline:2px solid var(--plum); outline-offset:2px; }
 
   .mono{ font-family:'IBM Plex Mono', monospace; }
@@ -200,6 +202,9 @@
     padding:18px 0 12px;
     overflow-y:auto;
   }
+  /* READABILITY F: overflow-y:auto makes overflow-x clip too, and the links fill the menu's width, so a ring 2px outside a link lost
+     its left and right edges. Drawn inside the link, nothing is cut. */
+  .sidebar :focus-visible{ outline-offset:-2px; }
   .brand{ padding:0 22px 12px; font-size:19px; font-weight:300; }
 
   .navlink{
@@ -264,9 +269,9 @@
     height:50px; padding:0 16px;
     background:var(--card); border:1px solid var(--line); border-radius:var(--r);
   }
-  .searchbar:focus-within{ border-color:var(--plum); }
+  .searchbar:focus-within{ border-color:var(--plum); outline:2px solid var(--plum); outline-offset:2px; }
   .searchbar input{
-    flex:1; min-width:0; border:none; outline:none; background:transparent;
+    flex:1; min-width:0; border:none; outline:none; background:transparent;   /* the frame above draws the ring */
     font-size:16px; font-weight:400; color:var(--ink);
   }
   .result-count{
@@ -297,11 +302,12 @@
   .chip.ghost:hover{ border-color:var(--plum); color:var(--plum); }
 
   .kw-input{
-    padding:6px 10px; border:1px solid var(--plum); border-radius:var(--r);
+    padding:6px 10px; border:1px solid var(--line); border-radius:var(--r);
     background:var(--card); color:var(--ink);
     font-size:14px; letter-spacing:.04em;
-    width:150px; outline:none; font-weight:500;
+    width:150px; font-weight:500;
   }
+  .kw-input:focus{ border-color:var(--plum); }
 
   .sort-wrap{ margin-left:auto; display:flex; align-items:center; gap:8px; flex:none; }
   select.sort{
@@ -825,7 +831,7 @@
   }
   .shortlist-input{
     width:100%; padding:13px 14px; border:1px solid var(--plum); border-radius:var(--r);
-    background:none; color:var(--plum); font-size:14px; font-weight:400; outline:none; margin-bottom:8px;
+    background:none; color:var(--plum); font-size:14px; font-weight:400; margin-bottom:8px;
   }
   .shortlist-input::placeholder{ color:var(--plum); opacity:.75; }
   .shortlist-caption{
@@ -1127,7 +1133,7 @@
     font-family:'IBM Plex Mono', monospace; font-size:13px; line-height:1.65;
     color:var(--ink); background:var(--paper);
     border:1px solid var(--line); border-radius:var(--r);
-    padding:14px; margin-bottom:14px; outline:none;
+    padding:14px; margin-bottom:14px;
   }
   textarea#importInput:focus{ border-color:var(--plum); }
   .add-form{ margin-top:26px; border-top:1px solid var(--line-soft); padding-top:22px; }
@@ -1140,7 +1146,7 @@
   .field-row input, .field-row select{
     font-size:14px; font-weight:400; padding:9px 10px;
     border:1px solid var(--line); border-radius:var(--r);
-    background:var(--paper); color:var(--ink); outline:none;
+    background:var(--paper); color:var(--ink);
   }
   .field-row input:focus, .field-row select:focus{ border-color:var(--plum); }
   .kw-suggest-list{
@@ -1272,7 +1278,7 @@
     font-family:'IBM Plex Mono', monospace; font-size:13px; line-height:1.5;
     color:var(--ink); background:var(--paper);
     border:1px solid var(--line); border-radius:var(--r);
-    padding:10px; margin-bottom:8px; outline:none;
+    padding:10px; margin-bottom:8px;
   }
   textarea#sourcePasteInput:focus{ border-color:var(--plum); }
   .source-compare{ width:100%; border-collapse:collapse; font-size:14px; margin-top:6px; }
@@ -1597,7 +1603,7 @@
     background:var(--paper); border:1px solid var(--line); border-radius:var(--r);
     color:var(--ink); font-size:14px;
   }
-  .login-card input:focus{ outline:none; border-color:var(--plum); }
+  .login-card input:focus{ border-color:var(--plum); }
   .login-card button{
     width:100%; padding:10px; border:none; border-radius:var(--r);
     background:var(--plum); color:var(--on-accent); cursor:pointer;
@@ -2237,7 +2243,7 @@ const EXPECTED_CORE_VERSION = '2026-10-13.4';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-14.3';
+const APP_VERSION = '2026-10-14.4';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
