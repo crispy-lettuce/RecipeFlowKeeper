@@ -15,7 +15,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 613 automated checks pass, plus 199 in Node (14 Oct 2026, after S; 609 and 194 after T, 606 and 189 on 13 Oct; 102 when this was
+story that used to open this paragraph is history. 617 automated checks pass, plus 202 in Node (14 Oct 2026, after H; 613 and 199 after S, 609 and 194 after T, 606 and 189 on 13 Oct; 102 when this was
 written; until 12 Oct this line said 329 and 133, corrected 12 Oct 2026, the October review's Appendix B). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -799,6 +799,15 @@ reported one by one.*
     the header is tidy. (5) *Planner and Shopping:* every row fits; the day, SERVES n and × are readable. (6) *On the phone:* History's
     calendar days show a short name on one line; a recipe's buttons wrap and nothing is cut off. (7) *Dark theme:* (2) again.
     (8) *PRINT / A4 PDF of a recipe:* the same number of sheets as before (a typical one is two). Writes nothing.
+63a. **Bigger tap targets (new 14 Oct; READABILITY H, `docs/PLAN-READABILITY.md`).** Sizes only; nothing is saved. (1) *Recipes:* the filter
+    chips, the SOURCE and SORT boxes and the keyword + ADD chip are taller and easy to hit; the star and + on a card look as before but
+    a tap just outside the circle still works; a tap anywhere along the search bar's height puts the cursor in it. (2) *Open a recipe:*
+    every button above it, COOK FOR's 2, 4, 6, 8, GO and RESET, and the COOKING MODE switch (now larger) are comfortable to press.
+    (3) *COOKING MODE:* the header is tidy, with RESET TICKS and SHOW TIMELINE together on one line. (4) *Planner:* × on a dish, SERVES n,
+    + CHOOSE A RECIPE, + ADD ANOTHER, the GROUPED badge and COOKED ✓ need no aiming; the days sit closer together than a plain 44px
+    row would leave them. (5) *The side menu:* SAVED VIEWS, NEW RECIPE, EXPORT DATA, IMPORT DATA and SIGN OUT are all in view without
+    scrolling, each with room around it (look, don't tap SIGN OUT). (6) *On the phone:* the top bar's links, NEW RECIPE and the
+    Planner's buttons are comfortable to press. Writes nothing.
 
 ## Deferred to the tablet, after merging
 

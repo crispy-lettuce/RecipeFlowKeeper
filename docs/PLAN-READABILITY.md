@@ -10,8 +10,8 @@ tablet step in `docs/TEST-PLAN.md`. Print and EXPORT PNG must still match the sc
 | Order | Change | Size | Status |
 | --- | --- | --- | --- |
 | 1 | **T**, colour tokens: contrast and the hard-coded `rgba()` | Small | **Built and merged**, 14 Oct (#147) |
-| 2 | **S**, one type scale; mono only for quantities and times | Medium | **Built**, 14 Oct |
-| 3 | **H**, 44px tap targets | Medium | Proposed |
+| 2 | **S**, one type scale; mono only for quantities and times | Medium | **Built and merged**, 14 Oct (#149) |
+| 3 | **H**, 44px tap targets | Medium | **Built**, 14 Oct |
 | 4 | **R**, one corner radius | Small | Proposed |
 | 5 | **F**, keyboard focus everywhere | Small | Proposed |
 
@@ -130,6 +130,45 @@ corner buttons 27px.
 - Phone (`max-width:860px`) is unchanged except that the minimum height applies.
 - **Check:** at 1280×800 and 412×915, every visible `button` in the viewer and Planner is at least 44px tall
   (`getBoundingClientRect`). Make sure the viewer header still fits on one line in cooking mode at tablet width (PLAN-LAYOUT B).
+
+**Built as (14 Oct 2026).** The household chose "option C" from three put to them. Measured on the app's made-up test data and a made-up
+"typical" recipe; **the sandbox has no IBM Plex** (Inter and DejaVu Sans Mono stand in), so widths are approximate.
+
+- **The plan's list is shorter than its own check.** It covers the viewer, but with it alone 28 of the Planner's 36 buttons stayed under
+  44px (the 12 "+ CHOOSE A RECIPE" rows, the × buttons, SERVES, the GROUPED badge, + ADD ANOTHER, the side-offer buttons) and 7 of 8 sidebar
+  buttons did. So the list built is the check's: everything in the viewer, the Planner and the sidebar, in one `TAP TARGETS` block in the
+  stylesheet. The × buttons and the round scale buttons are 44px wide too (the × was 13px wide). The links under SERVE WITH and OFTEN WITH
+  (`button.serve-with-link`, 21px) are in it as well: the first measurement used a recipe with no SERVE WITH line and missed them, which the
+  build's first run of its own smoke check showed; the smoke check's recipe has one. `a.btn` is `inline-flex` so its words centre; the search bar's input fills the bar's 50px (it was 20px, so a tap above or below the words missed); the phone's `NEW RECIPE` and
+  nav links are 44px.
+- **The card's corner buttons are 36px with a 44px hit area**, made by an invisible `::before` with `inset:-5px`, not the -4px first tried: `inset` is
+  measured from the button's padding box, inside its 1px border, so -4px gave a 42px square and -5px gives 44px (the smoke hit test showed it);
+  the toggle is 44px by 26px, its thumb 20px travelling 18px.
+- **Trimmed so the bigger targets don't cost the screen:** the Planner's day rows (14px to 6px padding), the sidebar's saved views and data
+  links (no gaps), the brand and sidebar padding, and the nav links are exactly 44px. Without this the 14 Planner days grew 49% and the
+  sidebar pushed IMPORT DATA and SIGN OUT 123px below the fold at 800px tall.
+- **Measured, tablet 1280×800 (phone 412×915):** buttons under 44px in the viewer 16 to 0 (16 to 0), in the Planner 30 to 0 (29 to 0), in
+  the sidebar and navigation 7 of 14 to 0 (10 of 10 to 0). The recipes filter area 213 to 249px (383 to 461); the viewer's header 203 to
+  244px (359 to 414), the same number of lines; the cooking-mode header still one line for a short meta line, 76 to 83px (4 lines, 212 to
+  253px); **the 14 Planner days 913 to 1124px, +23% (1062 to 1394px, +31%)**; the sidebar fits 1280×800 with 12px to spare (SIGN OUT's
+  bottom edge at 788px), **but at 1280×720 it scrolls by 46px, where it fitted before.**
+- **PLAN-LAYOUT B's "one line"** depends on the recipe's meta line: with a long one, the header wraps to two rows in cooking mode, before H
+  and after. The check proves the controls themselves (← ALL RECIPES, the switch, RESET TICKS, SHOW TIMELINE) fit on one line with the information rows
+  (meta line, provenance, SERVE WITH, OFTEN WITH) hidden, and that each of those rows, shown again, adds at most one more line. (Its first
+  form assumed a one-line header and failed on the unmutated build, because the test recipe's header carries information rows beyond the
+  meta line.) The header
+  heights quoted above are for a recipe with none of those rows except the meta line; a SERVE WITH or OFTEN WITH row adds a line of 44px
+  links, not measured in pixels.
+- **Checks.** Three in `test/core.test.js`: every listed selector has `min-height:44px` (the × and scale buttons `min-width:44px` too); the
+  card buttons are 36px with the `::before`; the toggle is 44×26 and its thumb's travel is the room it has. Four in `test/smoke.js`: every
+  visible button in the viewer, Planner and sidebar at least 44px tall at tablet width, and in the viewer, Planner and navigation at phone
+  width (a second page at 412×915); the card buttons answer a tap at the four edges of a 44px square around them (a hit test, since a
+  `::before` doesn't change the rectangle); the cooking-mode header as above.
+- **Still under 44px, left alone** (outside the plan's list and its check; the same at tablet width): the add dialog's close × (30px) and its
+  underlined `link-btn`; the text fields in Settings (30px) and the cook-note box (38px); the Library tab's 13px "only those needing
+  attention" tick box (its target is a line of text; not measured); the 21 QUICK ANSWERS links in Settings → HELP (text
+  links). History, Shortlist and the other Settings tabs' buttons are covered by the list as it stands (12, 7 and 14 down to 0). Shopping needed
+  nothing: each item is a full-width 60px label, and its 18px checkbox is not the target.
 
 ## R. One corner radius
 

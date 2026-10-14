@@ -30,9 +30,9 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 ### Reload the app on every device
 
-The newest version is 2026-10-14.2 (the type scale: bigger writing). Once it has merged, reload on every device. The one
-before it, 2026-10-14.1 (easier-to-read small text, colours only), was merged as #147 on 14 Oct, so it should already be live.
-Steps 61a and 62a are below.
+The newest version is 2026-10-14.3 (bigger buttons). Once it has merged, reload on every device. The two before it,
+2026-10-14.1 (colours) and 2026-10-14.2 (bigger writing), were merged as #147 and #149 on 14 Oct, so they should already be
+live. Steps 61a, 62a and 63a are below.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready**, tap **RELOAD**. Otherwise refresh the page.
@@ -80,6 +80,23 @@ the phone.
 8. If you use it, **PRINT / A4 PDF** on a recipe. **You should see:** the same number of sheets as before (a typical recipe is two).
 
 Tell the next session what looks too big or too cramped, and anything you can't read.
+
+### 63a. Bigger buttons (new 14 Oct, `docs/PLAN-READABILITY.md` change H)
+
+Nothing is saved. Do this after the buttons pull request has merged and you have reloaded the app. Tablet first; step 6 is the phone.
+
+1. Open **RECIPES**. **You should see:** the filter chips and the SOURCE and SORT boxes taller and easy to hit. The star and **+** on a
+   card look the same, but a tap just outside the circle still works. A tap anywhere along the search bar puts the cursor in it.
+2. Open a recipe. **You should see:** every button above it, the **2 4 6 8** buttons under COOK FOR, **GO**, **RESET** and the
+   **COOKING MODE** switch comfortable to press with a thumb.
+3. Switch **COOKING MODE** on. **You should see:** a tidy header, with **RESET TICKS** and **SHOW TIMELINE** together on one line.
+4. Open **PLANNER**. **You should see:** the **×** on a dish, **SERVES n**, **+ CHOOSE A RECIPE**, **+ ADD ANOTHER**, the **GROUPED:**
+   badge and **COOKED ✓** all easy to hit without aiming, and the days a little closer together than plain big buttons would leave them.
+5. Look at the side menu. **You should see:** SAVED VIEWS, **NEW RECIPE**, **EXPORT DATA**, **IMPORT DATA** and **SIGN OUT** all in
+   view without scrolling, each with room around it. (Look; don't tap SIGN OUT.)
+6. On the phone, look at the top bar's links, **NEW RECIPE** and the Planner's buttons. **You should see:** each comfortable to press.
+
+Tell the next session if anything is hard to hit, if something now needs scrolling that didn't, or if a screen feels too long.
 
 ---
 

@@ -302,6 +302,88 @@ const check = (name, pass, detail) => {
   await page.waitForTimeout(300);
   await page.click('[data-settings-tab-btn="ingredients"]');  // leave Settings as the checks below expect
 
+  /* ---- Readability H (14 Oct 2026, docs/PLAN-READABILITY.md): 44px tap targets ----
+     core.test.js checks the stylesheet's rules from its source; these measure what is on screen. The plan's check is "every visible
+     button in the viewer and Planner is at least 44px tall"; the sidebar's buttons are on screen in both, so they are counted too.
+     The card's corner buttons are 36px by design and have their own hit test below. */
+  const tapScan = (pg, scopes) => pg.evaluate(scopes => {
+    const seen = new Set(), bad = []; let n = 0;
+    for (const sc of scopes) for (const root of document.querySelectorAll(sc)) for (const e of root.querySelectorAll('button, label.toggle-switch')) {
+      if (seen.has(e) || e.classList.contains('rcard-shortlist') || e.classList.contains('rcard-favourite')) continue;
+      seen.add(e);
+      const r = e.getBoundingClientRect(); if (r.width < 4 || r.height < 4) continue;
+      let hidden = false; for (let x = e; x; x = x.parentElement) { const cs = getComputedStyle(x); if (cs.display === 'none' || cs.visibility === 'hidden') { hidden = true; break; } }
+      if (hidden) continue;
+      n++;
+      if (r.height < 43.5) bad.push(`${e.tagName.toLowerCase()}${e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\s+/)[0] : ''} "${(e.textContent || '').trim().slice(0, 14)}" ${Math.round(r.height)}px`);
+    }
+    return { n, bad };
+  }, scopes);
+  const tapWalk = async pg => {
+    const all = { n: 0, bad: [] };
+    await pg.click('.navlink[data-view="recipes"]'); await pg.waitForTimeout(300);
+    await pg.click('.rcard'); await pg.waitForTimeout(600);
+    let r = await tapScan(pg, ['#view-viewer', '.sidebar']); all.n += r.n; all.bad.push(...r.bad.map(b => b + ' (viewer)'));
+    await pg.click('.navlink[data-view="planner"]'); await pg.waitForTimeout(500);
+    r = await tapScan(pg, ['#view-planner', '.sidebar']); all.n += r.n; all.bad.push(...r.bad.map(b => b + ' (planner)'));
+    return all;
+  };
+  const tapTablet = await tapWalk(page);
+  check('tablet width: every visible button in the viewer, Planner and sidebar is at least 44px tall',
+        tapTablet.n >= 40 && tapTablet.bad.length === 0, `${tapTablet.n} measured` + (tapTablet.bad.length ? '; ' + tapTablet.bad.slice(0, 6).join('; ') : ''));
+  const phone = await browser.newPage({ viewport: { width: 412, height: 915 } });
+  phone.__label = 'phone';
+  await phone.clock.setFixedTime(FIXTURE_NOW);
+  await phone.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await phone.waitForTimeout(1200);
+  const tapPhone = await tapWalk(phone);
+  await phone.close();
+  check('phone width: every visible button in the viewer, Planner and navigation is at least 44px tall',
+        tapPhone.n >= 40 && tapPhone.bad.length === 0, `${tapPhone.n} measured` + (tapPhone.bad.length ? '; ' + tapPhone.bad.slice(0, 6).join('; ') : ''));
+
+  /* A button's 44px hit area is not its rectangle when an invisible ::before makes up the rest, so this points at the four edges
+     of the 44px square around each card corner button and asks what a tap there would land on. */
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(400);
+  const cornerHits = await page.evaluate(() => {
+    const out = { n: 0, miss: [] };
+    for (const b of document.querySelectorAll('.rcard-shortlist, .rcard-favourite')) {
+      const r = b.getBoundingClientRect(); if (r.width < 4) continue;
+      out.n++;
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      for (const [dx, dy] of [[-21, 0], [21, 0], [0, -21], [0, 21]]) {
+        const hit = document.elementFromPoint(cx + dx, cy + dy);
+        if (!hit || hit.closest('.rcard-shortlist, .rcard-favourite') !== b) out.miss.push(`${b.className.split(' ')[0]} ${dx},${dy}`);
+      }
+    }
+    return out;
+  });
+  check('the card corner buttons answer a tap anywhere in a 44px square around them',
+        cornerHits.n >= 2 && cornerHits.miss.length === 0, `${cornerHits.n} buttons` + (cornerHits.miss.length ? '; missed: ' + cornerHits.miss.slice(0, 4).join(', ') : ''));
+
+  /* PLAN-LAYOUT B: cooking mode keeps what is left on a tidy header. The information rows (the meta line, the provenance chips and
+     the SERVE WITH and OFTEN WITH lines) wrap onto rows of their own whatever the buttons do, and which of them a recipe shows decides
+     how many lines the header takes. So the controls are measured with those rows out of the way, and each row is allowed one line. */
+  await page.click('.rcard');
+  await page.waitForTimeout(600);
+  await page.click('#view-viewer .toggle-switch');
+  await page.waitForTimeout(500);
+  const cookLines = await page.evaluate(() => {
+    const head = document.querySelector('#view-viewer .viewer-head');
+    const lines = () => { const cs = [...head.children].filter(k => { const r = k.getBoundingClientRect(); return r.width > 0 && r.height > 0; }).map(k => { const r = k.getBoundingClientRect(); return r.top + r.height / 2; }).sort((a, b) => a - b);
+      let n = 0, last = -99; for (const c of cs) { if (c - last > 10) n++; last = c; } return n; };
+    const withMeta = lines();
+    const hide = ['#viewerMeta', '#viewerProvenance', '#viewerServeWith', '#viewerOftenWith'].map(sel => document.querySelector(sel)).filter(e => e && e.getBoundingClientRect().height > 0);
+    const shown = hide.map(e => e.style.display); hide.forEach(e => { e.style.display = 'none'; });
+    const controlsOnly = lines();
+    hide.forEach((e, i) => { e.style.display = shown[i]; });
+    return { withInfo: withMeta, controlsOnly, infoRows: hide.length };
+  });
+  await page.click('#view-viewer .toggle-switch');   // cooking mode off again
+  await page.waitForTimeout(400);
+  check('cooking mode at tablet width: the header controls fit on one line, and each information row adds at most one more',
+        cookLines.controlsOnly === 1 && cookLines.withInfo <= cookLines.controlsOnly + cookLines.infoRows, JSON.stringify(cookLines));
+
   /* ---- The food diary (H1, H2, H3) ----
      The stub seeds one cooked recipe with a meal type, one without, and
      one ad-hoc entry, so every shape the diary holds is on screen. */

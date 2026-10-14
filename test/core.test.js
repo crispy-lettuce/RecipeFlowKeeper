@@ -164,6 +164,37 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
         (dn ? dn.body.replace(/\s+/g, ' ').trim() : 'no done rule') + ' | ' + (tk ? 'tick found' : 'no tick rule'));
 }
 
+/* ---- Tap targets (READABILITY H, 14 Oct 2026, docs/PLAN-READABILITY.md) ----
+   Read from the stylesheet's source, as T's and S's are. The plan's list named the viewer's buttons, but its check reached the
+   Planner's, 28 of whose 36 buttons stayed under 44px on the list alone; smoke.js measures what is on screen. */
+{
+  const css = pageSrc.slice(pageSrc.indexOf('<style>') + 7, pageSrc.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => ({ sels: m[1].split(',').map(x => x.trim().replace(/\s+/g, ' ')), body: m[2] }));
+  const px = (r, prop) => { const m = r.body.match(new RegExp('(?:^|[;\\s])' + prop + '\\s*:\\s*([\\d.]+)px')); return m ? +m[1] : 0; };
+  const has = (sel, prop, min) => rules.some(r => r.sels.includes(sel) && px(r, prop) >= min);
+  /* A new button in the viewer, the Planner or the sidebar belongs on this list, and on the one in the stylesheet's TAP TARGETS block. */
+  const TALL = ['.btn', '.chip', '.scale-btn', 'select.sort', '.kw-input', '.day-recipe-premade', '.day-recipe-cooked', '.backlink', '.toggle-switch',
+    '.day-choose', '.day-recipe-title', '.day-recipe-serves', '.day-recipe-remove', '.day-side-add', '.day-side-hide', '.day-cal-btn', '.group-badge',
+    '.sl-remove', '.saved-view', '.data-link', '.new-recipe', '.navlink', '.serve-with-link', '#viewerServesCustom'];
+  const WIDE = ['.scale-btn', '.day-recipe-remove', '.day-side-hide', '.sl-remove'];   // × and the round scale buttons were 13px and 27px wide
+  const short = TALL.filter(sel => !has(sel, 'min-height', 44)), narrow = WIDE.filter(sel => !has(sel, 'min-width', 44));
+  check('every button in the viewer, Planner and sidebar has a min-height of 44px, and the × and scale buttons a min-width of 44px',
+        short.length === 0 && narrow.length === 0, [short.length ? 'not 44px tall: ' + short.join(', ') : '', narrow.length ? 'not 44px wide: ' + narrow.join(', ') : ''].filter(Boolean).join('; '));
+
+  /* 44px circles would cover the photo, so the card's corner buttons are 36px and an invisible ::before makes up the rest (-5px from the padding box, inside a 1px border: -4px was 42px). */
+  const corner = ['.rcard-shortlist', '.rcard-favourite'];
+  const cornerOk = corner.every(sel => has(sel, 'width', 36) && has(sel, 'height', 36)) &&
+    rules.some(r => corner.every(sel => r.sels.includes(sel + '::before')) && /content\s*:\s*''/.test(r.body) && /position\s*:\s*absolute/.test(r.body) && /inset\s*:\s*-5px/.test(r.body));
+  check('the card corner buttons are 36px with a ::before that makes their hit area 44px', cornerOk);
+
+  /* The thumb travels the track's inside less the thumb and a 2px gap each side; change one number and the others follow. */
+  const track = rules.find(r => r.sels.includes('.toggle-track')), thumb = rules.find(r => r.sels.includes('.toggle-thumb')),
+    travel = (css.match(/input:checked \+ \.toggle-track \.toggle-thumb\s*\{\s*transform\s*:\s*translateX\((\d+)px\)/) || [])[1];
+  const tw = track ? px(track, 'width') : 0, th = track ? px(track, 'height') : 0, tt = thumb ? px(thumb, 'width') : 0;
+  check('the toggle is 44px by 26px, and its thumb travels exactly the room it has',
+        tw === 44 && th === 26 && tt === 20 && +travel === tw - 2 - tt - 4, `track ${tw}x${th}, thumb ${tt}px, travel ${travel}px (should be ${tw - 2 - tt - 4})`);
+}
+
 /* ---- The converter's instructions (issue #127, 12 Oct 2026) ----
    Each household loads converter/conversion-instructions.md into its own conversion project, and the app asks each
    once to reload it when CONVERTER_VERSION moves. So a change to the file must move the version, or nobody is told.

@@ -1,4 +1,7 @@
 [
+  { "version": "2026-10-14.3", "date": "2026-10-14",
+    "changes": ["Buttons are bigger and easier to hit with a thumb: every button on a recipe, in the Planner and in the side menu is now fingertip-sized, including the small × buttons, the filter chips, the servings buttons and the cooking-mode switch. The star and + on a recipe card look the same but answer a tap in a larger area, and the search bar can be tapped anywhere along its height.",
+                "Some screens take a little more room: the filter area and the buttons above a recipe are taller, and the Planner is longer, though its rows now sit closer together. The side menu's spacing was tightened to keep it on one screen."] },
   { "version": "2026-10-14.2", "date": "2026-10-14",
     "changes": ["Writing is bigger and easier to read everywhere: nothing is smaller than 13, and the labels and buttons that were tiny are now a comfortable size. They are set in the page's own font instead of spaced-out typewriter capitals. Quantities, times and counts keep their typewriter figures.",
                 "Ticked ingredients and steps are struck through on a plain tint instead of being faded, with a bigger tick, and a step's words now sit flush left in its box.",
