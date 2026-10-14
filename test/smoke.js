@@ -457,6 +457,58 @@ const check = (name, pass, detail) => {
         darkWalk.stops >= 60 && unseen(darkWalk).length === 0 && darkWalk.bare.length === 0 && darkWalk.wrong.length === 0 && darkWalk.kw && darkWalk.kw.plum !== lightWalk.kw.plum,
         `${darkWalk.stops} stops, ring ${darkWalk.kw && darkWalk.kw.colour} against light ${lightWalk.kw && lightWalk.kw.colour}` + (unseen(darkWalk).length ? '; never reached: ' + unseen(darkWalk).join(', ') : '') + (darkWalk.bare.length ? '; no ring: ' + darkWalk.bare.slice(0, 5).join(', ') : '') + (darkWalk.wrong.length ? '; wrong colour: ' + darkWalk.wrong.slice(0, 3).join(', ') : ''));
 
+  /* ---- One corner radius (READABILITY R, 14 Oct 2026, docs/PLAN-READABILITY.md) ----
+     core.test.js reads the rules; this reads the corners that are drawn, on every screen, for each element and its ::before and
+     ::after (the numbered-step badge is one). A circle computes as 50% and a pill as 20px or 999px, so anything but 0 or 2px is one.
+     Each width gets a page of its own, as the focus walk does. Some circles must have been on screen, or an empty scan would pass. */
+  const RADIUS_MUST = ['.rcard-shortlist', '.rcard-favourite', '.toggle-thumb', '.toggle-track', '.scale-btn', '.day-choose .circle'];
+  const radiusWalk = async vp => {
+    const pg = await browser.newPage({ viewport: vp });
+    await pg.clock.setFixedTime(FIXTURE_NOW);
+    await pg.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await pg.waitForTimeout(1200);
+    const res = { n: 0, screens: 0, bad: [], seen: new Set() };
+    const scan = async tag => {
+      const r = await pg.evaluate(must => {
+        const sig = e => e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + (typeof e.className === 'string' && e.className.trim() ? '.' + e.className.trim().split(/\s+/).slice(0, 2).join('.') : '');
+        const square = v => v === '0px' || v === '2px';
+        let n = 0; const bad = new Set(), seen = new Set();
+        for (const e of document.body.querySelectorAll('*')) {
+          if (['SCRIPT', 'STYLE', 'OPTION'].includes(e.tagName) || e.closest('svg')) continue;
+          const r = e.getBoundingClientRect(); if (r.width < 1 || r.height < 1) continue;
+          let hidden = false; for (let x = e; x; x = x.parentElement) { const cs = getComputedStyle(x); if (cs.display === 'none' || cs.visibility === 'hidden') { hidden = true; break; } }
+          if (hidden) continue;
+          for (const m of must) if (e.matches(m)) seen.add(m);
+          for (const ps of [null, '::before', '::after']) {
+            const cs = getComputedStyle(e, ps); if (ps && (cs.content === 'none' || cs.content === 'normal')) continue;
+            n++;
+            const c = [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius];
+            if (!c.every(square)) bad.add(sig(e) + (ps || '') + ' ' + [...new Set(c)].join('/'));
+          }
+        }
+        return { n, bad: [...bad], seen: [...seen] };
+      }, RADIUS_MUST);
+      res.n += r.n; res.screens++; res.bad.push(...r.bad.map(b => tag + b)); r.seen.forEach(x => res.seen.add(x));
+    };
+    const show = async v => { await pg.evaluate(v2 => showView(v2), v); await pg.waitForTimeout(400); };
+    await show('recipes'); await scan('recipes: ');
+    await pg.click('.rcard'); await pg.waitForTimeout(600); await scan('viewer: ');
+    await pg.click('#view-viewer .toggle-switch'); await pg.waitForTimeout(400); await scan('cooking mode: ');
+    for (const v of ['planner', 'shortlist', 'shopping', 'history']) { await show(v); await scan(v + ': '); }
+    await show('settings');
+    for (const t of ['ingredients', 'library', 'app', 'help']) { await pg.evaluate(t2 => showSettingsTab(t2), t); await pg.waitForTimeout(300); await scan('settings/' + t + ': '); }
+    await show('recipes'); await pg.click('#openAddBtn'); await pg.waitForTimeout(400); await scan('add dialog: ');
+    await pg.close();
+    return res;
+  };
+  for (const [label, vp] of [['tablet', { width: 1280, height: 800 }], ['phone', { width: 412, height: 915 }]]) {
+    const rw = await radiusWalk(vp);
+    const missing = RADIUS_MUST.filter(x => !rw.seen.has(x));
+    check(`${label} width: every corner on screen is 0 or 2px, so no circle or pill is left`,
+          rw.n >= 800 && rw.bad.length === 0 && missing.length === 0,
+          `${rw.n} corners checked on ${rw.screens} screens` + (rw.bad.length ? '; not square: ' + rw.bad.slice(0, 5).join(', ') : '') + (missing.length ? '; never on screen: ' + missing.join(', ') : ''));
+  }
+
   /* ---- The food diary (H1, H2, H3) ----
      The stub seeds one cooked recipe with a meal type, one without, and
      one ad-hoc entry, so every shape the diary holds is on screen. */

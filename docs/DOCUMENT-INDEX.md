@@ -515,8 +515,8 @@ F, keyboard focus everywhere. All `index.html` CSS: no change to data, `core.js`
 household made on 14 Oct are recorded in it (step text flush left; the toggle thumb square). It must not undo
 `docs/PLAN-LAYOUT.md`.
 
-**Since 14 Oct** T, S, H and F are built (each section ends with a "Built as" note: what was measured, where it departs from the
-plan's text, and what is left for the household to decide); R is not started.
+**Since 14 Oct** all five (T, S, H, F and R) are built (each section ends with a "Built as" note: what was measured, where it departs
+from the plan's text, and what is left for the household to decide).
 
 **Use it when:** building any of the five, or asked why a colour, size or radius is what it is.
 
@@ -636,7 +636,7 @@ to the conversion project (see `converter/conversion-instructions.md` above).
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 620-check smoke suite, the 205 Node checks, the five smaller suites CI also runs (the Edge Functions' and the help guide's), and an honest account of what it can't tell you
+**What:** How to run the 622-check smoke suite, the 206 Node checks, the five smaller suites CI also runs (the Edge Functions' and the help guide's), and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 *(Corrected 12 Oct 2026, the October review's Appendix B and D: this said 418 and 143.)*
 

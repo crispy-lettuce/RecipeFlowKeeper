@@ -15,7 +15,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 620 automated checks pass, plus 205 in Node (14 Oct 2026, after F; 617 and 202 after H, 613 and 199 after S, 609 and 194 after T, 606 and 189 on 13 Oct; 102 when this was
+story that used to open this paragraph is history. 622 automated checks pass, plus 206 in Node (14 Oct 2026, after R; 620 and 205 after F, 617 and 202 after H, 613 and 199 after S, 609 and 194 after T, 606 and 189 on 13 Oct; 102 when this was
 written; until 12 Oct this line said 329 and 133, corrected 12 Oct 2026, the October review's Appendix B). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -814,6 +814,12 @@ reported one by one.*
     paste box and the boxes below it each show the outline when tapped. (5) *Settings:* the same for the boxes on the INGREDIENTS and APP
     tabs. (6) *The side menu:* if a keyboard is attached, press Tab and each link shows its outline wholly inside its row, not cut off at
     the menu's edges. (7) *Dark theme:* (1) again; the outline is the lighter plum. Writes nothing.
+65a. **One corner (new 14 Oct; READABILITY R, `docs/PLAN-READABILITY.md`).** Looks only; nothing is saved, and nothing moves. (1) *Recipes:*
+    the star and + on each card are small squares with slightly rounded corners, not circles, and a tap just outside one still works.
+    (2) *Open a recipe:* the 2, 4, 6, 8 buttons, GO and RESET, and the COOKING MODE switch, whose thumb is a square, all have the same
+    corners as the other buttons. (3) *Planner:* the + beside CHOOSE A RECIPE and ADD ANOTHER, and the SERVES and COOKED labels, are
+    squares and rectangles too. (4) *Settings and the add-recipe screen:* the boxes share one corner. (5) *Print and EXPORT PNG* of a recipe:
+    the same as the screen. Writes nothing.
 
 ## Deferred to the tablet, after merging
 
