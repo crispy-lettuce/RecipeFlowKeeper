@@ -1,6 +1,9 @@
 # Household job list
 
-**Last brought up to date: 13 Oct 2026, after #138 merged (FINISH TOGETHER).**
+**Last brought up to date: 14 Oct 2026, after 60a passed.**
+
+**Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
+households sort out their own converter and need no steps here.
 
 These are the jobs only you can do. A session can't tap the tablet, make decisions for you, or deploy for you.
 
@@ -19,9 +22,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | Job | Where | Time | Saves anything? |
 | --- | --- | --- | --- |
 | [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
-| [60a: OFTEN WITH](#60a-often-with) | tablet | 5 min | A dish on a day, undone at the end |
-| [Confirm the converter in the second household](#confirm-the-converter-in-the-second-household) | Claude app, then the app | 5 min | One tap |
-| [Choose what to build next](#your-own-issues-decided-13-oct) | — | — | — |
+| [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
 ---
 
@@ -29,7 +30,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 ### Reload the app on every device
 
-A new version (2026-10-13.5, FINISH TOGETHER) went live when #138 merged.
+The latest version, 2026-10-13.8 (OFTEN WITH), went live when #144 merged.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready**, tap **RELOAD**. Otherwise refresh the page.
@@ -38,44 +39,15 @@ A new version (2026-10-13.5, FINISH TOGETHER) went live when #138 merged.
 
 ## App checks
 
-### 60a: OFTEN WITH
-
-After the #142 PR merges, and the app is reloaded.
-
-1. Open a recipe you have grouped with another dish before.
-   - **You should see:** under the chips (below any SERVE WITH), **OFTEN WITH:** and what it was grouped with, two at most,
-     the one grouped most often first. Tap one: it opens.
-2. Open a recipe you have never grouped.
-   - **You should see:** no OFTEN WITH line.
-3. Put the first recipe on a day from tomorrow onwards, on its own.
-   - **You should see:** under it, **OFTEN WITH:**, a **+** for each, and **×**.
-4. Tap **×**.
-   - **You should see:** the line goes. Reload the page: it is back.
-5. Tap **+** and a name.
-   - **You should see:** it joins the day, for as many people as the dish, a **GROUPED:** badge holds both, and the line goes.
-6. Put a Side you have grouped with a main on a day on its own.
-   - **You should see:** it offers that main.
-7. Take what you added off again with its **×**.
+None waiting: every step up to 60a has passed (14 Oct).
 
 ---
 
 ## Library jobs
 
-### Confirm the converter in the second household
-
-Your household has done this (13 Oct). The second family household still sees the gold **CONVERTER** bar until someone there
-does the same. The master copy is `converter/conversion-instructions.md` in this repo.
-
-1. On a device signed in to the second household, open the app.
-   - **You should see:** the gold **CONVERTER** bar, version 2026-10-12.1.
-2. Tap **OPEN THE INSTRUCTIONS ↗**, download the file, and in the Claude app replace the copy in that household's conversion
-   project with it.
-3. Back in the app, tap **DONE**.
-   - **You should see:** the bar goes, for everyone in that household.
-
-The weekly live test's own household never confirms, since no one uses it; nobody sees its bar.
-
-The other files under `converter/` are reference material only. Don't load them.
+None at the moment. The master copy of the converter's instructions is `converter/conversion-instructions.md`; when it changes,
+the gold **CONVERTER** bar says so in your household, and the steps are in the bar. The other files under `converter/` are
+reference material only.
 
 ---
 
@@ -91,7 +63,7 @@ You chose the order on 13 Oct: #94, then #95, #88 and #87; #100 stays parked.
   **FINISH TOGETHER** in the Group Viewer (#138), the recipe's **SERVE WITH** line (#140) and the Planner's offer to add
   the side (#141) are built, and 57a–59a passed (14 Oct). #87 is closed.
 - **#142, OFTEN WITH:** recipes you have grouped with a dish before, offered the same way (any course, once is enough).
-  Built 13 Oct (60a above), as planned in `docs/PLAN-SIDES.md` §9.
+  Built 13 Oct (#144), as planned in `docs/PLAN-SIDES.md` §9; 60a passed 14 Oct.
 - **#88, when chopping is done:** built: **PREPARATION** in Settings → APP turns "sliced", "diced" and the like into their own
   steps in the flow (56a passed).
 - **#94, the shopping list:** both halves built: ticked items left off print and PNG (53a passed), and the **AUDIT** button
@@ -109,6 +81,8 @@ You chose the order on 13 Oct: #94, then #95, #88 and #87; #100 stays parked.
 
 ## Recently done
 
+- **14 Oct:** tablet step 60a (OFTEN WITH) passed; every app check is done. Testing is in your household only; the
+  second household's converter is theirs to sort out, so it is off this list.
 - **14 Oct:** you decided OFTEN WITH needs no group history, since you don't expect to ungroup in practice. Issue #87
   is closed (#142 closed with #144). Tablet steps 57a, 58a and 59a passed.
 - **13 Oct:**
