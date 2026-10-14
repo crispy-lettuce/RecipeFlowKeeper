@@ -772,6 +772,9 @@ within each were not reported one by one.*
     on its own on a day, it offers the main. (7) *Take what you added off again with its ×.* Writes the day and the group,
     which (7) undoes.
 
+*57a, 58a and 59a reported passed by the household, 14 Oct ("happy with 57a, 58a, 59a"). The steps within each were not
+reported one by one.*
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

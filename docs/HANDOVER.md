@@ -2815,7 +2815,7 @@ always FINISH, no SERVE, the switch not stored, START AT never shown, start time
 strip not hidden, the start times hidden) and the guide's anchor removed. Every made-up line and title in the tests was
 checked against the library (counts only): 0 matches, after one step label that did match a library line was replaced.
 
-*Not verified:* the tablet and phone (step 57a). Merged as #138 at 13:04 UTC, 13 Oct.
+Merged as #138 at 13:04 UTC, 13 Oct. Step 57a reported passed by the household, 14 Oct.
 
 **SERVE WITH in the recipe viewer (13 Oct 2026; #87 PR 1, `docs/PLAN-SIDES.md` §4.2–4.3 and §4.5, after #138).**
 - **`servingCalls(parsed)`** in `core.js`, pure: an ingredient line ending *to serve* (not *to serve 4*), *for serving*, *to
@@ -2848,7 +2848,7 @@ steps, 7 in notes); **8 would show a SERVE WITH line**, one side each (scores 3 
 serve with them, none shows a line until it has sides (§5). The third household has no recipes. The plan's SQL count (§3) put
 household 1 at 7 recipes naming a staple with a matching side; the detector finds 8.
 
-*Not verified:* the tablet and phone (step 58a).
+Step 58a reported passed by the household, 14 Oct.
 
 **The Planner's SERVE WITH offer (13 Oct 2026; #87 PR 2, `docs/PLAN-SIDES.md` §4.5–4.6, after #140). #87 is built.**
 - Under a non-Side dish on the Planner, `SERVE WITH: + <SIDE> ×` (`sideOfferHtml`, `planSideOffers`): the viewer's matches, less
@@ -2869,7 +2869,7 @@ no delete, and a side written for the dish's number keeps 0; none under a Side t
 because the check ran on a day with nothing left to offer, so it moved to the day with an offer, and a second (an offer under
 a Side) was made independent of the first. Every made-up line and title was checked against the library: 0 matches.
 
-*Not verified:* the tablet (step 59a).
+Step 59a reported passed by the household, 14 Oct.
 
 **OFTEN WITH (13 Oct 2026; #142, `docs/PLAN-SIDES.md` §9, after #143).**
 - **`groupedWith(recipeId, groups)`** in `core.js`, pure: every recipe sharing a group with this one, `times` = distinct days
