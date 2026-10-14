@@ -30,8 +30,8 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 ### Reload the app on every device
 
-The latest version, 2026-10-13.8 (OFTEN WITH), went live when #144 merged. The readability pull request (colours only,
-version 2026-10-14.1) goes live when it merges: reload then, and do 61a below.
+The latest version, 2026-10-14.1 (easier-to-read small text, colours only), was merged as #147 on 14 Oct, so it should be
+live: reload to get it, and do 61a below.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready**, tap **RELOAD**. Otherwise refresh the page.
