@@ -83,7 +83,10 @@ Brought up to date 12 Oct 2026. Every plan above is merged; what follows is all 
    `household_settings.converter_ack_version`. A change to
    `converter/conversion-instructions.md` moves its Version line, `CONVERTER_VERSION` in `index.html` and `CONVERTER_PINNED` in
    `test/core.test.js` together (`CLAUDE.md`).
-5. **Optional, not planned:** a "download all source files" backup (the source files go into `PrivateBackup`'s weekly mirror
+5. **`docs/PLAN-READABILITY.md`** (proposed 14 Oct): five CSS-only changes to readability, built one PR at a time in this order, each
+   its own job for a session: **T** colour tokens, **S** one type scale, **H** 44px tap targets, **R** one corner radius, **F** keyboard
+   focus. None changes data, `core.js`, markup or wording. The household picks when each starts.
+6. **Optional, not planned:** a "download all source files" backup (the source files go into `PrivateBackup`'s weekly mirror
    instead, 10 Oct); drawing a PDF's pages inside the app, not needed: 38d passed and the household is happy opening the PDF outside the app (12 Oct).
 
 Keep the how-to guide true: a renamed button or a new everyday feature updates `help.html` in the same PR (`test/help-guide.js`).
