@@ -331,7 +331,8 @@ The page takes `groupedWith`'s list and drops, in order:
 - **Ungrouping erases the evidence.** UNGROUP deletes the group's row, and so does taking any of its dishes off the day
   (`dissolveGroupsContainingOnDate`) or clearing the day. A pairing undone that way leaves no trace, so OFTEN WITH only knows
   groups that stood. Keeping a history would need a new table (`group_history`: household, date, recipe ids, written when a
-  group is made), applied by the household first. **Not part of this plan**; worth deciding if OFTEN WITH proves useful.
+  group is made), applied by the household first. **Decided 14 Oct 2026: not wanted.** The household does not expect to
+  ungroup in practice, so the groups that stand are history enough. No table, no SQL page.
 - **A one-off grouping is suggested for ever** (until it is ungrouped), because once is enough. If that nags, the threshold can
   rise to 2 in one line.
 - **Old groups name deleted recipes** (6 today). They are skipped, never shown, and nothing is cleaned up in the database.
@@ -339,4 +340,4 @@ The page takes `groupedWith`'s list and drops, in order:
 
 ### 9.7 Order
 
-One PR, after this plan is merged. If the household later wants the history kept (§9.6), that is a second PR with its SQL page.
+One PR, after this plan is merged: built as #144 (13 Oct). No second PR: a group history was declined on 14 Oct (§9.6).

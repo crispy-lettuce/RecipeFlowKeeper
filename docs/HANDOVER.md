@@ -2895,6 +2895,9 @@ fails by name. Every made-up title and line was checked against the library: 0 m
 
 *Not verified:* the tablet (step 60a).
 
+*14 Oct 2026:* merged as #144 (20:21 UTC, 13 Oct). The household declined a group history (`PLAN-SIDES.md` §9.6): it does not
+expect to ungroup in practice, so no table is planned.
+
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*
 

@@ -171,6 +171,7 @@ You chose the order on 13 Oct: #94, then #95, #88 and #87; #100 stays parked.
 
 ## Recently done
 
+- **14 Oct:** you decided OFTEN WITH needs no group history, since you don't expect to ungroup in practice.
 - **13 Oct:**
   - Tablet steps 53a, 54a, 55a and 56a passed.
   - The two recipe titles in the docs became "recipe A" and "recipe B", as you asked. Issue #101 is closed.
