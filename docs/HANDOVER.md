@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **613 checks** (14 Oct 2026, 609 after T and 606 on 13 Oct; `core.test.js` adds 199 in Node, 194 after T and 189 on 13 Oct) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **617 checks** (14 Oct 2026, 613 after S, 609 after T and 606 on 13 Oct; `core.test.js` adds 202 in Node, 199 after S, 194 after T and 189 on 13 Oct) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -2972,6 +2972,50 @@ the dark theme's layout was not measured separately (sizes do not depend on it).
 
 *Left for the household to decide:* the ingredient cells' 40px reserve (or reserve only once ticked), and what S's bigger header
 does to the viewer, with H still to come.
+
+**READABILITY H, 44px tap targets (14 Oct 2026; `docs/PLAN-READABILITY.md` change H, built on `main` at `6d2ff33`, after S).** The household
+chose "option C" from three put to them (everything in the viewer, the Planner and the sidebar at 44px, with tighter row and sidebar
+spacing). `index.html` CSS only, plus `APP_VERSION`; no id, markup, button wording, `core.js`, `help.html` or schema change, and `core.js`'s
+version is unchanged.
+- **What changed.** One `TAP TARGETS (READABILITY H)` block in the stylesheet gives `min-height:44px` to every button in the viewer, the
+  Planner and the sidebar, and `min-width:44px` to the × buttons and the round scale buttons; `a.btn` is `inline-flex`; the search bar's input
+  stretches to the bar's height. The card's star and **+** are 36px with an invisible `::before` (`inset:-5px`) that makes the hit area 44px; the
+  toggle is 44px by 26px. To keep the screen: Planner day rows 14px to 6px padding, the sidebar's gaps removed, nav links exactly 44px.
+- **The plan's list was shorter than its own check**, and the list built is the check's (the plan's "Built as" note under H has the account,
+  every departure and the pixel numbers).
+- `changelog.json` **2026-10-14.3**; steps **63a**. No `help.html` change: no label changed.
+
+*Verified by.* On `main`, before (a snapshot): `core.test.js` **199**, exit 0; `node test/build.js && node test/smoke.js` **613**, exit 0.
+After, on the finished tree: `core.test.js` **202** (three new checks), exit 0; smoke **617** (four new), exit 0; `help-guide.js` 7, exit 0.
+Measured in a browser with throwaway scripts kept outside the repo, on the stub's made-up data and a made-up 14-ingredient recipe (no
+library line used), tablet 1280×800 and phone 412×915, counting buttons, selects, links and fields (the plan's note counts buttons only, so its numbers are smaller): elements under 44px in the Planner 37 of 45 to 0 (39 of 41 to 0), the history 12 of 54
+to 0 (14 of 50 to 0), the Shortlist 7 of 14 to 0 (10 of 10 to 0); in the viewer 25 of 32 to 1, the one left being the cook-note box at 38px
+(28 of 28 to 1). The recipes filter area 213 to 249px (383 to 461); the Planner's 14 days 913 to 1124px, **+23%** (1062 to 1394px, **+31%** on the
+phone); the sidebar fits 1280×800 with 12px to spare, but **at 1280×720 it scrolls by 46px, where it fitted before.** **Fourteen mutations,
+each failing the right check by name.** `core.test.js` (nine, run in the repo and restored byte for byte): `.day-choose` leaves the list;
+`.sl-remove` loses its width; the card's `::before` removed; the card buttons back at 27px; the thumb's travel 15px; the track 21px tall;
+`.navlink` loses its height; the `::before` at `inset:-4px`; `.serve-with-link` leaves the list. `smoke.js` (five, run in parallel on scratch
+copies beside an unmutated control copy that passed all 617 with exit 0): the `::before` removed and the `::before` at `-4px` (both fail the
+hit test, naming the corner buttons missed); `.btn` back at 30px on the phone only (fails the phone check alone); a cooking-mode header
+button forced onto its own line (fails the cooking-mode check alone); `.serve-with-link` out of the list (fails the tablet and the phone
+check, naming "Test Pasta →" at 21px). The control run on the first build failed all four new smoke checks, and showed three faults of my own,
+fixed before this record: the SERVE WITH links were missing from the list (my measuring recipe had no such line); the hit area was 42px
+(`inset` is measured inside the button's border, so `-5px`, not `-4px`); and the cooking-mode check assumed a one-line header, which the
+test recipe's information rows do not give (it now hides those rows to test the controls, then asks each row to add at most one line). A
+first round of mutant runs was thrown away because its control was failing, and rerun on the fixed code.
+
+*Not verified.* **IBM Plex widths:** the sandbox has no IBM Plex (Inter and DejaVu Sans Mono stood in), so every width and line count is
+approximate; the real tablet and a real thumb are the household's (63a). Hover, focus and error states the stub does not reach. The cooking
+note's action buttons and the source photo's buttons, which the stub does not show. The header heights above are for a recipe with no SERVE
+WITH or OFTEN WITH row; the cooking-mode check bounds what such a row adds (one line), but its pixels were not measured. The deployed
+page: the sandbox's proxy blocks `github.io`.
+
+*Still under 44px, left alone* (outside the plan's list; the plan's note has them): the add dialog's close × and its `link-btn`, the text
+fields in Settings (30px), the cook-note box (38px), the 21 QUICK ANSWERS links in Settings → HELP, the Library tab's tick box, the cooking
+notes' action buttons. The phone's Planner is 31% longer.
+
+*Left for the household to decide:* whether the Planner's +23% (+31% on the phone) and the 1280×720 sidebar scroll are a fair price for
+44px targets; R (one corner radius) and F (keyboard focus) are not started.
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*

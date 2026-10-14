@@ -197,14 +197,14 @@
     border-right:1px solid var(--line);
     background:var(--card);
     display:flex; flex-direction:column;
-    padding:26px 0;
+    padding:18px 0 12px;
     overflow-y:auto;
   }
-  .brand{ padding:0 22px 24px; font-size:19px; font-weight:300; }
+  .brand{ padding:0 22px 12px; font-size:19px; font-weight:300; }
 
   .navlink{
     display:block; width:100%; text-align:left;
-    padding:15px 22px; border:none; border-left:2px solid transparent;
+    min-height:44px; padding:0 22px; border:none; border-left:2px solid transparent;
     background:none; cursor:pointer;
     font-size:14px; letter-spacing:.04em;
     color:var(--ink-soft); font-weight:500;
@@ -215,7 +215,8 @@
   .navlink.active .count{ color:var(--plum); }
 
   .side-rule{ margin:24px 22px 0; height:1px; background:var(--line-soft); }
-  .side-block{ padding:18px 22px; display:flex; flex-direction:column; gap:11px; }
+  .side-block{ padding:12px 22px; display:flex; flex-direction:column; gap:0; }
+  .side-block .side-label{ margin-bottom:4px; }
   .side-label{
     font-size:14px;
     letter-spacing:.04em; color:var(--ink-faint); font-weight:500;
@@ -240,7 +241,7 @@
     font-size:14px; letter-spacing:.04em; font-weight:500;
   }
   .new-recipe:hover{ background:var(--plum-wash); }
-  .data-actions{ display:flex; flex-wrap:wrap; justify-content:center; gap:10px 16px; margin:14px 22px 0; }
+  .data-actions{ display:flex; flex-wrap:wrap; justify-content:center; gap:0 16px; margin:6px 22px 0; }
   .data-link{
     background:none; border:none; padding:0; cursor:pointer;
     font-size:13px; letter-spacing:.04em;
@@ -324,8 +325,8 @@
   }
   .rcard:hover{ border-color:var(--plum); }
   .rcard-shortlist{
-    position:absolute; top:8px; right:8px; z-index:2;
-    width:27px; height:27px; border-radius:50%;
+    position:absolute; top:4px; right:4px; z-index:2;
+    width:36px; height:36px; border-radius:50%;
     border:1px solid var(--line); background:var(--card-veil);
     display:flex; align-items:center; justify-content:center;
     font-size:16px; line-height:1; color:var(--ink-soft); cursor:pointer;
@@ -333,8 +334,8 @@
   .rcard-shortlist:hover{ border-color:var(--plum); color:var(--plum); }
   .rcard-shortlist.on{ border-color:var(--sage); color:var(--sage); background:var(--sage-wash-strong); }
   .rcard-favourite{
-    position:absolute; top:8px; left:8px; z-index:2;
-    width:27px; height:27px; border-radius:50%;
+    position:absolute; top:4px; left:4px; z-index:2;
+    width:36px; height:36px; border-radius:50%;
     border:1px solid var(--line); background:var(--card-veil);
     display:flex; align-items:center; justify-content:center;
     font-size:16px; line-height:1; color:var(--ink-soft); cursor:pointer;
@@ -454,15 +455,15 @@
   }
   .toggle-switch input{ position:absolute; opacity:0; width:0; height:0; }
   .toggle-track{
-    position:relative; width:36px; height:21px; border-radius:11px; flex:none;
+    position:relative; width:44px; height:26px; border-radius:13px; flex:none;
     background:var(--well); border:1px solid var(--line-faint); transition:background .15s ease, border-color .15s ease;
   }
   .toggle-thumb{
-    position:absolute; top:2px; left:2px; width:15px; height:15px; border-radius:50%;
+    position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%;
     background:#fff; transition:transform .15s ease; box-shadow:0 1px 2px var(--ink-shadow-strong);
   }
   .toggle-switch input:checked + .toggle-track{ background:var(--plum); border-color:var(--plum); }
-  .toggle-switch input:checked + .toggle-track .toggle-thumb{ transform:translateX(15px); }
+  .toggle-switch input:checked + .toggle-track .toggle-thumb{ transform:translateX(18px); }
   .toggle-switch input:focus-visible + .toggle-track{ outline:2px solid var(--plum); outline-offset:2px; }
   /* Settings → CALENDAR's two automatic toggles: the switch, with its one line of explanation under it. */
   .cal-auto{ margin:14px 0 4px; }
@@ -686,7 +687,7 @@
 
   .day-row{
     display:flex; align-items:flex-start; gap:16px;
-    padding:14px 4px; border-bottom:1px solid var(--line-soft);
+    padding:6px 4px; border-bottom:1px solid var(--line-soft);
     cursor:default;
   }
   .day-row.assignable{ cursor:pointer; }
@@ -1366,6 +1367,29 @@
     font-size:13px; opacity:0; pointer-events:none; transition:all .25s ease; z-index:200;
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  /* ========================== TAP TARGETS (READABILITY H) ==========================
+     docs/PLAN-READABILITY.md, 14 Oct 2026. Everything you press with a thumb is at least 44px tall, where the usual guidance
+     puts a reliable touch target. The plan's list named the viewer's buttons, but the check it set ("every visible button in
+     the viewer and Planner") reaches the Planner's too: 28 of its 36 buttons were still under 44px with the plan's list alone.
+     So this list is the check's, and a new button in the viewer, the Planner or the sidebar goes on it. test/core.test.js
+     fails when a listed selector loses its min-height, and test/smoke.js measures the buttons on screen at 1280x800 and
+     412x915. The × buttons are 44px wide as well as tall (they were 13px). The space around the bigger targets was trimmed
+     (the Planner's day rows, the sidebar's saved views and data links) so the Planner grows 23%, not 49%, and the sidebar
+     still fits an 800px-tall screen. */
+  .btn, .chip, .scale-btn, select.sort, .kw-input,
+  .day-recipe-premade, .day-recipe-cooked, .backlink, .toggle-switch,
+  .day-choose, .day-recipe-title, .day-recipe-serves, .day-recipe-remove, .day-side-add, .day-side-hide, .day-cal-btn,
+  .group-badge, .sl-remove, .saved-view, .data-link, .new-recipe, .serve-with-link{ min-height:44px; }
+  .scale-btn, .day-recipe-remove, .day-side-hide, .sl-remove{ min-width:44px; }
+  #viewerServesCustom{ min-height:44px; }
+  /* A link styled as a button: an inline-block link sets its words at the top of a taller box. */
+  a.btn{ display:inline-flex; align-items:center; }
+  /* The search bar is 50px tall but its input was 20px, so a tap on the bar above or below the words missed it. */
+  .searchbar input{ align-self:stretch; }
+  /* The card's corner buttons stay 36px, because 44px circles would cover the photo; the invisible ::before is the rest of
+     the 44px, and test/smoke.js points at its edges to prove a tap there lands on the button. inset is measured from the
+     button's padding box, inside its 1px border, so -5px (not -4px) is what reaches 44px: -4px made the hit area 42px. */
+  .rcard-shortlist::before, .rcard-favourite::before{ content:''; position:absolute; inset:-5px; }
   @media (prefers-reduced-motion: reduce){
     .toast, .sidebar, .sidebar-peek-btn{ transition:none; }
   }
@@ -2213,7 +2237,7 @@ const EXPECTED_CORE_VERSION = '2026-10-13.4';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-14.2';
+const APP_VERSION = '2026-10-14.3';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
