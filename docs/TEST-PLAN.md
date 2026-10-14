@@ -15,7 +15,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 609 automated checks pass, plus 194 in Node (14 Oct 2026; 606 and 189 on 13 Oct; 102 when this was
+story that used to open this paragraph is history. 613 automated checks pass, plus 199 in Node (14 Oct 2026, after S; 609 and 194 after T, 606 and 189 on 13 Oct; 102 when this was
 written; until 12 Oct this line said 329 and 133, corrected 12 Oct 2026, the October review's Appendix B). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -790,6 +790,15 @@ reported one by one.*
     recipe look as the screen does, the small grey words a little darker. **Not changed on purpose:** the small green and gold
     words (a card's MAIN · VEG tags, a day's course label, the favourite star) are still pale; say if they are hard to read.
     Writes only the Appearance setting, which (5) returns.
+62a. **Bigger, clearer writing: the type scale (new 14 Oct; READABILITY S, `docs/PLAN-READABILITY.md`).** Sizes, fonts and the tick;
+    nothing is saved. (1) *Recipes:* every label, chip, count and card line is bigger and readable at cooking distance, nothing is
+    squashed, and the COURSE, SOURCE and KEYWORD labels are whole. (2) *Open a recipe:* the ingredients are 16px; each step's words
+    sit flush left at the foot of their box in the page's font, with the duration under them in the typewriter font; the buttons
+    above the recipe may run onto a second or third line. (3) *Tap an ingredient:* it is struck through on a plain tint with a
+    square tick at the right and none of its words under the tick; tap again, it goes back. The same for a step. (4) *COOKING MODE:*
+    the header is tidy. (5) *Planner and Shopping:* every row fits; the day, SERVES n and × are readable. (6) *On the phone:* History's
+    calendar days show a short name on one line; a recipe's buttons wrap and nothing is cut off. (7) *Dark theme:* (2) again.
+    (8) *PRINT / A4 PDF of a recipe:* the same number of sheets as before (a typical one is two). Writes nothing.
 
 ## Deferred to the tablet, after merging
 

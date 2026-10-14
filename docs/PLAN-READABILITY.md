@@ -10,7 +10,7 @@ tablet step in `docs/TEST-PLAN.md`. Print and EXPORT PNG must still match the sc
 | Order | Change | Size | Status |
 | --- | --- | --- | --- |
 | 1 | **T**, colour tokens: contrast and the hard-coded `rgba()` | Small | **Built and merged**, 14 Oct (#147) |
-| 2 | **S**, one type scale; mono only for quantities and times | Medium | Proposed |
+| 2 | **S**, one type scale; mono only for quantities and times | Medium | **Built**, 14 Oct |
 | 3 | **H**, 44px tap targets | Medium | Proposed |
 | 4 | **R**, one corner radius | Small | Proposed |
 | 5 | **F**, keyboard focus everywhere | Small | Proposed |
@@ -81,6 +81,42 @@ Today the CSS has 21 sizes (8.5 to 28px), with 76 rules at 10.5px or smaller, an
   background; the tick badge 18px → 26px, 15px glyph, `border-radius:var(--r)`.
 - **Check:** computed `font-size` of `.box-cell`, `.viewer-meta`, `.hint`, `.btn` is at least 13px; `.box-cell`'s
   `font-family` is not monospace. Print: the A4 grid still fits a typical recipe (measure one before and after).
+
+**Built as (14 Oct 2026).** The household said "go" with the defaults put to them. Measured on the app's made-up test data and
+a made-up "typical" recipe (14 ingredient lines, 5 stages); **the sandbox has no IBM Plex** (Inter and DejaVu Sans Mono stand in),
+so every width below is approximate.
+
+- **The scale.** The 212 font-size declarations now use seven sizes, 13, 14, 15, 16, 19, 22 and 26px (21 before). By value: 8.5 to
+  9.5 became 13; 10 to 12.5 became 14; 13 stays; 13.5 became 14; 14.5 and 15 became 16; 18 became 19; 24 became 22; 28 became 26.
+  The timeline, a step's duration and a cooking note's date are 13px by role. The 15 is `.box-cell` and the tick's glyph, as the
+  plan says. **Rules at 10.5px or smaller: 76 to 0.**
+- **Mono: 108 rules to 26**, for figures, times and code (the list is in `test/core.test.js`, and exact). The timeline's lane
+  labels are step names, so they are Plex Sans (a first pass kept them mono and they were cut off more than before). A label that
+  was tracked mono capitals is Plex Sans 500 at `.04em` whatever its tracking was. **Weight:** the body is 400; the 10 rules left
+  at 300 are all titles of 19px and up.
+- **The done state is struck through in `--ink-soft` on a solid `--well`, not the plan's `--ink-mute`:** READABILITY T made
+  `--ink-mute` a fill (3.4:1) and a test forbids it as text. A step box's colours are inline, from the recipe's palette, so only
+  `!important` reaches them; the stylesheet already does that for dashed pass-through borders. The tick is 26px, a 15px glyph, a
+  square corner.
+- **Found by measuring, not in the plan.** The 18px numbered-step badge held a 14px numeral, so it is 24px. `.filter-row-label`
+  was 68px and clipped KEYWORD at 14px, so it is 92px. The phone's calendar cell (`.history-day-info`) is 13px on one line (at
+  14px it showed about three letters). The one size outside the stylesheet, `font-size:11.5px` in a style attribute on GROUP
+  SELECTED in the Planner's group picker, is removed from the attribute so that button is 14px like the rest.
+- **Ingredient cells reserve 40px on the right so the 26px tick never covers a word.** For the made-up recipe the flow table goes
+  from 710 to 797px high on the tablet (+12%) and from 730 to 886px on the phone (+21%); the reserve is 45px and 89px of that.
+  Reserving only once a cell is ticked leaves the table at 752px and 797px, but ticking then adds a line (22px) to 3 of 13
+  ingredient rows on the tablet and 4 of 13 on the phone, which moves the page under the thumb. A one-line change if preferred.
+- **What it costs, measured (1280×800, then 412×915).** The recipe viewer's header, with every button, runs to 5 lines (240px)
+  from 4 (169px), and on the phone to 8 lines (396px) from 6 (278px). In cooking mode it stays 3 lines (146px from 134px), and
+  on the phone 5 lines from 4. The made-up recipe still prints on 2 A4 sheets. Elements wider than their box: 17 to 18 on the
+  tablet and 17 to 19 on the phone; the one new class is the phone calendar's line-clamped dish name.
+- **Checks.** Five in `test/core.test.js`: every size on the scale and none in a `font` shorthand; mono on exactly the 26 listed
+  rules; body weight 400 and weight 300 only on titles of 19px and up; `.box-cell` as set and at the foot of its box; the done
+  state struck through with no opacity and a 26px tick. Four in `test/smoke.js`: the plan's check (13px or more for `.box-cell`,
+  `.viewer-meta`, `.hint` and `.btn`, and a step box not mono); no visible text under 13px on the screens walked, both themes; a
+  ticked ingredient and step struck through at full opacity in `--ink-soft` over the inline colours, with a 26px tick; the filter
+  labels not clipped.
+- **Left for H.** The 44px minimum will lengthen the viewer's header again; it already costs 71px at tablet width.
 
 ## H. 44px tap targets
 
