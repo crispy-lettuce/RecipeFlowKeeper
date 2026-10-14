@@ -120,6 +120,50 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
   check('every colour token the light theme defines, the dark theme defines too', found && missingDark.length === 0, missingDark.join(', '));
 }
 
+/* ---- The type scale (READABILITY S, 14 Oct 2026, docs/PLAN-READABILITY.md) ----
+   Read from the stylesheet's source, as T's colour checks are. The stylesheet had 21 sizes from 8.5px to 28px, 76 rules at
+   10.5px or smaller and IBM Plex Mono on 108 rules; the browser half (what 13px and 14px do to the real screens) is in smoke.js. */
+{
+  const css = pageSrc.slice(pageSrc.indexOf('<style>') + 7, pageSrc.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
+  /* A rule's body has no braces, so this reads a rule inside an @media block as it reads one outside it. */
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => ({ sel: m[1].trim().replace(/\s+/g, ' '), body: m[2] }));
+  const SCALE = [13, 14, 15, 16, 19, 22, 26];
+  const sizes = [...css.matchAll(/font-size\s*:\s*([\d.]+)px/g)].map(m => +m[1]);
+  const shorthand = rules.filter(r => /(^|[;\s])font\s*:[^;]*\d+(\.\d+)?px/.test(r.body)).map(r => r.sel);
+  const off = [...new Set(sizes.filter(v => !SCALE.includes(v)))];
+  check('every font size in the stylesheet is on the scale (13, 14, 15, 16, 19, 22, 26px), and none is set in a font shorthand',
+        sizes.length > 150 && off.length === 0 && shorthand.length === 0, `${sizes.length} sizes read` + (off.length ? '; off the scale: ' + off.join(', ') + 'px' : '') + (shorthand.length ? '; shorthand: ' + shorthand.join(' | ') : ''));
+
+  /* Mono is for figures, times and code, where its fixed width lines them up. A label in tracked mono capitals is wider in
+     Plex Sans, so a new label set in mono again would be the old stylesheet back. The list is exact: a rule that gains or loses
+     mono is a decision to make here, not a drift. */
+  const MONO_OK = ['.mono', '.qty', '.step-duration', '.day-recipe-time', '.day-num', '.scale-btn', '.history-day-num', '.side-count',
+    '.result-count', '.shortlist-count', '.ingr-count', '.source-row-count', 'ol.setup li::before', 'textarea#importInput',
+    'textarea#sourcePasteInput', '.rv-row code', '.line-check code', '.rv-undo code', '.hstat-legend-value', '.swap-row-ratio',
+    '.timeline-ruler', '.cn-date', '.stacked-recipe-start', '.stacked-recipe-serves', '.photo-overlay-head', '.pdf-card-mark'];
+  const mono = rules.filter(r => /IBM Plex Mono/.test(r.body)).map(r => r.sel);
+  const stray = mono.filter(sel => !MONO_OK.includes(sel)), unused = MONO_OK.filter(sel => !mono.includes(sel));
+  check('IBM Plex Mono is on exactly the rules for numbers, times and code (26), and nowhere else',
+        mono.length > 0 && stray.length === 0 && unused.length === 0, [stray.length ? 'mono but not listed: ' + stray.join(' | ') : '', unused.length ? 'listed but not mono: ' + unused.join(' | ') : ''].filter(Boolean).join('; '));
+
+  /* Weight 300 is thin on the tablet. Titles of 19px and up keep it; body text is 400. */
+  const bodyRule = rules.find(r => r.sel === 'body');
+  const thin = rules.filter(r => /font-weight\s*:\s*300/.test(r.body)).filter(r => { const m = r.body.match(/font-size\s*:\s*([\d.]+)px/); return !m || +m[1] < 19; }).map(r => r.sel);
+  check('the body weight is 400, and weight 300 is left only on titles of 19px and up',
+        !!bodyRule && /font-weight\s*:\s*400/.test(bodyRule.body) && thin.length === 0, thin.join(' | '));
+
+  /* PLAN-LAYOUT C (step words at the foot of the box) stands; READABILITY S set the words flush left in Plex Sans 15px. */
+  const bc = rules.find(r => r.sel === '.box-cell');
+  check('a step box is Plex Sans 15px, flush left and at the foot of its box (not mono, not centred)',
+        !!bc && !/Mono/.test(bc.body) && /text-align\s*:\s*left/.test(bc.body) && /vertical-align\s*:\s*bottom/.test(bc.body) && /font-size\s*:\s*15px/.test(bc.body) && /line-height\s*:\s*1\.45/.test(bc.body), bc ? bc.body.replace(/\s+/g, ' ').trim() : 'no .box-cell rule');
+
+  /* The old done state faded the whole cell with opacity .35. */
+  const dn = rules.find(r => r.sel === '.ing-cell.done, .box-cell.done'), tk = rules.find(r => r.sel === '.ing-cell.done::after, .box-cell.done::after');
+  check('a ticked box is struck through, not faded, and its tick is 26px with a 15px glyph',
+        !!dn && !/opacity/.test(dn.body) && /line-through/.test(dn.body) && !!tk && /width\s*:\s*26px/.test(tk.body) && /height\s*:\s*26px/.test(tk.body) && /font-size\s*:\s*15px/.test(tk.body),
+        (dn ? dn.body.replace(/\s+/g, ' ').trim() : 'no done rule') + ' | ' + (tk ? 'tick found' : 'no tick rule'));
+}
+
 /* ---- The converter's instructions (issue #127, 12 Oct 2026) ----
    Each household loads converter/conversion-instructions.md into its own conversion project, and the app asks each
    once to reload it when CONVERTER_VERSION moves. So a change to the file must move the version, or nobody is told.

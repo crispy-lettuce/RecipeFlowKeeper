@@ -1,4 +1,8 @@
 [
+  { "version": "2026-10-14.2", "date": "2026-10-14",
+    "changes": ["Writing is bigger and easier to read everywhere: nothing is smaller than 13, and the labels and buttons that were tiny are now a comfortable size. They are set in the page's own font instead of spaced-out typewriter capitals. Quantities, times and counts keep their typewriter figures.",
+                "Ticked ingredients and steps are struck through on a plain tint instead of being faded, with a bigger tick, and a step's words now sit flush left in its box.",
+                "Some things take more room as a result: the buttons above a recipe can run onto another line, and the ingredient list is a little taller."] },
   { "version": "2026-10-14.1", "date": "2026-10-14",
     "changes": ["Small grey text is darker and easier to read, in both the light and the dark theme: the labels above the filters, the counts, the line under a recipe's title and the small words in the sidebar. In the dark theme the pale shading behind quantities, today's row in the Planner, the buttons that are switched on and the warning boxes now show, and selected text is highlighted. Nothing moves and nothing is renamed."] },
   { "version": "2026-10-13.8", "date": "2026-10-13", "issues": [142],

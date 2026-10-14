@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **609 checks** (14 Oct 2026, 606 on 13 Oct; `core.test.js` adds 194 in Node, 189 on 13 Oct) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **613 checks** (14 Oct 2026, 609 after T and 606 on 13 Oct; `core.test.js` adds 199 in Node, 194 after T and 189 on 13 Oct) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -2933,6 +2933,45 @@ mock-ups, which this session did not see; its ratios were recomputed here and ag
 
 *Left for the household to decide* (also in the plan): sage and gold used as text, 25 elements at 2.6 to 3.1:1; and a selected
 Shortlist item, which barely differs from an unselected one in either theme (as it did before T).
+
+**READABILITY S, the type scale (14 Oct 2026; `docs/PLAN-READABILITY.md` change S, on `main` at `e7ca4dc`, after T).** The household said
+"go" with the defaults put to them. `index.html` CSS and one style attribute (below); no id, wording, `core.js`, `help.html` or
+schema change, and `core.js`'s version is unchanged.
+- **The scale.** 212 font-size declarations on seven sizes (13, 14, 15, 16, 19, 22 and 26px; 21 before); rules at 10.5px or smaller
+  76 to 0; IBM Plex Mono on 26 rules for figures, times and code (108 before; the list is exact in `core.test.js`); body weight
+  400, and the 10 rules left at 300 are titles of 19px and up. The plan's "Built as" note under S has the mapping and every
+  departure.
+- **Departures from the plan's text.** The done state is in `--ink-soft`, not `--ink-mute` (T made that a fill only); the
+  ingredient cells reserve 40px for the tick (+45px and +89px of table height, with the alternative priced in the plan); the
+  numbered-step badge is 24px; `.filter-row-label` is 92px; the phone calendar cell is 13px; the style attribute on GROUP
+  SELECTED in the Planner's group picker loses its `font-size:11.5px`.
+- `changelog.json` **2026-10-14.2**; step **62a**. No `help.html` change: no label changed, and the guide never says how a tick looks.
+
+*Verified by.* On `main`, before (a snapshot): `node test/core.test.js` **194**, exit 0; `node test/build.js && node test/smoke.js`
+**609**, exit 0. After, on the finished tree: `core.test.js` **199** (five new checks), exit 0; smoke **613** (four new), exit 0, no
+console or page errors; `help-guide.js` 7, exit 0. T's own checks still pass (493 and 481 quiet-ink elements at 4.5:1). Measured in
+a browser with throwaway scripts kept outside the repo, on the stub's made-up data and a made-up 14-ingredient recipe (no library
+line used): sizes 21 to 7, rules at 10.5px or smaller 76 to 0, mono 108 to 26; the flow table 710 to 797px (tablet) and 730 to
+886px (phone); the recipe viewer's header 4 to 5 lines (169 to 240px) on the tablet and 6 to 8 lines on the phone; in cooking
+mode 3 lines both ways (134 to 146px); the recipe on 2 A4 sheets both ways; elements wider than their box 17 to 18 (tablet) and
+17 to 19 (phone, where the new class is the calendar's line-clamped name). The building session looked at before and after
+screenshots of the recipes grid, the viewer, the flow table, the timeline and the Planner. **Fourteen mutations, each failing the
+right check by name.** `core.test.js` (nine): a size of 12px; a label back in mono; `.qty` losing mono; body at weight 300; a
+small label at weight 300; step text centred; step text off the foot of its box (PLAN-LAYOUT C); the done state with opacity
+back; the old 18px tick. `smoke.js` (five, run in parallel beside an unmutated control copy that passed all 613): `.viewer-meta`
+at 12px (two checks); a step box in mono; `.side-label` at 11px; the done colour without `!important`; the filter label back at
+68px (KEYWORD clipped). The mutations and measurements caught four faults of my own, all fixed before this record: a keyframe test
+in the transform (`endswith('to')`) that skipped `.rcard-photo`; lane labels wrongly kept in mono; a done-state check that read a
+colour mid-fade and so failed on unmutated code (the control run showed it; the cell's colour transition is now switched off for
+the read); and a mutation that did not apply. A stray `index.html.stats.json` from the transform script was deleted before the commit.
+
+*Not verified.* **IBM Plex widths:** the sandbox has no IBM Plex (Inter and DejaVu Sans Mono stood in), so every width and line
+count is approximate; the real tablet is the household's (62a). EXPORT PNG pixels, and a print preview beyond one made-up recipe's
+A4 page count. Hover, focus and error states the stub does not reach. Phone-width clipping only on the screens the stub reaches;
+the dark theme's layout was not measured separately (sizes do not depend on it).
+
+*Left for the household to decide:* the ingredient cells' 40px reserve (or reserve only once ticked), and what S's bigger header
+does to the viewer, with H still to come.
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*

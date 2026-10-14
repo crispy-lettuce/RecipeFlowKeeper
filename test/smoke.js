@@ -221,30 +221,43 @@ const check = (name, pass, detail) => {
     };
     const resolve = n => { const s = document.createElement('span'); s.style.color = 'var(--' + n + ')'; document.body.appendChild(s); const c = getComputedStyle(s).color; s.remove(); return c; };
     const quiet = new Set(['ink-soft', 'ink-faint', 'ink-mute'].map(resolve));
-    let n = 0; const bad = [], seen = new Set();
+    let n = 0; const bad = [], small = [], seen = new Set();
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let t; (t = walker.nextNode()); ) {
       const el = t.parentElement;
       if (!el || seen.has(el) || !t.nodeValue.trim() || ['SCRIPT', 'STYLE', 'OPTION'].includes(el.tagName)) continue;
       seen.add(el);
       const cs = getComputedStyle(el);
-      if (!quiet.has(cs.color)) continue;
-      const r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1 || el.closest(':disabled')) continue;
+      const r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1) continue;
       let shown = true, op = 1;
       for (let e = el; e; e = e.parentElement) { const c = getComputedStyle(e); if (c.display === 'none' || c.visibility === 'hidden') { shown = false; break; } op *= parseFloat(c.opacity); }
-      if (!shown || op < 0.99) continue;
+      if (!shown) continue;
+      if (parseFloat(cs.fontSize) < 13) small.push(`${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/)[0] : ''} ${cs.fontSize}`);
+      if (!quiet.has(cs.color) || op < 0.99 || el.closest(':disabled')) continue;
       n++;
       const bg = bgOf(el), rt = ratio(parse(cs.color), bg);
       if (rt < 4.5) bad.push(`${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/)[0] : ''} "${t.nodeValue.trim().slice(0, 18)}" ${rt.toFixed(2)}`);
     }
     const qty = [...document.querySelectorAll('.qty')].find(q => q.getBoundingClientRect().width > 0);
-    return { n, bad, qty: qty ? ratio(bgOf(qty), bgOf(qty.parentElement)) : null };
+    return { n, bad, small, qty: qty ? ratio(bgOf(qty), bgOf(qty.parentElement)) : null };
   });
   const walkInks = async () => {
-    const all = { n: 0, bad: [], qty: null };
-    const take = async view => { const r = await readInks(); all.n += r.n; all.bad.push(...r.bad.map(b => b + ' (' + view + ')')); if (r.qty !== null) all.qty = r.qty; };
+    const all = { n: 0, bad: [], small: [], qty: null, labels: null, viewer: null, done: null };
+    const take = async view => { const r = await readInks(); all.n += r.n; all.bad.push(...r.bad.map(b => b + ' (' + view + ')')); all.small.push(...r.small.map(b => b + ' (' + view + ')')); if (r.qty !== null) all.qty = r.qty; };
     await page.click('.navlink[data-view="recipes"]'); await page.waitForTimeout(300); await take('recipes');
+    all.labels = await page.evaluate(() => { const ls = [...document.querySelectorAll('.filter-row-label')].filter(l => l.getBoundingClientRect().width > 0);
+      return { n: ls.length, clipped: ls.filter(l => l.scrollWidth > l.clientWidth + 1).map(l => l.textContent.trim()) }; });
     await page.click('.rcard'); await page.waitForTimeout(600); await take('viewer');
+    all.viewer = await page.evaluate(() => { const one = sel => document.querySelector('#view-viewer ' + sel); const px = sel => { const e = one(sel); return e && e.getBoundingClientRect().width > 0 ? parseFloat(getComputedStyle(e).fontSize) : null; };
+      const bc = one('.box-cell'); return { sizes: { boxCell: px('.box-cell'), viewerMeta: px('.viewer-meta'), hint: px('.hint'), btn: px('.btn') }, boxFamily: bc ? getComputedStyle(bc).fontFamily : null }; });
+    /* The done state is a class, so the check puts the class on and takes it off: no tick is made, nothing is logged as cooked. */
+    all.done = await page.evaluate(() => { const s = document.createElement('span'); s.style.color = 'var(--ink-soft)'; document.body.appendChild(s); const soft = getComputedStyle(s).color; s.remove(); const out = { soft };
+      for (const sel of ['.ing-cell', '.box-cell']) { const c = document.querySelector('#view-viewer ' + sel); if (!c) { out[sel] = null; continue; }
+        /* The cell fades its colours in over .15s, and a style read straight after the class goes on returns the start of the
+           fade, not where it ends up; so the fade is switched off for the read. */
+        c.style.transition = 'none'; c.classList.add('done'); const cs = getComputedStyle(c), as = getComputedStyle(c, '::after');
+        out[sel] = { line: cs.textDecorationLine, opacity: cs.opacity, colour: cs.color, tick: as.width + ' x ' + as.height }; c.classList.remove('done'); c.style.transition = ''; }
+      return out; });
     for (const v of ['planner', 'shortlist', 'shopping', 'history', 'settings']) {
       await page.click(`.navlink[data-view="${v}"]`); await page.waitForTimeout(400); await take(v);
     }
@@ -269,6 +282,19 @@ const check = (name, pass, detail) => {
      shows (today's Planner row, 1.08:1). */
   check('dark theme: a quantity pill shows against the surface it sits on (at least 1.08:1)',
         inkDark.qty !== null && inkDark.qty >= 1.08, inkDark.qty === null ? 'no .qty on screen' : `light ${inkLight.qty === null ? 'n/a' : inkLight.qty.toFixed(2)}, dark ${inkDark.qty.toFixed(2)}`);
+
+  /* ---- Readability S (14 Oct 2026, docs/PLAN-READABILITY.md): the type scale ----
+     core.test.js checks the stylesheet's sizes and mono list from its source; these check what the browser makes of them. */
+  const vw = inkLight.viewer, sizes = vw.sizes;
+  check('the viewer reads at 13px or more (.box-cell, .viewer-meta, .hint, .btn), and a step box is not set in mono',
+        Object.values(sizes).every(v => v !== null && v >= 13) && !!vw.boxFamily && !/mono/i.test(vw.boxFamily), JSON.stringify(sizes) + ' ' + vw.boxFamily);
+  check('no visible text on the screens walked is under 13px, in either theme',
+        inkLight.small.length === 0 && inkDark.small.length === 0, [...inkLight.small, ...inkDark.small].slice(0, 6).join('; '));
+  const dn = inkLight.done, tickedOk = k => !!dn[k] && /line-through/.test(dn[k].line) && dn[k].opacity === '1' && dn[k].colour === dn.soft && dn[k].tick === '26px x 26px';
+  check('a ticked ingredient and a ticked step are struck through at full opacity in --ink-soft (over the step\'s inline colour), with a 26px tick',
+        tickedOk('.ing-cell') && tickedOk('.box-cell'), JSON.stringify(dn));
+  check('the filter labels (COURSE, SOURCE, KEYWORD) fit their column',
+        inkLight.labels.n >= 3 && inkLight.labels.clipped.length === 0, `${inkLight.labels.n} labels` + (inkLight.labels.clipped.length ? '; clipped: ' + inkLight.labels.clipped.join(', ') : ''));
   await page.click('.navlink[data-view="settings"]');
   await page.waitForTimeout(300);
   await page.click('[data-settings-tab-btn="app"]');

@@ -30,8 +30,9 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 ### Reload the app on every device
 
-The latest version, 2026-10-14.1 (easier-to-read small text, colours only), was merged as #147 on 14 Oct, so it should be
-live: reload to get it, and do 61a below.
+The newest version is 2026-10-14.2 (the type scale: bigger writing). Once it has merged, reload on every device. The one
+before it, 2026-10-14.1 (easier-to-read small text, colours only), was merged as #147 on 14 Oct, so it should already be live.
+Steps 61a and 62a are below.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready**, tap **RELOAD**. Otherwise refresh the page.
@@ -59,6 +60,26 @@ Colours only: nothing moves. Do this after the readability pull request has merg
 
 The small green and gold words (a card's MAIN · VEG tags, a day's course label, the favourite star) are **not** changed. Tell
 the next session if any of them is hard to read, and whether anything now looks too dark or heavy.
+
+### 62a. Bigger, clearer writing (new 14 Oct, `docs/PLAN-READABILITY.md` change S)
+
+Nothing is saved. Do this after the type-scale pull request has merged and you have reloaded the app. Tablet first; step 6 is
+the phone.
+
+1. Open **RECIPES**. **You should see:** every label, chip, count and card line bigger than before and easy to read at the
+   distance you cook from, with nothing squashed, and the labels COURSE, SOURCE and KEYWORD whole.
+2. Open a recipe. **You should see:** the ingredients bigger; each step's words flush left at the foot of its box, in the page's
+   own font, with its time underneath in typewriter figures; and the buttons above the recipe running onto a second or third line.
+3. Tap an ingredient. **You should see:** it struck through on a plain tint, with a square tick at the right and none of its
+   words under the tick. Tap it again: it goes back as it was. Do the same with a step.
+4. Switch **COOKING MODE** on. **You should see:** the header tidy, with only what you need.
+5. Open **PLANNER** and **SHOPPING**. **You should see:** every row still fits, with the day, SERVES n and × readable.
+6. On the phone, open **HISTORY** and a recipe. **You should see:** each calendar day showing a short name on one line, and the
+   recipe's buttons wrapping without anything cut off.
+7. In **SETTINGS → APP → Appearance → Dark**, look at a recipe again, then put Appearance back.
+8. If you use it, **PRINT / A4 PDF** on a recipe. **You should see:** the same number of sheets as before (a typical recipe is two).
+
+Tell the next session what looks too big or too cramped, and anything you can't read.
 
 ---
 
