@@ -72,6 +72,54 @@ check('the versions are all different, newest first',
 const appVersion = (pageSrc.match(/const APP_VERSION = '([^']+)'/) || [])[1];
 check('index.html is the version at the top of changelog.json', !!appVersion && appVersion === clVersions[0], `page ${appVersion}, log ${clVersions[0]}`);
 
+/* ---- The page's colours (READABILITY T, 14 Oct 2026, docs/PLAN-READABILITY.md) ----
+   Read from the stylesheet's source, in Node: the pure-arithmetic half of T. The browser half (what actually lands on
+   screen, against the real backgrounds) is in smoke.js. Comments are stripped first because the :root block's own comments
+   name the strings these checks look for. */
+{
+  const css = pageSrc.slice(pageSrc.indexOf('<style>') + 7, pageSrc.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
+  const rootLight = (css.match(/:root\{([^}]*)\}/) || [])[1] || '';
+  const rootDark = (css.match(/:root\[data-theme="dark"\]\{([^}]*)\}/) || [])[1] || '';
+  const rules = css.replace(/:root\{[^}]*\}/, '').replace(/:root\[data-theme="dark"\]\{[^}]*\}/, '');
+  const found = rootLight.includes('--paper:') && rootDark.includes('--paper:');
+
+  /* A literal colour in a rule is a light-theme colour the dark theme cannot reach: a plum wash written as rgba(91,42,74,.09)
+     was dark plum on a dark ground, 1.03:1 against its surface, i.e. not there. */
+  const literals = (rules.match(/[^;{}]*rgba\([^;}]*/g) || []).map(s => s.trim().slice(0, 70));
+  check('no rule in the stylesheet writes an rgba() colour; every tint, shadow and scrim is a token that has a dark value',
+        found && literals.length === 0, found ? literals.join(' | ') : 'the :root blocks were not found');
+
+  const hexOf = (block, name) => (block.match(new RegExp('--' + name + ':\\s*(#[0-9A-Fa-f]{6})\\s*;')) || [])[1];
+  const lum = hex => { const n = parseInt(hex.slice(1), 16); const f = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+                       return 0.2126 * f(n >> 16 & 255) + 0.7152 * f(n >> 8 & 255) + 0.0722 * f(n & 255); };
+  const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const short = [];
+  for (const [theme, block] of [['light', rootLight], ['dark', rootDark]])
+    for (const ink of ['ink-soft', 'ink-faint'])
+      for (const ground of ['paper', 'card']) {
+        const fg = hexOf(block, ink), bg = hexOf(block, ground);
+        const r = fg && bg ? ratio(fg, bg) : 0;
+        if (r < 4.5) short.push(`${theme} ${ink} ${fg} on ${ground} ${bg}: ${r.toFixed(2)}`);
+      }
+  check('--ink-soft and --ink-faint reach 4.5:1 on --paper and --card, in the light and the dark theme',
+        found && short.length === 0, short.join('; '));
+
+  /* --ink-mute was 3.4:1 on paper and is kept only as a fill (the numbered-step badge). Text 18px or larger could use it
+     under WCAG; if that is ever wanted, this check is the place to say which rule. */
+  const muteText = (rules.match(/(?:^|[;{\s])color\s*:\s*var\(--ink-mute\)/g) || []).length;
+  check('no rule sets its text colour to --ink-mute', found && muteText === 0, muteText + ' rule(s)');
+
+  check("the sidebar's SAVED count is --ink-faint, not --line-faint (a border colour, 1.7:1)",
+        /\.side-count\{[^}]*[;\s]color:var\(--ink-faint\)/.test(rules));
+
+  /* The dark theme is one attribute swapping the whole palette (see the DARK THEME block): a token defined only in the light
+     block resolves to nothing in the dark one and the colour silently falls back to inherited. --r is a size, not a colour. */
+  const names = block => new Set([...block.matchAll(/(--[\w-]+)\s*:/g)].map(m => m[1]));
+  const lightNames = names(rootLight), darkNames = names(rootDark);
+  const missingDark = [...lightNames].filter(n => n !== '--r' && !darkNames.has(n));
+  check('every colour token the light theme defines, the dark theme defines too', found && missingDark.length === 0, missingDark.join(', '));
+}
+
 /* ---- The converter's instructions (issue #127, 12 Oct 2026) ----
    Each household loads converter/conversion-instructions.md into its own conversion project, and the app asks each
    once to reload it when CONVERTER_VERSION moves. So a change to the file must move the version, or nobody is told.

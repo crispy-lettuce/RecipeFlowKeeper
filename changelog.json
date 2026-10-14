@@ -1,4 +1,6 @@
 [
+  { "version": "2026-10-14.1", "date": "2026-10-14",
+    "changes": ["Small grey text is darker and easier to read, in both the light and the dark theme: the labels above the filters, the counts, the line under a recipe's title and the small words in the sidebar. In the dark theme the pale shading behind quantities, today's row in the Planner, the buttons that are switched on and the warning boxes now show, and selected text is highlighted. Nothing moves and nothing is renamed."] },
   { "version": "2026-10-13.8", "date": "2026-10-13", "issues": [142],
     "changes": ["OFTEN WITH: a recipe now names what you have grouped it with before, any course, the most often first, two at most. On the Planner a + under the dish adds one to the day and groups it with the dish, as SERVE WITH does; × hides it until you next open the app."] },
   { "version": "2026-10-13.7", "date": "2026-10-13", "issues": [87],

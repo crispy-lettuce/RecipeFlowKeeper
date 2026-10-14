@@ -15,7 +15,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 606 automated checks pass, plus 189 in Node (13 Oct 2026; 102 when this was
+story that used to open this paragraph is history. 609 automated checks pass, plus 194 in Node (14 Oct 2026; 606 and 189 on 13 Oct; 102 when this was
 written; until 12 Oct this line said 329 and 133, corrected 12 Oct 2026, the October review's Appendix B). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -776,6 +776,20 @@ within each were not reported one by one.*
 
 *57a, 58a and 59a reported passed by the household, 14 Oct ("happy with 57a, 58a, 59a"). The steps within each were not
 reported one by one.*
+
+61a. **Quieter text is easier to read; the dark theme's tints show (new 14 Oct; READABILITY T, `docs/PLAN-READABILITY.md`).**
+    Colours only, nothing moves. (1) *Recipes, light theme:* the small grey words (COURSE and SORT above the filters, the
+    "3 OF 3" count, the dashed chips, the sidebar's SAVED VIEWS and EXPORT DATA and the "N RECIPES SAVED" line) are darker
+    than before and still the quietest text on the page; none is hard to read at the distance you cook from. (2) *Open a
+    recipe:* the line under the title (source, time, serves) and the hint under the grid read clearly; the quantity beside each
+    ingredient is still in its pale plum pill, no heavier than before. (3) *Planner:* the week labels, the day numbers, and
+    SERVES n and × on a planned dish read clearly; today's row has a faint tint, as before. (4) *Settings → APP → Appearance:
+    Dark,* then (1)–(3) again: the quantity pills are now visibly pills (they were not there at all), today's row is tinted, a
+    dish's GROUPED badge and the favourite and shortlist buttons that are on are tinted, and dragging across a few words of a
+    note shows a highlight. (5) *Put Appearance back to what it was.* (6) *If you use them:* PRINT / A4 PDF and EXPORT PNG of a
+    recipe look as the screen does, the small grey words a little darker. **Not changed on purpose:** the small green and gold
+    words (a card's MAIN · VEG tags, a day's course label, the favourite star) are still pale; say if they are hard to read.
+    Writes only the Appearance setting, which (5) returns.
 
 ## Deferred to the tablet, after merging
 
