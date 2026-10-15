@@ -1,6 +1,6 @@
 # PLAN-MODERNIST: a second visual style, "Modernist" (15 Oct 2026)
 
-**Status:** being built, one step at a time on a branch; nothing is on `main` yet. Steps 1 (the switch) and 2 (the sidebar) are built. See "Build order".
+**Status:** being built, one step at a time on a branch; nothing is on `main` yet. Steps 1 (the switch), 2 (the sidebar) and 3 (Recipes) are built. See "Build order".
 
 The household has a design handoff (a README, an HTML prototype and a token sheet) for a flat, square, one-typeface look for the
 tablet in landscape (1280×800). It is added as a **second style beside Classic, not instead of it**: Settings → APP has a STYLE
@@ -55,7 +55,7 @@ choice, CLASSIC or MODERNIST, next to APPEARANCE. Classic stays exactly as it wa
 ## Build order and status
 
 1. **The switch** (built 15 Oct): boot script, STYLE select, `applyStyle`/`currentStyle`, the token bridge, the build step, the checks.
-2. **App shell and sidebar** (built 15 Oct). 3. Recipes. 4. Viewer. 5. Planner and Shortlist. 6. Shopping. 7. History. 8. Settings. 9. Everything else.
+2. **App shell and sidebar** (built 15 Oct). 3. **Recipes** (built 15 Oct). 4. Viewer. 5. Planner and Shortlist. 6. Shopping. 7. History. 8. Settings. 9. Everything else.
 
 Each step's entry below is added when it lands: what was measured, and where it departs from the prototype.
 
@@ -83,4 +83,23 @@ Each step's entry below is added when it lands: what was measured, and where it 
     one-tap switch there would change it for everyone; it stays in Settings → APP. To revisit with the household.
 - **Checks:** 11 in `test/smoke.js` (Classic's sidebar unchanged; widths and the rail on Recipes, the Planner, peek, fold, a
   change of screen, cooking mode, 1100px and a phone; the ‹ button's 44px tap area; focus). Each was seen to fail once.
+
+### Step 3 as built
+- **Markup:** the search bar now sits in `.recipes-head-row` beside a `.mod-only` title and count (`#recipesCountMod`: "3 RECIPES",
+  or "1 OF 3" under a filter). In Modernist, `renderFilterRows` puts the one SOURCE select beside SORT on the KEYWORD row
+  (`currentStyle()`), and switching style redraws it. Classic is byte-identical.
+- **Cards:** three to a row at 861px and up, two to 560px, one below, sharing 2px rules (the first row draws the top and the
+  first column the left, so no translucent line is drawn twice). Photo 176px, in colour. The favourite is the Lucide star drawn
+  as a CSS mask (filled and red when on); its ☆/★ text stays, at no size, and the button's label is unchanged.
+- **Behaviour, Modernist only (decision 8):** the card's ✓ takes the recipe off the shortlist (one delete, as the panel's ×),
+  and its label reads "Remove from shortlist". In Classic a tap on ✓ still does nothing and it reads "On shortlist".
+- **Where it departs from the prototype:**
+  - The selects keep Classic's 44px height (a select cannot carry an invisible hit area); the prototype's are 34px. Chips are
+    drawn at the prototype's size, with an invisible 44px hit area.
+  - SORT is kept (the prototype has none), beside SOURCE.
+  - On a phone SOURCE and SORT wrap onto a second line.
+- **`core.test.js`:** the lint now allows `url()` only for an inline SVG, so the file still fetches nothing.
+- **Checks:** 11 in `test/smoke.js` (Classic's Recipes and its ✓ unchanged; the title, count and search bar; SOURCE's row; three
+  cards filling the row with shared rules; the count under a filter; the toggle on and off with its write; the star; the 44px tap
+  areas; redraw on switching style). Each was seen to fail once.
 

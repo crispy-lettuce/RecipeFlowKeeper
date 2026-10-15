@@ -272,8 +272,9 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
 
   const fonts = rules.flatMap(r => [...r.body.matchAll(/(?:^|[;\s])font-family\s*:\s*([^;]+)/g)].map(m => m[1].replace(/\s*!important/, '').trim()));
   const fontTokens = [...mod.matchAll(/--font-(?:heading|body)\s*:\s*([^;]+);/g)].map(m => m[1].trim());
-  check('Archivo only: every font-family is the font token, both tokens start with Archivo, and nothing imports a font',
-        fonts.length > 0 && fonts.every(f => /^var\(--font-(?:body|heading)\)$/.test(f)) && fontTokens.length === 2 && fontTokens.every(f => /^"Archivo"/.test(f)) && !/@import|@font-face|url\(/.test(mod),
+  /* The only url() allowed is an inline SVG (an icon drawn as a mask): nothing is fetched by this file. */
+  check('Archivo only: every font-family is the font token, both tokens start with Archivo, and nothing imports a font or fetches a file',
+        fonts.length > 0 && fonts.every(f => /^var\(--font-(?:body|heading)\)$/.test(f)) && fontTokens.length === 2 && fontTokens.every(f => /^"Archivo"/.test(f)) && !/@import|@font-face|url\((?!"data:image\/svg\+xml,)/.test(mod),
         fonts.filter(f => !/^var\(--font-/.test(f)).concat(fontTokens.filter(f => !/^"Archivo"/.test(f))).join(' | '));
 
   /* Where it is linked, and the version in the link. */

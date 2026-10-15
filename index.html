@@ -1741,12 +1741,17 @@ function loadArchivoFont(){
     <!-- ================= HOME / SEARCH ================= -->
     <section id="view-recipes" class="view active">
       <div class="filter-head">
-        <div class="searchbar">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8172" stroke-width="1.6" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.3-4.3"/></svg>
-          <input id="searchInput" type="search" autocomplete="off"
-                 placeholder="Search by name, ingredient, or note — Enter to keep as a tag"
-                 aria-label="Search recipes">
-          <div class="result-count" id="resultCount"></div>
+        <!-- Modernist sets the title and its count beside the search (docs/PLAN-MODERNIST.md); Classic shows neither, and the
+             wrapper is an ordinary block to it. -->
+        <div class="recipes-head-row">
+          <div class="recipes-titleblock mod-only"><h1>Recipes</h1><span class="recipes-count" id="recipesCountMod"></span></div>
+          <div class="searchbar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8172" stroke-width="1.6" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.3-4.3"/></svg>
+            <input id="searchInput" type="search" autocomplete="off"
+                   placeholder="Search by name, ingredient, or note — Enter to keep as a tag"
+                   aria-label="Search recipes">
+            <div class="result-count" id="resultCount"></div>
+          </div>
         </div>
         <div class="filter-rows" id="filterRows"></div>
       </div>
@@ -5099,13 +5104,17 @@ function renderFilterRows(recipes){
   const sourceOptions = sortedSources.map(s=>
     `<option value="${escapeHtml(s)}"${state.source===s?' selected':''}>${escapeHtml(s)} (${srcCounts.get(s)})</option>`
   ).join('');
-  html += `<div class="filter-row">
-    <div class="filter-row-label">SOURCE</div>
-    <div class="chips">
-      <select class="sort" id="sourceFilterSelect" aria-label="Filter by source">
+  const sourceSelect = `<select class="sort" id="sourceFilterSelect" aria-label="Filter by source">
         <option value=""${state.source?'':' selected'}>All sources</option>
         ${sourceOptions}
-      </select>
+      </select>`;
+  /* Modernist (docs/PLAN-MODERNIST.md) sets SOURCE at the right of the KEYWORD row, beside SORT, as its prototype does;
+     Classic keeps it on a row of its own. One select either way. */
+  const sourceInline = currentStyle() === 'modernist';
+  if(!sourceInline) html += `<div class="filter-row">
+    <div class="filter-row-label">SOURCE</div>
+    <div class="chips">
+      ${sourceSelect}
     </div>
   </div>`;
 
@@ -5148,6 +5157,7 @@ function renderFilterRows(recipes){
     <div class="filter-row-label">KEYWORD</div>
     <div class="chips">${savedChip}${kwChips}${suggestedChips}${addBit}${clearBit}</div>
     <div class="sort-wrap">
+      ${sourceInline ? `<span class="filter-row-label" style="width:auto;padding-top:0;">SOURCE</span>${sourceSelect}` : ''}
       <span class="filter-row-label" style="width:auto;padding-top:0;">SORT</span>
       <select class="sort" id="sortSelect" aria-label="Sort recipes">${sortOpts}</select>
     </div>
@@ -5239,9 +5249,12 @@ function renderCard(r, shortlistedIds, theirs){
     : `<div class="rcard-photo empty">NO PHOTO YET</div>`;
   const shortlisted = shortlistedIds.has(r.id);
   /* Shortlist and favourite write to our library, so a card of theirs has neither; it says instead whether we hold a copy. */
+  /* In Modernist the ✓ takes it off the shortlist again (docs/PLAN-MODERNIST.md, decision 8), so it says so; in Classic
+     it only says what is so. */
+  const onLabel = currentStyle() === 'modernist' ? 'Remove from shortlist' : 'On shortlist';
   const marks = theirs
     ? (ourCopyOf(r) ? `<div class="rcard-copied">ALREADY IN OUR RECIPES</div>` : '')
-    : `<button class="rcard-shortlist${shortlisted?' on':''}" data-shortlist="${r.id}" aria-label="${shortlisted?'On shortlist':'Add to shortlist'}">${shortlisted?'✓':'+'}</button>
+    : `<button class="rcard-shortlist${shortlisted?' on':''}" data-shortlist="${r.id}" aria-label="${shortlisted?onLabel:'Add to shortlist'}">${shortlisted?'✓':'+'}</button>
     <button class="rcard-favourite${r.favourite?' on':''}" data-favourite="${r.id}" aria-label="${r.favourite?'Remove from favourites':'Add to favourites'}">${r.favourite?'★':'☆'}</button>`;
   return `<div class="rcard" data-id="${r.id}" tabindex="0" role="button" aria-label="Open ${escapeHtml(r.title||'Untitled')}">
     ${marks}
@@ -5301,6 +5314,10 @@ function renderHome(){
 
   document.getElementById('resultCount').textContent =
     recipes.length ? `${results.length} OF ${recipes.length}` : '';
+  /* Modernist's count beside the title: how many there are, or how many of them a filter shows. */
+  document.getElementById('recipesCountMod').textContent = !recipes.length ? ''
+    : results.length === recipes.length ? `${recipes.length} RECIPE${recipes.length === 1 ? '' : 'S'}`
+    : `${results.length} OF ${recipes.length}`;
   const ours = loadRecipes().length;
   document.getElementById('sideCount').textContent =
     `${ours} RECIPE${ours===1?'':'S'} SAVED`;
@@ -5359,6 +5376,18 @@ function initHomeListeners(){
   document.getElementById('recipeGrid').addEventListener('click', e=>{
     const shortlistBtn = e.target.closest('[data-shortlist]');
     if(shortlistBtn){
+      /* Modernist's card button is a toggle (decision 8): ✓ takes the recipe off the shortlist, as the panel's × does. */
+      const onList = loadShortlist().filter(i=> i.recipeId === shortlistBtn.dataset.shortlist);
+      if(currentStyle() === 'modernist' && onList.length){
+        onList.forEach(i=>{
+          removeShortlistItem(i.id);
+          if(state.selectedShortlistId === i.id) state.selectedShortlistId = null;
+        });
+        updateSidebarCounts();
+        showToast('Taken off the shortlist');
+        renderHome();
+        return;
+      }
       if(addShortlistRecipe(shortlistBtn.dataset.shortlist)){
         updateSidebarCounts();
         showToast('Added to the shortlist');

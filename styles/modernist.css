@@ -235,3 +235,130 @@ html[data-style="modernist"] :focus-visible{ outline-color:var(--color-accent); 
   html[data-style="modernist"] .app.viewer-open .brand .brand-square{ display:none; }
   html[data-style="modernist"] .app.viewer-open .nav-hide-btn{ display:flex; }
 }
+
+/* ============================== RECIPES ==============================
+   The header is the prototype's "title-search": the title and its count, with the search taking the rest of the row; then
+   COURSE and KEYWORD on a 96px label column, SOURCE and SORT pushed right on the KEYWORD row (renderFilterRows puts the
+   select there in this style). The cards share 2px rules, three to a row. Photos stay in colour (a team decision that
+   overrides the design system's grayscale rule). .filter-head is Settings' header too, so everything is under #view-recipes. */
+html[data-style="modernist"] #view-recipes .filter-head{ padding:20px 28px 16px; gap:12px; border-bottom:2px solid var(--color-divider); }
+html[data-style="modernist"] .recipes-head-row{ display:flex; align-items:flex-end; gap:24px; flex-wrap:wrap; }
+html[data-style="modernist"] .recipes-titleblock{ display:flex; align-items:flex-end; gap:16px; }
+html[data-style="modernist"] .recipes-titleblock h1{ margin:0; font-size:56px; font-weight:800; line-height:.9; letter-spacing:-0.035em; }
+html[data-style="modernist"] .recipes-count{
+  padding-bottom:4px; white-space:nowrap;
+  font-size:13px; font-weight:800; letter-spacing:.08em; color:var(--color-accent-700);
+}
+html[data-style="modernist"] #view-recipes .searchbar{
+  flex:1 1 320px; margin-left:auto; min-width:260px; height:48px; padding:0 14px; gap:12px;
+  background:var(--color-surface); border:2px solid var(--color-divider);
+}
+html[data-style="modernist"] #view-recipes .searchbar:focus-within{ border-color:var(--color-accent); outline-color:var(--color-accent); }
+html[data-style="modernist"] #view-recipes .searchbar svg{ flex:none; width:18px; height:18px; stroke:currentColor; stroke-width:2; stroke-linecap:square; }
+html[data-style="modernist"] #view-recipes .searchbar input{ font-size:16px; color:var(--color-text); }
+/* Classic's "3 OF 34" inside the search bar: here the count is beside the title instead. */
+html[data-style="modernist"] #resultCount{ display:none; }
+
+html[data-style="modernist"] #view-recipes .filter-rows{ gap:10px; }
+html[data-style="modernist"] #view-recipes .filter-row{ align-items:center; gap:0; }
+html[data-style="modernist"] #view-recipes .filter-row-label{
+  width:96px; flex:none; padding-top:0; line-height:1.2;
+  font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text);
+}
+html[data-style="modernist"] #view-recipes .chips{ gap:6px; }
+html[data-style="modernist"] #view-recipes .sort-wrap{ gap:8px; }
+html[data-style="modernist"] #view-recipes .chip{
+  position:relative; min-height:0; padding:7px 12px; line-height:normal;
+  border:2px solid var(--color-divider); background:transparent; color:var(--color-text);
+  font-size:13px; font-weight:600; letter-spacing:.04em;
+}
+/* About 32px to see and 44px to tap (decision 10): the inset is from the padding box, inside the 2px border. */
+html[data-style="modernist"] #view-recipes .chip::before{ content:''; position:absolute; left:-2px; right:-2px; top:-8px; bottom:-8px; }
+html[data-style="modernist"] #view-recipes .chip:hover{ border-color:var(--color-accent); color:var(--color-accent); }
+html[data-style="modernist"] #view-recipes .chip.on{ background:var(--color-accent); border-color:var(--color-accent); color:var(--km-on-accent); font-weight:800; }
+html[data-style="modernist"] #view-recipes .chip.on:hover{ background:var(--color-accent-600); border-color:var(--color-accent-600); color:var(--km-on-accent); }
+html[data-style="modernist"] #view-recipes .chip.ghost{ border-style:dashed; border-color:var(--color-divider); color:var(--color-text); opacity:.8; }
+html[data-style="modernist"] #view-recipes .chip.ghost:hover{ border-color:var(--color-accent); color:var(--color-accent); opacity:1; }
+html[data-style="modernist"] #view-recipes .kw-input{
+  height:32px; min-height:0; padding:0 10px; border:2px solid var(--color-accent); background:var(--color-surface);
+  color:var(--color-text); font-size:13px; font-weight:600;
+}
+/* A select cannot carry an invisible hit area, so it keeps Classic's 44px height (decision 10); the prototype's is 34px. */
+html[data-style="modernist"] #view-recipes select.sort{
+  padding:0 8px; border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text);
+  font-size:13px; font-weight:600; letter-spacing:.04em;
+}
+
+/* The grid: rules shared between cards. The first row draws the top rule and the first column the left one, so no line is
+   drawn twice (the divider is translucent, and a doubled one shows darker). The number of columns follows the width. */
+html[data-style="modernist"] #recipeGrid{ padding:24px 28px 32px; grid-auto-rows:auto; gap:0; }
+html[data-style="modernist"] .rcard{
+  padding:0; gap:4px; border:0;
+  border-right:2px solid var(--color-divider); border-bottom:2px solid var(--color-divider);
+  background:var(--color-bg);
+}
+html[data-style="modernist"] .rcard:hover{ background:var(--color-surface); border-color:var(--color-divider); }
+@media (min-width: 861px){
+  html[data-style="modernist"] #recipeGrid{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
+  html[data-style="modernist"] .rcard:nth-child(-n+3){ border-top:2px solid var(--color-divider); }
+  html[data-style="modernist"] .rcard:nth-child(3n+1){ border-left:2px solid var(--color-divider); }
+}
+@media (min-width: 561px) and (max-width: 860px){
+  html[data-style="modernist"] #recipeGrid{ grid-template-columns:repeat(2, minmax(0, 1fr)); padding:16px; }
+  html[data-style="modernist"] .rcard:nth-child(-n+2){ border-top:2px solid var(--color-divider); }
+  html[data-style="modernist"] .rcard:nth-child(2n+1){ border-left:2px solid var(--color-divider); }
+}
+@media (max-width: 560px){
+  html[data-style="modernist"] #recipeGrid{ grid-template-columns:minmax(0, 1fr); padding:16px; }
+  html[data-style="modernist"] .rcard{ border-left:2px solid var(--color-divider); }
+  html[data-style="modernist"] .rcard:first-child{ border-top:2px solid var(--color-divider); }
+  html[data-style="modernist"] .recipes-titleblock h1{ font-size:44px; }
+}
+@media (max-width: 860px){
+  html[data-style="modernist"] #view-recipes .filter-head{ padding:16px; }
+  html[data-style="modernist"] #view-recipes .filter-row{ align-items:flex-start; }
+  /* SOURCE and SORT share the KEYWORD row's right end here, so on a phone they wrap rather than run off the edge. */
+  html[data-style="modernist"] #view-recipes .sort-wrap{ flex-wrap:wrap; }
+  html[data-style="modernist"] #view-recipes .sort-wrap select.sort{ max-width:100%; }
+}
+
+html[data-style="modernist"] .rcard-photo{
+  flex:none; height:176px; border:0; border-bottom:2px solid var(--color-divider); background:var(--color-surface);
+  font-size:11px; font-weight:800; letter-spacing:.1em; color:color-mix(in srgb, var(--color-text) 70%, transparent);
+}
+html[data-style="modernist"] .rcard-photo.empty, html[data-style="modernist"] .rcard-photo.broken{ border-style:solid; background:var(--color-surface); }
+html[data-style="modernist"] .rcard-tags{ margin:10px 16px 0; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+html[data-style="modernist"] .rcard-tags.bread, html[data-style="modernist"] .rcard-tags.dessert{ color:var(--color-accent-700); }
+html[data-style="modernist"] .rcard-title{ margin:0 16px; font-size:22px; font-weight:800; line-height:1.08; letter-spacing:-0.015em; }
+html[data-style="modernist"] .rcard-rule{ margin:auto 16px 0; height:2px; background:var(--color-divider); }
+html[data-style="modernist"] .rcard-foot{ margin:0 16px 14px; font-size:12px; font-weight:600; letter-spacing:.06em; color:var(--color-text); }
+html[data-style="modernist"] .rcard-foot span:last-child{ font-variant-numeric:tabular-nums; }
+
+/* The corner buttons: 36px squares on the photo. Classic's invisible ::before still makes each 44px to tap. */
+html[data-style="modernist"] .rcard-favourite, html[data-style="modernist"] .rcard-shortlist{
+  top:10px; width:36px; height:36px; border:0; background:var(--color-bg); color:var(--color-text);
+}
+html[data-style="modernist"] .rcard-shortlist{ right:10px; font-size:12px; font-weight:800; letter-spacing:.06em; }
+html[data-style="modernist"] .rcard-shortlist:hover{ color:var(--color-accent); }
+html[data-style="modernist"] .rcard-shortlist.on{ background:var(--color-text); color:var(--color-bg); }
+/* On the list, the button takes it off again: the hover says so in red. */
+html[data-style="modernist"] .rcard-shortlist.on:hover{ background:var(--color-accent); color:var(--km-on-accent); }
+/* The star is the Lucide star, drawn as a mask in the button's colour; the ☆ / ★ text stays for what it says, at no size. */
+html[data-style="modernist"] .rcard-favourite{ left:10px; font-size:0; }
+html[data-style="modernist"] .rcard-favourite::after{
+  content:''; width:18px; height:18px; background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='miter'%3E%3Cpath d='M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='miter'%3E%3Cpath d='M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+html[data-style="modernist"] .rcard-favourite.on{ background:var(--color-bg); color:var(--color-accent); }
+html[data-style="modernist"] .rcard-favourite.on::after{
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black' stroke='black' stroke-width='2' stroke-linejoin='miter'%3E%3Cpath d='M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z'/%3E%3C/svg%3E");
+          mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black' stroke='black' stroke-width='2' stroke-linejoin='miter'%3E%3Cpath d='M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z'/%3E%3C/svg%3E");
+}
+html[data-style="modernist"] .rcard-favourite:hover{ color:var(--color-accent); }
+html[data-style="modernist"] .rcard-copied{
+  top:10px; left:10px; right:10px; padding:5px 8px; text-align:left;
+  border:0; background:var(--color-text); color:var(--color-bg);
+  font-size:11px; font-weight:800; letter-spacing:.1em;
+}
+html[data-style="modernist"] .grid-empty{ padding:40px 0; color:var(--color-text); }

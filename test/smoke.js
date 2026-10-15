@@ -7114,6 +7114,93 @@ const check = (name, pass, detail) => {
   check('    on a phone it is Classic\'s bar across the top, with no rail', v4.w === v4.vw && v4.rail === 'none', JSON.stringify(v4));
   await nv.close();
 
+  /* ---- Modernist, step 3: Recipes ----
+     The title and its count beside the search; SOURCE beside SORT on the KEYWORD row; three cards to a row sharing 2px rules;
+     the card's ✓ takes a recipe off the shortlist (Modernist only). Classic is checked alongside, as it was. */
+  const recipesLook = pg => pg.evaluate(() => {
+    const vis = el => !!el && el.getClientRects().length > 0;
+    const r = el => el.getBoundingClientRect(), h1 = document.querySelector('.recipes-titleblock h1'), sb = document.querySelector('#view-recipes .searchbar');
+    const src = document.getElementById('sourceFilterSelect'), row = src && src.closest('.filter-row');
+    const cards = [...document.querySelectorAll('#recipeGrid .rcard')].slice(0, 3).map(c => { const b = r(c), s = getComputedStyle(c);
+      return { top: Math.round(b.top), left: Math.round(b.left), right: Math.round(b.right), w: Math.round(b.width), bt: s.borderTopWidth, bl: s.borderLeftWidth, br: s.borderRightWidth, bb: s.borderBottomWidth }; });
+    const grid = document.getElementById('recipeGrid'), gridRight = Math.round(r(grid).right - parseFloat(getComputedStyle(grid).paddingRight));
+    return { title: vis(h1) ? h1.textContent : null, count: vis(document.getElementById('recipesCountMod')) ? document.getElementById('recipesCountMod').textContent : null,
+      inBar: vis(document.getElementById('resultCount')) ? document.getElementById('resultCount').textContent : null,
+      beside: vis(h1) ? (r(sb).left > r(h1).right && r(sb).top < r(h1).bottom && r(sb).bottom > r(h1).top) : null, barH: Math.round(r(sb).height),
+      sources: document.querySelectorAll('#sourceFilterSelect').length, sourceRow: row ? row.querySelector('.filter-row-label').textContent : null,
+      cards, gridRight, photoH: Math.round(r(document.querySelector('#recipeGrid .rcard-photo')).height) };
+  });
+  const rcc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  rcc.__label = 'recipes, classic';
+  await rcc.clock.setFixedTime(FIXTURE_NOW);
+  await rcc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await rcc.waitForTimeout(1200);
+  const k0 = await recipesLook(rcc);
+  check('Classic\'s Recipes is as it was: no title, "3 OF 3" in the search bar, SOURCE on a row of its own',
+        k0.title === null && k0.count === null && k0.inBar === '3 OF 3' && k0.sources === 1 && k0.sourceRow === 'SOURCE', JSON.stringify(k0));
+  const cId = await rcc.evaluate(() => document.querySelector('#recipeGrid .rcard').dataset.id);
+  await rcc.click(`#recipeGrid [data-shortlist="${cId}"]`); await rcc.waitForTimeout(200);
+  await rcc.click(`#recipeGrid [data-shortlist="${cId}"]`); await rcc.waitForTimeout(200);
+  const k1 = await rcc.evaluate(id => ({ on: loadShortlist().some(i => i.recipeId === id), label: document.querySelector(`[data-shortlist="${id}"]`).getAttribute('aria-label') }), cId);
+  check('    and in Classic the card\'s ✓ only says it is on the shortlist: a second tap leaves it there', k1.on && k1.label === 'On shortlist', JSON.stringify(k1));
+  await rcc.close();
+
+  const rc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  rc.__label = 'recipes, modernist';
+  await rc.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await rc.clock.setFixedTime(FIXTURE_NOW);
+  await rc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await rc.waitForTimeout(1200);
+  const r0 = await recipesLook(rc);
+  check('Modernist\'s Recipes: "Recipes" and "3 RECIPES" beside a 48px search bar, and no count inside the bar',
+        r0.title === 'Recipes' && r0.count === '3 RECIPES' && r0.inBar === null && r0.beside === true && r0.barH === 48, JSON.stringify(r0));
+  check('    SOURCE sits on the KEYWORD row, and there is still one source select', r0.sources === 1 && r0.sourceRow === 'KEYWORD', JSON.stringify(r0));
+  const [ca, cb, cc] = r0.cards;
+  check('    three cards to a row, equal widths filling it, sharing 2px rules (the first row draws the top, the first card the left)',
+        ca.top === cb.top && cb.top === cc.top && ca.left < cb.left && cb.left < cc.left && Math.abs(ca.w - cb.w) <= 1 && Math.abs(cb.w - cc.w) <= 1 && Math.abs(cc.right - r0.gridRight) <= 1 &&
+        ca.bt === '2px' && ca.bl === '2px' && cb.bl === '0px' && cb.bt === '2px' && [ca, cb, cc].every(x => x.br === '2px' && x.bb === '2px') && r0.photoH === 176,
+        JSON.stringify(r0.cards) + ' grid right ' + r0.gridRight + ' photo ' + r0.photoH);
+  await rc.fill('#searchInput', 'Soup'); await rc.waitForTimeout(200);
+  check('    a filter turns the count into "1 OF 3"', (await rc.textContent('#recipesCountMod')) === '1 OF 3');
+  await rc.fill('#searchInput', ''); await rc.waitForTimeout(200);
+
+  const mId = await rc.evaluate(() => document.querySelector('#recipeGrid .rcard').dataset.id);
+  const sl = () => rc.evaluate(id => ({ on: loadShortlist().filter(i => i.recipeId === id).length,
+    label: document.querySelector(`[data-shortlist="${id}"]`).getAttribute('aria-label'), text: document.querySelector(`[data-shortlist="${id}"]`).textContent,
+    writes: window.__WRITES__.filter(w => w.table === 'shortlist_items').map(w => w.op) }), mId);
+  const t0 = await sl();
+  await rc.click(`#recipeGrid [data-shortlist="${mId}"]`); await rc.waitForTimeout(300);
+  const t1 = await sl();
+  await rc.click(`#recipeGrid [data-shortlist="${mId}"]`); await rc.waitForTimeout(300);
+  const t2 = await sl();
+  check('    the card\'s + puts it on the shortlist and becomes ✓, "Remove from shortlist"',
+        t0.on === 0 && t1.on === 1 && t1.text === '✓' && t1.label === 'Remove from shortlist', JSON.stringify([t0, t1]));
+  check('    and ✓ takes it off again with one delete, back to +, "Add to shortlist"',
+        t2.on === 0 && t2.text === '+' && t2.label === 'Add to shortlist' && t2.writes.length === t1.writes.length + 1 && t2.writes[t2.writes.length - 1] === 'delete',
+        JSON.stringify([t1.writes, t2]));
+  const fav = await rc.evaluate(() => {
+    const on = document.querySelector('.rcard-favourite.on'), off = document.querySelector('.rcard-favourite:not(.on)');
+    const s = el => getComputedStyle(el), a = el => getComputedStyle(el, '::after');
+    const btn = document.querySelector('.rcard-shortlist'), r = btn.getBoundingClientRect();
+    const hits = [[r.left - 4, r.top + 18], [r.right + 4, r.top + 18], [r.left + 18, r.top - 4], [r.left + 18, r.bottom + 4]]
+      .map(([x, y]) => { const e = document.elementFromPoint(x, y); return !!e && e.closest('.rcard-shortlist') === btn; });
+    return { onColour: s(on).color, offColour: s(off).color, textSize: s(on).fontSize,
+      onMask: /fill='black'/.test(a(on).webkitMaskImage || a(on).maskImage), offMask: /fill='none'/.test(a(off).webkitMaskImage || a(off).maskImage),
+      size: Math.round(r.width) + 'x' + Math.round(r.height), hits, img: s(document.querySelector('.rcard-photo img') || document.body).filter };
+  });
+  check('    the favourite is the Lucide star, filled and red when on, outlined in ink when off; photos are not filtered to grey',
+        fav.onColour === 'rgb(236, 48, 19)' && fav.offColour === 'rgb(32, 30, 29)' && fav.textSize === '0px' && fav.onMask && fav.offMask && fav.img === 'none', JSON.stringify(fav));
+  check('    the corner buttons are drawn 36px and answer a tap 4px around them (44px)', fav.size === '36x36' && fav.hits.every(Boolean), JSON.stringify(fav));
+
+  /* Switching style redraws the screen: SOURCE goes back to a row of its own without a reload. */
+  await rc.evaluate(() => applyStyle('classic')); await rc.waitForTimeout(200);
+  const r1 = await recipesLook(rc);
+  await rc.evaluate(() => applyStyle('modernist')); await rc.waitForTimeout(200);
+  const r2 = await recipesLook(rc);
+  check('switching style redraws Recipes at once: SOURCE moves to its own row in Classic and back in Modernist',
+        r1.sourceRow === 'SOURCE' && r1.sources === 1 && r2.sourceRow === 'KEYWORD' && r2.sources === 1, JSON.stringify([r1.sourceRow, r2.sourceRow]));
+  await rc.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:
