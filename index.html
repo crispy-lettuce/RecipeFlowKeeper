@@ -6299,6 +6299,18 @@ function weekBucketLabel(i, bucketDays){
        : i === 1 ? 'NEXT WEEK'
        : ('WEEK OF ' + formatDayLabel(bucketDays[0]));
 }
+/* Modernist's week names carry the dates of the days shown ("THIS WEEK · 22–24 SEP"), on the Planner and the Shopping List
+   alike (docs/PLAN-MODERNIST.md). The week after next has its dates, so it needs no "WEEK OF" date of its own. */
+function weekDatesLabel(days){
+  if(!days.length) return '';
+  const month = d => d.toLocaleDateString(undefined, { month:'short' }).toUpperCase();
+  const first = days[0], last = days[days.length - 1];
+  return first.getMonth() === last.getMonth()
+    ? `${first.getDate()}–${last.getDate()} ${month(last)}` : `${first.getDate()} ${month(first)}–${last.getDate()} ${month(last)}`;
+}
+function modWeekLabel(i, bucketDays){
+  return `${i < 2 ? weekBucketLabel(i, bucketDays) : 'THE WEEK AFTER'} · ${weekDatesLabel(bucketDays)}`;
+}
 /* Groups days into calendar weeks, in order, starting on the configured day. */
 function groupDaysByWeek(days){
   const buckets = []; const idx = {};
@@ -6383,17 +6395,12 @@ function renderPlannerDays(){
   /* Modernist (docs/PLAN-MODERNIST.md) puts the week's dates and how many dishes are planned in it on the week's band, and
      stacks the day's name over its date. Classic's markup is as it was; the screen is redrawn when the style changes. */
   const mod = currentStyle() === 'modernist';
-  const month = d => d.toLocaleDateString(undefined, { month:'short' }).toUpperCase();
   let html = '';
   buckets.forEach((bucketDays, i)=>{
     let label = weekBucketLabel(i, bucketDays);
     if(mod && bucketDays.length){
-      const first = bucketDays[0], last = bucketDays[bucketDays.length - 1];
-      const range = first.getMonth() === last.getMonth()
-        ? `${first.getDate()}–${last.getDate()} ${month(last)}` : `${first.getDate()} ${month(first)}–${last.getDate()} ${month(last)}`;
       const planned = bucketDays.reduce((n, d)=>{ const e = plan[isoLocal(d)]; return n + (e && !e.blank ? planRecipeIds(e).length : 0); }, 0);
-      /* The week after next has a range, so it needs no "WEEK OF" date of its own. */
-      label = `<span class="week-name">${i < 2 ? label : 'THE WEEK AFTER'} · ${range}</span><span class="week-summary">${planned ? `${planned} PLANNED` : 'NOTHING PLANNED'}</span>`;
+      label = `<span class="week-name">${modWeekLabel(i, bucketDays)}</span><span class="week-summary">${planned ? `${planned} PLANNED` : 'NOTHING PLANNED'}</span>`;
     }
     /* ADD THE WEEK: the week's planned days that are not yet in the calendar, all in one call. */
     const weekTodo = calOn ? bucketDays.map(isoLocal).filter(d=>{ const e = plan[d]; return e && !e.blank && planRecipeIds(e).length && !e.calendar; }) : [];
@@ -7040,7 +7047,10 @@ function renderShopping(){
   const buckets = groupDaysByWeek(dayList());
   if(state.shoppingWeekIndex >= buckets.length) state.shoppingWeekIndex = 0;
 
-  const weekLabels = buckets.map((bucketDays, i)=> weekBucketLabel(i, bucketDays));
+  /* Modernist (docs/PLAN-MODERNIST.md): the weeks carry their dates, the line under the title counts the ticks too, and each
+     tick box is drawn by a span of its own. Classic's words and markup are as they were. */
+  const mod = currentStyle() === 'modernist';
+  const weekLabels = buckets.map((bucketDays, i)=> mod ? modWeekLabel(i, bucketDays) : weekBucketLabel(i, bucketDays));
   const canCombine = buckets.length >= 2;
   if(state.shoppingBothWeeks && !canCombine) state.shoppingBothWeeks = false;
   const both = state.shoppingBothWeeks;
@@ -7094,10 +7104,11 @@ function renderShopping(){
   /* The week label goes in here too (not just the dropdown) so the
      exported PNG — which hides the interactive dropdown — still states
      which week it's for. */
-  const weekLabel = both ? 'THIS WEEK + NEXT WEEK' : (weekLabels[state.shoppingWeekIndex] || '');
-  document.getElementById('shopMeta').textContent = totalItems
-    ? `${weekLabel} · ${totalItems} item${totalItems===1?'':'s'} · ${recipeCount} recipe${recipeCount===1?'':'s'}`
-    : weekLabel;
+  const weekLabel = both ? 'THIS WEEK + NEXT WEEK' + (mod ? ' · ' + weekDatesLabel(weekDays) : '') : (weekLabels[state.shoppingWeekIndex] || '');
+  const tickedCount = allCategories.reduce((n, cat)=> n + cat.items.filter(it=> checkedForWeek[keyPrefix + it.key]).length, 0);
+  document.getElementById('shopMeta').textContent = !totalItems ? weekLabel
+    : mod ? `${weekLabel} · ${totalItems} ITEM${totalItems===1?'':'S'} · ${recipeCount} RECIPE${recipeCount===1?'':'S'} · ${tickedCount} TICKED`
+    : `${weekLabel} · ${totalItems} item${totalItems===1?'':'s'} · ${recipeCount} recipe${recipeCount===1?'':'s'}`;
 
   const body = document.getElementById('shopBody');
   body.dataset.weekStart = weekStartIso;
@@ -7139,7 +7150,7 @@ function renderShopping(){
       const k = escapeHtml(it.key);
       return `<div class="shop-row${isChecked?' checked':''}">
       <label class="shop-item${isChecked?' checked':''}" data-key="${escapeHtml(storedKey)}" data-name="${escapeHtml(it.name)}">
-        <input type="checkbox" ${isChecked?'checked':''}>
+        <input type="checkbox" ${isChecked?'checked':''}>${mod ? '<span class="shop-box" aria-hidden="true"></span>' : ''}
         <span class="shop-item-main">
           <span class="shop-item-name">${qtyText?`<span class="qty">${escapeHtml(qtyText)}</span>`:''}${escapeHtml(it.name)}${(it.alts || []).length ? `<span class="shop-item-alt">(${escapeHtml(it.alts.join('; '))})</span>` : ''}</span>
           <span class="shop-item-recipes">${recipeList}</span>
@@ -7157,8 +7168,12 @@ function renderShopping(){
     }).join('');
     /* Marked here, while the ticks are to hand, so print and the PNG can leave out an aisle with nothing left to buy (#94). */
     const allTicked = cat.items.length && cat.items.every(it=> checkedForWeek[keyPrefix + it.key]);
+    /* Modernist draws "ticked / total" beside the aisle from the attribute, so the title's own text stays the aisle's name.
+       Counted from the whole list, as HIDE TICKED leaves only the rows still to buy in cat. */
+    const whole = mod && (allCategories.find(c=> c.name === cat.name) || cat);
+    const aisleCount = mod ? ` data-count="${whole.items.filter(it=> checkedForWeek[keyPrefix + it.key]).length} / ${whole.items.length}"` : '';
     return `<div class="shop-category${allTicked ? ' all-checked' : ''}">
-      <div class="shop-category-title">${escapeHtml(cat.name.toUpperCase())}</div>
+      <div class="shop-category-title"${aisleCount}>${escapeHtml(cat.name.toUpperCase())}</div>
       ${rows}
     </div>`;
   }).join('');

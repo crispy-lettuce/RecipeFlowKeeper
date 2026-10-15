@@ -1,6 +1,6 @@
 # PLAN-MODERNIST: a second visual style, "Modernist" (15 Oct 2026)
 
-**Status:** being built, one step at a time on a branch; nothing is on `main` yet. Steps 1 to 5 (the switch, the sidebar, Recipes, the recipe viewer, the Planner and shortlist) are built. See "Build order", and the "Decision log" at the end for every choice made while building and why.
+**Status:** being built, one step at a time on a branch; nothing is on `main` yet. Steps 1 to 6 (the switch, the sidebar, Recipes, the recipe viewer, the Planner and shortlist, the Shopping List) are built. See "Build order", and the "Decision log" at the end for every choice made while building and why.
 
 The household has a design handoff (a README, an HTML prototype and a token sheet) for a flat, square, one-typeface look for the
 tablet in landscape (1280×800). It is added as a **second style beside Classic, not instead of it**: Settings → APP has a STYLE
@@ -57,7 +57,7 @@ choice, CLASSIC or MODERNIST, next to APPEARANCE. Classic stays exactly as it wa
 ## Build order and status
 
 1. **The switch** (built 15 Oct): boot script, STYLE select, `applyStyle`/`currentStyle`, the token bridge, the build step, the checks.
-2. **App shell and sidebar** (built 15 Oct). 3. **Recipes** (built 15 Oct). 4. **The recipe viewer** (built 15 Oct). 5. **Planner and Shortlist** (built 15 Oct). 6. Shopping. 7. History. 8. Settings. 9. Everything else.
+2. **App shell and sidebar** (built 15 Oct). 3. **Recipes** (built 15 Oct). 4. **The recipe viewer** (built 15 Oct). 5. **Planner and Shortlist** (built 15 Oct). 6. **Shopping** (built 15 Oct). 7. History. 8. Settings. 9. Everything else.
 
 Each step's entry below is added when it lands: what was measured, and where it departs from the prototype.
 
@@ -166,6 +166,26 @@ Each step's entry below is added when it lands: what was measured, and where it 
   focus and the count it announces; collapsed across screens and SHORTLIST reopening it; the block as one link; a redraw on
   switching style; a phone, with nothing running off the side). Each was seen to fail once, by breaking the code it guards.
 
+### Step 6 as built
+- **Markup, Modernist only** (`renderShopping` asks `currentStyle()`; switching redraws it, ticks kept): the weeks in the select
+  carry their dates (`modWeekLabel`, shared with the Planner); the line under the title reads "THIS WEEK · 22–24 SEP · 5 ITEMS
+  · 2 RECIPES · 1 TICKED"; each aisle's title carries `data-count="1 / 3"`, drawn beside it by CSS (D14); each row gains a
+  `.shop-box` span beside its checkbox (D12). Classic's words and markup are exactly as they were, and its screens are
+  byte-identical.
+- **Drawing:** the title at 56px with the line beneath in red; the controls to the right, over a 2px rule; the aisles in two
+  columns (36px apart), each under a 2px ink rule; each row a 22px square with a 2px ink rule, the quantity in red, the name at
+  16px and the recipes at 12px beneath. Ticked: the square in red with the Lucide check, the row at 45% and struck through.
+  The whole row is the tick, as it was (it is a `<label>`). AUDIT's tools are small red capitals.
+- **EXPORT PNG and print, checked with the real tools** (the tests stub html2canvas): the real html2canvas 1.4.1 draws the
+  squares, the counts and the red quantities in both themes, and leaves the ticked row out; printed to A4 by the browser, the
+  list is two columns with the ticked row left off.
+- **Where it departs from the prototype:** the week select keeps 44px (decision 10; the prototype's is 40); the header scrolls
+  with the list, as Classic's does (D17); one column below 561px (D16).
+- **Checks:** 9 in `test/smoke.js` (Classic's list unchanged; the title, the line beneath and the dated weeks; two columns, the
+  rules and the counts; the square and the unseen checkbox; a tap ticking with one write, the red, the fade and the counts; Tab
+  and Space, with the ring on the square; HIDE TICKED's counts; a redraw on switching style; a phone). Each was seen to fail once,
+  by breaking the code it guards.
+
 ## Decision log
 
 Every choice made while building, beyond the twelve agreed at the top, with the reason. "Household" means you chose it; "session"
@@ -187,4 +207,10 @@ means it was decided while building and is yours to overturn. Newest last.
 | D9 | 15 Oct | session | The rail's spoken label carries the count ("Open the shortlist, 4 ideas"). | The count is shown on the rail, but a button's label replaces its words for a screen reader. |
 | D10 | 15 Oct | session | Not changed, in either style: the shortlist's × has no spoken label. | It is Classic's and outside this work; a one-line follow-up. |
 | D11 | 15 Oct | session | The red shopping block is one link, VIEW LIST →, stretched over the block. | The prototype opens the list from anywhere on the block; using the existing link keeps one control and one keyboard stop. |
+| D12 | 15 Oct | session | On the Shopping List the 22px square is a span beside the checkbox; the checkbox stays where it was, unseen, and is still what is focused, tapped and ticked. | EXPORT PNG (html2canvas) draws any checkbox in its own grey, rounded look whatever the CSS says; a span is drawn as styled. Keeping the real checkbox keeps the label, the keyboard and screen readers as they were. Checked with the real library. |
+| D13 | 15 Oct | session | Not changed, in either style: ticking from the keyboard loses focus, as the list is redrawn on every tick. | It is Classic's and outside this work; a follow-up (keep the focused row's key and focus it again after the redraw). Found by the new keyboard check. |
+| D14 | 15 Oct | session | An aisle's "ticked / total" is drawn by CSS from a `data-count` attribute, counted from the whole list even under HIDE TICKED. | The aisle title's text is read by the app's own checks and by AUDIT; an attribute leaves it the aisle's name. The PNG and printout show the count too, though ticked rows are left off them: it reads as progress. |
+| D15 | 15 Oct | session | The weeks in the Shopping List's select carry their dates in Modernist, as the Planner's bands do (one helper, `modWeekLabel`). | The prototype's select reads "THIS WEEK · 14–20 OCT"; one helper keeps the two screens saying the same thing. |
+| D16 | 15 Oct | session | Two columns down to 561px, which includes an A4 printout; one column below. | A phone has room for one; A4 has room for two, which saves paper. |
+| D17 | 15 Oct | session | The Shopping List's header scrolls with the list, as in Classic; it is not pinned. | A pinned element inside a scrolling pane is what EXPORT PNG captures wrongly (see `exportNodeAsPng`). |
 

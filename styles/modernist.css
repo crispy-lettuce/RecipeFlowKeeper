@@ -814,3 +814,79 @@ html[data-style="modernist"] #view-planner .sl-rail-count{ font-size:11px; font-
   html[data-style="modernist"] #view-planner .day-main{ padding-left:12px; }
   html[data-style="modernist"] #view-planner .shortlist-panel{ width:100%; border-left:0; border-top:2px solid var(--color-divider); }
 }
+
+/* ============================== THE SHOPPING LIST ==============================
+   The title at 56px with the week, the counts and the ticks beneath in red; the controls to the right, over a 2px rule; the
+   aisles in two columns, each under a 2px ink rule with "ticked / total" (drawn from data-count, so the title's text is the
+   aisle's name alone); each row a 22px square, the quantity in red, the name, the recipes beneath. The whole row is the
+   tick: it is a <label>. The checkbox stays where it was, unseen but still the thing that is focused and ticked, and
+   renderShopping adds the square beside it, because EXPORT PNG draws any checkbox in its own grey, rounded look. A ticked
+   row is faded and struck through. Ticked rows are left out of the PNG and the printout, as in Classic. */
+html[data-style="modernist"] .shop-wrap{ padding:0; }
+html[data-style="modernist"] .shop-head{ align-items:flex-end; gap:16px 20px; margin:0; padding:22px 28px 18px; border-bottom:2px solid var(--color-divider); }
+html[data-style="modernist"] .shop-head h1{ margin:0 0 8px; font-size:56px; font-weight:800; line-height:.9; letter-spacing:-0.035em; }
+html[data-style="modernist"] .shop-meta{ font-size:13px; font-weight:800; letter-spacing:.08em; color:var(--color-accent-700); }
+html[data-style="modernist"] .shop-head-right{ flex-wrap:wrap; gap:6px; }
+/* The week select keeps 44px (decision 10: a select cannot carry an invisible tap area). */
+html[data-style="modernist"] #shopWeekSelect{
+  padding:0 10px; border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text);
+  font-size:13px; font-weight:700; letter-spacing:.04em;
+}
+
+html[data-style="modernist"] .shop-body{ display:block; columns:2; column-gap:36px; padding:24px 28px 40px; }
+html[data-style="modernist"] .shop-body > .grid-empty, html[data-style="modernist"] .shop-body > .shop-swap-panel{ column-span:all; }
+html[data-style="modernist"] .shop-category{ break-inside:avoid; margin-bottom:28px; }
+html[data-style="modernist"] .shop-category-title{
+  display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin:0; padding:8px 0;
+  border-top:2px solid var(--color-text); border-bottom:2px solid var(--color-divider);
+  font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text);
+}
+html[data-style="modernist"] .shop-category-title::after{ content:attr(data-count); color:var(--color-accent-700); font-variant-numeric:tabular-nums; }
+
+html[data-style="modernist"] .shop-row{ border-bottom:1px solid var(--color-divider); }
+html[data-style="modernist"] .shop-item{
+  position:relative; display:grid; grid-template-columns:22px minmax(0, 1fr); gap:12px; align-items:start;
+  padding:11px 0; border-bottom:0;
+}
+html[data-style="modernist"] .shop-item:hover{ background:var(--color-surface); }
+html[data-style="modernist"] .shop-item input[type="checkbox"]{ position:absolute; left:0; top:12px; width:22px; height:22px; margin:0; opacity:0; }
+html[data-style="modernist"] .shop-box{ display:block; width:22px; height:22px; margin-top:1px; border:2px solid var(--color-text); }
+html[data-style="modernist"] .shop-item input:focus-visible + .shop-box{ outline:2px solid var(--color-accent); outline-offset:2px; }
+/* Ticked: the red square with the Lucide check, in the colour words take on red. */
+html[data-style="modernist"] .shop-item.checked .shop-box{ display:flex; align-items:center; justify-content:center; background:var(--km-fill); border-color:var(--km-fill); }
+html[data-style="modernist"] .shop-item.checked .shop-box::after{
+  content:''; width:14px; height:14px; background:var(--km-on-accent);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='square'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='square'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+html[data-style="modernist"] .shop-item-name{ font-size:16px; line-height:1.3; color:var(--color-text); }
+html[data-style="modernist"] .shop-item-name .qty{
+  margin:0 8px 0 0; padding:0; background:none; font-size:16px; font-weight:800; color:var(--color-accent-700); font-variant-numeric:tabular-nums;
+}
+html[data-style="modernist"] .shop-item-alt{ margin-left:6px; font-size:13px; color:var(--km-ink-72); }
+html[data-style="modernist"] .shop-item-recipes{ font-size:12px; font-weight:600; letter-spacing:.02em; color:var(--km-ink-72); }
+html[data-style="modernist"] .shop-item.checked .shop-item-main{ opacity:.45; }
+html[data-style="modernist"] .shop-item.checked .shop-item-name{ text-decoration:line-through; color:var(--color-text); }
+html[data-style="modernist"] .shop-item.checked .shop-item-recipes{ opacity:1; }
+
+/* AUDIT's tools under a row: small capitals in red, no underline. */
+html[data-style="modernist"] .shop-tools{ gap:8px 14px; padding:0 0 10px 34px; font-size:13px; color:var(--km-ink-72); }
+html[data-style="modernist"] .shop-tools button{ text-decoration:none; font-size:12px; font-weight:800; letter-spacing:.06em; color:var(--color-accent-700); }
+html[data-style="modernist"] .shop-tools .shop-merge-with{ color:var(--color-text); }
+html[data-style="modernist"] .shop-tools button:hover{ color:var(--color-accent); }
+html[data-style="modernist"] .shop-aisle{ color:var(--km-ink-72); }
+html[data-style="modernist"] .shop-aisle select, html[data-style="modernist"] .shop-merge-filter{
+  border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text);
+}
+html[data-style="modernist"] .shop-aisle-warn{ font-style:normal; color:var(--color-accent-700); }
+html[data-style="modernist"] .shop-suggest b, html[data-style="modernist"] .shop-merge-confirm b{ font-weight:800; color:var(--color-text); }
+html[data-style="modernist"] .shop-swap-panel{ max-width:none; margin:0; }
+
+@media (max-width: 860px){
+  html[data-style="modernist"] .shop-head{ align-items:flex-start; padding:16px; }
+  html[data-style="modernist"] .shop-body{ padding:16px 16px 32px; }
+}
+@media (max-width: 560px){
+  html[data-style="modernist"] .shop-head h1{ font-size:44px; }
+  html[data-style="modernist"] .shop-body{ columns:1; }
+}

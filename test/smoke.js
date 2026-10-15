@@ -7416,6 +7416,96 @@ const check = (name, pass, detail) => {
         JSON.stringify([q8.scroll, q8.inner, q8.panelW, q8.collapseBtn, q8.rail, planHitsPhone.n, planHitsPhone.miss.slice(0, 4)]));
   await plp.close();
 
+  /* ---- Modernist, step 6: the Shopping List ----
+     The fixture's list (PANTRY 3, PRODUCE 2). The square is a span beside the checkbox, which stays the thing that is
+     focused and ticked; EXPORT PNG and print were checked with the real html2canvas and the browser's print by hand. */
+  const shopLook = pg => pg.evaluate(() => {
+    const cs = el => getComputedStyle(el), R = el => el.getBoundingClientRect();
+    const cats = [...document.querySelectorAll('#shopBody .shop-category')].map(c => { const t = c.querySelector('.shop-category-title');
+      return { name: t.textContent, count: t.dataset.count || null, after: getComputedStyle(t, '::after').content, rule: cs(t).borderTopWidth + ' ' + cs(t).borderTopColor,
+        top: Math.round(R(c).top), left: Math.round(R(c).left) }; });
+    const item = document.querySelector('#shopBody .shop-item'), box = item.querySelector('.shop-box'), input = item.querySelector('input');
+    return { h1: cs(document.querySelector('#view-shopping .shop-head h1')).fontSize, meta: document.getElementById('shopMeta').textContent,
+      metaColour: cs(document.getElementById('shopMeta')).color, options: [...document.querySelectorAll('#shopWeekSelect option')].map(o => o.textContent),
+      cats, boxes: document.querySelectorAll('#shopBody .shop-box').length, box: box && { size: Math.round(R(box).width) + 'x' + Math.round(R(box).height), border: cs(box).borderTopWidth + ' ' + cs(box).borderTopColor },
+      inputOpacity: cs(input).opacity, rows: document.querySelectorAll('#shopBody .shop-item').length,
+      scroll: document.documentElement.scrollWidth, inner: innerWidth };
+  });
+  const shc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  shc.__label = 'shopping, classic';
+  await shc.clock.setFixedTime(FIXTURE_NOW);
+  await shc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await shc.waitForTimeout(1200);
+  await shc.evaluate(() => showView('shopping')); await shc.waitForTimeout(300);
+  const h0 = await shopLook(shc);
+  check('Classic\'s Shopping List is as it was: "THIS WEEK · 5 items · 2 recipes", no dates in the weeks, the checkbox itself, no square or count',
+        h0.meta === 'THIS WEEK · 5 items · 2 recipes' && h0.options[0] === 'THIS WEEK' && h0.boxes === 0 && h0.inputOpacity === '1' && h0.cats.every(c => c.count === null) &&
+        h0.cats.length === 2 && h0.cats[0].left === h0.cats[1].left, JSON.stringify(h0));
+  await shc.close();
+
+  const shm = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  shm.__label = 'shopping, modernist';
+  await shm.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await shm.clock.setFixedTime(FIXTURE_NOW);
+  await shm.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await shm.waitForTimeout(1200);
+  await shm.evaluate(() => showView('shopping')); await shm.waitForTimeout(300);
+  const h1 = await shopLook(shm);
+  check('Modernist\'s Shopping List: a 56px title over "THIS WEEK · 22–24 SEP · 5 ITEMS · 2 RECIPES · 0 TICKED" in red, the weeks dated in the select',
+        h1.h1 === '56px' && h1.meta === 'THIS WEEK · 22–24 SEP · 5 ITEMS · 2 RECIPES · 0 TICKED' && h1.metaColour === 'rgb(174, 24, 0)' && h1.options[0] === 'THIS WEEK · 22–24 SEP',
+        JSON.stringify([h1.h1, h1.meta, h1.metaColour, h1.options]));
+  check('    the aisles side by side in two columns, each under a 2px ink rule, its name alone in the title and "ticked / total" drawn beside it',
+        h1.cats.length === 2 && h1.cats[0].top === h1.cats[1].top && h1.cats[1].left > h1.cats[0].left + 300 &&
+        h1.cats.every(c => c.rule === '2px rgb(32, 30, 29)' && /attr\(data-count\)|\d \/ \d/.test(c.after)) &&
+        h1.cats[0].name === 'PANTRY' && h1.cats[0].count === '0 / 3' && h1.cats[1].count === '0 / 2', JSON.stringify(h1.cats));
+  check('    each row has a 22px square with a 2px ink rule, and the checkbox is still there, unseen',
+        h1.boxes === h1.rows && h1.rows === 5 && h1.box.size === '22x22' && h1.box.border === '2px rgb(32, 30, 29)' && h1.inputOpacity === '0', JSON.stringify(h1.box));
+
+  const shw0 = await shm.evaluate(() => window.__WRITES__.length);
+  /* A tap where the square is drawn: the unseen checkbox lies over it, so that is what a finger meets. */
+  const sqr = await shm.evaluate(() => { const r = document.querySelectorAll('#shopBody .shop-box')[1].getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+  await shm.mouse.click(sqr[0], sqr[1]); await shm.waitForTimeout(300);
+  const sht1 = await shm.evaluate(() => { const it = document.querySelectorAll('#shopBody .shop-item')[1], cs = el => getComputedStyle(el);
+    return { checked: it.classList.contains('checked') && it.querySelector('input').checked, box: cs(it.querySelector('.shop-box')).backgroundColor,
+      fade: cs(it.querySelector('.shop-item-main')).opacity, strike: cs(it.querySelector('.shop-item-name')).textDecorationLine,
+      meta: document.getElementById('shopMeta').textContent, count: it.closest('.shop-category').querySelector('.shop-category-title').dataset.count, writes: window.__WRITES__.length }; });
+  check('    a tap on the square ticks the row (one write): the square goes red, the row fades and is struck through, and the counts say 1',
+        sht1.checked && sht1.box === 'rgb(221, 43, 15)' && sht1.fade === '0.45' && sht1.strike === 'line-through' && /· 1 TICKED$/.test(sht1.meta) && sht1.count === '1 / 3' && sht1.writes === shw0 + 1,
+        JSON.stringify(sht1));
+  /* Onto the third row's checkbox by Tab, as a keyboard user arrives: the ring is drawn on its square. Space then ticks it.
+     (The list is redrawn on every tick, so focus is lost after it, in both styles: a follow-up, D13.) */
+  await shm.locator('#shopBody .shop-item input').nth(1).focus(); await shm.keyboard.press('Tab'); await shm.waitForTimeout(100);
+  const shk0 = await shm.evaluate(() => { const it = document.querySelectorAll('#shopBody .shop-item')[2];
+    return { onIt: document.activeElement === it.querySelector('input'), ring: getComputedStyle(it.querySelector('.shop-box')).outlineStyle }; });
+  await shm.keyboard.press('Space'); await shm.waitForTimeout(300);
+  const shk1 = await shm.evaluate(() => ({ checked: document.querySelectorAll('#shopBody .shop-item')[2].classList.contains('checked'), meta: document.getElementById('shopMeta').textContent }));
+  check('    from the keyboard: Tab onto a row draws the focus ring on its square, and Space ticks it',
+        shk0.onIt && shk0.ring === 'solid' && shk1.checked && /· 2 TICKED$/.test(shk1.meta), JSON.stringify([shk0, shk1]));
+  await shm.click('#shopHideCheckedBtn'); await shm.waitForTimeout(300);
+  const shh = await shopLook(shm);
+  check('    HIDE TICKED leaves the rows still to buy, and the aisle still counts the whole of it ("2 / 3")',
+        shh.rows === 3 && shh.cats[0].count === '2 / 3', JSON.stringify([shh.rows, shh.cats.map(c => c.count)]));
+  await shm.click('#shopHideCheckedBtn'); await shm.waitForTimeout(200);
+  await shm.evaluate(() => applyStyle('classic')); await shm.waitForTimeout(300);
+  const h2 = await shopLook(shm);
+  await shm.evaluate(() => applyStyle('modernist')); await shm.waitForTimeout(300);
+  const h3 = await shopLook(shm);
+  check('switching style redraws the Shopping List: Classic\'s words and checkboxes, then Modernist\'s again, ticks kept',
+        h2.meta === 'THIS WEEK · 5 items · 2 recipes' && h2.boxes === 0 && /· 2 TICKED$/.test(h3.meta) && h3.boxes === 5, JSON.stringify([h2.meta, h2.boxes, h3.meta, h3.boxes]));
+  await shm.close();
+
+  const shp = await browser.newPage({ viewport: { width: 412, height: 915 } });
+  shp.__label = 'shopping, modernist, phone';
+  await shp.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await shp.clock.setFixedTime(FIXTURE_NOW);
+  await shp.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await shp.waitForTimeout(1200);
+  await shp.evaluate(() => showView('shopping')); await shp.waitForTimeout(300);
+  const h4 = await shopLook(shp);
+  check('Modernist\'s Shopping List on a phone: one column, and nothing runs off the side',
+        h4.cats[0].left === h4.cats[1].left && h4.cats[1].top > h4.cats[0].top && h4.scroll === h4.inner, JSON.stringify([h4.cats, h4.scroll, h4.inner]));
+  await shp.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:
