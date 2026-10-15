@@ -1,6 +1,6 @@
 # PLAN-MODERNIST: a second visual style, "Modernist" (15 Oct 2026)
 
-**Status:** being built, one step at a time on a branch; nothing is on `main` yet. Steps 1 to 6 (the switch, the sidebar, Recipes, the recipe viewer, the Planner and shortlist, the Shopping List) are built. See "Build order", and the "Decision log" at the end for every choice made while building and why.
+**Status:** being built, one step at a time on a branch; nothing is on `main` yet. Steps 1 to 7 (the switch, the sidebar, Recipes, the recipe viewer, the Planner and shortlist, the Shopping List, History) are built. See "Build order", and the "Decision log" at the end for every choice made while building and why.
 
 The household has a design handoff (a README, an HTML prototype and a token sheet) for a flat, square, one-typeface look for the
 tablet in landscape (1280×800). It is added as a **second style beside Classic, not instead of it**: Settings → APP has a STYLE
@@ -57,14 +57,14 @@ choice, CLASSIC or MODERNIST, next to APPEARANCE. Classic stays exactly as it wa
 ## Build order and status
 
 1. **The switch** (built 15 Oct): boot script, STYLE select, `applyStyle`/`currentStyle`, the token bridge, the build step, the checks.
-2. **App shell and sidebar** (built 15 Oct). 3. **Recipes** (built 15 Oct). 4. **The recipe viewer** (built 15 Oct). 5. **Planner and Shortlist** (built 15 Oct). 6. **Shopping** (built 15 Oct). 7. History. 8. Settings. 9. Everything else.
+2. **App shell and sidebar** (built 15 Oct). 3. **Recipes** (built 15 Oct). 4. **The recipe viewer** (built 15 Oct). 5. **Planner and Shortlist** (built 15 Oct). 6. **Shopping** (built 15 Oct). 7. **History** (built 15 Oct). 8. Settings. 9. Everything else.
 
 Each step's entry below is added when it lands: what was measured, and where it departs from the prototype.
 
 ### Step 1 as built
 - Classic differs from the original commit on one screen only: Settings → APP, which now has the STYLE block.
 - The spec's dark tokens give `accent-300` and `accent-800` the same value (#ffc4b8); History's stacked bar uses both, so step 7 will
-  need to set one of them apart in the dark theme.
+  need to set one of them apart in the dark theme. *(Done in step 7: D21.)*
 
 ### Step 2 as built
 - **Markup added, hidden in Classic:** the rail (`#navRailBtn`), the brand's "Recipe Wrangler", square and ‹ (`#navHideBtn`), all
@@ -186,6 +186,23 @@ Each step's entry below is added when it lands: what was measured, and where it 
   and Space, with the ring on the square; HIDE TICKED's counts; a redraw on switching style; a phone). Each was seen to fail once,
   by breaking the code it guards.
 
+### Step 7 as built
+- **Markup, Modernist only** (each asks `currentStyle()`; switching redraws History): a word at the foot of a calendar cell
+  (TODAY, COOKED or AD HOC, by the prototype's rule: a day with anything cooked says COOKED); "Pick a day" in the panel until
+  one is picked; and the two meal-base mixes drawn by `renderMixBar` (a 28px bar of segments and the same legend) in place of
+  `renderPieChart`. Classic's cells, panel and pies are exactly as they were, and its screens are byte-identical.
+- **Drawing:** ‹ and › as 40px squares (Lucide chevrons; the ← and → stay as their words, at no size) about the month at 56px,
+  with TODAY, + ENTRY and CSV on the line below (D19); the weekdays; the month as cells 2px apart in a 2px ink frame, each at
+  least 92px, with the date at 20px. Today is ringed in red with a red date; the picked day is ink; other months' days are
+  faint (D18). The panel is 330px: the day at 26px over a 2px ink rule, each entry's name with its meal and kind beneath in red
+  ("LUNCH · AD HOC"), STATS, the days of the week, then the two bars.
+- **Colours of the bars** are five tokens, `--km-mix-1` to `--km-mix-5`, so a change of theme needs no redraw (D21).
+- **Where it departs from the prototype:** the entries keep the app's words (no "FROM THE LIBRARY"; decision 9); TODAY under the
+  date is the darker red (D2); TODAY, + ENTRY and CSV always have a line of their own (D19).
+- **Checks:** 10 in `test/smoke.js` (Classic's History unchanged; the header, frame and cells; the words, the ring and the faint
+  days; "Pick a day" and no sideways scroll; the bars; a picked day and its entries; 44px taps on the header; the dark bars and
+  five distinct colours; a redraw on switching style; a phone). Each was seen to fail once, by breaking the code it guards.
+
 ## Decision log
 
 Every choice made while building, beyond the twelve agreed at the top, with the reason. "Household" means you chose it; "session"
@@ -213,4 +230,11 @@ means it was decided while building and is yours to overturn. Newest last.
 | D15 | 15 Oct | session | The weeks in the Shopping List's select carry their dates in Modernist, as the Planner's bands do (one helper, `modWeekLabel`). | The prototype's select reads "THIS WEEK · 14–20 OCT"; one helper keeps the two screens saying the same thing. |
 | D16 | 15 Oct | session | Two columns down to 561px, which includes an A4 printout; one column below. | A phone has room for one; A4 has room for two, which saves paper. |
 | D17 | 15 Oct | session | The Shopping List's header scrolls with the list, as in Classic; it is not pinned. | A pinned element inside a scrolling pane is what EXPORT PNG captures wrongly (see `exportNodeAsPng`). |
+| D18 | 15 Oct | session | Days of other months: their words at 40%, on the same ground as the rest. | The README says "40% opacity"; fading the whole cell let the grid's rule colour show through, so those days looked like grey blocks. |
+| D19 | 15 Oct | session | On History, TODAY, + ENTRY and CSV always sit on the line below ‹ month ›. | At 1280px they do not fit beside the side panel, and a long month and a short one would otherwise wrap them in different places, so the buttons would move from month to month. |
+| D20 | 15 Oct | session | The word at the foot of a calendar cell follows the prototype's rule: TODAY, else COOKED if anything was cooked, else AD HOC. | It is the prototype's; a day with both says COOKED, and the panel lists both. |
+| D21 | 15 Oct | session | The meal-base bar's colours: light as the README (accent, ink, accent-300, accent-800, neutral-400); dark: #ff563c, #f1eeec, #ffc4b8, #9c2a17, #77726f. | The spec's dark accent-300 and accent-800 are both #ffc4b8, so two segments would be the same colour. The fourth and fifth are set apart from the ink and the others; a check fails if any two match. |
+| D22 | 15 Oct | session | Not changed in Classic: History's side panel scrolls sideways, because the app's rule for every table (`min-width:560px`, meant for the flow table) reaches the small DAY OF WEEK table. Fixed in Modernist only. | Classic is not to be touched in this work; a one-line follow-up for Classic. |
+| D23 | 15 Oct | session | "Pick a day" heads the panel in Modernist until a day is picked. | The prototype's panel always has its title; Classic's says nothing, as before. |
+| D24 | 15 Oct | session | Today's red ring on History is an inset shadow, not a border. | A border would shift the cell's contents by 3px; History is not exported to PNG, where shadows went wrong (step 4). |
 

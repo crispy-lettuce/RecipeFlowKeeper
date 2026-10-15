@@ -7576,6 +7576,9 @@ function renderHistoryCalendar(){
   const byDate = historyByDate(recipes);
   const cells = historyMonthGrid(year, month);
   const todayIso = todayStr();
+  /* Modernist (docs/PLAN-MODERNIST.md) puts a word at the foot of a cell: TODAY, COOKED or AD HOC. Classic's cells are as
+     they were; the screen is redrawn when the style changes. */
+  const mod = currentStyle() === 'modernist';
 
   document.getElementById('historyMonthLabel').textContent =
     new Date(year, month, 1).toLocaleDateString(undefined, {month:'long', year:'numeric'});
@@ -7604,17 +7607,23 @@ function renderHistoryCalendar(){
       : cookedCount === 0 ? `${entries.length} logged`
       : `${entries.length} entries`;
     const info = entries.length ? `<div class="history-day-info">${summary}</div>` : '';
+    const tag = !mod ? '' : iso === todayIso ? 'TODAY' : !entries.length ? '' : cookedCount ? 'COOKED' : 'AD HOC';
 
     return `<button class="${classes.join(' ')}" data-date="${iso}">
       <span class="history-day-num">${date.getDate()}</span>
-      ${info}
+      ${info}${tag ? `<span class="history-day-tag">${tag}</span>` : ''}
     </button>`;
   }).join('');
 }
 
 function renderHistoryDayDetail(){
   const el = document.getElementById('historyDayDetail');
-  if(!state.historySelectedDate){ el.innerHTML = ''; return; }
+  if(!state.historySelectedDate){
+    /* Modernist's panel opens with its title, as the prototype's does; Classic's says nothing until a day is picked. */
+    el.innerHTML = currentStyle() === 'modernist'
+      ? `<div class="history-day-detail"><div class="history-day-detail-title">Pick a day</div></div>` : '';
+    return;
+  }
   const iso = state.historySelectedDate;
   const entries = historyByDate(loadRecipes()).get(iso) || [];
   const label = new Date(iso+'T00:00:00').toLocaleDateString(undefined, {weekday:'long', day:'numeric', month:'long'});
@@ -7718,8 +7727,25 @@ function renderPieChart(data, opts){
   </div>`;
 }
 
+/* Modernist draws a meal-base mix as one 28px bar of segments with the legend beneath, in place of the pie
+   (docs/PLAN-MODERNIST.md). The five colours are its chart tokens (--km-mix-1 to 5), set per theme in its stylesheet,
+   so a change of theme needs no redraw. Same data, same legend, same words as the pie. */
+function renderMixBar(data, opts){
+  opts = opts || {};
+  const total = data.reduce((s,d)=>s+d.count, 0);
+  if(!total) return `<p class="hstat-weekday-empty">Nothing to show yet.</p>`;
+  const segs = data.map((d, i)=>({ label: d.label, count: d.count, colour: `var(--km-mix-${i % 5 + 1})`, pct: Math.round(d.count / total * 100) }));
+  return `<div class="hstat-bar" role="img" aria-label="${escapeHtml(opts.ariaLabel||'Chart')}">` +
+    segs.map(sg=> `<span style="flex:${sg.count};background:${sg.colour}"></span>`).join('') + `</div>
+    <div class="hstat-legend">` + segs.map(sg=>
+      `<div class="hstat-legend-row"><span class="hstat-legend-swatch" style="background:${sg.colour}"></span>` +
+      `<span class="hstat-legend-label">${escapeHtml(sg.label)}</span><span class="hstat-legend-value">${sg.count} · ${sg.pct}%</span></div>`
+    ).join('') + `</div>`;
+}
+
 function renderHistoryStats(){
   const stats = computeHistoryStats(loadRecipes());
+  const mix = currentStyle() === 'modernist' ? renderMixBar : renderPieChart;
   const rows = [
     ['TOTAL MEALS COOKED', String(stats.totalMeals)],
     ['COOKED THIS MONTH', String(stats.mealsThisMonth)],
@@ -7739,10 +7765,10 @@ function renderHistoryStats(){
     <table class="hstat-weekday-table">${weekdayRows}</table>
     <div class="side-label" style="margin-top:20px;">RECIPE MIX BY MEAL BASE</div>
     <div class="hstat-pie-note">What's saved in the library — a recipe can count toward more than one (e.g. a chicken pasta bake is both).</div>
-    ${renderPieChart(stats.savedMix, {ariaLabel:'Recipe mix by meal base', showPct:true})}
+    ${mix(stats.savedMix, {ariaLabel:'Recipe mix by meal base', showPct:true})}
     <div class="side-label" style="margin-top:20px;">COOKED BY MEAL BASE</div>
     <div class="hstat-pie-note">What's actually been cooked, from history — often a different picture from what's saved.</div>
-    ${renderPieChart(stats.cookedMix, {ariaLabel:'Recipes cooked by meal base', showPct:true})}
+    ${mix(stats.cookedMix, {ariaLabel:'Recipes cooked by meal base', showPct:true})}
   `;
 }
 

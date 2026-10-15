@@ -7506,6 +7506,94 @@ const check = (name, pass, detail) => {
         h4.cats[0].left === h4.cats[1].left && h4.cats[1].top > h4.cats[0].top && h4.scroll === h4.inner, JSON.stringify([h4.cats, h4.scroll, h4.inner]));
   await shp.close();
 
+  /* ---- Modernist, step 7: History ----
+     The fixture's diary: 15 Sep cooked, 19 Sep one cooked and one ad hoc (a lunch), 20 Sep two ad hoc; today is 22 Sep. */
+  const histLook = pg => pg.evaluate(() => {
+    const cs = el => getComputedStyle(el), R = el => el.getBoundingClientRect(), cell = d => document.querySelector(`.history-day[data-date="${d}"]`);
+    const tag = d => (t => t ? t.textContent : null)(cell(d) && cell(d).querySelector('.history-day-tag'));
+    const panel = document.querySelector('#view-history .shortlist-panel'), h1 = document.getElementById('historyMonthLabel');
+    const prev = document.getElementById('historyPrevMonth'), next = document.getElementById('historyNextMonth'), today = document.getElementById('historyTodayBtn');
+    const other = document.querySelector('.history-day.other-month'), grid = document.getElementById('historyGrid');
+    return { h1: cs(h1).fontSize, arrows: [prev, next].map(b => Math.round(R(b).width) + 'x' + Math.round(R(b).height) + ' ' + cs(b).fontSize),
+      oneLine: Math.abs(R(prev).top - R(next).top) < 2 && R(next).left > R(h1).right, buttonsBelow: R(today).top >= R(h1).bottom - 4,
+      grid: cs(grid).borderTopWidth + ' ' + cs(grid).borderTopColor + ' gap ' + cs(grid).rowGap, cellH: Math.round(R(cell('2026-09-08')).height),
+      tags: ['2026-09-15', '2026-09-19', '2026-09-20', '2026-09-22', '2026-09-08'].map(tag),
+      ring: cs(cell('2026-09-22')).boxShadow, todayNum: cs(cell('2026-09-22').querySelector('.history-day-num')).color,
+      other: other && { cell: cs(other).opacity, num: cs(other.querySelector('.history-day-num')).opacity, bg: cs(other).backgroundColor },
+      detail: document.getElementById('historyDayDetail').textContent.trim(), pies: document.querySelectorAll('#historyStats svg').length,
+      bars: [...document.querySelectorAll('#historyStats .hstat-bar')].map(b => ({ h: Math.round(R(b).height), segs: [...b.children].map(x => cs(x).backgroundColor) })),
+      mix: [1, 2, 3, 4, 5].map(i => cs(document.documentElement).getPropertyValue('--km-mix-' + i).trim()),
+      panelScroll: panel.scrollWidth - panel.clientWidth, scroll: document.documentElement.scrollWidth - innerWidth };
+  });
+  const hc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  hc.__label = 'history, classic';
+  await hc.clock.setFixedTime(FIXTURE_NOW);
+  await hc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await hc.waitForTimeout(1200);
+  await hc.evaluate(() => showView('history')); await hc.waitForTimeout(300);
+  const y0 = await histLook(hc);
+  check('Classic\'s History is as it was: no word at the foot of a cell, the two pies, ← and → as words, nothing in the panel until a day is picked',
+        y0.tags.every(t => t === null) && y0.pies === 2 && y0.bars.length === 0 && y0.detail === '' && y0.arrows.every(a => / 16px$/.test(a)), JSON.stringify(y0));
+  await hc.close();
+
+  const hm = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  hm.__label = 'history, modernist';
+  await hm.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await hm.clock.setFixedTime(FIXTURE_NOW);
+  await hm.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await hm.waitForTimeout(1200);
+  await hm.evaluate(() => showView('history')); await hm.waitForTimeout(300);
+  const y1 = await histLook(hm);
+  check('Modernist\'s History: the month at 56px between 40px ‹ and › squares, TODAY, + ENTRY and CSV on the line below, the grid in a 2px ink frame, cells 92px',
+        y1.h1 === '56px' && y1.arrows.every(a => /^40x40 0px$/.test(a)) && y1.oneLine && y1.buttonsBelow && y1.grid === '2px rgb(32, 30, 29) gap 2px' && y1.cellH >= 92,
+        JSON.stringify([y1.h1, y1.arrows, y1.oneLine, y1.buttonsBelow, y1.grid, y1.cellH]));
+  check('    each cell says COOKED, AD HOC or TODAY at its foot; today is ringed in red with a red date; other months\' days are faint on the same ground',
+        JSON.stringify(y1.tags) === '["COOKED","COOKED","AD HOC","TODAY",null]' && y1.ring === 'rgb(236, 48, 19) 0px 0px 0px 3px inset' && y1.todayNum === 'rgb(236, 48, 19)' &&
+        y1.other.cell === '1' && y1.other.num === '0.4' && y1.other.bg === 'rgb(243, 242, 242)', JSON.stringify([y1.tags, y1.ring, y1.todayNum, y1.other]));
+  check('    the panel says "Pick a day" until one is picked, and does not scroll sideways', y1.detail === 'Pick a day' && y1.panelScroll === 0, JSON.stringify([y1.detail, y1.panelScroll]));
+  check('    the meal-base mixes are two 28px bars in the accent and ink, with no pies',
+        y1.pies === 0 && y1.bars.length === 2 && y1.bars.every(b => b.h === 28 && b.segs[0] === 'rgb(236, 48, 19)' && b.segs[1] === 'rgb(32, 30, 29)'), JSON.stringify(y1.bars));
+
+  await hm.click('.history-day[data-date="2026-09-19"]'); await hm.waitForTimeout(300);
+  const y2 = await hm.evaluate(() => {
+    const cs = el => getComputedStyle(el), R = el => el.getBoundingClientRect(), c = document.querySelector('.history-day[data-date="2026-09-19"]');
+    const t = document.querySelector('.history-day-detail-title'), adhoc = document.querySelector('.history-day-recipe.diary-adhoc');
+    const meal = adhoc.querySelector('.diary-meal-tag'), kind = adhoc.querySelector('.diary-kind');
+    return { cell: cs(c).backgroundColor + ' / ' + cs(c).color, title: cs(t).fontSize + ' ' + cs(t).borderBottomWidth + ' ' + cs(t).borderBottomColor,
+      entries: document.querySelectorAll('.history-day-recipe').length, mealFirst: R(meal).left < R(kind).left && Math.abs(R(meal).top - R(kind).top) < 2,
+      below: R(meal).top > R(adhoc.querySelector('span > :first-child')).bottom - 2, sep: getComputedStyle(kind, '::before').content, colour: cs(meal).color };
+  });
+  check('    picking a day fills it with ink; the panel\'s day title is 26px over a 2px ink rule; an entry reads "LUNCH · AD HOC" in red under its name',
+        y2.cell === 'rgb(32, 30, 29) / rgb(243, 242, 242)' && y2.title === '26px 2px rgb(32, 30, 29)' && y2.entries === 2 && y2.mealFirst && y2.below && /·/.test(y2.sep) && y2.colour === 'rgb(174, 24, 0)',
+        JSON.stringify(y2));
+  const histHits = await hitScan(hm, '#view-history .history-head');
+  check('    ‹, › and the buttons beside them answer a tap over 44px', histHits.n === 5 && histHits.miss.length === 0, JSON.stringify(histHits));
+  await hm.evaluate(() => { applyTheme('dark'); rerenderForTheme(); }); await hm.waitForTimeout(300);
+  const y3 = await histLook(hm);
+  check('    in dark the bars take the dark colours without a redraw, and the five are all different (the spec\'s dark accent-300 and accent-800 are one colour)',
+        y3.bars[0].segs[0] === 'rgb(255, 86, 60)' && y3.bars[0].segs[1] === 'rgb(241, 238, 236)' && new Set(y3.mix).size === 5, JSON.stringify([y3.bars, y3.mix]));
+  await hm.evaluate(() => { applyTheme('light'); rerenderForTheme(); }); await hm.waitForTimeout(200);
+  await hm.evaluate(() => applyStyle('classic')); await hm.waitForTimeout(300);
+  const y4 = await histLook(hm);
+  await hm.evaluate(() => applyStyle('modernist')); await hm.waitForTimeout(300);
+  const y5 = await histLook(hm);
+  check('switching style redraws History: Classic\'s pies and plain cells, then Modernist\'s bars and words again',
+        y4.pies === 2 && y4.bars.length === 0 && y4.tags.every(t => t === null) && y5.pies === 0 && y5.bars.length === 2 && y5.tags[3] === 'TODAY',
+        JSON.stringify([y4.pies, y4.bars.length, y4.tags, y5.pies, y5.bars.length, y5.tags]));
+  await hm.close();
+
+  const hp = await browser.newPage({ viewport: { width: 412, height: 915 } });
+  hp.__label = 'history, modernist, phone';
+  await hp.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await hp.clock.setFixedTime(FIXTURE_NOW);
+  await hp.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await hp.waitForTimeout(1200);
+  await hp.evaluate(() => showView('history')); await hp.waitForTimeout(300);
+  const y6 = await histLook(hp);
+  check('Modernist\'s History on a phone: ‹ September 2026 › on one line, and nothing runs off the side',
+        y6.oneLine && y6.scroll === 0 && y6.panelScroll === 0, JSON.stringify([y6.oneLine, y6.scroll, y6.panelScroll, y6.h1]));
+  await hp.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:
