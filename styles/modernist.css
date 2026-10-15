@@ -1,0 +1,1174 @@
+/* MODERNIST: the second visual style (docs/PLAN-MODERNIST.md). Classic stays in index.html's <style> and is not touched.
+
+   HOW THIS FILE IS ORGANISED
+   - Every selector begins [data-style="modernist"] (or html[data-style="modernist"]), so nothing here can reach Classic.
+     test/core.test.js fails on a selector that does not, on a border-radius that is not 0, and on a font that is not
+     Archivo. Dark mode is [data-style="modernist"][data-theme="dark"]; Style and Appearance are independent.
+   - It is linked after Classic's <style>, and must stay after it: the variable blocks below tie Classic's dark block
+     on one specificity level, and the later rule wins.
+   - Tokens come from the design handoff's modernist-styles.css; its component classes (.btn, .card, .input, .table...)
+     are NOT brought over because they share names with Classic's. The font is not @imported here: the boot script
+     in index.html adds the Archivo <link> only when this style is on, so Classic never requests it.
+   - The prototype is the source of truth for look and behaviour; the README beside it is the spec. Where this file
+     departs from either, the reason is written next to the rule. */
+
+/* ============================== TOKENS ============================== */
+html[data-style="modernist"]{
+  --color-bg:#f3f2f2;
+  --color-surface:#eae9e9;
+  --color-text:#201e1d;
+  --color-accent:#ec3013;
+  --color-divider:rgba(32,30,29,.4);
+
+  --color-neutral-300:#d7d3d3;
+  --color-neutral-400:#bab6b6;
+  --color-neutral-500:#9b9797;
+
+  --color-accent-100:#fff2ef;
+  --color-accent-200:#ffe0d9;
+  --color-accent-300:#ffc4b8;
+  --color-accent-400:#ff9783;
+  --color-accent-500:#ff563c;
+  --color-accent-600:#dd2b0f;
+  --color-accent-700:#ae1800;
+  --color-accent-800:#7c1405;
+  --color-accent-900:#4d170e;
+
+  /* Text on a red fill. */
+  --km-on-accent:#ffffff;
+  /* A red fill with words or a tick on it. Not the accent itself: white on #ec3013 is 4.2:1, under the 4.5:1 Classic was
+     brought to on 14 Oct; #dd2b0f (the ramp's 600) is 4.7:1. The household chose it on 15 Oct. Decorative red (the brand
+     square, the active row's bar, rules, large numbers) stays the accent. In dark, the accent with dark words is 5.8:1. */
+  --km-fill:#dd2b0f; --km-fill-hover:#ae1800;
+
+  /* Translucent tints, written as rgba() per theme and never as color-mix(): Chrome reports a color-mix() colour as
+     color(srgb …), and html2canvas 1.4.1, which EXPORT PNG uses, cannot read that, so the export failed outright.
+     test/core.test.js fails on a color-mix() anywhere in this file. */
+  --km-ink-5:rgba(32,30,29,.05); --km-ink-6:rgba(32,30,29,.06); --km-ink-10:rgba(32,30,29,.10); --km-ink-20:rgba(32,30,29,.20);
+  --km-ink-30:rgba(32,30,29,.30); --km-ink-45:rgba(32,30,29,.45); --km-ink-70:rgba(32,30,29,.70); --km-ink-72:rgba(32,30,29,.72);
+  --km-accent-28:rgba(236,48,19,.28); --km-bg-70:rgba(243,242,242,.70); --km-bg-92:rgba(243,242,242,.92); --km-surface-82:rgba(234,233,233,.82);
+  --km-shadow:rgba(0,0,0,.12); --km-shadow-strong:rgba(0,0,0,.25); --km-scrim:rgba(0,0,0,.45);
+  /* History's meal-base bar: the README's five (accent, ink, accent-300, accent-800, neutral-400). */
+  --km-mix-1:#ec3013; --km-mix-2:#201e1d; --km-mix-3:#ffc4b8; --km-mix-4:#7c1405; --km-mix-5:#bab6b6;
+  /* The Group Viewer's dishes (groupColour): dark enough for white words in light, light enough for dark ones in dark. */
+  --km-group-1:#201e1d; --km-group-2:#dd2b0f; --km-group-3:#7c1405; --km-group-4:#6e6a69; --km-on-group:#ffffff;
+
+  --font-heading:"Archivo", system-ui, sans-serif;
+  --font-body:"Archivo", system-ui, sans-serif;
+
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px;
+  --radius-sm:0px; --radius-md:0px; --radius-lg:0px;
+  color-scheme:light;
+}
+html[data-style="modernist"][data-theme="dark"]{
+  --color-bg:#161514;
+  --color-surface:#22201f;
+  --color-text:#f1eeec;
+  --color-accent:#ff563c;
+  --color-divider:rgba(241,238,236,.32);
+  --color-accent-100:#3a1712;
+  --color-accent-600:#ff7a63;
+  --color-accent-700:#ff9783;
+  --color-accent-800:#ffc4b8;
+  --km-on-accent:#161514;
+  --km-fill:#ff563c; --km-fill-hover:#ff7a63;
+  --km-ink-5:rgba(241,238,236,.05); --km-ink-6:rgba(241,238,236,.06); --km-ink-10:rgba(241,238,236,.10); --km-ink-20:rgba(241,238,236,.20);
+  --km-ink-30:rgba(241,238,236,.30); --km-ink-45:rgba(241,238,236,.45); --km-ink-70:rgba(241,238,236,.70); --km-ink-72:rgba(241,238,236,.72);
+  --km-accent-28:rgba(255,86,60,.28); --km-bg-70:rgba(22,21,20,.70); --km-bg-92:rgba(22,21,20,.92); --km-surface-82:rgba(34,32,31,.82);
+  --km-shadow:rgba(0,0,0,.35); --km-shadow-strong:rgba(0,0,0,.5); --km-scrim:rgba(0,0,0,.6);
+  /* In dark the spec's accent-300 and accent-800 are the same colour (#ffc4b8), so the bar's fourth is a deep red and its
+     fifth a mid grey, each set apart from the ink and from the other three. */
+  --km-mix-1:#ff563c; --km-mix-2:#f1eeec; --km-mix-3:#ffc4b8; --km-mix-4:#9c2a17; --km-mix-5:#77726f;
+  --km-group-1:#f1eeec; --km-group-2:#ff563c; --km-group-3:#ffc4b8; --km-group-4:#bab6b6; --km-on-group:#161514;
+  color-scheme:dark;
+}
+
+/* ============== THE BRIDGE: Classic's own variables, pointed at the tokens ==============
+   Classic's stylesheet is written entirely in --paper, --ink, --plum, --line and so on. Re-pointing them here makes
+   everything this style does not draw on its own (the dialogs, the banners, the group viewer, the sign-in card) wear
+   the same colours, square corners and typeface, instead of sitting half-Classic beside the screens that are restyled.
+   Each screen's own rules go on top of this.
+
+   The selector list is deliberate: the first selector beats Classic's :root, the second beats Classic's
+   :root[data-theme="dark"], which is the only reason the dark values reach through.
+
+   --plum is the accent as TEXT (nav, links, chip labels), so it is accent-700, the red that reaches 4.5:1 on the
+   ground in both themes (--color-accent itself is 3.8:1 on #f3f2f2: the README says to keep it for fills and large
+   type). A rule that wants the vivid red as a fill names --color-accent itself. */
+html[data-style="modernist"],
+html[data-style="modernist"][data-theme="dark"]{
+  --paper:var(--color-bg);
+  --shell:var(--color-bg);
+  --card:var(--color-bg);
+  --well:var(--color-surface);
+  --ink:var(--color-text);
+  --ink-soft:var(--km-ink-72);
+  --ink-faint:var(--km-ink-70);
+  /* A fill only, as in Classic: no text uses it. */
+  --ink-mute:var(--km-ink-45);
+  --line:var(--color-divider);
+  --line-soft:var(--km-ink-20);
+  --line-faint:var(--km-ink-30);
+
+  --plum:var(--color-accent-700);
+  --plum-lift:var(--color-accent-600);
+  --plum-wash:var(--color-accent-100);
+  --plum-wash-soft:var(--km-ink-5);
+  --plum-select:var(--km-accent-28);
+
+  /* One accent. Classic's sage (done, ticked) and gold (warning) have no counterpart here: done is ink, a warning is red. */
+  --sage:var(--color-text);
+  --sage-wash:var(--color-surface);
+  --sage-wash-strong:var(--km-ink-10);
+  --sage-line:var(--color-divider);
+  --gold:var(--color-accent-700);
+  --gold-wash:var(--color-accent-100);
+  --danger:var(--color-accent-800);
+  --danger-wash:var(--color-accent-100);
+  --danger-line:var(--color-accent-300);
+
+  --on-accent:var(--km-on-accent);
+  --card-veil:var(--km-bg-92);
+  --ink-shadow:var(--km-shadow);
+  --ink-shadow-strong:var(--km-shadow-strong);
+  --scrim:var(--km-scrim);
+
+  /* Zero radius anywhere. Classic's corners are all var(--r), so this is the whole of it. */
+  --r:0px;
+}
+
+/* ============================== TYPE AND FOCUS ============================== */
+/* One font. Classic names IBM Plex Mono on a number of rules, some of them more specific than anything here, so this is
+   !important: it is the one place the "Archivo only" rule is enforced, rather than a rule per component. */
+html[data-style="modernist"] *, html[data-style="modernist"] *::before, html[data-style="modernist"] *::after{ font-family:var(--font-body) !important; }
+
+/* The ring is Classic's (2px, offset 2px, and the sidebar's inward offset); only its colour is the accent proper. */
+html[data-style="modernist"] :focus-visible{ outline-color:var(--color-accent); }
+
+/* ============================== APP SHELL: THE SIDEBAR ==============================
+   228px with a 2px rule; the brand row; numbered rows with the count on the right; the active row on a red wash with a
+   4px bar (the prototype's, which its screenshots agree with; the README's "red fill with white text" is the one place
+   that differs, and the prototype is the source of truth).
+
+   Folding: on the Planner, and on a viewer in cooking mode, the sidebar folds to a 56px rail (the red square, a › and
+   the name set vertically). Tapping the rail peeks the full sidebar, ‹ folds it back, and going to another screen resets
+   the peek: that is Classic's own .sidebar-peek, which showView already clears. Between 861 and 1180px Classic folds the
+   sidebar on a viewer whatever the cooking mode, for the width; here that is the rail too. Classic's floating ☰ tab is not
+   used at these widths.
+
+   Everything here is for 861px and up. Narrower, the sidebar is Classic's bar across the top, in these colours.
+
+   Classic's own folding rules (width:0, the peek at 214px) are more specific than anything sensible here, so the width,
+   rule and padding are !important, and the width itself comes from --mod-nav-w, set on .app by state. */
+@media (min-width: 861px){
+  html[data-style="modernist"] .app .sidebar{
+    width:var(--mod-nav-w, 228px) !important;
+    border-right:2px solid var(--color-divider) !important;
+    padding:0 !important;
+    overflow-x:hidden;
+    background:var(--color-bg);
+    counter-reset:nav;
+  }
+  html[data-style="modernist"] .app .sidebar-peek-btn{ display:none !important; }
+
+  /* Folded: the planner, or a viewer while cooking, unless peeked. */
+  html[data-style="modernist"] .app:is([data-view="planner"], .keep-awake.viewer-open):not(.sidebar-peek){ --mod-nav-w:56px; }
+  html[data-style="modernist"] .app:is([data-view="planner"], .keep-awake.viewer-open):not(.sidebar-peek) .sidebar > :not(.nav-rail){ display:none; }
+  html[data-style="modernist"] .app:is([data-view="planner"], .keep-awake.viewer-open):not(.sidebar-peek) .nav-rail{ display:flex; }
+  /* On those screens the brand row offers ‹ instead of the square, to fold it again. */
+  html[data-style="modernist"] .app:is([data-view="planner"], .keep-awake.viewer-open) .brand .brand-square{ display:none; }
+  html[data-style="modernist"] .app:is([data-view="planner"], .keep-awake.viewer-open) .nav-hide-btn{ display:flex; }
+
+  html[data-style="modernist"] .nav-rail{
+    flex:1; flex-direction:column; align-items:center; gap:16px;
+    padding:22px 0; background:none; border:0; cursor:pointer; color:var(--color-text);
+  }
+  html[data-style="modernist"] .nav-rail:hover{ background:var(--color-surface); }
+  html[data-style="modernist"] .nav-rail-name{
+    writing-mode:vertical-rl; transform:rotate(180deg);
+    font-size:18px; font-weight:800; letter-spacing:-0.01em; line-height:1;
+  }
+  html[data-style="modernist"] .brand-square{ display:inline-block; width:12px; height:12px; flex:none; background:var(--color-accent); }
+
+  html[data-style="modernist"] .brand{
+    display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+    padding:22px 20px 18px; border-bottom:2px solid var(--color-divider);
+    font-size:28px; font-weight:800; letter-spacing:-0.02em; line-height:1;
+  }
+  html[data-style="modernist"] .brand-classic{ display:none; }
+  html[data-style="modernist"] .brand-mod{ display:inline; }
+  html[data-style="modernist"] .nav-hide-btn{
+    position:relative; width:32px; height:32px; flex:none; align-self:center;
+    align-items:center; justify-content:center; padding:0;
+    background:none; border:2px solid var(--color-divider); color:var(--color-text); cursor:pointer;
+  }
+  html[data-style="modernist"] .nav-hide-btn:hover{ background:var(--color-surface); }
+  /* 32px to see, 44px to tap (decision 10): the inset is from the padding box, inside the 2px border, so 28 + 2×8. */
+  html[data-style="modernist"] .nav-hide-btn::before{ content:''; position:absolute; inset:-8px; }
+
+  html[data-style="modernist"] .navlink{
+    display:flex; align-items:baseline; gap:12px;
+    padding:13px 20px 13px 16px; border:0; border-left:4px solid transparent; border-bottom:1px solid var(--color-divider);
+    font-size:14px; font-weight:600; letter-spacing:.04em; line-height:normal; color:var(--color-text);
+    counter-increment:nav;
+  }
+  html[data-style="modernist"] .navlink::before{
+    content:counter(nav, decimal-leading-zero);
+    font-size:11px; opacity:.6; font-variant-numeric:tabular-nums;
+  }
+  html[data-style="modernist"] .navlink:hover{ background:var(--km-ink-6); }
+  html[data-style="modernist"] .navlink.active{
+    border-left-color:var(--color-accent); background:var(--color-accent-100);
+    color:var(--color-accent-700); font-weight:800;
+  }
+  html[data-style="modernist"] .navlink.active::before{ opacity:1; }
+  html[data-style="modernist"] .nav-sep{ display:none; }
+  html[data-style="modernist"] .nav-count{ margin-left:auto; opacity:.7; font-variant-numeric:tabular-nums; }
+  html[data-style="modernist"] .navlink.active .nav-count{ opacity:1; }
+
+  /* SAVED VIEWS. Each keeps Classic's 44px row (decision 10), so the list is taller than the prototype's. */
+  html[data-style="modernist"] .side-rule{ display:none; }
+  html[data-style="modernist"] .side-block{ padding:22px 20px 0; }
+  html[data-style="modernist"] .side-block .side-label{ margin-bottom:2px; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+  html[data-style="modernist"] .saved-view{ font-size:14px; font-weight:400; color:var(--color-text); }
+  html[data-style="modernist"] .saved-view:hover{ color:var(--color-accent); }
+  html[data-style="modernist"] .saved-view.active{ color:var(--color-accent-700); font-weight:800; }
+
+  /* The prototype has no "N RECIPES SAVED" line: Recipes says how many beside its title instead. */
+  html[data-style="modernist"] .side-count{ display:none; }
+  html[data-style="modernist"] .new-recipe{
+    margin:0 20px; height:48px; padding:0 14px; justify-content:flex-start; gap:10px;
+    background:var(--km-fill); color:var(--km-on-accent); border:0;
+    font-size:14px; font-weight:800; letter-spacing:.04em;
+  }
+  html[data-style="modernist"] .new-recipe:hover{ background:var(--km-fill-hover); }
+  html[data-style="modernist"] .new-recipe svg{ width:16px; height:16px; stroke-width:2.5; stroke-linecap:square; }
+  /* 12px, not the prototype's 14px: at 14 the first two links miss sharing a line by a pixel. */
+  html[data-style="modernist"] .data-actions{ justify-content:flex-start; gap:0 12px; margin:6px 20px 12px; }
+  html[data-style="modernist"] .data-link{ font-size:12px; font-weight:600; letter-spacing:.04em; color:var(--color-text); opacity:.7; }
+  html[data-style="modernist"] .data-link:hover{ opacity:1; color:var(--color-accent); }
+}
+@media (min-width: 861px) and (max-width: 1180px){
+  html[data-style="modernist"] .app.viewer-open:not(.sidebar-peek){ --mod-nav-w:56px; }
+  html[data-style="modernist"] .app.viewer-open:not(.sidebar-peek) .sidebar > :not(.nav-rail){ display:none; }
+  html[data-style="modernist"] .app.viewer-open:not(.sidebar-peek) .nav-rail{ display:flex; }
+  html[data-style="modernist"] .app.viewer-open .brand .brand-square{ display:none; }
+  html[data-style="modernist"] .app.viewer-open .nav-hide-btn{ display:flex; }
+}
+
+/* ============================== RECIPES ==============================
+   The header is the prototype's "title-search": the title and its count, with the search taking the rest of the row; then
+   COURSE and KEYWORD on a 96px label column, SOURCE and SORT pushed right on the KEYWORD row (renderFilterRows puts the
+   select there in this style). The cards share 2px rules, three to a row. Photos stay in colour (a team decision that
+   overrides the design system's grayscale rule). .filter-head is Settings' header too, so everything is under #view-recipes. */
+html[data-style="modernist"] #view-recipes .filter-head{ padding:20px 28px 16px; gap:12px; border-bottom:2px solid var(--color-divider); }
+html[data-style="modernist"] .recipes-head-row{ display:flex; align-items:flex-end; gap:24px; flex-wrap:wrap; }
+html[data-style="modernist"] .recipes-titleblock{ display:flex; align-items:flex-end; gap:16px; }
+html[data-style="modernist"] .recipes-titleblock h1{ margin:0; font-size:56px; font-weight:800; line-height:.9; letter-spacing:-0.035em; }
+html[data-style="modernist"] .recipes-count{
+  padding-bottom:4px; white-space:nowrap;
+  font-size:13px; font-weight:800; letter-spacing:.08em; color:var(--color-accent-700);
+}
+html[data-style="modernist"] #view-recipes .searchbar{
+  flex:1 1 320px; margin-left:auto; min-width:260px; height:48px; padding:0 14px; gap:12px;
+  background:var(--color-surface); border:2px solid var(--color-divider);
+}
+html[data-style="modernist"] #view-recipes .searchbar:focus-within{ border-color:var(--color-accent); outline-color:var(--color-accent); }
+html[data-style="modernist"] #view-recipes .searchbar svg{ flex:none; width:18px; height:18px; stroke:currentColor; stroke-width:2; stroke-linecap:square; }
+html[data-style="modernist"] #view-recipes .searchbar input{ font-size:16px; color:var(--color-text); }
+/* Classic's "3 OF 34" inside the search bar: here the count is beside the title instead. */
+html[data-style="modernist"] #resultCount{ display:none; }
+
+html[data-style="modernist"] #view-recipes .filter-rows{ gap:10px; }
+html[data-style="modernist"] #view-recipes .filter-row{ align-items:center; gap:0; }
+html[data-style="modernist"] #view-recipes .filter-row-label{
+  width:96px; flex:none; padding-top:0; line-height:1.2;
+  font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text);
+}
+html[data-style="modernist"] #view-recipes .chips{ gap:6px; }
+html[data-style="modernist"] #view-recipes .sort-wrap{ gap:8px; }
+html[data-style="modernist"] #view-recipes .chip{
+  position:relative; min-height:0; padding:7px 12px; line-height:normal;
+  border:2px solid var(--color-divider); background:transparent; color:var(--color-text);
+  font-size:13px; font-weight:600; letter-spacing:.04em;
+}
+/* About 32px to see and 44px to tap (decision 10): the inset is from the padding box, inside the 2px border. */
+html[data-style="modernist"] #view-recipes .chip::before{ content:''; position:absolute; left:-2px; right:-2px; top:-8px; bottom:-8px; }
+html[data-style="modernist"] #view-recipes .chip:hover{ border-color:var(--color-accent); color:var(--color-accent); }
+html[data-style="modernist"] #view-recipes .chip.on{ background:var(--km-fill); border-color:var(--km-fill); color:var(--km-on-accent); font-weight:800; }
+html[data-style="modernist"] #view-recipes .chip.on:hover{ background:var(--km-fill-hover); border-color:var(--km-fill-hover); color:var(--km-on-accent); }
+html[data-style="modernist"] #view-recipes .chip.ghost{ border-style:dashed; border-color:var(--color-divider); color:var(--color-text); opacity:.8; }
+html[data-style="modernist"] #view-recipes .chip.ghost:hover{ border-color:var(--color-accent); color:var(--color-accent); opacity:1; }
+html[data-style="modernist"] #view-recipes .kw-input{
+  height:32px; min-height:0; padding:0 10px; border:2px solid var(--color-accent); background:var(--color-surface);
+  color:var(--color-text); font-size:13px; font-weight:600;
+}
+/* A select cannot carry an invisible hit area, so it keeps Classic's 44px height (decision 10); the prototype's is 34px. */
+html[data-style="modernist"] #view-recipes select.sort{
+  padding:0 8px; border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text);
+  font-size:13px; font-weight:600; letter-spacing:.04em;
+}
+
+/* The grid: rules shared between cards. The first row draws the top rule and the first column the left one, so no line is
+   drawn twice (the divider is translucent, and a doubled one shows darker). The number of columns follows the width. */
+html[data-style="modernist"] #recipeGrid{ padding:24px 28px 32px; grid-auto-rows:auto; gap:0; }
+html[data-style="modernist"] .rcard{
+  padding:0; gap:4px; border:0;
+  border-right:2px solid var(--color-divider); border-bottom:2px solid var(--color-divider);
+  background:var(--color-bg);
+}
+html[data-style="modernist"] .rcard:hover{ background:var(--color-surface); border-color:var(--color-divider); }
+@media (min-width: 861px){
+  html[data-style="modernist"] #recipeGrid{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
+  html[data-style="modernist"] .rcard:nth-child(-n+3){ border-top:2px solid var(--color-divider); }
+  html[data-style="modernist"] .rcard:nth-child(3n+1){ border-left:2px solid var(--color-divider); }
+}
+@media (min-width: 561px) and (max-width: 860px){
+  html[data-style="modernist"] #recipeGrid{ grid-template-columns:repeat(2, minmax(0, 1fr)); padding:16px; }
+  html[data-style="modernist"] .rcard:nth-child(-n+2){ border-top:2px solid var(--color-divider); }
+  html[data-style="modernist"] .rcard:nth-child(2n+1){ border-left:2px solid var(--color-divider); }
+}
+@media (max-width: 560px){
+  html[data-style="modernist"] #recipeGrid{ grid-template-columns:minmax(0, 1fr); padding:16px; }
+  html[data-style="modernist"] .rcard{ border-left:2px solid var(--color-divider); }
+  html[data-style="modernist"] .rcard:first-child{ border-top:2px solid var(--color-divider); }
+  html[data-style="modernist"] .recipes-titleblock h1{ font-size:44px; }
+}
+@media (max-width: 860px){
+  html[data-style="modernist"] #view-recipes .filter-head{ padding:16px; }
+  html[data-style="modernist"] #view-recipes .filter-row{ align-items:flex-start; }
+  /* SOURCE and SORT share the KEYWORD row's right end here, so on a phone they wrap rather than run off the edge. */
+  html[data-style="modernist"] #view-recipes .sort-wrap{ flex-wrap:wrap; }
+  html[data-style="modernist"] #view-recipes .sort-wrap select.sort{ max-width:100%; }
+}
+
+html[data-style="modernist"] .rcard-photo{
+  flex:none; height:176px; border:0; border-bottom:2px solid var(--color-divider); background:var(--color-surface);
+  font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--km-ink-70);
+}
+html[data-style="modernist"] .rcard-photo.empty, html[data-style="modernist"] .rcard-photo.broken{ border-style:solid; background:var(--color-surface); }
+html[data-style="modernist"] .rcard-tags{ margin:10px 16px 0; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+html[data-style="modernist"] .rcard-tags.bread, html[data-style="modernist"] .rcard-tags.dessert{ color:var(--color-accent-700); }
+html[data-style="modernist"] .rcard-title{ margin:0 16px; font-size:22px; font-weight:800; line-height:1.08; letter-spacing:-0.015em; }
+html[data-style="modernist"] .rcard-rule{ margin:auto 16px 0; height:2px; background:var(--color-divider); }
+html[data-style="modernist"] .rcard-foot{ margin:0 16px 14px; font-size:12px; font-weight:600; letter-spacing:.06em; color:var(--color-text); }
+html[data-style="modernist"] .rcard-foot span:last-child{ font-variant-numeric:tabular-nums; }
+
+/* The corner buttons: 36px squares on the photo. Classic's invisible ::before still makes each 44px to tap. */
+html[data-style="modernist"] .rcard-favourite, html[data-style="modernist"] .rcard-shortlist{
+  top:10px; width:36px; height:36px; border:0; background:var(--color-bg); color:var(--color-text);
+}
+html[data-style="modernist"] .rcard-shortlist{ right:10px; font-size:12px; font-weight:800; letter-spacing:.06em; }
+html[data-style="modernist"] .rcard-shortlist:hover{ color:var(--color-accent); }
+html[data-style="modernist"] .rcard-shortlist.on{ background:var(--color-text); color:var(--color-bg); }
+/* On the list, the button takes it off again: the hover says so in red. */
+html[data-style="modernist"] .rcard-shortlist.on:hover{ background:var(--km-fill); color:var(--km-on-accent); }
+/* The star is the Lucide star, drawn as a mask in the button's colour; the ☆ / ★ text stays for what it says, at no size. */
+html[data-style="modernist"] .rcard-favourite{ left:10px; font-size:0; }
+html[data-style="modernist"] .rcard-favourite::after{
+  content:''; width:18px; height:18px; background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='miter'%3E%3Cpath d='M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='miter'%3E%3Cpath d='M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+html[data-style="modernist"] .rcard-favourite.on{ background:var(--color-bg); color:var(--color-accent); }
+html[data-style="modernist"] .rcard-favourite.on::after{
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black' stroke='black' stroke-width='2' stroke-linejoin='miter'%3E%3Cpath d='M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z'/%3E%3C/svg%3E");
+          mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black' stroke='black' stroke-width='2' stroke-linejoin='miter'%3E%3Cpath d='M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z'/%3E%3C/svg%3E");
+}
+html[data-style="modernist"] .rcard-favourite:hover{ color:var(--color-accent); }
+html[data-style="modernist"] .rcard-copied{
+  top:10px; left:10px; right:10px; padding:5px 8px; text-align:left;
+  border:0; background:var(--color-text); color:var(--color-bg);
+  font-size:11px; font-weight:800; letter-spacing:.1em;
+}
+html[data-style="modernist"] .grid-empty{ padding:40px 0; color:var(--color-text); }
+
+/* ============================== BUTTONS AND SWITCHES (every screen) ==============================
+   The prototype's secondary button: a 1px rule, 13px capitals in 800, flush left. Drawn about 33px tall, with an invisible
+   44px tap area (decision 10). The primary is the red fill; DELETE and the like are red words with no rule (its "ghost"). */
+html[data-style="modernist"] .btn{
+  position:relative; min-height:0; padding:8px 14px; line-height:1.2;
+  border:1px solid var(--color-divider); background:transparent; color:var(--color-text);
+  font-size:13px; font-weight:800; letter-spacing:.04em; text-align:left;
+}
+html[data-style="modernist"] .btn::before{ content:''; position:absolute; left:-1px; right:-1px; top:-6px; bottom:-6px; }
+html[data-style="modernist"] .btn:hover{ border-color:var(--color-divider); background:var(--km-ink-6); color:var(--color-text); }
+html[data-style="modernist"] .btn.primary{ background:var(--km-fill); border-color:var(--km-fill); color:var(--km-on-accent); }
+html[data-style="modernist"] .btn.primary:hover{ background:var(--km-fill-hover); border-color:var(--km-fill-hover); color:var(--km-on-accent); }
+html[data-style="modernist"] .btn.on{ border-color:var(--color-accent); background:transparent; color:var(--color-accent-700); }
+html[data-style="modernist"] .btn.danger, html[data-style="modernist"] .btn.small-danger{ border-color:transparent; color:var(--color-accent-700); padding-left:10px; padding-right:10px; }
+html[data-style="modernist"] .btn.danger:hover, html[data-style="modernist"] .btn.small-danger:hover{ border-color:transparent; background:var(--color-accent-100); color:var(--color-accent-700); }
+html[data-style="modernist"] .btn:disabled, html[data-style="modernist"] .btn:disabled:hover{ opacity:.45; background:transparent; border-color:var(--color-divider); color:var(--color-text); }
+
+/* The switch: 44 by 24, red when on. */
+html[data-style="modernist"] .toggle-switch{ gap:10px; font-size:13px; font-weight:800; letter-spacing:.04em; color:var(--color-text); }
+html[data-style="modernist"] .toggle-track{ width:44px; height:24px; background:transparent; border:2px solid var(--color-divider); }
+html[data-style="modernist"] .toggle-thumb{ top:1px; left:1px; width:18px; height:18px; background:var(--color-text); box-shadow:none; }
+html[data-style="modernist"] .toggle-switch input:checked + .toggle-track{ background:var(--km-fill); border-color:var(--km-fill); }
+html[data-style="modernist"] .toggle-switch input:checked + .toggle-track .toggle-thumb{ background:var(--km-on-accent); transform:translateX(20px); }
+html[data-style="modernist"] .toggle-switch input:focus-visible + .toggle-track{ outline-color:var(--color-accent); }
+
+/* ============================== THE RECIPE VIEWER ==============================
+   The header row; COOK FOR on a grey band; the cooking bar in red; the title at 76px with the servings and ticks beside it;
+   the set-up notes in two numbered columns; the overview; then the flow table. .viewer-head is the Group Viewer's too. */
+html[data-style="modernist"] .viewer-head{ padding:16px 28px; gap:10px; border-bottom:2px solid var(--color-divider); }
+html[data-style="modernist"] .viewer-head .backlink{ padding:8px 6px 8px 0; font-size:13px; font-weight:800; letter-spacing:.04em; color:var(--color-accent-700); }
+html[data-style="modernist"] .viewer-head .backlink:hover{ color:var(--color-accent); }
+html[data-style="modernist"] .viewer-meta{ flex:1 1 200px; font-size:12px; font-weight:600; letter-spacing:.06em; color:var(--km-ink-72); }
+html[data-style="modernist"] .viewer-provenance .prov-chip{
+  padding:4px 8px; border:2px solid var(--color-divider); background:transparent; color:var(--color-text);
+  font-size:11px; font-weight:800; letter-spacing:.1em;
+}
+html[data-style="modernist"] .viewer-provenance .prov-chip.prov-warn, html[data-style="modernist"] .viewer-provenance .prov-chip.prov-red{ border-color:var(--color-accent); background:transparent; color:var(--color-accent-700); }
+html[data-style="modernist"] .viewer-provenance .prov-chip.prov-stale{ background:var(--color-surface); }
+html[data-style="modernist"] .viewer-serve-with{ font-size:12px; font-weight:600; letter-spacing:.06em; color:var(--color-text); }
+html[data-style="modernist"] .serve-with-link{ color:var(--color-accent-700); text-decoration:none; font-weight:800; }
+html[data-style="modernist"] .viewer-theirs-note{ margin:10px 28px 0; color:var(--color-accent-700); }
+
+/* Cooking mode's status line is the prototype's red bar. Its words are the app's: they say how the screen is being kept on,
+   and warn when it is not, which the prototype's fixed line could not. A warning is in ink. */
+html[data-style="modernist"] .keep-awake-status{
+  padding:8px 28px; border-bottom:0; background:var(--km-fill); color:var(--km-on-accent);
+  font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+}
+html[data-style="modernist"] .keep-awake-status.warn{ background:var(--color-text); color:var(--color-bg); }
+
+html[data-style="modernist"] .viewer-scale-row{ padding:10px 28px; gap:6px; background:var(--color-surface); border-bottom:2px solid var(--color-divider); }
+html[data-style="modernist"] .viewer-scale-row .scale-label{ margin-right:6px; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] .scale-btn{
+  position:relative; min-width:40px; min-height:0; height:34px; padding:0 10px;
+  border:2px solid var(--color-divider); background:transparent; color:var(--color-text);
+  font-size:14px; font-weight:800; letter-spacing:0; font-variant-numeric:tabular-nums;
+}
+/* 40 by 34 to see, 44 by 44 to tap: from the padding box, inside the 2px rule. */
+html[data-style="modernist"] .scale-btn::before{ content:''; position:absolute; inset:-7px -4px; }
+html[data-style="modernist"] .scale-btn:hover{ border-color:var(--color-accent); color:var(--color-accent); }
+html[data-style="modernist"] .scale-btn.active{ background:var(--km-fill); border-color:var(--km-fill); color:var(--km-on-accent); }
+/* A box to type in cannot carry a hidden tap area, so it keeps Classic's 44px (decision 10). */
+html[data-style="modernist"] #viewerServesCustom{ border:2px solid var(--color-divider); background:var(--color-bg); color:var(--color-text); font-size:14px; font-weight:600; }
+html[data-style="modernist"] .viewer-scale-row .scale-note{ flex-basis:auto; margin:0 0 0 12px; font-size:13px; font-style:normal; color:var(--km-ink-72); }
+html[data-style="modernist"] .equipment-warning{ border:0; border-left:4px solid var(--color-accent); background:var(--color-accent-100); color:var(--color-accent-800); }
+html[data-style="modernist"] .viewer-body{ padding:24px 28px 40px; }
+/* The prototype's order: the title and the set-up notes, then the overview, then the table. Classic draws the overview
+   first. Reordered here rather than in the markup, so Classic's page and the PNG of it are untouched. */
+html[data-style="modernist"] #flowMount{ display:flex; flex-direction:column; }
+html[data-style="modernist"] #flowMount > .recipe-title-row{ order:-2; }
+html[data-style="modernist"] #flowMount > ol.setup{ order:-1; }
+
+html[data-style="modernist"] .recipe-title-row{ display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:18px; }
+html[data-style="modernist"] .recipe-title{ margin:0 0 14px; font-weight:800; letter-spacing:-0.02em; }
+html[data-style="modernist"] .recipe-title-row .recipe-title{ margin:0; }
+html[data-style="modernist"] #view-viewer .recipe-title{ font-size:76px; line-height:.88; letter-spacing:-0.045em; }
+html[data-style="modernist"] .recipe-progress{
+  flex:none; display:flex; flex-direction:column; align-items:flex-end; text-align:right;
+  font-size:12px; font-weight:800; letter-spacing:.08em; line-height:1.5;
+}
+html[data-style="modernist"] .recipe-serves{ color:var(--color-accent-700); }
+html[data-style="modernist"] .recipe-serves:empty{ display:none; }
+
+html[data-style="modernist"] ol.setup{
+  display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0; margin:0 0 22px;
+  border-top:2px solid var(--color-text); border-bottom:2px solid var(--color-divider);
+}
+html[data-style="modernist"] ol.setup li{ gap:12px; padding:12px 16px; font-size:15px; line-height:1.45; }
+html[data-style="modernist"] ol.setup li:nth-child(odd){ padding-left:0; border-right:2px solid var(--color-divider); }
+html[data-style="modernist"] ol.setup li:nth-child(n+3){ border-top:1px solid var(--color-divider); }
+html[data-style="modernist"] ol.setup li::before{
+  content:counter(step, decimal-leading-zero); width:auto; height:auto; background:none;
+  color:var(--color-accent); font-size:22px; font-weight:800; line-height:1;
+}
+
+html[data-style="modernist"] .timeline-strip{ margin:0 0 22px; padding:12px 14px 14px; background:transparent; border:2px solid var(--color-divider); }
+html[data-style="modernist"] .timeline-strip-head{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] .timeline-ruler{ font-size:11px; font-weight:600; color:var(--km-ink-72); font-variant-numeric:tabular-nums; }
+html[data-style="modernist"] .timeline-tick{ border-left:1px solid currentColor; }
+html[data-style="modernist"] .timeline-lane-row{ height:22px; }
+/* Single-recipe lanes carry no inline colour in this style (buildTimelineHTML), so these hold; the Group Viewer's lanes are
+   coloured by recipe inline and keep those. The last step is the accent one. */
+html[data-style="modernist"] .timeline-lane-abs{ height:22px; background:var(--color-text); }
+html[data-style="modernist"] .timeline-lane-abs span{ font-size:12px; font-weight:600; color:var(--color-bg); }
+html[data-style="modernist"] .timeline-lane-row:last-child .timeline-lane-abs{ background:var(--km-fill); }
+html[data-style="modernist"] .timeline-lane-row:last-child .timeline-lane-abs span{ font-weight:800; color:var(--km-on-accent); }
+html[data-style="modernist"] .timeline-missing-note{ border-top:1px solid var(--color-divider); color:var(--color-text); }
+
+html[data-style="modernist"] #flowMount > p.hint, html[data-style="modernist"] #groupFlowMount p.hint{
+  margin-bottom:10px; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--km-ink-72);
+}
+
+/* The flow table. It stays a <table> (rowspans, the sticky first column, PNG export and print all rely on it), drawn to the
+   prototype's grid: 2px rules between cells, a 2px ink frame, a 270px ingredient column and equal stage columns. Each cell
+   draws only its right and bottom rule (the last column and row draw none), so no translucent line is doubled. Cells say
+   what they are (buildFlowHTML): a step on grey with a 4px ink bar, a merge in ink, the last column in red. */
+html[data-style="modernist"] .tablewrap{ border:2px solid var(--color-text); background:var(--color-bg); }
+html[data-style="modernist"] .tablewrap table{ table-layout:fixed; min-width:calc(270px + var(--flow-cols, 4) * 150px); }
+html[data-style="modernist"] .tablewrap td{
+  height:44px; padding:8px 12px; border:0;
+  border-right:2px solid var(--color-divider); border-bottom:2px solid var(--color-divider);
+  font-size:15px; line-height:1.3; color:var(--color-text); background-color:var(--cell-bg, var(--color-bg));
+}
+html[data-style="modernist"] .tablewrap td.col-last{ border-right:0; }
+html[data-style="modernist"] .tablewrap td.row-last{ border-bottom:0; }
+/* The quantity hangs in a 58px column of its own, so a long name wraps under the name, not under the quantity. No absolute
+   positioning: PNG export takes the column off sticky while it draws, and a positioned quantity would jump. */
+html[data-style="modernist"] .tablewrap td.ing-cell{
+  --cell-bg:var(--color-bg); width:270px; min-width:0; padding:8px 44px 8px 80px; text-indent:-68px; font-weight:400;
+}
+html[data-style="modernist"] .tablewrap .qty{
+  display:inline-block; width:58px; margin:0 10px 0 0; padding:0; text-indent:0; background:none; vertical-align:top;
+  white-space:normal; font-size:13px; font-weight:800; line-height:1.5; color:var(--color-accent-700); font-variant-numeric:tabular-nums;
+}
+html[data-style="modernist"] .tablewrap .ing-swap-icon{ text-indent:0; color:var(--color-accent-700); }
+/* The 4px ink rule where a group starts: the row above's 2px rule in ink, and 2px more above the row below, so it reads as
+   one line. Borders, not an inset shadow: html2canvas (EXPORT PNG) filled a whole last-row cell black with the shadow. */
+html[data-style="modernist"] .tablewrap td.ing-cell.group-end{ border-bottom-color:var(--color-text); }
+html[data-style="modernist"] .tablewrap td.ing-cell.group-top{ border-top:2px solid var(--color-text); }
+
+html[data-style="modernist"] .tablewrap td.box-cell{
+  --cell-bg:var(--color-surface); min-width:0; padding:10px 12px; font-size:15px; line-height:1.4;
+  border-left:4px solid var(--color-text);
+}
+html[data-style="modernist"] .tablewrap td.box-cell.prep{ border-left-width:2px; padding-left:14px; }
+html[data-style="modernist"] .tablewrap td.box-merge{
+  --cell-bg:var(--color-text); color:var(--color-bg); border-left:0;
+  padding:12px 14px; font-size:16px; font-weight:600; line-height:1.35;
+}
+html[data-style="modernist"] .tablewrap td.box-final{
+  --cell-bg:var(--km-fill); color:var(--km-on-accent); border-left:0;
+  padding:14px 16px; font-size:24px; font-weight:800; line-height:1.05; letter-spacing:-0.015em;
+}
+/* Carried through unchanged: no fill, a dashed bar (drawn as a background, so nothing is positioned). */
+html[data-style="modernist"] .tablewrap td.box-cell.passthrough{
+  --cell-bg:var(--color-bg); border-left:0;
+  background-image:repeating-linear-gradient(to bottom, var(--km-ink-45) 0 6px, transparent 6px 12px);
+  background-size:4px 100%; background-repeat:no-repeat; background-position:left top;
+}
+html[data-style="modernist"] .tablewrap td.blank-cell{ --cell-bg:var(--color-bg); min-width:0; }
+html[data-style="modernist"] .tablewrap .step-duration{ display:block; margin-top:4px; font-size:12px; font-weight:800; letter-spacing:.08em; line-height:1.3; opacity:1; }
+html[data-style="modernist"] .tablewrap .step-duration.open-ended{ font-style:normal; opacity:.75; }
+
+/* Ticked: faded under a wash of the ground, with the red tick. Classic's ticked cell is !important (its step colours are
+   inline), so this has to be too. */
+html[data-style="modernist"] .tablewrap td.ing-cell.done{
+  text-decoration:none; color:var(--km-ink-45); background-image:linear-gradient(var(--km-surface-82), var(--km-surface-82));
+}
+html[data-style="modernist"] .tablewrap td.ing-cell.done .qty{ color:inherit; }
+html[data-style="modernist"] .tablewrap td.box-cell.done{
+  text-decoration:none; color:var(--km-ink-45) !important;
+  background-color:var(--cell-bg) !important; background-image:linear-gradient(var(--km-bg-70), var(--km-bg-70)) !important; background-size:auto;
+}
+html[data-style="modernist"] .tablewrap td.done::after{ background:var(--km-fill); color:var(--km-on-accent); font-weight:800; text-indent:0; }
+html[data-style="modernist"] .tablewrap td.ing-cell.done::after{ top:50%; right:9px; transform:translateY(-50%); }
+html[data-style="modernist"] .tablewrap td.box-cell.done::after{ top:8px; right:8px; }
+
+html[data-style="modernist"] .errors{ border:2px solid var(--color-accent); background:var(--color-accent-100); color:var(--color-accent-800); }
+
+/* The recipe's own notes, and the household's cooking notes, as ruled lists under a label. */
+html[data-style="modernist"] .note-heading{
+  max-width:760px; margin:28px 0 0; padding:0 0 8px; border-bottom:2px solid var(--color-divider);
+  font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text);
+}
+html[data-style="modernist"] ul.notes{
+  max-width:760px; margin:28px 0 0; padding:0; list-style:none; border-top:2px solid var(--color-divider);
+  font-size:14px; line-height:1.45; color:var(--color-text);
+}
+html[data-style="modernist"] .note-heading + ul.notes{ margin-top:0; border-top:0; }
+html[data-style="modernist"] ul.notes li{ padding:10px 0; border-bottom:1px solid var(--color-divider); }
+html[data-style="modernist"] .swap-suggestions{ max-width:760px; margin:28px 0 0; padding:12px 14px; background:transparent; border:2px solid var(--color-divider); }
+html[data-style="modernist"] .swap-suggestions-title{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+html[data-style="modernist"] ul.swap-list{ max-width:none; margin:4px 0 0; border-top:0; }
+html[data-style="modernist"] ul.swap-list li:last-child{ border-bottom:0; }
+html[data-style="modernist"] .swap-for{ color:var(--km-ink-72); }
+html[data-style="modernist"] .swap-note{ color:var(--km-ink-72); font-style:normal; }
+
+html[data-style="modernist"] .cooking-notes{ max-width:760px; margin:28px 0 0; padding-top:0; border-top:0; }
+html[data-style="modernist"] .cooking-notes-title{
+  margin:0; padding-bottom:8px; border-bottom:2px solid var(--color-divider);
+  font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text);
+}
+html[data-style="modernist"] .cn-add{ margin:12px 0 10px; }
+html[data-style="modernist"] .cn-add textarea, html[data-style="modernist"] .cn-edit{ border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text); font-size:15px; }
+html[data-style="modernist"] .cn-item{ gap:4px 14px; padding:10px 0; border-bottom:1px solid var(--color-divider); font-size:14px; }
+html[data-style="modernist"] .cn-date{ min-width:64px; font-size:12px; font-weight:800; letter-spacing:.06em; color:var(--color-text); font-variant-numeric:tabular-nums; }
+html[data-style="modernist"] .cn-body{ color:var(--color-text); }
+html[data-style="modernist"] .cn-actions button, html[data-style="modernist"] .cn-undo button{ text-decoration:none; color:var(--color-text); font-size:11px; font-weight:800; letter-spacing:.1em; }
+html[data-style="modernist"] .cn-actions button:hover, html[data-style="modernist"] .cn-undo button:hover{ color:var(--color-accent); }
+
+@media (max-width: 860px){
+  html[data-style="modernist"] .viewer-head, html[data-style="modernist"] .viewer-body{ padding-left:16px; padding-right:16px; }
+  html[data-style="modernist"] .viewer-scale-row, html[data-style="modernist"] .keep-awake-status{ padding-left:16px; padding-right:16px; }
+  html[data-style="modernist"] #view-viewer .recipe-title{ font-size:44px; }
+  html[data-style="modernist"] ol.setup{ grid-template-columns:minmax(0, 1fr); }
+  html[data-style="modernist"] ol.setup li:nth-child(odd){ border-right:0; }
+  html[data-style="modernist"] ol.setup li:nth-child(n+2){ border-top:1px solid var(--color-divider); }
+  html[data-style="modernist"] ol.setup li{ padding-left:0; }
+}
+
+/* ============================== THE PLANNER ==============================
+   "Next Fourteen Days" at 46px; each week under a 2px ink rule with its dates and how many dishes are planned in it; each
+   day a 92px column (its name over its date, today in red) and the meals beside it. A meal is its name at 20px/800 on a
+   line of its own, then its course, its time and its pills. The pills are drawn about 28px and answer a tap over 44px
+   (decision 10). Everything is under #view-planner: .day-recipe-title and .shortlist-panel are History's too. */
+html[data-style="modernist"] #view-planner .planner-days{ padding:22px 28px 40px; }
+html[data-style="modernist"] #view-planner .planner-head{ align-items:flex-end; flex-wrap:wrap; gap:8px 16px; margin:0; padding-bottom:18px; }
+html[data-style="modernist"] #view-planner .planner-head h1{ margin:0; font-size:46px; font-weight:800; line-height:.9; letter-spacing:-0.035em; }
+html[data-style="modernist"] #view-planner .planner-rolls{ padding-bottom:4px; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+
+/* The week's band: name and dates on the left, how many planned on the right, then ADD THE WEEK when the calendar is on. */
+html[data-style="modernist"] #view-planner .week-label{
+  display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 16px; margin:24px 0 0; padding:8px 0;
+  border-top:2px solid var(--color-text); border-bottom:2px solid var(--color-divider);
+  font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner .week-label:first-of-type{ margin-top:0; }
+html[data-style="modernist"] #view-planner .week-name{ margin-right:auto; }
+html[data-style="modernist"] #view-planner .week-summary{ color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .week-cal{ margin:0; text-decoration:none; color:var(--color-accent-700); font-weight:800; }
+html[data-style="modernist"] #view-planner .week-cal:hover{ color:var(--color-accent); }
+
+/* A third column takes a left-blank day's UNDO; on any other day it is empty and takes no room. */
+html[data-style="modernist"] #view-planner .day-row{
+  display:grid; grid-template-columns:92px minmax(0, 1fr) auto; align-items:stretch; gap:0; padding:0;
+  border-bottom:1px solid var(--color-divider);
+}
+html[data-style="modernist"] #view-planner .day-row.today{ background:var(--color-accent-100); }
+html[data-style="modernist"] #view-planner .day-row.assignable:hover{ background:var(--color-accent-100); }
+html[data-style="modernist"] #view-planner .day-num{
+  display:flex; flex-direction:column; gap:2px; width:auto; padding:14px 0 14px 12px;
+  border-right:2px solid var(--color-divider); color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner .day-row.today .day-num{ border-right-color:var(--color-accent); color:var(--color-text); font-weight:400; }
+html[data-style="modernist"] #view-planner .day-dow{ font-size:12px; font-weight:800; letter-spacing:.08em; }
+html[data-style="modernist"] #view-planner .day-date{ font-size:24px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+/* The date is large type, where the accent itself reads (3:1 is enough); TODAY is small, so it is the darker red. */
+html[data-style="modernist"] #view-planner .day-row.today .day-date{ color:var(--color-accent); }
+html[data-style="modernist"] #view-planner .day-num .today-tag{ margin-top:0; font-size:10px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+
+/* The day's contents wrap as a row, not a column, so ADD ANOTHER and GROUP SOME TOGETHER share a line; everything else
+   takes a line of its own. */
+html[data-style="modernist"] #view-planner .day-main{ flex-flow:row wrap; align-content:center; align-items:center; gap:8px 20px; padding:10px 0 10px 16px; }
+/* min-width:0, or a line is as wide as a long dish name before it is clipped, and pushes the page sideways. */
+html[data-style="modernist"] #view-planner .day-main > :not(.day-choose):not(.day-away){ flex:1 1 100%; min-width:0; }
+
+/* The meal: the name and × on the first line, the rest on the next. The × is moved up beside the name, and the name is
+   sized to fill the line less the × (44px and a 12px gap) and, on a grouped dish, the 4px tie, so what follows wraps.
+   The name is 24px tall to see and 44px to tap (its padding is taken back by a negative margin): an invisible ::before
+   cannot do it, as the name clips to its ellipsis. */
+html[data-style="modernist"] #view-planner .day-recipe-row{ flex-wrap:wrap; gap:18px 12px; }
+/* The spacing is what the 44px taps need, and no more. The name reaches 10px past its line each way and a pill 8px past its
+   border, so a name and the pills under it need 18px between them, as do one dish's pills and the next dish's name; a
+   pill and a SERVE WITH square need 16. Less, and one would answer a tap meant for the other (test/smoke.js points at
+   each). The prototype's 8px would be tighter, at the cost of the household's 44px rule (docs/PLAN-READABILITY.md). */
+html[data-style="modernist"] #view-planner .day-main > :is(.day-recipe-row, .day-side-offer) + .day-recipe-row{ margin-top:10px; }
+html[data-style="modernist"] #view-planner .day-main > .group-badge + .day-recipe-row{ margin-top:2px; }
+html[data-style="modernist"] #view-planner .day-main > :is(.day-recipe-row, .day-side-offer) + .day-side-offer{ margin-top:8px; }
+html[data-style="modernist"] #view-planner .day-recipe-row > .day-recipe-remove{ order:-1; }
+html[data-style="modernist"] #view-planner .day-recipe-row > :is(.group-tie, .day-recipe-title, .day-away){ order:-2; }
+/* A dish no longer in the library: its line, then CLEAR in words. */
+html[data-style="modernist"] #view-planner .day-recipe-row > .day-away{ flex:1 1 0; }
+html[data-style="modernist"] #view-planner .day-away ~ .day-recipe-remove{ margin:0; padding:0 0 0 16px; font-size:12px; font-weight:800; letter-spacing:.06em; color:var(--color-accent-700); opacity:1; }
+html[data-style="modernist"] #view-planner .day-recipe-title{
+  flex:1 1 calc(100% - 56px); min-width:0; min-height:0; margin:-10px 0; padding:10px 0;
+  font-size:20px; font-weight:800; line-height:24px; letter-spacing:-0.01em; color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner .group-tie + .day-recipe-title{ flex-basis:calc(100% - 72px); }
+/* Choosing dishes to group has no ×: the name takes the line. */
+html[data-style="modernist"] #view-planner .group-pick-row .day-recipe-title{ flex-basis:calc(100% - 34px); }
+html[data-style="modernist"] #view-planner .day-recipe-title:hover{ color:var(--color-accent); }
+html[data-style="modernist"] #view-planner .day-recipe-course,
+html[data-style="modernist"] #view-planner .day-recipe-course.dessert,
+html[data-style="modernist"] #view-planner .day-recipe-course.bread{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .day-recipe-time{ width:auto; margin-right:auto; text-align:left; font-size:13px; font-weight:600; letter-spacing:0; color:var(--color-text); font-variant-numeric:tabular-nums; }
+html[data-style="modernist"] #view-planner .day-recipe-remove{
+  margin:-10px -10px -10px 0; font-size:18px; font-weight:400; color:var(--color-text); opacity:.6;
+}
+html[data-style="modernist"] #view-planner .day-recipe-remove:hover{ opacity:1; color:var(--color-accent); }
+
+/* The pills: SERVES, PRE-MADE, COOKED ✓ and the calendar's two. 2px rules; PRE-MADE on is grey, cooked is ink. */
+html[data-style="modernist"] #view-planner :is(.day-recipe-serves, .day-recipe-premade, .day-recipe-cooked, .day-cal-btn){
+  position:relative; min-height:0; padding:4px 8px; border:2px solid var(--color-divider); background:transparent;
+  font-size:12px; font-weight:800; letter-spacing:.04em; line-height:16px; color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner :is(.day-recipe-serves, .day-recipe-premade, .day-recipe-cooked, .day-cal-btn)::before{
+  content:''; position:absolute; left:-2px; right:-2px; top:-10px; bottom:-10px;
+}
+html[data-style="modernist"] #view-planner :is(.day-recipe-serves, .day-recipe-premade, .day-recipe-cooked:not(.done), .day-cal-btn):hover{ border-color:var(--color-accent); color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .day-recipe-serves.on{ border-color:var(--color-accent); color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .day-recipe-premade.on{ border-color:var(--color-text); background:var(--color-surface); color:var(--color-text); }
+html[data-style="modernist"] #view-planner .day-recipe-cooked.done{ border-color:var(--color-text); background:var(--color-text); color:var(--color-bg); }
+html[data-style="modernist"] #view-planner .day-cal{ gap:16px 8px; margin-top:4px; }
+html[data-style="modernist"] #view-planner .day-cal-btn.on{ border-color:var(--color-text); color:var(--color-text); }
+
+/* CHOOSE A RECIPE: red words beside a square with a +. ADD ANOTHER and GROUP SOME TOGETHER are the same, smaller. */
+html[data-style="modernist"] #view-planner .day-choose{ gap:10px; font-size:13px; font-weight:800; letter-spacing:.06em; color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .day-choose:hover{ color:var(--color-accent); }
+html[data-style="modernist"] #view-planner .day-choose .circle{ width:26px; height:26px; border:2px solid currentColor; font-size:16px; font-weight:800; line-height:1; }
+html[data-style="modernist"] #view-planner .day-choose.day-add-more{ margin:0; font-size:12px; color:var(--color-text); }
+html[data-style="modernist"] #view-planner .day-choose.day-add-more:hover{ color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .day-choose.day-add-more .circle{ width:20px; height:20px; font-size:13px; }
+html[data-style="modernist"] #view-planner .day-away{ font-size:12px; font-style:normal; font-weight:800; letter-spacing:.08em; color:var(--km-ink-72); }
+/* UNDO takes the row's height, so all of the row's right end is the button. */
+html[data-style="modernist"] #view-planner .day-clear{ align-self:stretch; padding:0 16px; font-size:12px; font-weight:800; letter-spacing:.06em; color:var(--color-accent-700); }
+
+/* SERVE WITH and OFTEN WITH: dashed squares for each side. */
+html[data-style="modernist"] #view-planner .day-side-offer{ gap:16px 10px; margin:0; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--km-ink-72); }
+html[data-style="modernist"] #view-planner .day-side-add{
+  position:relative; min-height:0; padding:4px 8px; border:2px dashed var(--color-divider);
+  font-size:12px; font-weight:800; letter-spacing:.04em; line-height:16px; color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner .day-side-add::before{ content:''; position:absolute; left:-2px; right:-2px; top:-10px; bottom:-10px; }
+html[data-style="modernist"] #view-planner .day-side-add:hover{ border-color:var(--color-accent); color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .day-side-hide{ font-size:16px; color:var(--color-text); opacity:.6; }
+html[data-style="modernist"] #view-planner .day-side-hide:hover{ opacity:1; color:var(--color-accent); }
+
+/* Groups: a 4px ink bar ties a group's dishes; the GROUPED line is grey with the same bar. */
+html[data-style="modernist"] #view-planner .group-tie{ width:4px; margin:0; background:var(--color-text); }
+html[data-style="modernist"] #view-planner .group-badge{
+  gap:10px; padding:6px 10px; border:0; border-left:4px solid var(--color-text); background:var(--color-surface);
+  font-size:12px; font-weight:800; letter-spacing:.06em; color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner .group-badge:hover{ background:var(--km-ink-10); }
+html[data-style="modernist"] #view-planner .group-badge .group-tie{ display:none; }
+html[data-style="modernist"] #view-planner .group-ungroup{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .group-pick-row{ padding:6px 0; }
+html[data-style="modernist"] #view-planner .group-pick-row:hover{ background:transparent; }
+html[data-style="modernist"] #view-planner .group-pick-row:hover .day-recipe-title{ color:var(--color-accent); }
+html[data-style="modernist"] #view-planner .group-pick-check{ width:22px; height:22px; border:2px solid var(--color-text); font-weight:800; color:var(--km-on-accent); }
+html[data-style="modernist"] #view-planner .group-pick-check.checked{ background:var(--km-fill); border-color:var(--km-fill); }
+html[data-style="modernist"] #view-planner .group-pick-controls{ gap:10px; margin-top:4px; }
+
+/* Assigning a shortlisted dish: a red bar down the side, the words in ink. */
+html[data-style="modernist"] #view-planner .assign-banner{
+  margin:0 0 18px; padding:10px 14px; border:0; border-left:4px solid var(--color-accent); background:var(--color-accent-100);
+  font-size:14px; font-weight:600; color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner .assign-banner button{ text-decoration:none; font-size:12px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+
+/* ============================== THE SHORTLIST PANEL ==============================
+   330px with a 2px rule; "Shortlist" at 26px with its count and a › that collapses the panel to a 56px rail (Modernist
+   only; SHORTLIST in the sidebar opens it again); the jot box in red; numbered rows; the shopping block in red at the foot,
+   all of it one link to the list. Only at 861px and up does it collapse: narrower, the panel sits under the days. */
+html[data-style="modernist"] #view-planner .shortlist-panel{ width:330px; padding:0; border-left:2px solid var(--color-divider); }
+html[data-style="modernist"] #view-planner .shortlist-head{ align-items:center; gap:10px; margin:0; padding:22px 22px 12px; }
+html[data-style="modernist"] #view-planner .shortlist-head .side-label{ display:none; }
+html[data-style="modernist"] #view-planner .sl-head-title{ display:inline; margin-right:auto; font-size:26px; font-weight:800; letter-spacing:-0.02em; line-height:1; }
+html[data-style="modernist"] #view-planner .shortlist-count{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .shortlist-input{
+  width:auto; height:46px; margin:0 22px; padding:0 12px; border:2px solid var(--color-accent); background:transparent;
+  color:var(--color-text); font-size:15px;
+}
+html[data-style="modernist"] #view-planner .shortlist-input::placeholder{ color:var(--km-ink-70); opacity:1; }
+html[data-style="modernist"] #view-planner .shortlist-caption{ margin:8px 22px 16px; font-size:11px; font-weight:600; letter-spacing:.08em; color:var(--km-ink-72); }
+
+/* Rows: the number, the name over its line, the ×. .sl-row1 steps aside (display:contents) so its parts sit on the row's grid.
+   The ≡ was only ever a picture, and the number takes its place. */
+html[data-style="modernist"] #view-planner .shortlist-list{ flex:1 0 auto; gap:0; border-top:2px solid var(--color-divider); counter-reset:sl; }
+html[data-style="modernist"] #view-planner .sl-item{
+  display:grid; grid-template-columns:auto minmax(0, 1fr) auto; gap:3px 12px; align-items:start;
+  padding:14px 22px; border:0; border-bottom:1px solid var(--color-divider); background:transparent;
+  counter-increment:sl;
+}
+html[data-style="modernist"] #view-planner .sl-item::before{
+  content:counter(sl, decimal-leading-zero); grid-column:1; grid-row:1 / span 2;
+  font-size:15px; font-weight:800; line-height:1.3; color:var(--color-accent-700); font-variant-numeric:tabular-nums;
+}
+html[data-style="modernist"] #view-planner .sl-row1{ display:contents; }
+html[data-style="modernist"] #view-planner .sl-handle{ display:none; }
+html[data-style="modernist"] #view-planner .sl-title{ grid-column:2; grid-row:1; font-size:16px; font-weight:600; line-height:1.3; }
+html[data-style="modernist"] #view-planner .sl-title.quoted{ font-style:normal; }
+html[data-style="modernist"] #view-planner .sl-sub{ grid-column:2; grid-row:2; font-size:11px; font-weight:800; letter-spacing:.08em; color:var(--km-ink-72); }
+html[data-style="modernist"] #view-planner .sl-remove{ grid-column:3; grid-row:1 / span 2; margin:-12px -14px -12px 0; font-size:18px; color:var(--color-text); opacity:.6; }
+html[data-style="modernist"] #view-planner .sl-remove:hover{ opacity:1; color:var(--color-accent); }
+html[data-style="modernist"] #view-planner .sl-item:hover{ border-color:var(--color-divider); background:var(--color-surface); }
+html[data-style="modernist"] #view-planner .sl-item.note:hover{ background:transparent; }
+html[data-style="modernist"] #view-planner .sl-item.selected{ padding-left:18px; border-left:4px solid var(--color-accent); background:var(--color-accent-100); }
+html[data-style="modernist"] #view-planner .sl-item.selected .sl-sub{ color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .sl-empty{ padding:14px 22px; font-size:14px; line-height:1.45; color:var(--km-ink-72); }
+
+/* The shopping block. VIEW LIST → is the one link; its ::after covers the block, so a tap anywhere on it opens the list. */
+html[data-style="modernist"] #view-planner .shopping-preview{
+  position:relative; display:flex; flex-direction:column; gap:6px; margin:24px 22px 22px; padding:16px;
+  border:0; background:var(--km-fill); color:var(--km-on-accent);
+}
+html[data-style="modernist"] #view-planner .shopping-preview:hover{ background:var(--km-fill-hover); }
+html[data-style="modernist"] #view-planner .shopping-preview .side-label{ margin:0; font-size:11px; font-weight:800; letter-spacing:.1em; color:inherit; }
+html[data-style="modernist"] #view-planner .shopping-preview-text{ margin:0; font-size:26px; font-weight:800; line-height:1.05; letter-spacing:-0.02em; color:inherit; }
+html[data-style="modernist"] #view-planner #viewShoppingLink{ align-self:flex-start; min-height:0; margin-top:6px; padding:0; font-size:13px; font-weight:800; letter-spacing:.06em; color:inherit; text-decoration:none; }
+html[data-style="modernist"] #view-planner #viewShoppingLink::after{ content:''; position:absolute; inset:0; }
+
+html[data-style="modernist"] #view-planner .sl-collapse-btn{
+  position:relative; display:none; align-items:center; justify-content:center; width:32px; height:32px; flex:none; padding:0;
+  border:2px solid var(--color-divider); background:none; color:var(--color-text); cursor:pointer;
+}
+html[data-style="modernist"] #view-planner .sl-collapse-btn:hover{ background:var(--color-surface); }
+/* 32px to see, 44px to tap: from the padding box, inside the 2px rule. */
+html[data-style="modernist"] #view-planner .sl-collapse-btn::before{ content:''; position:absolute; inset:-8px; }
+html[data-style="modernist"] #view-planner .sl-rail{
+  flex:1; flex-direction:column; align-items:center; gap:14px; padding:22px 0;
+  background:none; border:0; cursor:pointer; color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner .sl-rail:hover{ background:var(--color-surface); }
+html[data-style="modernist"] #view-planner .sl-rail-name{ writing-mode:vertical-rl; transform:rotate(180deg); font-size:18px; font-weight:800; letter-spacing:-0.01em; line-height:1; }
+html[data-style="modernist"] #view-planner .sl-rail-count{ font-size:11px; font-weight:800; color:var(--color-accent-700); font-variant-numeric:tabular-nums; }
+@media (min-width: 861px){
+  html[data-style="modernist"] #view-planner .sl-collapse-btn{ display:flex; }
+  html[data-style="modernist"] #view-planner .shortlist-panel.sl-collapsed{ width:56px; overflow:hidden; }
+  html[data-style="modernist"] #view-planner .shortlist-panel.sl-collapsed > :not(.sl-rail){ display:none; }
+  html[data-style="modernist"] #view-planner .shortlist-panel.sl-collapsed > .sl-rail{ display:flex; }
+}
+@media (max-width: 860px){
+  html[data-style="modernist"] #view-planner .planner-days{ padding:16px; }
+  html[data-style="modernist"] #view-planner .planner-head h1{ font-size:36px; }
+  html[data-style="modernist"] #view-planner .day-row{ grid-template-columns:72px minmax(0, 1fr) auto; }
+  html[data-style="modernist"] #view-planner .day-main{ padding-left:12px; }
+  html[data-style="modernist"] #view-planner .shortlist-panel{ width:100%; border-left:0; border-top:2px solid var(--color-divider); }
+}
+
+/* ============================== THE SHOPPING LIST ==============================
+   The title at 56px with the week, the counts and the ticks beneath in red; the controls to the right, over a 2px rule; the
+   aisles in two columns, each under a 2px ink rule with "ticked / total" (drawn from data-count, so the title's text is the
+   aisle's name alone); each row a 22px square, the quantity in red, the name, the recipes beneath. The whole row is the
+   tick: it is a <label>. The checkbox stays where it was, unseen but still the thing that is focused and ticked, and
+   renderShopping adds the square beside it, because EXPORT PNG draws any checkbox in its own grey, rounded look. A ticked
+   row is faded and struck through. Ticked rows are left out of the PNG and the printout, as in Classic. */
+html[data-style="modernist"] .shop-wrap{ padding:0; }
+html[data-style="modernist"] .shop-head{ align-items:flex-end; gap:16px 20px; margin:0; padding:22px 28px 18px; border-bottom:2px solid var(--color-divider); }
+html[data-style="modernist"] .shop-head h1{ margin:0 0 8px; font-size:56px; font-weight:800; line-height:.9; letter-spacing:-0.035em; }
+html[data-style="modernist"] .shop-meta{ font-size:13px; font-weight:800; letter-spacing:.08em; color:var(--color-accent-700); }
+html[data-style="modernist"] .shop-head-right{ flex-wrap:wrap; gap:6px; }
+/* The week select keeps 44px (decision 10: a select cannot carry an invisible tap area). */
+html[data-style="modernist"] #shopWeekSelect{
+  padding:0 10px; border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text);
+  font-size:13px; font-weight:700; letter-spacing:.04em;
+}
+
+html[data-style="modernist"] .shop-body{ display:block; columns:2; column-gap:36px; padding:24px 28px 40px; }
+html[data-style="modernist"] .shop-body > .grid-empty, html[data-style="modernist"] .shop-body > .shop-swap-panel{ column-span:all; }
+html[data-style="modernist"] .shop-category{ break-inside:avoid; margin-bottom:28px; }
+html[data-style="modernist"] .shop-category-title{
+  display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin:0; padding:8px 0;
+  border-top:2px solid var(--color-text); border-bottom:2px solid var(--color-divider);
+  font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text);
+}
+html[data-style="modernist"] .shop-category-title::after{ content:attr(data-count); color:var(--color-accent-700); font-variant-numeric:tabular-nums; }
+
+html[data-style="modernist"] .shop-row{ border-bottom:1px solid var(--color-divider); }
+html[data-style="modernist"] .shop-item{
+  position:relative; display:grid; grid-template-columns:22px minmax(0, 1fr); gap:12px; align-items:start;
+  padding:11px 0; border-bottom:0;
+}
+html[data-style="modernist"] .shop-item:hover{ background:var(--color-surface); }
+html[data-style="modernist"] .shop-item input[type="checkbox"]{ position:absolute; left:0; top:12px; width:22px; height:22px; margin:0; opacity:0; }
+html[data-style="modernist"] .shop-box{ display:block; width:22px; height:22px; margin-top:1px; border:2px solid var(--color-text); }
+html[data-style="modernist"] .shop-item input:focus-visible + .shop-box{ outline:2px solid var(--color-accent); outline-offset:2px; }
+/* Ticked: the red square with the Lucide check, in the colour words take on red. */
+html[data-style="modernist"] .shop-item.checked .shop-box{ display:flex; align-items:center; justify-content:center; background:var(--km-fill); border-color:var(--km-fill); }
+html[data-style="modernist"] .shop-item.checked .shop-box::after{
+  content:''; width:14px; height:14px; background:var(--km-on-accent);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='square'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='square'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+html[data-style="modernist"] .shop-item-name{ font-size:16px; line-height:1.3; color:var(--color-text); }
+html[data-style="modernist"] .shop-item-name .qty{
+  margin:0 8px 0 0; padding:0; background:none; font-size:16px; font-weight:800; color:var(--color-accent-700); font-variant-numeric:tabular-nums;
+}
+html[data-style="modernist"] .shop-item-alt{ margin-left:6px; font-size:13px; color:var(--km-ink-72); }
+html[data-style="modernist"] .shop-item-recipes{ font-size:12px; font-weight:600; letter-spacing:.02em; color:var(--km-ink-72); }
+html[data-style="modernist"] .shop-item.checked .shop-item-main{ opacity:.45; }
+html[data-style="modernist"] .shop-item.checked .shop-item-name{ text-decoration:line-through; color:var(--color-text); }
+html[data-style="modernist"] .shop-item.checked .shop-item-recipes{ opacity:1; }
+
+/* AUDIT's tools under a row: small capitals in red, no underline. */
+html[data-style="modernist"] .shop-tools{ gap:8px 14px; padding:0 0 10px 34px; font-size:13px; color:var(--km-ink-72); }
+html[data-style="modernist"] .shop-tools button{ text-decoration:none; font-size:12px; font-weight:800; letter-spacing:.06em; color:var(--color-accent-700); }
+html[data-style="modernist"] .shop-tools .shop-merge-with{ color:var(--color-text); }
+html[data-style="modernist"] .shop-tools button:hover{ color:var(--color-accent); }
+html[data-style="modernist"] .shop-aisle{ color:var(--km-ink-72); }
+html[data-style="modernist"] .shop-aisle select, html[data-style="modernist"] .shop-merge-filter{
+  border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text);
+}
+html[data-style="modernist"] .shop-aisle-warn{ font-style:normal; color:var(--color-accent-700); }
+html[data-style="modernist"] .shop-suggest b, html[data-style="modernist"] .shop-merge-confirm b{ font-weight:800; color:var(--color-text); }
+html[data-style="modernist"] .shop-swap-panel{ max-width:none; margin:0; }
+
+@media (max-width: 860px){
+  html[data-style="modernist"] .shop-head{ align-items:flex-start; padding:16px; }
+  html[data-style="modernist"] .shop-body{ padding:16px 16px 32px; }
+}
+@media (max-width: 560px){
+  html[data-style="modernist"] .shop-head h1{ font-size:44px; }
+  html[data-style="modernist"] .shop-body{ columns:1; }
+}
+
+/* ============================== HISTORY ==============================
+   ‹ and › as 40px squares about the month at 56px, then TODAY, + ENTRY and CSV; the weekdays; the month as a grid of cells
+   2px apart inside a 2px ink frame, each at least 92px: the date at 20px, what was eaten, and a word at the foot (TODAY,
+   COOKED, AD HOC). Today is ringed in red, the picked day is ink, days of other months are faint. The side panel is 330px:
+   the day, then STATS, then the days of the week, then the two meal-base mixes as bars (renderMixBar). Its class is the
+   Planner's shortlist panel's, so everything is under #view-history. */
+html[data-style="modernist"] .history-calendar{ padding:22px 28px 32px; }
+/* ‹ month › on the first line, TODAY, + ENTRY and CSV together on the second, whatever the month's name: at 1280px they do not
+   fit on one line beside the side panel, and a long month and a short one would otherwise break them in different places. */
+html[data-style="modernist"] .history-head{ align-items:flex-end; flex-wrap:wrap; gap:0 10px; margin-bottom:16px; }
+html[data-style="modernist"] .history-head::after{ content:''; order:1; flex:0 0 100%; height:0; }
+html[data-style="modernist"] .history-head .btn{ order:2; margin-top:12px; }
+html[data-style="modernist"] .history-head h1{ flex:none; margin:0 6px; text-align:left; font-size:56px; font-weight:800; line-height:.9; letter-spacing:-0.035em; }
+html[data-style="modernist"] .history-head .backlink{
+  position:relative; display:flex; align-items:center; justify-content:center; width:40px; height:40px; min-height:0; padding:0;
+  border:2px solid var(--color-divider); background:none; color:var(--color-text); font-size:0;
+}
+html[data-style="modernist"] .history-head .backlink:hover{ border-color:var(--color-accent); color:var(--color-accent); }
+/* 40px to see, 44px to tap: from the padding box, inside the 2px rule. */
+html[data-style="modernist"] .history-head .backlink::before{ content:''; position:absolute; inset:-4px; }
+/* The ← and → stay as the buttons' words, at no size; the Lucide chevrons are drawn in their place. */
+html[data-style="modernist"] .history-head .backlink::after{
+  content:''; width:18px; height:18px; background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='square'%3E%3Cpath d='m15 18-6-6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='square'%3E%3Cpath d='m15 18-6-6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+html[data-style="modernist"] #historyNextMonth::after{ transform:scaleX(-1); }
+
+html[data-style="modernist"] .history-weekday-labels{ gap:2px; margin-bottom:6px; text-align:left; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] .history-weekday-labels span{ padding:0 10px; }
+html[data-style="modernist"] .history-grid{ gap:2px; padding:0; background:var(--color-divider); border:2px solid var(--color-text); grid-auto-rows:minmax(92px, auto); }
+html[data-style="modernist"] .history-day,
+html[data-style="modernist"] .history-day.has-entries,
+html[data-style="modernist"] .history-day.has-adhoc,
+html[data-style="modernist"] .history-day.other-month{
+  min-height:0; gap:6px; padding:8px 10px; border:0; background:var(--color-bg); color:var(--color-text); align-items:flex-start;
+}
+html[data-style="modernist"] .history-day:hover{ background:var(--color-surface); }
+/* Days of other months: their words at 40%, on the same ground (fading the whole cell let the grid's rule colour through). */
+html[data-style="modernist"] .history-day.other-month{ opacity:1; }
+html[data-style="modernist"] .history-day.other-month > *{ opacity:.4; }
+html[data-style="modernist"] .history-day-num{ font-size:20px; font-weight:800; line-height:1; color:inherit; font-variant-numeric:tabular-nums; }
+html[data-style="modernist"] .history-day-info{ font-size:13px; font-weight:600; line-height:1.25; color:inherit; }
+html[data-style="modernist"] .history-day-tag{ margin-top:auto; font-size:10px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+/* Today: a 3px red ring inside the cell and a red date (large type, so the accent itself; the word is the darker red). */
+html[data-style="modernist"] .history-day.today{ box-shadow:inset 0 0 0 3px var(--color-accent); }
+html[data-style="modernist"] .history-day.today .history-day-num{ color:var(--color-accent); font-weight:800; }
+html[data-style="modernist"] .history-day.selected,
+html[data-style="modernist"] .history-day.has-entries.selected{ background:var(--color-text); color:var(--color-bg); box-shadow:none; }
+html[data-style="modernist"] .history-day.selected .history-day-num,
+html[data-style="modernist"] .history-day.selected .history-day-tag{ color:var(--color-bg); }
+
+html[data-style="modernist"] #view-history .shortlist-panel{ width:330px; gap:24px; padding:22px 22px 32px; border-left:2px solid var(--color-divider); }
+html[data-style="modernist"] .history-day-detail{ margin:0; padding:0; border:0; }
+html[data-style="modernist"] .history-day-detail-title{
+  margin:0; padding-bottom:12px; border-bottom:2px solid var(--color-text);
+  font-size:26px; font-weight:800; line-height:1.05; letter-spacing:-0.02em;
+}
+html[data-style="modernist"] .history-day-recipe{ gap:10px; padding:10px 0; border-bottom:1px solid var(--color-divider); }
+html[data-style="modernist"] .history-day-recipe.diary-adhoc{ padding-left:0; border-left:0; }
+/* The name on a line of its own, then the meal and the kind beneath in small red capitals ("DINNER · AD HOC"). */
+html[data-style="modernist"] .history-day-recipe > span:first-child{ display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 0; flex:1; min-width:0; }
+html[data-style="modernist"] .history-day-recipe > span:first-child > :first-child{ flex:1 1 100%; font-size:16px; font-weight:700; line-height:1.25; color:var(--color-text); }
+html[data-style="modernist"] .history-day-recipe button.day-recipe-title{ text-align:left; }
+html[data-style="modernist"] .history-day-recipe button.day-recipe-title:hover{ color:var(--color-accent); }
+html[data-style="modernist"] :is(.history-day-recipe .diary-meal-tag, .history-day-recipe .diary-kind){
+  margin:0; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); text-transform:uppercase;
+}
+html[data-style="modernist"] .history-day-recipe .diary-meal-tag{ order:1; }
+html[data-style="modernist"] .history-day-recipe .diary-kind{ order:2; }
+html[data-style="modernist"] .history-day-recipe span:has(> .diary-meal-tag) > .diary-kind::before{ content:'\00a0·\00a0'; }
+html[data-style="modernist"] .history-day-recipe .link-btn{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); text-decoration:none; }
+html[data-style="modernist"] .history-day-recipe .link-btn:hover{ color:var(--color-accent); }
+html[data-style="modernist"] .history-empty-day{ margin:12px 0 0; font-size:14px; color:var(--km-ink-72); }
+
+html[data-style="modernist"] #historyStats .side-label{
+  margin-bottom:0; padding-bottom:8px; border-bottom:2px solid var(--color-divider);
+  font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text);
+}
+html[data-style="modernist"] .hstat-row{ gap:12px; padding:9px 0; border-bottom:1px solid var(--color-divider); }
+html[data-style="modernist"] .hstat-label{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] .hstat-value{ font-size:14px; font-weight:700; color:var(--color-text); }
+/* min-width:0: Classic's rule for every table (the flow table's 560px) reached this one too, and the panel scrolled sideways. */
+html[data-style="modernist"] .hstat-weekday-table{ min-width:0; margin-top:0; }
+html[data-style="modernist"] .hstat-weekday-table td{ padding:8px 0; border-bottom:1px solid var(--color-divider); font-size:14px; color:var(--color-text); }
+html[data-style="modernist"] .hstat-weekday-table td:first-child{ width:48px; padding-top:10px; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] .hstat-weekday-empty{ font-style:normal; color:var(--km-ink-72); }
+html[data-style="modernist"] .hstat-pie-note{ margin:10px 0 0; font-size:13px; line-height:1.4; color:var(--km-ink-72); }
+html[data-style="modernist"] .hstat-bar{ display:flex; gap:2px; height:28px; margin-top:10px; }
+html[data-style="modernist"] .hstat-bar > span{ min-width:2px; }
+html[data-style="modernist"] .hstat-bar + .hstat-legend{ margin-top:10px; gap:0; }
+html[data-style="modernist"] .hstat-legend-row{ gap:10px; padding:5px 0; font-size:13px; }
+html[data-style="modernist"] .hstat-legend-swatch{ width:12px; height:12px; }
+html[data-style="modernist"] .hstat-legend-label{ font-weight:700; letter-spacing:.04em; color:var(--color-text); }
+html[data-style="modernist"] .hstat-legend-value{ font-size:13px; font-weight:600; color:var(--color-text); font-variant-numeric:tabular-nums; }
+
+@media (max-width: 860px){
+  html[data-style="modernist"] .history-calendar{ padding:16px; }
+  /* 30px keeps ‹ and › beside the longest month ("September 2026") at 412px. */
+  html[data-style="modernist"] .history-head h1{ font-size:30px; }
+  html[data-style="modernist"] .history-grid{ grid-auto-rows:minmax(64px, auto); }
+  html[data-style="modernist"] .history-day,
+  html[data-style="modernist"] .history-day.has-entries,
+  html[data-style="modernist"] .history-day.has-adhoc,
+  html[data-style="modernist"] .history-day.other-month{ gap:4px; padding:6px; }
+  html[data-style="modernist"] .history-day-num{ font-size:16px; }
+  html[data-style="modernist"] .history-day-tag{ font-size:9px; letter-spacing:.06em; }
+  html[data-style="modernist"] .history-weekday-labels span{ padding:0 6px; }
+  html[data-style="modernist"] #view-history .shortlist-panel{ width:100%; border-left:0; border-top:2px solid var(--color-divider); }
+}
+
+/* ============================== SETTINGS ==============================
+   The title at 56px with its line beneath; INGREDIENTS, LIBRARY, APP and HELP as words, the open one with a 4px red rule
+   standing on the 2px rule under them (the bar stays pinned as the page scrolls, as in Classic); then each block up to
+   860px wide, between 2px rules: its label (and count, in red), its words at 14px, its controls. Boxes to type in and
+   selects are 44px with a 2px rule on grey (the prototype's 40px, made 44 for the tap rule: D27); the lookup is 48px in
+   red. Lists are lines with 1px rules, their buttons as small capitals. CALENDAR, RECIPE SHARING and BACKUP TO GOOGLE
+   DRIVE stay blocks like the rest rather than the prototype's one-line rows (D26). No markup changes: CSS only. */
+html[data-style="modernist"] #view-settings .filter-head{ padding:22px 28px 14px; gap:0; border-bottom:0; }
+html[data-style="modernist"] #view-settings .filter-head h1{ margin:0; font-size:56px; font-weight:800; line-height:.9; letter-spacing:-0.035em; }
+html[data-style="modernist"] #view-settings .filter-head .subtle{ margin:8px 0 0 !important; }
+html[data-style="modernist"] #view-settings .settings-body{ max-width:none; gap:0; padding:0 28px 40px; }
+html[data-style="modernist"] #view-settings .settings-tabs{ gap:0; padding:0; background:var(--color-bg); border-bottom:2px solid var(--color-divider); }
+html[data-style="modernist"] #view-settings .settings-tabs .btn{
+  margin-bottom:-2px; padding:12px 18px; border:0; border-bottom:4px solid transparent; background:none;
+  font-size:13px; font-weight:800; letter-spacing:.08em; color:var(--km-ink-70);
+}
+html[data-style="modernist"] #view-settings .settings-tabs .btn:hover{ background:none; color:var(--color-accent-700); }
+html[data-style="modernist"] #view-settings .settings-tabs .btn.active{ border-bottom-color:var(--color-accent); background:none; color:var(--color-text); }
+
+html[data-style="modernist"] #view-settings .settings-block{ max-width:860px; padding:22px 0; border-bottom:2px solid var(--color-divider); }
+html[data-style="modernist"] #view-settings .settings-block.ingr-folded{ margin-bottom:0; padding:10px 0; }
+html[data-style="modernist"] #view-settings .side-label{ margin-bottom:10px; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] #view-settings .ingr-head{ gap:10px; margin-bottom:6px; }
+html[data-style="modernist"] #view-settings .ingr-head .side-label{ margin-bottom:0; }
+html[data-style="modernist"] #view-settings .ingr-count{ font-size:11px; font-weight:800; letter-spacing:.08em; color:var(--color-accent-700); }
+html[data-style="modernist"] #view-settings .ingr-chevron{ color:var(--color-text); }
+html[data-style="modernist"] #view-settings .subtle{ max-width:640px; margin-bottom:12px; font-size:14px; line-height:1.45; color:var(--km-ink-72); }
+html[data-style="modernist"] #view-settings .subtle b{ color:var(--color-text); }
+html[data-style="modernist"] #view-settings label.subtle{ display:block; margin-bottom:6px; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] #view-settings label.subtle span{ font-weight:600; letter-spacing:.04em; color:var(--km-ink-72); }
+html[data-style="modernist"] #view-settings label.lc-only{ display:inline-flex; margin-bottom:0; font-size:14px; font-weight:400; letter-spacing:0; }
+html[data-style="modernist"] #view-settings .empty{ font-size:14px; color:var(--km-ink-72); }
+html[data-style="modernist"] #view-settings .field-error{ color:var(--color-accent-700); }
+
+html[data-style="modernist"] #view-settings :is(input[type="text"], input[type="search"], input[type="email"], input[type="number"]){
+  min-height:44px; padding:0 12px; border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text); font-size:15px;
+}
+html[data-style="modernist"] #view-settings select.sort{
+  padding:0 10px; border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text);
+  font-size:13px; font-weight:700; letter-spacing:.04em;
+}
+html[data-style="modernist"] #view-settings :is(input, select):focus{ border-color:var(--color-accent); outline-color:var(--color-accent); }
+html[data-style="modernist"] #view-settings #ingredientLookup{ max-width:520px; min-height:48px; margin:0 0 8px; border-color:var(--color-accent); font-size:16px; }
+html[data-style="modernist"] #view-settings .lookup-line{ font-size:14px; color:var(--km-ink-72); }
+html[data-style="modernist"] #view-settings .lookup-line b{ font-weight:700; color:var(--color-text); }
+
+html[data-style="modernist"] #view-settings .alias-form{ gap:8px; margin-bottom:12px; }
+html[data-style="modernist"] #view-settings .alias-form .alias-arrow{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] #view-settings .swap-form{ max-width:none; padding:0; border:0; background:none; }
+html[data-style="modernist"] #view-settings .field-row{ gap:12px 16px; margin-bottom:12px; }
+html[data-style="modernist"] #view-settings .field-row span{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] #view-settings .field-row input{ border-radius:0; }
+
+/* Lists: lines, not cards. The first line hangs from a 2px rule, the rest are 1px. */
+html[data-style="modernist"] #view-settings :is(.sources-list, .swaps-list){ gap:0; border-top:2px solid var(--color-divider); }
+html[data-style="modernist"] #view-settings :is(.sources-list, .swaps-list):empty{ border-top:0; }
+html[data-style="modernist"] #view-settings .source-row{ gap:12px; padding:8px 0; border:0; border-bottom:1px solid var(--color-divider); background:transparent; }
+html[data-style="modernist"] #view-settings .source-row-name, html[data-style="modernist"] #view-settings .alias-pair{ font-size:15px; font-weight:700; color:var(--color-text); }
+html[data-style="modernist"] #view-settings .alias-pair .alias-arrow{ margin:0 10px; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--km-ink-70); }
+html[data-style="modernist"] #view-settings .source-row-count{ font-size:11px; font-weight:800; letter-spacing:.08em; color:var(--color-accent-700); }
+html[data-style="modernist"] #view-settings :is(.swap-row-detail, .swap-row-ratio){ font-size:13px; color:var(--km-ink-72); }
+html[data-style="modernist"] #view-settings .alias-group-label{ margin:16px 0 0; padding-bottom:6px; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+html[data-style="modernist"] #view-settings .alias-group-label:first-child{ margin-top:10px; }
+html[data-style="modernist"] #view-settings .source-row :is(.btn, .btn.small-danger){
+  padding:8px 6px; border-color:transparent; background:none; font-size:11px; letter-spacing:.1em; color:var(--color-text);
+}
+html[data-style="modernist"] #view-settings .source-row :is(.btn, .btn.small-danger):hover{ border-color:transparent; background:none; color:var(--color-accent); }
+html[data-style="modernist"] #view-settings .source-row select{ min-height:44px; }
+html[data-style="modernist"] #view-settings .lc-row.lc-attention{ padding-left:10px; border-left:4px solid var(--color-accent); }
+html[data-style="modernist"] #view-settings .lc-status.lc-reconstructed{ font-weight:800; color:var(--color-accent-700); }
+
+/* HELP: the guide's button, what's new, and the quick answers as numbered lines that open the guide. */
+html[data-style="modernist"] #view-settings .whats-new-head{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+html[data-style="modernist"] #view-settings .whats-new-head a{ color:inherit; }
+html[data-style="modernist"] #view-settings .whats-new-entry ul{ font-size:14px; color:var(--color-text); }
+html[data-style="modernist"] #view-settings .link-btn{ margin-left:0; font-size:11px; font-weight:800; letter-spacing:.1em; text-decoration:none; color:var(--color-text); }
+html[data-style="modernist"] #view-settings .link-btn:hover{ color:var(--color-accent); }
+html[data-style="modernist"] #view-settings .help-answers{ padding:0; list-style:none; border-top:2px solid var(--color-divider); counter-reset:help; }
+html[data-style="modernist"] #view-settings .help-answers li{ margin:0; border-bottom:1px solid var(--color-divider); counter-increment:help; }
+html[data-style="modernist"] #view-settings .help-answers a{
+  display:flex; align-items:baseline; gap:16px; min-height:44px; padding:12px 0; text-decoration:none;
+  font-size:16px; font-weight:700; line-height:1.3; color:var(--color-text);
+}
+html[data-style="modernist"] #view-settings .help-answers a::before{ content:counter(help, decimal-leading-zero); flex:none; font-size:15px; font-weight:800; color:var(--color-accent-700); font-variant-numeric:tabular-nums; }
+html[data-style="modernist"] #view-settings .help-answers a::after{ content:'OPEN ↗'; margin-left:auto; flex:none; font-size:11px; font-weight:800; letter-spacing:.1em; }
+html[data-style="modernist"] #view-settings .help-answers a:hover{ color:var(--color-accent); }
+html[data-style="modernist"] #view-settings .share-list{ padding:0; list-style:none; }
+html[data-style="modernist"] #view-settings .share-list li{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0; padding:6px 0; border-bottom:1px solid var(--color-divider); font-size:15px; font-weight:700; }
+
+@media (max-width: 860px){
+  html[data-style="modernist"] #view-settings .filter-head{ padding:16px 16px 12px; }
+  html[data-style="modernist"] #view-settings .filter-head h1{ font-size:44px; }
+  html[data-style="modernist"] #view-settings .settings-body{ padding:0 16px 32px; }
+  html[data-style="modernist"] #view-settings .settings-tabs .btn{ padding:12px 12px; }
+}
+
+/* ============================== EVERYTHING ELSE ==============================
+   What the handoff does not draw: the bars across the top, the dialogs, the Group Viewer, the toast and the sign-in card.
+   The bridge already gives them the colours, square corners and typeface; this gives them the type and rules of the rest:
+   11px capitals for labels, 2px rules, 44px boxes on grey, red for the main action, links as small red capitals. */
+
+/* The bars (UPDATE, CONVERTER, OFFLINE): a red rule beneath, the name in small red capitals, the words in ink. */
+html[data-style="modernist"] .offline-bar{ gap:12px; padding:10px 28px; border-bottom:2px solid var(--color-accent); background:var(--color-accent-100); color:var(--color-text); font-size:13px; font-weight:600; }
+html[data-style="modernist"] .offline-bar b{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+
+/* Dialogs. */
+html[data-style="modernist"] :is(.modal-panel, .mini-panel){ border:2px solid var(--color-text); background:var(--color-bg); }
+html[data-style="modernist"] .modal-panel h1{ margin-bottom:8px; font-size:32px; font-weight:800; line-height:1; letter-spacing:-0.02em; }
+html[data-style="modernist"] .mini-panel h2{ margin-bottom:6px; font-size:24px; font-weight:800; line-height:1.05; letter-spacing:-0.02em; }
+html[data-style="modernist"] :is(.modal-panel, .mini-panel) .subtle{ font-size:14px; line-height:1.45; color:var(--km-ink-72); }
+html[data-style="modernist"] .modal-close{ display:flex; align-items:center; justify-content:center; width:32px; height:32px; border:2px solid var(--color-divider); background:none; color:var(--color-text); font-size:18px; }
+html[data-style="modernist"] .modal-close:hover{ border-color:var(--color-accent); color:var(--color-accent); }
+html[data-style="modernist"] .modal-close::before{ content:''; position:absolute; inset:-8px; }
+html[data-style="modernist"] :is(.field-label, .source-photos-label, .mini-field span, .band-title){ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] :is(.modal-panel, .mini-panel) :is(input[type="text"], input[type="email"], input[type="number"], input[type="date"], input[type="search"], select){
+  min-height:44px; border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text);
+}
+html[data-style="modernist"] textarea#importInput{ border:2px solid var(--color-divider); background:var(--color-surface); font-size:14px; }
+html[data-style="modernist"] :is(.modal-panel, .mini-panel) :is(input, select, textarea):focus{ border-color:var(--color-accent); }
+html[data-style="modernist"] .meal-type-btn{ border:2px solid var(--color-divider); background:transparent; font-size:14px; font-weight:700; letter-spacing:.02em; }
+html[data-style="modernist"] .meal-type-btn:hover{ border-color:var(--color-accent); color:var(--color-accent-700); }
+html[data-style="modernist"] .meal-type-btn.on{ border-color:var(--km-fill); background:var(--km-fill); color:var(--km-on-accent); }
+/* Links that act: small red capitals, no underline (CANCEL, WRITE ONE BY HAND, the review's answers). */
+html[data-style="modernist"] :is(.modal-panel, .mini-panel) :is(.link-btn, .stale-bar button, .rv-row button, .rv-undo button, .spell-row button, .line-check button, .source-photo-thumb figcaption button){
+  text-decoration:none; font-size:12px; font-weight:800; letter-spacing:.08em; color:var(--color-accent-700);
+}
+html[data-style="modernist"] :is(.modal-panel, .mini-panel) .link-btn:hover{ color:var(--color-accent); }
+/* The review's notes and warnings: a red bar down the side on the red wash, no box. */
+html[data-style="modernist"] :is(.rv-section, .line-checks, .spell-row, ul.before-save, .stale-bar){
+  border:0; border-left:4px solid var(--color-accent); background:var(--color-accent-100); color:var(--color-text);
+}
+html[data-style="modernist"] :is(.rv-section, .line-checks) h4{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] :is(.rv-section.rv-red, .line-checks.unread){ border-left-color:var(--color-accent-700); }
+html[data-style="modernist"] .add-form{ border-top:2px solid var(--color-divider); }
+html[data-style="modernist"] :is(.source-photo-img, .pdf-card){ border:2px solid var(--color-divider); }
+
+/* The Group Viewer: each dish's square and lane in its token colour (groupColour), the lane's words in the colour that reads on
+   all four, the dish's name at 22px, its start time in red capitals, the chosen line-up in red. */
+html[data-style="modernist"] .stacked-recipe-head{ gap:10px; }
+html[data-style="modernist"] .stacked-recipe-head h3{ font-size:22px; font-weight:800; letter-spacing:-0.01em; }
+html[data-style="modernist"] .stacked-recipe .recipe-swatch{ width:12px; height:12px; }
+html[data-style="modernist"] :is(.stacked-recipe-serves, .stacked-recipe-start){ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+html[data-style="modernist"] .timeline-lane-abs[data-recipe-id] span{ color:var(--km-on-group); font-weight:700; }
+html[data-style="modernist"] .group-lineup .btn[aria-pressed="true"]{ border-color:var(--color-accent); color:var(--color-accent-700); }
+
+/* The toast: ink, with bold words. */
+html[data-style="modernist"] .toast{ padding:12px 18px; font-size:13px; font-weight:700; letter-spacing:.02em; }
+
+/* The sign-in card: a 2px ink frame, the app's name as a heading, 44px boxes, the red button. Its name stays "Kitchen" (D31). */
+html[data-style="modernist"] .login-card{ padding:32px; border:2px solid var(--color-text); background:var(--color-bg); }
+html[data-style="modernist"] .login-card h1{ margin-bottom:6px; font-size:32px; font-weight:800; letter-spacing:-0.02em; text-transform:none; }
+html[data-style="modernist"] .login-card p{ font-size:14px; color:var(--km-ink-72); }
+html[data-style="modernist"] .login-card label{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] .login-card input{ min-height:44px; border:2px solid var(--color-divider); background:var(--color-surface); font-size:16px; }
+html[data-style="modernist"] .login-card input:focus{ border-color:var(--color-accent); }
+html[data-style="modernist"] .login-card button{ min-height:44px; background:var(--km-fill); color:var(--km-on-accent); font-size:13px; font-weight:800; letter-spacing:.06em; }
+html[data-style="modernist"] .login-card button:hover{ background:var(--km-fill-hover); }
+html[data-style="modernist"] .login-error{ color:var(--color-accent-700); font-weight:600; }
+
+@media (max-width: 860px){
+  html[data-style="modernist"] .offline-bar{ padding-left:16px; padding-right:16px; }
+}

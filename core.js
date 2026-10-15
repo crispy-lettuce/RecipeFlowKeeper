@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-13.4';
+const KITCHEN_CORE_VERSION = '2026-10-15.1';
 
 
 /* ======================= quantity split ======================= */
@@ -553,6 +553,10 @@ function computeColumns(groups, stages){
   });
 
   const columns = [];
+  /* Which handles still name a GROUP of raw ingredients rather than the output of a step. A box that brings together two or
+     more step outputs is marked `merge`: the Modernist style draws those differently from a step that adds raw ingredients
+     to one thing being cooked (docs/PLAN-MODERNIST.md, 15 Oct 2026). Layout and colour do not read it. */
+  const rawHandles = new Set(groups.map(g=> g.handle));
 
   stages.forEach((stageOps, stageIdx)=>{
     const consumed = new Set();
@@ -572,8 +576,10 @@ function computeColumns(groups, stages){
       const color = boxes.length>1 && !oneFamily ? MERGE_COLOR : boxes[0].color;
       const family = oneFamily ? boxes[0].family : op.output;
       op.inputs.forEach(h=>consumed.add(h));
+      const stepInputs = op.inputs.filter(h=> !rawHandles.has(h)).length;
       newBoxes.push({ outputHandle:op.output, rowStart, rowSpan, label:op.label, duration:op.duration||null, color, family, passthrough:false,
-        ...(op.prep ? { prep:true } : {}) });
+        ...(op.prep ? { prep:true } : {}), ...(stepInputs > 1 ? { merge:true } : {}) });
+      rawHandles.delete(op.output);
     });
 
     const carried = [];

@@ -3890,8 +3890,8 @@ const check = (name, pass, detail) => {
         stIng.join('|') === 'INGREDIENT LOOKUP|WORD MATCHES|SHOPPING AISLES|SWAPS|DICTIONARY' && !stNav.includes('swaps') && stNav.includes('settings'),
         JSON.stringify([stIng, stNav]));
   /* CALENDAR joined App on 9 Oct 2026 (P3 PR 2), RECIPE SHARING and BACKUP TO GOOGLE DRIVE on 10 Oct; before their migrations each only says it is waiting. */
-  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, preparation, calendar, sharing and Drive backup; the last tab is remembered',
-        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|PREPARATION|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
+  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, style, preparation, calendar, sharing and Drive backup; the last tab is remembered',
+        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|STYLE|PREPARATION|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
         JSON.stringify([stLib, stApp, stKept]));
   /* Since #95 (13 Oct) the dictionary's fold is its heading, DICTIONARY (n), like every list on the tab. */
   const stDict = () => page.evaluate(() => ({ list: document.getElementById('dictionaryList').offsetParent !== null,
@@ -6936,6 +6936,805 @@ const check = (name, pass, detail) => {
         JSON.stringify(owTap.tables) === '["planner_days:upsert","meal_groups:upsert"]' && JSON.stringify(owTap.day) === '["ow-main","ow-dhal","ow-cake"]'
         && JSON.stringify(owTap.groups) === '[["ow-main","ow-cake"]]' && !owTap.often.includes('ow-cake'), JSON.stringify(owTap));
   await ow.close();
+
+  /* ---- The second style, Modernist (docs/PLAN-MODERNIST.md, step 1: the switch) ----
+     Classic is what every device has until it chooses, and the choice is this device's alone: localStorage, never the
+     database. What is proved here is the mechanism: the attribute is set before the page body exists, it survives a
+     reload, Archivo is asked for only once Modernist is on, and Style and Appearance move independently. What each screen
+     looks like in Modernist is checked screen by screen as they are built. */
+  const watchStyle = () => {
+    window.__styleAtBody = null;
+    new MutationObserver((m, o) => { if (document.body) { window.__styleAtBody = document.documentElement.getAttribute('data-style'); o.disconnect(); } })
+      .observe(document, { childList: true, subtree: true });
+  };
+  const archivoAsked = label => net.seen.filter(x => x.page === label && /family=Archivo/.test(x.url)).length;
+  const look = pg => pg.evaluate(() => ({
+    style: document.documentElement.getAttribute('data-style'), theme: document.documentElement.getAttribute('data-theme'),
+    stored: (() => { try { return localStorage.getItem('kitchen.style'); } catch (e) { return 'BLOCKED'; } })(),
+    bodyFont: getComputedStyle(document.body).fontFamily, monoFont: getComputedStyle(document.getElementById('sideCount')).fontFamily,
+    radius: getComputedStyle(document.querySelector('.new-recipe')).borderTopLeftRadius, bg: getComputedStyle(document.body).backgroundColor,
+    chrome: document.querySelector('meta[name="theme-color"]').getAttribute('content'), writes: window.__WRITES__.length,
+    optionsText: [...document.querySelectorAll('#setStyle option')].map(o => o.textContent).join(','), chosen: document.getElementById('setStyle').value
+  }));
+
+  const sty = await browser.newPage();
+  sty.__label = 'style';
+  await sty.addInitScript(watchStyle);
+  await sty.clock.setFixedTime(FIXTURE_NOW);
+  await sty.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await sty.waitForTimeout(1200);
+  await sty.click('.navlink[data-view="settings"]');
+  await sty.click('[data-settings-tab-btn="app"]');
+  const s0 = await look(sty);
+  check('a device that has never chosen is Classic: the attribute says so, set before the body existed, in Plex and with 2px corners',
+        s0.style === 'classic' && (await sty.evaluate(() => window.__styleAtBody)) === 'classic' && s0.stored === null &&
+        /IBM Plex Sans/.test(s0.bodyFont) && /IBM Plex Mono/.test(s0.monoFont) && s0.radius === '2px' && s0.bg === 'rgb(234, 228, 213)', JSON.stringify(s0));
+  check('    and has not asked for Archivo', archivoAsked('style') === 0, String(archivoAsked('style')));
+  check('Settings → APP has a STYLE select beside APPEARANCE, CLASSIC first and chosen',
+        s0.optionsText === 'CLASSIC,MODERNIST' && s0.chosen === 'classic' &&
+        (await sty.evaluate(() => { const a = document.getElementById('setDarkMode').closest('.settings-block'), b = document.getElementById('setStyle').closest('.settings-block'); return a.nextElementSibling === b && b.dataset.settingsTab === 'app'; })));
+
+  await sty.selectOption('#setStyle', 'modernist');
+  await sty.waitForTimeout(300);
+  const s1 = await look(sty);
+  check('choosing MODERNIST sets the attribute and remembers it on this device',
+        s1.style === 'modernist' && s1.stored === 'modernist' && s1.chosen === 'modernist', JSON.stringify(s1));
+  check('    the page is now in Archivo throughout (the mono face too), with square corners and the Modernist ground',
+        /^"?Archivo/.test(s1.bodyFont) && /^"?Archivo/.test(s1.monoFont) && s1.radius === '0px' && s1.bg === 'rgb(243, 242, 242)', JSON.stringify(s1));
+  check('    and only now does it ask for Archivo; the browser chrome takes the Modernist ground',
+        archivoAsked('style') === 1 && s1.chrome === '#f3f2f2', `asked ${archivoAsked('style')}×, chrome ${s1.chrome}`);
+  check('    the choice is this device\'s: nothing is written to the database', s1.writes === s0.writes, `${s0.writes} → ${s1.writes} writes`);
+
+  /* All four: Style and Appearance are independent, in either order. */
+  await sty.selectOption('#setDarkMode', 'dark');
+  await sty.waitForTimeout(300);
+  const s2 = await look(sty);
+  check('Modernist dark: the theme moved and the style did not, and the ground is the dark one',
+        s2.style === 'modernist' && s2.theme === 'dark' && s2.bg === 'rgb(22, 21, 20)' && s2.chrome === '#161514', JSON.stringify(s2));
+  await sty.selectOption('#setStyle', 'classic');
+  await sty.waitForTimeout(300);
+  const s3 = await look(sty);
+  check('Classic dark: the style moved back and the theme did not, and every Classic value is back',
+        s3.style === 'classic' && s3.theme === 'dark' && s3.bg === 'rgb(20, 18, 16)' && s3.chrome === '#141210' && s3.stored === null &&
+        /IBM Plex Sans/.test(s3.bodyFont) && s3.radius === '2px', JSON.stringify(s3));
+  await sty.selectOption('#setDarkMode', 'light');
+  await sty.waitForTimeout(300);
+  await sty.selectOption('#setStyle', 'modernist');
+  await sty.waitForTimeout(300);
+  const s4 = await look(sty);
+  check('Modernist light again, reached the other way round: Classic light, Classic dark, Modernist dark and Modernist light all work',
+        s4.style === 'modernist' && s4.theme === 'light' && s4.bg === 'rgb(243, 242, 242)' && s4.chrome === '#f3f2f2', JSON.stringify(s4));
+
+  /* The reload is the proof that the choice outlives the page, and the observer that the first paint is already right. */
+  await sty.reload();
+  await sty.waitForTimeout(1200);
+  const s5 = await sty.evaluate(() => ({ atBody: window.__styleAtBody, style: document.documentElement.getAttribute('data-style'), bg: getComputedStyle(document.body).backgroundColor }));
+  check('after a reload the style is Modernist before the page body exists, so Classic never flashes first',
+        s5.atBody === 'modernist' && s5.style === 'modernist' && s5.bg === 'rgb(243, 242, 242)', JSON.stringify(s5));
+  check('    and the reload asked for Archivo again, the way a fresh start does', archivoAsked('style') === 2, String(archivoAsked('style')));
+  await sty.close();
+
+  /* Storage that will not answer is Classic, not an error. */
+  const stb = await browser.newPage();
+  stb.__label = 'style, blocked storage';
+  await stb.addInitScript(() => { const bad = () => { throw new Error('blocked'); }; try { Object.defineProperty(window, 'localStorage', { get: bad }); } catch (e) {} });
+  await stb.clock.setFixedTime(FIXTURE_NOW);
+  await stb.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await stb.waitForTimeout(800);
+  check('with storage blocked the style is Classic, and the page still starts',
+        (await stb.evaluate(() => document.documentElement.getAttribute('data-style'))) === 'classic' && (await stb.locator('.rcard').count()) > 0);
+  await stb.close();
+
+  /* ---- Modernist, step 2: the sidebar ----
+     228px, numbered rows, the brand renamed, the count at the right. It folds to a 56px rail on the Planner and on a viewer
+     in cooking mode (and on any viewer between 861 and 1180px, as Classic does for the width); the rail peeks it, ‹ folds
+     it, and another screen resets it. Widths are read after the 0.22s transition. Classic is checked alongside, unchanged. */
+  const navState = pg => pg.evaluate(() => {
+    const vis = el => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+    return { w: Math.round(document.querySelector('.sidebar').getBoundingClientRect().width), rail: vis(document.getElementById('navRailBtn')),
+      links: [...document.querySelectorAll('.navlink')].filter(vis).length, hide: vis(document.getElementById('navHideBtn')),
+      peekTab: vis(document.getElementById('sidebarPeekBtn')), focus: document.activeElement && document.activeElement.id };
+  });
+  const settle = pg => pg.waitForTimeout(400);
+
+  const nc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  nc.__label = 'sidebar, classic';
+  await nc.clock.setFixedTime(FIXTURE_NOW);
+  await nc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await nc.waitForTimeout(1200);
+  await nc.click('.navlink[data-view="planner"]'); await settle(nc);
+  const c0 = await navState(nc);
+  const cBrand = await nc.evaluate(() => ({ brand: document.querySelector('.brand').innerText.trim(), before: getComputedStyle(document.querySelector('.navlink'), '::before').content }));
+  check('Classic\'s sidebar is as it was on the Planner: 214px, six links, no rail, "Kitchen", no numbers',
+        c0.w === 214 && c0.links === 6 && !c0.rail && cBrand.brand === 'Kitchen' && cBrand.before === 'none', JSON.stringify([c0, cBrand]));
+  await nc.close();
+
+  const nv = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  nv.__label = 'sidebar, modernist';
+  await nv.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await nv.clock.setFixedTime(FIXTURE_NOW);
+  await nv.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await nv.waitForTimeout(1200);
+  const m0 = await navState(nv);
+  const mLook = await nv.evaluate(() => {
+    const sb = document.querySelector('.sidebar').getBoundingClientRect(), sl = document.getElementById('navShortlist');
+    const count = sl.querySelector('.nav-count'), sep = sl.querySelector('.nav-sep');
+    return { brand: document.querySelector('.brand').innerText.trim(), before: getComputedStyle(document.querySelector('.navlink'), '::before').content,
+      text: sl.textContent, count: count && count.textContent, sepShown: !!sep && getComputedStyle(sep).display !== 'none',
+      countGap: count ? Math.round(sb.right - count.getBoundingClientRect().right) : null };
+  });
+  check('Modernist\'s sidebar on Recipes: 228px, six numbered links, "Recipe Wrangler", no rail',
+        m0.w === 228 && m0.links === 6 && !m0.rail && !m0.hide && mLook.brand === 'Recipe Wrangler' && /counter\(nav, decimal-leading-zero\)/.test(mLook.before),
+        JSON.stringify([m0, mLook.brand, mLook.before]));
+  check('    the shortlist count sits at the right of its row without its " · ", and the row\'s words are unchanged',
+        mLook.text === 'SHORTLIST · 1' && mLook.count === '1' && !mLook.sepShown && mLook.countGap >= 18 && mLook.countGap <= 24, JSON.stringify(mLook));
+
+  await nv.click('.navlink[data-view="planner"]'); await settle(nv);
+  const m1 = await navState(nv);
+  check('on the Planner it folds to the 56px rail, and only the rail shows', m1.w === 56 && m1.rail && m1.links === 0 && !m1.peekTab, JSON.stringify(m1));
+  await nv.click('#navRailBtn'); await settle(nv);
+  const m2 = await navState(nv);
+  check('    tapping the rail peeks the whole sidebar, with ‹ in place of the square, and focus on ‹',
+        m2.w === 228 && !m2.rail && m2.links === 6 && m2.hide && m2.focus === 'navHideBtn', JSON.stringify(m2));
+  const hit = await nv.evaluate(() => {
+    const b = document.getElementById('navHideBtn'), r = b.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const on = (x, y) => { const e = document.elementFromPoint(x, y); return !!e && e.closest('#navHideBtn') === b; };
+    return { size: [Math.round(r.width), Math.round(r.height)], inside: [on(r.left - 5, cy), on(r.right + 5, cy), on(cx, r.top - 5), on(cx, r.bottom + 5)], outside: on(r.left - 8, cy) };
+  });
+  check('    ‹ is drawn 32px square and answers a tap 6px around it (44px), and no further',
+        hit.size.join() === '32,32' && hit.inside.every(Boolean) && !hit.outside, JSON.stringify(hit));
+  await nv.click('#navHideBtn'); await settle(nv);
+  const m3 = await navState(nv);
+  check('    ‹ folds it again, and focus goes back to the rail', m3.w === 56 && m3.rail && m3.focus === 'navRailBtn', JSON.stringify(m3));
+  await nv.click('#navRailBtn'); await settle(nv);
+  await nv.click('.navlink[data-view="shopping"]'); await settle(nv);
+  const m4 = await navState(nv);
+  await nv.click('.navlink[data-view="planner"]'); await settle(nv);
+  const m5 = await navState(nv);
+  check('    another screen ends the peek: Shopping is full width, and the Planner is folded again on return',
+        m4.w === 228 && !m4.rail && m5.w === 56 && m5.rail, JSON.stringify([m4, m5]));
+
+  await nv.click('#navRailBtn'); await settle(nv);
+  await nv.click('.navlink[data-view="recipes"]'); await settle(nv);
+  await nv.locator('.rcard').first().click(); await settle(nv);
+  const v0 = await navState(nv);
+  await nv.click('#view-viewer .toggle-track'); await settle(nv);
+  const v1 = await navState(nv);
+  await nv.click('#view-viewer .toggle-track'); await settle(nv);
+  const v2 = await navState(nv);
+  check('on a recipe the sidebar stays open, folds when cooking mode goes on and opens when it goes off',
+        v0.w === 228 && v1.w === 56 && v1.rail && !v1.peekTab && v2.w === 228, JSON.stringify([v0, v1, v2]));
+  await nv.setViewportSize({ width: 1100, height: 800 }); await settle(nv);
+  const v3 = await navState(nv);
+  check('    between 861 and 1180px a recipe has the rail, where Classic folds the sidebar for the width, and no ☰ tab',
+        v3.w === 56 && v3.rail && !v3.peekTab, JSON.stringify(v3));
+  await nv.setViewportSize({ width: 412, height: 915 }); await settle(nv);
+  const v4 = await nv.evaluate(() => ({ w: Math.round(document.querySelector('.sidebar').getBoundingClientRect().width), vw: window.innerWidth,
+    rail: getComputedStyle(document.getElementById('navRailBtn')).display }));
+  check('    on a phone it is Classic\'s bar across the top, with no rail', v4.w === v4.vw && v4.rail === 'none', JSON.stringify(v4));
+  await nv.close();
+
+  /* ---- Modernist, step 3: Recipes ----
+     The title and its count beside the search; SOURCE beside SORT on the KEYWORD row; three cards to a row sharing 2px rules;
+     the card's ✓ takes a recipe off the shortlist (Modernist only). Classic is checked alongside, as it was. */
+  const recipesLook = pg => pg.evaluate(() => {
+    const vis = el => !!el && el.getClientRects().length > 0;
+    const r = el => el.getBoundingClientRect(), h1 = document.querySelector('.recipes-titleblock h1'), sb = document.querySelector('#view-recipes .searchbar');
+    const src = document.getElementById('sourceFilterSelect'), row = src && src.closest('.filter-row');
+    const cards = [...document.querySelectorAll('#recipeGrid .rcard')].slice(0, 3).map(c => { const b = r(c), s = getComputedStyle(c);
+      return { top: Math.round(b.top), left: Math.round(b.left), right: Math.round(b.right), w: Math.round(b.width), bt: s.borderTopWidth, bl: s.borderLeftWidth, br: s.borderRightWidth, bb: s.borderBottomWidth }; });
+    const grid = document.getElementById('recipeGrid'), gridRight = Math.round(r(grid).right - parseFloat(getComputedStyle(grid).paddingRight));
+    return { title: vis(h1) ? h1.textContent : null, count: vis(document.getElementById('recipesCountMod')) ? document.getElementById('recipesCountMod').textContent : null,
+      inBar: vis(document.getElementById('resultCount')) ? document.getElementById('resultCount').textContent : null,
+      beside: vis(h1) ? (r(sb).left > r(h1).right && r(sb).top < r(h1).bottom && r(sb).bottom > r(h1).top) : null, barH: Math.round(r(sb).height),
+      sources: document.querySelectorAll('#sourceFilterSelect').length, sourceRow: row ? row.querySelector('.filter-row-label').textContent : null,
+      cards, gridRight, photoH: Math.round(r(document.querySelector('#recipeGrid .rcard-photo')).height) };
+  });
+  const rcc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  rcc.__label = 'recipes, classic';
+  await rcc.clock.setFixedTime(FIXTURE_NOW);
+  await rcc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await rcc.waitForTimeout(1200);
+  const k0 = await recipesLook(rcc);
+  check('Classic\'s Recipes is as it was: no title, "3 OF 3" in the search bar, SOURCE on a row of its own',
+        k0.title === null && k0.count === null && k0.inBar === '3 OF 3' && k0.sources === 1 && k0.sourceRow === 'SOURCE', JSON.stringify(k0));
+  const cId = await rcc.evaluate(() => document.querySelector('#recipeGrid .rcard').dataset.id);
+  await rcc.click(`#recipeGrid [data-shortlist="${cId}"]`); await rcc.waitForTimeout(200);
+  await rcc.click(`#recipeGrid [data-shortlist="${cId}"]`); await rcc.waitForTimeout(200);
+  const k1 = await rcc.evaluate(id => ({ on: loadShortlist().some(i => i.recipeId === id), label: document.querySelector(`[data-shortlist="${id}"]`).getAttribute('aria-label') }), cId);
+  check('    and in Classic the card\'s ✓ only says it is on the shortlist: a second tap leaves it there', k1.on && k1.label === 'On shortlist', JSON.stringify(k1));
+  await rcc.close();
+
+  const rc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  rc.__label = 'recipes, modernist';
+  await rc.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await rc.clock.setFixedTime(FIXTURE_NOW);
+  await rc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await rc.waitForTimeout(1200);
+  const r0 = await recipesLook(rc);
+  check('Modernist\'s Recipes: "Recipes" and "3 RECIPES" beside a 48px search bar, and no count inside the bar',
+        r0.title === 'Recipes' && r0.count === '3 RECIPES' && r0.inBar === null && r0.beside === true && r0.barH === 48, JSON.stringify(r0));
+  check('    SOURCE sits on the KEYWORD row, and there is still one source select', r0.sources === 1 && r0.sourceRow === 'KEYWORD', JSON.stringify(r0));
+  const [ca, cb, cc] = r0.cards;
+  check('    three cards to a row, equal widths filling it, sharing 2px rules (the first row draws the top, the first card the left)',
+        ca.top === cb.top && cb.top === cc.top && ca.left < cb.left && cb.left < cc.left && Math.abs(ca.w - cb.w) <= 1 && Math.abs(cb.w - cc.w) <= 1 && Math.abs(cc.right - r0.gridRight) <= 1 &&
+        ca.bt === '2px' && ca.bl === '2px' && cb.bl === '0px' && cb.bt === '2px' && [ca, cb, cc].every(x => x.br === '2px' && x.bb === '2px') && r0.photoH === 176,
+        JSON.stringify(r0.cards) + ' grid right ' + r0.gridRight + ' photo ' + r0.photoH);
+  await rc.fill('#searchInput', 'Soup'); await rc.waitForTimeout(200);
+  check('    a filter turns the count into "1 OF 3"', (await rc.textContent('#recipesCountMod')) === '1 OF 3');
+  await rc.fill('#searchInput', ''); await rc.waitForTimeout(200);
+
+  const mId = await rc.evaluate(() => document.querySelector('#recipeGrid .rcard').dataset.id);
+  const sl = () => rc.evaluate(id => ({ on: loadShortlist().filter(i => i.recipeId === id).length,
+    label: document.querySelector(`[data-shortlist="${id}"]`).getAttribute('aria-label'), text: document.querySelector(`[data-shortlist="${id}"]`).textContent,
+    writes: window.__WRITES__.filter(w => w.table === 'shortlist_items').map(w => w.op) }), mId);
+  const t0 = await sl();
+  await rc.click(`#recipeGrid [data-shortlist="${mId}"]`); await rc.waitForTimeout(300);
+  const t1 = await sl();
+  await rc.click(`#recipeGrid [data-shortlist="${mId}"]`); await rc.waitForTimeout(300);
+  const t2 = await sl();
+  check('    the card\'s + puts it on the shortlist and becomes ✓, "Remove from shortlist"',
+        t0.on === 0 && t1.on === 1 && t1.text === '✓' && t1.label === 'Remove from shortlist', JSON.stringify([t0, t1]));
+  check('    and ✓ takes it off again with one delete, back to +, "Add to shortlist"',
+        t2.on === 0 && t2.text === '+' && t2.label === 'Add to shortlist' && t2.writes.length === t1.writes.length + 1 && t2.writes[t2.writes.length - 1] === 'delete',
+        JSON.stringify([t1.writes, t2]));
+  const fav = await rc.evaluate(() => {
+    const on = document.querySelector('.rcard-favourite.on'), off = document.querySelector('.rcard-favourite:not(.on)');
+    const s = el => getComputedStyle(el), a = el => getComputedStyle(el, '::after');
+    const btn = document.querySelector('.rcard-shortlist'), r = btn.getBoundingClientRect();
+    const hits = [[r.left - 4, r.top + 18], [r.right + 4, r.top + 18], [r.left + 18, r.top - 4], [r.left + 18, r.bottom + 4]]
+      .map(([x, y]) => { const e = document.elementFromPoint(x, y); return !!e && e.closest('.rcard-shortlist') === btn; });
+    return { onColour: s(on).color, offColour: s(off).color, textSize: s(on).fontSize,
+      onMask: /fill='black'/.test(a(on).webkitMaskImage || a(on).maskImage), offMask: /fill='none'/.test(a(off).webkitMaskImage || a(off).maskImage),
+      size: Math.round(r.width) + 'x' + Math.round(r.height), hits, img: s(document.querySelector('.rcard-photo img') || document.body).filter };
+  });
+  check('    the favourite is the Lucide star, filled and red when on, outlined in ink when off; photos are not filtered to grey',
+        fav.onColour === 'rgb(236, 48, 19)' && fav.offColour === 'rgb(32, 30, 29)' && fav.textSize === '0px' && fav.onMask && fav.offMask && fav.img === 'none', JSON.stringify(fav));
+  check('    the corner buttons are drawn 36px and answer a tap 4px around them (44px)', fav.size === '36x36' && fav.hits.every(Boolean), JSON.stringify(fav));
+
+  /* Switching style redraws the screen: SOURCE goes back to a row of its own without a reload. */
+  await rc.evaluate(() => applyStyle('classic')); await rc.waitForTimeout(200);
+  const r1 = await recipesLook(rc);
+  await rc.evaluate(() => applyStyle('modernist')); await rc.waitForTimeout(200);
+  const r2 = await recipesLook(rc);
+  check('switching style redraws Recipes at once: SOURCE moves to its own row in Classic and back in Modernist',
+        r1.sourceRow === 'SOURCE' && r1.sources === 1 && r2.sourceRow === 'KEYWORD' && r2.sources === 1, JSON.stringify([r1.sourceRow, r2.sourceRow]));
+  await rc.close();
+
+  /* ---- Modernist, step 4: the recipe viewer ----
+     A made-up recipe shaped like the design's own example (groups a to e; two steps, a step that adds raw ingredients to
+     one, a merge of two steps, a last column), so the table has every kind of cell and four group rules. */
+  const STEW = ['TITLE: Test Layered Stew', 'SOURCE: Test Kitchen', 'TIME: 75 min', 'SERVINGS: 4', '',
+    'STEPS:', 'Take the test chunks out first.', 'Start the test rice when the sauce simmers.', '',
+    'GROUP a:', '500 g test chunks', '150 g test yoghurt', '1 tbsp test spice', '', 'GROUP b:', '1 test onion', '2 test cloves', '',
+    'GROUP c:', '400 g test passata', '', 'GROUP d:', '150 ml test cream', '', 'GROUP e:', '1 bunch test herbs', '',
+    'STAGE:', 'MERGE a -> A: Mix and rest [30 min]', 'MERGE b -> B: Soften gently [8 min]', '',
+    'STAGE:', 'MERGE A -> C: Grill until charred [12 min]', 'MERGE B, c -> D: Add the passata and simmer [15 min]', '',
+    'STAGE:', 'MERGE C, D, d -> E: Blend and simmer together [10 min]', '', 'STAGE:', 'MERGE E, e -> F: Scatter and serve [instant]'].join('\n');
+  const openStew = pg => pg.evaluate(sx => { loadRecipes().push({ id: 'mod-stew', title: 'Test Layered Stew', source: 'Test Kitchen', time: '75 min', servings: 4,
+    tags: { course: 'Main', keywords: [] }, history: [], syntax: sx }); openRecipe('mod-stew'); }, STEW);
+  const flowLook = pg => pg.evaluate(() => {
+    const m = document.getElementById('flowMount'), cs = el => getComputedStyle(el), top = sel => { const e = m.querySelector(sel); return e ? Math.round(e.getBoundingClientRect().top) : null; };
+    const box = h => m.querySelector(`.box-cell[data-handle="${h}"]`);
+    return { row: !!m.querySelector('.recipe-title-row'), titleSize: cs(m.querySelector('.recipe-title')).fontSize,
+      serves: (m.querySelector('.recipe-serves') || {}).textContent || null, ticked: (m.querySelector('.recipe-ticked') || {}).textContent || null,
+      titleTop: top('.recipe-title'), overviewTop: top('.timeline-strip'), setupTops: [...m.querySelectorAll('ol.setup li')].map(li => Math.round(li.getBoundingClientRect().top)),
+      inline: [...m.querySelectorAll('.box-cell')].filter(c => c.getAttribute('style')).length,
+      step: (b => b && { bg: cs(b).backgroundColor, bar: cs(b).borderLeftWidth + ' ' + cs(b).borderLeftColor })(box('A')),
+      addRaw: box('D') && box('D').className, merge: (b => b && { cls: b.className, bg: cs(b).backgroundColor })(box('E')),
+      final: (b => b && { cls: b.className, bg: cs(b).backgroundColor, size: cs(b).fontSize })(box('F')),
+      groupTops: [...m.querySelectorAll('.ing-cell')].map((c, i) => c.classList.contains('group-top') ? i : -1).filter(i => i >= 0),
+      groupRule: (c => c && cs(c).borderTopWidth + ' ' + cs(c).borderTopColor)(m.querySelector('.ing-cell.group-top')),
+      firstCol: Math.round(m.querySelector('.ing-cell').getBoundingClientRect().width),
+      lastLane: (l => l && { inline: /background/.test(l.getAttribute('style')), bg: cs(l).backgroundColor })(m.querySelector('.timeline-lane-row:last-child .timeline-lane-abs')) };
+  });
+
+  const vc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  vc.__label = 'viewer, classic';
+  await vc.clock.setFixedTime(FIXTURE_NOW);
+  await vc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await vc.waitForTimeout(1200);
+  await openStew(vc); await vc.waitForTimeout(300);
+  const fc = await flowLook(vc);
+  check('Classic\'s viewer is as it was: no title row or counter, the overview above the title, every box coloured inline, no kinds',
+        !fc.row && fc.serves === null && fc.overviewTop < fc.titleTop && fc.inline === 6 && !/box-(?:merge|final)/.test(fc.merge.cls + ' ' + fc.final.cls) && fc.groupTops.length === 0,
+        JSON.stringify(fc));
+  await vc.close();
+
+  const vm = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  vm.__label = 'viewer, modernist';
+  await vm.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await vm.clock.setFixedTime(FIXTURE_NOW);
+  await vm.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await vm.waitForTimeout(1200);
+  await openStew(vm); await vm.waitForTimeout(300);
+  const fm = await flowLook(vm);
+  check('Modernist\'s viewer: a 76px title with "SERVES 4" and "0 / 14 TICKED" beside it, then the set-up notes side by side, then the overview',
+        fm.row && fm.titleSize === '76px' && fm.serves === 'SERVES 4' && fm.ticked === '0 / 14 TICKED' && fm.titleTop < fm.overviewTop &&
+        fm.setupTops.length === 2 && fm.setupTops[0] === fm.setupTops[1] && fm.setupTops[0] < fm.overviewTop, JSON.stringify(fm));
+  check('    boxes are drawn by kind, with no inline colours: a step on grey with a 4px ink bar, a merge of two steps in ink, the last column in red',
+        fm.inline === 0 && fm.step.bg === 'rgb(234, 233, 233)' && fm.step.bar === '4px rgb(32, 30, 29)' && !/box-merge/.test(fm.addRaw) &&
+        /box-merge/.test(fm.merge.cls) && fm.merge.bg === 'rgb(32, 30, 29)' && /box-final/.test(fm.final.cls) && fm.final.bg === 'rgb(221, 43, 15)' && fm.final.size === '24px',
+        JSON.stringify([fm.step, fm.addRaw, fm.merge, fm.final]));
+  check('    a 4px ink rule across the ingredients where each group starts (rows 4, 6, 7 and 8), and a 270px ingredient column',
+        JSON.stringify(fm.groupTops) === '[3,5,6,7]' && fm.groupRule === '2px rgb(32, 30, 29)' && Math.abs(fm.firstCol - 270) <= 1, JSON.stringify([fm.groupTops, fm.groupRule, fm.firstCol]));
+  check('    the overview\'s lanes are ink, the last step red, with no inline colour', fm.lastLane && !fm.lastLane.inline && fm.lastLane.bg === 'rgb(221, 43, 15)', JSON.stringify(fm.lastLane));
+  await vm.click('#flowMount .box-cell[data-handle="C"]'); await vm.waitForTimeout(200);
+  check('    ticking "Grill" ticks what fed it, and the counter says 5 / 14', (await vm.textContent('#flowMount .recipe-ticked')) === '5 / 14 TICKED');
+  await vm.click('#view-viewer .toggle-track'); await vm.waitForTimeout(300);
+  const cook = await vm.evaluate(() => ({ bar: getComputedStyle(document.querySelector('#view-viewer .keep-awake-status')).backgroundColor,
+    scaleShown: document.querySelector('#view-viewer .viewer-scale-row').getClientRects().length > 0 }));
+  check('    cooking mode shows the red bar and hides COOK FOR', cook.bar === 'rgb(221, 43, 15)' && !cook.scaleShown, JSON.stringify(cook));
+  await vm.click('#view-viewer .toggle-track'); await vm.waitForTimeout(200);
+  await vm.evaluate(() => applyStyle('classic')); await vm.waitForTimeout(200);
+  const sw1 = await flowLook(vm);
+  await vm.evaluate(() => applyStyle('modernist')); await vm.waitForTimeout(200);
+  const sw2 = await flowLook(vm);
+  check('switching style redraws an open recipe: Classic\'s inline colours and no title row, then Modernist\'s again, ticks kept',
+        !sw1.row && sw1.inline === 6 && sw2.row && sw2.inline === 0 && sw2.ticked === '5 / 14 TICKED', JSON.stringify([sw1.row, sw1.inline, sw2.row, sw2.inline, sw2.ticked]));
+  await vm.close();
+
+  /* ---- Modernist, step 5: the Planner and the shortlist ----
+     A made-up fortnight: two grouped dishes today (one cooked, one for six), a pre-made dish tomorrow, a day away, and three
+     more ideas on the shortlist. Each button's 44px is measured by pointing at it, as the pills are drawn about 28px. */
+  const planWeek = pg => pg.evaluate(() => {
+    premadeAvailable = true;
+    const R = (id, title, course, time, servings, history) => ({ id, title, source: 'Test Kitchen', time, servings, tags: { course, keywords: [] }, history: history || [], syntax: 'TITLE: ' + title });
+    cache.recipes.push(R('pw1', 'Test Bean Stew with a Long Name to See It Clip', 'Main', '1 hr 10 min', 4, ['2026-09-22']), R('pw2', 'Test Green Side', 'Side', '15 min', 4),
+      R('pw3', 'Test Flatbread', 'Bread', '25 min', 4), R('pw4', 'Test Noodle Bowl', 'Main', '20 min', 2));
+    cache.plan['2026-09-22'] = { recipeIds: ['pw1', 'pw2'], servings: [6, 0], premade: ['', ''] };
+    cache.plan['2026-09-23'] = { recipeIds: ['pw4'], servings: [0], premade: ['dinner'] };
+    cache.plan['2026-09-24'] = { blank: true };
+    cache.groups.push({ id: 'pwg', dateIso: '2026-09-22', recipeIds: ['pw1', 'pw2'], name: '' });
+    cache.shortlist.push({ id: 'pws1', recipeId: 'pw3' }, { id: 'pws2', text: 'Something with test squash' }, { id: 'pws3', recipeId: 'pw4' });
+  });
+  const plannerLook = pg => pg.evaluate(() => {
+    const v = document.getElementById('view-planner'), cs = el => getComputedStyle(el), R = el => el.getBoundingClientRect();
+    const vis = el => !!el && el.getClientRects().length > 0 && cs(el).visibility !== 'hidden';
+    const week = v.querySelector('.week-label'), today = v.querySelector('.day-row.today'), panel = v.querySelector('.shortlist-panel');
+    const row = today.querySelector('.day-recipe-row'), t = row.querySelector('.day-recipe-title'), x = row.querySelector('.day-recipe-remove');
+    const pills = [...row.querySelectorAll('.day-recipe-serves, .day-recipe-premade, .day-recipe-cooked')];
+    return { h1: cs(v.querySelector('.planner-head h1')).fontSize, week: week.textContent.trim(), weekRule: cs(week).borderTopWidth + ' ' + cs(week).borderTopColor,
+      summary: (s => s ? s.textContent : null)(week.querySelector('.week-summary')), num: today.querySelector('.day-num').textContent,
+      numW: Math.round(R(today.querySelector('.day-num')).width), date: (d => d && { size: cs(d).fontSize, colour: cs(d).color })(today.querySelector('.day-date')),
+      title: { size: cs(t).fontSize, weight: cs(t).fontWeight, top: Math.round(R(t).top), h: Math.round(R(t).height) }, xTop: Math.round(R(x).top),
+      pillTops: pills.map(p => Math.round(R(p).top)), pillH: pills.map(p => Math.round(R(p).height)), below: pills.every(p => R(p).top >= R(t).bottom - 10),
+      cooked: (c => c && cs(c).backgroundColor)(row.querySelector('.day-recipe-cooked.done')), servesOn: (c => c && cs(c).borderTopColor)(row.querySelector('.day-recipe-serves.on')),
+      panelW: Math.round(R(panel).width), label: vis(panel.querySelector('.side-label')), headTitle: vis(panel.querySelector('.sl-head-title')),
+      collapseBtn: vis(document.getElementById('shortlistCollapseBtn')), rail: vis(document.getElementById('shortlistRailBtn')),
+      railText: document.getElementById('shortlistRailBtn').textContent.trim().replace(/\s+/g, ' '), count: document.getElementById('shortlistCount').textContent,
+      handle: vis(panel.querySelector('.sl-handle')), num1: (i => i && { content: getComputedStyle(i, '::before').content, colour: getComputedStyle(i, '::before').color })(panel.querySelector('.sl-item')),
+      railLabel: document.getElementById('shortlistRailBtn').getAttribute('aria-label'),
+      preview: (b => ({ bg: cs(b).backgroundColor, shown: vis(b) }))(panel.querySelector('.shopping-preview')),
+      daysW: Math.round(R(v.querySelector('.planner-days')).width), scroll: document.documentElement.scrollWidth, inner: innerWidth };
+  });
+  /* Points 21px above and below each visible button's middle (and either side, if it is drawn narrower than 44px), and asks
+     what a tap there lands on. Points off the screen are not asked. */
+  const hitScan = (pg, scope) => pg.evaluate(scope => {
+    const out = { n: 0, miss: [] };
+    for (const b of document.querySelectorAll(scope + ' button')) {
+      const r = b.getBoundingClientRect(); if (r.width < 4 || r.height < 4 || r.top < 0 || r.bottom > innerHeight) continue;
+      let hidden = false; for (let x = b; x; x = x.parentElement) { const c = getComputedStyle(x); if (c.display === 'none' || c.visibility === 'hidden') { hidden = true; break; } }
+      if (hidden) continue;
+      out.n++;
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      for (const [dx, dy] of [[0, -21], [0, 21]].concat(r.width < 44 ? [[-21, 0], [21, 0]] : [])) {
+        const px = cx + dx, py = cy + dy; if (px < 0 || py < 0 || px >= innerWidth || py >= innerHeight) continue;
+        const h = document.elementFromPoint(px, py);
+        if (!h || h.closest('button') !== b) out.miss.push(`${b.className.split(' ')[0]} "${b.textContent.trim().slice(0, 12)}" ${dx},${dy}`);
+      }
+    }
+    return out;
+  }, scope);
+
+  const plc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  plc.__label = 'planner, classic';
+  await plc.clock.setFixedTime(FIXTURE_NOW);
+  await plc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await plc.waitForTimeout(1200);
+  await planWeek(plc);
+  await plc.click('.navlink[data-view="planner"]'); await plc.waitForTimeout(400);
+  const q0 = await plannerLook(plc);
+  check('Classic\'s Planner is as it was: "THIS WEEK" with no dates or count, "TUE 22" on one line, the 340px panel with no rail and no collapse',
+        q0.week === 'THIS WEEK' && q0.summary === null && q0.num === 'TUE 22TODAY' && q0.date === null && q0.panelW === 340 && q0.label && !q0.headTitle && !q0.collapseBtn && !q0.rail && q0.handle,
+        JSON.stringify(q0));
+  await plc.close();
+
+  const plm = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  plm.__label = 'planner, modernist';
+  await plm.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await plm.clock.setFixedTime(FIXTURE_NOW);
+  await plm.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await plm.waitForTimeout(1200);
+  await planWeek(plm);
+  await plm.click('.navlink[data-view="planner"]'); await plm.waitForTimeout(400);
+  const ideas = await plm.evaluate(() => loadShortlist().length);
+  const q1 = await plannerLook(plm);
+  check('Modernist\'s Planner: a 46px title, "THIS WEEK · 22–24 SEP" and "3 PLANNED" under a 2px ink rule, each day a 92px column, today\'s date 24px in red',
+        q1.h1 === '46px' && /^THIS WEEK · 22–24 SEP/.test(q1.week) && q1.summary === '3 PLANNED' && q1.weekRule === '2px rgb(32, 30, 29)' &&
+        q1.num === 'TUE22TODAY' && q1.numW === 92 && q1.date.size === '24px' && q1.date.colour === 'rgb(236, 48, 19)', JSON.stringify(q1));
+  check('    a dish\'s name is 20px/800 on a line of its own with its × beside it, the pills on the next line, drawn 28px; ✓ COOKED in ink, SERVES 6 lit in red',
+        q1.title.size === '20px' && q1.title.weight === '800' && q1.title.h === 44 && q1.xTop === q1.title.top && q1.below && q1.pillTops.length === 3 &&
+        q1.pillTops.every(y => y === q1.pillTops[0]) && q1.pillH.every(h => h === 28) && q1.cooked === 'rgb(32, 30, 29)' && q1.servesOn === 'rgb(236, 48, 19)', JSON.stringify(q1));
+  check('    the 330px shortlist: "Shortlist" and its count with a collapse button, numbered rows in red with no ≡, the shopping block in red',
+        q1.panelW === 330 && q1.headTitle && !q1.label && q1.collapseBtn && !q1.rail && q1.count === `${ideas} IDEAS` && !q1.handle &&
+        /counter\(sl, decimal-leading-zero\)/.test(q1.num1.content) && q1.num1.colour === 'rgb(174, 24, 0)' && q1.preview.bg === 'rgb(221, 43, 15)', JSON.stringify(q1));
+  const planHits = await hitScan(plm, '#view-planner');
+  check('    every button on the Planner answers a tap 21px above and below its middle (44px), and either side when drawn narrower',
+        planHits.n >= 20 && planHits.miss.length === 0, `${planHits.n} buttons` + (planHits.miss.length ? '; missed: ' + planHits.miss.slice(0, 5).join(', ') : ''));
+
+  await plm.click('#shortlistCollapseBtn'); await plm.waitForTimeout(300);
+  const q2 = await plannerLook(plm);
+  const f2 = await plm.evaluate(() => document.activeElement.id);
+  check('    › collapses the shortlist to a 56px rail that says "Shortlist" and how many, the days take the room, and focus moves to the rail',
+        q2.panelW === 56 && q2.rail && q2.railText === `Shortlist${ideas}` && q2.railLabel === `Open the shortlist, ${ideas} ideas` && !q2.headTitle && !q2.preview.shown && q2.daysW === q1.daysW + 274 && f2 === 'shortlistRailBtn',
+        JSON.stringify([q2.panelW, q2.rail, q2.railText, q2.railLabel, q2.daysW, q1.daysW, f2]));
+  await plm.click('#shortlistRailBtn'); await plm.waitForTimeout(300);
+  const q3 = await plannerLook(plm);
+  const f3 = await plm.evaluate(() => document.activeElement.id);
+  check('    the rail opens it again, with focus on the collapse button', q3.panelW === 330 && !q3.rail && f3 === 'shortlistCollapseBtn', JSON.stringify([q3.panelW, q3.rail, f3]));
+  await plm.click('#shortlistCollapseBtn'); await plm.waitForTimeout(200);
+  await plm.click('#navRailBtn'); await plm.waitForTimeout(200);
+  await plm.click('.navlink[data-view="recipes"]'); await plm.waitForTimeout(300);
+  await plm.click('.navlink[data-view="planner"]'); await plm.waitForTimeout(300);
+  const q4 = (await plannerLook(plm)).panelW;
+  await plm.click('#navRailBtn'); await plm.waitForTimeout(200);
+  await plm.click('.navlink[data-view="shortlist"]'); await plm.waitForTimeout(300);
+  const q5 = await plm.evaluate(() => ({ view: state.view, w: Math.round(document.querySelector('#view-planner .shortlist-panel').getBoundingClientRect().width) }));
+  check('    collapsed it stays collapsed between screens, and SHORTLIST in the sidebar opens the Planner with it open',
+        q4 === 56 && q5.view === 'planner' && q5.w === 330, JSON.stringify([q4, q5]));
+
+  /* The shopping block is one link: a tap on its corner, nowhere near the words, opens the list. */
+  const corner = await plm.evaluate(() => { const r = document.querySelector('#view-planner .shopping-preview').getBoundingClientRect(); return [r.left + 6, r.top + 6]; });
+  await plm.mouse.click(corner[0], corner[1]); await plm.waitForTimeout(300);
+  check('    a tap anywhere on the red shopping block opens the shopping list', (await plm.evaluate(() => state.view)) === 'shopping');
+
+  /* Collapsed in Modernist, then Classic: Classic has no collapse and redraws its own days; back in Modernist it is as it was. */
+  await plm.click('.navlink[data-view="planner"]'); await plm.waitForTimeout(300);
+  await plm.click('#shortlistCollapseBtn'); await plm.waitForTimeout(200);
+  await plm.evaluate(() => applyStyle('classic')); await plm.waitForTimeout(300);
+  const q6 = await plannerLook(plm);
+  await plm.evaluate(() => applyStyle('modernist')); await plm.waitForTimeout(300);
+  const q7 = await plannerLook(plm);
+  check('switching style redraws the Planner: Classic\'s "TUE 22" and 340px panel even while Modernist\'s is collapsed, then Modernist\'s again, still collapsed',
+        q6.num === 'TUE 22TODAY' && q6.summary === null && q6.panelW === 340 && q6.label && !q6.rail && q7.num === 'TUE22TODAY' && q7.summary === '3 PLANNED' && q7.panelW === 56,
+        JSON.stringify([q6.num, q6.summary, q6.panelW, q7.num, q7.summary, q7.panelW]));
+  await plm.close();
+
+  const plp = await browser.newPage({ viewport: { width: 412, height: 915 } });
+  plp.__label = 'planner, modernist, phone';
+  await plp.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await plp.clock.setFixedTime(FIXTURE_NOW);
+  await plp.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await plp.waitForTimeout(1200);
+  await planWeek(plp);
+  await plp.click('.navlink[data-view="planner"]'); await plp.waitForTimeout(400);
+  const q8 = await plannerLook(plp);
+  const planHitsPhone = await hitScan(plp, '#view-planner');
+  check('Modernist\'s Planner on a phone: nothing runs off the side (a long name is clipped), the shortlist sits under the days with no collapse, buttons answer over 44px',
+        q8.scroll === q8.inner && q8.panelW === 412 && !q8.collapseBtn && !q8.rail && q8.headTitle && planHitsPhone.n >= 10 && planHitsPhone.miss.length === 0,
+        JSON.stringify([q8.scroll, q8.inner, q8.panelW, q8.collapseBtn, q8.rail, planHitsPhone.n, planHitsPhone.miss.slice(0, 4)]));
+  await plp.close();
+
+  /* ---- Modernist, step 6: the Shopping List ----
+     The fixture's list (PANTRY 3, PRODUCE 2). The square is a span beside the checkbox, which stays the thing that is
+     focused and ticked; EXPORT PNG and print were checked with the real html2canvas and the browser's print by hand. */
+  const shopLook = pg => pg.evaluate(() => {
+    const cs = el => getComputedStyle(el), R = el => el.getBoundingClientRect();
+    const cats = [...document.querySelectorAll('#shopBody .shop-category')].map(c => { const t = c.querySelector('.shop-category-title');
+      return { name: t.textContent, count: t.dataset.count || null, after: getComputedStyle(t, '::after').content, rule: cs(t).borderTopWidth + ' ' + cs(t).borderTopColor,
+        top: Math.round(R(c).top), left: Math.round(R(c).left) }; });
+    const item = document.querySelector('#shopBody .shop-item'), box = item.querySelector('.shop-box'), input = item.querySelector('input');
+    return { h1: cs(document.querySelector('#view-shopping .shop-head h1')).fontSize, meta: document.getElementById('shopMeta').textContent,
+      metaColour: cs(document.getElementById('shopMeta')).color, options: [...document.querySelectorAll('#shopWeekSelect option')].map(o => o.textContent),
+      cats, boxes: document.querySelectorAll('#shopBody .shop-box').length, box: box && { size: Math.round(R(box).width) + 'x' + Math.round(R(box).height), border: cs(box).borderTopWidth + ' ' + cs(box).borderTopColor },
+      inputOpacity: cs(input).opacity, rows: document.querySelectorAll('#shopBody .shop-item').length,
+      scroll: document.documentElement.scrollWidth, inner: innerWidth };
+  });
+  const shc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  shc.__label = 'shopping, classic';
+  await shc.clock.setFixedTime(FIXTURE_NOW);
+  await shc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await shc.waitForTimeout(1200);
+  await shc.evaluate(() => showView('shopping')); await shc.waitForTimeout(300);
+  const h0 = await shopLook(shc);
+  check('Classic\'s Shopping List is as it was: "THIS WEEK · 5 items · 2 recipes", no dates in the weeks, the checkbox itself, no square or count',
+        h0.meta === 'THIS WEEK · 5 items · 2 recipes' && h0.options[0] === 'THIS WEEK' && h0.boxes === 0 && h0.inputOpacity === '1' && h0.cats.every(c => c.count === null) &&
+        h0.cats.length === 2 && h0.cats[0].left === h0.cats[1].left, JSON.stringify(h0));
+  await shc.close();
+
+  const shm = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  shm.__label = 'shopping, modernist';
+  await shm.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await shm.clock.setFixedTime(FIXTURE_NOW);
+  await shm.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await shm.waitForTimeout(1200);
+  await shm.evaluate(() => showView('shopping')); await shm.waitForTimeout(300);
+  const h1 = await shopLook(shm);
+  check('Modernist\'s Shopping List: a 56px title over "THIS WEEK · 22–24 SEP · 5 ITEMS · 2 RECIPES · 0 TICKED" in red, the weeks dated in the select',
+        h1.h1 === '56px' && h1.meta === 'THIS WEEK · 22–24 SEP · 5 ITEMS · 2 RECIPES · 0 TICKED' && h1.metaColour === 'rgb(174, 24, 0)' && h1.options[0] === 'THIS WEEK · 22–24 SEP',
+        JSON.stringify([h1.h1, h1.meta, h1.metaColour, h1.options]));
+  check('    the aisles side by side in two columns, each under a 2px ink rule, its name alone in the title and "ticked / total" drawn beside it',
+        h1.cats.length === 2 && h1.cats[0].top === h1.cats[1].top && h1.cats[1].left > h1.cats[0].left + 300 &&
+        h1.cats.every(c => c.rule === '2px rgb(32, 30, 29)' && /attr\(data-count\)|\d \/ \d/.test(c.after)) &&
+        h1.cats[0].name === 'PANTRY' && h1.cats[0].count === '0 / 3' && h1.cats[1].count === '0 / 2', JSON.stringify(h1.cats));
+  check('    each row has a 22px square with a 2px ink rule, and the checkbox is still there, unseen',
+        h1.boxes === h1.rows && h1.rows === 5 && h1.box.size === '22x22' && h1.box.border === '2px rgb(32, 30, 29)' && h1.inputOpacity === '0', JSON.stringify(h1.box));
+
+  const shw0 = await shm.evaluate(() => window.__WRITES__.length);
+  /* A tap where the square is drawn: the unseen checkbox lies over it, so that is what a finger meets. */
+  const sqr = await shm.evaluate(() => { const r = document.querySelectorAll('#shopBody .shop-box')[1].getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+  await shm.mouse.click(sqr[0], sqr[1]); await shm.waitForTimeout(300);
+  const sht1 = await shm.evaluate(() => { const it = document.querySelectorAll('#shopBody .shop-item')[1], cs = el => getComputedStyle(el);
+    return { checked: it.classList.contains('checked') && it.querySelector('input').checked, box: cs(it.querySelector('.shop-box')).backgroundColor,
+      fade: cs(it.querySelector('.shop-item-main')).opacity, strike: cs(it.querySelector('.shop-item-name')).textDecorationLine,
+      meta: document.getElementById('shopMeta').textContent, count: it.closest('.shop-category').querySelector('.shop-category-title').dataset.count, writes: window.__WRITES__.length }; });
+  check('    a tap on the square ticks the row (one write): the square goes red, the row fades and is struck through, and the counts say 1',
+        sht1.checked && sht1.box === 'rgb(221, 43, 15)' && sht1.fade === '0.45' && sht1.strike === 'line-through' && /· 1 TICKED$/.test(sht1.meta) && sht1.count === '1 / 3' && sht1.writes === shw0 + 1,
+        JSON.stringify(sht1));
+  /* Onto the third row's checkbox by Tab, as a keyboard user arrives: the ring is drawn on its square. Space then ticks it.
+     (The list is redrawn on every tick, so focus is lost after it, in both styles: a follow-up, D13.) */
+  await shm.locator('#shopBody .shop-item input').nth(1).focus(); await shm.keyboard.press('Tab'); await shm.waitForTimeout(100);
+  const shk0 = await shm.evaluate(() => { const it = document.querySelectorAll('#shopBody .shop-item')[2];
+    return { onIt: document.activeElement === it.querySelector('input'), ring: getComputedStyle(it.querySelector('.shop-box')).outlineStyle }; });
+  await shm.keyboard.press('Space'); await shm.waitForTimeout(300);
+  const shk1 = await shm.evaluate(() => ({ checked: document.querySelectorAll('#shopBody .shop-item')[2].classList.contains('checked'), meta: document.getElementById('shopMeta').textContent }));
+  check('    from the keyboard: Tab onto a row draws the focus ring on its square, and Space ticks it',
+        shk0.onIt && shk0.ring === 'solid' && shk1.checked && /· 2 TICKED$/.test(shk1.meta), JSON.stringify([shk0, shk1]));
+  await shm.click('#shopHideCheckedBtn'); await shm.waitForTimeout(300);
+  const shh = await shopLook(shm);
+  check('    HIDE TICKED leaves the rows still to buy, and the aisle still counts the whole of it ("2 / 3")',
+        shh.rows === 3 && shh.cats[0].count === '2 / 3', JSON.stringify([shh.rows, shh.cats.map(c => c.count)]));
+  await shm.click('#shopHideCheckedBtn'); await shm.waitForTimeout(200);
+  await shm.evaluate(() => applyStyle('classic')); await shm.waitForTimeout(300);
+  const h2 = await shopLook(shm);
+  await shm.evaluate(() => applyStyle('modernist')); await shm.waitForTimeout(300);
+  const h3 = await shopLook(shm);
+  check('switching style redraws the Shopping List: Classic\'s words and checkboxes, then Modernist\'s again, ticks kept',
+        h2.meta === 'THIS WEEK · 5 items · 2 recipes' && h2.boxes === 0 && /· 2 TICKED$/.test(h3.meta) && h3.boxes === 5, JSON.stringify([h2.meta, h2.boxes, h3.meta, h3.boxes]));
+  await shm.close();
+
+  const shp = await browser.newPage({ viewport: { width: 412, height: 915 } });
+  shp.__label = 'shopping, modernist, phone';
+  await shp.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await shp.clock.setFixedTime(FIXTURE_NOW);
+  await shp.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await shp.waitForTimeout(1200);
+  await shp.evaluate(() => showView('shopping')); await shp.waitForTimeout(300);
+  const h4 = await shopLook(shp);
+  check('Modernist\'s Shopping List on a phone: one column, and nothing runs off the side',
+        h4.cats[0].left === h4.cats[1].left && h4.cats[1].top > h4.cats[0].top && h4.scroll === h4.inner, JSON.stringify([h4.cats, h4.scroll, h4.inner]));
+  await shp.close();
+
+  /* ---- Modernist, step 7: History ----
+     The fixture's diary: 15 Sep cooked, 19 Sep one cooked and one ad hoc (a lunch), 20 Sep two ad hoc; today is 22 Sep. */
+  const histLook = pg => pg.evaluate(() => {
+    const cs = el => getComputedStyle(el), R = el => el.getBoundingClientRect(), cell = d => document.querySelector(`.history-day[data-date="${d}"]`);
+    const tag = d => (t => t ? t.textContent : null)(cell(d) && cell(d).querySelector('.history-day-tag'));
+    const panel = document.querySelector('#view-history .shortlist-panel'), h1 = document.getElementById('historyMonthLabel');
+    const prev = document.getElementById('historyPrevMonth'), next = document.getElementById('historyNextMonth'), today = document.getElementById('historyTodayBtn');
+    const other = document.querySelector('.history-day.other-month'), grid = document.getElementById('historyGrid');
+    return { h1: cs(h1).fontSize, arrows: [prev, next].map(b => Math.round(R(b).width) + 'x' + Math.round(R(b).height) + ' ' + cs(b).fontSize),
+      oneLine: Math.abs(R(prev).top - R(next).top) < 2 && R(next).left > R(h1).right, buttonsBelow: R(today).top >= R(h1).bottom - 4,
+      grid: cs(grid).borderTopWidth + ' ' + cs(grid).borderTopColor + ' gap ' + cs(grid).rowGap, cellH: Math.round(R(cell('2026-09-08')).height),
+      tags: ['2026-09-15', '2026-09-19', '2026-09-20', '2026-09-22', '2026-09-08'].map(tag),
+      ring: cs(cell('2026-09-22')).boxShadow, todayNum: cs(cell('2026-09-22').querySelector('.history-day-num')).color,
+      other: other && { cell: cs(other).opacity, num: cs(other.querySelector('.history-day-num')).opacity, bg: cs(other).backgroundColor },
+      detail: document.getElementById('historyDayDetail').textContent.trim(), pies: document.querySelectorAll('#historyStats svg').length,
+      bars: [...document.querySelectorAll('#historyStats .hstat-bar')].map(b => ({ h: Math.round(R(b).height), segs: [...b.children].map(x => cs(x).backgroundColor) })),
+      mix: [1, 2, 3, 4, 5].map(i => cs(document.documentElement).getPropertyValue('--km-mix-' + i).trim()),
+      panelScroll: panel.scrollWidth - panel.clientWidth, scroll: document.documentElement.scrollWidth - innerWidth };
+  });
+  const hc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  hc.__label = 'history, classic';
+  await hc.clock.setFixedTime(FIXTURE_NOW);
+  await hc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await hc.waitForTimeout(1200);
+  await hc.evaluate(() => showView('history')); await hc.waitForTimeout(300);
+  const y0 = await histLook(hc);
+  check('Classic\'s History is as it was: no word at the foot of a cell, the two pies, ← and → as words, nothing in the panel until a day is picked',
+        y0.tags.every(t => t === null) && y0.pies === 2 && y0.bars.length === 0 && y0.detail === '' && y0.arrows.every(a => / 16px$/.test(a)), JSON.stringify(y0));
+  await hc.close();
+
+  const hm = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  hm.__label = 'history, modernist';
+  await hm.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await hm.clock.setFixedTime(FIXTURE_NOW);
+  await hm.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await hm.waitForTimeout(1200);
+  await hm.evaluate(() => showView('history')); await hm.waitForTimeout(300);
+  const y1 = await histLook(hm);
+  check('Modernist\'s History: the month at 56px between 40px ‹ and › squares, TODAY, + ENTRY and CSV on the line below, the grid in a 2px ink frame, cells 92px',
+        y1.h1 === '56px' && y1.arrows.every(a => /^40x40 0px$/.test(a)) && y1.oneLine && y1.buttonsBelow && y1.grid === '2px rgb(32, 30, 29) gap 2px' && y1.cellH >= 92,
+        JSON.stringify([y1.h1, y1.arrows, y1.oneLine, y1.buttonsBelow, y1.grid, y1.cellH]));
+  check('    each cell says COOKED, AD HOC or TODAY at its foot; today is ringed in red with a red date; other months\' days are faint on the same ground',
+        JSON.stringify(y1.tags) === '["COOKED","COOKED","AD HOC","TODAY",null]' && y1.ring === 'rgb(236, 48, 19) 0px 0px 0px 3px inset' && y1.todayNum === 'rgb(236, 48, 19)' &&
+        y1.other.cell === '1' && y1.other.num === '0.4' && y1.other.bg === 'rgb(243, 242, 242)', JSON.stringify([y1.tags, y1.ring, y1.todayNum, y1.other]));
+  check('    the panel says "Pick a day" until one is picked, and does not scroll sideways', y1.detail === 'Pick a day' && y1.panelScroll === 0, JSON.stringify([y1.detail, y1.panelScroll]));
+  check('    the meal-base mixes are two 28px bars in the accent and ink, with no pies',
+        y1.pies === 0 && y1.bars.length === 2 && y1.bars.every(b => b.h === 28 && b.segs[0] === 'rgb(236, 48, 19)' && b.segs[1] === 'rgb(32, 30, 29)'), JSON.stringify(y1.bars));
+
+  await hm.click('.history-day[data-date="2026-09-19"]'); await hm.waitForTimeout(300);
+  const y2 = await hm.evaluate(() => {
+    const cs = el => getComputedStyle(el), R = el => el.getBoundingClientRect(), c = document.querySelector('.history-day[data-date="2026-09-19"]');
+    const t = document.querySelector('.history-day-detail-title'), adhoc = document.querySelector('.history-day-recipe.diary-adhoc');
+    const meal = adhoc.querySelector('.diary-meal-tag'), kind = adhoc.querySelector('.diary-kind');
+    return { cell: cs(c).backgroundColor + ' / ' + cs(c).color, title: cs(t).fontSize + ' ' + cs(t).borderBottomWidth + ' ' + cs(t).borderBottomColor,
+      entries: document.querySelectorAll('.history-day-recipe').length, mealFirst: R(meal).left < R(kind).left && Math.abs(R(meal).top - R(kind).top) < 2,
+      below: R(meal).top > R(adhoc.querySelector('span > :first-child')).bottom - 2, sep: getComputedStyle(kind, '::before').content, colour: cs(meal).color };
+  });
+  check('    picking a day fills it with ink; the panel\'s day title is 26px over a 2px ink rule; an entry reads "LUNCH · AD HOC" in red under its name',
+        y2.cell === 'rgb(32, 30, 29) / rgb(243, 242, 242)' && y2.title === '26px 2px rgb(32, 30, 29)' && y2.entries === 2 && y2.mealFirst && y2.below && /·/.test(y2.sep) && y2.colour === 'rgb(174, 24, 0)',
+        JSON.stringify(y2));
+  const histHits = await hitScan(hm, '#view-history .history-head');
+  check('    ‹, › and the buttons beside them answer a tap over 44px', histHits.n === 5 && histHits.miss.length === 0, JSON.stringify(histHits));
+  await hm.evaluate(() => { applyTheme('dark'); rerenderForTheme(); }); await hm.waitForTimeout(300);
+  const y3 = await histLook(hm);
+  check('    in dark the bars take the dark colours without a redraw, and the five are all different (the spec\'s dark accent-300 and accent-800 are one colour)',
+        y3.bars[0].segs[0] === 'rgb(255, 86, 60)' && y3.bars[0].segs[1] === 'rgb(241, 238, 236)' && new Set(y3.mix).size === 5, JSON.stringify([y3.bars, y3.mix]));
+  await hm.evaluate(() => { applyTheme('light'); rerenderForTheme(); }); await hm.waitForTimeout(200);
+  await hm.evaluate(() => applyStyle('classic')); await hm.waitForTimeout(300);
+  const y4 = await histLook(hm);
+  await hm.evaluate(() => applyStyle('modernist')); await hm.waitForTimeout(300);
+  const y5 = await histLook(hm);
+  check('switching style redraws History: Classic\'s pies and plain cells, then Modernist\'s bars and words again',
+        y4.pies === 2 && y4.bars.length === 0 && y4.tags.every(t => t === null) && y5.pies === 0 && y5.bars.length === 2 && y5.tags[3] === 'TODAY',
+        JSON.stringify([y4.pies, y4.bars.length, y4.tags, y5.pies, y5.bars.length, y5.tags]));
+  await hm.close();
+
+  const hp = await browser.newPage({ viewport: { width: 412, height: 915 } });
+  hp.__label = 'history, modernist, phone';
+  await hp.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await hp.clock.setFixedTime(FIXTURE_NOW);
+  await hp.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await hp.waitForTimeout(1200);
+  await hp.evaluate(() => showView('history')); await hp.waitForTimeout(300);
+  const y6 = await histLook(hp);
+  check('Modernist\'s History on a phone: ‹ September 2026 › on one line, and nothing runs off the side',
+        y6.oneLine && y6.scroll === 0 && y6.panelScroll === 0, JSON.stringify([y6.oneLine, y6.scroll, y6.panelScroll, y6.h1]));
+  await hp.close();
+
+  /* ---- Modernist, step 8: Settings ----
+     CSS only: the tabs as words setOver a 2px rule, blocks between 2px rules, 44px boxes on grey, lists as lines, the quick
+     answers numbered. The fixture's library check, sources and keywords give the lists rows. */
+  const setLook = pg => pg.evaluate(() => {
+    const cs = el => getComputedStyle(el), R = el => el.getBoundingClientRect();
+    const bar = document.querySelector('.settings-tabs'), on = bar.querySelector('.btn.active'), off = bar.querySelector('.btn:not(.active)');
+    const block = [...document.querySelectorAll('#view-settings .settings-block')].find(b => b.getClientRects().length);
+    const row = [...document.querySelectorAll('#view-settings .source-row:not(.lc-attention)')].find(r => r.getClientRects().length);
+    const box = [...document.querySelectorAll('#view-settings input[type="text"], #view-settings select.sort')].find(b => b.getClientRects().length);
+    const a = [...document.querySelectorAll('#helpAnswers a')].find(x => x.getClientRects().length);
+    return { h1: cs(document.querySelector('#view-settings .filter-head h1')).fontSize,
+      on: on && { rule: cs(on).borderBottomWidth + ' ' + cs(on).borderBottomColor, bg: cs(on).backgroundColor, onRule: Math.round(R(on).bottom) === Math.round(R(bar).bottom), h: Math.round(R(on).height) },
+      off: off && cs(off).borderBottomColor, bar: cs(bar).borderBottomWidth + ' ' + cs(bar).position,
+      block: block && { max: cs(block).maxWidth, rule: cs(block).borderBottomWidth, label: cs(block.querySelector('.side-label')).fontSize },
+      box: box && { h: Math.round(R(box).height), border: cs(box).borderTopWidth, bg: cs(box).backgroundColor },
+      lookup: (l => l.getClientRects().length ? { h: Math.round(R(l).height), border: cs(l).borderTopColor } : null)(document.getElementById('ingredientLookup')),
+      row: row && { left: cs(row).borderLeftWidth, bottom: cs(row).borderBottomWidth, listTop: cs(row.parentElement).borderTopWidth,
+        btn: (b => b && { border: cs(b).borderTopColor, size: cs(b).fontSize })(row.querySelector('.btn')) },
+      answer: a && { num: getComputedStyle(a, '::before').content, open: getComputedStyle(a, '::after').content, h: Math.round(R(a).height), href: a.getAttribute('href'), list: cs(a.parentElement).listStyleType },
+      /* The page, and the settings body, which scrolls by itself: a box too wide for a phone scrolls inside it. */
+      scroll: Math.max(document.documentElement.scrollWidth - innerWidth, (b => b.scrollWidth - b.clientWidth)(document.querySelector('.settings-body'))) };
+  });
+  const setTab = async (pg, t) => { await pg.click(`[data-settings-tab-btn="${t}"]`); await pg.waitForTimeout(200); };
+  const gc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  gc.__label = 'settings, classic';
+  await gc.clock.setFixedTime(FIXTURE_NOW);
+  await gc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await gc.waitForTimeout(1200);
+  await gc.evaluate(() => showView('settings')); await gc.waitForTimeout(300);
+  await setTab(gc, 'library');
+  const g0 = await setLook(gc);
+  await setTab(gc, 'help');
+  const g0h = await setLook(gc);
+  check('Classic\'s Settings is as it was: boxed tabs with the open one filled, list rows as cards, the quick answers a bulleted list',
+        g0.on.bg !== 'rgba(0, 0, 0, 0)' && g0.row.left === '1px' && g0.block.max === 'none' && g0h.answer.list === 'disc' && !/OPEN/.test(g0h.answer.open), JSON.stringify([g0.on, g0.row, g0.block, g0h.answer]));
+  await gc.close();
+
+  const gm = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  gm.__label = 'settings, modernist';
+  await gm.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await gm.clock.setFixedTime(FIXTURE_NOW);
+  await gm.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await gm.waitForTimeout(1200);
+  await gm.evaluate(() => showView('settings')); await gm.waitForTimeout(300);
+  await setTab(gm, 'ingredients');
+  const g1 = await setLook(gm);
+  check('Modernist\'s Settings: a 56px title; the tabs are words, the open one with a 4px red rule standing on the 2px rule beneath, 44px to tap',
+        g1.h1 === '56px' && g1.on.rule === '4px rgb(236, 48, 19)' && g1.on.bg === 'rgba(0, 0, 0, 0)' && g1.on.onRule && g1.on.h >= 44 && g1.off === 'rgba(0, 0, 0, 0)' && /^2px /.test(g1.bar),
+        JSON.stringify([g1.h1, g1.on, g1.off, g1.bar]));
+  check('    blocks up to 860px between 2px rules with 11px labels; boxes and selects 44px with a 2px rule on grey; the lookup 48px in red',
+        g1.block.max === '860px' && g1.block.rule === '2px' && g1.block.label === '11px' && g1.box.h === 44 && g1.box.border === '2px' && g1.box.bg === 'rgb(234, 233, 233)' &&
+        g1.lookup.h === 48 && g1.lookup.border === 'rgb(236, 48, 19)', JSON.stringify([g1.block, g1.box, g1.lookup]));
+  await setTab(gm, 'library');
+  await gm.click('#libraryCheckRunBtn'); await gm.waitForTimeout(200);
+  const g2 = await setLook(gm);
+  check('    lists are lines, not cards: 1px rules under a 2px one, their buttons as small words',
+        g2.row.left === '0px' && g2.row.bottom === '1px' && g2.row.listTop === '2px' && g2.row.btn.border === 'rgba(0, 0, 0, 0)' && g2.row.btn.size === '11px', JSON.stringify(g2.row));
+  await setTab(gm, 'help');
+  const g3 = await setLook(gm);
+  check('    the quick answers are numbered lines, each "OPEN ↗" and 44px, still going to the guide',
+        /counter\(help, decimal-leading-zero\)/.test(g3.answer.num) && /OPEN ↗/.test(g3.answer.open) && g3.answer.h >= 44 && g3.answer.href === 'help.html#planner' && g3.answer.list === 'none',
+        JSON.stringify(g3.answer));
+  const pin = await gm.evaluate(() => { const b = document.querySelector('.settings-body'), t = document.querySelector('.settings-tabs'); const y0 = t.getBoundingClientRect().top;
+    b.scrollTop = 600; const y1 = t.getBoundingClientRect().top; b.scrollTop = 0; return { y0: Math.round(y0), y1: Math.round(y1), scrolled: b.scrollHeight > b.clientHeight + 600 }; });
+  check('    the tabs stay pinned as the page scrolls, and LIBRARY opens its own blocks',
+        pin.scrolled && pin.y1 === pin.y0 && /sticky$/.test(g1.bar) && g2.row !== null, JSON.stringify([pin, g1.bar]));
+  await gm.close();
+
+  const gp = await browser.newPage({ viewport: { width: 412, height: 915 } });
+  gp.__label = 'settings, modernist, phone';
+  await gp.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await gp.clock.setFixedTime(FIXTURE_NOW);
+  await gp.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await gp.waitForTimeout(1200);
+  await gp.evaluate(() => showView('settings')); await gp.waitForTimeout(300);
+  const setOver = [];
+  for (const t of ['ingredients', 'library', 'app', 'help']) { await setTab(gp, t); setOver.push((await setLook(gp)).scroll); }
+  check('Modernist\'s Settings on a phone: no tab runs off the side', setOver.every(x => x === 0), JSON.stringify(setOver));
+  await gp.close();
+
+  /* ---- Modernist, step 9: everything else ----
+     The Group Viewer's colours (the one place Classic's palette still reached), the dialogs, the bars and the sign-in card. */
+  const groupLook = pg => pg.evaluate(() => {
+    const cs = el => getComputedStyle(el);
+    return { swatches: [...document.querySelectorAll('.stacked-recipe .recipe-swatch')].map(e => cs(e).backgroundColor),
+      lanes: [...new Set([...document.querySelectorAll('.timeline-lane-abs[data-recipe-id]')].map(e => cs(e).backgroundColor))],
+      laneText: (e => e && cs(e).color)(document.querySelector('.timeline-lane-abs[data-recipe-id] span')) };
+  });
+  const openGroup = async pg => { await pg.evaluate(() => showView('planner')); await pg.waitForTimeout(300);
+    await pg.locator('.group-badge').first().click({ position: { x: 20, y: 10 } }); await pg.waitForTimeout(500); };
+  const ec = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  ec.__label = 'everything else, classic';
+  await ec.clock.setFixedTime(FIXTURE_NOW);
+  await ec.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await ec.waitForTimeout(1200);
+  await openGroup(ec);
+  const e0 = await groupLook(ec);
+  check('Classic\'s Group Viewer keeps its own colours: gold and sage for the two dishes',
+        e0.swatches.join() === 'rgb(176, 138, 46),rgb(124, 148, 115)' && e0.lanes.length === 2 && e0.lanes[0] === 'rgb(176, 138, 46)', JSON.stringify(e0));
+  await ec.close();
+
+  const em = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  em.__label = 'everything else, modernist';
+  await em.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await em.clock.setFixedTime(FIXTURE_NOW);
+  await em.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await em.waitForTimeout(1200);
+  await openGroup(em);
+  const e1 = await groupLook(em);
+  await em.evaluate(() => { applyTheme('dark'); rerenderForTheme(); }); await em.waitForTimeout(300);
+  const e2 = await groupLook(em);
+  await em.evaluate(() => { applyTheme('light'); rerenderForTheme(); }); await em.waitForTimeout(200);
+  check('Modernist\'s Group Viewer draws the dishes in ink and red, white words on the lanes; in dark, light ink and red with dark words',
+        e1.swatches.join() === 'rgb(32, 30, 29),rgb(221, 43, 15)' && e1.lanes.join() === 'rgb(32, 30, 29),rgb(221, 43, 15)' && e1.laneText === 'rgb(255, 255, 255)' &&
+        e2.swatches.join() === 'rgb(241, 238, 236),rgb(255, 86, 60)' && e2.laneText === 'rgb(22, 21, 20)', JSON.stringify([e1, e2]));
+  await em.evaluate(() => applyStyle('classic')); await em.waitForTimeout(300);
+  const e3 = await groupLook(em);
+  await em.evaluate(() => applyStyle('modernist')); await em.waitForTimeout(300);
+  check('    switching style redraws it in Classic\'s gold and sage', e3.swatches.join() === 'rgb(176, 138, 46),rgb(124, 148, 115)', JSON.stringify(e3));
+
+  await em.evaluate(() => { showView('history'); }); await em.waitForTimeout(200);
+  await em.click('#historyAddEntryBtn'); await em.waitForTimeout(300);
+  await em.click('#adHocMealChoices .meal-type-btn[data-meal="lunch"]'); await em.waitForTimeout(200);
+  const e4 = await em.evaluate(() => { const cs = el => getComputedStyle(el), panel = document.querySelector('#adHocOverlay .mini-panel');
+    return { frame: cs(panel).borderTopWidth + ' ' + cs(panel).borderTopColor, h2: cs(panel.querySelector('h2')).fontSize + ' ' + cs(panel.querySelector('h2')).fontWeight,
+      on: cs(panel.querySelector('.meal-type-btn.on')).backgroundColor, cancel: (b => cs(b).textDecorationLine + ' ' + cs(b).color)(document.getElementById('adHocCancel')),
+      input: Math.round(document.getElementById('adHocTitle').getBoundingClientRect().height) }; });
+  check('    a dialog has a 2px ink frame, a 24px heading, the chosen meal in red, 44px boxes and CANCEL as red words',
+        e4.frame === '2px rgb(32, 30, 29)' && e4.h2 === '24px 800' && e4.on === 'rgb(221, 43, 15)' && e4.cancel === 'none rgb(174, 24, 0)' && e4.input >= 44, JSON.stringify(e4));
+  await em.click('#adHocCancel'); await em.waitForTimeout(200);
+  await em.evaluate(() => { document.getElementById('offlineBar').hidden = false; }); await em.waitForTimeout(100);
+  const e5 = await em.evaluate(() => { const bar = document.getElementById('offlineBar'), cs = el => getComputedStyle(el);
+    return { rule: cs(bar).borderBottomWidth + ' ' + cs(bar).borderBottomColor, label: cs(bar.querySelector('b')).fontSize + ' ' + cs(bar.querySelector('b')).fontWeight + ' ' + cs(bar.querySelector('b')).color }; });
+  check('    the bars across the top have a red rule and their name in small red capitals', e5.rule === '2px rgb(236, 48, 19)' && e5.label === '11px 800 rgb(174, 24, 0)', JSON.stringify(e5));
+  await em.evaluate(() => { document.getElementById('offlineBar').hidden = true; showLoginGate('Test message'); }); await em.waitForTimeout(200);
+  const e6 = await em.evaluate(() => { const cs = el => getComputedStyle(el), card = document.querySelector('.login-card'), btn = document.getElementById('loginSubmit');
+    return { name: card.querySelector('h1').textContent, size: cs(card.querySelector('h1')).fontSize, frame: cs(card).borderTopWidth, btn: cs(btn).backgroundColor,
+      btnH: Math.round(btn.getBoundingClientRect().height), inH: Math.round(document.getElementById('loginEmail').getBoundingClientRect().height) }; });
+  check('    the sign-in card: "Kitchen" at 32px in a 2px frame, 44px boxes and the red button',
+        e6.name === 'Kitchen' && e6.size === '32px' && e6.frame === '2px' && e6.btn === 'rgb(221, 43, 15)' && e6.btnH >= 44 && e6.inH >= 44, JSON.stringify(e6));
+  await em.close();
 
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to

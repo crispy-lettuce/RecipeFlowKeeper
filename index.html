@@ -43,6 +43,33 @@
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
 })();
 </script>
+<script>
+/* Resolve the style before the first paint, for the same reason as the theme above (docs/PLAN-MODERNIST.md).
+ *
+ * Classic or Modernist is a choice this device makes, so unlike the theme it is not in the database: localStorage is
+ * the setting here, not a mirror of one. Absent, blocked or anything else means Classic, which is what every device
+ * had before the choice existed. The attribute is set before the stylesheet below is parsed, so the old style never
+ * paints first.
+ *
+ * Archivo is requested only when the style is Modernist: Classic's fonts are unchanged and a Classic device never
+ * asks for it. loadArchivoFont is global so applyStyle can call it when the choice is made in Settings.
+ */
+function loadArchivoFont(){
+  if(document.getElementById('archivoFont')) return;
+  var l = document.createElement('link');
+  l.id = 'archivoFont';
+  l.rel = 'stylesheet';
+  l.href = 'https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap';
+  document.head.appendChild(l);
+}
+(function(){
+  var style = 'classic';
+  try { if(localStorage.getItem('kitchen.style') === 'modernist') style = 'modernist'; }
+  catch(e){ /* private browsing or blocked storage: Classic is a fine answer */ }
+  document.documentElement.setAttribute('data-style', style);
+  if(style === 'modernist') loadArchivoFont();
+})();
+</script>
 <style>
   :root{
     --paper:#F5F1E6;
@@ -1620,6 +1647,15 @@
   }
   .login-error[hidden]{ display:none; }
 </style>
+<!-- STYLE (docs/PLAN-MODERNIST.md). Classic's stylesheet above is not touched by it. An element that only Modernist draws
+     carries .mod-only: this one rule hides it, and styles/modernist.css shows it again under [data-style="modernist"] with
+     its own display. It is here, not in that file, so a Classic device is right even if the file has not loaded.
+     The file is linked after the <style> above on purpose (its variable blocks tie Classic's dark block, and the later wins).
+     Its ?v= is APP_VERSION: GitHub Pages caches each file separately, as it does core.js. test/core.test.js checks they match. -->
+<style id="style-base">
+  .mod-only{ display:none; }
+</style>
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-15.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -1636,7 +1672,15 @@
 </div>
 <div class="app">
   <nav class="sidebar">
-    <div class="brand">Kitchen</div>
+    <!-- Modernist only (docs/PLAN-MODERNIST.md): the rail the sidebar folds to on the Planner and while cooking, and the
+         name, square and hide button in its brand row. Hidden in Classic by .mod-only; the peek they open and close is the
+         same .sidebar-peek as the tab below. -->
+    <button class="nav-rail mod-only" id="navRailBtn" aria-label="Show the menu">
+      <span class="brand-square" aria-hidden="true"></span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      <span class="nav-rail-name">Recipe Wrangler</span>
+    </button>
+    <div class="brand"><span class="brand-classic">Kitchen</span><span class="brand-mod mod-only">Recipe Wrangler</span><span class="brand-square mod-only" aria-hidden="true"></span><button class="nav-hide-btn mod-only" id="navHideBtn" aria-label="Hide the menu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button></div>
     <button class="navlink active" data-view="recipes">RECIPES</button>
     <button class="navlink" data-view="planner">PLANNER</button>
     <button class="navlink" data-view="shortlist" id="navShortlist">SHORTLIST</button>
@@ -1697,12 +1741,17 @@
     <!-- ================= HOME / SEARCH ================= -->
     <section id="view-recipes" class="view active">
       <div class="filter-head">
-        <div class="searchbar">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8172" stroke-width="1.6" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.3-4.3"/></svg>
-          <input id="searchInput" type="search" autocomplete="off"
-                 placeholder="Search by name, ingredient, or note — Enter to keep as a tag"
-                 aria-label="Search recipes">
-          <div class="result-count" id="resultCount"></div>
+        <!-- Modernist sets the title and its count beside the search (docs/PLAN-MODERNIST.md); Classic shows neither, and the
+             wrapper is an ordinary block to it. -->
+        <div class="recipes-head-row">
+          <div class="recipes-titleblock mod-only"><h1>Recipes</h1><span class="recipes-count" id="recipesCountMod"></span></div>
+          <div class="searchbar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8172" stroke-width="1.6" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.3-4.3"/></svg>
+            <input id="searchInput" type="search" autocomplete="off"
+                   placeholder="Search by name, ingredient, or note — Enter to keep as a tag"
+                   aria-label="Search recipes">
+            <div class="result-count" id="resultCount"></div>
+          </div>
         </div>
         <div class="filter-rows" id="filterRows"></div>
       </div>
@@ -1787,9 +1836,17 @@
           <div id="dayList"></div>
         </div>
         <aside class="shortlist-panel">
+          <!-- Modernist only (docs/PLAN-MODERNIST.md): the panel collapses to a 56px rail, opened again from the rail. Hidden
+               in Classic by .mod-only, where the panel never collapses. -->
+          <button class="sl-rail mod-only" id="shortlistRailBtn" aria-label="Open the shortlist" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            <span class="sl-rail-name">Shortlist</span><span class="sl-rail-count" id="shortlistRailCount"></span>
+          </button>
           <div class="shortlist-head">
             <div class="side-label">SHORTLIST</div>
+            <span class="sl-head-title mod-only">Shortlist</span>
             <div class="shortlist-count" id="shortlistCount"></div>
+            <button class="sl-collapse-btn mod-only" id="shortlistCollapseBtn" aria-label="Collapse the shortlist" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
           </div>
           <input id="shortlistInput" class="shortlist-input" type="text" autocomplete="off"
                  placeholder="+ Jot down an idea…" aria-label="Jot down an idea">
@@ -2001,6 +2058,13 @@
             which on most tablets means it goes dark in the evening. Light and dark
             override that. The choice is shared with the household.</p>
           <select class="sort" id="setDarkMode" aria-label="Appearance"></select>
+        </div>
+
+        <div class="settings-block" data-settings-tab="app" id="styleBlock">
+          <div class="side-label">STYLE</div>
+          <p class="subtle">How the app looks. Classic is the paper and plum look; Modernist is flat and square, set in one
+            typeface, with red kept for the main action and what is on. Either one works with light and dark. This device only.</p>
+          <select class="sort" id="setStyle" aria-label="Style"></select>
         </div>
 
         <div class="settings-block" data-settings-tab="app" id="prepStepsBlock">
@@ -2233,7 +2297,7 @@
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-13.4"></script>
+<script src="core.js?v=2026-10-15.1"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2241,12 +2305,12 @@
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-13.4';
+const EXPECTED_CORE_VERSION = '2026-10-15.1';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-14.5';
+const APP_VERSION = '2026-10-15.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -2333,7 +2397,13 @@ function applyTheme(mode){
      cannot drift from what was actually applied. */
   try { localStorage.setItem('kitchen.darkMode', mode); } catch(e){ /* blocked storage is not fatal */ }
   const meta = document.querySelector('meta[name="theme-color"]');
-  if(meta) meta.setAttribute('content', theme === 'dark' ? '#141210' : '#EAE4D5');
+  if(meta) meta.setAttribute('content', chromeColour(theme));
+}
+
+/* The browser chrome follows the ground of whichever style is on. Classic's values are what this always said. */
+function chromeColour(theme){
+  if(currentStyle() === 'modernist') return theme === 'dark' ? '#161514' : '#f3f2f2';
+  return theme === 'dark' ? '#141210' : '#EAE4D5';
 }
 
 /* `var`, not `let`: this is read by the system-preference listener, which
@@ -2376,6 +2446,48 @@ function rerenderForTheme(){
   /* History draws its pie charts as inline SVG fills, so it is in the same
      position as the flow table: a token swap cannot reach it. */
   else if(state.view === 'history') renderHistory();
+}
+
+/* ------------------------------- Style (Classic / Modernist) -------------------------------
+   docs/PLAN-MODERNIST.md. Independent of the theme above: all four of Classic and Modernist, light and dark, work.
+
+   The DOM is shared. Almost everything the second style needs is CSS (styles/modernist.css, scoped under
+   [data-style="modernist"]), and what only it draws carries .mod-only. Where one piece of markup cannot serve both, a
+   render function asks currentStyle() and the screen is redrawn when the choice changes. Nothing else should read the
+   attribute, so there is one place to look.
+
+   Per device and not in the database, unlike Appearance: the boot script in <head> reads it before the first paint. */
+const STYLES = ['classic', 'modernist'];
+const STYLE_LABELS = { classic:'CLASSIC', modernist:'MODERNIST' };
+
+function currentStyle(){
+  return document.documentElement.getAttribute('data-style') === 'modernist' ? 'modernist' : 'classic';
+}
+
+function applyStyle(style){
+  if(STYLES.indexOf(style) === -1) style = 'classic';
+  document.documentElement.setAttribute('data-style', style);
+  try {
+    if(style === 'modernist') localStorage.setItem('kitchen.style', 'modernist');
+    else localStorage.removeItem('kitchen.style');
+  } catch(e){ /* blocked storage is not fatal: the choice holds until the page is closed */ }
+  if(style === 'modernist') loadArchivoFont();
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute('content', chromeColour(document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'));
+  rerenderForStyle();
+}
+
+/* A screen that draws differently per style has to be redrawn when the style changes; CSS alone repaints the rest.
+   Guarded like rerenderForTheme: `state` is a const declared further down. */
+function rerenderForStyle(){
+  if(!themeBooted) return;
+  const v = state.view;
+  if(v === 'viewer') renderViewer();
+  else if(v === 'group-viewer') renderGroupViewer();
+  else if(v === 'recipes') renderHome();
+  else if(v === 'planner') renderPlanner();
+  else if(v === 'shopping') renderShopping();
+  else if(v === 'history') renderHistory();
 }
 
 /* Quotes are escaped as well as angle brackets, because the result is
@@ -2444,7 +2556,9 @@ function buildTimelineHTML(timeline){
     const width = Math.max(((s.end - s.start) / totalSpan) * 100, 1.5);
     const isOpenEnded = s.duration && s.duration.openEnded;
     const title = escapeHtml(s.label) + (s.duration ? ' — ' + escapeHtml(formatDuration(s.duration)) : '');
-    return `<div class="timeline-lane-row"><div class="timeline-lane-abs${isOpenEnded?' open-ended':''}" data-handle="${escapeHtml(s.output||'')}" style="left:${left}%; width:${width}%; background:${SINGLE_RECIPE_TIMELINE_COLOUR};" title="${title}">
+    /* Modernist draws the lanes in ink and the last step in the accent (docs/PLAN-MODERNIST.md), from its stylesheet. */
+    const colour = currentStyle() === 'modernist' ? '' : ` background:${SINGLE_RECIPE_TIMELINE_COLOUR};`;
+    return `<div class="timeline-lane-row"><div class="timeline-lane-abs${isOpenEnded?' open-ended':''}" data-handle="${escapeHtml(s.output||'')}" style="left:${left}%; width:${width}%;${colour}" title="${title}">
       <span>${escapeHtml(s.label.length>32 ? s.label.slice(0,30)+'…' : s.label)}</span>
     </div></div>`;
   }).join('');
@@ -2495,13 +2609,19 @@ function wireTimelineInteractions(container){
    therefore scoped to a specific recipe's own flow table (matched via
    data-recipe-id on the table's wrapping element), never a bare
    data-handle match against the whole screen. */
+/* A dish's colour in the Group Viewer (its lane and its square). Modernist draws the dishes in four colours of its own,
+   tokens set per theme in its stylesheet (docs/PLAN-MODERNIST.md), so no gold or sage sits beside its red; Classic's are
+   PALETTE's, as they were. */
+function groupColour(i){
+  return currentStyle() === 'modernist' ? `var(--km-group-${i % 4 + 1})` : PALETTE[i % PALETTE.length];
+}
 function computeGroupTimeline(recipesWithParsed, mode){
   const own = recipesWithParsed.map(rp=> computeTimeline(rp.parsed.groups, rp.parsed.stages));
   if(!own.some(Boolean)) return null; // nothing in the whole group has timing data — auto-hide, same rule as single-recipe
   /* START TOGETHER or FINISH TOGETHER (#87): the arithmetic is lineUpTimelines in core.js, where it has tests. */
   const lined = lineUpTimelines(own, mode);
   const perRecipe = recipesWithParsed.map((rp, i)=> ({ recipe: rp.recipe, parsed: rp.parsed, timeline: lined.lanes[i],
-    colour: PALETTE[i % PALETTE.length] }));
+    colour: groupColour(i) }));
   return { perRecipe, totalSpan: lined.totalSpan, about: lined.about, mode };
 }
 /* A group with a Side defaults to FINISH TOGETHER (decided 13 Oct: the rice should be ready with the curry); any other to
@@ -2592,8 +2712,14 @@ function wireGroupTimelineInteractions(container){
 /* ============================= FLOW RENDER ============================= */
 function buildFlowHTML(parsed){
   const {title, setup, groups, stages, notes} = parsed;
+  /* Modernist (docs/PLAN-MODERNIST.md) draws the table by kind rather than by the group colours, so in that style the cells
+     carry what they are (merge, final, where a group starts) instead of inline colours, and the title has the servings and
+     the ticks beside it. Classic's markup is exactly as it was. renderViewer and renderGroupViewer are redrawn on a switch. */
+  const mod = currentStyle() === 'modernist';
   let html = '';
-  if(title) html += `<h2 class="recipe-title">${escapeHtml(title)}</h2>`;
+  if(title) html += mod
+    ? `<div class="recipe-title-row"><h2 class="recipe-title">${escapeHtml(title)}</h2><div class="recipe-progress"><span class="recipe-serves"></span><span class="recipe-ticked"></span></div></div>`
+    : `<h2 class="recipe-title">${escapeHtml(title)}</h2>`;
   if(setup && setup.length) html += `<ol class="setup">` + setup.map(s=>`<li>${escapeHtml(s)}</li>`).join('') + `</ol>`;
 
   if(!groups || groups.length===0 || groups.every(g=>g.items.length===0)){
@@ -2613,7 +2739,10 @@ function buildFlowHTML(parsed){
   });
 
   html += `<p class="hint">TAP ANY BOX TO TICK IT OFF — TICKING A STEP ALSO TICKS WHAT FED INTO IT — TICKING THE LAST COLUMN LOGS THIS AS COOKED TODAY</p>`;
-  html += `<div class="tablewrap"><table><tbody>`;
+  html += mod ? `<div class="tablewrap"><table style="--flow-cols:${columns.length}"><tbody>` : `<div class="tablewrap"><table><tbody>`;
+  /* Modernist's 4px rule across the ingredients wherever a box in the first stage column starts: each group then lines up
+     with the step it feeds. From the layout alone; nothing new is stored. */
+  const groupTop = r => mod && r > 0 && columns.length > 0 && !!startLookup[0][r];
   /* Loaded once before the row loop rather than per-row — same swaps list
      the bottom-of-page Substitution Recommendations box uses below, just
      checked here per-ingredient so the ⇄ icon can sit next to the specific
@@ -2628,12 +2757,17 @@ function buildFlowHTML(parsed){
     const row = rows[r];
     const hasSwap = swapsForIcons.length && findSwapMatchesForIngredient(row.rest, swapsForIcons).length > 0;
     const swapIcon = hasSwap ? `<span class="ing-swap-icon" title="A substitution is available — see Substitution Recommendations below">⇄</span>` : '';
-    html += `<td class="ing-cell" data-row-start="${r}" data-row-span="1">${row.qty?`<span class="qty">${escapeHtml(row.qty)}</span>`:''}${escapeHtml(row.rest)}${swapIcon}</td>`;
+    const ingClass = 'ing-cell' + (groupTop(r) ? ' group-top' : '') + (groupTop(r + 1) ? ' group-end' : '') + (mod && r === R - 1 ? ' row-last' : '');
+    html += `<td class="${ingClass}" data-row-start="${r}" data-row-span="1">${row.qty?`<span class="qty">${escapeHtml(row.qty)}</span>`:''}${escapeHtml(row.rest)}${swapIcon}</td>`;
     for(let c=0; c<columns.length; c++){
       const box = startLookup[c][r];
       if(box === undefined || box === null) continue;
+      const edge = mod ? (c === columns.length - 1 ? ' col-last' : '') + (box.rowStart + box.rowSpan === R ? ' row-last' : '') : '';
       if(!box.label){
-        html += `<td class="blank-cell" data-col="${c}" rowspan="${box.rowSpan}"></td>`;
+        html += `<td class="blank-cell${edge}" data-col="${c}" rowspan="${box.rowSpan}"></td>`;
+      } else if(mod){
+        const kind = box.passthrough ? '' : c === columns.length - 1 ? ' box-final' : box.merge ? ' box-merge' : '';
+        html += `<td class="box-cell${box.passthrough?' passthrough':''}${box.prep?' prep':''}${kind}${edge}" data-col="${c}" data-row-start="${box.rowStart}" data-row-span="${box.rowSpan}" data-handle="${escapeHtml(box.outputHandle||'')}" rowspan="${box.rowSpan}">${escapeHtml(box.label)}${durationBadge(box.duration)}</td>`;
       } else {
         /* A preparation step (#88) is a shade lighter than a cooking step, so the eye goes to the cooking first. */
         const bg = hexToRgba(box.color, box.passthrough ? 0.05 : box.prep ? 0.06 : 0.10);
@@ -2754,6 +2888,10 @@ function mountFlow(container, parsed, opts){
   /* Columns move when preparation is drawn as steps, so each drawing keeps its own ticks: switching mid-cook loses neither. */
   const ticks = opts.tickKey ? viewerTickSet(opts.tickKey + (withPrep ? '|prep' : '')) : null;
   if(ticks) cells.forEach(cell=>{ if(ticks.has(cellKey(cell))) cell.classList.add('done'); });
+  /* Modernist's "3 / 19 TICKED" beside the title (only its markup has the place for it). */
+  const tickedEl = container.querySelector('.recipe-ticked');
+  const showTicked = ()=>{ if(tickedEl) tickedEl.textContent = `${cells.filter(c=> c.classList.contains('done')).length} / ${cells.length} TICKED`; };
+  showTicked();
 
   cells.forEach(cell=>{
     cell.addEventListener('click', ()=>{
@@ -2771,6 +2909,7 @@ function mountFlow(container, parsed, opts){
       } else {
         cell.classList.remove('done');
       }
+      showTicked();
       /* Recorded before onToggle, which is free to re-render. */
       if(ticks){
         ticks.clear();
@@ -4840,6 +4979,7 @@ const state = {
   selectedGroupId: null,       // the meal-group id currently open in the Group Viewer, if any
   groupViewerReturnTo: null,   // where "← PLANNER" in the Group Viewer should navigate back to
   groupLineUp: null,           // START/FINISH TOGETHER chosen for one group in this tab (#87); never stored
+  shortlistCollapsed: false,   // Modernist only: the Planner's shortlist panel folded to its rail, for this visit only
   sideOffersHidden: new Set(), // 'date|recipeId' whose SERVE WITH offer was dismissed with ×, in this tab only (#87); never stored
   oftenHidden: new Set(),      // the same for OFTEN WITH (#142)
   viewerServes: null           // ad-hoc target headcount for the currently open Viewer recipe, null = the recipe's own —
@@ -4921,6 +5061,8 @@ function showView(name){
      screens specifically need the room. */
   const app = document.querySelector('.app');
   app.classList.toggle('viewer-open', name === 'viewer' || name === 'group-viewer');
+  /* Modernist folds the sidebar on the Planner too (docs/PLAN-MODERNIST.md); its stylesheet reads which screen this is. */
+  app.dataset.view = name;
   app.classList.remove('sidebar-peek'); // a peek lasts as long as the recipe you opened it over
   window.scrollTo(0,0);
   /* Recipes redraws on entry like every other screen. It used not to, and
@@ -4938,19 +5080,48 @@ function showView(name){
 document.getElementById('sidebarPeekBtn').addEventListener('click', ()=>{
   document.querySelector('.app').classList.toggle('sidebar-peek');
 });
+/* Modernist's rail and its ‹ open and close the same peek. Each hides the button that was pressed, so focus moves to the
+   one that undoes it rather than falling back to the page. */
+document.getElementById('navRailBtn').addEventListener('click', ()=>{
+  document.querySelector('.app').classList.add('sidebar-peek');
+  document.getElementById('navHideBtn').focus();
+});
+document.getElementById('navHideBtn').addEventListener('click', ()=>{
+  document.querySelector('.app').classList.remove('sidebar-peek');
+  document.getElementById('navRailBtn').focus();
+});
 document.querySelectorAll('.navlink[data-view]').forEach(btn=>{
   /* Shortlist lives inside the Planner screen (per the mockup), not a screen of its own. */
   const target = btn.dataset.view === 'shortlist' ? 'planner' : btn.dataset.view;
-  btn.addEventListener('click', ()=> showView(target));
+  btn.addEventListener('click', ()=>{
+    /* In Modernist the shortlist panel can be collapsed; asking for SHORTLIST opens it again. Classic never collapses it. */
+    if(btn.dataset.view === 'shortlist') setShortlistCollapsed(false);
+    showView(target);
+  });
 });
 
+/* Modernist's collapse for the Planner's shortlist panel (docs/PLAN-MODERNIST.md): for this visit to the app only, like the
+   prototype's state, so a fresh start always shows the shortlist. Only Modernist's stylesheet draws it. Each button hides
+   itself when pressed, so focus moves to the one that undoes it. */
+function setShortlistCollapsed(collapsed){
+  state.shortlistCollapsed = !!collapsed;
+  document.querySelector('#view-planner .shortlist-panel').classList.toggle('sl-collapsed', state.shortlistCollapsed);
+  document.getElementById('shortlistRailBtn').setAttribute('aria-expanded', state.shortlistCollapsed ? 'false' : 'true');
+  document.getElementById('shortlistCollapseBtn').setAttribute('aria-expanded', state.shortlistCollapsed ? 'false' : 'true');
+}
+document.getElementById('shortlistCollapseBtn').addEventListener('click', ()=>{ setShortlistCollapsed(true); document.getElementById('shortlistRailBtn').focus(); });
+document.getElementById('shortlistRailBtn').addEventListener('click', ()=>{ setShortlistCollapsed(false); document.getElementById('shortlistCollapseBtn').focus(); });
+
+/* The count is in spans of its own so Modernist can set it at the right of the row without its " · ". The text is the
+   same as it always was ("SHORTLIST · 3"), and so is Classic's drawing of it. */
+function setNavCount(id, label, n){
+  document.getElementById(id).innerHTML = n ? `${label}<span class="nav-sep"> · </span><span class="nav-count">${n}</span>` : label;
+}
 function updateSidebarCounts(){
-  const n = loadShortlist().length;
-  document.getElementById('navShortlist').textContent = n ? `SHORTLIST · ${n}` : 'SHORTLIST';
+  setNavCount('navShortlist', 'SHORTLIST', loadShortlist().length);
 
   const thisWeek = groupDaysByWeek(dayList())[0] || [];
-  const totalItems = buildShoppingList(thisWeek).totalItems;
-  document.getElementById('navShopping').textContent = totalItems ? `SHOPPING · ${totalItems}` : 'SHOPPING';
+  setNavCount('navShopping', 'SHOPPING', buildShoppingList(thisWeek).totalItems);
 }
 
 /* =====================================================================
@@ -4985,13 +5156,17 @@ function renderFilterRows(recipes){
   const sourceOptions = sortedSources.map(s=>
     `<option value="${escapeHtml(s)}"${state.source===s?' selected':''}>${escapeHtml(s)} (${srcCounts.get(s)})</option>`
   ).join('');
-  html += `<div class="filter-row">
-    <div class="filter-row-label">SOURCE</div>
-    <div class="chips">
-      <select class="sort" id="sourceFilterSelect" aria-label="Filter by source">
+  const sourceSelect = `<select class="sort" id="sourceFilterSelect" aria-label="Filter by source">
         <option value=""${state.source?'':' selected'}>All sources</option>
         ${sourceOptions}
-      </select>
+      </select>`;
+  /* Modernist (docs/PLAN-MODERNIST.md) sets SOURCE at the right of the KEYWORD row, beside SORT, as its prototype does;
+     Classic keeps it on a row of its own. One select either way. */
+  const sourceInline = currentStyle() === 'modernist';
+  if(!sourceInline) html += `<div class="filter-row">
+    <div class="filter-row-label">SOURCE</div>
+    <div class="chips">
+      ${sourceSelect}
     </div>
   </div>`;
 
@@ -5034,6 +5209,7 @@ function renderFilterRows(recipes){
     <div class="filter-row-label">KEYWORD</div>
     <div class="chips">${savedChip}${kwChips}${suggestedChips}${addBit}${clearBit}</div>
     <div class="sort-wrap">
+      ${sourceInline ? `<span class="filter-row-label" style="width:auto;padding-top:0;">SOURCE</span>${sourceSelect}` : ''}
       <span class="filter-row-label" style="width:auto;padding-top:0;">SORT</span>
       <select class="sort" id="sortSelect" aria-label="Sort recipes">${sortOpts}</select>
     </div>
@@ -5125,9 +5301,12 @@ function renderCard(r, shortlistedIds, theirs){
     : `<div class="rcard-photo empty">NO PHOTO YET</div>`;
   const shortlisted = shortlistedIds.has(r.id);
   /* Shortlist and favourite write to our library, so a card of theirs has neither; it says instead whether we hold a copy. */
+  /* In Modernist the ✓ takes it off the shortlist again (docs/PLAN-MODERNIST.md, decision 8), so it says so; in Classic
+     it only says what is so. */
+  const onLabel = currentStyle() === 'modernist' ? 'Remove from shortlist' : 'On shortlist';
   const marks = theirs
     ? (ourCopyOf(r) ? `<div class="rcard-copied">ALREADY IN OUR RECIPES</div>` : '')
-    : `<button class="rcard-shortlist${shortlisted?' on':''}" data-shortlist="${r.id}" aria-label="${shortlisted?'On shortlist':'Add to shortlist'}">${shortlisted?'✓':'+'}</button>
+    : `<button class="rcard-shortlist${shortlisted?' on':''}" data-shortlist="${r.id}" aria-label="${shortlisted?onLabel:'Add to shortlist'}">${shortlisted?'✓':'+'}</button>
     <button class="rcard-favourite${r.favourite?' on':''}" data-favourite="${r.id}" aria-label="${r.favourite?'Remove from favourites':'Add to favourites'}">${r.favourite?'★':'☆'}</button>`;
   return `<div class="rcard" data-id="${r.id}" tabindex="0" role="button" aria-label="Open ${escapeHtml(r.title||'Untitled')}">
     ${marks}
@@ -5187,6 +5366,10 @@ function renderHome(){
 
   document.getElementById('resultCount').textContent =
     recipes.length ? `${results.length} OF ${recipes.length}` : '';
+  /* Modernist's count beside the title: how many there are, or how many of them a filter shows. */
+  document.getElementById('recipesCountMod').textContent = !recipes.length ? ''
+    : results.length === recipes.length ? `${recipes.length} RECIPE${recipes.length === 1 ? '' : 'S'}`
+    : `${results.length} OF ${recipes.length}`;
   const ours = loadRecipes().length;
   document.getElementById('sideCount').textContent =
     `${ours} RECIPE${ours===1?'':'S'} SAVED`;
@@ -5245,6 +5428,18 @@ function initHomeListeners(){
   document.getElementById('recipeGrid').addEventListener('click', e=>{
     const shortlistBtn = e.target.closest('[data-shortlist]');
     if(shortlistBtn){
+      /* Modernist's card button is a toggle (decision 8): ✓ takes the recipe off the shortlist, as the panel's × does. */
+      const onList = loadShortlist().filter(i=> i.recipeId === shortlistBtn.dataset.shortlist);
+      if(currentStyle() === 'modernist' && onList.length){
+        onList.forEach(i=>{
+          removeShortlistItem(i.id);
+          if(state.selectedShortlistId === i.id) state.selectedShortlistId = null;
+        });
+        updateSidebarCounts();
+        showToast('Taken off the shortlist');
+        renderHome();
+        return;
+      }
       if(addShortlistRecipe(shortlistBtn.dataset.shortlist)){
         updateSidebarCounts();
         showToast('Added to the shortlist');
@@ -5384,7 +5579,7 @@ function renderGroupViewer(){
      sharing groupFlowMount directly — a single shared container would
      have each recipe's mountFlow call erase the one before it. */
   const shellHtml = recipesWithParsed.map(({recipe, serves}, i)=>{
-    const colour = PALETTE[i % PALETTE.length];
+    const colour = groupColour(i);
     return `<div class="stacked-recipe" data-recipe-id="${escapeHtml(recipe.id)}">
       <div class="stacked-recipe-head">
         <span class="recipe-swatch" style="background:${colour};"></span>
@@ -5643,6 +5838,9 @@ function renderViewer(){
     onComplete: theirs ? ()=> showToast('Not logged: add it to our recipes to plan, shop for or log it') : ()=> finishRecipe(recipe.id),
     showTimeline: true
   });
+  /* Modernist's servings beside the title, as the meta line says them. */
+  const servesEl = mount.querySelector('.recipe-serves');
+  if(servesEl && targetServings) servesEl.textContent = `SERVES ${targetServings}${scale !== 1 ? ` (SCALED FROM ${baseServings})` : ''}`;
 }
 
 /* Cooking history lives in recipe_logs, one row per time a recipe was made,
@@ -6107,6 +6305,18 @@ function weekBucketLabel(i, bucketDays){
        : i === 1 ? 'NEXT WEEK'
        : ('WEEK OF ' + formatDayLabel(bucketDays[0]));
 }
+/* Modernist's week names carry the dates of the days shown ("THIS WEEK · 22–24 SEP"), on the Planner and the Shopping List
+   alike (docs/PLAN-MODERNIST.md). The week after next has its dates, so it needs no "WEEK OF" date of its own. */
+function weekDatesLabel(days){
+  if(!days.length) return '';
+  const month = d => d.toLocaleDateString(undefined, { month:'short' }).toUpperCase();
+  const first = days[0], last = days[days.length - 1];
+  return first.getMonth() === last.getMonth()
+    ? `${first.getDate()}–${last.getDate()} ${month(last)}` : `${first.getDate()} ${month(first)}–${last.getDate()} ${month(last)}`;
+}
+function modWeekLabel(i, bucketDays){
+  return `${i < 2 ? weekBucketLabel(i, bucketDays) : 'THE WEEK AFTER'} · ${weekDatesLabel(bucketDays)}`;
+}
 /* Groups days into calendar weeks, in order, starting on the configured day. */
 function groupDaysByWeek(days){
   const buckets = []; const idx = {};
@@ -6188,9 +6398,16 @@ function renderPlannerDays(){
   const todayIso = todayStr();
 
   const calOn = calendarShown();
+  /* Modernist (docs/PLAN-MODERNIST.md) puts the week's dates and how many dishes are planned in it on the week's band, and
+     stacks the day's name over its date. Classic's markup is as it was; the screen is redrawn when the style changes. */
+  const mod = currentStyle() === 'modernist';
   let html = '';
   buckets.forEach((bucketDays, i)=>{
-    const label = weekBucketLabel(i, bucketDays);
+    let label = weekBucketLabel(i, bucketDays);
+    if(mod && bucketDays.length){
+      const planned = bucketDays.reduce((n, d)=>{ const e = plan[isoLocal(d)]; return n + (e && !e.blank ? planRecipeIds(e).length : 0); }, 0);
+      label = `<span class="week-name">${modWeekLabel(i, bucketDays)}</span><span class="week-summary">${planned ? `${planned} PLANNED` : 'NOTHING PLANNED'}</span>`;
+    }
     /* ADD THE WEEK: the week's planned days that are not yet in the calendar, all in one call. */
     const weekTodo = calOn ? bucketDays.map(isoLocal).filter(d=>{ const e = plan[d]; return e && !e.blank && planRecipeIds(e).length && !e.calendar; }) : [];
     html += `<div class="week-label">${label}${weekTodo.length
@@ -6292,7 +6509,7 @@ function renderPlannerDays(){
       }
 
       html += `<div class="day-row${isToday?' today':''}${(state.selectedShortlistId && state.groupingDate!==iso)?' assignable':''}" data-date="${iso}">
-        <div class="day-num">${formatDayLabel(d)}${isToday?'<span class="today-tag">TODAY</span>':''}</div>
+        <div class="day-num">${mod ? `<span class="day-dow">${d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase()}</span><span class="day-date">${d.getDate()}</span>` : formatDayLabel(d)}${isToday?'<span class="today-tag">TODAY</span>':''}</div>
         ${inner}
       </div>`;
     });
@@ -6320,6 +6537,9 @@ function renderShortlistPanel(){
   const list = loadShortlist();
   const recipes = loadRecipes();
   document.getElementById('shortlistCount').textContent = list.length ? `${list.length} IDEA${list.length===1?'':'S'}` : '';
+  document.getElementById('shortlistRailCount').textContent = list.length || '';
+  document.getElementById('shortlistRailBtn').setAttribute('aria-label',
+    list.length ? `Open the shortlist, ${list.length} idea${list.length===1?'':'s'}` : 'Open the shortlist');
 
   const container = document.getElementById('shortlistList');
   if(!list.length){
@@ -6833,7 +7053,10 @@ function renderShopping(){
   const buckets = groupDaysByWeek(dayList());
   if(state.shoppingWeekIndex >= buckets.length) state.shoppingWeekIndex = 0;
 
-  const weekLabels = buckets.map((bucketDays, i)=> weekBucketLabel(i, bucketDays));
+  /* Modernist (docs/PLAN-MODERNIST.md): the weeks carry their dates, the line under the title counts the ticks too, and each
+     tick box is drawn by a span of its own. Classic's words and markup are as they were. */
+  const mod = currentStyle() === 'modernist';
+  const weekLabels = buckets.map((bucketDays, i)=> mod ? modWeekLabel(i, bucketDays) : weekBucketLabel(i, bucketDays));
   const canCombine = buckets.length >= 2;
   if(state.shoppingBothWeeks && !canCombine) state.shoppingBothWeeks = false;
   const both = state.shoppingBothWeeks;
@@ -6887,10 +7110,11 @@ function renderShopping(){
   /* The week label goes in here too (not just the dropdown) so the
      exported PNG — which hides the interactive dropdown — still states
      which week it's for. */
-  const weekLabel = both ? 'THIS WEEK + NEXT WEEK' : (weekLabels[state.shoppingWeekIndex] || '');
-  document.getElementById('shopMeta').textContent = totalItems
-    ? `${weekLabel} · ${totalItems} item${totalItems===1?'':'s'} · ${recipeCount} recipe${recipeCount===1?'':'s'}`
-    : weekLabel;
+  const weekLabel = both ? 'THIS WEEK + NEXT WEEK' + (mod ? ' · ' + weekDatesLabel(weekDays) : '') : (weekLabels[state.shoppingWeekIndex] || '');
+  const tickedCount = allCategories.reduce((n, cat)=> n + cat.items.filter(it=> checkedForWeek[keyPrefix + it.key]).length, 0);
+  document.getElementById('shopMeta').textContent = !totalItems ? weekLabel
+    : mod ? `${weekLabel} · ${totalItems} ITEM${totalItems===1?'':'S'} · ${recipeCount} RECIPE${recipeCount===1?'':'S'} · ${tickedCount} TICKED`
+    : `${weekLabel} · ${totalItems} item${totalItems===1?'':'s'} · ${recipeCount} recipe${recipeCount===1?'':'s'}`;
 
   const body = document.getElementById('shopBody');
   body.dataset.weekStart = weekStartIso;
@@ -6932,7 +7156,7 @@ function renderShopping(){
       const k = escapeHtml(it.key);
       return `<div class="shop-row${isChecked?' checked':''}">
       <label class="shop-item${isChecked?' checked':''}" data-key="${escapeHtml(storedKey)}" data-name="${escapeHtml(it.name)}">
-        <input type="checkbox" ${isChecked?'checked':''}>
+        <input type="checkbox" ${isChecked?'checked':''}>${mod ? '<span class="shop-box" aria-hidden="true"></span>' : ''}
         <span class="shop-item-main">
           <span class="shop-item-name">${qtyText?`<span class="qty">${escapeHtml(qtyText)}</span>`:''}${escapeHtml(it.name)}${(it.alts || []).length ? `<span class="shop-item-alt">(${escapeHtml(it.alts.join('; '))})</span>` : ''}</span>
           <span class="shop-item-recipes">${recipeList}</span>
@@ -6950,8 +7174,12 @@ function renderShopping(){
     }).join('');
     /* Marked here, while the ticks are to hand, so print and the PNG can leave out an aisle with nothing left to buy (#94). */
     const allTicked = cat.items.length && cat.items.every(it=> checkedForWeek[keyPrefix + it.key]);
+    /* Modernist draws "ticked / total" beside the aisle from the attribute, so the title's own text stays the aisle's name.
+       Counted from the whole list, as HIDE TICKED leaves only the rows still to buy in cat. */
+    const whole = mod && (allCategories.find(c=> c.name === cat.name) || cat);
+    const aisleCount = mod ? ` data-count="${whole.items.filter(it=> checkedForWeek[keyPrefix + it.key]).length} / ${whole.items.length}"` : '';
     return `<div class="shop-category${allTicked ? ' all-checked' : ''}">
-      <div class="shop-category-title">${escapeHtml(cat.name.toUpperCase())}</div>
+      <div class="shop-category-title"${aisleCount}>${escapeHtml(cat.name.toUpperCase())}</div>
       ${rows}
     </div>`;
   }).join('');
@@ -7354,6 +7582,9 @@ function renderHistoryCalendar(){
   const byDate = historyByDate(recipes);
   const cells = historyMonthGrid(year, month);
   const todayIso = todayStr();
+  /* Modernist (docs/PLAN-MODERNIST.md) puts a word at the foot of a cell: TODAY, COOKED or AD HOC. Classic's cells are as
+     they were; the screen is redrawn when the style changes. */
+  const mod = currentStyle() === 'modernist';
 
   document.getElementById('historyMonthLabel').textContent =
     new Date(year, month, 1).toLocaleDateString(undefined, {month:'long', year:'numeric'});
@@ -7382,17 +7613,23 @@ function renderHistoryCalendar(){
       : cookedCount === 0 ? `${entries.length} logged`
       : `${entries.length} entries`;
     const info = entries.length ? `<div class="history-day-info">${summary}</div>` : '';
+    const tag = !mod ? '' : iso === todayIso ? 'TODAY' : !entries.length ? '' : cookedCount ? 'COOKED' : 'AD HOC';
 
     return `<button class="${classes.join(' ')}" data-date="${iso}">
       <span class="history-day-num">${date.getDate()}</span>
-      ${info}
+      ${info}${tag ? `<span class="history-day-tag">${tag}</span>` : ''}
     </button>`;
   }).join('');
 }
 
 function renderHistoryDayDetail(){
   const el = document.getElementById('historyDayDetail');
-  if(!state.historySelectedDate){ el.innerHTML = ''; return; }
+  if(!state.historySelectedDate){
+    /* Modernist's panel opens with its title, as the prototype's does; Classic's says nothing until a day is picked. */
+    el.innerHTML = currentStyle() === 'modernist'
+      ? `<div class="history-day-detail"><div class="history-day-detail-title">Pick a day</div></div>` : '';
+    return;
+  }
   const iso = state.historySelectedDate;
   const entries = historyByDate(loadRecipes()).get(iso) || [];
   const label = new Date(iso+'T00:00:00').toLocaleDateString(undefined, {weekday:'long', day:'numeric', month:'long'});
@@ -7496,8 +7733,25 @@ function renderPieChart(data, opts){
   </div>`;
 }
 
+/* Modernist draws a meal-base mix as one 28px bar of segments with the legend beneath, in place of the pie
+   (docs/PLAN-MODERNIST.md). The five colours are its chart tokens (--km-mix-1 to 5), set per theme in its stylesheet,
+   so a change of theme needs no redraw. Same data, same legend, same words as the pie. */
+function renderMixBar(data, opts){
+  opts = opts || {};
+  const total = data.reduce((s,d)=>s+d.count, 0);
+  if(!total) return `<p class="hstat-weekday-empty">Nothing to show yet.</p>`;
+  const segs = data.map((d, i)=>({ label: d.label, count: d.count, colour: `var(--km-mix-${i % 5 + 1})`, pct: Math.round(d.count / total * 100) }));
+  return `<div class="hstat-bar" role="img" aria-label="${escapeHtml(opts.ariaLabel||'Chart')}">` +
+    segs.map(sg=> `<span style="flex:${sg.count};background:${sg.colour}"></span>`).join('') + `</div>
+    <div class="hstat-legend">` + segs.map(sg=>
+      `<div class="hstat-legend-row"><span class="hstat-legend-swatch" style="background:${sg.colour}"></span>` +
+      `<span class="hstat-legend-label">${escapeHtml(sg.label)}</span><span class="hstat-legend-value">${sg.count} · ${sg.pct}%</span></div>`
+    ).join('') + `</div>`;
+}
+
 function renderHistoryStats(){
   const stats = computeHistoryStats(loadRecipes());
+  const mix = currentStyle() === 'modernist' ? renderMixBar : renderPieChart;
   const rows = [
     ['TOTAL MEALS COOKED', String(stats.totalMeals)],
     ['COOKED THIS MONTH', String(stats.mealsThisMonth)],
@@ -7517,10 +7771,10 @@ function renderHistoryStats(){
     <table class="hstat-weekday-table">${weekdayRows}</table>
     <div class="side-label" style="margin-top:20px;">RECIPE MIX BY MEAL BASE</div>
     <div class="hstat-pie-note">What's saved in the library — a recipe can count toward more than one (e.g. a chicken pasta bake is both).</div>
-    ${renderPieChart(stats.savedMix, {ariaLabel:'Recipe mix by meal base', showPct:true})}
+    ${mix(stats.savedMix, {ariaLabel:'Recipe mix by meal base', showPct:true})}
     <div class="side-label" style="margin-top:20px;">COOKED BY MEAL BASE</div>
     <div class="hstat-pie-note">What's actually been cooked, from history — often a different picture from what's saved.</div>
-    ${renderPieChart(stats.cookedMix, {ariaLabel:'Recipes cooked by meal base', showPct:true})}
+    ${mix(stats.cookedMix, {ariaLabel:'Recipes cooked by meal base', showPct:true})}
   `;
 }
 
@@ -8515,6 +8769,9 @@ function renderSettings(){
   document.getElementById('setDarkMode').innerHTML = THEME_MODES.map(m=>
     `<option value="${m}"${m === current ? ' selected' : ''}>${THEME_LABELS[m]}</option>`
   ).join('');
+  document.getElementById('setStyle').innerHTML = STYLES.map(s=>
+    `<option value="${s}"${s === currentStyle() ? ' selected' : ''}>${STYLE_LABELS[s]}</option>`
+  ).join('');
   document.getElementById('setPrepSteps').value = prepStepsOn() ? 'steps' : 'before';
   renderIngredientLookup();
   renderAliasesList();
@@ -9130,6 +9387,12 @@ document.getElementById('setPrepSteps').addEventListener('change', e=>{
   try { if(e.target.value === 'steps') localStorage.setItem('kitchen.prepSteps', 'steps'); else localStorage.removeItem('kitchen.prepSteps'); } catch(err){}
   e.target.value = prepStepsOn() ? 'steps' : 'before';
   showToast(prepStepsOn() ? 'Preparation shows as steps in the flow, on this device' : 'Preparation shows as written, on this device');
+});
+/* STYLE: this device only, so like PREPARATION it never reaches setSetting or the queue. */
+document.getElementById('setStyle').addEventListener('change', e=>{
+  applyStyle(e.target.value);
+  e.target.value = currentStyle();
+  showToast(currentStyle() === 'modernist' ? 'Modernist style, on this device' : 'Classic style, on this device');
 });
 document.getElementById('setDarkMode').addEventListener('change', e=>{
   const mode = e.target.value;

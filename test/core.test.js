@@ -243,6 +243,73 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
         (flushSeen.length !== 2 ? '; the flush rules have changed: ' + Object.keys(FLUSH).filter(k => !flushSeen.includes(k)).join(', ') : '') + (rootR.length === 1 && rootR[0] === '2px' ? '' : `; --r is ${rootR.join(' and ') || 'missing'}`));
 }
 
+/* ---- The second style, Modernist (docs/PLAN-MODERNIST.md) ----
+   It is a layer on top of Classic and must never reach it. Read from the sources, in Node, as the Classic lints above are;
+   smoke.js proves the switch in a browser. The Classic lints read only the first <style> block, so none of them sees
+   styles/modernist.css, and these are its own. */
+{
+  const modSrc = fs.readFileSync(path.join(ROOT, 'styles', 'modernist.css'), 'utf8');
+  const mod = modSrc.replace(/\/\*[\s\S]*?\*\//g, '');
+  const classic = pageSrc.slice(pageSrc.indexOf('<style>') + 7, pageSrc.indexOf('</style>'));
+  /* A rule inside @media is matched on its own, by its innermost {…}, and the @media wrapper is never part of a selector.
+     A block that is not a rule (@font-face, @keyframes) would show up with an @ selector and fail the scope check. */
+  /* Split a selector list on its own commas only, not those inside :is(…) or :not(…). */
+  const splitSelectors = s => { const out = []; let depth = 0, cur = '';
+    for (const ch of s) { if (ch === '(') depth++; if (ch === ')') depth--; if (ch === ',' && depth === 0) { out.push(cur); cur = ''; } else cur += ch; }
+    return out.concat(cur).map(x => x.trim().replace(/\s+/g, ' ')).filter(Boolean); };
+  const rules = [...mod.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => ({ sels: splitSelectors(m[1]), body: m[2] }));
+  const SCOPE = /^(?:html)?\[data-style="modernist"\](?![\w-])/;
+
+  const unscoped = rules.flatMap(r => r.sels).filter(s => !SCOPE.test(s));
+  check('every selector in styles/modernist.css begins [data-style="modernist"], so none of it can reach Classic',
+        rules.length > 5 && unscoped.length === 0, `${rules.length} rules` + (unscoped.length ? '; not scoped: ' + unscoped.slice(0, 4).join(' | ') : ''));
+
+  const radii = rules.flatMap(r => [...r.body.matchAll(/(?:^|[;\s])border(?:-(?:top|bottom)-(?:left|right))?-radius\s*:\s*([^;]+)/g)].map(m => r.sels[0] + ' ' + m[1].trim()))
+    .filter(x => !/ 0(?:px)?$/.test(x));
+  const radiusTokens = [...mod.matchAll(/--(?:radius-(?:sm|md|lg)|r)\s*:\s*([^;]+);/g)].map(m => m[1].trim());
+  check('zero border-radius anywhere: no rule sets one, and every radius token is 0px',
+        radii.length === 0 && radiusTokens.length >= 4 && radiusTokens.every(v => v === '0px'), radii.concat(radiusTokens.filter(v => v !== '0px')).slice(0, 4).join(' | '));
+
+  const fonts = rules.flatMap(r => [...r.body.matchAll(/(?:^|[;\s])font-family\s*:\s*([^;]+)/g)].map(m => m[1].replace(/\s*!important/, '').trim()));
+  const fontTokens = [...mod.matchAll(/--font-(?:heading|body)\s*:\s*([^;]+);/g)].map(m => m[1].trim());
+  /* The only url() allowed is an inline SVG (an icon drawn as a mask): nothing is fetched by this file. */
+  check('Archivo only: every font-family is the font token, both tokens start with Archivo, and nothing imports a font or fetches a file',
+        fonts.length > 0 && fonts.every(f => /^var\(--font-(?:body|heading)\)$/.test(f)) && fontTokens.length === 2 && fontTokens.every(f => /^"Archivo"/.test(f)) && !/@import|@font-face|url\((?!"data:image\/svg\+xml,)/.test(mod),
+        fonts.filter(f => !/^var\(--font-/.test(f)).concat(fontTokens.filter(f => !/^"Archivo"/.test(f))).join(' | '));
+
+  /* EXPORT PNG draws with html2canvas 1.4.1, which throws on the color(srgb …) that Chrome reports for a color-mix(): the
+     export failed outright in this style until the tints were written as rgba(). Measured with the real library, 15 Oct. */
+  const mixes = rules.filter(r => /color-mix\(/.test(r.body)).map(r => r.sels[0]).concat(/color-mix\(/.test(mod.replace(/[^{}]+\{[^{}]*\}/g, '')) ? ['outside a rule'] : []);
+  check('no color-mix() in styles/modernist.css, which EXPORT PNG cannot draw', mixes.length === 0, mixes.slice(0, 4).join(' | '));
+
+  /* Words on red use the darker fill (--km-fill, #dd2b0f: 4.7:1 with white), never the accent itself (4.2:1); the household
+     chose it on 15 Oct. A rule that sets on-accent words must not set the accent as its background. */
+  const onBright = rules.filter(r => /color\s*:\s*var\(--km-on-accent\)/.test(r.body) && /(?:background(?:-color)?|--cell-bg)\s*:\s*var\(--color-accent\)/.test(r.body)).map(r => r.sels[0]);
+  check('words on a red fill sit on the darker red (--km-fill), not the accent', onBright.length === 0, onBright.slice(0, 4).join(' | '));
+
+  /* Where it is linked, and the version in the link. */
+  const link = pageSrc.match(/<link rel="stylesheet" href="styles\/modernist\.css\?v=([^"]*)">/);
+  const classicEnd = pageSrc.indexOf('</style>');
+  check('the page links styles/modernist.css after Classic\'s <style>, and ?v= is the app version',
+        !!link && link.index > classicEnd && link[1] === appVersion, link ? `?v=${link[1]}, APP_VERSION ${appVersion}, linked ${link.index > classicEnd ? 'after' : 'BEFORE'} the <style>` : 'no link');
+
+  check('Classic\'s own <style> knows nothing of the second style',
+        !/data-style|modernist/i.test(classic) && /\.mod-only\{\s*display:none;\s*\}/.test((pageSrc.match(/<style id="style-base">([\s\S]*?)<\/style>/) || [])[1] || ''),
+        /data-style|modernist/i.test(classic) ? 'Classic\'s <style> mentions it' : 'no .mod-only base rule in <style id="style-base">');
+
+  /* The attribute is set by a script in <head> before any stylesheet; Archivo's address appears once, inside the function
+     that only Modernist reaches, and nowhere as a <link> a Classic device would load. */
+  const head = pageSrc.slice(0, pageSrc.indexOf('</head>'));
+  const bootAt = head.indexOf("setAttribute('data-style', style)");
+  const firstStyle = head.indexOf('<style>');
+  const archivoUses = (pageSrc.match(/family=Archivo/g) || []).length;
+  check('the style is set in <head> before any stylesheet, and Archivo is loaded only by loadArchivoFont, only for Modernist',
+        bootAt > 0 && bootAt < firstStyle && /localStorage\.getItem\('kitchen\.style'\)/.test(head) &&
+        archivoUses === 1 && /function loadArchivoFont\(\)\{[\s\S]*?family=Archivo[\s\S]*?\n\}/.test(head) &&
+        /if\(style === 'modernist'\) loadArchivoFont\(\);/.test(head) && !/<link[^>]*Archivo/.test(pageSrc),
+        `boot at ${bootAt}, first <style> at ${firstStyle}, Archivo mentioned ${archivoUses}×`);
+}
+
 /* ---- The converter's instructions (issue #127, 12 Oct 2026) ----
    Each household loads converter/conversion-instructions.md into its own conversion project, and the app asks each
    once to reload it when CONVERTER_VERSION moves. So a change to the file must move the version, or nobody is told.
@@ -351,6 +418,23 @@ const gap = core.parseRecipe('GROUP a:\n1 x\n\nGROUP b:\n1 y\n\nGROUP c:\n1 z\n\
 const gapErrors = core.computeColumns(gap.groups, gap.stages).errors;
 check('a merge across a gap is an error that names the stage', gapErrors.length === 1 && /Stage 1/.test(gapErrors[0]) && /adjacent/.test(gapErrors[0]), gapErrors.join(' | '));
 check('adjacent rows merge without an error', core.computeColumns(parsed.groups, parsed.stages).errors.length === 0);
+/* The `merge` mark (docs/PLAN-MODERNIST.md, 15 Oct 2026): a box that brings together two or more step outputs, which the
+   Modernist style fills in ink. Adding raw ingredients to one cooked thing is still a step, as in the design's own example
+   (a sauce step that adds passata to the softened onions is a step; the box that combines the chicken and the sauce is the merge). */
+{
+  const m = core.parseRecipe('GROUP a:\n1 x\n\nGROUP b:\n1 y\n\nGROUP c:\n1 z\n\nGROUP d:\n1 w\n\n' +
+    'STAGE:\nMERGE a -> A: Fry [5 min]\nMERGE b, c -> B: Stir [5 min]\n\n' +
+    'STAGE:\nMERGE A -> C: Grill [5 min]\nMERGE B, d -> D: Simmer [5 min]\n\n' +
+    'STAGE:\nMERGE C, D -> E: Blend [5 min]');
+  const cols = core.computeColumns(m.groups, m.stages);
+  const marked = cols.columns.flat().filter(b => b.merge).map(b => b.outputHandle);
+  check('a box is marked merge only when two or more of its inputs are steps, not raw groups (B and D add raw ingredients; E joins two steps)',
+        cols.errors.length === 0 && JSON.stringify(marked) === '["E"]', JSON.stringify({ marked, errors: cols.errors }));
+  /* A step may take the name of a group already used up; from then on that name is a step's output, not raw ingredients. */
+  const r = core.parseRecipe('GROUP a:\n1 x\n\nGROUP b:\n1 y\n\nSTAGE:\nMERGE a -> x: Fry [5 min]\n\nSTAGE:\nMERGE b -> a: Stir [5 min]\n\nSTAGE:\nMERGE x, a -> y: Join [5 min]');
+  const rc = core.computeColumns(r.groups, r.stages), rm = rc.columns.flat().filter(b => b.merge).map(b => b.outputHandle);
+  check('    a step output that reuses a used-up group\'s name counts as a step', rc.errors.length === 0 && JSON.stringify(rm) === '["y"]', JSON.stringify({ rm, errors: rc.errors }));
+}
 /* F41 (October review): each used to be laid out silently. */
 const colErrs = t => { const p = core.parseRecipe(t); return core.computeColumns(p.groups, p.stages).errors; };
 const twiceGroup = colErrs('GROUP a:\n1 x\n\nGROUP a:\n1 y\n\nSTAGE:\nMERGE a -> b: Join [instant]');
