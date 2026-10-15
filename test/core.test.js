@@ -282,6 +282,11 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
   const mixes = rules.filter(r => /color-mix\(/.test(r.body)).map(r => r.sels[0]).concat(/color-mix\(/.test(mod.replace(/[^{}]+\{[^{}]*\}/g, '')) ? ['outside a rule'] : []);
   check('no color-mix() in styles/modernist.css, which EXPORT PNG cannot draw', mixes.length === 0, mixes.slice(0, 4).join(' | '));
 
+  /* Words on red use the darker fill (--km-fill, #dd2b0f: 4.7:1 with white), never the accent itself (4.2:1); the household
+     chose it on 15 Oct. A rule that sets on-accent words must not set the accent as its background. */
+  const onBright = rules.filter(r => /color\s*:\s*var\(--km-on-accent\)/.test(r.body) && /(?:background(?:-color)?|--cell-bg)\s*:\s*var\(--color-accent\)/.test(r.body)).map(r => r.sels[0]);
+  check('words on a red fill sit on the darker red (--km-fill), not the accent', onBright.length === 0, onBright.slice(0, 4).join(' | '));
+
   /* Where it is linked, and the version in the link. */
   const link = pageSrc.match(/<link rel="stylesheet" href="styles\/modernist\.css\?v=([^"]*)">/);
   const classicEnd = pageSrc.indexOf('</style>');

@@ -7254,17 +7254,17 @@ const check = (name, pass, detail) => {
         fm.setupTops.length === 2 && fm.setupTops[0] === fm.setupTops[1] && fm.setupTops[0] < fm.overviewTop, JSON.stringify(fm));
   check('    boxes are drawn by kind, with no inline colours: a step on grey with a 4px ink bar, a merge of two steps in ink, the last column in red',
         fm.inline === 0 && fm.step.bg === 'rgb(234, 233, 233)' && fm.step.bar === '4px rgb(32, 30, 29)' && !/box-merge/.test(fm.addRaw) &&
-        /box-merge/.test(fm.merge.cls) && fm.merge.bg === 'rgb(32, 30, 29)' && /box-final/.test(fm.final.cls) && fm.final.bg === 'rgb(236, 48, 19)' && fm.final.size === '24px',
+        /box-merge/.test(fm.merge.cls) && fm.merge.bg === 'rgb(32, 30, 29)' && /box-final/.test(fm.final.cls) && fm.final.bg === 'rgb(221, 43, 15)' && fm.final.size === '24px',
         JSON.stringify([fm.step, fm.addRaw, fm.merge, fm.final]));
   check('    a 4px ink rule across the ingredients where each group starts (rows 4, 6, 7 and 8), and a 270px ingredient column',
         JSON.stringify(fm.groupTops) === '[3,5,6,7]' && fm.groupRule === '2px rgb(32, 30, 29)' && Math.abs(fm.firstCol - 270) <= 1, JSON.stringify([fm.groupTops, fm.groupRule, fm.firstCol]));
-  check('    the overview\'s lanes are ink, the last step red, with no inline colour', fm.lastLane && !fm.lastLane.inline && fm.lastLane.bg === 'rgb(236, 48, 19)', JSON.stringify(fm.lastLane));
+  check('    the overview\'s lanes are ink, the last step red, with no inline colour', fm.lastLane && !fm.lastLane.inline && fm.lastLane.bg === 'rgb(221, 43, 15)', JSON.stringify(fm.lastLane));
   await vm.click('#flowMount .box-cell[data-handle="C"]'); await vm.waitForTimeout(200);
   check('    ticking "Grill" ticks what fed it, and the counter says 5 / 14', (await vm.textContent('#flowMount .recipe-ticked')) === '5 / 14 TICKED');
   await vm.click('#view-viewer .toggle-track'); await vm.waitForTimeout(300);
   const cook = await vm.evaluate(() => ({ bar: getComputedStyle(document.querySelector('#view-viewer .keep-awake-status')).backgroundColor,
     scaleShown: document.querySelector('#view-viewer .viewer-scale-row').getClientRects().length > 0 }));
-  check('    cooking mode shows the red bar and hides COOK FOR', cook.bar === 'rgb(236, 48, 19)' && !cook.scaleShown, JSON.stringify(cook));
+  check('    cooking mode shows the red bar and hides COOK FOR', cook.bar === 'rgb(221, 43, 15)' && !cook.scaleShown, JSON.stringify(cook));
   await vm.click('#view-viewer .toggle-track'); await vm.waitForTimeout(200);
   await vm.evaluate(() => applyStyle('classic')); await vm.waitForTimeout(200);
   const sw1 = await flowLook(vm);
