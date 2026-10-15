@@ -1836,9 +1836,17 @@ function loadArchivoFont(){
           <div id="dayList"></div>
         </div>
         <aside class="shortlist-panel">
+          <!-- Modernist only (docs/PLAN-MODERNIST.md): the panel collapses to a 56px rail, opened again from the rail. Hidden
+               in Classic by .mod-only, where the panel never collapses. -->
+          <button class="sl-rail mod-only" id="shortlistRailBtn" aria-label="Open the shortlist" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            <span class="sl-rail-name">Shortlist</span><span class="sl-rail-count" id="shortlistRailCount"></span>
+          </button>
           <div class="shortlist-head">
             <div class="side-label">SHORTLIST</div>
+            <span class="sl-head-title mod-only">Shortlist</span>
             <div class="shortlist-count" id="shortlistCount"></div>
+            <button class="sl-collapse-btn mod-only" id="shortlistCollapseBtn" aria-label="Collapse the shortlist" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
           </div>
           <input id="shortlistInput" class="shortlist-input" type="text" autocomplete="off"
                  placeholder="+ Jot down an idea…" aria-label="Jot down an idea">
@@ -4965,6 +4973,7 @@ const state = {
   selectedGroupId: null,       // the meal-group id currently open in the Group Viewer, if any
   groupViewerReturnTo: null,   // where "← PLANNER" in the Group Viewer should navigate back to
   groupLineUp: null,           // START/FINISH TOGETHER chosen for one group in this tab (#87); never stored
+  shortlistCollapsed: false,   // Modernist only: the Planner's shortlist panel folded to its rail, for this visit only
   sideOffersHidden: new Set(), // 'date|recipeId' whose SERVE WITH offer was dismissed with ×, in this tab only (#87); never stored
   oftenHidden: new Set(),      // the same for OFTEN WITH (#142)
   viewerServes: null           // ad-hoc target headcount for the currently open Viewer recipe, null = the recipe's own —
@@ -5078,8 +5087,24 @@ document.getElementById('navHideBtn').addEventListener('click', ()=>{
 document.querySelectorAll('.navlink[data-view]').forEach(btn=>{
   /* Shortlist lives inside the Planner screen (per the mockup), not a screen of its own. */
   const target = btn.dataset.view === 'shortlist' ? 'planner' : btn.dataset.view;
-  btn.addEventListener('click', ()=> showView(target));
+  btn.addEventListener('click', ()=>{
+    /* In Modernist the shortlist panel can be collapsed; asking for SHORTLIST opens it again. Classic never collapses it. */
+    if(btn.dataset.view === 'shortlist') setShortlistCollapsed(false);
+    showView(target);
+  });
 });
+
+/* Modernist's collapse for the Planner's shortlist panel (docs/PLAN-MODERNIST.md): for this visit to the app only, like the
+   prototype's state, so a fresh start always shows the shortlist. Only Modernist's stylesheet draws it. Each button hides
+   itself when pressed, so focus moves to the one that undoes it. */
+function setShortlistCollapsed(collapsed){
+  state.shortlistCollapsed = !!collapsed;
+  document.querySelector('#view-planner .shortlist-panel').classList.toggle('sl-collapsed', state.shortlistCollapsed);
+  document.getElementById('shortlistRailBtn').setAttribute('aria-expanded', state.shortlistCollapsed ? 'false' : 'true');
+  document.getElementById('shortlistCollapseBtn').setAttribute('aria-expanded', state.shortlistCollapsed ? 'false' : 'true');
+}
+document.getElementById('shortlistCollapseBtn').addEventListener('click', ()=>{ setShortlistCollapsed(true); document.getElementById('shortlistRailBtn').focus(); });
+document.getElementById('shortlistRailBtn').addEventListener('click', ()=>{ setShortlistCollapsed(false); document.getElementById('shortlistCollapseBtn').focus(); });
 
 /* The count is in spans of its own so Modernist can set it at the right of the row without its " · ". The text is the
    same as it always was ("SHORTLIST · 3"), and so is Classic's drawing of it. */
@@ -6355,9 +6380,21 @@ function renderPlannerDays(){
   const todayIso = todayStr();
 
   const calOn = calendarShown();
+  /* Modernist (docs/PLAN-MODERNIST.md) puts the week's dates and how many dishes are planned in it on the week's band, and
+     stacks the day's name over its date. Classic's markup is as it was; the screen is redrawn when the style changes. */
+  const mod = currentStyle() === 'modernist';
+  const month = d => d.toLocaleDateString(undefined, { month:'short' }).toUpperCase();
   let html = '';
   buckets.forEach((bucketDays, i)=>{
-    const label = weekBucketLabel(i, bucketDays);
+    let label = weekBucketLabel(i, bucketDays);
+    if(mod && bucketDays.length){
+      const first = bucketDays[0], last = bucketDays[bucketDays.length - 1];
+      const range = first.getMonth() === last.getMonth()
+        ? `${first.getDate()}–${last.getDate()} ${month(last)}` : `${first.getDate()} ${month(first)}–${last.getDate()} ${month(last)}`;
+      const planned = bucketDays.reduce((n, d)=>{ const e = plan[isoLocal(d)]; return n + (e && !e.blank ? planRecipeIds(e).length : 0); }, 0);
+      /* The week after next has a range, so it needs no "WEEK OF" date of its own. */
+      label = `<span class="week-name">${i < 2 ? label : 'THE WEEK AFTER'} · ${range}</span><span class="week-summary">${planned ? `${planned} PLANNED` : 'NOTHING PLANNED'}</span>`;
+    }
     /* ADD THE WEEK: the week's planned days that are not yet in the calendar, all in one call. */
     const weekTodo = calOn ? bucketDays.map(isoLocal).filter(d=>{ const e = plan[d]; return e && !e.blank && planRecipeIds(e).length && !e.calendar; }) : [];
     html += `<div class="week-label">${label}${weekTodo.length
@@ -6459,7 +6496,7 @@ function renderPlannerDays(){
       }
 
       html += `<div class="day-row${isToday?' today':''}${(state.selectedShortlistId && state.groupingDate!==iso)?' assignable':''}" data-date="${iso}">
-        <div class="day-num">${formatDayLabel(d)}${isToday?'<span class="today-tag">TODAY</span>':''}</div>
+        <div class="day-num">${mod ? `<span class="day-dow">${d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase()}</span><span class="day-date">${d.getDate()}</span>` : formatDayLabel(d)}${isToday?'<span class="today-tag">TODAY</span>':''}</div>
         ${inner}
       </div>`;
     });
@@ -6487,6 +6524,9 @@ function renderShortlistPanel(){
   const list = loadShortlist();
   const recipes = loadRecipes();
   document.getElementById('shortlistCount').textContent = list.length ? `${list.length} IDEA${list.length===1?'':'S'}` : '';
+  document.getElementById('shortlistRailCount').textContent = list.length || '';
+  document.getElementById('shortlistRailBtn').setAttribute('aria-label',
+    list.length ? `Open the shortlist, ${list.length} idea${list.length===1?'':'s'}` : 'Open the shortlist');
 
   const container = document.getElementById('shortlistList');
   if(!list.length){

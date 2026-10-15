@@ -1,6 +1,6 @@
 # PLAN-MODERNIST: a second visual style, "Modernist" (15 Oct 2026)
 
-**Status:** being built, one step at a time on a branch; nothing is on `main` yet. Steps 1 to 4 (the switch, the sidebar, Recipes, the recipe viewer) are built. See "Build order".
+**Status:** being built, one step at a time on a branch; nothing is on `main` yet. Steps 1 to 5 (the switch, the sidebar, Recipes, the recipe viewer, the Planner and shortlist) are built. See "Build order", and the "Decision log" at the end for every choice made while building and why.
 
 The household has a design handoff (a README, an HTML prototype and a token sheet) for a flat, square, one-typeface look for the
 tablet in landscape (1280×800). It is added as a **second style beside Classic, not instead of it**: Settings → APP has a STYLE
@@ -57,7 +57,7 @@ choice, CLASSIC or MODERNIST, next to APPEARANCE. Classic stays exactly as it wa
 ## Build order and status
 
 1. **The switch** (built 15 Oct): boot script, STYLE select, `applyStyle`/`currentStyle`, the token bridge, the build step, the checks.
-2. **App shell and sidebar** (built 15 Oct). 3. **Recipes** (built 15 Oct). 4. **The recipe viewer** (built 15 Oct). 5. Planner and Shortlist. 6. Shopping. 7. History. 8. Settings. 9. Everything else.
+2. **App shell and sidebar** (built 15 Oct). 3. **Recipes** (built 15 Oct). 4. **The recipe viewer** (built 15 Oct). 5. **Planner and Shortlist** (built 15 Oct). 6. Shopping. 7. History. 8. Settings. 9. Everything else.
 
 Each step's entry below is added when it lands: what was measured, and where it departs from the prototype.
 
@@ -133,8 +133,58 @@ Each step's entry below is added when it lands: what was measured, and where it 
   - TIPS and COOKING NOTES are stacked, not side by side: the recipe's notes are part of what EXPORT PNG captures and the cooking
     notes are not, so they cannot share a row without changing the export.
   - The "people" box in COOK FOR keeps a 44px height (a box to type in cannot carry an invisible tap area).
-- **For the household to decide:** white 12–14px words on the red (the cooking bar, NEW RECIPE, the red buttons) are 4.2:1, under
-  the 4.5:1 Classic was brought to on 14 Oct. The design asks for it; the darker red `#dd2b0f` would give 4.7:1.
+- **Decided by the household (15 Oct):** white 12–14px words on the red (the cooking bar, NEW RECIPE, the red buttons) were 4.2:1,
+  under the 4.5:1 Classic was brought to on 14 Oct. Every red fill with words or a tick on it now uses the darker `#dd2b0f` (4.7:1).
+  See D1 in the decision log.
 - **Checks:** 8 in `test/smoke.js` (Classic's viewer unchanged; the title row and counter; the order; kinds and colours; the group
   rules and 270px column; the lanes; the counter on a tap; cooking mode; redraw on switching style), each seen to fail once.
+
+### Step 5 as built
+- **Markup, hidden in Classic:** the shortlist panel gains a `.mod-only` title ("Shortlist"), a collapse button
+  (`#shortlistCollapseBtn`, ›) and a rail (`#shortlistRailBtn`: ‹, "Shortlist" set vertically, the count). `renderPlannerDays`
+  asks `currentStyle()`: in Modernist each week's band carries its dates and "N PLANNED", and each day's name and date are two
+  spans, stacked. Classic's markup is as it was, and its Planner is byte-identical (Classic's screenshots match on every screen
+  but Settings → APP, as since step 1).
+- **Collapse (decision 8):** `state.shortlistCollapsed`, for this visit only (D4). The ‹ rail opens it again, SHORTLIST in the
+  sidebar opens the Planner with it open (the README's "keep it"), and each button moves focus to the one that undoes it. It
+  stays collapsed across screens and across a switch to Classic and back; Classic never draws it collapsed. At 860px and below
+  the panel sits under the days, as in Classic, and does not collapse (D5).
+- **Drawing:** "Next Fourteen Days" at 46px; week bands under a 2px ink rule; each day a 92px column (name, 24px date, TODAY),
+  today on the red wash with a red rule; a dish's name at 20px/800 on a line of its own with its × beside it; course, time and
+  the pills on the next line (2px rules; SERVES lit red when the day asks for a different number; PRE-MADE on in grey; ✓ COOKED
+  in ink); CHOOSE A RECIPE in red beside a square. The panel is 330px: the jot box with a 2px red rule, numbered rows (01, 02…),
+  and the shopping block in red at the foot, all of it one link to the list (D11).
+- **Where it departs from the prototype:**
+  - The spacing between a dish's name and its pills, and between dishes, is 18px, not 8px, so that every control keeps a 44px tap
+    area that no neighbour takes (D3). A Planner day with one dish is about 20px taller than the prototype's.
+  - ADD ANOTHER, GROUP SOME TOGETHER, the GROUPED line, SERVE WITH, the calendar's pills and UNDO for a day away are the app's
+    and not in the prototype; they are drawn in the same language (D8).
+  - The words are the app's: SERVES 6, PRE-MADE · DINNER, COOKED ✓ and ✓ COOKED (decision 9).
+  - Small red words (TODAY, CHOOSE A RECIPE, the counts, the row numbers) are the darker red, accent-700 (D2).
+- **Checks:** 11 in `test/smoke.js` (Classic's Planner unchanged; the title, week band and day column; the dish's two lines and its
+  pills; the panel, its numbers and the red block; a 44px tap on every button, measured by pointing at it; collapse, the rail,
+  focus and the count it announces; collapsed across screens and SHORTLIST reopening it; the block as one link; a redraw on
+  switching style; a phone, with nothing running off the side). Each was seen to fail once, by breaking the code it guards.
+
+## Decision log
+
+Every choice made while building, beyond the twelve agreed at the top, with the reason. "Household" means you chose it; "session"
+means it was decided while building and is yours to overturn. Newest last.
+
+| # | Date | Who | Decision | Why |
+|---|---|---|---|---|
+| — | 15 Oct | session | Steps 1–4: tints as `rgba()` tokens, never `color-mix()`; group rules and step bars as borders, not inset shadows. | EXPORT PNG (html2canvas 1.4.1) cannot read Chrome's `color(srgb …)` and drew an inset shadow as a black block. Measured with the real library. Step 4. |
+| — | 15 Oct | session | The `merge` flag is "two or more inputs are steps' outputs", narrower than decision 6 as first written. | "More than one input" draws the design's own sauce step as a merge. Step 4. |
+| — | 15 Oct | session | No DARK MODE link in the sidebar; selects and typing boxes keep 44px; SORT kept; TIPS and COOKING NOTES stacked. | Appearance is household-wide; a select cannot carry an invisible tap area; SORT is in use; the notes are in the PNG and the cooking notes are not. Steps 2–4. |
+| D1 | 15 Oct | household | Every red fill that carries words or a tick is `#dd2b0f` (`--km-fill`), not the spec's `#ec3013`; in dark, `#ff563c` with dark words. Decorative red (rules, the today mark, the brand square) keeps the spec's colour. | White on `#ec3013` is 4.2:1, under the 4.5:1 Classic was brought to on 14 Oct; `#dd2b0f` is 4.7:1. A core check fails on white words over the accent. |
+| D2 | 15 Oct | session | Small red words are accent-700 (`#ae1800`; `#ff9783` in dark). The vivid accent is kept for fills and large type (today's 24px date, the set-up numbers). | The README says "red"; the accent is 3.8:1 on the ground, under 4.5:1 for small text; large bold type needs 3:1, which it passes. Same rule as `--plum` in the bridge. |
+| D3 | 15 Oct | session | On the Planner, 18px between a dish's name and its pills and between dishes (the prototype has 8px); 16px between rows of pills. | A 24px name and a 28px pill each need their own 44px (the 14 Oct rule), and invisible tap areas cannot overlap without one stealing the other's taps. 8px left 34px between them; the smoke check found it. |
+| D4 | 15 Oct | session | The shortlist's collapse is for this visit only, not saved. | The prototype's state is not saved, a fresh start should show the list, and nothing else in this style is written anywhere but `kitchen.style`. |
+| D5 | 15 Oct | session | The shortlist collapses only at 861px and up. | Narrower, it sits under the days, where a vertical rail means nothing. |
+| D6 | 15 Oct | session | Week bands read THIS WEEK, NEXT WEEK and THE WEEK AFTER, each with the dates of the days shown, not the whole calendar week. | The fortnight starts today, so the first week is usually part of one; "WEEK OF THU 1" beside its own dates would say the date twice. |
+| D7 | 15 Oct | session | The shortlist's ≡ is hidden and the row number takes its place. | The ≡ was only a picture (nothing drags). |
+| D8 | 15 Oct | session | The Planner's controls the prototype lacks are kept and drawn in its language; ADD ANOTHER and GROUP SOME TOGETHER share a line. | The household uses them, and sharing a line saves a 44px row on every day with two dishes. |
+| D9 | 15 Oct | session | The rail's spoken label carries the count ("Open the shortlist, 4 ideas"). | The count is shown on the rail, but a button's label replaces its words for a screen reader. |
+| D10 | 15 Oct | session | Not changed, in either style: the shortlist's × has no spoken label. | It is Classic's and outside this work; a one-line follow-up. |
+| D11 | 15 Oct | session | The red shopping block is one link, VIEW LIST →, stretched over the block. | The prototype opens the list from anywhere on the block; using the existing link keeps one control and one keyboard stop. |
 

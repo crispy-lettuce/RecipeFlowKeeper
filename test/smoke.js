@@ -7274,6 +7274,148 @@ const check = (name, pass, detail) => {
         !sw1.row && sw1.inline === 6 && sw2.row && sw2.inline === 0 && sw2.ticked === '5 / 14 TICKED', JSON.stringify([sw1.row, sw1.inline, sw2.row, sw2.inline, sw2.ticked]));
   await vm.close();
 
+  /* ---- Modernist, step 5: the Planner and the shortlist ----
+     A made-up fortnight: two grouped dishes today (one cooked, one for six), a pre-made dish tomorrow, a day away, and three
+     more ideas on the shortlist. Each button's 44px is measured by pointing at it, as the pills are drawn about 28px. */
+  const planWeek = pg => pg.evaluate(() => {
+    premadeAvailable = true;
+    const R = (id, title, course, time, servings, history) => ({ id, title, source: 'Test Kitchen', time, servings, tags: { course, keywords: [] }, history: history || [], syntax: 'TITLE: ' + title });
+    cache.recipes.push(R('pw1', 'Test Bean Stew with a Long Name to See It Clip', 'Main', '1 hr 10 min', 4, ['2026-09-22']), R('pw2', 'Test Green Side', 'Side', '15 min', 4),
+      R('pw3', 'Test Flatbread', 'Bread', '25 min', 4), R('pw4', 'Test Noodle Bowl', 'Main', '20 min', 2));
+    cache.plan['2026-09-22'] = { recipeIds: ['pw1', 'pw2'], servings: [6, 0], premade: ['', ''] };
+    cache.plan['2026-09-23'] = { recipeIds: ['pw4'], servings: [0], premade: ['dinner'] };
+    cache.plan['2026-09-24'] = { blank: true };
+    cache.groups.push({ id: 'pwg', dateIso: '2026-09-22', recipeIds: ['pw1', 'pw2'], name: '' });
+    cache.shortlist.push({ id: 'pws1', recipeId: 'pw3' }, { id: 'pws2', text: 'Something with test squash' }, { id: 'pws3', recipeId: 'pw4' });
+  });
+  const plannerLook = pg => pg.evaluate(() => {
+    const v = document.getElementById('view-planner'), cs = el => getComputedStyle(el), R = el => el.getBoundingClientRect();
+    const vis = el => !!el && el.getClientRects().length > 0 && cs(el).visibility !== 'hidden';
+    const week = v.querySelector('.week-label'), today = v.querySelector('.day-row.today'), panel = v.querySelector('.shortlist-panel');
+    const row = today.querySelector('.day-recipe-row'), t = row.querySelector('.day-recipe-title'), x = row.querySelector('.day-recipe-remove');
+    const pills = [...row.querySelectorAll('.day-recipe-serves, .day-recipe-premade, .day-recipe-cooked')];
+    return { h1: cs(v.querySelector('.planner-head h1')).fontSize, week: week.textContent.trim(), weekRule: cs(week).borderTopWidth + ' ' + cs(week).borderTopColor,
+      summary: (s => s ? s.textContent : null)(week.querySelector('.week-summary')), num: today.querySelector('.day-num').textContent,
+      numW: Math.round(R(today.querySelector('.day-num')).width), date: (d => d && { size: cs(d).fontSize, colour: cs(d).color })(today.querySelector('.day-date')),
+      title: { size: cs(t).fontSize, weight: cs(t).fontWeight, top: Math.round(R(t).top), h: Math.round(R(t).height) }, xTop: Math.round(R(x).top),
+      pillTops: pills.map(p => Math.round(R(p).top)), pillH: pills.map(p => Math.round(R(p).height)), below: pills.every(p => R(p).top >= R(t).bottom - 10),
+      cooked: (c => c && cs(c).backgroundColor)(row.querySelector('.day-recipe-cooked.done')), servesOn: (c => c && cs(c).borderTopColor)(row.querySelector('.day-recipe-serves.on')),
+      panelW: Math.round(R(panel).width), label: vis(panel.querySelector('.side-label')), headTitle: vis(panel.querySelector('.sl-head-title')),
+      collapseBtn: vis(document.getElementById('shortlistCollapseBtn')), rail: vis(document.getElementById('shortlistRailBtn')),
+      railText: document.getElementById('shortlistRailBtn').textContent.trim().replace(/\s+/g, ' '), count: document.getElementById('shortlistCount').textContent,
+      handle: vis(panel.querySelector('.sl-handle')), num1: (i => i && { content: getComputedStyle(i, '::before').content, colour: getComputedStyle(i, '::before').color })(panel.querySelector('.sl-item')),
+      railLabel: document.getElementById('shortlistRailBtn').getAttribute('aria-label'),
+      preview: (b => ({ bg: cs(b).backgroundColor, shown: vis(b) }))(panel.querySelector('.shopping-preview')),
+      daysW: Math.round(R(v.querySelector('.planner-days')).width), scroll: document.documentElement.scrollWidth, inner: innerWidth };
+  });
+  /* Points 21px above and below each visible button's middle (and either side, if it is drawn narrower than 44px), and asks
+     what a tap there lands on. Points off the screen are not asked. */
+  const hitScan = (pg, scope) => pg.evaluate(scope => {
+    const out = { n: 0, miss: [] };
+    for (const b of document.querySelectorAll(scope + ' button')) {
+      const r = b.getBoundingClientRect(); if (r.width < 4 || r.height < 4 || r.top < 0 || r.bottom > innerHeight) continue;
+      let hidden = false; for (let x = b; x; x = x.parentElement) { const c = getComputedStyle(x); if (c.display === 'none' || c.visibility === 'hidden') { hidden = true; break; } }
+      if (hidden) continue;
+      out.n++;
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      for (const [dx, dy] of [[0, -21], [0, 21]].concat(r.width < 44 ? [[-21, 0], [21, 0]] : [])) {
+        const px = cx + dx, py = cy + dy; if (px < 0 || py < 0 || px >= innerWidth || py >= innerHeight) continue;
+        const h = document.elementFromPoint(px, py);
+        if (!h || h.closest('button') !== b) out.miss.push(`${b.className.split(' ')[0]} "${b.textContent.trim().slice(0, 12)}" ${dx},${dy}`);
+      }
+    }
+    return out;
+  }, scope);
+
+  const plc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  plc.__label = 'planner, classic';
+  await plc.clock.setFixedTime(FIXTURE_NOW);
+  await plc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await plc.waitForTimeout(1200);
+  await planWeek(plc);
+  await plc.click('.navlink[data-view="planner"]'); await plc.waitForTimeout(400);
+  const q0 = await plannerLook(plc);
+  check('Classic\'s Planner is as it was: "THIS WEEK" with no dates or count, "TUE 22" on one line, the 340px panel with no rail and no collapse',
+        q0.week === 'THIS WEEK' && q0.summary === null && q0.num === 'TUE 22TODAY' && q0.date === null && q0.panelW === 340 && q0.label && !q0.headTitle && !q0.collapseBtn && !q0.rail && q0.handle,
+        JSON.stringify(q0));
+  await plc.close();
+
+  const plm = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  plm.__label = 'planner, modernist';
+  await plm.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await plm.clock.setFixedTime(FIXTURE_NOW);
+  await plm.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await plm.waitForTimeout(1200);
+  await planWeek(plm);
+  await plm.click('.navlink[data-view="planner"]'); await plm.waitForTimeout(400);
+  const ideas = await plm.evaluate(() => loadShortlist().length);
+  const q1 = await plannerLook(plm);
+  check('Modernist\'s Planner: a 46px title, "THIS WEEK · 22–24 SEP" and "3 PLANNED" under a 2px ink rule, each day a 92px column, today\'s date 24px in red',
+        q1.h1 === '46px' && /^THIS WEEK · 22–24 SEP/.test(q1.week) && q1.summary === '3 PLANNED' && q1.weekRule === '2px rgb(32, 30, 29)' &&
+        q1.num === 'TUE22TODAY' && q1.numW === 92 && q1.date.size === '24px' && q1.date.colour === 'rgb(236, 48, 19)', JSON.stringify(q1));
+  check('    a dish\'s name is 20px/800 on a line of its own with its × beside it, the pills on the next line, drawn 28px; ✓ COOKED in ink, SERVES 6 lit in red',
+        q1.title.size === '20px' && q1.title.weight === '800' && q1.title.h === 44 && q1.xTop === q1.title.top && q1.below && q1.pillTops.length === 3 &&
+        q1.pillTops.every(y => y === q1.pillTops[0]) && q1.pillH.every(h => h === 28) && q1.cooked === 'rgb(32, 30, 29)' && q1.servesOn === 'rgb(236, 48, 19)', JSON.stringify(q1));
+  check('    the 330px shortlist: "Shortlist" and its count with a collapse button, numbered rows in red with no ≡, the shopping block in red',
+        q1.panelW === 330 && q1.headTitle && !q1.label && q1.collapseBtn && !q1.rail && q1.count === `${ideas} IDEAS` && !q1.handle &&
+        /counter\(sl, decimal-leading-zero\)/.test(q1.num1.content) && q1.num1.colour === 'rgb(174, 24, 0)' && q1.preview.bg === 'rgb(221, 43, 15)', JSON.stringify(q1));
+  const planHits = await hitScan(plm, '#view-planner');
+  check('    every button on the Planner answers a tap 21px above and below its middle (44px), and either side when drawn narrower',
+        planHits.n >= 20 && planHits.miss.length === 0, `${planHits.n} buttons` + (planHits.miss.length ? '; missed: ' + planHits.miss.slice(0, 5).join(', ') : ''));
+
+  await plm.click('#shortlistCollapseBtn'); await plm.waitForTimeout(300);
+  const q2 = await plannerLook(plm);
+  const f2 = await plm.evaluate(() => document.activeElement.id);
+  check('    › collapses the shortlist to a 56px rail that says "Shortlist" and how many, the days take the room, and focus moves to the rail',
+        q2.panelW === 56 && q2.rail && q2.railText === `Shortlist${ideas}` && q2.railLabel === `Open the shortlist, ${ideas} ideas` && !q2.headTitle && !q2.preview.shown && q2.daysW === q1.daysW + 274 && f2 === 'shortlistRailBtn',
+        JSON.stringify([q2.panelW, q2.rail, q2.railText, q2.railLabel, q2.daysW, q1.daysW, f2]));
+  await plm.click('#shortlistRailBtn'); await plm.waitForTimeout(300);
+  const q3 = await plannerLook(plm);
+  const f3 = await plm.evaluate(() => document.activeElement.id);
+  check('    the rail opens it again, with focus on the collapse button', q3.panelW === 330 && !q3.rail && f3 === 'shortlistCollapseBtn', JSON.stringify([q3.panelW, q3.rail, f3]));
+  await plm.click('#shortlistCollapseBtn'); await plm.waitForTimeout(200);
+  await plm.click('#navRailBtn'); await plm.waitForTimeout(200);
+  await plm.click('.navlink[data-view="recipes"]'); await plm.waitForTimeout(300);
+  await plm.click('.navlink[data-view="planner"]'); await plm.waitForTimeout(300);
+  const q4 = (await plannerLook(plm)).panelW;
+  await plm.click('#navRailBtn'); await plm.waitForTimeout(200);
+  await plm.click('.navlink[data-view="shortlist"]'); await plm.waitForTimeout(300);
+  const q5 = await plm.evaluate(() => ({ view: state.view, w: Math.round(document.querySelector('#view-planner .shortlist-panel').getBoundingClientRect().width) }));
+  check('    collapsed it stays collapsed between screens, and SHORTLIST in the sidebar opens the Planner with it open',
+        q4 === 56 && q5.view === 'planner' && q5.w === 330, JSON.stringify([q4, q5]));
+
+  /* The shopping block is one link: a tap on its corner, nowhere near the words, opens the list. */
+  const corner = await plm.evaluate(() => { const r = document.querySelector('#view-planner .shopping-preview').getBoundingClientRect(); return [r.left + 6, r.top + 6]; });
+  await plm.mouse.click(corner[0], corner[1]); await plm.waitForTimeout(300);
+  check('    a tap anywhere on the red shopping block opens the shopping list', (await plm.evaluate(() => state.view)) === 'shopping');
+
+  /* Collapsed in Modernist, then Classic: Classic has no collapse and redraws its own days; back in Modernist it is as it was. */
+  await plm.click('.navlink[data-view="planner"]'); await plm.waitForTimeout(300);
+  await plm.click('#shortlistCollapseBtn'); await plm.waitForTimeout(200);
+  await plm.evaluate(() => applyStyle('classic')); await plm.waitForTimeout(300);
+  const q6 = await plannerLook(plm);
+  await plm.evaluate(() => applyStyle('modernist')); await plm.waitForTimeout(300);
+  const q7 = await plannerLook(plm);
+  check('switching style redraws the Planner: Classic\'s "TUE 22" and 340px panel even while Modernist\'s is collapsed, then Modernist\'s again, still collapsed',
+        q6.num === 'TUE 22TODAY' && q6.summary === null && q6.panelW === 340 && q6.label && !q6.rail && q7.num === 'TUE22TODAY' && q7.summary === '3 PLANNED' && q7.panelW === 56,
+        JSON.stringify([q6.num, q6.summary, q6.panelW, q7.num, q7.summary, q7.panelW]));
+  await plm.close();
+
+  const plp = await browser.newPage({ viewport: { width: 412, height: 915 } });
+  plp.__label = 'planner, modernist, phone';
+  await plp.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await plp.clock.setFixedTime(FIXTURE_NOW);
+  await plp.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await plp.waitForTimeout(1200);
+  await planWeek(plp);
+  await plp.click('.navlink[data-view="planner"]'); await plp.waitForTimeout(400);
+  const q8 = await plannerLook(plp);
+  const planHitsPhone = await hitScan(plp, '#view-planner');
+  check('Modernist\'s Planner on a phone: nothing runs off the side (a long name is clipped), the shortlist sits under the days with no collapse, buttons answer over 44px',
+        q8.scroll === q8.inner && q8.panelW === 412 && !q8.collapseBtn && !q8.rail && q8.headTitle && planHitsPhone.n >= 10 && planHitsPhone.miss.length === 0,
+        JSON.stringify([q8.scroll, q8.inner, q8.panelW, q8.collapseBtn, q8.rail, planHitsPhone.n, planHitsPhone.miss.slice(0, 4)]));
+  await plp.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:

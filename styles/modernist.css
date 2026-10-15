@@ -594,3 +594,223 @@ html[data-style="modernist"] .cn-actions button:hover, html[data-style="modernis
   html[data-style="modernist"] ol.setup li:nth-child(n+2){ border-top:1px solid var(--color-divider); }
   html[data-style="modernist"] ol.setup li{ padding-left:0; }
 }
+
+/* ============================== THE PLANNER ==============================
+   "Next Fourteen Days" at 46px; each week under a 2px ink rule with its dates and how many dishes are planned in it; each
+   day a 92px column (its name over its date, today in red) and the meals beside it. A meal is its name at 20px/800 on a
+   line of its own, then its course, its time and its pills. The pills are drawn about 28px and answer a tap over 44px
+   (decision 10). Everything is under #view-planner: .day-recipe-title and .shortlist-panel are History's too. */
+html[data-style="modernist"] #view-planner .planner-days{ padding:22px 28px 40px; }
+html[data-style="modernist"] #view-planner .planner-head{ align-items:flex-end; flex-wrap:wrap; gap:8px 16px; margin:0; padding-bottom:18px; }
+html[data-style="modernist"] #view-planner .planner-head h1{ margin:0; font-size:46px; font-weight:800; line-height:.9; letter-spacing:-0.035em; }
+html[data-style="modernist"] #view-planner .planner-rolls{ padding-bottom:4px; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+
+/* The week's band: name and dates on the left, how many planned on the right, then ADD THE WEEK when the calendar is on. */
+html[data-style="modernist"] #view-planner .week-label{
+  display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 16px; margin:24px 0 0; padding:8px 0;
+  border-top:2px solid var(--color-text); border-bottom:2px solid var(--color-divider);
+  font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner .week-label:first-of-type{ margin-top:0; }
+html[data-style="modernist"] #view-planner .week-name{ margin-right:auto; }
+html[data-style="modernist"] #view-planner .week-summary{ color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .week-cal{ margin:0; text-decoration:none; color:var(--color-accent-700); font-weight:800; }
+html[data-style="modernist"] #view-planner .week-cal:hover{ color:var(--color-accent); }
+
+/* A third column takes a left-blank day's UNDO; on any other day it is empty and takes no room. */
+html[data-style="modernist"] #view-planner .day-row{
+  display:grid; grid-template-columns:92px minmax(0, 1fr) auto; align-items:stretch; gap:0; padding:0;
+  border-bottom:1px solid var(--color-divider);
+}
+html[data-style="modernist"] #view-planner .day-row.today{ background:var(--color-accent-100); }
+html[data-style="modernist"] #view-planner .day-row.assignable:hover{ background:var(--color-accent-100); }
+html[data-style="modernist"] #view-planner .day-num{
+  display:flex; flex-direction:column; gap:2px; width:auto; padding:14px 0 14px 12px;
+  border-right:2px solid var(--color-divider); color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner .day-row.today .day-num{ border-right-color:var(--color-accent); color:var(--color-text); font-weight:400; }
+html[data-style="modernist"] #view-planner .day-dow{ font-size:12px; font-weight:800; letter-spacing:.08em; }
+html[data-style="modernist"] #view-planner .day-date{ font-size:24px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+/* The date is large type, where the accent itself reads (3:1 is enough); TODAY is small, so it is the darker red. */
+html[data-style="modernist"] #view-planner .day-row.today .day-date{ color:var(--color-accent); }
+html[data-style="modernist"] #view-planner .day-num .today-tag{ margin-top:0; font-size:10px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+
+/* The day's contents wrap as a row, not a column, so ADD ANOTHER and GROUP SOME TOGETHER share a line; everything else
+   takes a line of its own. */
+html[data-style="modernist"] #view-planner .day-main{ flex-flow:row wrap; align-content:center; align-items:center; gap:8px 20px; padding:10px 0 10px 16px; }
+/* min-width:0, or a line is as wide as a long dish name before it is clipped, and pushes the page sideways. */
+html[data-style="modernist"] #view-planner .day-main > :not(.day-choose):not(.day-away){ flex:1 1 100%; min-width:0; }
+
+/* The meal: the name and × on the first line, the rest on the next. The × is moved up beside the name, and the name is
+   sized to fill the line less the × (44px and a 12px gap) and, on a grouped dish, the 4px tie, so what follows wraps.
+   The name is 24px tall to see and 44px to tap (its padding is taken back by a negative margin): an invisible ::before
+   cannot do it, as the name clips to its ellipsis. */
+html[data-style="modernist"] #view-planner .day-recipe-row{ flex-wrap:wrap; gap:18px 12px; }
+/* The spacing is what the 44px taps need, and no more. The name reaches 10px past its line each way and a pill 8px past its
+   border, so a name and the pills under it need 18px between them, as do one dish's pills and the next dish's name; a
+   pill and a SERVE WITH square need 16. Less, and one would answer a tap meant for the other (test/smoke.js points at
+   each). The prototype's 8px would be tighter, at the cost of the household's 44px rule (docs/PLAN-READABILITY.md). */
+html[data-style="modernist"] #view-planner .day-main > :is(.day-recipe-row, .day-side-offer) + .day-recipe-row{ margin-top:10px; }
+html[data-style="modernist"] #view-planner .day-main > .group-badge + .day-recipe-row{ margin-top:2px; }
+html[data-style="modernist"] #view-planner .day-main > :is(.day-recipe-row, .day-side-offer) + .day-side-offer{ margin-top:8px; }
+html[data-style="modernist"] #view-planner .day-recipe-row > .day-recipe-remove{ order:-1; }
+html[data-style="modernist"] #view-planner .day-recipe-row > :is(.group-tie, .day-recipe-title, .day-away){ order:-2; }
+/* A dish no longer in the library: its line, then CLEAR in words. */
+html[data-style="modernist"] #view-planner .day-recipe-row > .day-away{ flex:1 1 0; }
+html[data-style="modernist"] #view-planner .day-away ~ .day-recipe-remove{ margin:0; padding:0 0 0 16px; font-size:12px; font-weight:800; letter-spacing:.06em; color:var(--color-accent-700); opacity:1; }
+html[data-style="modernist"] #view-planner .day-recipe-title{
+  flex:1 1 calc(100% - 56px); min-width:0; min-height:0; margin:-10px 0; padding:10px 0;
+  font-size:20px; font-weight:800; line-height:24px; letter-spacing:-0.01em; color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner .group-tie + .day-recipe-title{ flex-basis:calc(100% - 72px); }
+/* Choosing dishes to group has no ×: the name takes the line. */
+html[data-style="modernist"] #view-planner .group-pick-row .day-recipe-title{ flex-basis:calc(100% - 34px); }
+html[data-style="modernist"] #view-planner .day-recipe-title:hover{ color:var(--color-accent); }
+html[data-style="modernist"] #view-planner .day-recipe-course,
+html[data-style="modernist"] #view-planner .day-recipe-course.dessert,
+html[data-style="modernist"] #view-planner .day-recipe-course.bread{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .day-recipe-time{ width:auto; margin-right:auto; text-align:left; font-size:13px; font-weight:600; letter-spacing:0; color:var(--color-text); font-variant-numeric:tabular-nums; }
+html[data-style="modernist"] #view-planner .day-recipe-remove{
+  margin:-10px -10px -10px 0; font-size:18px; font-weight:400; color:var(--color-text); opacity:.6;
+}
+html[data-style="modernist"] #view-planner .day-recipe-remove:hover{ opacity:1; color:var(--color-accent); }
+
+/* The pills: SERVES, PRE-MADE, COOKED ✓ and the calendar's two. 2px rules; PRE-MADE on is grey, cooked is ink. */
+html[data-style="modernist"] #view-planner :is(.day-recipe-serves, .day-recipe-premade, .day-recipe-cooked, .day-cal-btn){
+  position:relative; min-height:0; padding:4px 8px; border:2px solid var(--color-divider); background:transparent;
+  font-size:12px; font-weight:800; letter-spacing:.04em; line-height:16px; color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner :is(.day-recipe-serves, .day-recipe-premade, .day-recipe-cooked, .day-cal-btn)::before{
+  content:''; position:absolute; left:-2px; right:-2px; top:-10px; bottom:-10px;
+}
+html[data-style="modernist"] #view-planner :is(.day-recipe-serves, .day-recipe-premade, .day-recipe-cooked:not(.done), .day-cal-btn):hover{ border-color:var(--color-accent); color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .day-recipe-serves.on{ border-color:var(--color-accent); color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .day-recipe-premade.on{ border-color:var(--color-text); background:var(--color-surface); color:var(--color-text); }
+html[data-style="modernist"] #view-planner .day-recipe-cooked.done{ border-color:var(--color-text); background:var(--color-text); color:var(--color-bg); }
+html[data-style="modernist"] #view-planner .day-cal{ gap:16px 8px; margin-top:4px; }
+html[data-style="modernist"] #view-planner .day-cal-btn.on{ border-color:var(--color-text); color:var(--color-text); }
+
+/* CHOOSE A RECIPE: red words beside a square with a +. ADD ANOTHER and GROUP SOME TOGETHER are the same, smaller. */
+html[data-style="modernist"] #view-planner .day-choose{ gap:10px; font-size:13px; font-weight:800; letter-spacing:.06em; color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .day-choose:hover{ color:var(--color-accent); }
+html[data-style="modernist"] #view-planner .day-choose .circle{ width:26px; height:26px; border:2px solid currentColor; font-size:16px; font-weight:800; line-height:1; }
+html[data-style="modernist"] #view-planner .day-choose.day-add-more{ margin:0; font-size:12px; color:var(--color-text); }
+html[data-style="modernist"] #view-planner .day-choose.day-add-more:hover{ color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .day-choose.day-add-more .circle{ width:20px; height:20px; font-size:13px; }
+html[data-style="modernist"] #view-planner .day-away{ font-size:12px; font-style:normal; font-weight:800; letter-spacing:.08em; color:var(--km-ink-72); }
+/* UNDO takes the row's height, so all of the row's right end is the button. */
+html[data-style="modernist"] #view-planner .day-clear{ align-self:stretch; padding:0 16px; font-size:12px; font-weight:800; letter-spacing:.06em; color:var(--color-accent-700); }
+
+/* SERVE WITH and OFTEN WITH: dashed squares for each side. */
+html[data-style="modernist"] #view-planner .day-side-offer{ gap:16px 10px; margin:0; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--km-ink-72); }
+html[data-style="modernist"] #view-planner .day-side-add{
+  position:relative; min-height:0; padding:4px 8px; border:2px dashed var(--color-divider);
+  font-size:12px; font-weight:800; letter-spacing:.04em; line-height:16px; color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner .day-side-add::before{ content:''; position:absolute; left:-2px; right:-2px; top:-10px; bottom:-10px; }
+html[data-style="modernist"] #view-planner .day-side-add:hover{ border-color:var(--color-accent); color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .day-side-hide{ font-size:16px; color:var(--color-text); opacity:.6; }
+html[data-style="modernist"] #view-planner .day-side-hide:hover{ opacity:1; color:var(--color-accent); }
+
+/* Groups: a 4px ink bar ties a group's dishes; the GROUPED line is grey with the same bar. */
+html[data-style="modernist"] #view-planner .group-tie{ width:4px; margin:0; background:var(--color-text); }
+html[data-style="modernist"] #view-planner .group-badge{
+  gap:10px; padding:6px 10px; border:0; border-left:4px solid var(--color-text); background:var(--color-surface);
+  font-size:12px; font-weight:800; letter-spacing:.06em; color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner .group-badge:hover{ background:var(--km-ink-10); }
+html[data-style="modernist"] #view-planner .group-badge .group-tie{ display:none; }
+html[data-style="modernist"] #view-planner .group-ungroup{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .group-pick-row{ padding:6px 0; }
+html[data-style="modernist"] #view-planner .group-pick-row:hover{ background:transparent; }
+html[data-style="modernist"] #view-planner .group-pick-row:hover .day-recipe-title{ color:var(--color-accent); }
+html[data-style="modernist"] #view-planner .group-pick-check{ width:22px; height:22px; border:2px solid var(--color-text); font-weight:800; color:var(--km-on-accent); }
+html[data-style="modernist"] #view-planner .group-pick-check.checked{ background:var(--km-fill); border-color:var(--km-fill); }
+html[data-style="modernist"] #view-planner .group-pick-controls{ gap:10px; margin-top:4px; }
+
+/* Assigning a shortlisted dish: a red bar down the side, the words in ink. */
+html[data-style="modernist"] #view-planner .assign-banner{
+  margin:0 0 18px; padding:10px 14px; border:0; border-left:4px solid var(--color-accent); background:var(--color-accent-100);
+  font-size:14px; font-weight:600; color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner .assign-banner button{ text-decoration:none; font-size:12px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+
+/* ============================== THE SHORTLIST PANEL ==============================
+   330px with a 2px rule; "Shortlist" at 26px with its count and a › that collapses the panel to a 56px rail (Modernist
+   only; SHORTLIST in the sidebar opens it again); the jot box in red; numbered rows; the shopping block in red at the foot,
+   all of it one link to the list. Only at 861px and up does it collapse: narrower, the panel sits under the days. */
+html[data-style="modernist"] #view-planner .shortlist-panel{ width:330px; padding:0; border-left:2px solid var(--color-divider); }
+html[data-style="modernist"] #view-planner .shortlist-head{ align-items:center; gap:10px; margin:0; padding:22px 22px 12px; }
+html[data-style="modernist"] #view-planner .shortlist-head .side-label{ display:none; }
+html[data-style="modernist"] #view-planner .sl-head-title{ display:inline; margin-right:auto; font-size:26px; font-weight:800; letter-spacing:-0.02em; line-height:1; }
+html[data-style="modernist"] #view-planner .shortlist-count{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .shortlist-input{
+  width:auto; height:46px; margin:0 22px; padding:0 12px; border:2px solid var(--color-accent); background:transparent;
+  color:var(--color-text); font-size:15px;
+}
+html[data-style="modernist"] #view-planner .shortlist-input::placeholder{ color:var(--km-ink-70); opacity:1; }
+html[data-style="modernist"] #view-planner .shortlist-caption{ margin:8px 22px 16px; font-size:11px; font-weight:600; letter-spacing:.08em; color:var(--km-ink-72); }
+
+/* Rows: the number, the name over its line, the ×. .sl-row1 steps aside (display:contents) so its parts sit on the row's grid.
+   The ≡ was only ever a picture, and the number takes its place. */
+html[data-style="modernist"] #view-planner .shortlist-list{ flex:1 0 auto; gap:0; border-top:2px solid var(--color-divider); counter-reset:sl; }
+html[data-style="modernist"] #view-planner .sl-item{
+  display:grid; grid-template-columns:auto minmax(0, 1fr) auto; gap:3px 12px; align-items:start;
+  padding:14px 22px; border:0; border-bottom:1px solid var(--color-divider); background:transparent;
+  counter-increment:sl;
+}
+html[data-style="modernist"] #view-planner .sl-item::before{
+  content:counter(sl, decimal-leading-zero); grid-column:1; grid-row:1 / span 2;
+  font-size:15px; font-weight:800; line-height:1.3; color:var(--color-accent-700); font-variant-numeric:tabular-nums;
+}
+html[data-style="modernist"] #view-planner .sl-row1{ display:contents; }
+html[data-style="modernist"] #view-planner .sl-handle{ display:none; }
+html[data-style="modernist"] #view-planner .sl-title{ grid-column:2; grid-row:1; font-size:16px; font-weight:600; line-height:1.3; }
+html[data-style="modernist"] #view-planner .sl-title.quoted{ font-style:normal; }
+html[data-style="modernist"] #view-planner .sl-sub{ grid-column:2; grid-row:2; font-size:11px; font-weight:800; letter-spacing:.08em; color:var(--km-ink-72); }
+html[data-style="modernist"] #view-planner .sl-remove{ grid-column:3; grid-row:1 / span 2; margin:-12px -14px -12px 0; font-size:18px; color:var(--color-text); opacity:.6; }
+html[data-style="modernist"] #view-planner .sl-remove:hover{ opacity:1; color:var(--color-accent); }
+html[data-style="modernist"] #view-planner .sl-item:hover{ border-color:var(--color-divider); background:var(--color-surface); }
+html[data-style="modernist"] #view-planner .sl-item.note:hover{ background:transparent; }
+html[data-style="modernist"] #view-planner .sl-item.selected{ padding-left:18px; border-left:4px solid var(--color-accent); background:var(--color-accent-100); }
+html[data-style="modernist"] #view-planner .sl-item.selected .sl-sub{ color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .sl-empty{ padding:14px 22px; font-size:14px; line-height:1.45; color:var(--km-ink-72); }
+
+/* The shopping block. VIEW LIST → is the one link; its ::after covers the block, so a tap anywhere on it opens the list. */
+html[data-style="modernist"] #view-planner .shopping-preview{
+  position:relative; display:flex; flex-direction:column; gap:6px; margin:24px 22px 22px; padding:16px;
+  border:0; background:var(--km-fill); color:var(--km-on-accent);
+}
+html[data-style="modernist"] #view-planner .shopping-preview:hover{ background:var(--km-fill-hover); }
+html[data-style="modernist"] #view-planner .shopping-preview .side-label{ margin:0; font-size:11px; font-weight:800; letter-spacing:.1em; color:inherit; }
+html[data-style="modernist"] #view-planner .shopping-preview-text{ margin:0; font-size:26px; font-weight:800; line-height:1.05; letter-spacing:-0.02em; color:inherit; }
+html[data-style="modernist"] #view-planner #viewShoppingLink{ align-self:flex-start; min-height:0; margin-top:6px; padding:0; font-size:13px; font-weight:800; letter-spacing:.06em; color:inherit; text-decoration:none; }
+html[data-style="modernist"] #view-planner #viewShoppingLink::after{ content:''; position:absolute; inset:0; }
+
+html[data-style="modernist"] #view-planner .sl-collapse-btn{
+  position:relative; display:none; align-items:center; justify-content:center; width:32px; height:32px; flex:none; padding:0;
+  border:2px solid var(--color-divider); background:none; color:var(--color-text); cursor:pointer;
+}
+html[data-style="modernist"] #view-planner .sl-collapse-btn:hover{ background:var(--color-surface); }
+/* 32px to see, 44px to tap: from the padding box, inside the 2px rule. */
+html[data-style="modernist"] #view-planner .sl-collapse-btn::before{ content:''; position:absolute; inset:-8px; }
+html[data-style="modernist"] #view-planner .sl-rail{
+  flex:1; flex-direction:column; align-items:center; gap:14px; padding:22px 0;
+  background:none; border:0; cursor:pointer; color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner .sl-rail:hover{ background:var(--color-surface); }
+html[data-style="modernist"] #view-planner .sl-rail-name{ writing-mode:vertical-rl; transform:rotate(180deg); font-size:18px; font-weight:800; letter-spacing:-0.01em; line-height:1; }
+html[data-style="modernist"] #view-planner .sl-rail-count{ font-size:11px; font-weight:800; color:var(--color-accent-700); font-variant-numeric:tabular-nums; }
+@media (min-width: 861px){
+  html[data-style="modernist"] #view-planner .sl-collapse-btn{ display:flex; }
+  html[data-style="modernist"] #view-planner .shortlist-panel.sl-collapsed{ width:56px; overflow:hidden; }
+  html[data-style="modernist"] #view-planner .shortlist-panel.sl-collapsed > :not(.sl-rail){ display:none; }
+  html[data-style="modernist"] #view-planner .shortlist-panel.sl-collapsed > .sl-rail{ display:flex; }
+}
+@media (max-width: 860px){
+  html[data-style="modernist"] #view-planner .planner-days{ padding:16px; }
+  html[data-style="modernist"] #view-planner .planner-head h1{ font-size:36px; }
+  html[data-style="modernist"] #view-planner .day-row{ grid-template-columns:72px minmax(0, 1fr) auto; }
+  html[data-style="modernist"] #view-planner .day-main{ padding-left:12px; }
+  html[data-style="modernist"] #view-planner .shortlist-panel{ width:100%; border-left:0; border-top:2px solid var(--color-divider); }
+}
