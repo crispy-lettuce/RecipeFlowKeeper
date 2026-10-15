@@ -7201,6 +7201,79 @@ const check = (name, pass, detail) => {
         r1.sourceRow === 'SOURCE' && r1.sources === 1 && r2.sourceRow === 'KEYWORD' && r2.sources === 1, JSON.stringify([r1.sourceRow, r2.sourceRow]));
   await rc.close();
 
+  /* ---- Modernist, step 4: the recipe viewer ----
+     A made-up recipe shaped like the design's own example (groups a to e; two steps, a step that adds raw ingredients to
+     one, a merge of two steps, a last column), so the table has every kind of cell and four group rules. */
+  const STEW = ['TITLE: Test Layered Stew', 'SOURCE: Test Kitchen', 'TIME: 75 min', 'SERVINGS: 4', '',
+    'STEPS:', 'Take the test chunks out first.', 'Start the test rice when the sauce simmers.', '',
+    'GROUP a:', '500 g test chunks', '150 g test yoghurt', '1 tbsp test spice', '', 'GROUP b:', '1 test onion', '2 test cloves', '',
+    'GROUP c:', '400 g test passata', '', 'GROUP d:', '150 ml test cream', '', 'GROUP e:', '1 bunch test herbs', '',
+    'STAGE:', 'MERGE a -> A: Mix and rest [30 min]', 'MERGE b -> B: Soften gently [8 min]', '',
+    'STAGE:', 'MERGE A -> C: Grill until charred [12 min]', 'MERGE B, c -> D: Add the passata and simmer [15 min]', '',
+    'STAGE:', 'MERGE C, D, d -> E: Blend and simmer together [10 min]', '', 'STAGE:', 'MERGE E, e -> F: Scatter and serve [instant]'].join('\n');
+  const openStew = pg => pg.evaluate(sx => { loadRecipes().push({ id: 'mod-stew', title: 'Test Layered Stew', source: 'Test Kitchen', time: '75 min', servings: 4,
+    tags: { course: 'Main', keywords: [] }, history: [], syntax: sx }); openRecipe('mod-stew'); }, STEW);
+  const flowLook = pg => pg.evaluate(() => {
+    const m = document.getElementById('flowMount'), cs = el => getComputedStyle(el), top = sel => { const e = m.querySelector(sel); return e ? Math.round(e.getBoundingClientRect().top) : null; };
+    const box = h => m.querySelector(`.box-cell[data-handle="${h}"]`);
+    return { row: !!m.querySelector('.recipe-title-row'), titleSize: cs(m.querySelector('.recipe-title')).fontSize,
+      serves: (m.querySelector('.recipe-serves') || {}).textContent || null, ticked: (m.querySelector('.recipe-ticked') || {}).textContent || null,
+      titleTop: top('.recipe-title'), overviewTop: top('.timeline-strip'), setupTops: [...m.querySelectorAll('ol.setup li')].map(li => Math.round(li.getBoundingClientRect().top)),
+      inline: [...m.querySelectorAll('.box-cell')].filter(c => c.getAttribute('style')).length,
+      step: (b => b && { bg: cs(b).backgroundColor, bar: cs(b).borderLeftWidth + ' ' + cs(b).borderLeftColor })(box('A')),
+      addRaw: box('D') && box('D').className, merge: (b => b && { cls: b.className, bg: cs(b).backgroundColor })(box('E')),
+      final: (b => b && { cls: b.className, bg: cs(b).backgroundColor, size: cs(b).fontSize })(box('F')),
+      groupTops: [...m.querySelectorAll('.ing-cell')].map((c, i) => c.classList.contains('group-top') ? i : -1).filter(i => i >= 0),
+      groupRule: (c => c && cs(c).borderTopWidth + ' ' + cs(c).borderTopColor)(m.querySelector('.ing-cell.group-top')),
+      firstCol: Math.round(m.querySelector('.ing-cell').getBoundingClientRect().width),
+      lastLane: (l => l && { inline: /background/.test(l.getAttribute('style')), bg: cs(l).backgroundColor })(m.querySelector('.timeline-lane-row:last-child .timeline-lane-abs')) };
+  });
+
+  const vc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  vc.__label = 'viewer, classic';
+  await vc.clock.setFixedTime(FIXTURE_NOW);
+  await vc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await vc.waitForTimeout(1200);
+  await openStew(vc); await vc.waitForTimeout(300);
+  const fc = await flowLook(vc);
+  check('Classic\'s viewer is as it was: no title row or counter, the overview above the title, every box coloured inline, no kinds',
+        !fc.row && fc.serves === null && fc.overviewTop < fc.titleTop && fc.inline === 6 && !/box-(?:merge|final)/.test(fc.merge.cls + ' ' + fc.final.cls) && fc.groupTops.length === 0,
+        JSON.stringify(fc));
+  await vc.close();
+
+  const vm = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  vm.__label = 'viewer, modernist';
+  await vm.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await vm.clock.setFixedTime(FIXTURE_NOW);
+  await vm.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await vm.waitForTimeout(1200);
+  await openStew(vm); await vm.waitForTimeout(300);
+  const fm = await flowLook(vm);
+  check('Modernist\'s viewer: a 76px title with "SERVES 4" and "0 / 14 TICKED" beside it, then the set-up notes side by side, then the overview',
+        fm.row && fm.titleSize === '76px' && fm.serves === 'SERVES 4' && fm.ticked === '0 / 14 TICKED' && fm.titleTop < fm.overviewTop &&
+        fm.setupTops.length === 2 && fm.setupTops[0] === fm.setupTops[1] && fm.setupTops[0] < fm.overviewTop, JSON.stringify(fm));
+  check('    boxes are drawn by kind, with no inline colours: a step on grey with a 4px ink bar, a merge of two steps in ink, the last column in red',
+        fm.inline === 0 && fm.step.bg === 'rgb(234, 233, 233)' && fm.step.bar === '4px rgb(32, 30, 29)' && !/box-merge/.test(fm.addRaw) &&
+        /box-merge/.test(fm.merge.cls) && fm.merge.bg === 'rgb(32, 30, 29)' && /box-final/.test(fm.final.cls) && fm.final.bg === 'rgb(236, 48, 19)' && fm.final.size === '24px',
+        JSON.stringify([fm.step, fm.addRaw, fm.merge, fm.final]));
+  check('    a 4px ink rule across the ingredients where each group starts (rows 4, 6, 7 and 8), and a 270px ingredient column',
+        JSON.stringify(fm.groupTops) === '[3,5,6,7]' && fm.groupRule === '2px rgb(32, 30, 29)' && Math.abs(fm.firstCol - 270) <= 1, JSON.stringify([fm.groupTops, fm.groupRule, fm.firstCol]));
+  check('    the overview\'s lanes are ink, the last step red, with no inline colour', fm.lastLane && !fm.lastLane.inline && fm.lastLane.bg === 'rgb(236, 48, 19)', JSON.stringify(fm.lastLane));
+  await vm.click('#flowMount .box-cell[data-handle="C"]'); await vm.waitForTimeout(200);
+  check('    ticking "Grill" ticks what fed it, and the counter says 5 / 14', (await vm.textContent('#flowMount .recipe-ticked')) === '5 / 14 TICKED');
+  await vm.click('#view-viewer .toggle-track'); await vm.waitForTimeout(300);
+  const cook = await vm.evaluate(() => ({ bar: getComputedStyle(document.querySelector('#view-viewer .keep-awake-status')).backgroundColor,
+    scaleShown: document.querySelector('#view-viewer .viewer-scale-row').getClientRects().length > 0 }));
+  check('    cooking mode shows the red bar and hides COOK FOR', cook.bar === 'rgb(236, 48, 19)' && !cook.scaleShown, JSON.stringify(cook));
+  await vm.click('#view-viewer .toggle-track'); await vm.waitForTimeout(200);
+  await vm.evaluate(() => applyStyle('classic')); await vm.waitForTimeout(200);
+  const sw1 = await flowLook(vm);
+  await vm.evaluate(() => applyStyle('modernist')); await vm.waitForTimeout(200);
+  const sw2 = await flowLook(vm);
+  check('switching style redraws an open recipe: Classic\'s inline colours and no title row, then Modernist\'s again, ticks kept',
+        !sw1.row && sw1.inline === 6 && sw2.row && sw2.inline === 0 && sw2.ticked === '5 / 14 TICKED', JSON.stringify([sw1.row, sw1.inline, sw2.row, sw2.inline, sw2.ticked]));
+  await vm.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:

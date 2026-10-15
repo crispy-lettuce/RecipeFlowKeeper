@@ -2289,7 +2289,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-13.4"></script>
+<script src="core.js?v=2026-10-15.1"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2297,7 +2297,7 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-13.4';
+const EXPECTED_CORE_VERSION = '2026-10-15.1';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
@@ -2548,7 +2548,9 @@ function buildTimelineHTML(timeline){
     const width = Math.max(((s.end - s.start) / totalSpan) * 100, 1.5);
     const isOpenEnded = s.duration && s.duration.openEnded;
     const title = escapeHtml(s.label) + (s.duration ? ' — ' + escapeHtml(formatDuration(s.duration)) : '');
-    return `<div class="timeline-lane-row"><div class="timeline-lane-abs${isOpenEnded?' open-ended':''}" data-handle="${escapeHtml(s.output||'')}" style="left:${left}%; width:${width}%; background:${SINGLE_RECIPE_TIMELINE_COLOUR};" title="${title}">
+    /* Modernist draws the lanes in ink and the last step in the accent (docs/PLAN-MODERNIST.md), from its stylesheet. */
+    const colour = currentStyle() === 'modernist' ? '' : ` background:${SINGLE_RECIPE_TIMELINE_COLOUR};`;
+    return `<div class="timeline-lane-row"><div class="timeline-lane-abs${isOpenEnded?' open-ended':''}" data-handle="${escapeHtml(s.output||'')}" style="left:${left}%; width:${width}%;${colour}" title="${title}">
       <span>${escapeHtml(s.label.length>32 ? s.label.slice(0,30)+'…' : s.label)}</span>
     </div></div>`;
   }).join('');
@@ -2696,8 +2698,14 @@ function wireGroupTimelineInteractions(container){
 /* ============================= FLOW RENDER ============================= */
 function buildFlowHTML(parsed){
   const {title, setup, groups, stages, notes} = parsed;
+  /* Modernist (docs/PLAN-MODERNIST.md) draws the table by kind rather than by the group colours, so in that style the cells
+     carry what they are (merge, final, where a group starts) instead of inline colours, and the title has the servings and
+     the ticks beside it. Classic's markup is exactly as it was. renderViewer and renderGroupViewer are redrawn on a switch. */
+  const mod = currentStyle() === 'modernist';
   let html = '';
-  if(title) html += `<h2 class="recipe-title">${escapeHtml(title)}</h2>`;
+  if(title) html += mod
+    ? `<div class="recipe-title-row"><h2 class="recipe-title">${escapeHtml(title)}</h2><div class="recipe-progress"><span class="recipe-serves"></span><span class="recipe-ticked"></span></div></div>`
+    : `<h2 class="recipe-title">${escapeHtml(title)}</h2>`;
   if(setup && setup.length) html += `<ol class="setup">` + setup.map(s=>`<li>${escapeHtml(s)}</li>`).join('') + `</ol>`;
 
   if(!groups || groups.length===0 || groups.every(g=>g.items.length===0)){
@@ -2717,7 +2725,10 @@ function buildFlowHTML(parsed){
   });
 
   html += `<p class="hint">TAP ANY BOX TO TICK IT OFF — TICKING A STEP ALSO TICKS WHAT FED INTO IT — TICKING THE LAST COLUMN LOGS THIS AS COOKED TODAY</p>`;
-  html += `<div class="tablewrap"><table><tbody>`;
+  html += mod ? `<div class="tablewrap"><table style="--flow-cols:${columns.length}"><tbody>` : `<div class="tablewrap"><table><tbody>`;
+  /* Modernist's 4px rule across the ingredients wherever a box in the first stage column starts: each group then lines up
+     with the step it feeds. From the layout alone; nothing new is stored. */
+  const groupTop = r => mod && r > 0 && columns.length > 0 && !!startLookup[0][r];
   /* Loaded once before the row loop rather than per-row — same swaps list
      the bottom-of-page Substitution Recommendations box uses below, just
      checked here per-ingredient so the ⇄ icon can sit next to the specific
@@ -2732,12 +2743,17 @@ function buildFlowHTML(parsed){
     const row = rows[r];
     const hasSwap = swapsForIcons.length && findSwapMatchesForIngredient(row.rest, swapsForIcons).length > 0;
     const swapIcon = hasSwap ? `<span class="ing-swap-icon" title="A substitution is available — see Substitution Recommendations below">⇄</span>` : '';
-    html += `<td class="ing-cell" data-row-start="${r}" data-row-span="1">${row.qty?`<span class="qty">${escapeHtml(row.qty)}</span>`:''}${escapeHtml(row.rest)}${swapIcon}</td>`;
+    const ingClass = 'ing-cell' + (groupTop(r) ? ' group-top' : '') + (groupTop(r + 1) ? ' group-end' : '') + (mod && r === R - 1 ? ' row-last' : '');
+    html += `<td class="${ingClass}" data-row-start="${r}" data-row-span="1">${row.qty?`<span class="qty">${escapeHtml(row.qty)}</span>`:''}${escapeHtml(row.rest)}${swapIcon}</td>`;
     for(let c=0; c<columns.length; c++){
       const box = startLookup[c][r];
       if(box === undefined || box === null) continue;
+      const edge = mod ? (c === columns.length - 1 ? ' col-last' : '') + (box.rowStart + box.rowSpan === R ? ' row-last' : '') : '';
       if(!box.label){
-        html += `<td class="blank-cell" data-col="${c}" rowspan="${box.rowSpan}"></td>`;
+        html += `<td class="blank-cell${edge}" data-col="${c}" rowspan="${box.rowSpan}"></td>`;
+      } else if(mod){
+        const kind = box.passthrough ? '' : c === columns.length - 1 ? ' box-final' : box.merge ? ' box-merge' : '';
+        html += `<td class="box-cell${box.passthrough?' passthrough':''}${box.prep?' prep':''}${kind}${edge}" data-col="${c}" data-row-start="${box.rowStart}" data-row-span="${box.rowSpan}" data-handle="${escapeHtml(box.outputHandle||'')}" rowspan="${box.rowSpan}">${escapeHtml(box.label)}${durationBadge(box.duration)}</td>`;
       } else {
         /* A preparation step (#88) is a shade lighter than a cooking step, so the eye goes to the cooking first. */
         const bg = hexToRgba(box.color, box.passthrough ? 0.05 : box.prep ? 0.06 : 0.10);
@@ -2858,6 +2874,10 @@ function mountFlow(container, parsed, opts){
   /* Columns move when preparation is drawn as steps, so each drawing keeps its own ticks: switching mid-cook loses neither. */
   const ticks = opts.tickKey ? viewerTickSet(opts.tickKey + (withPrep ? '|prep' : '')) : null;
   if(ticks) cells.forEach(cell=>{ if(ticks.has(cellKey(cell))) cell.classList.add('done'); });
+  /* Modernist's "3 / 19 TICKED" beside the title (only its markup has the place for it). */
+  const tickedEl = container.querySelector('.recipe-ticked');
+  const showTicked = ()=>{ if(tickedEl) tickedEl.textContent = `${cells.filter(c=> c.classList.contains('done')).length} / ${cells.length} TICKED`; };
+  showTicked();
 
   cells.forEach(cell=>{
     cell.addEventListener('click', ()=>{
@@ -2875,6 +2895,7 @@ function mountFlow(container, parsed, opts){
       } else {
         cell.classList.remove('done');
       }
+      showTicked();
       /* Recorded before onToggle, which is free to re-render. */
       if(ticks){
         ticks.clear();
@@ -5786,6 +5807,9 @@ function renderViewer(){
     onComplete: theirs ? ()=> showToast('Not logged: add it to our recipes to plan, shop for or log it') : ()=> finishRecipe(recipe.id),
     showTimeline: true
   });
+  /* Modernist's servings beside the title, as the meta line says them. */
+  const servesEl = mount.querySelector('.recipe-serves');
+  if(servesEl && targetServings) servesEl.textContent = `SERVES ${targetServings}${scale !== 1 ? ` (SCALED FROM ${baseServings})` : ''}`;
 }
 
 /* Cooking history lives in recipe_logs, one row per time a recipe was made,

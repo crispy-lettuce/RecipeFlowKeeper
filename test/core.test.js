@@ -277,6 +277,11 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
         fonts.length > 0 && fonts.every(f => /^var\(--font-(?:body|heading)\)$/.test(f)) && fontTokens.length === 2 && fontTokens.every(f => /^"Archivo"/.test(f)) && !/@import|@font-face|url\((?!"data:image\/svg\+xml,)/.test(mod),
         fonts.filter(f => !/^var\(--font-/.test(f)).concat(fontTokens.filter(f => !/^"Archivo"/.test(f))).join(' | '));
 
+  /* EXPORT PNG draws with html2canvas 1.4.1, which throws on the color(srgb …) that Chrome reports for a color-mix(): the
+     export failed outright in this style until the tints were written as rgba(). Measured with the real library, 15 Oct. */
+  const mixes = rules.filter(r => /color-mix\(/.test(r.body)).map(r => r.sels[0]).concat(/color-mix\(/.test(mod.replace(/[^{}]+\{[^{}]*\}/g, '')) ? ['outside a rule'] : []);
+  check('no color-mix() in styles/modernist.css, which EXPORT PNG cannot draw', mixes.length === 0, mixes.slice(0, 4).join(' | '));
+
   /* Where it is linked, and the version in the link. */
   const link = pageSrc.match(/<link rel="stylesheet" href="styles\/modernist\.css\?v=([^"]*)">/);
   const classicEnd = pageSrc.indexOf('</style>');
@@ -408,6 +413,23 @@ const gap = core.parseRecipe('GROUP a:\n1 x\n\nGROUP b:\n1 y\n\nGROUP c:\n1 z\n\
 const gapErrors = core.computeColumns(gap.groups, gap.stages).errors;
 check('a merge across a gap is an error that names the stage', gapErrors.length === 1 && /Stage 1/.test(gapErrors[0]) && /adjacent/.test(gapErrors[0]), gapErrors.join(' | '));
 check('adjacent rows merge without an error', core.computeColumns(parsed.groups, parsed.stages).errors.length === 0);
+/* The `merge` mark (docs/PLAN-MODERNIST.md, 15 Oct 2026): a box that brings together two or more step outputs, which the
+   Modernist style fills in ink. Adding raw ingredients to one cooked thing is still a step, as in the design's own example
+   (a sauce step that adds passata to the softened onions is a step; the box that combines the chicken and the sauce is the merge). */
+{
+  const m = core.parseRecipe('GROUP a:\n1 x\n\nGROUP b:\n1 y\n\nGROUP c:\n1 z\n\nGROUP d:\n1 w\n\n' +
+    'STAGE:\nMERGE a -> A: Fry [5 min]\nMERGE b, c -> B: Stir [5 min]\n\n' +
+    'STAGE:\nMERGE A -> C: Grill [5 min]\nMERGE B, d -> D: Simmer [5 min]\n\n' +
+    'STAGE:\nMERGE C, D -> E: Blend [5 min]');
+  const cols = core.computeColumns(m.groups, m.stages);
+  const marked = cols.columns.flat().filter(b => b.merge).map(b => b.outputHandle);
+  check('a box is marked merge only when two or more of its inputs are steps, not raw groups (B and D add raw ingredients; E joins two steps)',
+        cols.errors.length === 0 && JSON.stringify(marked) === '["E"]', JSON.stringify({ marked, errors: cols.errors }));
+  /* A step may take the name of a group already used up; from then on that name is a step's output, not raw ingredients. */
+  const r = core.parseRecipe('GROUP a:\n1 x\n\nGROUP b:\n1 y\n\nSTAGE:\nMERGE a -> x: Fry [5 min]\n\nSTAGE:\nMERGE b -> a: Stir [5 min]\n\nSTAGE:\nMERGE x, a -> y: Join [5 min]');
+  const rc = core.computeColumns(r.groups, r.stages), rm = rc.columns.flat().filter(b => b.merge).map(b => b.outputHandle);
+  check('    a step output that reuses a used-up group\'s name counts as a step', rc.errors.length === 0 && JSON.stringify(rm) === '["y"]', JSON.stringify({ rm, errors: rc.errors }));
+}
 /* F41 (October review): each used to be laid out silently. */
 const colErrs = t => { const p = core.parseRecipe(t); return core.computeColumns(p.groups, p.stages).errors; };
 const twiceGroup = colErrs('GROUP a:\n1 x\n\nGROUP a:\n1 y\n\nSTAGE:\nMERGE a -> b: Join [instant]');

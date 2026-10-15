@@ -1,6 +1,6 @@
 # PLAN-MODERNIST: a second visual style, "Modernist" (15 Oct 2026)
 
-**Status:** being built, one step at a time on a branch; nothing is on `main` yet. Steps 1 (the switch), 2 (the sidebar) and 3 (Recipes) are built. See "Build order".
+**Status:** being built, one step at a time on a branch; nothing is on `main` yet. Steps 1 to 4 (the switch, the sidebar, Recipes, the recipe viewer) are built. See "Build order".
 
 The household has a design handoff (a README, an HTML prototype and a token sheet) for a flat, square, one-typeface look for the
 tablet in landscape (1280×800). It is added as a **second style beside Classic, not instead of it**: Settings → APP has a STYLE
@@ -22,8 +22,10 @@ choice, CLASSIC or MODERNIST, next to APPEARANCE. Classic stays exactly as it wa
    and a Classic device never asks for Archivo.
 5. **Flow grid:** it stays a `<table>` (rowspans, the sticky ingredient column, PNG export and print depend on it), styled to the
    prototype's look; stage columns get a minimum width because recipes vary. Classic's per-group colours do not exist in Modernist.
-6. **`core.js`:** one `merge` flag on a box from `computeColumns` (a box with more than one input), because Classic's box data has
-   only a colour to tell a merge from a step. This is the only `core.js` change, and it moves its version in the three places.
+6. **`core.js`:** one `merge` flag on a box from `computeColumns` (a box that brings together two or more steps' outputs), because
+   Classic's box data has only a colour to tell a merge from a step. This is the only `core.js` change, and it moves its version in
+   the three places. *(Corrected 15 Oct 2026, when it was built: this said "a box with more than one input", which would draw the
+   design's own sauce step as a merge. See step 4.)*
 7. **The existing sidebar peek is reused.** Classic already collapses the sidebar in cooking mode and between 861 and 1180px, with
    `.sidebar-peek` reset by `showView`. Modernist's rail (Planner, and the viewer in cooking mode) uses the same class as `navPeek`.
    Below 860px it falls back to the existing top bar.
@@ -55,7 +57,7 @@ choice, CLASSIC or MODERNIST, next to APPEARANCE. Classic stays exactly as it wa
 ## Build order and status
 
 1. **The switch** (built 15 Oct): boot script, STYLE select, `applyStyle`/`currentStyle`, the token bridge, the build step, the checks.
-2. **App shell and sidebar** (built 15 Oct). 3. **Recipes** (built 15 Oct). 4. Viewer. 5. Planner and Shortlist. 6. Shopping. 7. History. 8. Settings. 9. Everything else.
+2. **App shell and sidebar** (built 15 Oct). 3. **Recipes** (built 15 Oct). 4. **The recipe viewer** (built 15 Oct). 5. Planner and Shortlist. 6. Shopping. 7. History. 8. Settings. 9. Everything else.
 
 Each step's entry below is added when it lands: what was measured, and where it departs from the prototype.
 
@@ -102,4 +104,37 @@ Each step's entry below is added when it lands: what was measured, and where it 
 - **Checks:** 11 in `test/smoke.js` (Classic's Recipes and its ✓ unchanged; the title, count and search bar; SOURCE's row; three
   cards filling the row with shared rules; the count under a filter; the toggle on and off with its write; the star; the 44px tap
   areas; redraw on switching style). Each was seen to fail once.
+
+### Step 4 as built
+- **EXPORT PNG was broken in this style, and is fixed.** Measured with the real html2canvas 1.4.1 (the tests stub it): Chrome
+  reports a `color-mix()` colour as `color(srgb …)`, which html2canvas cannot read, so the export threw and nothing downloaded.
+  Every tint in `styles/modernist.css` is now an `rgba()` token per theme, and `test/core.test.js` fails on a `color-mix()`.
+  An inset box-shadow on a cell with no bottom rule was also drawn as a black block, so the group rules and step bars are borders.
+  After both, the export downloads in all four combinations, and the image matches the screen. Two faults it shares with Classic's
+  export are left as they are: the ingredient ticks are missing from the image, and the table is drawn narrower than the page.
+- **Printing** (PRINT / A4 PDF) was rendered to A4 here with the browser's print engine: the title, set-up notes, overview and
+  table print as on screen. At A4 width the narrow layout applies (set-up notes stacked).
+- **`core.js`** (version `2026-10-15.1` in all three places): `computeColumns` marks a box `merge` when two or more of its inputs
+  are steps' outputs, not raw groups. This is narrower than "more than one input" (decision 6 as first written): with that, the
+  design's own example would draw its sauce step (softened onions plus passata) as a merge. Two checks in `core.test.js`.
+- **Markup, Modernist only** (`buildFlowHTML` asks `currentStyle()`; switching redraws an open recipe, ticks kept): a title row
+  with the servings and an "n / N TICKED" counter (updated on every tap); cells say what they are (`box-merge`, `box-final`,
+  `group-top`, `group-end`, `col-last`, `row-last`) and carry no inline colours; the overview's lanes carry none either. Classic's
+  markup is exactly as it was, and its viewer is byte-identical with a four-stage recipe, ticked and in cooking mode.
+- **Drawing:** the table stays a `<table>` (rowspans, the sticky ingredient column, PNG and print rely on it), drawn to the grid:
+  2px rules, a 2px ink frame, a 270px ingredient column with the quantity hanging in its own 58px column, equal stage columns with
+  a 150px minimum (recipes have any number), a step on grey with a 4px ink bar, a merge in ink, the last column in red with a 24px
+  title, a carried-through box with a dashed bar. The overview comes after the title and set-up notes, as in the prototype
+  (reordered with CSS, so the PNG and Classic are untouched). The `.btn` look (1px rule, 13px capitals, 44px invisible tap area)
+  and the switch are defined here for every screen.
+- **Where it departs from the prototype:**
+  - The cooking bar keeps the app's words (how the screen is kept on, and a warning when it is not), in capitals.
+  - The hint above the table ("TAP ANY BOX…") stays, small.
+  - TIPS and COOKING NOTES are stacked, not side by side: the recipe's notes are part of what EXPORT PNG captures and the cooking
+    notes are not, so they cannot share a row without changing the export.
+  - The "people" box in COOK FOR keeps a 44px height (a box to type in cannot carry an invisible tap area).
+- **For the household to decide:** white 12–14px words on the red (the cooking bar, NEW RECIPE, the red buttons) are 4.2:1, under
+  the 4.5:1 Classic was brought to on 14 Oct. The design asks for it; the darker red `#dd2b0f` would give 4.7:1.
+- **Checks:** 8 in `test/smoke.js` (Classic's viewer unchanged; the title row and counter; the order; kinds and colours; the group
+  rules and 270px column; the lanes; the counter on a tap; cooking mode; redraw on switching style), each seen to fail once.
 
