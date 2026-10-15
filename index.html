@@ -98,6 +98,9 @@
     /* Diagonal stripes on an open-ended timeline lane: the lane is a dark plum here and a light one in the dark theme, so
        the stripe is the colour that sits on an accent (--on-accent) in each. */
     --lane-stripe:rgba(255,255,255,.18);
+    /* READABILITY R: this is the only corner in the stylesheet. Circles and pills (50%, 20px, 999px) are gone; the toggle's thumb is
+       square too (the household, 14 Oct). Two rules keep a square edge because it sits against another edge, where a round corner would
+       leave a notch: the Equipment warning (a full-width strip) and the peek tab (attached to the window's edge). */
     --r:2px;
     color-scheme:light;
   }
@@ -332,7 +335,7 @@
   .rcard:hover{ border-color:var(--plum); }
   .rcard-shortlist{
     position:absolute; top:4px; right:4px; z-index:2;
-    width:36px; height:36px; border-radius:50%;
+    width:36px; height:36px; border-radius:var(--r);
     border:1px solid var(--line); background:var(--card-veil);
     display:flex; align-items:center; justify-content:center;
     font-size:16px; line-height:1; color:var(--ink-soft); cursor:pointer;
@@ -341,7 +344,7 @@
   .rcard-shortlist.on{ border-color:var(--sage); color:var(--sage); background:var(--sage-wash-strong); }
   .rcard-favourite{
     position:absolute; top:4px; left:4px; z-index:2;
-    width:36px; height:36px; border-radius:50%;
+    width:36px; height:36px; border-radius:var(--r);
     border:1px solid var(--line); background:var(--card-veil);
     display:flex; align-items:center; justify-content:center;
     font-size:16px; line-height:1; color:var(--ink-soft); cursor:pointer;
@@ -429,7 +432,7 @@
   }
   .scale-btn{
     font-family:'IBM Plex Mono', monospace; font-size:14px; letter-spacing:.03em;
-    padding:6px 12px; border:1px solid var(--line); border-radius:20px;
+    padding:6px 12px; border:1px solid var(--line); border-radius:var(--r);
     background:var(--card); color:var(--ink-soft); cursor:pointer;
   }
   .scale-btn:hover{ border-color:var(--plum); color:var(--plum); }
@@ -461,11 +464,11 @@
   }
   .toggle-switch input{ position:absolute; opacity:0; width:0; height:0; }
   .toggle-track{
-    position:relative; width:44px; height:26px; border-radius:13px; flex:none;
+    position:relative; width:44px; height:26px; border-radius:var(--r); flex:none;
     background:var(--well); border:1px solid var(--line-faint); transition:background .15s ease, border-color .15s ease;
   }
   .toggle-thumb{
-    position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%;
+    position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:var(--r);
     background:#fff; transition:transform .15s ease; box-shadow:0 1px 2px var(--ink-shadow-strong);
   }
   .toggle-switch input:checked + .toggle-track{ background:var(--plum); border-color:var(--plum); }
@@ -487,7 +490,7 @@
   ol.setup li{ counter-increment:step; display:flex; align-items:baseline; gap:10px; font-size:16px; }
   ol.setup li::before{
     content:counter(step); font-family:'IBM Plex Mono', monospace; font-size:14px;
-    color:var(--on-accent); background:var(--ink-mute); width:24px; height:24px; border-radius:50%;
+    color:var(--on-accent); background:var(--ink-mute); width:24px; height:24px; border-radius:var(--r);
     display:inline-flex; align-items:center; justify-content:center; flex:none;
   }
   .hint{
@@ -563,7 +566,7 @@
   .timeline-lanes{ position:relative; }
   .timeline-lane-row{ position:relative; height:20px; margin-bottom:3px; }
   .timeline-lane-abs{
-    position:absolute; top:0; height:20px; border-radius:3px; cursor:pointer;
+    position:absolute; top:0; height:20px; border-radius:var(--r); cursor:pointer;
     display:flex; align-items:center; overflow:hidden; transition:filter .15s ease;
   }
   .timeline-lane-abs:hover{ filter:brightness(1.12); }
@@ -728,7 +731,7 @@
     font-family:'IBM Plex Mono', monospace; font-size:14px; letter-spacing:.03em; color:var(--ink-soft);
   }
   .day-recipe-serves{
-    flex:none; background:none; border:1px solid transparent; border-radius:20px; cursor:pointer;
+    flex:none; background:none; border:1px solid transparent; border-radius:var(--r); cursor:pointer;
     padding:2px 8px; font-size:14px;
     letter-spacing:.04em; color:var(--ink-faint); font-weight:500;
   }
@@ -738,7 +741,7 @@
   .day-recipe-serves.on{ border-color:var(--plum); color:var(--plum); }
   /* PRE-MADE and COOKED ✓ (docs/PLAN-FOOD-DIARY.md): drawn as the SERVES pill is, beside it. */
   .day-recipe-premade, .day-recipe-cooked{
-    flex:none; border:1px solid var(--line); background:none; border-radius:999px; padding:3px 9px; cursor:pointer;
+    flex:none; border:1px solid var(--line); background:none; border-radius:var(--r); padding:3px 9px; cursor:pointer;
     font-size:14px; letter-spacing:.04em; color:var(--ink-soft); font-weight:500;
   }
   .day-recipe-premade.on{ border-color:var(--sage); color:var(--sage); background:var(--sage-wash-strong); }
@@ -746,7 +749,7 @@
   /* The calendar push (P3): the day's two switches, quiet until on, like the headcount above. */
   .day-cal{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
   .day-cal-btn{
-    background:none; border:1px solid var(--line); border-radius:20px; cursor:pointer;
+    background:none; border:1px solid var(--line); border-radius:var(--r); cursor:pointer;
     padding:3px 10px; font-size:14px;
     letter-spacing:.04em; color:var(--ink-faint); font-weight:500;
   }
@@ -766,7 +769,7 @@
     font-size:14px; letter-spacing:.04em; color:var(--plum); font-weight:500;
   }
   .day-choose .circle{
-    width:22px; height:22px; border-radius:50%; border:1px solid var(--plum);
+    width:22px; height:22px; border-radius:var(--r); border:1px solid var(--plum);
     display:flex; align-items:center; justify-content:center; font-size:14px; flex:none;
   }
 
@@ -774,7 +777,7 @@
      cooked concurrently, distinct from just being assigned to the same
      day (see the 14 Aug scoping note: grouping only, no timeline view). */
   .group-tie{
-    flex:none; width:3px; align-self:stretch; border-radius:2px;
+    flex:none; width:3px; align-self:stretch; border-radius:var(--r);
     background:var(--sage); margin-right:2px;
   }
   .group-badge{
@@ -793,7 +796,7 @@
   .group-pick-row{ cursor:pointer; padding:6px 8px; border-radius:var(--r); }
   .group-pick-row:hover{ background:var(--plum-wash); }
   .group-pick-check{
-    flex:none; width:20px; height:20px; border-radius:4px; border:1px solid var(--line-faint);
+    flex:none; width:20px; height:20px; border-radius:var(--r); border:1px solid var(--line-faint);
     display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--paper);
   }
   .group-pick-check.checked{ background:var(--plum); border-color:var(--plum); }
@@ -810,7 +813,7 @@
   }
   .stacked-recipe-actions{ display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
   .stacked-recipe-actions .btn{ padding:6px 10px; font-size:14px; }
-  .stacked-recipe .recipe-swatch{ width:10px; height:10px; border-radius:2px; flex:none; }
+  .stacked-recipe .recipe-swatch{ width:10px; height:10px; border-radius:var(--r); flex:none; }
   .day-choose.day-add-more{ font-size:14px; align-self:flex-start; margin-top:2px; }
   .day-choose.day-add-more .circle{ width:18px; height:18px; font-size:14px; }
   .day-away{ font-size:14px; font-style:italic; color:var(--ink-faint); }
@@ -919,7 +922,7 @@
      them, so a box full of names doesn't read as a row of actions. */
   .shop-merge-box{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
   .shop-merge-filter{ font:inherit; font-size:14px; padding:3px 7px; min-width:140px;
-    border:1px solid var(--line-soft); border-radius:5px; background:var(--paper); color:var(--ink); }
+    border:1px solid var(--line-soft); border-radius:var(--r); background:var(--paper); color:var(--ink); }
   .shop-merge-options{ display:flex; flex-wrap:wrap; gap:4px 10px; }
   .shop-merge-option{ text-decoration:none !important; font-family:inherit !important;
     font-size:14px !important; letter-spacing:normal !important; }
@@ -997,7 +1000,7 @@
   .hstat-pie-wrap svg{ flex:none; }
   .hstat-legend{ display:flex; flex-direction:column; gap:5px; min-width:0; }
   .hstat-legend-row{ display:flex; align-items:center; gap:6px; font-size:14px; }
-  .hstat-legend-swatch{ width:9px; height:9px; border-radius:2px; flex:none; }
+  .hstat-legend-swatch{ width:9px; height:9px; border-radius:var(--r); flex:none; }
   .hstat-legend-label{ color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .hstat-legend-value{ color:var(--ink-faint); font-family:'IBM Plex Mono', monospace; font-size:14px; margin-left:auto; padding-left:8px; }
 
@@ -1205,7 +1208,7 @@
   .whats-new-entry ul{ margin:4px 0 0; padding-left:20px; font-size:14px; line-height:1.45; color:var(--ink-soft); }
   /* Your own picture for a recipe (issue #92): beside IMAGE URL, a button, and the chosen photo small until SAVE. */
   .recipe-photo-upload{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:-4px 0 14px; }
-  .recipe-photo-upload img{ width:96px; height:72px; object-fit:cover; border-radius:6px; border:1px solid var(--line); }
+  .recipe-photo-upload img{ width:96px; height:72px; object-fit:cover; border-radius:var(--r); border:1px solid var(--line); }
   .recipe-photo-upload img[hidden], .recipe-photo-upload [hidden]{ display:none; }
   #addBands{ scroll-margin-top:16px; }
   .paste-help{ margin:8px 0 0; max-width:62ch; color:var(--ink-soft); font-size:13px; line-height:1.5; }
@@ -1233,7 +1236,7 @@
      The filter is 16px so a tablet does not zoom on focus. */
   .rv-row .rv-sameas{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:4px; }
   .rv-sameas-filter{ font:inherit; font-size:16px; padding:3px 7px; min-width:160px;
-    border:1px solid var(--line-soft); border-radius:5px; background:var(--paper); color:var(--ink); }
+    border:1px solid var(--line-soft); border-radius:var(--r); background:var(--paper); color:var(--ink); }
   /* PR 8: the library check. A recipe needing attention is marked at its left edge; a reconstruction note is red. */
   .lc-row.lc-attention{ border-left:3px solid var(--plum); padding-left:8px; }
   .lc-status.lc-reconstructed{ color:var(--danger); font-weight:500; }
@@ -1243,13 +1246,13 @@
   .alias-form .lc-only input{ flex:none; min-width:0; }
   /* PR 7: the ingredient lookup, 16px so a tablet does not zoom on focus. */
   #ingredientLookup{ font:inherit; font-size:16px; width:100%; max-width:360px; padding:5px 8px; margin:6px 0 4px;
-    border:1px solid var(--line-soft); border-radius:5px; background:var(--paper); color:var(--ink); }
+    border:1px solid var(--line-soft); border-radius:var(--r); background:var(--paper); color:var(--ink); }
   .lookup-line{ padding:3px 0; font-size:14px; color:var(--ink-soft); }
   .lookup-line b{ color:var(--ink); font-weight:500; }
   .lookup-line .btn{ margin-left:8px; }
   /* PR 6: the aisle pick, 16px for the same reason as the filter. */
   .rv-aisle{ font:inherit; font-size:16px; margin-left:6px; padding:2px 4px; border:1px solid var(--line-soft);
-    border-radius:5px; background:var(--paper); color:var(--ink); }
+    border-radius:var(--r); background:var(--paper); color:var(--ink); }
   .rv-sameas-options{ display:flex; flex-wrap:wrap; gap:4px 10px; }
   .rv-sameas-options button{ text-decoration:none; font-family:inherit; font-size:13px; letter-spacing:normal; margin-left:0; }
   .rv-dup-detail{ margin:6px 0 0; padding:8px 10px; background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r); font-size:13px; }
@@ -2243,7 +2246,7 @@ const EXPECTED_CORE_VERSION = '2026-10-13.4';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-14.4';
+const APP_VERSION = '2026-10-14.5';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings

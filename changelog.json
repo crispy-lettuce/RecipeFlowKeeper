@@ -1,4 +1,7 @@
 [
+  { "version": "2026-10-14.5", "date": "2026-10-14",
+    "changes": ["Every corner in the app is now the same. The round buttons, pills and circles (the star and + on a recipe card, the servings buttons, the cooking-mode switch and its dot, the + beside each day in the Planner, the SERVES and COOKED labels and the numbered set-up steps) are now rectangles with the same slightly rounded corners as everything else.",
+                "Nothing moves or changes size: only the corners are different."] },
   { "version": "2026-10-14.4", "date": "2026-10-14",
     "changes": ["You can now see where the keyboard is: press Tab and the box, button or link that has focus gets a clear plum outline. That includes the search box, the keyword box, the Shortlist name box, the boxes on the add-a-recipe screen and the ones in Settings, which showed no sign of focus before. Tapping into a text box draws the outline too.",
                 "In the side menu the outline is drawn inside each link, so the edge of the menu no longer cuts it off."] },

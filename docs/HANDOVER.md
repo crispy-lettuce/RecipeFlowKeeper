@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **620 checks** (14 Oct 2026, 617 after H, 613 after S, 609 after T and 606 on 13 Oct; `core.test.js` adds 205 in Node, 202 after H, 199 after S, 194 after T and 189 on 13 Oct) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **622 checks** (14 Oct 2026, 620 after F, 617 after H, 613 after S, 609 after T and 606 on 13 Oct; `core.test.js` adds 206 in Node, 205 after F, 202 after H, 199 after S, 194 after T and 189 on 13 Oct) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -3056,6 +3056,40 @@ measuring script's numbers, not on a screen. The deployed page: the sandbox's pr
 
 *Left for the household to decide:* whether a ring on every tapped text field is wanted. A text field always matches `:focus-visible`, so
 the ring shows on a tap as well as a Tab; hiding it for touch would take script. R (one corner radius) is not started.
+
+**READABILITY R, one corner radius (14 Oct 2026; `docs/PLAN-READABILITY.md` change R, built on `main` at `19c756e`, after F).** The household
+said "go" to five lines that kept two corners square. `index.html` CSS only, plus `APP_VERSION`; no id, markup, wording, `core.js`,
+`help.html` or schema change, and `core.js`'s version is unchanged.
+- **What changed.** Twenty `border-radius` declarations (50%, 20px, 999px, 13px, 6px, 5px, 4px, 3px and three 2px literals) became
+  `var(--r)`, so every circle and pill is now a rectangle with a 2px corner, the toggle's thumb included (the household's 14 Oct decision).
+  Two corners stay square because they sit against another edge: the Equipment warning strip and the sidebar's peek tab. The plan's "Built as"
+  note has the list and the numbers.
+- `changelog.json` **2026-10-14.5**; step **65a**. No `help.html` change: no label changed.
+
+*Verified by.* On `main`, before: `core.test.js` **205**, exit 0; `node test/build.js && node test/smoke.js` **620**, exit 0. After, on the
+finished tree: `core.test.js` **206** (one new), exit 0; smoke **622** (two new), exit 0, no console or page errors; `help-guide.js` 7, exit 0.
+Measured in a browser with throwaway scripts kept outside the repo, on the stub's made-up data: elements and
+pseudo-elements with a corner other than 0 or 2px 54 to 0, tablet and phone alike; **no size changed on any of 1,470 (tablet) or 1,358 (phone)
+elements**, and positions were identical except the add dialog's uniform 13px, which is run-to-run scroll position (unchanged `main` gave two
+different values across two runs) and a toast 1px apart mid-animation. I looked at before and after screenshots of the Recipes grid and the
+Planner, and the viewer after. **Twelve mutations, each failing the right check by name.** `core.test.js` (seven, run in the repo and restored
+byte for byte): the card's shortlist button back to 50%, `.scale-btn` to 20px, `.toggle-thumb` to 50%, the peek tab's square side rounded
+(naming the flush rule that changed), `--r` at 6px, a literal radius added inside an `@media` rule, and the PRE-MADE and COOKED pills back to
+999px. `smoke.js` (five, on scratch copies beside an unmutated control that passed all 622 with exit 0): the thumb back to 50% and a Planner
+**+** back to 50% (tablet and phone both fail, naming the element); the card's favourite button round on the phone only (the phone check
+alone); a pseudo-element's radius (`.rcard-shortlist::before`); and the ingredient lookup back to 5px (the Settings screen). No fault of mine
+needed fixing in the new checks. Two harness notes: the first launch of the parallel runs crashed all six runs before a check ran, because
+the temp directory I gave each (to stop them sharing files, which crashed one run for F) made a path too long for Chromium; a short directory
+under `/tmp/claude-0/` fixed it, and no run crashed after.
+
+*Not verified.* The real tablet (65a). PRINT and EXPORT PNG with the new corners. The two square-edged corners on a screen (the strip needs a
+recipe with an equipment warning, the tab a mid-width screen). The numbered badge and the timeline lanes in `smoke.js` (the measuring script and a
+screenshot saw them; the scan's must-see list does not name them). Hover and error states. The deployed page: the sandbox's proxy blocks
+`github.io`.
+
+*Left for the household to decide:* whether any square is too sharp, or a circle should come back somewhere; the plan said no exceptions, so
+none was kept. With R built, all five readability changes are built; the plan's open questions (sage and gold as text, the selected Shortlist
+item, the 40px tick reserve) are still the household's.
 
 *The 21 Sep record below has stood at the foot of §7 since it was written; every entry above it is later. (Noted 12 Oct
 2026, the October review's Appendix B.)*

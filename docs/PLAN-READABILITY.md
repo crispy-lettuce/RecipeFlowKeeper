@@ -12,8 +12,8 @@ tablet step in `docs/TEST-PLAN.md`. Print and EXPORT PNG must still match the sc
 | 1 | **T**, colour tokens: contrast and the hard-coded `rgba()` | Small | **Built and merged**, 14 Oct (#147) |
 | 2 | **S**, one type scale; mono only for quantities and times | Medium | **Built and merged**, 14 Oct (#149) |
 | 3 | **H**, 44px tap targets | Medium | **Built and merged**, 14 Oct (#150) |
-| 4 | **R**, one corner radius | Small | Proposed |
-| 5 | **F**, keyboard focus everywhere | Small | **Built**, 14 Oct |
+| 4 | **R**, one corner radius | Small | **Built**, 14 Oct |
+| 5 | **F**, keyboard focus everywhere | Small | **Built and merged**, 14 Oct (#151) |
 
 ## T. Colour tokens
 
@@ -178,6 +178,38 @@ There are 12 radius values today: `var(--r)`, 50%, 20px, 999px, 11px, 6px, 5px, 
   `ol.setup li::before` and `.timeline-lane-abs`.
 - **Decided 14 Oct by the household:** the toggle thumb is square too (`var(--r)`), to match the rest. No exceptions.
 - **Check:** no `border-radius` literal outside `:root`.
+
+**Built as (14 Oct 2026).** The household said "go" to five lines that kept two square edges, which is a departure from the plan's "no
+literal outside `:root`" and is named below. Measured on the app's made-up test data in Chromium; a corner does not depend on the font, so
+the missing IBM Plex does not matter here.
+
+- **Twenty of the 74 declarations changed, to `var(--r)`** (22 had not been; two stay). 50% (5): the card's star and **+** (two rules), the
+  toggle's thumb, the numbered set-up step's badge, and the Planner's **+** circle (`.day-choose .circle`, which the plan's list does not name
+  but "everything" covers). 20px (3): `.scale-btn`, `.day-recipe-serves`, `.day-cal-btn`. 999px: PRE-MADE and COOKED. 13px: the toggle's track
+  (H made it 13px from 11px). 5px (4): the shopping merge filter, the sameas filter, the ingredient lookup, the aisle select. 6px: the photo
+  preview. 4px: the group picker's tick. 3px: `.timeline-lane-abs`. And three 2px literals, the same value written out. Twelve distinct values
+  became three, and every one but the exceptions is `var(--r)`.
+- **Two corners stay square, because they sit against another edge** and a round corner would leave a notch: `#viewerEquipmentWarning`
+  (`0`: a full-width strip with no side borders) and `.sidebar-peek-btn` (`0 var(--r) var(--r) 0`: its square side is the one attached to the
+  window). The check names both and fails if either changes. Neither was seen on a screen: the strip only shows for a recipe with an equipment
+  warning, and the tab only on a mid-width screen with a recipe open.
+- **The household's 14 Oct decision stands:** the toggle's thumb is square too, no exception.
+- **Measured, tablet 1280×800 (phone 412×915 gave the same):** elements and pseudo-elements on screen with a corner other than 0 or 2px,
+  54 to 0 (before: Recipes 8, the viewer 15, cooking mode 3, the Planner 19, the add dialog 8, Settings 1). **Layout: no size changed on any
+  of 1,470 elements (tablet) or 1,358 (phone).** Positions were identical but for the add dialog (+13px on all 207 of its elements, which is the
+  dialog's scroll position: unchanged `main` gave -728 and then -715 on two runs, and the new tree the same two values) and one toast
+  caught 1px apart mid-animation.
+- **Looked at:** before and after screenshots of the Recipes grid and the Planner, and the viewer after. The star and **+** are 36px
+  squares in the same places; the Planner's **+** is a square and **COOKED** a rectangle, with every row where it was; the toggle's thumb,
+  the servings buttons and the step badge are square.
+- **Checks.** One in `test/core.test.js`: every `border-radius` declaration in the stylesheet (the per-corner ones too, and those inside
+  `@media`) is `var(--r)`, bar the two named, and `--r` is 2px. Two in `test/smoke.js`, tablet and phone, each on a page of its own: the
+  computed corners of every visible element and its `::before` and `::after`, on 12 screens (1,157 and 1,045 corners), are 0 or 2px. A scan
+  of whatever is on screen could pass empty, so it fails unless the card's two buttons, the toggle's thumb and track, a servings button and a
+  Planner **+** were seen.
+- **Not seen:** PRINT and EXPORT PNG with the new corners (a canvas export draws corners itself); the numbered badge and the timeline's lanes
+  were seen in the measuring script and a screenshot but are not on the smoke scan's must-see list. `help.html` has two `2px` literals of its
+  own, which the plan (CSS in `index.html`) does not cover; they are the same value.
 
 ## F. Keyboard focus
 

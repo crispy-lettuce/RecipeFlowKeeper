@@ -222,6 +222,27 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
         kw ? kw.body.match(/border\s*:[^;]*/)?.[0] + ' / ' + (kwFocus ? kwFocus.body.trim() : 'no :focus rule') : 'no .kw-input rule');
 }
 
+/* ---- One corner radius (READABILITY R, 14 Oct 2026, docs/PLAN-READABILITY.md) ----
+   There were twelve values: circles (50%), pills (20px, 999px) and five small ones beside --r. Read from the stylesheet's source;
+   smoke.js looks at the corners that are drawn. */
+{
+  const css = pageSrc.slice(pageSrc.indexOf('<style>') + 7, pageSrc.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => ({ sels: m[1].split(',').map(x => x.trim().replace(/\s+/g, ' ')), body: m[2] }));
+  /* Two corners are square on purpose because they sit against another edge, where a round one would leave a notch: the Equipment
+     warning is a full-width strip, and the peek tab is attached to the window's edge (its square side is the attached one). */
+  const FLUSH = { '#viewerEquipmentWarning': '0', '.sidebar-peek-btn': '0 var(--r) var(--r) 0' };
+  const found = [];
+  for (const r of rules) for (const m of r.body.matchAll(/(?:^|[;\s])border(?:-(?:top|bottom)-(?:left|right))?-radius\s*:\s*([^;]+)/g))
+    found.push({ sel: r.sels.join(', '), value: m[1].trim().replace(/\s+/g, ' ') });
+  const stray = found.filter(f => f.value !== 'var(--r)' && FLUSH[f.sel] !== f.value);
+  const flushSeen = Object.keys(FLUSH).filter(k => found.some(f => f.sel === k && f.value === FLUSH[k]));
+  const rootR = [...pageSrc.matchAll(/--r\s*:\s*([^;]+);/g)].map(m => m[1].trim());
+  check('every corner in the stylesheet is var(--r) (2px), except two rules that sit flush against an edge',
+        found.length > 60 && stray.length === 0 && flushSeen.length === 2 && rootR.length === 1 && rootR[0] === '2px',
+        `${found.length} declarations` + (stray.length ? '; not var(--r): ' + stray.slice(0, 4).map(f => f.sel + ' ' + f.value).join(' | ') : '') +
+        (flushSeen.length !== 2 ? '; the flush rules have changed: ' + Object.keys(FLUSH).filter(k => !flushSeen.includes(k)).join(', ') : '') + (rootR.length === 1 && rootR[0] === '2px' ? '' : `; --r is ${rootR.join(' and ') || 'missing'}`));
+}
+
 /* ---- The converter's instructions (issue #127, 12 Oct 2026) ----
    Each household loads converter/conversion-instructions.md into its own conversion project, and the app asks each
    once to reload it when CONVERTER_VERSION moves. So a change to the file must move the version, or nobody is told.

@@ -30,9 +30,9 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 ### Reload the app on every device
 
-The newest version is 2026-10-14.4 (keyboard focus). Once it has merged, reload on every device. The three before it,
-2026-10-14.1 (colours), 2026-10-14.2 (bigger writing) and 2026-10-14.3 (bigger buttons), were merged as #147, #149 and #150 on
-14 Oct, so they should already be live. Steps 61a, 62a, 63a and 64a are below.
+The newest version is 2026-10-14.5 (one corner). Once it has merged, reload on every device. The four before it,
+2026-10-14.1 (colours), 2026-10-14.2 (bigger writing), 2026-10-14.3 (bigger buttons) and 2026-10-14.4 (keyboard focus), were merged as
+#147, #149, #150 and #151 on 14 Oct, so they should already be live. Steps 61a, 62a, 63a, 64a and 65a are below.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready**, tap **RELOAD**. Otherwise refresh the page.
@@ -114,6 +114,22 @@ change you can see; a keyboard is optional, and only step 6 needs one.
    plum.
 
 Tell the next session if any outline is hard to see, or if something now looks too busy.
+
+### 65a. One corner everywhere (new 14 Oct, `docs/PLAN-READABILITY.md` change R)
+
+Nothing is saved, and nothing moves or changes size: only corners change. Do this after the corners pull request has merged and you
+have reloaded the app.
+
+1. Open **RECIPES**. **You should see:** the star and **+** on each card as small squares with slightly rounded corners, not circles.
+   A tap just outside one still works.
+2. Open a recipe. **You should see:** the **2 4 6 8** buttons, **GO**, **RESET** and the **COOKING MODE** switch (its thumb a square) with
+   the same corners as the other buttons.
+3. Open **PLANNER**. **You should see:** the **+** beside **CHOOSE A RECIPE** and **ADD ANOTHER**, and the SERVES and COOKED labels, as
+   squares and rectangles too.
+4. Look at a few boxes in **SETTINGS** and on **NEW RECIPE**. **You should see:** one corner everywhere.
+5. If you use them, **PRINT / A4 PDF** and **EXPORT PNG** on a recipe. **You should see:** the same as the screen.
+
+Tell the next session if any square looks too sharp, or if you want a circle back anywhere.
 
 ---
 
