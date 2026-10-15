@@ -7594,6 +7594,86 @@ const check = (name, pass, detail) => {
         y6.oneLine && y6.scroll === 0 && y6.panelScroll === 0, JSON.stringify([y6.oneLine, y6.scroll, y6.panelScroll, y6.h1]));
   await hp.close();
 
+  /* ---- Modernist, step 8: Settings ----
+     CSS only: the tabs as words setOver a 2px rule, blocks between 2px rules, 44px boxes on grey, lists as lines, the quick
+     answers numbered. The fixture's library check, sources and keywords give the lists rows. */
+  const setLook = pg => pg.evaluate(() => {
+    const cs = el => getComputedStyle(el), R = el => el.getBoundingClientRect();
+    const bar = document.querySelector('.settings-tabs'), on = bar.querySelector('.btn.active'), off = bar.querySelector('.btn:not(.active)');
+    const block = [...document.querySelectorAll('#view-settings .settings-block')].find(b => b.getClientRects().length);
+    const row = [...document.querySelectorAll('#view-settings .source-row:not(.lc-attention)')].find(r => r.getClientRects().length);
+    const box = [...document.querySelectorAll('#view-settings input[type="text"], #view-settings select.sort')].find(b => b.getClientRects().length);
+    const a = [...document.querySelectorAll('#helpAnswers a')].find(x => x.getClientRects().length);
+    return { h1: cs(document.querySelector('#view-settings .filter-head h1')).fontSize,
+      on: on && { rule: cs(on).borderBottomWidth + ' ' + cs(on).borderBottomColor, bg: cs(on).backgroundColor, onRule: Math.round(R(on).bottom) === Math.round(R(bar).bottom), h: Math.round(R(on).height) },
+      off: off && cs(off).borderBottomColor, bar: cs(bar).borderBottomWidth + ' ' + cs(bar).position,
+      block: block && { max: cs(block).maxWidth, rule: cs(block).borderBottomWidth, label: cs(block.querySelector('.side-label')).fontSize },
+      box: box && { h: Math.round(R(box).height), border: cs(box).borderTopWidth, bg: cs(box).backgroundColor },
+      lookup: (l => l.getClientRects().length ? { h: Math.round(R(l).height), border: cs(l).borderTopColor } : null)(document.getElementById('ingredientLookup')),
+      row: row && { left: cs(row).borderLeftWidth, bottom: cs(row).borderBottomWidth, listTop: cs(row.parentElement).borderTopWidth,
+        btn: (b => b && { border: cs(b).borderTopColor, size: cs(b).fontSize })(row.querySelector('.btn')) },
+      answer: a && { num: getComputedStyle(a, '::before').content, open: getComputedStyle(a, '::after').content, h: Math.round(R(a).height), href: a.getAttribute('href'), list: cs(a.parentElement).listStyleType },
+      /* The page, and the settings body, which scrolls by itself: a box too wide for a phone scrolls inside it. */
+      scroll: Math.max(document.documentElement.scrollWidth - innerWidth, (b => b.scrollWidth - b.clientWidth)(document.querySelector('.settings-body'))) };
+  });
+  const setTab = async (pg, t) => { await pg.click(`[data-settings-tab-btn="${t}"]`); await pg.waitForTimeout(200); };
+  const gc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  gc.__label = 'settings, classic';
+  await gc.clock.setFixedTime(FIXTURE_NOW);
+  await gc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await gc.waitForTimeout(1200);
+  await gc.evaluate(() => showView('settings')); await gc.waitForTimeout(300);
+  await setTab(gc, 'library');
+  const g0 = await setLook(gc);
+  await setTab(gc, 'help');
+  const g0h = await setLook(gc);
+  check('Classic\'s Settings is as it was: boxed tabs with the open one filled, list rows as cards, the quick answers a bulleted list',
+        g0.on.bg !== 'rgba(0, 0, 0, 0)' && g0.row.left === '1px' && g0.block.max === 'none' && g0h.answer.list === 'disc' && !/OPEN/.test(g0h.answer.open), JSON.stringify([g0.on, g0.row, g0.block, g0h.answer]));
+  await gc.close();
+
+  const gm = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  gm.__label = 'settings, modernist';
+  await gm.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await gm.clock.setFixedTime(FIXTURE_NOW);
+  await gm.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await gm.waitForTimeout(1200);
+  await gm.evaluate(() => showView('settings')); await gm.waitForTimeout(300);
+  await setTab(gm, 'ingredients');
+  const g1 = await setLook(gm);
+  check('Modernist\'s Settings: a 56px title; the tabs are words, the open one with a 4px red rule standing on the 2px rule beneath, 44px to tap',
+        g1.h1 === '56px' && g1.on.rule === '4px rgb(236, 48, 19)' && g1.on.bg === 'rgba(0, 0, 0, 0)' && g1.on.onRule && g1.on.h >= 44 && g1.off === 'rgba(0, 0, 0, 0)' && /^2px /.test(g1.bar),
+        JSON.stringify([g1.h1, g1.on, g1.off, g1.bar]));
+  check('    blocks up to 860px between 2px rules with 11px labels; boxes and selects 44px with a 2px rule on grey; the lookup 48px in red',
+        g1.block.max === '860px' && g1.block.rule === '2px' && g1.block.label === '11px' && g1.box.h === 44 && g1.box.border === '2px' && g1.box.bg === 'rgb(234, 233, 233)' &&
+        g1.lookup.h === 48 && g1.lookup.border === 'rgb(236, 48, 19)', JSON.stringify([g1.block, g1.box, g1.lookup]));
+  await setTab(gm, 'library');
+  await gm.click('#libraryCheckRunBtn'); await gm.waitForTimeout(200);
+  const g2 = await setLook(gm);
+  check('    lists are lines, not cards: 1px rules under a 2px one, their buttons as small words',
+        g2.row.left === '0px' && g2.row.bottom === '1px' && g2.row.listTop === '2px' && g2.row.btn.border === 'rgba(0, 0, 0, 0)' && g2.row.btn.size === '11px', JSON.stringify(g2.row));
+  await setTab(gm, 'help');
+  const g3 = await setLook(gm);
+  check('    the quick answers are numbered lines, each "OPEN ↗" and 44px, still going to the guide',
+        /counter\(help, decimal-leading-zero\)/.test(g3.answer.num) && /OPEN ↗/.test(g3.answer.open) && g3.answer.h >= 44 && g3.answer.href === 'help.html#planner' && g3.answer.list === 'none',
+        JSON.stringify(g3.answer));
+  const pin = await gm.evaluate(() => { const b = document.querySelector('.settings-body'), t = document.querySelector('.settings-tabs'); const y0 = t.getBoundingClientRect().top;
+    b.scrollTop = 600; const y1 = t.getBoundingClientRect().top; b.scrollTop = 0; return { y0: Math.round(y0), y1: Math.round(y1), scrolled: b.scrollHeight > b.clientHeight + 600 }; });
+  check('    the tabs stay pinned as the page scrolls, and LIBRARY opens its own blocks',
+        pin.scrolled && pin.y1 === pin.y0 && /sticky$/.test(g1.bar) && g2.row !== null, JSON.stringify([pin, g1.bar]));
+  await gm.close();
+
+  const gp = await browser.newPage({ viewport: { width: 412, height: 915 } });
+  gp.__label = 'settings, modernist, phone';
+  await gp.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await gp.clock.setFixedTime(FIXTURE_NOW);
+  await gp.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await gp.waitForTimeout(1200);
+  await gp.evaluate(() => showView('settings')); await gp.waitForTimeout(300);
+  const setOver = [];
+  for (const t of ['ingredients', 'library', 'app', 'help']) { await setTab(gp, t); setOver.push((await setLook(gp)).scroll); }
+  check('Modernist\'s Settings on a phone: no tab runs off the side', setOver.every(x => x === 0), JSON.stringify(setOver));
+  await gp.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:

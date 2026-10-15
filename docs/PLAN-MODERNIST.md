@@ -1,6 +1,6 @@
 # PLAN-MODERNIST: a second visual style, "Modernist" (15 Oct 2026)
 
-**Status:** being built, one step at a time on a branch; nothing is on `main` yet. Steps 1 to 7 (the switch, the sidebar, Recipes, the recipe viewer, the Planner and shortlist, the Shopping List, History) are built. See "Build order", and the "Decision log" at the end for every choice made while building and why.
+**Status:** being built, one step at a time on a branch; nothing is on `main` yet. Steps 1 to 8 (the switch, the sidebar, Recipes, the recipe viewer, the Planner and shortlist, the Shopping List, History, Settings) are built. See "Build order", and the "Decision log" at the end for every choice made while building and why.
 
 The household has a design handoff (a README, an HTML prototype and a token sheet) for a flat, square, one-typeface look for the
 tablet in landscape (1280×800). It is added as a **second style beside Classic, not instead of it**: Settings → APP has a STYLE
@@ -57,7 +57,7 @@ choice, CLASSIC or MODERNIST, next to APPEARANCE. Classic stays exactly as it wa
 ## Build order and status
 
 1. **The switch** (built 15 Oct): boot script, STYLE select, `applyStyle`/`currentStyle`, the token bridge, the build step, the checks.
-2. **App shell and sidebar** (built 15 Oct). 3. **Recipes** (built 15 Oct). 4. **The recipe viewer** (built 15 Oct). 5. **Planner and Shortlist** (built 15 Oct). 6. **Shopping** (built 15 Oct). 7. **History** (built 15 Oct). 8. Settings. 9. Everything else.
+2. **App shell and sidebar** (built 15 Oct). 3. **Recipes** (built 15 Oct). 4. **The recipe viewer** (built 15 Oct). 5. **Planner and Shortlist** (built 15 Oct). 6. **Shopping** (built 15 Oct). 7. **History** (built 15 Oct). 8. **Settings** (built 15 Oct). 9. Everything else.
 
 Each step's entry below is added when it lands: what was measured, and where it departs from the prototype.
 
@@ -203,6 +203,20 @@ Each step's entry below is added when it lands: what was measured, and where it 
   days; "Pick a day" and no sideways scroll; the bars; a picked day and its entries; 44px taps on the header; the dark bars and
   five distinct colours; a redraw on switching style; a phone). Each was seen to fail once, by breaking the code it guards.
 
+### Step 8 as built
+- **CSS only**: no markup or render function changed for Settings, so Classic is byte-identical by construction (and by the
+  screenshots).
+- **Drawing:** the title at 56px with its line beneath; the four tabs as words, the open one with a 4px red rule standing on the
+  2px rule under them, still pinned as the page scrolls; blocks up to 860px between 2px rules, each with its 11px label (a
+  folding section's count in red), its words at 14px and its controls; boxes and selects 44px with a 2px rule on grey (D27),
+  the lookup 48px in red; every list as lines with 1px rules under a 2px one, its buttons as small capitals; a recipe needing
+  attention in the library check marked with a 4px red bar; the quick answers as numbered lines, each "OPEN ↗" (D28).
+- **Where it departs from the prototype:** CALENDAR, RECIPE SHARING and BACKUP TO GOOGLE DRIVE stay blocks like the rest (D26);
+  KEYWORDS stays a list of rows, not chips, because each row carries its own MERGE and DELETE; boxes are 44px, not 40.
+- **Checks:** 7 in `test/smoke.js` (Classic's Settings unchanged; the title and the tabs on their rule; blocks, boxes and the
+  lookup; lists as lines; the numbered quick answers, still linking to the guide; the pinned tabs; a phone, measuring the
+  settings body's own scroll as well as the page's). Each was seen to fail once, by breaking the rule it guards.
+
 ## Decision log
 
 Every choice made while building, beyond the twelve agreed at the top, with the reason. "Household" means you chose it; "session"
@@ -237,4 +251,9 @@ means it was decided while building and is yours to overturn. Newest last.
 | D22 | 15 Oct | session | Not changed in Classic: History's side panel scrolls sideways, because the app's rule for every table (`min-width:560px`, meant for the flow table) reaches the small DAY OF WEEK table. Fixed in Modernist only. | Classic is not to be touched in this work; a one-line follow-up for Classic. |
 | D23 | 15 Oct | session | "Pick a day" heads the panel in Modernist until a day is picked. | The prototype's panel always has its title; Classic's says nothing, as before. |
 | D24 | 15 Oct | session | Today's red ring on History is an inset shadow, not a border. | A border would shift the cell's contents by 3px; History is not exported to PNG, where shadows went wrong (step 4). |
+| D25 | 15 Oct | session | Settings is restyled with CSS alone. | Every control there already had a class or id to hang a rule on, and leaving the markup alone means Classic cannot change. |
+| D26 | 15 Oct | session | CALENDAR, RECIPE SHARING and BACKUP TO GOOGLE DRIVE stay blocks (label, words, controls), not the prototype's one-line "label, status, button" rows. | Each has several states the prototype does not show (waiting for a database change, connected as…, the last problem, the reminder time, the automatic switches, the households shared with); a one-line row would drop them. |
+| D27 | 15 Oct | session | Boxes to type in and selects in Settings are 44px, not the prototype's 40px; the lookup is 48px as drawn. | A box cannot carry an invisible tap area, and the 14 Oct rule is 44px for anything pressed with a thumb (decision 10). |
+| D28 | 15 Oct | session | The quick answers read "OPEN ↗", not the prototype's "OPEN →". | They open the guide in a new tab, which the app marks with ↗ everywhere else (OPEN THE GUIDE ↗, THE WHOLE LIST ↗). |
+| D29 | 15 Oct | session | Not changed, in either style: on a phone the top bar is 159px tall, because EXPORT DATA, IMPORT DATA and SIGN OUT stack at its end. | Seen while checking Settings on a phone; Classic's own phone bar is the same height. A follow-up for both styles. |
 
