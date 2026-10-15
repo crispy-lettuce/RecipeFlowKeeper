@@ -520,6 +520,14 @@ from the plan's text, and what is left for the household to decide).
 
 **Use it when:** building any of the five, or asked why a colour, size or radius is what it is.
 
+### `docs/PLAN-MODERNIST.md` — a second visual style, Modernist, beside Classic (15 Oct 2026; being built one step at a time)
+**What:** the household's design handoff (flat, square, one typeface) added as a STYLE choice in Settings → APP rather than a
+replacement: per device, a scoped stylesheet over a shared DOM, Classic untouched. The decisions made on 15 Oct (what differs from
+the prototype and why), how it is checked (its own lint, the smoke checks, and Classic proved unchanged screen by screen), what
+cannot be verified without the tablet, and the build order with a "built as" note per step.
+
+**Use it when:** changing or extending Modernist, or asked why a screen differs between the two styles.
+
 ### `docs/PLAN-NEW-RECIPE-FLOW.md` — adding a recipe as one flow (29 Sep 2026, decided; all eight PRs built and merged by 30 Sep)
 **What:** The plan that makes the journey from a pasted conversion to a saved recipe one page
 with five bands, and gives Settings one place to see what the app knows about an ingredient. It

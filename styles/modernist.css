@@ -1,0 +1,126 @@
+/* MODERNIST: the second visual style (docs/PLAN-MODERNIST.md). Classic stays in index.html's <style> and is not touched.
+
+   HOW THIS FILE IS ORGANISED
+   - Every selector begins [data-style="modernist"] (or html[data-style="modernist"]), so nothing here can reach Classic.
+     test/core.test.js fails on a selector that does not, on a border-radius that is not 0, and on a font that is not
+     Archivo. Dark mode is [data-style="modernist"][data-theme="dark"]; Style and Appearance are independent.
+   - It is linked after Classic's <style>, and must stay after it: the variable blocks below tie Classic's dark block
+     on one specificity level, and the later rule wins.
+   - Tokens come from the design handoff's modernist-styles.css; its component classes (.btn, .card, .input, .table...)
+     are NOT brought over because they share names with Classic's. The font is not @imported here: the boot script
+     in index.html adds the Archivo <link> only when this style is on, so Classic never requests it.
+   - The prototype is the source of truth for look and behaviour; the README beside it is the spec. Where this file
+     departs from either, the reason is written next to the rule. */
+
+/* ============================== TOKENS ============================== */
+html[data-style="modernist"]{
+  --color-bg:#f3f2f2;
+  --color-surface:#eae9e9;
+  --color-text:#201e1d;
+  --color-accent:#ec3013;
+  --color-divider:color-mix(in srgb, #201e1d 40%, transparent);
+
+  --color-neutral-300:#d7d3d3;
+  --color-neutral-400:#bab6b6;
+  --color-neutral-500:#9b9797;
+
+  --color-accent-100:#fff2ef;
+  --color-accent-200:#ffe0d9;
+  --color-accent-300:#ffc4b8;
+  --color-accent-400:#ff9783;
+  --color-accent-500:#ff563c;
+  --color-accent-600:#dd2b0f;
+  --color-accent-700:#ae1800;
+  --color-accent-800:#7c1405;
+  --color-accent-900:#4d170e;
+
+  /* Text on a red fill. */
+  --km-on-accent:#ffffff;
+
+  --font-heading:"Archivo", system-ui, sans-serif;
+  --font-body:"Archivo", system-ui, sans-serif;
+
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px;
+  --radius-sm:0px; --radius-md:0px; --radius-lg:0px;
+  color-scheme:light;
+}
+html[data-style="modernist"][data-theme="dark"]{
+  --color-bg:#161514;
+  --color-surface:#22201f;
+  --color-text:#f1eeec;
+  --color-accent:#ff563c;
+  --color-divider:color-mix(in srgb, #f1eeec 32%, transparent);
+  --color-accent-100:#3a1712;
+  --color-accent-600:#ff7a63;
+  --color-accent-700:#ff9783;
+  --color-accent-800:#ffc4b8;
+  --km-on-accent:#161514;
+  color-scheme:dark;
+}
+
+/* ============== THE BRIDGE: Classic's own variables, pointed at the tokens ==============
+   Classic's stylesheet is written entirely in --paper, --ink, --plum, --line and so on. Re-pointing them here makes
+   everything this style does not draw on its own (the dialogs, the banners, the group viewer, the sign-in card) wear
+   the same colours, square corners and typeface, instead of sitting half-Classic beside the screens that are restyled.
+   Each screen's own rules go on top of this.
+
+   The selector list is deliberate: the first selector beats Classic's :root, the second beats Classic's
+   :root[data-theme="dark"], which is the only reason the dark values reach through.
+
+   --plum is the accent as TEXT (nav, links, chip labels), so it is accent-700, the red that reaches 4.5:1 on the
+   ground in both themes (--color-accent itself is 3.8:1 on #f3f2f2: the README says to keep it for fills and large
+   type). A rule that wants the vivid red as a fill names --color-accent itself. */
+html[data-style="modernist"],
+html[data-style="modernist"][data-theme="dark"]{
+  --paper:var(--color-bg);
+  --shell:var(--color-bg);
+  --card:var(--color-bg);
+  --well:var(--color-surface);
+  --ink:var(--color-text);
+  --ink-soft:color-mix(in srgb, var(--color-text) 72%, transparent);
+  --ink-faint:color-mix(in srgb, var(--color-text) 70%, transparent);
+  /* A fill only, as in Classic: no text uses it. */
+  --ink-mute:color-mix(in srgb, var(--color-text) 45%, transparent);
+  --line:var(--color-divider);
+  --line-soft:color-mix(in srgb, var(--color-text) 20%, transparent);
+  --line-faint:color-mix(in srgb, var(--color-text) 30%, transparent);
+
+  --plum:var(--color-accent-700);
+  --plum-lift:var(--color-accent-600);
+  --plum-wash:var(--color-accent-100);
+  --plum-wash-soft:color-mix(in srgb, var(--color-text) 5%, transparent);
+  --plum-select:color-mix(in srgb, var(--color-accent) 28%, transparent);
+
+  /* One accent. Classic's sage (done, ticked) and gold (warning) have no counterpart here: done is ink, a warning is red. */
+  --sage:var(--color-text);
+  --sage-wash:var(--color-surface);
+  --sage-wash-strong:color-mix(in srgb, var(--color-text) 10%, transparent);
+  --sage-line:var(--color-divider);
+  --gold:var(--color-accent-700);
+  --gold-wash:var(--color-accent-100);
+  --danger:var(--color-accent-800);
+  --danger-wash:var(--color-accent-100);
+  --danger-line:var(--color-accent-300);
+
+  --on-accent:var(--km-on-accent);
+  --card-veil:color-mix(in srgb, var(--color-bg) 92%, transparent);
+  --ink-shadow:color-mix(in srgb, #000 12%, transparent);
+  --ink-shadow-strong:color-mix(in srgb, #000 25%, transparent);
+  --scrim:color-mix(in srgb, #000 45%, transparent);
+
+  /* Zero radius anywhere. Classic's corners are all var(--r), so this is the whole of it. */
+  --r:0px;
+}
+html[data-style="modernist"][data-theme="dark"]{
+  --ink-shadow:color-mix(in srgb, #000 35%, transparent);
+  --ink-shadow-strong:color-mix(in srgb, #000 50%, transparent);
+  --scrim:color-mix(in srgb, #000 60%, transparent);
+}
+
+/* ============================== TYPE AND FOCUS ============================== */
+/* One font. Classic names IBM Plex Mono on a number of rules, some of them more specific than anything here, so this is
+   !important: it is the one place the "Archivo only" rule is enforced, rather than a rule per component. */
+html[data-style="modernist"] *{ font-family:var(--font-body) !important; }
+
+/* The ring is Classic's (2px, offset 2px, and the sidebar's inward offset); only its colour is the accent proper. */
+html[data-style="modernist"] :focus-visible{ outline-color:var(--color-accent); }

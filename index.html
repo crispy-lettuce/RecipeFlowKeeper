@@ -43,6 +43,33 @@
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
 })();
 </script>
+<script>
+/* Resolve the style before the first paint, for the same reason as the theme above (docs/PLAN-MODERNIST.md).
+ *
+ * Classic or Modernist is a choice this device makes, so unlike the theme it is not in the database: localStorage is
+ * the setting here, not a mirror of one. Absent, blocked or anything else means Classic, which is what every device
+ * had before the choice existed. The attribute is set before the stylesheet below is parsed, so the old style never
+ * paints first.
+ *
+ * Archivo is requested only when the style is Modernist: Classic's fonts are unchanged and a Classic device never
+ * asks for it. loadArchivoFont is global so applyStyle can call it when the choice is made in Settings.
+ */
+function loadArchivoFont(){
+  if(document.getElementById('archivoFont')) return;
+  var l = document.createElement('link');
+  l.id = 'archivoFont';
+  l.rel = 'stylesheet';
+  l.href = 'https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap';
+  document.head.appendChild(l);
+}
+(function(){
+  var style = 'classic';
+  try { if(localStorage.getItem('kitchen.style') === 'modernist') style = 'modernist'; }
+  catch(e){ /* private browsing or blocked storage: Classic is a fine answer */ }
+  document.documentElement.setAttribute('data-style', style);
+  if(style === 'modernist') loadArchivoFont();
+})();
+</script>
 <style>
   :root{
     --paper:#F5F1E6;
@@ -1620,6 +1647,15 @@
   }
   .login-error[hidden]{ display:none; }
 </style>
+<!-- STYLE (docs/PLAN-MODERNIST.md). Classic's stylesheet above is not touched by it. An element that only Modernist draws
+     carries .mod-only: this one rule hides it, and styles/modernist.css shows it again under [data-style="modernist"] with
+     its own display. It is here, not in that file, so a Classic device is right even if the file has not loaded.
+     The file is linked after the <style> above on purpose (its variable blocks tie Classic's dark block, and the later wins).
+     Its ?v= is APP_VERSION: GitHub Pages caches each file separately, as it does core.js. test/core.test.js checks they match. -->
+<style id="style-base">
+  .mod-only{ display:none; }
+</style>
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-14.5">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2003,6 +2039,13 @@
           <select class="sort" id="setDarkMode" aria-label="Appearance"></select>
         </div>
 
+        <div class="settings-block" data-settings-tab="app" id="styleBlock">
+          <div class="side-label">STYLE</div>
+          <p class="subtle">How the app looks. Classic is the paper and plum look; Modernist is flat and square, set in one
+            typeface, with red kept for the main action and what is on. Either one works with light and dark. This device only.</p>
+          <select class="sort" id="setStyle" aria-label="Style"></select>
+        </div>
+
         <div class="settings-block" data-settings-tab="app" id="prepStepsBlock">
           <div class="side-label">PREPARATION</div>
           <p class="subtle">How a recipe shows "leeks, thinly sliced": done before you start, as the recipe is written, or as a
@@ -2333,7 +2376,13 @@ function applyTheme(mode){
      cannot drift from what was actually applied. */
   try { localStorage.setItem('kitchen.darkMode', mode); } catch(e){ /* blocked storage is not fatal */ }
   const meta = document.querySelector('meta[name="theme-color"]');
-  if(meta) meta.setAttribute('content', theme === 'dark' ? '#141210' : '#EAE4D5');
+  if(meta) meta.setAttribute('content', chromeColour(theme));
+}
+
+/* The browser chrome follows the ground of whichever style is on. Classic's values are what this always said. */
+function chromeColour(theme){
+  if(currentStyle() === 'modernist') return theme === 'dark' ? '#161514' : '#f3f2f2';
+  return theme === 'dark' ? '#141210' : '#EAE4D5';
 }
 
 /* `var`, not `let`: this is read by the system-preference listener, which
@@ -2376,6 +2425,48 @@ function rerenderForTheme(){
   /* History draws its pie charts as inline SVG fills, so it is in the same
      position as the flow table: a token swap cannot reach it. */
   else if(state.view === 'history') renderHistory();
+}
+
+/* ------------------------------- Style (Classic / Modernist) -------------------------------
+   docs/PLAN-MODERNIST.md. Independent of the theme above: all four of Classic and Modernist, light and dark, work.
+
+   The DOM is shared. Almost everything the second style needs is CSS (styles/modernist.css, scoped under
+   [data-style="modernist"]), and what only it draws carries .mod-only. Where one piece of markup cannot serve both, a
+   render function asks currentStyle() and the screen is redrawn when the choice changes. Nothing else should read the
+   attribute, so there is one place to look.
+
+   Per device and not in the database, unlike Appearance: the boot script in <head> reads it before the first paint. */
+const STYLES = ['classic', 'modernist'];
+const STYLE_LABELS = { classic:'CLASSIC', modernist:'MODERNIST' };
+
+function currentStyle(){
+  return document.documentElement.getAttribute('data-style') === 'modernist' ? 'modernist' : 'classic';
+}
+
+function applyStyle(style){
+  if(STYLES.indexOf(style) === -1) style = 'classic';
+  document.documentElement.setAttribute('data-style', style);
+  try {
+    if(style === 'modernist') localStorage.setItem('kitchen.style', 'modernist');
+    else localStorage.removeItem('kitchen.style');
+  } catch(e){ /* blocked storage is not fatal: the choice holds until the page is closed */ }
+  if(style === 'modernist') loadArchivoFont();
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute('content', chromeColour(document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'));
+  rerenderForStyle();
+}
+
+/* A screen that draws differently per style has to be redrawn when the style changes; CSS alone repaints the rest.
+   Guarded like rerenderForTheme: `state` is a const declared further down. */
+function rerenderForStyle(){
+  if(!themeBooted) return;
+  const v = state.view;
+  if(v === 'viewer') renderViewer();
+  else if(v === 'group-viewer') renderGroupViewer();
+  else if(v === 'recipes') renderHome();
+  else if(v === 'planner') renderPlanner();
+  else if(v === 'shopping') renderShopping();
+  else if(v === 'history') renderHistory();
 }
 
 /* Quotes are escaped as well as angle brackets, because the result is
@@ -8515,6 +8606,9 @@ function renderSettings(){
   document.getElementById('setDarkMode').innerHTML = THEME_MODES.map(m=>
     `<option value="${m}"${m === current ? ' selected' : ''}>${THEME_LABELS[m]}</option>`
   ).join('');
+  document.getElementById('setStyle').innerHTML = STYLES.map(s=>
+    `<option value="${s}"${s === currentStyle() ? ' selected' : ''}>${STYLE_LABELS[s]}</option>`
+  ).join('');
   document.getElementById('setPrepSteps').value = prepStepsOn() ? 'steps' : 'before';
   renderIngredientLookup();
   renderAliasesList();
@@ -9130,6 +9224,12 @@ document.getElementById('setPrepSteps').addEventListener('change', e=>{
   try { if(e.target.value === 'steps') localStorage.setItem('kitchen.prepSteps', 'steps'); else localStorage.removeItem('kitchen.prepSteps'); } catch(err){}
   e.target.value = prepStepsOn() ? 'steps' : 'before';
   showToast(prepStepsOn() ? 'Preparation shows as steps in the flow, on this device' : 'Preparation shows as written, on this device');
+});
+/* STYLE: this device only, so like PREPARATION it never reaches setSetting or the queue. */
+document.getElementById('setStyle').addEventListener('change', e=>{
+  applyStyle(e.target.value);
+  e.target.value = currentStyle();
+  showToast(currentStyle() === 'modernist' ? 'Modernist style, on this device' : 'Classic style, on this device');
 });
 document.getElementById('setDarkMode').addEventListener('change', e=>{
   const mode = e.target.value;

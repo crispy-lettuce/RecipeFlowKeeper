@@ -3890,8 +3890,8 @@ const check = (name, pass, detail) => {
         stIng.join('|') === 'INGREDIENT LOOKUP|WORD MATCHES|SHOPPING AISLES|SWAPS|DICTIONARY' && !stNav.includes('swaps') && stNav.includes('settings'),
         JSON.stringify([stIng, stNav]));
   /* CALENDAR joined App on 9 Oct 2026 (P3 PR 2), RECIPE SHARING and BACKUP TO GOOGLE DRIVE on 10 Oct; before their migrations each only says it is waiting. */
-  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, preparation, calendar, sharing and Drive backup; the last tab is remembered',
-        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|PREPARATION|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
+  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, style, preparation, calendar, sharing and Drive backup; the last tab is remembered',
+        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|STYLE|PREPARATION|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
         JSON.stringify([stLib, stApp, stKept]));
   /* Since #95 (13 Oct) the dictionary's fold is its heading, DICTIONARY (n), like every list on the tab. */
   const stDict = () => page.evaluate(() => ({ list: document.getElementById('dictionaryList').offsetParent !== null,
@@ -6936,6 +6936,94 @@ const check = (name, pass, detail) => {
         JSON.stringify(owTap.tables) === '["planner_days:upsert","meal_groups:upsert"]' && JSON.stringify(owTap.day) === '["ow-main","ow-dhal","ow-cake"]'
         && JSON.stringify(owTap.groups) === '[["ow-main","ow-cake"]]' && !owTap.often.includes('ow-cake'), JSON.stringify(owTap));
   await ow.close();
+
+  /* ---- The second style, Modernist (docs/PLAN-MODERNIST.md, step 1: the switch) ----
+     Classic is what every device has until it chooses, and the choice is this device's alone: localStorage, never the
+     database. What is proved here is the mechanism: the attribute is set before the page body exists, it survives a
+     reload, Archivo is asked for only once Modernist is on, and Style and Appearance move independently. What each screen
+     looks like in Modernist is checked screen by screen as they are built. */
+  const watchStyle = () => {
+    window.__styleAtBody = null;
+    new MutationObserver((m, o) => { if (document.body) { window.__styleAtBody = document.documentElement.getAttribute('data-style'); o.disconnect(); } })
+      .observe(document, { childList: true, subtree: true });
+  };
+  const archivoAsked = label => net.seen.filter(x => x.page === label && /family=Archivo/.test(x.url)).length;
+  const look = pg => pg.evaluate(() => ({
+    style: document.documentElement.getAttribute('data-style'), theme: document.documentElement.getAttribute('data-theme'),
+    stored: (() => { try { return localStorage.getItem('kitchen.style'); } catch (e) { return 'BLOCKED'; } })(),
+    bodyFont: getComputedStyle(document.body).fontFamily, monoFont: getComputedStyle(document.getElementById('sideCount')).fontFamily,
+    radius: getComputedStyle(document.querySelector('.new-recipe')).borderTopLeftRadius, bg: getComputedStyle(document.body).backgroundColor,
+    chrome: document.querySelector('meta[name="theme-color"]').getAttribute('content'), writes: window.__WRITES__.length,
+    optionsText: [...document.querySelectorAll('#setStyle option')].map(o => o.textContent).join(','), chosen: document.getElementById('setStyle').value
+  }));
+
+  const sty = await browser.newPage();
+  sty.__label = 'style';
+  await sty.addInitScript(watchStyle);
+  await sty.clock.setFixedTime(FIXTURE_NOW);
+  await sty.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await sty.waitForTimeout(1200);
+  await sty.click('.navlink[data-view="settings"]');
+  await sty.click('[data-settings-tab-btn="app"]');
+  const s0 = await look(sty);
+  check('a device that has never chosen is Classic: the attribute says so, set before the body existed, in Plex and with 2px corners',
+        s0.style === 'classic' && (await sty.evaluate(() => window.__styleAtBody)) === 'classic' && s0.stored === null &&
+        /IBM Plex Sans/.test(s0.bodyFont) && /IBM Plex Mono/.test(s0.monoFont) && s0.radius === '2px' && s0.bg === 'rgb(234, 228, 213)', JSON.stringify(s0));
+  check('    and has not asked for Archivo', archivoAsked('style') === 0, String(archivoAsked('style')));
+  check('Settings → APP has a STYLE select beside APPEARANCE, CLASSIC first and chosen',
+        s0.optionsText === 'CLASSIC,MODERNIST' && s0.chosen === 'classic' &&
+        (await sty.evaluate(() => { const a = document.getElementById('setDarkMode').closest('.settings-block'), b = document.getElementById('setStyle').closest('.settings-block'); return a.nextElementSibling === b && b.dataset.settingsTab === 'app'; })));
+
+  await sty.selectOption('#setStyle', 'modernist');
+  await sty.waitForTimeout(300);
+  const s1 = await look(sty);
+  check('choosing MODERNIST sets the attribute and remembers it on this device',
+        s1.style === 'modernist' && s1.stored === 'modernist' && s1.chosen === 'modernist', JSON.stringify(s1));
+  check('    the page is now in Archivo throughout (the mono face too), with square corners and the Modernist ground',
+        /^"?Archivo/.test(s1.bodyFont) && /^"?Archivo/.test(s1.monoFont) && s1.radius === '0px' && s1.bg === 'rgb(243, 242, 242)', JSON.stringify(s1));
+  check('    and only now does it ask for Archivo; the browser chrome takes the Modernist ground',
+        archivoAsked('style') === 1 && s1.chrome === '#f3f2f2', `asked ${archivoAsked('style')}×, chrome ${s1.chrome}`);
+  check('    the choice is this device\'s: nothing is written to the database', s1.writes === s0.writes, `${s0.writes} → ${s1.writes} writes`);
+
+  /* All four: Style and Appearance are independent, in either order. */
+  await sty.selectOption('#setDarkMode', 'dark');
+  await sty.waitForTimeout(300);
+  const s2 = await look(sty);
+  check('Modernist dark: the theme moved and the style did not, and the ground is the dark one',
+        s2.style === 'modernist' && s2.theme === 'dark' && s2.bg === 'rgb(22, 21, 20)' && s2.chrome === '#161514', JSON.stringify(s2));
+  await sty.selectOption('#setStyle', 'classic');
+  await sty.waitForTimeout(300);
+  const s3 = await look(sty);
+  check('Classic dark: the style moved back and the theme did not, and every Classic value is back',
+        s3.style === 'classic' && s3.theme === 'dark' && s3.bg === 'rgb(20, 18, 16)' && s3.chrome === '#141210' && s3.stored === null &&
+        /IBM Plex Sans/.test(s3.bodyFont) && s3.radius === '2px', JSON.stringify(s3));
+  await sty.selectOption('#setDarkMode', 'light');
+  await sty.waitForTimeout(300);
+  await sty.selectOption('#setStyle', 'modernist');
+  await sty.waitForTimeout(300);
+  const s4 = await look(sty);
+  check('Modernist light again, reached the other way round: Classic light, Classic dark, Modernist dark and Modernist light all work',
+        s4.style === 'modernist' && s4.theme === 'light' && s4.bg === 'rgb(243, 242, 242)' && s4.chrome === '#f3f2f2', JSON.stringify(s4));
+
+  /* The reload is the proof that the choice outlives the page, and the observer that the first paint is already right. */
+  await sty.reload();
+  await sty.waitForTimeout(1200);
+  const s5 = await sty.evaluate(() => ({ atBody: window.__styleAtBody, style: document.documentElement.getAttribute('data-style'), bg: getComputedStyle(document.body).backgroundColor }));
+  check('after a reload the style is Modernist before the page body exists, so Classic never flashes first',
+        s5.atBody === 'modernist' && s5.style === 'modernist' && s5.bg === 'rgb(243, 242, 242)', JSON.stringify(s5));
+  check('    and the reload asked for Archivo again, the way a fresh start does', archivoAsked('style') === 2, String(archivoAsked('style')));
+  await sty.close();
+
+  /* Storage that will not answer is Classic, not an error. */
+  const stb = await browser.newPage();
+  stb.__label = 'style, blocked storage';
+  await stb.addInitScript(() => { const bad = () => { throw new Error('blocked'); }; try { Object.defineProperty(window, 'localStorage', { get: bad }); } catch (e) {} });
+  await stb.clock.setFixedTime(FIXTURE_NOW);
+  await stb.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await stb.waitForTimeout(800);
+  check('with storage blocked the style is Classic, and the page still starts',
+        (await stb.evaluate(() => document.documentElement.getAttribute('data-style'))) === 'classic' && (await stb.locator('.rcard').count()) > 0);
+  await stb.close();
 
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to

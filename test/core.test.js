@@ -243,6 +243,58 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
         (flushSeen.length !== 2 ? '; the flush rules have changed: ' + Object.keys(FLUSH).filter(k => !flushSeen.includes(k)).join(', ') : '') + (rootR.length === 1 && rootR[0] === '2px' ? '' : `; --r is ${rootR.join(' and ') || 'missing'}`));
 }
 
+/* ---- The second style, Modernist (docs/PLAN-MODERNIST.md) ----
+   It is a layer on top of Classic and must never reach it. Read from the sources, in Node, as the Classic lints above are;
+   smoke.js proves the switch in a browser. The Classic lints read only the first <style> block, so none of them sees
+   styles/modernist.css, and these are its own. */
+{
+  const modSrc = fs.readFileSync(path.join(ROOT, 'styles', 'modernist.css'), 'utf8');
+  const mod = modSrc.replace(/\/\*[\s\S]*?\*\//g, '');
+  const classic = pageSrc.slice(pageSrc.indexOf('<style>') + 7, pageSrc.indexOf('</style>'));
+  /* A rule inside @media is matched on its own, by its innermost {…}, and the @media wrapper is never part of a selector.
+     A block that is not a rule (@font-face, @keyframes) would show up with an @ selector and fail the scope check. */
+  const rules = [...mod.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => ({ sels: m[1].split(',').map(x => x.trim().replace(/\s+/g, ' ')).filter(Boolean), body: m[2] }));
+  const SCOPE = /^(?:html)?\[data-style="modernist"\](?![\w-])/;
+
+  const unscoped = rules.flatMap(r => r.sels).filter(s => !SCOPE.test(s));
+  check('every selector in styles/modernist.css begins [data-style="modernist"], so none of it can reach Classic',
+        rules.length > 5 && unscoped.length === 0, `${rules.length} rules` + (unscoped.length ? '; not scoped: ' + unscoped.slice(0, 4).join(' | ') : ''));
+
+  const radii = rules.flatMap(r => [...r.body.matchAll(/(?:^|[;\s])border(?:-(?:top|bottom)-(?:left|right))?-radius\s*:\s*([^;]+)/g)].map(m => r.sels[0] + ' ' + m[1].trim()))
+    .filter(x => !/ 0(?:px)?$/.test(x));
+  const radiusTokens = [...mod.matchAll(/--(?:radius-(?:sm|md|lg)|r)\s*:\s*([^;]+);/g)].map(m => m[1].trim());
+  check('zero border-radius anywhere: no rule sets one, and every radius token is 0px',
+        radii.length === 0 && radiusTokens.length >= 4 && radiusTokens.every(v => v === '0px'), radii.concat(radiusTokens.filter(v => v !== '0px')).slice(0, 4).join(' | '));
+
+  const fonts = rules.flatMap(r => [...r.body.matchAll(/(?:^|[;\s])font-family\s*:\s*([^;]+)/g)].map(m => m[1].replace(/\s*!important/, '').trim()));
+  const fontTokens = [...mod.matchAll(/--font-(?:heading|body)\s*:\s*([^;]+);/g)].map(m => m[1].trim());
+  check('Archivo only: every font-family is the font token, both tokens start with Archivo, and nothing imports a font',
+        fonts.length > 0 && fonts.every(f => /^var\(--font-(?:body|heading)\)$/.test(f)) && fontTokens.length === 2 && fontTokens.every(f => /^"Archivo"/.test(f)) && !/@import|@font-face|url\(/.test(mod),
+        fonts.filter(f => !/^var\(--font-/.test(f)).concat(fontTokens.filter(f => !/^"Archivo"/.test(f))).join(' | '));
+
+  /* Where it is linked, and the version in the link. */
+  const link = pageSrc.match(/<link rel="stylesheet" href="styles\/modernist\.css\?v=([^"]*)">/);
+  const classicEnd = pageSrc.indexOf('</style>');
+  check('the page links styles/modernist.css after Classic\'s <style>, and ?v= is the app version',
+        !!link && link.index > classicEnd && link[1] === appVersion, link ? `?v=${link[1]}, APP_VERSION ${appVersion}, linked ${link.index > classicEnd ? 'after' : 'BEFORE'} the <style>` : 'no link');
+
+  check('Classic\'s own <style> knows nothing of the second style',
+        !/data-style|modernist/i.test(classic) && /\.mod-only\{\s*display:none;\s*\}/.test((pageSrc.match(/<style id="style-base">([\s\S]*?)<\/style>/) || [])[1] || ''),
+        /data-style|modernist/i.test(classic) ? 'Classic\'s <style> mentions it' : 'no .mod-only base rule in <style id="style-base">');
+
+  /* The attribute is set by a script in <head> before any stylesheet; Archivo's address appears once, inside the function
+     that only Modernist reaches, and nowhere as a <link> a Classic device would load. */
+  const head = pageSrc.slice(0, pageSrc.indexOf('</head>'));
+  const bootAt = head.indexOf("setAttribute('data-style', style)");
+  const firstStyle = head.indexOf('<style>');
+  const archivoUses = (pageSrc.match(/family=Archivo/g) || []).length;
+  check('the style is set in <head> before any stylesheet, and Archivo is loaded only by loadArchivoFont, only for Modernist',
+        bootAt > 0 && bootAt < firstStyle && /localStorage\.getItem\('kitchen\.style'\)/.test(head) &&
+        archivoUses === 1 && /function loadArchivoFont\(\)\{[\s\S]*?family=Archivo[\s\S]*?\n\}/.test(head) &&
+        /if\(style === 'modernist'\) loadArchivoFont\(\);/.test(head) && !/<link[^>]*Archivo/.test(pageSrc),
+        `boot at ${bootAt}, first <style> at ${firstStyle}, Archivo mentioned ${archivoUses}×`);
+}
+
 /* ---- The converter's instructions (issue #127, 12 Oct 2026) ----
    Each household loads converter/conversion-instructions.md into its own conversion project, and the app asks each
    once to reload it when CONVERTER_VERSION moves. So a change to the file must move the version, or nobody is told.

@@ -120,5 +120,14 @@ const core = fs.readFileSync(path.join(__dirname, '..', 'core.js'), 'utf8');
 if(/<\/script/i.test(core)) throw new Error('core.js contains "</script", which would end the inlined tag early');
 html = html.replace(CORE_TAG, () => '<script>\n' + core + '\n</script>');
 
+/* styles/modernist.css, the second visual style, is inlined for the same reason as core.js: a relative href from test/
+   would miss the file, and the console-error check would then fail the run on the missing stylesheet. It goes in the same
+   place the link is, after Classic's <style>, because its variable blocks rely on coming later. Likewise it must exist. */
+const STYLE_TAG = /<link rel="stylesheet" href="styles\/modernist\.css\?v=[^"]*">/;
+if(!STYLE_TAG.test(html)) throw new Error('index.html no longer links styles/modernist.css');
+const modernist = fs.readFileSync(path.join(__dirname, '..', 'styles', 'modernist.css'), 'utf8');
+if(/<\/style/i.test(modernist)) throw new Error('modernist.css contains "</style", which would end the inlined tag early');
+html = html.replace(STYLE_TAG, () => '<style id="modernist-css">\n' + modernist + '\n</style>');
+
 fs.writeFileSync(OUT, html);
 console.log('built', OUT, html.length, 'bytes');
