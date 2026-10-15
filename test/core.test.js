@@ -253,7 +253,11 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
   const classic = pageSrc.slice(pageSrc.indexOf('<style>') + 7, pageSrc.indexOf('</style>'));
   /* A rule inside @media is matched on its own, by its innermost {…}, and the @media wrapper is never part of a selector.
      A block that is not a rule (@font-face, @keyframes) would show up with an @ selector and fail the scope check. */
-  const rules = [...mod.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => ({ sels: m[1].split(',').map(x => x.trim().replace(/\s+/g, ' ')).filter(Boolean), body: m[2] }));
+  /* Split a selector list on its own commas only, not those inside :is(…) or :not(…). */
+  const splitSelectors = s => { const out = []; let depth = 0, cur = '';
+    for (const ch of s) { if (ch === '(') depth++; if (ch === ')') depth--; if (ch === ',' && depth === 0) { out.push(cur); cur = ''; } else cur += ch; }
+    return out.concat(cur).map(x => x.trim().replace(/\s+/g, ' ')).filter(Boolean); };
+  const rules = [...mod.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => ({ sels: splitSelectors(m[1]), body: m[2] }));
   const SCOPE = /^(?:html)?\[data-style="modernist"\](?![\w-])/;
 
   const unscoped = rules.flatMap(r => r.sels).filter(s => !SCOPE.test(s));

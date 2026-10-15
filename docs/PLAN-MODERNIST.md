@@ -1,6 +1,6 @@
 # PLAN-MODERNIST: a second visual style, "Modernist" (15 Oct 2026)
 
-**Status:** being built, one step at a time on a branch; nothing is on `main` yet. Step 1 (the switch) is built. See "Build order".
+**Status:** being built, one step at a time on a branch; nothing is on `main` yet. Steps 1 (the switch) and 2 (the sidebar) are built. See "Build order".
 
 The household has a design handoff (a README, an HTML prototype and a token sheet) for a flat, square, one-typeface look for the
 tablet in landscape (1280×800). It is added as a **second style beside Classic, not instead of it**: Settings → APP has a STYLE
@@ -55,7 +55,7 @@ choice, CLASSIC or MODERNIST, next to APPEARANCE. Classic stays exactly as it wa
 ## Build order and status
 
 1. **The switch** (built 15 Oct): boot script, STYLE select, `applyStyle`/`currentStyle`, the token bridge, the build step, the checks.
-2. App shell and sidebar. 3. Recipes. 4. Viewer. 5. Planner and Shortlist. 6. Shopping. 7. History. 8. Settings. 9. Everything else.
+2. **App shell and sidebar** (built 15 Oct). 3. Recipes. 4. Viewer. 5. Planner and Shortlist. 6. Shopping. 7. History. 8. Settings. 9. Everything else.
 
 Each step's entry below is added when it lands: what was measured, and where it departs from the prototype.
 
@@ -63,3 +63,24 @@ Each step's entry below is added when it lands: what was measured, and where it 
 - Classic differs from the original commit on one screen only: Settings → APP, which now has the STYLE block.
 - The spec's dark tokens give `accent-300` and `accent-800` the same value (#ffc4b8); History's stacked bar uses both, so step 7 will
   need to set one of them apart in the dark theme.
+
+### Step 2 as built
+- **Markup added, hidden in Classic:** the rail (`#navRailBtn`), the brand's "Recipe Wrangler", square and ‹ (`#navHideBtn`), all
+  `.mod-only`; "Kitchen" is wrapped in a span; the shortlist and shopping counts are spans (`.nav-sep`, `.nav-count`) with the
+  same text as before ("SHORTLIST · 3"); `showView` sets `.app[data-view]`. The row numbers are a CSS counter, not text.
+  Classic is byte-identical on every screen.
+- **Folding** is CSS on Classic's own classes: the Planner (`[data-view="planner"]`), or `.keep-awake.viewer-open`, unless
+  `.sidebar-peek`. The Group Viewer counts as a viewer. Between 861 and 1180px any viewer has the rail, where Classic folds the
+  sidebar for the width. At 860px and below it is Classic's top bar, in these colours, with Classic's ☰ tab. Peek and fold move
+  focus to the button that undoes them.
+- **Where it departs from the prototype:**
+  - The active row is the prototype's red wash with a 4px bar (its screenshots agree). The README says "red fill with white
+    text"; the prototype is the source of truth.
+  - Saved views and the three data links keep Classic's 44px rows (decision 10), so they sit further apart than in the prototype.
+    The data links' gap is 12px, not 14px: at 14 the first two miss sharing a line by a pixel.
+  - "N RECIPES SAVED" is hidden: the prototype has none, and Recipes will show the count beside its title (step 3).
+  - The prototype's DARK MODE link at the foot of the sidebar is **not** added. Appearance is shared with the household, so a
+    one-tap switch there would change it for everyone; it stays in Settings → APP. To revisit with the household.
+- **Checks:** 11 in `test/smoke.js` (Classic's sidebar unchanged; widths and the rail on Recipes, the Planner, peek, fold, a
+  change of screen, cooking mode, 1100px and a phone; the ‹ button's 44px tap area; focus). Each was seen to fail once.
+

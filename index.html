@@ -1672,7 +1672,15 @@ function loadArchivoFont(){
 </div>
 <div class="app">
   <nav class="sidebar">
-    <div class="brand">Kitchen</div>
+    <!-- Modernist only (docs/PLAN-MODERNIST.md): the rail the sidebar folds to on the Planner and while cooking, and the
+         name, square and hide button in its brand row. Hidden in Classic by .mod-only; the peek they open and close is the
+         same .sidebar-peek as the tab below. -->
+    <button class="nav-rail mod-only" id="navRailBtn" aria-label="Show the menu">
+      <span class="brand-square" aria-hidden="true"></span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      <span class="nav-rail-name">Recipe Wrangler</span>
+    </button>
+    <div class="brand"><span class="brand-classic">Kitchen</span><span class="brand-mod mod-only">Recipe Wrangler</span><span class="brand-square mod-only" aria-hidden="true"></span><button class="nav-hide-btn mod-only" id="navHideBtn" aria-label="Hide the menu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button></div>
     <button class="navlink active" data-view="recipes">RECIPES</button>
     <button class="navlink" data-view="planner">PLANNER</button>
     <button class="navlink" data-view="shortlist" id="navShortlist">SHORTLIST</button>
@@ -5012,6 +5020,8 @@ function showView(name){
      screens specifically need the room. */
   const app = document.querySelector('.app');
   app.classList.toggle('viewer-open', name === 'viewer' || name === 'group-viewer');
+  /* Modernist folds the sidebar on the Planner too (docs/PLAN-MODERNIST.md); its stylesheet reads which screen this is. */
+  app.dataset.view = name;
   app.classList.remove('sidebar-peek'); // a peek lasts as long as the recipe you opened it over
   window.scrollTo(0,0);
   /* Recipes redraws on entry like every other screen. It used not to, and
@@ -5029,19 +5039,32 @@ function showView(name){
 document.getElementById('sidebarPeekBtn').addEventListener('click', ()=>{
   document.querySelector('.app').classList.toggle('sidebar-peek');
 });
+/* Modernist's rail and its ‹ open and close the same peek. Each hides the button that was pressed, so focus moves to the
+   one that undoes it rather than falling back to the page. */
+document.getElementById('navRailBtn').addEventListener('click', ()=>{
+  document.querySelector('.app').classList.add('sidebar-peek');
+  document.getElementById('navHideBtn').focus();
+});
+document.getElementById('navHideBtn').addEventListener('click', ()=>{
+  document.querySelector('.app').classList.remove('sidebar-peek');
+  document.getElementById('navRailBtn').focus();
+});
 document.querySelectorAll('.navlink[data-view]').forEach(btn=>{
   /* Shortlist lives inside the Planner screen (per the mockup), not a screen of its own. */
   const target = btn.dataset.view === 'shortlist' ? 'planner' : btn.dataset.view;
   btn.addEventListener('click', ()=> showView(target));
 });
 
+/* The count is in spans of its own so Modernist can set it at the right of the row without its " · ". The text is the
+   same as it always was ("SHORTLIST · 3"), and so is Classic's drawing of it. */
+function setNavCount(id, label, n){
+  document.getElementById(id).innerHTML = n ? `${label}<span class="nav-sep"> · </span><span class="nav-count">${n}</span>` : label;
+}
 function updateSidebarCounts(){
-  const n = loadShortlist().length;
-  document.getElementById('navShortlist').textContent = n ? `SHORTLIST · ${n}` : 'SHORTLIST';
+  setNavCount('navShortlist', 'SHORTLIST', loadShortlist().length);
 
   const thisWeek = groupDaysByWeek(dayList())[0] || [];
-  const totalItems = buildShoppingList(thisWeek).totalItems;
-  document.getElementById('navShopping').textContent = totalItems ? `SHOPPING · ${totalItems}` : 'SHOPPING';
+  setNavCount('navShopping', 'SHOPPING', buildShoppingList(thisWeek).totalItems);
 }
 
 /* =====================================================================

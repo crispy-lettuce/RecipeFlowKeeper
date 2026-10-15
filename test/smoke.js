@@ -7025,6 +7025,95 @@ const check = (name, pass, detail) => {
         (await stb.evaluate(() => document.documentElement.getAttribute('data-style'))) === 'classic' && (await stb.locator('.rcard').count()) > 0);
   await stb.close();
 
+  /* ---- Modernist, step 2: the sidebar ----
+     228px, numbered rows, the brand renamed, the count at the right. It folds to a 56px rail on the Planner and on a viewer
+     in cooking mode (and on any viewer between 861 and 1180px, as Classic does for the width); the rail peeks it, ‹ folds
+     it, and another screen resets it. Widths are read after the 0.22s transition. Classic is checked alongside, unchanged. */
+  const navState = pg => pg.evaluate(() => {
+    const vis = el => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+    return { w: Math.round(document.querySelector('.sidebar').getBoundingClientRect().width), rail: vis(document.getElementById('navRailBtn')),
+      links: [...document.querySelectorAll('.navlink')].filter(vis).length, hide: vis(document.getElementById('navHideBtn')),
+      peekTab: vis(document.getElementById('sidebarPeekBtn')), focus: document.activeElement && document.activeElement.id };
+  });
+  const settle = pg => pg.waitForTimeout(400);
+
+  const nc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  nc.__label = 'sidebar, classic';
+  await nc.clock.setFixedTime(FIXTURE_NOW);
+  await nc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await nc.waitForTimeout(1200);
+  await nc.click('.navlink[data-view="planner"]'); await settle(nc);
+  const c0 = await navState(nc);
+  const cBrand = await nc.evaluate(() => ({ brand: document.querySelector('.brand').innerText.trim(), before: getComputedStyle(document.querySelector('.navlink'), '::before').content }));
+  check('Classic\'s sidebar is as it was on the Planner: 214px, six links, no rail, "Kitchen", no numbers',
+        c0.w === 214 && c0.links === 6 && !c0.rail && cBrand.brand === 'Kitchen' && cBrand.before === 'none', JSON.stringify([c0, cBrand]));
+  await nc.close();
+
+  const nv = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  nv.__label = 'sidebar, modernist';
+  await nv.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await nv.clock.setFixedTime(FIXTURE_NOW);
+  await nv.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await nv.waitForTimeout(1200);
+  const m0 = await navState(nv);
+  const mLook = await nv.evaluate(() => {
+    const sb = document.querySelector('.sidebar').getBoundingClientRect(), sl = document.getElementById('navShortlist');
+    const count = sl.querySelector('.nav-count'), sep = sl.querySelector('.nav-sep');
+    return { brand: document.querySelector('.brand').innerText.trim(), before: getComputedStyle(document.querySelector('.navlink'), '::before').content,
+      text: sl.textContent, count: count && count.textContent, sepShown: !!sep && getComputedStyle(sep).display !== 'none',
+      countGap: count ? Math.round(sb.right - count.getBoundingClientRect().right) : null };
+  });
+  check('Modernist\'s sidebar on Recipes: 228px, six numbered links, "Recipe Wrangler", no rail',
+        m0.w === 228 && m0.links === 6 && !m0.rail && !m0.hide && mLook.brand === 'Recipe Wrangler' && /counter\(nav, decimal-leading-zero\)/.test(mLook.before),
+        JSON.stringify([m0, mLook.brand, mLook.before]));
+  check('    the shortlist count sits at the right of its row without its " · ", and the row\'s words are unchanged',
+        mLook.text === 'SHORTLIST · 1' && mLook.count === '1' && !mLook.sepShown && mLook.countGap >= 18 && mLook.countGap <= 24, JSON.stringify(mLook));
+
+  await nv.click('.navlink[data-view="planner"]'); await settle(nv);
+  const m1 = await navState(nv);
+  check('on the Planner it folds to the 56px rail, and only the rail shows', m1.w === 56 && m1.rail && m1.links === 0 && !m1.peekTab, JSON.stringify(m1));
+  await nv.click('#navRailBtn'); await settle(nv);
+  const m2 = await navState(nv);
+  check('    tapping the rail peeks the whole sidebar, with ‹ in place of the square, and focus on ‹',
+        m2.w === 228 && !m2.rail && m2.links === 6 && m2.hide && m2.focus === 'navHideBtn', JSON.stringify(m2));
+  const hit = await nv.evaluate(() => {
+    const b = document.getElementById('navHideBtn'), r = b.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const on = (x, y) => { const e = document.elementFromPoint(x, y); return !!e && e.closest('#navHideBtn') === b; };
+    return { size: [Math.round(r.width), Math.round(r.height)], inside: [on(r.left - 5, cy), on(r.right + 5, cy), on(cx, r.top - 5), on(cx, r.bottom + 5)], outside: on(r.left - 8, cy) };
+  });
+  check('    ‹ is drawn 32px square and answers a tap 6px around it (44px), and no further',
+        hit.size.join() === '32,32' && hit.inside.every(Boolean) && !hit.outside, JSON.stringify(hit));
+  await nv.click('#navHideBtn'); await settle(nv);
+  const m3 = await navState(nv);
+  check('    ‹ folds it again, and focus goes back to the rail', m3.w === 56 && m3.rail && m3.focus === 'navRailBtn', JSON.stringify(m3));
+  await nv.click('#navRailBtn'); await settle(nv);
+  await nv.click('.navlink[data-view="shopping"]'); await settle(nv);
+  const m4 = await navState(nv);
+  await nv.click('.navlink[data-view="planner"]'); await settle(nv);
+  const m5 = await navState(nv);
+  check('    another screen ends the peek: Shopping is full width, and the Planner is folded again on return',
+        m4.w === 228 && !m4.rail && m5.w === 56 && m5.rail, JSON.stringify([m4, m5]));
+
+  await nv.click('#navRailBtn'); await settle(nv);
+  await nv.click('.navlink[data-view="recipes"]'); await settle(nv);
+  await nv.locator('.rcard').first().click(); await settle(nv);
+  const v0 = await navState(nv);
+  await nv.click('#view-viewer .toggle-track'); await settle(nv);
+  const v1 = await navState(nv);
+  await nv.click('#view-viewer .toggle-track'); await settle(nv);
+  const v2 = await navState(nv);
+  check('on a recipe the sidebar stays open, folds when cooking mode goes on and opens when it goes off',
+        v0.w === 228 && v1.w === 56 && v1.rail && !v1.peekTab && v2.w === 228, JSON.stringify([v0, v1, v2]));
+  await nv.setViewportSize({ width: 1100, height: 800 }); await settle(nv);
+  const v3 = await navState(nv);
+  check('    between 861 and 1180px a recipe has the rail, where Classic folds the sidebar for the width, and no ☰ tab',
+        v3.w === 56 && v3.rail && !v3.peekTab, JSON.stringify(v3));
+  await nv.setViewportSize({ width: 412, height: 915 }); await settle(nv);
+  const v4 = await nv.evaluate(() => ({ w: Math.round(document.querySelector('.sidebar').getBoundingClientRect().width), vw: window.innerWidth,
+    rail: getComputedStyle(document.getElementById('navRailBtn')).display }));
+  check('    on a phone it is Classic\'s bar across the top, with no rail', v4.w === v4.vw && v4.rail === 'none', JSON.stringify(v4));
+  await nv.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:

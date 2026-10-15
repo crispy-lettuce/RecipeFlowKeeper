@@ -124,3 +124,114 @@ html[data-style="modernist"] *{ font-family:var(--font-body) !important; }
 
 /* The ring is Classic's (2px, offset 2px, and the sidebar's inward offset); only its colour is the accent proper. */
 html[data-style="modernist"] :focus-visible{ outline-color:var(--color-accent); }
+
+/* ============================== APP SHELL: THE SIDEBAR ==============================
+   228px with a 2px rule; the brand row; numbered rows with the count on the right; the active row on a red wash with a
+   4px bar (the prototype's, which its screenshots agree with; the README's "red fill with white text" is the one place
+   that differs, and the prototype is the source of truth).
+
+   Folding: on the Planner, and on a viewer in cooking mode, the sidebar folds to a 56px rail (the red square, a › and
+   the name set vertically). Tapping the rail peeks the full sidebar, ‹ folds it back, and going to another screen resets
+   the peek: that is Classic's own .sidebar-peek, which showView already clears. Between 861 and 1180px Classic folds the
+   sidebar on a viewer whatever the cooking mode, for the width; here that is the rail too. Classic's floating ☰ tab is not
+   used at these widths.
+
+   Everything here is for 861px and up. Narrower, the sidebar is Classic's bar across the top, in these colours.
+
+   Classic's own folding rules (width:0, the peek at 214px) are more specific than anything sensible here, so the width,
+   rule and padding are !important, and the width itself comes from --mod-nav-w, set on .app by state. */
+@media (min-width: 861px){
+  html[data-style="modernist"] .app .sidebar{
+    width:var(--mod-nav-w, 228px) !important;
+    border-right:2px solid var(--color-divider) !important;
+    padding:0 !important;
+    overflow-x:hidden;
+    background:var(--color-bg);
+    counter-reset:nav;
+  }
+  html[data-style="modernist"] .app .sidebar-peek-btn{ display:none !important; }
+
+  /* Folded: the planner, or a viewer while cooking, unless peeked. */
+  html[data-style="modernist"] .app:is([data-view="planner"], .keep-awake.viewer-open):not(.sidebar-peek){ --mod-nav-w:56px; }
+  html[data-style="modernist"] .app:is([data-view="planner"], .keep-awake.viewer-open):not(.sidebar-peek) .sidebar > :not(.nav-rail){ display:none; }
+  html[data-style="modernist"] .app:is([data-view="planner"], .keep-awake.viewer-open):not(.sidebar-peek) .nav-rail{ display:flex; }
+  /* On those screens the brand row offers ‹ instead of the square, to fold it again. */
+  html[data-style="modernist"] .app:is([data-view="planner"], .keep-awake.viewer-open) .brand .brand-square{ display:none; }
+  html[data-style="modernist"] .app:is([data-view="planner"], .keep-awake.viewer-open) .nav-hide-btn{ display:flex; }
+
+  html[data-style="modernist"] .nav-rail{
+    flex:1; flex-direction:column; align-items:center; gap:16px;
+    padding:22px 0; background:none; border:0; cursor:pointer; color:var(--color-text);
+  }
+  html[data-style="modernist"] .nav-rail:hover{ background:var(--color-surface); }
+  html[data-style="modernist"] .nav-rail-name{
+    writing-mode:vertical-rl; transform:rotate(180deg);
+    font-size:18px; font-weight:800; letter-spacing:-0.01em; line-height:1;
+  }
+  html[data-style="modernist"] .brand-square{ display:inline-block; width:12px; height:12px; flex:none; background:var(--color-accent); }
+
+  html[data-style="modernist"] .brand{
+    display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+    padding:22px 20px 18px; border-bottom:2px solid var(--color-divider);
+    font-size:28px; font-weight:800; letter-spacing:-0.02em; line-height:1;
+  }
+  html[data-style="modernist"] .brand-classic{ display:none; }
+  html[data-style="modernist"] .brand-mod{ display:inline; }
+  html[data-style="modernist"] .nav-hide-btn{
+    position:relative; width:32px; height:32px; flex:none; align-self:center;
+    align-items:center; justify-content:center; padding:0;
+    background:none; border:2px solid var(--color-divider); color:var(--color-text); cursor:pointer;
+  }
+  html[data-style="modernist"] .nav-hide-btn:hover{ background:var(--color-surface); }
+  /* 32px to see, 44px to tap (decision 10): the inset is from the padding box, inside the 2px border, so 28 + 2×8. */
+  html[data-style="modernist"] .nav-hide-btn::before{ content:''; position:absolute; inset:-8px; }
+
+  html[data-style="modernist"] .navlink{
+    display:flex; align-items:baseline; gap:12px;
+    padding:13px 20px 13px 16px; border:0; border-left:4px solid transparent; border-bottom:1px solid var(--color-divider);
+    font-size:14px; font-weight:600; letter-spacing:.04em; line-height:normal; color:var(--color-text);
+    counter-increment:nav;
+  }
+  html[data-style="modernist"] .navlink::before{
+    content:counter(nav, decimal-leading-zero);
+    font-size:11px; opacity:.6; font-variant-numeric:tabular-nums;
+  }
+  html[data-style="modernist"] .navlink:hover{ background:color-mix(in srgb, var(--color-text) 6%, transparent); }
+  html[data-style="modernist"] .navlink.active{
+    border-left-color:var(--color-accent); background:var(--color-accent-100);
+    color:var(--color-accent-700); font-weight:800;
+  }
+  html[data-style="modernist"] .navlink.active::before{ opacity:1; }
+  html[data-style="modernist"] .nav-sep{ display:none; }
+  html[data-style="modernist"] .nav-count{ margin-left:auto; opacity:.7; font-variant-numeric:tabular-nums; }
+  html[data-style="modernist"] .navlink.active .nav-count{ opacity:1; }
+
+  /* SAVED VIEWS. Each keeps Classic's 44px row (decision 10), so the list is taller than the prototype's. */
+  html[data-style="modernist"] .side-rule{ display:none; }
+  html[data-style="modernist"] .side-block{ padding:22px 20px 0; }
+  html[data-style="modernist"] .side-block .side-label{ margin-bottom:2px; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+  html[data-style="modernist"] .saved-view{ font-size:14px; font-weight:400; color:var(--color-text); }
+  html[data-style="modernist"] .saved-view:hover{ color:var(--color-accent); }
+  html[data-style="modernist"] .saved-view.active{ color:var(--color-accent-700); font-weight:800; }
+
+  /* The prototype has no "N RECIPES SAVED" line: Recipes says how many beside its title instead. */
+  html[data-style="modernist"] .side-count{ display:none; }
+  html[data-style="modernist"] .new-recipe{
+    margin:0 20px; height:48px; padding:0 14px; justify-content:flex-start; gap:10px;
+    background:var(--color-accent); color:var(--km-on-accent); border:0;
+    font-size:14px; font-weight:800; letter-spacing:.04em;
+  }
+  html[data-style="modernist"] .new-recipe:hover{ background:var(--color-accent-600); }
+  html[data-style="modernist"] .new-recipe svg{ width:16px; height:16px; stroke-width:2.5; stroke-linecap:square; }
+  /* 12px, not the prototype's 14px: at 14 the first two links miss sharing a line by a pixel. */
+  html[data-style="modernist"] .data-actions{ justify-content:flex-start; gap:0 12px; margin:6px 20px 12px; }
+  html[data-style="modernist"] .data-link{ font-size:12px; font-weight:600; letter-spacing:.04em; color:var(--color-text); opacity:.7; }
+  html[data-style="modernist"] .data-link:hover{ opacity:1; color:var(--color-accent); }
+}
+@media (min-width: 861px) and (max-width: 1180px){
+  html[data-style="modernist"] .app.viewer-open:not(.sidebar-peek){ --mod-nav-w:56px; }
+  html[data-style="modernist"] .app.viewer-open:not(.sidebar-peek) .sidebar > :not(.nav-rail){ display:none; }
+  html[data-style="modernist"] .app.viewer-open:not(.sidebar-peek) .nav-rail{ display:flex; }
+  html[data-style="modernist"] .app.viewer-open .brand .brand-square{ display:none; }
+  html[data-style="modernist"] .app.viewer-open .nav-hide-btn{ display:flex; }
+}
