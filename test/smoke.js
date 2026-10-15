@@ -7674,6 +7674,68 @@ const check = (name, pass, detail) => {
   check('Modernist\'s Settings on a phone: no tab runs off the side', setOver.every(x => x === 0), JSON.stringify(setOver));
   await gp.close();
 
+  /* ---- Modernist, step 9: everything else ----
+     The Group Viewer's colours (the one place Classic's palette still reached), the dialogs, the bars and the sign-in card. */
+  const groupLook = pg => pg.evaluate(() => {
+    const cs = el => getComputedStyle(el);
+    return { swatches: [...document.querySelectorAll('.stacked-recipe .recipe-swatch')].map(e => cs(e).backgroundColor),
+      lanes: [...new Set([...document.querySelectorAll('.timeline-lane-abs[data-recipe-id]')].map(e => cs(e).backgroundColor))],
+      laneText: (e => e && cs(e).color)(document.querySelector('.timeline-lane-abs[data-recipe-id] span')) };
+  });
+  const openGroup = async pg => { await pg.evaluate(() => showView('planner')); await pg.waitForTimeout(300);
+    await pg.locator('.group-badge').first().click({ position: { x: 20, y: 10 } }); await pg.waitForTimeout(500); };
+  const ec = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  ec.__label = 'everything else, classic';
+  await ec.clock.setFixedTime(FIXTURE_NOW);
+  await ec.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await ec.waitForTimeout(1200);
+  await openGroup(ec);
+  const e0 = await groupLook(ec);
+  check('Classic\'s Group Viewer keeps its own colours: gold and sage for the two dishes',
+        e0.swatches.join() === 'rgb(176, 138, 46),rgb(124, 148, 115)' && e0.lanes.length === 2 && e0.lanes[0] === 'rgb(176, 138, 46)', JSON.stringify(e0));
+  await ec.close();
+
+  const em = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  em.__label = 'everything else, modernist';
+  await em.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await em.clock.setFixedTime(FIXTURE_NOW);
+  await em.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await em.waitForTimeout(1200);
+  await openGroup(em);
+  const e1 = await groupLook(em);
+  await em.evaluate(() => { applyTheme('dark'); rerenderForTheme(); }); await em.waitForTimeout(300);
+  const e2 = await groupLook(em);
+  await em.evaluate(() => { applyTheme('light'); rerenderForTheme(); }); await em.waitForTimeout(200);
+  check('Modernist\'s Group Viewer draws the dishes in ink and red, white words on the lanes; in dark, light ink and red with dark words',
+        e1.swatches.join() === 'rgb(32, 30, 29),rgb(221, 43, 15)' && e1.lanes.join() === 'rgb(32, 30, 29),rgb(221, 43, 15)' && e1.laneText === 'rgb(255, 255, 255)' &&
+        e2.swatches.join() === 'rgb(241, 238, 236),rgb(255, 86, 60)' && e2.laneText === 'rgb(22, 21, 20)', JSON.stringify([e1, e2]));
+  await em.evaluate(() => applyStyle('classic')); await em.waitForTimeout(300);
+  const e3 = await groupLook(em);
+  await em.evaluate(() => applyStyle('modernist')); await em.waitForTimeout(300);
+  check('    switching style redraws it in Classic\'s gold and sage', e3.swatches.join() === 'rgb(176, 138, 46),rgb(124, 148, 115)', JSON.stringify(e3));
+
+  await em.evaluate(() => { showView('history'); }); await em.waitForTimeout(200);
+  await em.click('#historyAddEntryBtn'); await em.waitForTimeout(300);
+  await em.click('#adHocMealChoices .meal-type-btn[data-meal="lunch"]'); await em.waitForTimeout(200);
+  const e4 = await em.evaluate(() => { const cs = el => getComputedStyle(el), panel = document.querySelector('#adHocOverlay .mini-panel');
+    return { frame: cs(panel).borderTopWidth + ' ' + cs(panel).borderTopColor, h2: cs(panel.querySelector('h2')).fontSize + ' ' + cs(panel.querySelector('h2')).fontWeight,
+      on: cs(panel.querySelector('.meal-type-btn.on')).backgroundColor, cancel: (b => cs(b).textDecorationLine + ' ' + cs(b).color)(document.getElementById('adHocCancel')),
+      input: Math.round(document.getElementById('adHocTitle').getBoundingClientRect().height) }; });
+  check('    a dialog has a 2px ink frame, a 24px heading, the chosen meal in red, 44px boxes and CANCEL as red words',
+        e4.frame === '2px rgb(32, 30, 29)' && e4.h2 === '24px 800' && e4.on === 'rgb(221, 43, 15)' && e4.cancel === 'none rgb(174, 24, 0)' && e4.input >= 44, JSON.stringify(e4));
+  await em.click('#adHocCancel'); await em.waitForTimeout(200);
+  await em.evaluate(() => { document.getElementById('offlineBar').hidden = false; }); await em.waitForTimeout(100);
+  const e5 = await em.evaluate(() => { const bar = document.getElementById('offlineBar'), cs = el => getComputedStyle(el);
+    return { rule: cs(bar).borderBottomWidth + ' ' + cs(bar).borderBottomColor, label: cs(bar.querySelector('b')).fontSize + ' ' + cs(bar.querySelector('b')).fontWeight + ' ' + cs(bar.querySelector('b')).color }; });
+  check('    the bars across the top have a red rule and their name in small red capitals', e5.rule === '2px rgb(236, 48, 19)' && e5.label === '11px 800 rgb(174, 24, 0)', JSON.stringify(e5));
+  await em.evaluate(() => { document.getElementById('offlineBar').hidden = true; showLoginGate('Test message'); }); await em.waitForTimeout(200);
+  const e6 = await em.evaluate(() => { const cs = el => getComputedStyle(el), card = document.querySelector('.login-card'), btn = document.getElementById('loginSubmit');
+    return { name: card.querySelector('h1').textContent, size: cs(card.querySelector('h1')).fontSize, frame: cs(card).borderTopWidth, btn: cs(btn).backgroundColor,
+      btnH: Math.round(btn.getBoundingClientRect().height), inH: Math.round(document.getElementById('loginEmail').getBoundingClientRect().height) }; });
+  check('    the sign-in card: "Kitchen" at 32px in a 2px frame, 44px boxes and the red button',
+        e6.name === 'Kitchen' && e6.size === '32px' && e6.frame === '2px' && e6.btn === 'rgb(221, 43, 15)' && e6.btnH >= 44 && e6.inH >= 44, JSON.stringify(e6));
+  await em.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:

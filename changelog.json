@@ -1,4 +1,8 @@
 [
+  { "version": "2026-10-15.1", "date": "2026-10-15",
+    "changes": ["A second look for the app, MODERNIST, beside the one you know, now called CLASSIC. Choose it in Settings, on the APP tab, under STYLE. It is flat and square, set in one typeface, with red kept for the main action and for what is switched on. Everything works the same in both, in light and dark, and the choice is for this device only.",
+                "In MODERNIST the side menu folds to a narrow strip on the Planner and while cooking, the Planner's shortlist can fold away to give the days more room, and the tick on a recipe card takes a recipe off the shortlist. The how-to guide in Settings, on the HELP tab, says more.",
+                "CLASSIC looks just as it did, apart from the new STYLE choice in Settings."] },
   { "version": "2026-10-14.5", "date": "2026-10-14",
     "changes": ["Every corner in the app is now the same. The round buttons, pills and circles (the star and + on a recipe card, the servings buttons, the cooking-mode switch and its dot, the + beside each day in the Planner, the SERVES and COOKED labels and the numbered set-up steps) are now rectangles with the same slightly rounded corners as everything else.",
                 "Nothing moves or changes size: only the corners are different."] },

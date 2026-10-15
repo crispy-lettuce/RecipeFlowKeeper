@@ -1,6 +1,8 @@
 # PLAN-MODERNIST: a second visual style, "Modernist" (15 Oct 2026)
 
-**Status:** being built, one step at a time on a branch; nothing is on `main` yet. Steps 1 to 8 (the switch, the sidebar, Recipes, the recipe viewer, the Planner and shortlist, the Shopping List, History, Settings) are built. See "Build order", and the "Decision log" at the end for every choice made while building and why.
+**Status:** built (15 Oct 2026), all nine steps, on branch `ccr-17dd2581-yd32p5`, in a pull request for the household to merge;
+nothing is on `main` yet. Version 2026-10-15.1. What is left is the household's: the tablet check 66a in `docs/HOUSEHOLD-JOBS.md`,
+and the questions in the "Decision log" at the end, which records every choice made while building and why.
 
 The household has a design handoff (a README, an HTML prototype and a token sheet) for a flat, square, one-typeface look for the
 tablet in landscape (1280×800). It is added as a **second style beside Classic, not instead of it**: Settings → APP has a STYLE
@@ -51,13 +53,15 @@ choice, CLASSIC or MODERNIST, next to APPEARANCE. Classic stays exactly as it wa
 - **Classic is proved unchanged by screenshots:** every screen, light and dark, at 1280×800 and phone width, shot from the original
   commit and again after each step, compared byte for byte (the run is deterministic). Only a screen that deliberately gained
   something differs.
-- **Not verifiable here, so the household checks it on the tablet** (`docs/HOUSEHOLD-JOBS.md`): PNG export and print in
-  Modernist (the harness stubs `html2canvas`), real data, and the real device's rendering.
+- **PNG export and print** are stubbed in the harness, so they were run by hand with the real html2canvas 1.4.1 and the browser's
+  print engine (the recipe in step 4, the shopping list in step 6, a group in step 9), in both themes.
+- **Not verifiable here, so the household checks it on the tablet** (job 66a in `docs/HOUSEHOLD-JOBS.md`): the tablet's own browser
+  (its PNG export and printing among it), real data, and how the taps feel.
 
 ## Build order and status
 
 1. **The switch** (built 15 Oct): boot script, STYLE select, `applyStyle`/`currentStyle`, the token bridge, the build step, the checks.
-2. **App shell and sidebar** (built 15 Oct). 3. **Recipes** (built 15 Oct). 4. **The recipe viewer** (built 15 Oct). 5. **Planner and Shortlist** (built 15 Oct). 6. **Shopping** (built 15 Oct). 7. **History** (built 15 Oct). 8. **Settings** (built 15 Oct). 9. Everything else.
+2. **App shell and sidebar** (built 15 Oct). 3. **Recipes** (built 15 Oct). 4. **The recipe viewer** (built 15 Oct). 5. **Planner and Shortlist** (built 15 Oct). 6. **Shopping** (built 15 Oct). 7. **History** (built 15 Oct). 8. **Settings** (built 15 Oct). 9. **Everything else** (built 15 Oct).
 
 Each step's entry below is added when it lands: what was measured, and where it departs from the prototype.
 
@@ -217,6 +221,26 @@ Each step's entry below is added when it lands: what was measured, and where it 
   lookup; lists as lines; the numbered quick answers, still linking to the guide; the pinned tabs; a phone, measuring the
   settings body's own scroll as well as the page's). Each was seen to fail once, by breaking the rule it guards.
 
+### Step 9 as built
+- **The Group Viewer** was the one place Classic's palette still reached in Modernist (each dish's lane and square in gold, sage,
+  blue…). `groupColour(i)` gives Modernist four colours of its own, tokens per theme (ink, red, deep red and grey in light; light
+  ink, red, pale red and pale grey in dark), with the lanes' words in the colour that reads on all four. Classic's are PALETTE's as
+  before, and switching style redraws the viewer. EXPORT PNG of a group was run with the real html2canvas in both themes: the
+  token colours come out.
+- **Dialogs** (the add form, the meal, pre-made and fresh-or-freezer questions, the diary entry): a 2px ink frame, headings at
+  800, 11px capitals for labels, 44px boxes on grey, the chosen meal in red, CANCEL and the like as small red capitals with no
+  underline, and the review's notes as a red bar on the red wash rather than a box.
+- **The bars across the top** (UPDATE, CONVERTER, OFFLINE): the red wash with a 2px red rule, their names in small red capitals.
+- **The toast** is ink with bold words; **the sign-in card** has a 2px ink frame, 44px boxes and the red button, and still says
+  "Kitchen" (D31).
+- **help.html** names STYLE, CLASSIC and MODERNIST in Settings and says what behaves differently in Modernist (the folding menu,
+  the folding shortlist, the card's ✓). `changelog.json` has the entry and `APP_VERSION` is 2026-10-15.1, as is the stylesheet's
+  `?v=`. `docs/HOUSEHOLD-JOBS.md` and `docs/TEST-PLAN.md` have the tablet check 66a.
+- **Classic, at the end:** byte-identical on every screen but two, Settings → APP (the STYLE block) and Settings → HELP (the new
+  version and its entry in what's new).
+- **Checks:** 6 in `test/smoke.js` (Classic's group colours; Modernist's in both themes; the redraw; a dialog; the bars; the
+  sign-in card), each seen to fail once. In all: `core.test.js` 216 (10 for this style), `smoke.js` 708 (86 for this style).
+
 ## Decision log
 
 Every choice made while building, beyond the twelve agreed at the top, with the reason. "Household" means you chose it; "session"
@@ -256,4 +280,13 @@ means it was decided while building and is yours to overturn. Newest last.
 | D27 | 15 Oct | session | Boxes to type in and selects in Settings are 44px, not the prototype's 40px; the lookup is 48px as drawn. | A box cannot carry an invisible tap area, and the 14 Oct rule is 44px for anything pressed with a thumb (decision 10). |
 | D28 | 15 Oct | session | The quick answers read "OPEN ↗", not the prototype's "OPEN →". | They open the guide in a new tab, which the app marks with ↗ everywhere else (OPEN THE GUIDE ↗, THE WHOLE LIST ↗). |
 | D29 | 15 Oct | session | Not changed, in either style: on a phone the top bar is 159px tall, because EXPORT DATA, IMPORT DATA and SIGN OUT stack at its end. | Seen while checking Settings on a phone; Classic's own phone bar is the same height. A follow-up for both styles. |
+| D30 | 15 Oct | session | The Group Viewer's dishes take four colours of Modernist's own (`groupColour`), not Classic's gold, sage and blue. | They were the last of Classic's colours left in this style, beside its red; four tokens per theme keep the lanes' words readable (white on the light theme's four, dark ink on the dark theme's). |
+| D31 | 15 Oct | household (as agreed) | The sign-in card still says "Kitchen" in Modernist; only the sidebar's brand is "Recipe Wrangler". | It was the assumption agreed at the start. **A question for you:** the sign-in card is the first thing seen, so you may want it to say "Recipe Wrangler" in Modernist too; it is one line. |
+| D32 | 15 Oct | session | The dialogs, bars, toast and sign-in card are drawn by CSS alone (the bridge plus a type and rule pass), with no markup changed. | The handoff does not draw them; the aim is only that nothing looks half-Classic. |
+
+### Follow-ups found while building (not done here)
+- **D10:** the shortlist's × has no spoken label (both styles).
+- **D13:** ticking a shopping row from the keyboard loses focus, as the list is redrawn (both styles).
+- **D22:** History's side panel scrolls sideways in Classic (the 560px table rule reaches its small table).
+- **D29:** on a phone the top bar is 159px tall, as the data links stack at its end (both styles).
 

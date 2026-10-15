@@ -747,7 +747,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **622 checks** (14 Oct 2026, 620 after F, 617 after H, 613 after S, 609 after T and 606 on 13 Oct; `core.test.js` adds 206 in Node, 205 after F, 202 after H, 199 after S, 194 after T and 189 on 13 Oct) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **708 checks** (15 Oct 2026, after the Modernist style; 622 on 14 Oct, 620 after F, 617 after H, 613 after S, 609 after T and 606 on 13 Oct; `core.test.js` adds 216 in Node, 206 on 14 Oct, 205 after F, 202 after H, 199 after S, 194 after T and 189 on 13 Oct) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,

@@ -520,11 +520,12 @@ from the plan's text, and what is left for the household to decide).
 
 **Use it when:** building any of the five, or asked why a colour, size or radius is what it is.
 
-### `docs/PLAN-MODERNIST.md` — a second visual style, Modernist, beside Classic (15 Oct 2026; being built one step at a time)
+### `docs/PLAN-MODERNIST.md` — a second visual style, Modernist, beside Classic (15 Oct 2026; built, awaiting the household's tablet check 66a)
 **What:** the household's design handoff (flat, square, one typeface) added as a STYLE choice in Settings → APP rather than a
 replacement: per device, a scoped stylesheet over a shared DOM, Classic untouched. The decisions made on 15 Oct (what differs from
 the prototype and why), how it is checked (its own lint, the smoke checks, and Classic proved unchanged screen by screen), what
-cannot be verified without the tablet, and the build order with a "built as" note per step.
+cannot be verified without the tablet, the build order with a "built as" note per step, and a **decision log** of every choice made
+while building, with the reason and who made it (the household's, or the session's and theirs to overturn).
 
 **Use it when:** changing or extending Modernist, or asked why a screen differs between the two styles.
 
@@ -644,7 +645,7 @@ to the conversion project (see `converter/conversion-instructions.md` above).
 ---
 
 ### `test/README.md` — the offline harness
-**What:** How to run the 622-check smoke suite, the 206 Node checks, the five smaller suites CI also runs (the Edge Functions' and the help guide's), and an honest account of what it can't tell you
+**What:** How to run the 708-check smoke suite, the 216 Node checks, the five smaller suites CI also runs (the Edge Functions' and the help guide's), and an honest account of what it can't tell you
 (everything about the real backend). Since 27 Sep, also how to re-measure the live library read-only, with the library kept in scratch and never in the repo.
 *(Corrected 12 Oct 2026, the October review's Appendix B and D: this said 418 and 143.)*
 

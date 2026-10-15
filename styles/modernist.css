@@ -50,6 +50,8 @@ html[data-style="modernist"]{
   --km-shadow:rgba(0,0,0,.12); --km-shadow-strong:rgba(0,0,0,.25); --km-scrim:rgba(0,0,0,.45);
   /* History's meal-base bar: the README's five (accent, ink, accent-300, accent-800, neutral-400). */
   --km-mix-1:#ec3013; --km-mix-2:#201e1d; --km-mix-3:#ffc4b8; --km-mix-4:#7c1405; --km-mix-5:#bab6b6;
+  /* The Group Viewer's dishes (groupColour): dark enough for white words in light, light enough for dark ones in dark. */
+  --km-group-1:#201e1d; --km-group-2:#dd2b0f; --km-group-3:#7c1405; --km-group-4:#6e6a69; --km-on-group:#ffffff;
 
   --font-heading:"Archivo", system-ui, sans-serif;
   --font-body:"Archivo", system-ui, sans-serif;
@@ -77,6 +79,7 @@ html[data-style="modernist"][data-theme="dark"]{
   /* In dark the spec's accent-300 and accent-800 are the same colour (#ffc4b8), so the bar's fourth is a deep red and its
      fifth a mid grey, each set apart from the ink and from the other three. */
   --km-mix-1:#ff563c; --km-mix-2:#f1eeec; --km-mix-3:#ffc4b8; --km-mix-4:#9c2a17; --km-mix-5:#77726f;
+  --km-group-1:#f1eeec; --km-group-2:#ff563c; --km-group-3:#ffc4b8; --km-group-4:#bab6b6; --km-on-group:#161514;
   color-scheme:dark;
 }
 
@@ -1101,4 +1104,71 @@ html[data-style="modernist"] #view-settings .share-list li{ display:flex; align-
   html[data-style="modernist"] #view-settings .filter-head h1{ font-size:44px; }
   html[data-style="modernist"] #view-settings .settings-body{ padding:0 16px 32px; }
   html[data-style="modernist"] #view-settings .settings-tabs .btn{ padding:12px 12px; }
+}
+
+/* ============================== EVERYTHING ELSE ==============================
+   What the handoff does not draw: the bars across the top, the dialogs, the Group Viewer, the toast and the sign-in card.
+   The bridge already gives them the colours, square corners and typeface; this gives them the type and rules of the rest:
+   11px capitals for labels, 2px rules, 44px boxes on grey, red for the main action, links as small red capitals. */
+
+/* The bars (UPDATE, CONVERTER, OFFLINE): a red rule beneath, the name in small red capitals, the words in ink. */
+html[data-style="modernist"] .offline-bar{ gap:12px; padding:10px 28px; border-bottom:2px solid var(--color-accent); background:var(--color-accent-100); color:var(--color-text); font-size:13px; font-weight:600; }
+html[data-style="modernist"] .offline-bar b{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+
+/* Dialogs. */
+html[data-style="modernist"] :is(.modal-panel, .mini-panel){ border:2px solid var(--color-text); background:var(--color-bg); }
+html[data-style="modernist"] .modal-panel h1{ margin-bottom:8px; font-size:32px; font-weight:800; line-height:1; letter-spacing:-0.02em; }
+html[data-style="modernist"] .mini-panel h2{ margin-bottom:6px; font-size:24px; font-weight:800; line-height:1.05; letter-spacing:-0.02em; }
+html[data-style="modernist"] :is(.modal-panel, .mini-panel) .subtle{ font-size:14px; line-height:1.45; color:var(--km-ink-72); }
+html[data-style="modernist"] .modal-close{ display:flex; align-items:center; justify-content:center; width:32px; height:32px; border:2px solid var(--color-divider); background:none; color:var(--color-text); font-size:18px; }
+html[data-style="modernist"] .modal-close:hover{ border-color:var(--color-accent); color:var(--color-accent); }
+html[data-style="modernist"] .modal-close::before{ content:''; position:absolute; inset:-8px; }
+html[data-style="modernist"] :is(.field-label, .source-photos-label, .mini-field span, .band-title){ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] :is(.modal-panel, .mini-panel) :is(input[type="text"], input[type="email"], input[type="number"], input[type="date"], input[type="search"], select){
+  min-height:44px; border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text);
+}
+html[data-style="modernist"] textarea#importInput{ border:2px solid var(--color-divider); background:var(--color-surface); font-size:14px; }
+html[data-style="modernist"] :is(.modal-panel, .mini-panel) :is(input, select, textarea):focus{ border-color:var(--color-accent); }
+html[data-style="modernist"] .meal-type-btn{ border:2px solid var(--color-divider); background:transparent; font-size:14px; font-weight:700; letter-spacing:.02em; }
+html[data-style="modernist"] .meal-type-btn:hover{ border-color:var(--color-accent); color:var(--color-accent-700); }
+html[data-style="modernist"] .meal-type-btn.on{ border-color:var(--km-fill); background:var(--km-fill); color:var(--km-on-accent); }
+/* Links that act: small red capitals, no underline (CANCEL, WRITE ONE BY HAND, the review's answers). */
+html[data-style="modernist"] :is(.modal-panel, .mini-panel) :is(.link-btn, .stale-bar button, .rv-row button, .rv-undo button, .spell-row button, .line-check button, .source-photo-thumb figcaption button){
+  text-decoration:none; font-size:12px; font-weight:800; letter-spacing:.08em; color:var(--color-accent-700);
+}
+html[data-style="modernist"] :is(.modal-panel, .mini-panel) .link-btn:hover{ color:var(--color-accent); }
+/* The review's notes and warnings: a red bar down the side on the red wash, no box. */
+html[data-style="modernist"] :is(.rv-section, .line-checks, .spell-row, ul.before-save, .stale-bar){
+  border:0; border-left:4px solid var(--color-accent); background:var(--color-accent-100); color:var(--color-text);
+}
+html[data-style="modernist"] :is(.rv-section, .line-checks) h4{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] :is(.rv-section.rv-red, .line-checks.unread){ border-left-color:var(--color-accent-700); }
+html[data-style="modernist"] .add-form{ border-top:2px solid var(--color-divider); }
+html[data-style="modernist"] :is(.source-photo-img, .pdf-card){ border:2px solid var(--color-divider); }
+
+/* The Group Viewer: each dish's square and lane in its token colour (groupColour), the lane's words in the colour that reads on
+   all four, the dish's name at 22px, its start time in red capitals, the chosen line-up in red. */
+html[data-style="modernist"] .stacked-recipe-head{ gap:10px; }
+html[data-style="modernist"] .stacked-recipe-head h3{ font-size:22px; font-weight:800; letter-spacing:-0.01em; }
+html[data-style="modernist"] .stacked-recipe .recipe-swatch{ width:12px; height:12px; }
+html[data-style="modernist"] :is(.stacked-recipe-serves, .stacked-recipe-start){ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+html[data-style="modernist"] .timeline-lane-abs[data-recipe-id] span{ color:var(--km-on-group); font-weight:700; }
+html[data-style="modernist"] .group-lineup .btn[aria-pressed="true"]{ border-color:var(--color-accent); color:var(--color-accent-700); }
+
+/* The toast: ink, with bold words. */
+html[data-style="modernist"] .toast{ padding:12px 18px; font-size:13px; font-weight:700; letter-spacing:.02em; }
+
+/* The sign-in card: a 2px ink frame, the app's name as a heading, 44px boxes, the red button. Its name stays "Kitchen" (D31). */
+html[data-style="modernist"] .login-card{ padding:32px; border:2px solid var(--color-text); background:var(--color-bg); }
+html[data-style="modernist"] .login-card h1{ margin-bottom:6px; font-size:32px; font-weight:800; letter-spacing:-0.02em; text-transform:none; }
+html[data-style="modernist"] .login-card p{ font-size:14px; color:var(--km-ink-72); }
+html[data-style="modernist"] .login-card label{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] .login-card input{ min-height:44px; border:2px solid var(--color-divider); background:var(--color-surface); font-size:16px; }
+html[data-style="modernist"] .login-card input:focus{ border-color:var(--color-accent); }
+html[data-style="modernist"] .login-card button{ min-height:44px; background:var(--km-fill); color:var(--km-on-accent); font-size:13px; font-weight:800; letter-spacing:.06em; }
+html[data-style="modernist"] .login-card button:hover{ background:var(--km-fill-hover); }
+html[data-style="modernist"] .login-error{ color:var(--color-accent-700); font-weight:600; }
+
+@media (max-width: 860px){
+  html[data-style="modernist"] .offline-bar{ padding-left:16px; padding-right:16px; }
 }

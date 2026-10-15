@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 14 Oct 2026, after 60a passed.**
+**Last brought up to date: 15 Oct 2026, when 66a (the Modernist style) was added.**
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
 households sort out their own converter and need no steps here.
@@ -30,9 +30,9 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 ### Reload the app on every device
 
-The newest version is 2026-10-14.5 (one corner). Once it has merged, reload on every device. The four before it,
-2026-10-14.1 (colours), 2026-10-14.2 (bigger writing), 2026-10-14.3 (bigger buttons) and 2026-10-14.4 (keyboard focus), were merged as
-#147, #149, #150 and #151 on 14 Oct, so they should already be live. Steps 61a, 62a, 63a, 64a and 65a are below.
+The newest version is 2026-10-15.1 (a second style, Modernist). Once it has merged, reload on every device. The one before it,
+2026-10-14.5 (one corner), and the four before that, 2026-10-14.1 (colours), 2026-10-14.2 (bigger writing), 2026-10-14.3 (bigger
+buttons) and 2026-10-14.4 (keyboard focus), should already be live. Steps 61a to 66a are below.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready**, tap **RELOAD**. Otherwise refresh the page.
@@ -130,6 +130,42 @@ have reloaded the app.
 5. If you use them, **PRINT / A4 PDF** and **EXPORT PNG** on a recipe. **You should see:** the same as the screen.
 
 Tell the next session if any square looks too sharp, or if you want a circle back anywhere.
+
+### 66a. A second style, Modernist (new 15 Oct, `docs/PLAN-MODERNIST.md`)
+
+Nothing is saved to the household's data: the style is kept on each device. Do this on the tablet, held landscape, after the pull
+request has merged and you have reloaded. It takes about ten minutes. Steps 1 and 12 can be done on the phone as well.
+
+1. Open **SETTINGS**, then **APP**. Under **STYLE**, choose **MODERNIST**. **You should see:** the whole app change at once to a flat,
+   square look in one typeface, with **Recipe Wrangler** at the top of the side menu and the menu's links numbered 01 to 06.
+2. Reload the page. **You should see:** it comes back in **MODERNIST**, without the old look flashing up first.
+3. Open **RECIPES**. **You should see:** "Recipes" in large type with the number of recipes beside it, the search bar beside that, and
+   three cards to a row, photos in colour. Tap **+** on a card: it becomes **✓**. Tap **✓**: the recipe comes off the shortlist.
+4. Open a recipe. **You should see:** the title very large, with SERVES and "0 / N TICKED" beside it; the flow table with square boxes,
+   the last column in red. Tap a box: the count goes up. Turn **COOKING MODE** on: a red bar says the screen will stay on, and the side
+   menu folds to a strip. Tap the strip to open the menu, and ‹ to fold it again. Turn cooking mode off.
+5. On that recipe, tap **EXPORT PNG**. **You should see:** a picture of the recipe, looking as it does on screen. If you print, try
+   **PRINT / A4 PDF** too.
+6. Open **PLANNER**. **You should see:** the side menu folded to a strip, "Next Fourteen Days", each week under a black line with its
+   dates and how many are planned, and the shortlist on the right with numbered ideas and a red **SHOPPING LIST** block at its foot.
+   Tap **›** at the top of the shortlist: it folds to a strip. Tap the strip: it opens again. Tap the red block: the shopping list opens.
+7. On the Planner, tap a dish's **SERVES**, **PRE-MADE** and **COOKED ✓** as you normally would (and undo them). **You should see:** each
+   answers your thumb first time, without catching the dish's name above it.
+8. Open **SHOPPING**. **You should see:** the aisles in two columns, a square box on each row. Tick a row: the box goes red, the row
+   fades and is struck through, and the count by the aisle and under the title goes up. Untick it. Tap **EXPORT PNG**: the picture
+   has the square boxes, with ticked rows left out.
+9. Open **HISTORY**. **You should see:** the month in large type between two square arrows, today ringed in red, and words like
+   COOKED at the foot of the days. Tap a day: it fills with ink (black, in light) and the panel on the right shows what was eaten. Scroll the panel:
+   the meal-base mixes are bars, not pies.
+10. Open **SETTINGS**. **You should see:** the four tabs as words, the open one underlined in red, and each section between lines.
+11. Under **APPEARANCE**, choose dark, then light again (it is shared with the household, so put it back as it was). **You should
+    see:** Modernist in dark, then light.
+12. Under **STYLE**, choose **CLASSIC**. **You should see:** the app exactly as it was before this change. Choose whichever style you
+    want to keep.
+
+Tell the next session anything that looks wrong, is hard to tap, or that you would like changed. The decisions made while building
+it, with the reasons, are listed at the end of `docs/PLAN-MODERNIST.md`; a few are questions for you (for example, whether the
+sign-in card should say "Recipe Wrangler" too).
 
 ---
 

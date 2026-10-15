@@ -1655,7 +1655,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-14.5">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-15.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2310,7 +2310,7 @@ const EXPECTED_CORE_VERSION = '2026-10-15.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-14.5';
+const APP_VERSION = '2026-10-15.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -2609,13 +2609,19 @@ function wireTimelineInteractions(container){
    therefore scoped to a specific recipe's own flow table (matched via
    data-recipe-id on the table's wrapping element), never a bare
    data-handle match against the whole screen. */
+/* A dish's colour in the Group Viewer (its lane and its square). Modernist draws the dishes in four colours of its own,
+   tokens set per theme in its stylesheet (docs/PLAN-MODERNIST.md), so no gold or sage sits beside its red; Classic's are
+   PALETTE's, as they were. */
+function groupColour(i){
+  return currentStyle() === 'modernist' ? `var(--km-group-${i % 4 + 1})` : PALETTE[i % PALETTE.length];
+}
 function computeGroupTimeline(recipesWithParsed, mode){
   const own = recipesWithParsed.map(rp=> computeTimeline(rp.parsed.groups, rp.parsed.stages));
   if(!own.some(Boolean)) return null; // nothing in the whole group has timing data — auto-hide, same rule as single-recipe
   /* START TOGETHER or FINISH TOGETHER (#87): the arithmetic is lineUpTimelines in core.js, where it has tests. */
   const lined = lineUpTimelines(own, mode);
   const perRecipe = recipesWithParsed.map((rp, i)=> ({ recipe: rp.recipe, parsed: rp.parsed, timeline: lined.lanes[i],
-    colour: PALETTE[i % PALETTE.length] }));
+    colour: groupColour(i) }));
   return { perRecipe, totalSpan: lined.totalSpan, about: lined.about, mode };
 }
 /* A group with a Side defaults to FINISH TOGETHER (decided 13 Oct: the rice should be ready with the curry); any other to
@@ -5573,7 +5579,7 @@ function renderGroupViewer(){
      sharing groupFlowMount directly — a single shared container would
      have each recipe's mountFlow call erase the one before it. */
   const shellHtml = recipesWithParsed.map(({recipe, serves}, i)=>{
-    const colour = PALETTE[i % PALETTE.length];
+    const colour = groupColour(i);
     return `<div class="stacked-recipe" data-recipe-id="${escapeHtml(recipe.id)}">
       <div class="stacked-recipe-head">
         <span class="recipe-swatch" style="background:${colour};"></span>
