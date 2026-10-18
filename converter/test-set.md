@@ -19,7 +19,7 @@ Test 13 is a tin with no weight, and test 14 several recipes in one message.
 hand for tests 1 to 8, 10, 11, 12a to 12e and 13, and ran all sixteen results through `test/validate-recipes.js`: 16 valid,
 0 held back, every MERGE timed, no Source note. Each `est.` figure was the app's own longest chain (`computeTimeline`) plus the
 hands-on allowance, rounded: 12a 50 + 5 = 55, 12e 40 + 5 = 45, as the test says. 12b kept the source's `1 hr`; 12c and 12d left
-`TIME` out with a reason. Test 13's lines drew the app's "container word in the name" advice (test 13 says why). The household's
+`TIME` out with a reason. Test 13's lines drew the app's "container word in the name" advice, which core 2026-10-18.4 no longer gives for them. The household's
 own runs in the conversion project are the ones that count.
 
 ---
@@ -409,7 +409,7 @@ source used; a liquid the source weighs stays in grams. The rule is in section 1
 **Why:** added 18 Oct 2026, asked for by the household. A recipe from a cookbook photo gives no overall
 time, and `TIME` used to come out blank. Now it is estimated from the method and marked `est.`, but only
 from the steps: the longest chain of MERGE durations, ranges at their midpoint, an "at least" step at its
-stated figure, 5 minutes for a short ingredient list (10 to 15 for a long one), rounded to 5 minutes. The
+stated figure, 5 minutes for up to 8 ingredient lines (10 from 9; until version 2026-10-18.4, "10 to 15 for a long one"), rounded to 5 minutes. The
 rule is in section 2 of `conversion-instructions.md` ("Estimating TIME when the source gives none"). Run all
 five; each is its own conversion.
 
@@ -502,9 +502,9 @@ rule (section 1, "Tins and packs") is to use `tin` as the unit and never to inve
 **Fails if:** a weight or volume appears that the source did not give (`400 g chickpeas`, `400 ml coconut milk`); the container is
 in the name (`1 tin of chickpeas`); or the article stays as the quantity (`a tin chickpeas`).
 
-**Worth knowing:** the app's line check (`ingredientLineFaults`) calls a line that starts `1 tin` "container word in the name"
-and suggests brackets. It is advice, never shown in the preview (it does not affect the list), but `validate-recipes.js` prints
-it. On the shopping list such a line totals with others of the same name as `400 g + 1 tin`, not as one figure.
+**Worth knowing:** since core 2026-10-18.4 the app's line check accepts `1 tin chickpeas` (before, it called it "container word
+in the name"), and scaling writes `2 tins chickpeas`. On the shopping list such a line sits with others of the same name as
+`400 g + 1 tin`, not as one figure: the app does not guess what a tin weighs.
 
 ---
 
@@ -515,15 +515,16 @@ converted on its own, with nothing carried from one to the other, and a recipe t
 
 **Source** (the whole message):
 
-> Two recipes from one page. **Lemon Rice** (from *Blue Door Bakery*) — Serves 4. Simmer 250g basmati rice in 550ml water for
+> Two recipes from one page of *Blue Door Bakery*. **Lemon Rice** — Serves 4. Simmer 250g basmati rice in 550ml water for
 > 12 minutes, then stir in the zest of 1 lemon. **Buttered Peas** — Cook 250g frozen peas for 3 minutes, drain and stir through
 > 25g butter.
 
-**Must produce:** Lemon Rice in its own code block, `SOURCE: Blue Door Bakery`, `SERVINGS: 4`. Then, at the end, the questions for
-Buttered Peas, naming it: what it serves, and where it is from (or Buttered Peas converted after those answers).
+**Must produce:** Lemon Rice in its own code block, `SOURCE: Blue Door Bakery`, `SERVINGS: 4`. Then, at the end, the question for
+Buttered Peas, naming it: what it serves (or Buttered Peas converted after that answer). Both carry `SOURCE: Blue Door Bakery`:
+the source is the one value that is shared, since they come from the same page.
 
-**Fails if:** Buttered Peas gets `SERVINGS: 4` or `SOURCE: Blue Door Bakery` without asking (a value carried from the other
-recipe); Lemon Rice is held back until Buttered Peas' questions are answered; or the two share one code block.
+**Fails if:** Buttered Peas gets `SERVINGS: 4` without asking (a value carried from the other recipe); the converter asks for
+Buttered Peas' source; Lemon Rice is held back until Buttered Peas' question is answered; or the two share one code block.
 
 **Runs.** None yet.
 

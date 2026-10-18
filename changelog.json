@@ -1,4 +1,7 @@
 [
+  { "version": "2026-10-18.6", "date": "2026-10-18",
+    "changes": ["The recipe converter's instructions change once more today (version 2026-10-18.4), with your answers to the questions on the shorter rewrite, so the CONVERTER bar will ask your household to load the file again. Several recipes from one book or page now share their source, so it is asked once; the walkthrough of the flow is written only if you ask for one; a step the recipe doesn't time is marked as quick or as open-ended, never given a made-up time; and the time allowed for chopping and measuring is 5 minutes for up to 8 ingredients and 10 for more.",
+                "In the app, a line such as 1 tin chickpeas now scales to 2 tins rather than 2 tin, and is no longer called a container word in the name."] },
   { "version": "2026-10-18.5", "date": "2026-10-18",
     "changes": ["The recipe converter's instructions have been rewritten to be shorter, so each conversion uses less of the conversion project's allowance. The CONVERTER bar will ask your household to load the new file (version 2026-10-18.3), even if you loaded one earlier today.",
                 "What changes in a conversion: the reply after the recipe lists only what you need to check or answer, with no walkthrough; a tin with no weight on the page is written as 1 tin; a photo or PDF you attach comes back renamed to the recipe's title; and several recipes in one message are each converted on their own, with any questions together at the end. Nothing in the app changes."] },

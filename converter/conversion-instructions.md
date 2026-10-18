@@ -1,6 +1,6 @@
 # Recipe Conversion — Project Instructions
 
-**Version 2026-10-18.3.**
+**Version 2026-10-18.4.**
 
 Convert every recipe given here (photo, URL or pasted text) into GROUP / STAGE / MERGE syntax for the recipe merge-flow tool. Work through all four stages in order every time; never skip Check.
 
@@ -136,6 +136,7 @@ TIPS:
 - STAGE = one column = one moment in time. Independent parallel actions are separate MERGE lines in the same stage.
 - A single-input MERGE relabels a box; use it for every step after the final combine (pour, bake, cool, cut, serve).
 - **Every MERGE ends with a bracketed duration:** `[8 min]`, `[10-13 min]` (hyphen or en dash), `[1 hr]`, `[1 hr 30]`, `[30 sec]`, `[overnight]`. `[until done]` and `[till reduced]` are read as open-ended. `[instant]` for steps taking no meaningful time (plating, a final stir, garnish). Never omit it: one missing duration makes the shared cooking timeline wrong.
+- **A step the source doesn't time:** a quick hands-on action (blend until smooth, strain, pour, toss, thread onto skewers) is `[instant]`; a step that takes real but unstated time (rest, chill, prove, roast until cooked) is `[until done]`. Never invent a figure.
 - Keep labels short, but never drop temperatures, times, doneness cues or cautions.
 - Tips that aren't sequential actions go in NOTES or a subsection, not a stage.
 
@@ -146,7 +147,7 @@ Only from the bracketed durations you have just written; never from the dish's n
 1. **Longest path.** A MERGE starts when all its inputs are ready: add the durations along the longest chain of steps, each using the previous one's output. MERGE lines in the same STAGE run in parallel and don't add; a line counts only if it's on the longest chain. Where the cook must do things one after another although the flow shows them side by side (one grill pan, one hob ring, one pair of hands), count them in sequence.
 2. **A range** counts at its midpoint: `[10-13 min]` = 11.5 min.
 3. **No fixed duration.** An "at least" step (marinate at least 30 min, chill 2 hours, rest 10) counts at its stated figure. `[overnight]`, `[until done]` and `[till reduced]` count at the source's own figure if it gives one ("overnight (8 hours)", "about 15 minutes"). If it gives none, don't estimate: ask for a total, or omit `TIME` with a one-line reason ("TIME omitted: the source gives no figure for the overnight marinade").
-4. **Add a hands-on allowance** (chopping, measuring, preheating): about 5 min for under about 8 ingredient lines, 10–15 min for a long list.
+4. **Add a hands-on allowance** (chopping, measuring, preheating): 5 min for up to 8 ingredient lines, 10 min for 9 or more.
 5. **Round** to the nearest 5 min (halves up): `est. 35 min`, `est. 1 hr 40`.
 
 With an estimated `TIME`, and only then, add under NOTES exactly:
@@ -177,9 +178,10 @@ Do the Check silently. Fix what it finds; don't report it.
 ## 4. Present
 
 - The finished syntax in a single code block, ready to paste into the app.
+- No walkthrough of the flow unless the person asks for one; then 3–5 plain sentences on what merges with what, and when.
 - After it, list only what the person needs to act on or verify: unconfirmed values, approximate conversions that could matter, anything flagged as uncertain, or a question that blocks a field (SOURCE, SERVINGS, TIME). One short line each. If there is nothing, write nothing after the code block.
 - **Source files.** If the recipe came from an image or PDF the person attached, return a copy of each file renamed to the recipe's `TITLE`: keep the original extension, remove characters a filename can't hold (`/ \ : * ? " < > |`), and add `-1`, `-2`… in page order when one recipe spans several files (`Greek Potato Hash.jpg`, `Lemon Drizzle Cake-1.jpg`). If code execution isn't available, give the new filename instead, one line per file. Rename only after `TITLE` is settled. If a recipe is held up by a question, rename its files once that's answered.
 
 ## Several recipes in one message
 
-Convert each recipe independently, in its own code block, in the order given. Never carry a value (SOURCE, SERVINGS, TIME, a conversion) from one recipe to another. If a recipe needs a question answered or its URL can't be read, convert the others anyway and put all the questions together at the end, each naming its recipe. When several files are attached, work out which belong to which recipe before renaming; if that isn't clear, ask rather than guess.
+Convert each recipe independently, in its own code block, in the order given. Never carry a value (SERVINGS, TIME, a conversion) from one recipe to another. The exception is `SOURCE`: recipes from the same book, page or site, or that the person says share a source, all take it, so ask for it once. If a recipe needs a question answered or its URL can't be read, convert the others anyway and put all the questions together at the end, each naming its recipe. When several files are attached, work out which belong to which recipe before renaming; if that isn't clear, ask rather than guess.

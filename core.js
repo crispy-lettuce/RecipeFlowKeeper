@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-18.3';
+const KITCHEN_CORE_VERSION = '2026-10-18.4';
 
 
 /* ======================= quantity split ======================= */
@@ -488,6 +488,10 @@ function scaleRecipeSyntax(syntaxText, multiplier, alias){
        left as written, since half a pinch is still a pinch. */
     const imprecise = !parsed.unit && rest.match(/^(pinch|dash|handful|knob|squeeze|splash)(es|s)?\b/i);
     let restOut = rest;
+    /* "1 tin chickpeas" doubled was "2 tin chickpeas": a tin, unlike a pinch, halves sensibly, so it scales to any
+       number, and only its word agrees with it (18 Oct 2026). */
+    const tinWord = !parsed.unit && !imprecise && rest.match(/^tins?\b/i);
+    if(tinWord) restOut = (scaledTop > 1 ? 'tins' : 'tin') + rest.slice(tinWord[0].length);
     if(imprecise){
       const nums = parsed.low !== undefined ? [parsed.low, parsed.high] : [parsed.count !== undefined ? parsed.count : parsed.amount];
       if(nums.some(n => Math.abs(n * multiplier - Math.round(n * multiplier)) > 1e-9)) return line;
@@ -1795,7 +1799,11 @@ function ingredientLineFaults(line, qty, rest){
   if(/\b(cups?|oz|ounces?|lbs?|pounds?|quarts?|pints?|sticks? of butter)\b/i.test(qty)
      || (/^[\d.\/\s]+$/.test(qty || '') && /^(pints?|quarts?|ounces?|pounds?|lbs?|fl\.?\s*oz|sticks?\s+(of\s+)?butter)\b/i.test(first)))
     add('metric', 'not metric (convert cups, oz and lb)', true);
-  if(qty && /^(tins?|cans?|jars?|packs?|packets?)\b/.test(first)) add('container', 'container word in the name (put "(1 tin)" in brackets)', false);
+  /* "1 tin chickpeas" is the converter's line for a source that names only the tin (18 Oct 2026, version 2026-10-18.3):
+     `tin` is its unit there, as COUNT_UNITS reads it, and no weight is invented. Only a container after a unit is in the
+     name ("400 g tin chopped tomatoes"); a can, jar or pack is not one of the converter's units, so is flagged either way. */
+  if(qty && /^(tins?|cans?|jars?|packs?|packets?)\b/.test(first) && !(/^tins?\b/.test(first) && /^[\d.\/\s-]+$/.test(qty)))
+    add('container', 'container word in the name (put "(1 tin)" in brackets)', false);
   /* New with the move: the two shapes the 6c-2 rewrite found that the list
      gets wrong, where the older checks only called them style. */
   if(/\bml\b/i.test(qty) && /^(tins?|cans?)\b/.test(first)) add('tinMl', 'tin measured in ml', true);

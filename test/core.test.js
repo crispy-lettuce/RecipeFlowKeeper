@@ -316,7 +316,7 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
    The file's fingerprint is pinned here against its version: change the file, and this fails until the "Version" line
    in the file and CONVERTER_VERSION in index.html are both moved on, and the new fingerprint (printed below) is put
    here beside the new version. */
-const CONVERTER_PINNED = { version: '2026-10-18.3', sha256: 'a63292f79b1d892a0d420fd6ccdf292e9ca55578dd7fe69908e526a86584c2e3' };
+const CONVERTER_PINNED = { version: '2026-10-18.4', sha256: 'b32ad40b1ba628edb7be9dce87ce33b5df0b0458954b369ca0101c4889634390' };
 {
   const convSrc = fs.readFileSync(path.join(ROOT, 'converter', 'conversion-instructions.md'), 'utf8');
   const convSha = require('crypto').createHash('sha256').update(convSrc).digest('hex');
@@ -431,6 +431,16 @@ check('    and scales a pinch, dash or handful only to a whole number, its word 
         && core.scaleRecipeSyntax('GROUP a:\n4 tbsp olive oil\n14 ml lime juice', 1) === 'GROUP a:\n4 tbsp olive oil\n14 ml lime juice',
         [viaMatch, sc1('3 tbsp house dressing', 2)].join(' | '));
 }
+/* A tin with no weight (18 Oct 2026, converter 2026-10-18.3): "1 tin chickpeas" scales to any number and its word agrees;
+   the line check takes `tin` after a bare number as the unit, and still flags a container after a unit, or a can. */
+check('a bare tin scales with its word agreeing, and is not called a container in the name; "400 g tin …" and "1 can …" still are',
+      sc1('1 tin chickpeas, drained', 2) === '2 tins chickpeas, drained' && sc1('2 tins chickpeas', 0.5) === '1 tin chickpeas'
+      && sc1('1 tin chickpeas', 1.5) === '1 1/2 tins chickpeas'
+      && !core.ingredientLineFaults('1 tin chickpeas, drained').some(f => f.code === 'container')
+      && core.ingredientLineFaults('400 g tin chopped tomatoes').some(f => f.code === 'container')
+      && core.ingredientLineFaults('1 can chickpeas').some(f => f.code === 'container'),
+      [sc1('1 tin chickpeas, drained', 2), sc1('2 tins chickpeas', 0.5), sc1('1 tin chickpeas', 1.5),
+       core.ingredientLineFaults('1 tin chickpeas, drained').map(f => f.code).join('+') || 'none'].join(' | '));
 check('scaling updates SERVINGS and leaves the step text alone', /^SERVINGS: 4$/m.test(scaled) && /Cook for 10 min \[10 min\]/.test(scaled), scaled);
 
 /* ---- Parsing and layout ---- */

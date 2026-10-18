@@ -4,6 +4,23 @@ What changed in `conversion-instructions.md`, and why, newest first. Until 18 Oc
 file, so every conversion read them; they say nothing a conversion needs, so they live here, for reference. **This file is
 not loaded into the conversion project.** Each household loads `conversion-instructions.md` alone.
 
+## Revision note (18 Oct 2026, version 2026-10-18.4: the household's answers)
+
+A session tested the rewrite (2026-10-18.3) and raised five queries; the household answered them the same evening. Version
+2026-10-18.3 had already merged without them (#160), so they are a version of their own.
+
+- **Several recipes in one message:** nothing is carried from one recipe to another **except `SOURCE`**: recipes from one book,
+  page or site, or that the person says share a source, all take it, so it is asked once. Test 14 now expects the shared source
+  and only the servings question.
+- **The walkthrough of the flow** is written only when the person asks for one (3–5 plain sentences).
+- **A step the source doesn't time** is `[instant]` when it is a quick hands-on action (blend, strain, pour) and `[until done]`
+  when it takes real but unstated time (rest, chill, prove, roast until cooked). Never an invented figure. Neither version said.
+- **The hands-on allowance** in "Estimating TIME" is 5 minutes up to 8 ingredient lines and 10 from 9 (it said "under about 8"
+  and "10–15 for a long list", which left 8 to 10 lines either way).
+- **A tin with no weight** stays `1 tin chickpeas`; the app now accepts it (no "container word" advice) and scales it as `2 tins`
+  (core 2026-10-18.4).
+- **Reload this file into the conversion project.**
+
 ## Revision note (18 Oct 2026, version 2026-10-18.3: the household's rewrite)
 
 The household rewrote the file to use fewer tokens per conversion (2,904 words, from 5,953), tested it in its own conversion
