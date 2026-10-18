@@ -1,8 +1,8 @@
 # PLAN-MODERNIST: a second visual style, "Modernist" (15 Oct 2026)
 
-**Status:** built (15 Oct 2026), all nine steps, on branch `ccr-17dd2581-yd32p5`, in a pull request for the household to merge;
-nothing is on `main` yet. Version 2026-10-15.1. What is left is the household's: the tablet check 66a in `docs/HOUSEHOLD-JOBS.md`,
-and the questions in the "Decision log" at the end, which records every choice made while building and why.
+**Status:** built (15 Oct 2026), all nine steps, merged as #153 on 15 Oct (version 2026-10-15.1). A review afterwards found five
+faults; they are fixed in version 2026-10-18.1 ("After the review", below). What is left is the household's: the tablet check 66a
+in `docs/HOUSEHOLD-JOBS.md`, and the questions in the "Decision log" at the end, which records every choice made and why.
 
 The household has a design handoff (a README, an HTML prototype and a token sheet) for a flat, square, one-typeface look for the
 tablet in landscape (1280×800). It is added as a **second style beside Classic, not instead of it**: Settings → APP has a STYLE
@@ -241,6 +241,21 @@ Each step's entry below is added when it lands: what was measured, and where it 
 - **Checks:** 6 in `test/smoke.js` (Classic's group colours; Modernist's in both themes; the redraw; a dialog; the bars; the
   sign-in card), each seen to fail once. In all: `core.test.js` 216 (10 for this style), `smoke.js` 708 (86 for this style).
 
+### After the review (18 Oct 2026, version 2026-10-18.1)
+A code review of #153 after it merged found five faults; each is fixed with a check that was seen to fail by breaking the fix.
+- **RESET TICKS** cleared the boxes but left "n / N TICKED" showing the old count, on a recipe and in the Group Viewer. The count is
+  now read from the cells by `showTickedCount`, which a tap and both RESET TICKS buttons call.
+- **The `merge` mark with PREPARATION as steps:** `withPrepSteps` makes each prepared ingredient a step's output (`veg~1~p`), so a
+  step fed by two of them was marked a merge and drawn in ink, though as written it is not one. A preparation step's output now
+  stays raw (D36). The raw set also changes only between stages now, so the order of two lines in one stage cannot change the mark.
+  `core.js` 2026-10-18.1, in the three places; two checks in `core.test.js`.
+- **History's meal-base bar** had five colours for nine meal bases, so the sixth repeated the first (D33).
+- **The month in the week labels** followed the browser's language, and a British browser says "Sept" (D34).
+- **Enter on a card's star, + or ✓** opened the recipe instead, in both styles (D35).
+Also corrected: `docs/ARCHITECTURE.md` gave the 15 Oct test counts the date 12 Oct. Not changed, and still open: the Group Viewer
+has four dish colours (a group of five repeats one), a last stage with several steps has several red boxes but one red lane in the
+overview, and the Edit dialog's preview shows a "0 / N TICKED" count.
+
 ## Decision log
 
 Every choice made while building, beyond the twelve agreed at the top, with the reason. "Household" means you chose it; "session"
@@ -283,10 +298,13 @@ means it was decided while building and is yours to overturn. Newest last.
 | D30 | 15 Oct | session | The Group Viewer's dishes take four colours of Modernist's own (`groupColour`), not Classic's gold, sage and blue. | They were the last of Classic's colours left in this style, beside its red; four tokens per theme keep the lanes' words readable (white on the light theme's four, dark ink on the dark theme's). |
 | D31 | 15 Oct | household (as agreed) | The sign-in card still says "Kitchen" in Modernist; only the sidebar's brand is "Recipe Wrangler". | It was the assumption agreed at the start. **A question for you:** the sign-in card is the first thing seen, so you may want it to say "Recipe Wrangler" in Modernist too; it is one line. |
 | D32 | 15 Oct | session | The dialogs, bars, toast and sign-in card are drawn by CSS alone (the bridge plus a type and rule pass), with no markup changed. | The handoff does not draw them; the aim is only that nothing looks half-Classic. |
+| D33 | 18 Oct | session | History's meal-base bar: five colours, then the same five striped, so all nine meal bases look different. | The palette has no four more reds or greys that would not look like the five; stripes keep to it. |
+| D34 | 18 Oct | session | The week labels' months are fixed three-letter names (JAN … DEC), not the browser's. | A British browser says "Sept"; the design's labels are three letters, and the labels must not change with the device's language. |
+| D35 | 18 Oct | session | Enter or Space on a card's own button (star, +, ✓) does that button's job, in both styles; on the card itself it still opens the recipe. | The grid took Enter from every element in a card, so the shortlist and favourite buttons could not be used from a keyboard; Classic's + had the same fault. |
+| D36 | 18 Oct | session | A preparation step's output counts as raw ingredients for the `merge` mark. | Slicing leeks does not make "Fry the veg" a joining of two cooked things; as written it is a step, and drawing preparation must not change that. |
 
 ### Follow-ups found while building (not done here)
 - **D10:** the shortlist's × has no spoken label (both styles).
 - **D13:** ticking a shopping row from the keyboard loses focus, as the list is redrawn (both styles).
 - **D22:** History's side panel scrolls sideways in Classic (the 560px table rule reaches its small table).
 - **D29:** on a phone the top bar is 159px tall, as the data links stack at its end (both styles).
-

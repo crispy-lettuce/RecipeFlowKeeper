@@ -150,7 +150,7 @@ refresh lands whole or not at all.
 | Function | What it does |
 | --- | --- |
 | `parseRecipe(text)` | Turns recipe syntax into `{title, source, sourceUrl, servings, groups, stages, notes, unread, ...}`. The single source of truth for the format. `unread` lists the lines it read past (a GROUP with a hyphen, a stray line under a STAGE), shown in the preview since 27 Sep; it changes nothing about what is parsed. |
-| `computeColumns(groups, stages)` | Lays the flow out into rows and columns, returning `errors[]` for unknown handles or non-adjacent merges. A group's colour follows `paletteIndex` and `family` when `withPrepSteps` has split it (#88). A box that brings together two or more step outputs (not raw groups) is marked `merge` (15 Oct 2026), which only the Modernist style draws (`docs/PLAN-MODERNIST.md`). |
+| `computeColumns(groups, stages)` | Lays the flow out into rows and columns, returning `errors[]` for unknown handles or non-adjacent merges. A group's colour follows `paletteIndex` and `family` when `withPrepSteps` has split it (#88). A box that brings together two or more step outputs (not raw groups) is marked `merge` (15 Oct 2026), which only the Modernist style draws (`docs/PLAN-MODERNIST.md`). A preparation step's output still counts as raw, and the raw set changes only between stages (18 Oct 2026). |
 | `prepStepFor(line)` | The step an ingredient line's preparation reads as ("2 leeks, thinly sliced" → *Thinly slice the leeks*), from a fixed table, or `null` (#88, 13 Oct 2026). |
 | `withPrepSteps(parsed)` | The recipe as drawn with preparation as steps: groups split in order, a one-input MERGE marked `prep` beside the step before the one that needs it. Used by the two viewers when the device's PREPARATION setting asks; never by the timeline, the preview or the shopping list. |
 | `computeTimeline(groups, stages)` | Derives each step's start/end from stage order plus durations. Returns `null` if no step has a real duration — which is why the timeline strip auto-hides. |
@@ -279,13 +279,13 @@ for what is deployed and how to deploy.
 (`test/stub.js`) and walks every screen.
 
 ```sh
-node test/core.test.js   # 216 checks on core.js in Node, about two seconds, no browser
+node test/core.test.js   # 218 checks on core.js in Node, about two seconds, no browser
 npm install --no-save playwright@1.63.0   # once; the version CI pins
 node test/build.js       # bake index.html (with core.js inlined) against the stub
-node test/smoke.js       # 708 checks; exits non-zero on failure
+node test/smoke.js       # 713 checks; exits non-zero on failure
 ```
 
-*(The counts are those of 12 Oct 2026; until then this block said 143 and 418. `CLAUDE.md` lists the five smaller suites
+*(The counts are those of 18 Oct 2026: 216 and 708 on 15 Oct, 206 and 622 on 14 Oct, and 143 and 418 until 12 Oct. Until 18 Oct this note said "12 Oct" under the 15 Oct counts. `CLAUDE.md` lists the five smaller suites
 that run in Node beside these, for the Edge Functions and the help guide.)*
 
 **`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,

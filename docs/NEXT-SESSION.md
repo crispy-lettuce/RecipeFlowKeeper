@@ -20,9 +20,9 @@ first two lines are older, as dated there. Check again before relying on a numbe
   the 29 Sep rule (the household's job below); 1 recipe had a source photo.
 - **Cooking diary:** 116 entries on 30 Sep (119 on 10 Oct, the October review). **Word matches:** 15. **Household aisles:** 1.
   **Swaps:** 2 (all three on 30 Sep). **Cooking notes:** 2 rows in all on 12 Oct (R4 built 30 Sep).
-- **Tests:** `node test/core.test.js` 216 checks; `node test/build.js && node test/smoke.js` 708 checks (418 until P3 PR 2, 437 until the
+- **Tests:** `node test/core.test.js` 218 checks; `node test/build.js && node test/smoke.js` 713 checks (418 until P3 PR 2, 437 until the
   calendar toggles, both 9 Oct; 447 until the HELP tab, 448 until recipe sharing, 465 until the Drive backup, 472 until PRE-MADE, 487 until fresh or
-  freezer, all 10 Oct; 492 until issues #85–#93, 500 until FROZEN, 502 until photo upload, 509 until the version and change log, 11 Oct; 515 until the network guard, 517 until the lost-changes fixes, 530 until the write queue, 537 until several households, 547 until the converter reminder, 12 Oct; 554 until the printed list, 557 until AUDIT, 568 until the INGREDIENTS folds, 576 until PREPARATION, 13 Oct; 606 until READABILITY T, 609 until READABILITY S, 613 until READABILITY H, 14 Oct; 622 until the Modernist style, 15 Oct).
+  freezer, all 10 Oct; 492 until issues #85–#93, 500 until FROZEN, 502 until photo upload, 509 until the version and change log, 11 Oct; 515 until the network guard, 517 until the lost-changes fixes, 530 until the write queue, 537 until several households, 547 until the converter reminder, 12 Oct; 554 until the printed list, 557 until AUDIT, 568 until the INGREDIENTS folds, 576 until PREPARATION, 13 Oct; 606 until READABILITY T, 609 until READABILITY S, 613 until READABILITY H, 14 Oct; 622 until the Modernist style, 15 Oct; 708 until its review's fixes, 18 Oct).
   `node test/calendar-push.js` 39 checks; `node test/drive-backup.js` 13 checks; `node test/image-integrity.js` 37 checks;
   `node test/source-ingredients.js` 16 checks; `node test/help-guide.js` 7 checks. `offline-harness` runs
   both on every PR and is required on `main`.
@@ -102,7 +102,8 @@ review's F13.)*
 
 **Moved to `docs/HOUSEHOLD-JOBS.md` on 12 Oct 2026**, written as numbered steps the household can follow on the tablet. A
 session that adds a tablet step, or hears that one passed, updates that page in the same PR. Things a session checks with
-nothing for the household to do (the photo backup on Sunday 18 Oct) are listed there too.
+nothing for the household to do are listed there too (none on 18 Oct, when the photo backup's first run on its new script
+was checked and passed).
 
 ---
 
