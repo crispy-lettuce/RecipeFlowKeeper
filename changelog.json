@@ -1,4 +1,7 @@
 [
+  { "version": "2026-10-18.4", "date": "2026-10-18",
+    "changes": ["When a recipe's source gives no overall time, the converter now works one out from the method steps and marks it. Such a time shows an EST. tag beside it, on the recipe card, in the recipe, in the Planner and in the Shortlist, and shows as est. 1 hr 45 in the TIME box when you edit it. Type a real time over it and the tag goes.",
+                "The converter's instructions changed, so the CONVERTER bar will ask your household to load the new file into the conversion project. Recipes already in the library are not touched: a recipe with no time still shows none."] },
   { "version": "2026-10-18.3", "date": "2026-10-18",
     "changes": ["A liquid now changes unit when you scale a recipe: under 15 ml it reads in teaspoons, under 50 ml in tablespoons and from 50 ml in ml. 3 tbsp of oil for twice the people reads 90 ml, and 100 ml of stock for a quarter reads 1 1/2 tbsp. Spoons are rounded to the nearest half and ml to the nearest 5 ml. A recipe still reads exactly as written until you scale it, and amounts in grams stay in grams.",
                 "The shopping list shows a liquid of 50 ml or more in ml, with the recipes' own amounts after it, e.g. 145 ml (100 ml + 3 tbsp). Under 50 ml it stays in spoons. Spices and pastes measured in spoons are shown in spoons as before, and no tick is lost."] },

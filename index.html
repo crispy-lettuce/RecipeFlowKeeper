@@ -403,6 +403,13 @@ function loadArchivoFont(){
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
   }
   .rcard-rule{ height:1px; background:var(--line-soft); }
+  /* The EST. tag on a time the converter worked out from the method (18 Oct 2026). Colours and corner come from the
+     shared variables, so this one rule serves both looks of the app. */
+  .est-tag{
+    display:inline-block; padding:0 4px; margin-right:2px;
+    border:1px solid var(--line); border-radius:var(--r);
+    font-size:13px; line-height:1.3; letter-spacing:.04em; font-weight:500; color:var(--ink-soft);
+  }
   .rcard-foot{
     display:flex; justify-content:space-between; gap:10px;
     font-size:14px;
@@ -754,7 +761,7 @@ function loadArchivoFont(){
   .day-recipe-course.dessert{ color:var(--plum); }
   .day-recipe-course.bread{ color:var(--gold); }
   .day-recipe-time{
-    flex:none; width:60px; text-align:right;
+    flex:none; min-width:60px; text-align:right; white-space:nowrap;
     font-family:'IBM Plex Mono', monospace; font-size:14px; letter-spacing:.03em; color:var(--ink-soft);
   }
   .day-recipe-serves{
@@ -1655,7 +1662,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-18.3">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-18.4">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2297,7 +2304,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-18.2"></script>
+<script src="core.js?v=2026-10-18.3"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2305,17 +2312,17 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-18.2';
+const EXPECTED_CORE_VERSION = '2026-10-18.3';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-18.3';
+const APP_VERSION = '2026-10-18.4';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
    .converter_ack_version). test/core.test.js fails if the file changes and the two are not moved. */
-const CONVERTER_VERSION = '2026-10-18.1';
+const CONVERTER_VERSION = '2026-10-18.2';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -4830,6 +4837,18 @@ function parseMinutes(t){
   return bare ? parseInt(bare[1], 10) : null;
 }
 
+/* A recipe's TIME for display: escaped and in capitals like the rest of the card, with an EST. tag in front of the
+   figure when the converter marked it as worked out from the method (splitTimeText in core.js, 18 Oct 2026). The tag
+   is a span of its own so the figure reads the same without it. parseMinutes above reads the text as it stands, "est."
+   included ("est. 1 hr 45" is 105), so the Weeknight, under 30 min view still counts an estimated recipe. */
+const EST_TIME_TITLE = 'Estimated from the method steps: the source gives no overall time';
+function timeHtml(t){
+  const { text, estimated } = splitTimeText(t);
+  if(!text) return '';
+  const figure = escapeHtml(text.toUpperCase());
+  return estimated ? `<span class="est-tag" title="${EST_TIME_TITLE}">EST.</span> ${figure}` : figure;
+}
+
 /* Searchable text: title, source, tags, ingredients, notes, step labels. */
 const _searchCache = new Map();
 function searchText(r){
@@ -5322,7 +5341,7 @@ function renderCard(r, shortlistedIds, theirs){
     <div class="rcard-rule"></div>
     <div class="rcard-foot">
       <span>${lastLabel}</span>
-      <span>${escapeHtml((r.time||'').toUpperCase())}</span>
+      <span>${timeHtml(r.time)}</span>
     </div>
   </div>`;
 }
@@ -5784,7 +5803,8 @@ function renderViewer(){
   const baseServings = parseInt(recipe.servings, 10) || null;
   const targetServings = (baseServings && state.viewerServes) ? state.viewerServes : baseServings;
   const scale = (baseServings && targetServings) ? targetServings / baseServings : 1;
-  const bits = [recipe.source, recipe.time];
+  const timeBit = timeHtml(recipe.time);
+  const bits = [recipe.source, timeBit ? { html: timeBit } : ''];
   if(targetServings) bits.push(`SERVES ${targetServings}${scale!==1 ? ` (SCALED FROM ${baseServings})` : ''}`);
   if(theirs) bits.push(`FROM ${sharedHouseholdName(theirs)}`);
   else {
@@ -5796,7 +5816,7 @@ function renderViewer(){
      than text only for that link, so everything here is escaped, and only
      http(s) is allowed through: a recipe is data, and a javascript: URL in
      a field would otherwise run on click. */
-  const metaHtml = bits.filter(Boolean).map(b=> escapeHtml(String(b).toUpperCase())).join('  ·  ');
+  const metaHtml = bits.filter(Boolean).map(b=> b.html !== undefined ? b.html : escapeHtml(String(b).toUpperCase())).join('  ·  ');
   const safeUrl = /^https?:\/\//i.test(recipe.sourceUrl || '') ? recipe.sourceUrl : '';
   meta.innerHTML = safeUrl
     ? metaHtml.replace(escapeHtml(String(recipe.source || '').toUpperCase()),
@@ -6476,7 +6496,7 @@ function renderPlannerDays(){
             ${group ? `<span class="group-tie" title="Cooking together as a group"></span>` : ''}
             <button class="day-recipe-title" data-action="view" data-idx="${idx}">${escapeHtml(recipe.title||'Untitled')}</button>
             ${course ? `<span class="day-recipe-course${tone}">${escapeHtml(course.toUpperCase())}</span>` : ''}
-            <span class="day-recipe-time">${escapeHtml((recipe.time||'').toUpperCase())}</span>
+            <span class="day-recipe-time">${timeHtml(recipe.time)}</span>
             ${servesPill(recipe, serves, idx)}
             ${premadePill(premade, idx)}
             ${cookedPill(recipe, iso, todayIso, premade, idx)}
@@ -6569,8 +6589,8 @@ function renderShortlistPanel(){
         let sub;
         if(selected){ sub = 'SELECTED — TAP A DAY'; }
         else {
-          const parts = [r.tags && r.tags.course, r.time].filter(Boolean);
-          sub = parts.length ? parts.join(' · ').toUpperCase() : (useCount(r) ? `COOKED ${useCount(r)}×` : 'NEVER COOKED');
+          const parts = [r.tags && r.tags.course ? escapeHtml(String(r.tags.course).toUpperCase()) : '', timeHtml(r.time)].filter(Boolean);
+          sub = parts.length ? parts.join(' · ') : (useCount(r) ? `COOKED ${useCount(r)}×` : 'NEVER COOKED');
         }
         return `<div class="sl-item${selected?' selected':''}" data-id="${item.id}">
           <div class="sl-row1"><span class="sl-handle" aria-hidden="true">≡</span><span class="sl-title">${escapeHtml(r.title)}</span><button class="sl-remove" data-remove="${item.id}">×</button></div>

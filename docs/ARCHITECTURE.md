@@ -69,6 +69,14 @@ The pieces:
   final combine is written.
 - **`STEPS:`** — one-off prep with no ingredient (preheat, line a tin).
 - **`NOTES:` / `VARIATIONS:` / `STORING:` / `FREEZING:` / `TIPS:`** — optional trailing sections.
+- **`TIME:` is free text** (`time_text`), and since 18 Oct 2026 may begin `est.` (`TIME: est. 1 hr 45`): the converter worked
+  it out from the method steps because the source gave no overall time. The marker is kept inside the text on purpose, in
+  `syntax` and in `time_text`, so there is no second column to keep in step, a copy from another household carries it, and
+  typing a real time into the TIME box removes it. `splitTimeText` (`core.js`) reads it back out; `timeHtml` (`index.html`)
+  draws the EST. tag on the card, in the recipe's line, on the Planner and on the Shortlist; `parseMinutes` reads the figure
+  with or without it, so the Weeknight, under 30 min view counts an estimate. The timeline reads the MERGE durations, never
+  `TIME`. The converter also writes `⚠️ Time note: …` under NOTES with an estimate; it is not a `⚠️ Source note:` and the app
+  does not read it as one.
 
 Two rules that matter more than they look:
 
