@@ -450,6 +450,14 @@ The SQL, which names the accounts, is in `PrivateBackup` (`migrations/test-house
 
 **Use it when:** doing the split, or wondering why the id in `docs/INFRASTRUCTURE.md` holds test data.
 
+### `docs/PLAN-BULK-ADD.md` — adding several recipes at once, from one combined file (18 Oct 2026; planned, not built)
+**What:** an ADD SEVERAL button that reads a combined converter file with the app's own parser, shows which recipes are ready, held
+back, duplicates, or from a differently spelt source, and adds the ticked ones as new rows through `saveRecipe`. What the 18 Oct
+direct-to-database batch skipped and how each is covered, the exact splitter and review rules, what it deliberately does not do
+(no update in place, no schema or dictionary change), the risks, four PRs with their checks, and the four questions left to the household.
+
+**Use it when:** building the feature, or answering whether the household can add a batch without a session.
+
 ---
 
 ### `docs/PLAN-PREVIEW-SITE.md` — trying a change before it goes live, #100 (13 Oct 2026; **parked**)
