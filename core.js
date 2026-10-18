@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-18.1';
+const KITCHEN_CORE_VERSION = '2026-10-18.2';
 
 
 /* ======================= quantity split ======================= */
@@ -441,7 +441,9 @@ function withUpdatedImageLine(syntaxText, url){
    article avoids it and scales cleanly; not fixed here to avoid touching
    splitQty's parsing, which the shopping list and everything else also
    depends on. */
-function scaleRecipeSyntax(syntaxText, multiplier){
+/* `alias` (optional) is the household's word matches, as aggregateShoppingLines takes them: a name matched to a liquid
+   is a liquid here too. */
+function scaleRecipeSyntax(syntaxText, multiplier, alias){
   const lines = String(syntaxText||'').split('\n');
   let inGroup = false;
   const scaledLines = lines.map(line=>{
@@ -491,6 +493,27 @@ function scaleRecipeSyntax(syntaxText, multiplier){
       : typed.replace(/s$/i, '') + (agreeWith > 1 ? 's' : '');
     // keep a space between amount and unit only if the original had one ("3 tbsp" vs "500g")
     const unitText = parsed.unit ? `${parsed.space ? ' ' : ''}${unitWord}` : '';
+    /* A liquid is rewritten by its amount in ml (18 Oct 2026, see liquidUnit): "3 tbsp olive oil" doubled is
+       "90 ml olive oil", and "100 ml stock" quartered "1 1/2 tbsp stock". A line in ml or litres is a liquid, since the
+       converter measures only liquids that way; a spoon line only when its name is one. A range takes its unit from
+       its upper end. Never at ×1, so a recipe reads as written until it is scaled; never a weight or "3 x 1 litre". */
+    const LIQ_ML = { tsp: 5, tbsp: 15, ml: 1, l: 1000 };
+    if(multiplier !== 1 && parsed.count === undefined && LIQ_ML[parsed.unit]
+       && (parsed.unit === 'ml' || parsed.unit === 'l' || liquidLine(rest, parsed, alias))){
+      const per = LIQ_ML[parsed.unit] * multiplier;
+      const unit = liquidUnit(scaledTop * LIQ_ML[parsed.unit]);
+      const num = ml => liquidNumber(ml, unit);
+      const body = parsed.low !== undefined ? `${num(parsed.low * per)}${/to/i.test(parsed.dash) ? ' to ' : parsed.dash}${num(parsed.high * per)}`
+        : num(parsed.amount * per);
+      /* The same unit keeps its spelling, a spelled-out one agreeing with its number ("1 litre" halved is still
+         "1 litre"'s word); a new unit is written as the converter writes it. */
+      let word = ' ' + unit;
+      if(normalizeUnit(unit) === parsed.unit){
+        const n = parseFraction(num(scaledTop * LIQ_ML[parsed.unit]));
+        word = !LONG_UNIT.test(typed) ? unitText : `${parsed.space ? ' ' : ''}${typed.replace(/s$/i, '')}${n !== null && n > 1 ? 's' : ''}`;
+      }
+      return (parsed.upTo ? 'up to ' : '') + body + word + ' ' + restOut;
+    }
     let rebuiltQty;
     if(parsed.count !== undefined){
       /* "3 x 125 g tins": more people means more tins, not bigger ones. */
@@ -1005,6 +1028,9 @@ function categorizeIngredient(rawName){
 /* Frozen (issue #90, 11 Oct 2026) has no dictionary rows: an ingredient is frozen because its line says so ("frozen peas",
    see AISLE_FIRST), or because a household puts it there in Settings. A dictionary row would name it, and naming is
    what keys the shopping ticks. */
+/* `liquid: true` (18 Oct 2026, docs/PLAN-LIQUID-MEASURES.md §2) marks a row whose spoons may become ml: a scaled
+   "3 tbsp olive oil" reads "90 ml" from 50 ml, and the list shows such a total in ml. It names nothing, so it keys no
+   tick. A row without it is never a liquid, whatever its name says (coconut oil is weighed; a stock cube is not poured). */
 const INGREDIENT_AISLES = ["Produce", "Meat & Fish", "Dairy & Eggs", "Pantry", "Spices & Seasoning", "Frozen"];
 const INGREDIENT_DICTIONARY = [
   { aisle: "Produce", name: "garlic", also: "garlic clove(s)", countAs: "`3 garlic cloves`" },
@@ -1039,7 +1065,7 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Produce", name: "green chilli", also: "green chile, green chili", countAs: "`2 green chillies`" },
   { aisle: "Produce", name: "beetroot", also: "beets", countAs: "`3 beetroot`" },
   { aisle: "Produce", name: "chard", also: "swiss chard", countAs: "weight" },
-  { aisle: "Produce", name: "lemon juice", also: "fresh lemon juice", countAs: "ml or spoons; whole lemons: `1 lemon, juiced`" },
+  { aisle: "Produce", name: "lemon juice", also: "fresh lemon juice", countAs: "ml or spoons; whole lemons: `1 lemon, juiced`", liquid: true },
   { aisle: "Meat & Fish", name: "chicken breast", also: "chicken breasts, chicken breast fillets, skinless chicken breast" },
   { aisle: "Meat & Fish", name: "chorizo", also: "cooking chorizo (when the source means it)" },
   { aisle: "Meat & Fish", name: "raw king prawns", also: "king prawns (when cooked in the dish), jumbo shrimp" },
@@ -1057,18 +1083,18 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Dairy & Eggs", name: "eggs", also: "egg, large eggs, free-range eggs", note: "write the size in brackets if it matters: `3 eggs (large)`" },
   { aisle: "Dairy & Eggs", name: "butter", also: "salted butter" },
   { aisle: "Dairy & Eggs", name: "unsalted butter", also: "" },
-  { aisle: "Dairy & Eggs", name: "double cream", also: "heavy cream, heavy whipping cream, whipping cream is **not** the same" },
-  { aisle: "Dairy & Eggs", name: "single cream", also: "light cream" },
+  { aisle: "Dairy & Eggs", name: "double cream", also: "heavy cream, heavy whipping cream, whipping cream is **not** the same", liquid: true },
+  { aisle: "Dairy & Eggs", name: "single cream", also: "light cream", liquid: true },
   { aisle: "Dairy & Eggs", name: "soured cream", also: "sour cream" },
-  { aisle: "Dairy & Eggs", name: "milk", also: "whole milk, full-fat milk, semi-skimmed milk" },
-  { aisle: "Dairy & Eggs", name: "skimmed milk", also: "skim milk" },
+  { aisle: "Dairy & Eggs", name: "milk", also: "whole milk, full-fat milk, semi-skimmed milk", liquid: true },
+  { aisle: "Dairy & Eggs", name: "skimmed milk", also: "skim milk", liquid: true },
   { aisle: "Dairy & Eggs", name: "natural yoghurt", also: "natural yogurt, plain yoghurt, plain yogurt" },
   { aisle: "Dairy & Eggs", name: "yoghurt", also: "yogurt" },
   { aisle: "Dairy & Eggs", name: "greek yoghurt", also: "greek yogurt" },
   { aisle: "Dairy & Eggs", name: "parmesan", also: "parmesan cheese, parmigiano reggiano" },
-  { aisle: "Pantry", name: "vegetable oil", also: "oil, neutral oil, sunflower oil, rapeseed oil, canola oil, cooking oil" },
-  { aisle: "Pantry", name: "olive oil", also: "extra virgin olive oil" },
-  { aisle: "Pantry", name: "sesame oil", also: "toasted sesame oil" },
+  { aisle: "Pantry", name: "vegetable oil", also: "oil, neutral oil, sunflower oil, rapeseed oil, canola oil, cooking oil", liquid: true },
+  { aisle: "Pantry", name: "olive oil", also: "extra virgin olive oil", liquid: true },
+  { aisle: "Pantry", name: "sesame oil", also: "toasted sesame oil", liquid: true },
   { aisle: "Pantry", name: "coconut oil", also: "" },
   { aisle: "Pantry", name: "plain flour", also: "all-purpose flour, all purpose flour" },
   { aisle: "Pantry", name: "self-raising flour", also: "self-rising flour" },
@@ -1082,9 +1108,9 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Pantry", name: "light brown sugar", also: "soft brown sugar, light soft brown sugar" },
   { aisle: "Pantry", name: "dark brown sugar", also: "soft dark brown sugar, dark soft brown sugar" },
   { aisle: "Pantry", name: "icing sugar", also: "powdered sugar, confectioners' sugar, confectioners sugar, confectioner's sugar" },
-  { aisle: "Pantry", name: "honey", also: "runny honey" },
-  { aisle: "Pantry", name: "maple syrup", also: "pure maple syrup" },
-  { aisle: "Pantry", name: "vanilla extract", also: "pure vanilla extract" },
+  { aisle: "Pantry", name: "honey", also: "runny honey", liquid: true },
+  { aisle: "Pantry", name: "maple syrup", also: "pure maple syrup", liquid: true },
+  { aisle: "Pantry", name: "vanilla extract", also: "pure vanilla extract", liquid: true },
   { aisle: "Pantry", name: "cocoa powder", also: "unsweetened cocoa, unsweetened cocoa powder" },
   { aisle: "Pantry", name: "dark chocolate", also: "" },
   { aisle: "Pantry", name: "peanut butter", also: "smooth peanut butter, creamy peanut butter, crunchy peanut butter" },
@@ -1100,7 +1126,7 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Pantry", name: "filo pastry", also: "phyllo pastry, phyllo dough, filo dough" },
   { aisle: "Pantry", name: "sponge fingers", also: "ladyfingers, lady fingers, savoiardi" },
   { aisle: "Pantry", name: "pumpkin seeds", also: "pepitas" },
-  { aisle: "Pantry", name: "soda water", also: "club soda" },
+  { aisle: "Pantry", name: "soda water", also: "club soda", liquid: true },
   { aisle: "Pantry", name: "raspberry jam", also: "seedless raspberry jam, soft-set raspberry jam" },
   { aisle: "Pantry", name: "long grain rice", also: "long-grain rice", note: "write the **uncooked** amount, D4" },
   { aisle: "Pantry", name: "rigatoni", also: "dried rigatoni, pasta shapes (when rigatoni)" },
@@ -1116,17 +1142,17 @@ const INGREDIENT_DICTIONARY = [
   { aisle: "Pantry", name: "mayonnaise", also: "mayo" },
   { aisle: "Pantry", name: "gherkins", also: "dill pickles" },
   { aisle: "Pantry", name: "panko breadcrumbs", also: "" },
-  { aisle: "Pantry", name: "chicken stock", also: "chicken broth, hot chicken stock" },
-  { aisle: "Pantry", name: "stock", also: "broth" },
+  { aisle: "Pantry", name: "chicken stock", also: "chicken broth, hot chicken stock", liquid: true },
+  { aisle: "Pantry", name: "stock", also: "broth", liquid: true },
   { aisle: "Pantry", name: "stock cubes", also: "bouillon cubes" },
-  { aisle: "Pantry", name: "beef stock", also: "beef broth" },
-  { aisle: "Pantry", name: "vegetable stock", also: "vegetable broth" },
-  { aisle: "Pantry", name: "light soy sauce", also: "soy sauce" },
-  { aisle: "Pantry", name: "dark soy sauce", also: "" },
+  { aisle: "Pantry", name: "beef stock", also: "beef broth", liquid: true },
+  { aisle: "Pantry", name: "vegetable stock", also: "vegetable broth", liquid: true },
+  { aisle: "Pantry", name: "light soy sauce", also: "soy sauce", liquid: true },
+  { aisle: "Pantry", name: "dark soy sauce", also: "", liquid: true },
   { aisle: "Pantry", name: "oyster sauce", also: "" },
-  { aisle: "Pantry", name: "worcestershire sauce", also: "" },
-  { aisle: "Pantry", name: "chinese rice wine", also: "shaoxing wine, shaoxing rice wine" },
-  { aisle: "Pantry", name: "white wine", also: "dry white wine" },
+  { aisle: "Pantry", name: "worcestershire sauce", also: "", liquid: true },
+  { aisle: "Pantry", name: "chinese rice wine", also: "shaoxing wine, shaoxing rice wine", liquid: true },
+  { aisle: "Pantry", name: "white wine", also: "dry white wine", liquid: true },
   { aisle: "Spices & Seasoning", name: "salt", also: "table salt, fine salt" },
   { aisle: "Spices & Seasoning", name: "sea salt", also: "fine sea salt, flaky sea salt, sea salt flakes, flaked sea salt" },
   { aisle: "Spices & Seasoning", name: "black pepper", also: "pepper, ground pepper, ground black pepper, freshly ground black pepper" },
@@ -1204,6 +1230,39 @@ const TRAILING_COUNT = [[/^garlic cloves?$/, 'garlic', 'clove'], [/^celery (stic
 const TAIL_NOTES = /\b(to taste|to serve|to garnish|to glaze|to finish|for (greasing|brushing|dusting|flaming|frying|the tin)|plus (extra|more)\b.*|optional|if needed|as needed)\b.*$/;
 const SPOON_ML = { tsp: 5, tbsp: 15 };
 
+/* Liquids: teaspoons under 15 ml, tablespoons under 50 ml, ml from 50 ml (asked for by the household on 18 Oct 2026;
+   converter/conversion-instructions.md §1 writes new recipes that way, and docs/PLAN-LIQUID-MEASURES.md is the plan).
+   Which lines are liquids is the hard part: "3 tbsp ground cumin" doubled must not become 90 ml. The dictionary decides
+   for a name it knows (`liquid` on its row). For a name it doesn't, only a name ending in a word that is always poured
+   counts; the dictionary has no row for the vinegars, fish sauce or water, and leaving those in spoons was the
+   alternative. Anything else stays in spoons: a liquid left in spoons is awkward, a paste turned into ml is wrong. */
+const LIQUID_NAME = /\b(oil|vinegar|juice|stock|broth|milk|buttermilk|wine|sherry|port|brandy|rum|vodka|gin|whisky|whiskey|beer|cider|sake|mirin|syrup|treacle|honey|water|extract|essence|cordial|liqueur|(fish|hot|soy|worcestershire) sauce)$/;
+/* Thick, though its name ends in a liquid's word. (Coconut oil, weighed, has a row of its own without `liquid`.) */
+const NOT_LIQUID = /\bcondensed milk$/;
+function isLiquidName(key, row){
+  if(row) return !!row.liquid;
+  return LIQUID_NAME.test(key || '') && !NOT_LIQUID.test(key || '');
+}
+const LIQUID_TSP_BELOW = 15, LIQUID_ML_FROM = 50;
+const halfOf = (ml, per) => Math.round(ml / per * 2) / 2;
+/* The unit an amount in ml is written in. The edges are decided after rounding, so 14 ml is "1 tbsp" (not "3 tsp")
+   and 49 ml is "50 ml" (not "3 1/2 tbsp", which is 52.5). */
+function liquidUnit(ml){
+  if(ml < LIQUID_TSP_BELOW && halfOf(ml, 5) * 5 < LIQUID_TSP_BELOW) return 'tsp';
+  if(ml < LIQUID_ML_FROM && halfOf(ml, 15) * 15 < LIQUID_ML_FROM) return 'tbsp';
+  return Math.round(ml / 5) * 5 < 1000 ? 'ml' : 'L';
+}
+/* And the number in that unit: spoons to the nearest half (a quarter teaspoon or less as it comes), ml to the nearest
+   5, litres to the nearest 50 ml, written as a decimal ("1.25 L"), since a third of a litre is not on a jug. */
+function liquidNumber(ml, unit){
+  if(unit === 'tsp' || unit === 'tbsp'){
+    const half = halfOf(ml, SPOON_ML[unit]);
+    return formatAmount(half > 0 ? half : ml / SPOON_ML[unit]);
+  }
+  if(unit === 'ml') return String(Math.round(ml / 5) * 5);
+  return String(Math.round(ml / 50) * 50 / 1000);
+}
+
 /* Singular and plural are one name — on the last word, so "chilli flakes"
    and "chilli flake" meet but "peas" never becomes "pea s". The same rule
    test/ingredient-lines.js uses, so the validator and the list agree. */
@@ -1276,6 +1335,13 @@ INGREDIENT_DICTIONARY.forEach(row => {
 });
 function dictionaryRow(key){ return DICTIONARY_INDEX.get(key) || null; }
 
+/* Whether a line's name is a liquid's (see isLiquidName), after the household's word matches, as the list reads it. */
+function liquidLine(rest, parsed, alias){
+  const line = shoppingLine(rest, parsed);
+  const key = (alias && alias(line.key)) || line.key;
+  const row = key !== line.key ? dictionaryRow(key) : (line.dictionary ? dictionaryRow(key) : null);
+  return isLiquidName(key, row);
+}
 /* One line → { key, display, unit, amount, spoon, tail }. `qty` is what
    splitQty took off the front; `parsed` its reading (or null). */
 function shoppingLine(rest, parsed){
@@ -1401,13 +1467,27 @@ function unmeasuredPurpose(tail, group){
   if(!tail && /(serv|garnish|topping|finish|decorat)/i.test(group || '')) return 'to serve';
   return 'extra';
 }
+/* A liquid's total on the list, by the same thresholds as scaling (18 Oct 2026): spoons under 50 ml, exact rather than
+   rounded, since nothing is being rewritten ("1 tbsp + 2 tsp"); from 50 ml, ml, followed by the lines it came from when
+   any is in spoons, largest first, so "3 tbsp" in the recipe can be found in the total: "145 ml (100 ml + 3 tbsp)". */
+function liquidListText(p){
+  if(p.amount < LIQUID_TSP_BELOW) return `${formatAmount(p.amount / 5)} tsp`;
+  if(p.amount < LIQUID_ML_FROM) return spoonsMixed(p.amount);
+  const total = formatShoppingQty(p.amount, 'ml');
+  if(!p.lines.some(l => l.spoon)) return total;
+  const each = p.lines.slice().sort((a, b) => b.ml - a.ml)
+    .map(l => l.spoon ? `${formatAmount(l.ml / SPOON_ML[l.spoon])} ${l.spoon}` : formatShoppingQty(l.ml, 'ml'));
+  return `${total} (${each.join(' + ')})`;
+}
 function formatShoppingParts(item){
   const out = [];
   const order = ['', 'g', 'ml'].concat(Object.keys(item.parts).filter(u => !['', 'g', 'ml'].includes(u)));
   order.forEach(u => {
     const p = item.parts[u];
     if(!p) return;
-    if(u === 'ml' && p.onlySpoons){
+    if(u === 'ml' && item.liquid){
+      out.push(liquidListText(p));
+    } else if(u === 'ml' && p.onlySpoons){
       out.push(p.allTbsp ? `${formatAmount(p.amount / 15)} tbsp` : p.anyTbsp ? spoonsMixed(p.amount) : `${formatAmount(p.amount / 5)} tsp`);
     } else if(u === 'g' || u === 'ml'){
       out.push(formatShoppingQty(p.amount, u));
@@ -1473,9 +1553,10 @@ function aggregateShoppingLines(lines, alias, aisleOverride){
       (it.unmeasured.get(purpose) || it.unmeasured.set(purpose, new Set()).get(purpose)).add(recipeTitle);
       return;
     }
-    const p = it.parts[line.unit] || (it.parts[line.unit] = { amount: 0, onlySpoons: true, allTbsp: true, anyTbsp: false });
+    const p = it.parts[line.unit] || (it.parts[line.unit] = { amount: 0, onlySpoons: true, allTbsp: true, anyTbsp: false, lines: [] });
     p.amount += line.amount;
     if(line.unit === 'ml'){
+      p.lines.push({ ml: line.amount, spoon: line.spoon });
       if(!line.spoon) p.onlySpoons = false;
       if(line.spoon !== 'tbsp') p.allTbsp = false;
       if(line.spoon === 'tbsp') p.anyTbsp = true;
@@ -1489,13 +1570,21 @@ function aggregateShoppingLines(lines, alias, aisleOverride){
     const own = aisleOverride ? aisleOverride(it.key) : null;
     const placed = own ? { aisle: own, why: 'override' } : aisleAndWhy(it.key, display, it.row);
     const item = {
-      key: it.key, name: display.charAt(0).toUpperCase() + display.slice(1),
+      key: it.key, name: display.charAt(0).toUpperCase() + display.slice(1), liquid: rowIsLiquid(it),
       category: placed.aisle, aisleWhy: placed.why, parts: it.parts, unmeasured: it.unmeasured, ...rowAlternatives(it),
       unqtyCount: it.unqtyCount, count: it.count, recipes: it.recipes
     };
     item.qtyText = formatShoppingParts(item);
     return item;
   });
+}
+
+/* A row is a liquid when its name is one (isLiquidName), or when every line of it that is a volume is written in ml or
+   litres, which the converter does only for liquids. "1 tsp cumin" beside "10 ml cumin" is not. */
+function rowIsLiquid(it){
+  if(isLiquidName(it.key, it.row)) return true;
+  const ml = it.parts.ml;
+  return !!(ml && ml.lines.length && ml.lines.every(l => !l.spoon));
 }
 
 /* A recipe's choice belongs to that recipe (decided 28 Sep). "Butter (or

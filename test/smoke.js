@@ -937,6 +937,13 @@ const check = (name, pass, detail) => {
   const qty = await page.evaluate(() =>
     [...document.querySelectorAll('#flowMount')].map(e => e.textContent).join(' '));
   check('ingredients scaled 4 -> 6', /450\s*g/.test(qty), /450\s*g/.test(qty) ? '300 g pasta -> 450 g' : 'no 450 g found');
+  /* Liquids (18 Oct 2026): Test Pasta's 1 tbsp olive oil for 4 is 60 ml for 16, so it reads in ml. Mutation: drop the liquid branch in scaleRecipeSyntax, and this reads "4 tbsp". */
+  await page.fill('#viewerServesCustom', '16');
+  await page.click('#viewerServesCustomBtn');
+  await page.waitForTimeout(300);
+  const liquidQty = await page.evaluate(() => document.querySelector('#flowMount').textContent.replace(/\s+/g, ' '));
+  check('a liquid scaled past 50 ml reads in ml in the recipe view', /60\s*ml\s*olive oil/.test(liquidQty),
+        (liquidQty.match(/[\d.\/ ]+\s*(ml|tbsp)\s*olive oil/) || ['no olive oil line'])[0]);
   await page.click('#viewerServesResetBtn');
   await page.waitForTimeout(300);
   check('reset returns to the recipe base',
@@ -2430,7 +2437,8 @@ const check = (name, pass, detail) => {
     return out;
   });
   check('a choice from one recipe of two shows beside that recipe, and the row still totals both',
-        alt.shared.length === 1 && /^4 tbsp\s*Golden syrup$/.test(alt.shared[0].name) && alt.shared[0].recipes === 'Alt One (or honey), Alt Two',
+        /* 4 tbsp until 18 Oct: golden syrup is a liquid, so its 60 ml now reads in ml with the lines after it. */
+        alt.shared.length === 1 && /^60 ml \(3 tbsp \+ 1 tbsp\)\s*Golden syrup$/.test(alt.shared[0].name) && alt.shared[0].recipes === 'Alt One (or honey), Alt Two',
         JSON.stringify(alt.shared));
   check('    and beside the name when the row has only the one recipe',
         alt.single.length === 1 && /\(or kefir\)$/.test(alt.single[0].name) && alt.single[0].recipes === 'Alt Three', JSON.stringify(alt.single));

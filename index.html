@@ -1655,7 +1655,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-18.2">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-18.3">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2297,7 +2297,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-18.1"></script>
+<script src="core.js?v=2026-10-18.2"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2305,12 +2305,12 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-18.1';
+const EXPECTED_CORE_VERSION = '2026-10-18.2';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-18.2';
+const APP_VERSION = '2026-10-18.3';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -5550,7 +5550,7 @@ function renderGroupViewer(){
       const base = parseInt(recipe.servings, 10) || 0;
       const target = targetFor(recipe.id) || base;
       const multiplier = (base && target && target !== base) ? target / base : 1;
-      const syntax = multiplier !== 1 ? scaleRecipeSyntax(recipe.syntax||'', multiplier) : (recipe.syntax||'');
+      const syntax = multiplier !== 1 ? scaleRecipeSyntax(recipe.syntax||'', multiplier, applyIngredientAlias) : (recipe.syntax||'');
       return { recipe, serves: target, parsed: parseRecipe(syntax) };
     });
 
@@ -5823,7 +5823,7 @@ function renderViewer(){
      for display. state.viewerServes resets to null on every openRecipe()
      call, so there's nothing to clean up if the person navigates away
      without resetting it themselves. */
-  const scaledSyntax = scale !== 1 ? scaleRecipeSyntax(recipe.syntax, scale) : recipe.syntax;
+  const scaledSyntax = scale !== 1 ? scaleRecipeSyntax(recipe.syntax, scale, applyIngredientAlias) : recipe.syntax;
   const parsedForView = parseRecipe(scaledSyntax);
 
   /* Nothing to scale against on a recipe with no servings, so don't offer it. */
@@ -7008,7 +7008,7 @@ function buildShoppingList(weekDays){
          the recipe's own untouched syntax every build, so there's no drift. */
       const base = parseInt(recipe.servings, 10) || 0;
       const multiplier = (base && servings && servings !== base) ? servings / base : 1;
-      const syntax = multiplier !== 1 ? scaleRecipeSyntax(recipe.syntax, multiplier) : recipe.syntax;
+      const syntax = multiplier !== 1 ? scaleRecipeSyntax(recipe.syntax, multiplier, applyIngredientAlias) : recipe.syntax;
       parseRecipe(syntax).groups.forEach(g=>{
         g.items.forEach(item=> lineItems.push({ recipeTitle: recipe.title, raw: item, group: g.handle }));
       });
@@ -10814,7 +10814,7 @@ function applyScaleToForm(targetServings){
     return;
   }
   const multiplier = targetServings / base;
-  const scaled = scaleRecipeSyntax(current, multiplier);
+  const scaled = scaleRecipeSyntax(current, multiplier, applyIngredientAlias);
   textEl.value = scaled;
   scaleUndo = { before: current, after: scaled };
   parseAndPreview();

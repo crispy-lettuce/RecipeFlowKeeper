@@ -394,7 +394,8 @@ check('amounts read back as cooking fractions', core.formatAmount(0.75) === '3/4
 /* ---- Scaling ---- */
 const scaled = core.scaleRecipeSyntax('SERVINGS: 2\n\nGROUP a:\n1 1/2 tsp ground cumin\n2-3 tbsp olive oil\n3 x 400 g chopped tomatoes\n\nSTAGE:\nMERGE a -> b: Cook for 10 min [10 min]', 2);
 check('scaling doubles a mixed number', /^3 tsp ground cumin$/m.test(scaled), scaled);
-check('scaling doubles both ends of a range', /^4-6 tbsp olive oil$/m.test(scaled), scaled);
+/* Olive oil is a liquid, so since 18 Oct its doubled 2-3 tbsp (60-90 ml) reads in ml; until then this read "4-6 tbsp". */
+check('scaling doubles both ends of a range', /^60-90 ml olive oil$/m.test(scaled), scaled);
 check('scaling doubles the pack count, not the pack size', /^6 x 400 g chopped tomatoes$/m.test(scaled), scaled);
 /* F45 (October review): a permanent scale from EDIT rewrites the household's own lines. */
 const sc1 = (line, m) => core.scaleRecipeSyntax('GROUP a:\n' + line, m).split('\n')[1];
@@ -406,6 +407,30 @@ check('    and scales a pinch, dash or handful only to a whole number, its word 
       sc1('1 pinch nutmeg', 2) === '2 pinches nutmeg' && sc1('1 pinch nutmeg', 1.5) === '1 pinch nutmeg' && sc1('2 handfuls basil', 0.5) === '1 handful basil'
       && sc1('1-2 dashes hot sauce', 2) === '2-4 dashes hot sauce' && sc1('2 onions', 1.5) === '3 onions',
       [sc1('1 pinch nutmeg', 2), sc1('1 pinch nutmeg', 1.5), sc1('2 handfuls basil', 0.5), sc1('1-2 dashes hot sauce', 2), sc1('2 onions', 1.5)].join(' | '));
+/* Liquids (18 Oct 2026, docs/PLAN-LIQUID-MEASURES.md): tsp under 15 ml, tbsp under 50 ml, ml from 50 ml, decided after
+   rounding; only for a line in ml or litres, or in spoons with a liquid's name; never at ×1, never a weight. */
+{
+  const edges = [['1 tsp vanilla extract', 2, '2 tsp vanilla extract'], ['1 tsp vanilla extract', 2.8, '1 tbsp vanilla extract'],
+    ['3 tbsp olive oil', 0.5, '1 1/2 tbsp olive oil'], ['1 tbsp olive oil', 3.2, '3 tbsp olive oil'], ['1 tbsp olive oil', 3.27, '50 ml olive oil'],
+    ['3 tbsp olive oil', 4 / 3, '60 ml olive oil'], ['3 tbsp olive oil', 2, '90 ml olive oil'], ['100 ml chicken stock', 0.25, '1 1/2 tbsp chicken stock'],
+    ['100 ml chicken stock', 0.1, '2 tsp chicken stock'], ['500 ml chicken stock', 1.99, '995 ml chicken stock'], ['500 ml chicken stock', 2.64, '1.3 L chicken stock']];
+  const wrong = edges.filter(([l, m, want]) => sc1(l, m) !== want).map(([l, m, want]) => `${l} ×${m}: ${sc1(l, m)}, not ${want}`);
+  check('a scaled liquid reads in tsp under 15 ml, tbsp under 50 ml, ml from 50 ml and L from a litre, decided after rounding',
+        wrong.length === 0, wrong.join('; '));
+  check('    a range takes its unit from its upper end, and "up to" and a spelled-out unit keep their words',
+        sc1('2-3 tbsp rice vinegar', 2) === '60-90 ml rice vinegar' && sc1('1-2 tbsp soy sauce', 1.5) === '1 1/2-3 tbsp soy sauce'
+        && sc1('2 tablespoons soy sauce', 3) === '90 ml soy sauce' && sc1('1 tablespoon soy sauce', 1.5) === '1 1/2 tablespoons soy sauce',
+        [sc1('2-3 tbsp rice vinegar', 2), sc1('1-2 tbsp soy sauce', 1.5), sc1('2 tablespoons soy sauce', 3), sc1('1 tablespoon soy sauce', 1.5)].join(' | '));
+  check('    a weighed liquid, a spice or paste in spoons, coconut oil, condensed milk and a pack count keep their units',
+        sc1('30 g honey', 2) === '60 g honey' && sc1('3 tbsp ground cumin', 2) === '6 tbsp ground cumin' && sc1('2 tbsp tomato purée', 2) === '4 tbsp tomato purée'
+        && sc1('3 tbsp coconut oil', 2) === '6 tbsp coconut oil' && sc1('3 tbsp condensed milk', 2) === '6 tbsp condensed milk' && sc1('3 x 1 litre cartons', 2) === '6 x 1 litre cartons',
+        [sc1('30 g honey', 2), sc1('3 tbsp ground cumin', 2), sc1('2 tbsp tomato purée', 2), sc1('3 tbsp coconut oil', 2)].join(' | '));
+  const viaMatch = core.scaleRecipeSyntax('GROUP a:\n3 tbsp house dressing', 2, k => k === 'house dressing' ? 'olive oil' : k).split('\n')[1];
+  check('    a name the household matched to a liquid is a liquid, and at ×1 nothing is rewritten',
+        viaMatch === '90 ml house dressing' && sc1('3 tbsp house dressing', 2) === '6 tbsp house dressing'
+        && core.scaleRecipeSyntax('GROUP a:\n4 tbsp olive oil\n14 ml lime juice', 1) === 'GROUP a:\n4 tbsp olive oil\n14 ml lime juice',
+        [viaMatch, sc1('3 tbsp house dressing', 2)].join(' | '));
+}
 check('scaling updates SERVINGS and leaves the step text alone', /^SERVINGS: 4$/m.test(scaled) && /Cook for 10 min \[10 min\]/.test(scaled), scaled);
 
 /* ---- Parsing and layout ---- */
@@ -593,11 +618,24 @@ const aisleCases = [['400 g cooked egg noodles', 'Pantry'], ['3 tbsp hot pepper 
 const misfiled = aisleCases.filter(([raw, aisle]) => aisleOf(raw) !== aisle);
 check('the aisles the first live list had wrong are right, and nothing they touch moved', misfiled.length === 0,
       misfiled.map(([raw, aisle]) => `${raw}: ${aisleOf(raw)}, not ${aisle}`).join('; '));
-check('a mix of spoons reads as both, largest first', only('3 tbsp vegetable oil', '2 tsp vegetable oil').qtyText === '3 tbsp + 2 tsp',
-      only('3 tbsp vegetable oil', '2 tsp vegetable oil').qtyText);
+/* A spice since 18 Oct: vegetable oil is a liquid, and its 55 ml now reads "55 ml (3 tbsp + 2 tsp)" (below). */
+check('a mix of spoons reads as both, largest first', only('3 tbsp ground cumin', '2 tsp ground cumin').qtyText === '3 tbsp + 2 tsp',
+      only('3 tbsp ground cumin', '2 tsp ground cumin').qtyText);
 check('    but teaspoons alone stay teaspoons, and a mix under a tablespoon too',
       only('4 tsp cumin', '2 tsp cumin').qtyText === '6 tsp' && only('1/2 tbsp cumin', '1 tsp cumin').qtyText === '2 1/2 tsp',
       only('4 tsp cumin', '2 tsp cumin').qtyText + ', ' + only('1/2 tbsp cumin', '1 tsp cumin').qtyText);
+/* Liquids on the list (18 Oct 2026): spoons under 50 ml, ml from 50 ml with the lines in brackets when any is in spoons. */
+check('a liquid of 50 ml or more reads in ml, with its lines largest first when any is in spoons',
+      only('3 tbsp olive oil', '100 ml olive oil').qtyText === '145 ml (100 ml + 3 tbsp)' && only('4 tbsp sesame oil', '6 tbsp sesame oil').qtyText === '150 ml (6 tbsp + 4 tbsp)'
+      && only('4 tbsp olive oil').qtyText === '60 ml (4 tbsp)' && only('300 ml milk', '200 ml milk').qtyText === '500 ml',
+      [only('3 tbsp olive oil', '100 ml olive oil').qtyText, only('4 tbsp sesame oil', '6 tbsp sesame oil').qtyText, only('4 tbsp olive oil').qtyText, only('300 ml milk', '200 ml milk').qtyText].join(' | '));
+check('    under 50 ml a liquid reads in spoons (a name the list does not know is a liquid when written in ml), and a paste or spice in spoons, or a weight, as before',
+      only('30 ml lime juice').qtyText === '2 tbsp' && only('30 ml ponzu').qtyText === '2 tbsp' && only('2 tbsp olive oil', '1 tsp olive oil').qtyText === '2 tbsp + 1 tsp' && only('10 ml lime juice').qtyText === '2 tsp'
+      && only('3 tbsp curry paste', '3 tbsp curry paste', '3 tbsp curry paste').qtyText === '9 tbsp' && only('30 g golden syrup', '2 tbsp golden syrup').qtyText === '30 g + 2 tbsp',
+      [only('30 ml lime juice').qtyText, only('2 tbsp olive oil', '1 tsp olive oil').qtyText, only('10 ml lime juice').qtyText, only('3 tbsp curry paste', '3 tbsp curry paste', '3 tbsp curry paste').qtyText].join(' | '));
+check('    and the dictionary marks its liquids: every row with `liquid` names something poured, and coconut oil is not one',
+      core.INGREDIENT_DICTIONARY.filter(r => r.liquid).length === 21 && !core.dictionaryRow('coconut oil').liquid && core.dictionaryRow('olive oil').liquid === true,
+      core.INGREDIENT_DICTIONARY.filter(r => r.liquid).map(r => r.name).join(', '));
 const grouped = (...ls) => core.aggregateShoppingLines(ls.map(([recipeTitle, group, raw]) => ({ recipeTitle, group, raw })), null);
 const parm = grouped(['A', 'cheese', '75 g grated parmesan'], ['A', 'garnish', 'grated parmesan'], ['B', 'sauce', '50 g grated parmesan'], ['C', 'garnish', 'grated parmesan']);
 check('lines with no amount in a garnish group read "extra to serve", counting recipes', parm.length === 1 && parm[0].qtyText === '125 g + extra to serve (2 recipes)',
