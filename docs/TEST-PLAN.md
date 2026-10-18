@@ -843,6 +843,12 @@ reported one by one.*
     stays in grams. (4) *Shopping:* a liquid from 50 ml reads in ml with the spoon lines in brackets, under 50 ml in spoons, and the
     ticked row is still ticked.
 
+68a. **EST. beside an estimated time (new 18 Oct; version 2026-10-18.4).** Writes one recipe's TIME and restores it (use Test Kitchen).
+    (1) *EDIT, TIME `est. 40 min`, SAVE:* the card shows an EST. tag before 40 MIN and a plain 35 min shows none. (2) *The recipe's line*
+    reads SOURCE · EST. 40 MIN · …; the tag's title says it was estimated from the steps. (3) *Planner and shortlist:* the same tag,
+    the Planner's time on one line and clear of SERVES. (4) *Weeknight, under 30 min* lists a Weeknight recipe with `est. 25 min`.
+    (5) *Type the real time back:* the tag goes with the old figure.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

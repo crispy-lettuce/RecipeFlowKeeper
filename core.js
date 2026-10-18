@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-18.2';
+const KITCHEN_CORE_VERSION = '2026-10-18.3';
 
 
 /* ======================= quantity split ======================= */
@@ -395,6 +395,19 @@ function changedHeaderKeys(syntaxText, fields){
   const wanted = { TITLE: f.title, SOURCE: f.source, SOURCE_URL: f.sourceUrl, IMAGE: f.imageUrl,
     TIME: f.time, SERVINGS: f.servings, EQUIPMENT: f.equipment, TAGS: tagsToLine(f.tags) };
   return HEADER_ORDER.filter(key => withUpdatedHeaderLine(text, key, wanted[key]) !== text);
+}
+
+/* A recipe's TIME text, split into the figure and whether it is marked as an estimate (18 Oct 2026). The converter
+   writes `TIME: est. 1 hr 45` when the source gave no overall time and the figure was worked out from the method
+   (converter/conversion-instructions.md, "Estimating TIME"). The marker stays inside the text on purpose, in the
+   TIME: line and in recipes.time_text: there is no second column to keep in step with the syntax, a copy from
+   another household carries it, and editing the TIME box to a real figure removes the estimate in the same keystroke.
+   Anything else comes back as it was, trimmed ("35 min", "1 hr 40", whatever a person typed); "est." with no figure
+   after it is not an estimate of anything, so it is left alone too. */
+function splitTimeText(t){
+  const s = String(t == null ? '' : t).trim();
+  const m = s.match(/^est\.?\s+(\S.*)$/i);
+  return m ? { text: m[1].trim(), estimated: true } : { text: s, estimated: false };
 }
 
 /* The two original single-line helpers, kept as names because the image
@@ -2267,7 +2280,7 @@ if(typeof module !== 'undefined' && module.exports){
   module.exports = {
     KITCHEN_CORE_VERSION, INGREDIENT_AISLES, INGREDIENT_DICTIONARY,
     splitQty, parseTags, extractStepDuration, parseRecipe,
-    withUpdatedHeaderLine, withUpdatedHeaderLines, changedHeaderKeys, tagsToLine, withUpdatedTitleLine, withUpdatedImageLine,
+    withUpdatedHeaderLine, withUpdatedHeaderLines, changedHeaderKeys, splitTimeText, tagsToLine, withUpdatedTitleLine, withUpdatedImageLine,
     scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, lineUpTimelines, servingCalls, matchSides, groupedWith, formatMinutesForDisplay, formatDuration,
     parseFraction, normalizeUnit, toBaseUnit, formatShoppingQty, parseIngredientAmount,
     formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,

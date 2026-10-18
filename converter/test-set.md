@@ -1,6 +1,6 @@
 # Converter test set
 
-Eleven deliberately awkward cases for checking `conversion-instructions.md` still
+Twelve deliberately awkward cases for checking `conversion-instructions.md` still
 produces the right shape. Run them whenever those instructions change: paste each
 source into a fresh conversion chat and compare the output against the notes here.
 
@@ -12,7 +12,7 @@ themselves, because the shopping list reads their shape, and because a renamed i
 changed recipe. Test 9 is the exception the other way: it has no recipe in it, and checks that
 nothing is converted. Test 10 is its partner: the same unreadable address with the page's text pasted,
 which must convert normally. Test 11 is another of the ingredient-line tests: liquids in spoons under 50 ml
-and in ml from 50 ml.
+and in ml from 50 ml. Test 12 is five small cases for the `TIME` line: when it is estimated, when it must not be.
 
 ---
 
@@ -393,6 +393,89 @@ source used; a liquid the source weighs stays in grams. The rule is in section 1
 - the tahini is turned into ml or grams: it is a paste, so it stays as the source gives it.
 
 **Runs.** None yet: run it once the 18 Oct instructions are loaded into the conversion project.
+
+---
+
+## 12. TIME: estimated from the steps, or not at all
+
+**Why:** added 18 Oct 2026, asked for by the household. A recipe from a cookbook photo gives no overall
+time, and `TIME` used to come out blank. Now it is estimated from the method and marked `est.`, but only
+from the steps: the longest chain of MERGE durations, ranges at their midpoint, an "at least" step at its
+stated figure, 5 minutes for a short ingredient list (10 to 15 for a long one), rounded to 5 minutes. The
+rule is in section 2 of `conversion-instructions.md` ("Estimating TIME when the source gives none"). Run all
+five; each is its own conversion.
+
+### 12a. No timing in the source: estimate, with the parallel step left out
+
+**Source:**
+
+> **Crispy Potato and Butter Bean Bake** — Serves 4. You need 600g waxy potatoes, 2 tbsp olive oil,
+> 1/2 tsp salt, 2 garlic cloves, 400g tinned chopped tomatoes, 400g tinned butter beans and 100g
+> cheddar. Heat the oven to 200°C. Slice the potatoes thinly, toss them with the oil and salt and roast
+> for 15 minutes. Meanwhile simmer the crushed garlic, tomatoes and drained beans in a pan for 8 minutes.
+> Pour the sauce over the potatoes, cover with the grated cheddar and bake for 30 minutes. Rest for
+> 5 minutes before serving.
+
+**Must produce:** `TIME: est. 55 min`, and, under NOTES, the line
+`⚠️ Time note: estimated from the method steps; the source gives no overall time.` Why 55: the roast
+(15) and the simmer (8) share a STAGE and run in parallel, so only the roast is on the longest chain:
+15 + 30 for the bake + 5 for the rest = 50, plus 5 for a short ingredient list.
+
+**Fails if:** the time is `1 hr 5` or `65 min` (the simmer was added to the chain); there is no `est.`;
+there is no Time note; the note begins `⚠️ Source note:`; or any MERGE has no duration.
+
+### 12b. A stated time: used as it stands
+
+**Source:** the same recipe with "Prep 10 minutes, cook 50 minutes." added after "Serves 4."
+
+**Must produce:** `TIME: 1 hr`, with no `est.` and no Time note. The steps would estimate 55, but the
+source's own figures win.
+
+**Fails if:** `est.` appears; there is a Time note; or the time is `55 min`.
+
+### 12c. An overnight step and no total: no figure invented
+
+**Source:**
+
+> **Lemon Yoghurt Chicken Skewers** — Serves 4. Mix 150g yoghurt, the zest and juice of 1 lemon,
+> 2 crushed garlic cloves and 1 tsp salt. Coat 600g diced chicken thigh in it, cover and leave in the
+> fridge overnight. Thread onto skewers and grill for 12 minutes, turning once.
+
+**Must produce:** a conversion with the marinade timed `[overnight]`, and either a question asking for
+the total or `TIME` left out, with a one-line reason that names the overnight marinade. No `est.`, no
+Time note.
+
+**Fails if:** any `TIME` figure appears (`est. 12 min` ignores the marinade; `est. 8 hr` invents one).
+
+### 12d. A time that would come from knowing the dish, not the steps: none
+
+**Source:**
+
+> **Sunday Roast Chicken** — Serves 4. Rub a 1.6kg chicken with 30g butter, 1 tsp salt and 1/2 tsp
+> pepper. Roast until golden and cooked through. Rest it, then carve.
+
+**Must produce:** `TIME` left out (or a question asking for the total), with a one-line reason: the
+steps give no figures, so any time would come from how long a roast chicken usually takes. No `est.`, no
+Time note.
+
+**Fails if:** an `est.` time appears, however plausible.
+
+### 12e. An "at least" step: counted at the stated figure
+
+**Source:**
+
+> **Honey Garlic Tofu** — Serves 2. Press 400g firm tofu, cut it into cubes and marinate in 3 tbsp
+> soy sauce, 2 tbsp honey and 2 crushed garlic cloves for at least 30 minutes. Drain, then fry in
+> 1 tbsp oil for 10 minutes until golden, turning often.
+
+**Must produce:** `TIME: est. 45 min` and the Time note. 30 for the marinade + 10 for the frying = 40,
+plus 5 for a short ingredient list.
+
+**Fails if:** there is no estimate (the marinade is not open-ended: the source gives its minimum), or
+the time ignores the marinade (`est. 15 min`).
+
+**Runs.** None yet: run them once the 18 Oct instructions (version 2026-10-18.2) are loaded into the
+conversion project.
 
 ---
 

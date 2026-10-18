@@ -2,7 +2,7 @@
 
 *Revised 18 Oct 2026 — see the notes at the end for what changed and why.*
 
-**Version 2026-10-18.1.** The recipe app shows this number when it asks a household to reload these instructions into its
+**Version 2026-10-18.2.** The recipe app shows this number when it asks a household to reload these instructions into its
 conversion project, so a glance at the project's copy says whether it is the latest.
 
 Whenever a recipe is given here — a photo, a URL, or pasted text — convert it into
@@ -167,7 +167,8 @@ TITLE: <name>
 SOURCE: <site, publication, or person — always present, never omitted>
 SOURCE_URL: <the exact page the recipe came from — omit for a photographed card or a verbal recipe>
 IMAGE: <hero image URL, only if the source is a webpage with one — omit entirely otherwise>
-TIME: <total time, e.g. "35 min" or "1 hr 40" — from stated prep+cook times>
+TIME: <total time, e.g. "35 min" or "1 hr 40", as the source states it — or, when the source gives none and it can be
+      worked out from the method, "est. 1 hr 45" (see "Estimating TIME" below) — omit if neither is possible>
 SERVINGS: <plain number — always present; ask if the source doesn't say>
 EQUIPMENT: <size-specific tin/tray/dish only, e.g. "20cm springform tin" — omit if only everyday kitchen equipment is needed>
 TAGS: course=<Breakfast/Main/Side/Dessert/Drink/Bread/Baking/Snack>, <any obvious meal-base keyword(s)>
@@ -181,6 +182,8 @@ MERGE <handle(s)> -> <new handle>: <action label> [<duration>]
 NOTES:
 <tips that aren't a sequential step and don't fit a more specific subsection below —
  storage, technique options>
+⚠️ Time note: estimated from the method steps; the source gives no overall time.
+<— that last line only when TIME is marked "est."; leave it out otherwise>
 VARIATIONS:
 <swaps or alternative versions the source mentions — different protein, spice level,
  dietary substitution, etc.>
@@ -206,8 +209,12 @@ TIPS:
   meta tag or a `schema.org/Recipe` image field — most recipe sites have one). It's
   either clearly present or it isn't; if there's any doubt, omit it rather than guess.
   Never attempt this for a photographed card — see the note above.
-- `TIME` is the total time (prep + cook) as stated or clearly inferable from the
-  source. Omit rather than guess if the source doesn't give one.
+- `TIME` is the total time (prep + cook). If the source states a total, or a prep time and
+  a cook time that simply add up, use that figure exactly as the source gives it, with no marker. If
+  the source gives no overall time (no total, and not both a prep and a cook time; a lone cook time is
+  not a total), estimate it from the method and write `est.` before it, following "Estimating TIME"
+  at the end of this section. If it cannot be estimated that way, ask the person for a total or omit
+  `TIME`, and say why in one line. `TIME` is never filled in from the dish's name or from memory.
 - `SERVINGS` is a plain number (e.g. `4`, not "4 servings" or "serves 4-6" — if the
   source gives a range, use the lower figure). **It's now required on every recipe**,
   because the app scales recipes by target number of people and can't do that without a
@@ -299,6 +306,33 @@ TIPS:
   the source doesn't say whether it freezes, leave FREEZING out entirely rather than
   guessing.
 
+### Estimating TIME when the source gives none
+
+An estimate comes only from the steps you have just written: their bracketed durations, and nothing
+else. Never from the dish's name, from how long such a dish usually takes, or from a similar recipe. If
+the steps don't carry the figures, there is no estimate (rule 3).
+
+1. **Follow the longest path.** A MERGE starts when all its inputs are ready, so find the longest chain
+   of steps, each using the one before's output, and add up its durations. MERGE lines in the same STAGE
+   run in parallel and never add to each other: a line counts only if it is on the longest chain. Where the
+   cook has to do things one after another although the flow shows them side by side (one grill pan, one hob
+   ring, one pair of hands at the bench), count them one after another.
+2. **A range counts at its midpoint:** `[10-13 min]` is 11.5 minutes.
+3. **A step with no fixed duration.** An "at least" step (marinate for at least 30 minutes, chill for
+   2 hours, rest for 10) counts at the stated figure. `[overnight]`, `[until done]` and `[till reduced]`
+   count at the source's own figure if it gives one ("overnight (8 hours)", "simmer until thick, about
+   15 minutes"). If it gives none, **do not estimate**: ask the person for a total, or omit `TIME`, and say
+   why in one line ("TIME omitted: the source gives no figure for the overnight marinade").
+4. **Add an allowance for the hands-on work the steps leave out** (chopping, slicing, measuring,
+   preheating): about 5 minutes for a short ingredient list (under about 8 lines), 10–15 minutes for a long one.
+5. **Round to the nearest 5 minutes** (halves up) and write it the way `TIME` is always written, with the
+   marker in front: `est. 35 min`, `est. 1 hr 40`.
+
+When `TIME` is estimated, add one line under NOTES: `⚠️ Time note: estimated from the method steps; the
+source gives no overall time.` Only then: a `TIME` taken from the source gets no note. It is not a
+`⚠️ Source note:` and must never be written as one, because the app reads that opening as a statement about
+how the recipe was obtained.
+
 ## 3. Check
 
 Before presenting, compare the structured version against what was extracted, line by
@@ -329,6 +363,9 @@ line:
 - `SOURCE_URL` present if the recipe came from a webpage, absent otherwise.
 - **The page itself was read,** or its text was pasted; nothing was reconstructed from another page or from memory, and no
   source note was added only to say the text was pasted.
+- **`TIME` is either from the source, or marked `est.` and derived from the MERGE durations, or omitted
+  with a reason.** An `est.` comes with the `⚠️ Time note:` line under NOTES; a `TIME` from the source
+  has neither the marker nor the note; and nothing is estimated from the dish's name or from memory.
 - Servings present — taken from the source, or asked for and supplied by the person.
   Never estimated from the ingredient quantities.
 - `EQUIPMENT` present if the recipe depends on a specific tin/tray/dish size.
@@ -347,6 +384,23 @@ Report gaps as a short list (found → fixed), not a long essay.
   and when.
 
 ---
+
+## Revision note (18 Oct 2026, later the same day)
+
+- **`TIME` can now be estimated** (asked for by the household, 18 Oct). A recipe from a cookbook photo or
+  any source that gives no overall time used to come out with `TIME` blank, because the rule was "omit
+  rather than guess". Now, when the source has no total and no prep and cook times to add, `TIME` is worked
+  out from the method and written `TIME: est. 1 hr 45`. The app shows it with an EST. tag.
+- **Only from the steps:** the longest chain of MERGE durations (parallel lines in a stage do not add),
+  a range at its midpoint, an "at least" step at its stated figure, an allowance for chopping and measuring,
+  rounded to 5 minutes. Never from the dish's name, memory or a similar recipe. A step with no figure
+  (`[overnight]`, `[until done]` or `[till reduced]` where the source gives none) means no estimate: ask,
+  or omit `TIME` with a one-line reason.
+- A source that states a total, or prep and cook times that add up, is used exactly as before: no `est.`.
+- An estimate comes with its own line under NOTES, `⚠️ Time note: …`. It is deliberately not a
+  `⚠️ Source note:`: the app reads that opening as a recipe reconstructed from another page.
+- Test 12 in `test-set.md` checks the rule.
+- **Reload this file into the conversion project.**
 
 ## Revision note (18 Oct 2026)
 

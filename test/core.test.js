@@ -316,7 +316,7 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
    The file's fingerprint is pinned here against its version: change the file, and this fails until the "Version" line
    in the file and CONVERTER_VERSION in index.html are both moved on, and the new fingerprint (printed below) is put
    here beside the new version. */
-const CONVERTER_PINNED = { version: '2026-10-18.1', sha256: 'dce259f9cff4457da9e660d9439fe44e65b0e6cde46d1f2d5c83397bce5276d6' };
+const CONVERTER_PINNED = { version: '2026-10-18.2', sha256: '09f54bcbd9d6924369055c63a8d4d9322df910297ba467cc54cde193bb694158' };
 {
   const convSrc = fs.readFileSync(path.join(ROOT, 'converter', 'conversion-instructions.md'), 'utf8');
   const convSha = require('crypto').createHash('sha256').update(convSrc).digest('hex');
@@ -1226,6 +1226,35 @@ check('changedHeaderKeys counts a line that would be added or dropped, not one t
       && core.changedHeaderKeys(hkText, { ...hkFields, imageUrl: '', equipment: '' }).length === 0
       && hkVariants.every(v => (core.changedHeaderKeys(hkText, { ...hkFields, ...v }).length > 0) === (core.withUpdatedHeaderLines(hkText, { ...hkFields, ...v }) !== hkText)),
       JSON.stringify(hkVariants.map(v => core.changedHeaderKeys(hkText, { ...hkFields, ...v }))));
+
+/* An estimated TIME (18 Oct 2026, converter 2026-10-18.2): "est. 1 hr 45" is stored as it stands, in the TIME: line and in
+   recipes.time_text, and splitTimeText reads the marker back out. Invented figures. */
+const tsCases = [['35 min', '35 min', false], ['1 hr 40', '1 hr 40', false], ['est. 1 hr 45', '1 hr 45', true], ['EST. 1 HR 45', '1 HR 45', true],
+  ['Est 40 min', '40 min', true], ['  est.   25 min  ', '25 min', true], ['', '', false], [null, '', false], [undefined, '', false]];
+check('splitTimeText reads the est. marker, in any case and with or without the dot, and leaves a plain time alone',
+      tsCases.every(([t, text, est]) => { const r = core.splitTimeText(t); return r.text === text && r.estimated === est; }),
+      JSON.stringify(tsCases.map(([t]) => core.splitTimeText(t))));
+check('splitTimeText does not mistake a word that merely starts with est for the marker, or an est. with no figure after it',
+      ['estimate 40 min', 'est.', 'est.40 min', 'west 5 min'].every(t => core.splitTimeText(t).estimated === false && core.splitTimeText(t).text === t),
+      JSON.stringify(['estimate 40 min', 'est.', 'est.40 min', 'west 5 min'].map(t => core.splitTimeText(t))));
+const estText = 'TITLE: Lentil Soup\nSOURCE: Blue Door Bakery\nTIME: est. 55 min\nSERVINGS: 4\n\nGROUP a:\n200 g red lentils\n\nSTAGE:\nMERGE a -> done: Simmer until soft [20 min]';
+const estParsed = core.parseRecipe(estText);
+check('parseRecipe keeps TIME: est. 55 min as the text it was written, and a plain TIME: 35 min is unchanged',
+      estParsed.time === 'est. 55 min' && core.parseRecipe(estText.replace('est. 55 min', '35 min')).time === '35 min',
+      JSON.stringify([estParsed.time, core.parseRecipe(estText.replace('est. 55 min', '35 min')).time]));
+check('typing a real time over an estimate removes the marker from the TIME: line, and saving the estimate as it is changes nothing',
+      core.withUpdatedHeaderLine(estText, 'TIME', 'est. 55 min') === estText
+      && core.splitTimeText(core.parseRecipe(core.withUpdatedHeaderLine(estText, 'TIME', '45 min')).time).estimated === false
+      && core.parseRecipe(core.withUpdatedHeaderLine(estText, 'TIME', '45 min')).time === '45 min',
+      core.withUpdatedHeaderLine(estText, 'TIME', '45 min').split('\n')[2]);
+/* The converter's Time note is read from the instructions themselves, so the wording the converter is told to write is the
+   wording tested. It must not open like a Source note, which the app reads as a statement about how the recipe was got. */
+{
+  const convText = fs.readFileSync(path.join(ROOT, 'converter', 'conversion-instructions.md'), 'utf8');
+  const timeNote = (convText.match(/^⚠️ Time note:.*$/m) || [])[0];
+  check('the converter writes its Time note as a line of its own, and the app does not read it as a Source note',
+        !!timeNote && core.sourceNoteIn('NOTES:\n' + timeNote) === null, String(timeNote));
+}
 
 /* PR 5: what a recorded comparison is of, and what it found. Invented recipe and lines. */
 const pvText = (tags, extra, spice) => ['TITLE: Lentil Soup', 'SOURCE: Blue Door Bakery', 'SERVINGS: 4', ...extra, 'TAGS: ' + tags, '',

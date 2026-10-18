@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first the same day.**
+**Last brought up to date: 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day.**
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
 households sort out their own converter and need no steps here.
@@ -22,14 +22,15 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | Job | Where | Time | Saves anything? |
 | --- | --- | --- | --- |
 | **1.** [Split off the test household](#split-off-the-test-household-new-18-oct) | app, Supabase dashboard | 20 min | Yes: your household moves to a new, empty one |
-| **2.** [L1. Reload the converter](#l1-reload-the-converter-liquids-18-oct), once #155 has merged | app, conversion project | 10 min | Only the converter's DONE |
+| **2.** [L1. Reload the converter](#l1-reload-the-converter-liquids-and-times-18-oct), once the estimated-times PR has merged | app, conversion project | 10 min | Only the converter's DONE |
 | [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
 | [61a–65a: the readability changes](#61a-quieter-text-is-easier-to-read-new-14-oct-docsplan-readabilitymd-change-t), **in Classic** | tablet (62a and 63a end on the phone) | 25 min | Only Appearance, switched to dark and put back (61a, 62a, 64a) |
 | [66a: the Modernist style](#66a-a-second-style-modernist-new-15-oct-revised-18-oct-docsplan-modernistmd) | tablet, landscape | 15 min | Two things, each undone in the next tap (see 66a) |
 | [67a: liquids in spoons or ml](#67a-liquids-in-spoons-or-ml-new-18-oct-docsplan-liquid-measuresmd), once #157 has merged, in Test Kitchen | tablet | 5 min | No |
+| [68a: EST. beside an estimated time](#68a-est-beside-a-time-the-converter-worked-out-new-18-oct-version-2026-10-184), once that PR has merged, in Test Kitchen | tablet | 10 min | One recipe's TIME, put back in step 6 |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
-**Do them in this order.** The split first. Then the converter, once #155 has merged: its DONE is kept per household, so a
+**Do them in this order.** The split first. Then the converter, once the estimated-times PR has merged: its DONE is kept per household, so a
 DONE tapped before the split has to be tapped again after it. Then, after the split, your own library is empty until you add recipes,
 so do 61a to 66a signed in as the test account, in Test Kitchen, which has the recipes and the plan they look at. 61a to 65a describe the **Classic** look (plum, gold, rounded corners), which is how the app opens
 unless a device has been switched. Do them first, then 66a, which switches to Modernist and back at the end.
@@ -59,8 +60,8 @@ matches, aisles and swaps come with you, and so does sharing with the relatives'
 8. Reload the app on every device. **You should see:** an empty library under your household's name. Settings has your word
    matches, aisles and swaps, and RECIPE SHARING still lists the relatives' household.
 9. Set **Appearance** to Dark. **You should see:** the CONVERTER bar, because the new household has confirmed no version yet. If it
-   names the version your conversion project already has, tap **DONE**. If it names 2026-10-18.1 (#155), do the next job,
-   [Reload the converter](#l1-reload-the-converter-liquids-18-oct), instead.
+   names the version your conversion project already has, tap **DONE**. If it names 2026-10-18.2 (the liquids and times instructions), do the next job,
+   [Reload the converter](#l1-reload-the-converter-liquids-and-times-18-oct), instead.
 10. **CONNECT GOOGLE CALENDAR**, and say yes to Google. **You should see:** the same RecipeWrangler calendar as before, not a
     second one.
 11. In another browser profile or a private window, sign in as the test account. **You should see:** Test Kitchen with every
@@ -80,12 +81,13 @@ passed. Everything before it (2026-10-14.1 to 2026-10-14.5, the readability chan
 
 Merged: **2026-10-18.1**, the fixes found when #153 was reviewed (RESET TICKS and its count, the meal-base colours, prepared
 ingredients drawn as steps, the month names, and Enter on a card's buttons), as #154 at 11:11 UTC on 18 Oct. *Not verified:* that
-the site is serving it (a session could not reach the site that day). After it, **2026-10-18.2**: the converter's new liquids
-rule (#155); only the converter's instructions change, so the app itself looks and works as before.
+the site is serving it (a session could not reach the site that day). After it: **2026-10-18.2** (#155, the converter's liquids
+rule; only the converter's instructions changed), **2026-10-18.3** (#157, liquids when scaled and on the list; check 67a) and
+**2026-10-18.4** (estimated times shown with EST.; check 68a, and the converter's instructions change again).
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready.**, tap **RELOAD**. Otherwise refresh the page.
-3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-18.2**.
+3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-18.4**.
 
 ---
 
@@ -249,20 +251,49 @@ stock or milk row on the shopping list, so step 4 can check it is still ticked.
 Tell the next session if any line reads oddly, or if something poured stays in spoons when scaled (the list may not know it is a
 liquid: the session can add it).
 
+### 68a. EST. beside a time the converter worked out (new 18 Oct, version 2026-10-18.4)
+
+This saves one recipe's TIME and puts it back in step 6, so do it in Test Kitchen, not in your own library. It works in either
+style. You do not need the new converter file for it: you type the marker yourself.
+
+1. Open a recipe, tap **EDIT**, and in **TIME** type `est. 40 min`. Tap **SAVE RECIPE**.
+2. Open **RECIPES**. **You should see:** that recipe's card with a small **EST.** tag in front of **40 MIN**, and no tag on other
+   recipes' times.
+3. Open the recipe. **You should see:** the line under its title reading SOURCE · EST. 40 MIN · …, and a recipe whose time is plain
+   (35 min) with no tag. Hold or hover over EST. **You should see:** "Estimated from the method steps: the source gives no overall
+   time" (on the tablet this may only show with a mouse).
+4. Put that recipe on a day in **PLANNER** and on the shortlist. **You should see:** EST. 40 MIN on the day's row, on one line and
+   not touching the **SERVES** button, and EST. 40 MIN on the shortlist line.
+5. In **RECIPES**, tap **Weeknight, under 30 min** after giving a Weeknight recipe `est. 25 min`. **You should see:** it listed,
+   as a recipe with a plain 25 min would be.
+6. **EDIT** each recipe you changed, type back its real time (an empty TIME box removes it), and **SAVE RECIPE**. **You should see:**
+   the tag gone with the old figure.
+
+Tell the next session if the tag is hard to see or read, or if anything wraps onto two lines.
+
 ---
 
 ## Library jobs
 
-### L1. Reload the converter (liquids, 18 Oct)
+### L1. Reload the converter (liquids and times, 18 Oct)
 
-Once the PR that changes `converter/conversion-instructions.md` to version 2026-10-18.1 is merged:
+Once the PR that changes `converter/conversion-instructions.md` to version 2026-10-18.2 is merged. (Version 2026-10-18.1, the liquids
+rule alone, was the converter's version for a few hours on 18 Oct. If your conversion project already has it, this replaces it.)
 
-1. Open the app. **Shows:** the gold **CONVERTER** bar, naming version 2026-10-18.1.
+1. Open the app. **Shows:** the gold **CONVERTER** bar, naming version 2026-10-18.2.
 2. Follow the bar's steps to replace the file in your conversion project, then tap **DONE**. **Shows:** the bar goes.
 3. In a fresh conversion chat, paste test 11's source from `converter/test-set.md` (Ginger Sesame Dressing). **Shows:** the
    eight lines the test lists: `60 ml rice vinegar`, `60 ml sesame oil`, `2 tbsp soy sauce`, `1 1/2 tbsp lime juice`,
    `1/2 tsp fish sauce`, `30 g honey`, `2 tbsp tahini`, `120 ml water`.
-4. Tell the next session "test 11 OK", or which line differed.
+4. Then test 12 in the same file, five small recipes, each in a fresh conversion chat. **Shows**, for each:
+   - **12a** (Crispy Potato and Butter Bean Bake): `TIME: est. 55 min`, and under NOTES the line `⚠️ Time note: estimated from the
+     method steps; the source gives no overall time.`
+   - **12b** (the same, with "Prep 10 minutes, cook 50 minutes"): `TIME: 1 hr`, no `est.`, no Time note.
+   - **12c** (Lemon Yoghurt Chicken Skewers, an overnight marinade): a question asking for the total, or no `TIME` with a one-line
+     reason. No figure.
+   - **12d** (Sunday Roast Chicken, no times in the steps): no `TIME`, or a question. No figure.
+   - **12e** (Honey Garlic Tofu, "at least 30 minutes"): `TIME: est. 45 min` and the Time note.
+5. Tell the next session "tests 11 and 12 OK", or which line differed.
 
 The app's half (switching a scaled line between tbsp and ml at 50 ml, and the shopping list's breakdown) is planned in
 `docs/PLAN-LIQUID-MEASURES.md`, with five questions for you in its §5. Nothing there stops you converting now.

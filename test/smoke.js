@@ -7796,6 +7796,55 @@ const check = (name, pass, detail) => {
         fk0.on === 0 && fk1.on === 1 && fk1.view === 'recipes' && fk2.on === 0 && fk2.view === 'recipes' && fk3.view === 'viewer', JSON.stringify([fk0, fk1, fk2, fk3]));
   await fx.close();
 
+  /* An estimated TIME (18 Oct 2026, converter 2026-10-18.2). "est. 25 min" shows an EST. tag beside the figure on the card, in
+     the recipe's line, on the Planner and on the Shortlist; "35 min" shows none; the Weeknight, under 30 min view still counts
+     an estimated recipe. In both looks, and on the Planner the time must not run into the SERVES button beside it. */
+  for (const look of ['classic', 'modernist']) {
+    const es = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    es.__label = 'estimated TIME, ' + look;
+    await es.addInitScript(l => { try { localStorage.setItem('kitchen.style', l); } catch (e) {} }, look);
+    await es.clock.setFixedTime(FIXTURE_NOW);
+    await es.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await es.waitForTimeout(1200);
+    await es.evaluate(() => {
+      const R = (id, title, time, kw) => ({ id, title, source: 'Test Kitchen', time, servings: 4, tags: { course: 'Main', keywords: kw || [] }, history: [], syntax: 'TITLE: ' + title + '\nTIME: ' + time });
+      cache.recipes.push(R('es1', 'Test Estimated Bake', 'est. 1 hr 45', []), R('es2', 'Test Stated Bake', '35 min', []),
+        R('es3', 'Test Estimated Quick', 'est. 25 min', ['Weeknight']), R('es4', 'Test Stated Quick', '20 min', ['Weeknight']), R('es5', 'Test Slow Quick', '50 min', ['Weeknight']));
+      cache.plan[isoLocal(new Date())] = { recipeIds: ['es1', 'es2'], servings: [0, 0], premade: ['', ''] };
+      cache.shortlist.push({ id: 'ess1', recipeId: 'es1' }, { id: 'ess2', recipeId: 'es2' });
+      showView('recipes');
+    });
+    await es.waitForTimeout(300);
+    const esCard = await es.evaluate(() => { const foot = id => document.querySelector(`#recipeGrid .rcard[data-id="${id}"] .rcard-foot`);
+      return { est: (foot('es1').querySelector('.est-tag') || {}).textContent || null, estFoot: foot('es1').lastElementChild.textContent.replace(/\s+/g, ' ').trim(),
+        plain: foot('es2').querySelector('.est-tag'), plainFoot: foot('es2').lastElementChild.textContent.trim() }; });
+    check(`    ${look}: a recipe card shows EST. beside an estimated time and nothing extra beside a stated one`,
+          esCard.est === 'EST.' && esCard.estFoot === 'EST. 1 HR 45' && esCard.plain === null && esCard.plainFoot === '35 MIN', JSON.stringify(esCard));
+    await es.evaluate(() => openRecipe('es1')); await es.waitForTimeout(300);
+    const esView = await es.evaluate(() => { const m = document.getElementById('viewerMeta'); return { tag: (m.querySelector('.est-tag') || {}).textContent || null, text: m.textContent.replace(/\s+/g, ' ').trim() }; });
+    await es.evaluate(() => openRecipe('es2')); await es.waitForTimeout(300);
+    const esViewPlain = await es.evaluate(() => { const m = document.getElementById('viewerMeta'); return { tag: m.querySelector('.est-tag'), text: m.textContent.replace(/\s+/g, ' ').trim() }; });
+    check(`    ${look}: the recipe's line says EST. 1 HR 45 for an estimate and 35 MIN with no tag for a stated time`,
+          esView.tag === 'EST.' && /^TEST KITCHEN · EST\. 1 HR 45 · /.test(esView.text) && esViewPlain.tag === null && /^TEST KITCHEN · 35 MIN · /.test(esViewPlain.text), JSON.stringify([esView, esViewPlain]));
+    await es.evaluate(() => showView('planner')); await es.waitForTimeout(400);
+    const esPlan = await es.evaluate(() => { const rows = [...document.querySelectorAll('.day-row.today .day-recipe-row')], R = el => el.getBoundingClientRect();
+      return rows.map(r => { const t = r.querySelector('.day-recipe-time'), sv = r.querySelector('.day-recipe-serves');
+        return { tag: (t.querySelector('.est-tag') || {}).textContent || null, text: t.textContent.replace(/\s+/g, ' ').trim(), clear: !sv || R(t).right <= R(sv).left + 1,
+          fits: t.scrollWidth <= Math.ceil(R(t).width) + 1, oneLine: R(t).height <= parseFloat(getComputedStyle(t).fontSize) * 1.8 }; }); });
+    check(`    ${look}: the Planner row shows EST. on an estimate, and the time stays on one line, clear of the SERVES button`,
+          esPlan.length === 2 && esPlan[0].tag === 'EST.' && esPlan[0].text === 'EST. 1 HR 45' && esPlan[1].tag === null && esPlan[1].text === '35 MIN' && esPlan.every(r => r.clear && r.fits && r.oneLine),
+          JSON.stringify(esPlan));
+    const esShort = await es.evaluate(() => { const sub = id => { const it = document.querySelector(`.sl-item[data-id="${id}"] .sl-sub`); return { tag: (it.querySelector('.est-tag') || {}).textContent || null, text: it.textContent.replace(/\s+/g, ' ').trim() }; };
+      return [sub('ess1'), sub('ess2')]; });
+    check(`    ${look}: the Shortlist line carries the tag for an estimate and none for a stated time`,
+          esShort[0].tag === 'EST.' && /EST\. 1 HR 45$/.test(esShort[0].text) && esShort[1].tag === null && /35 MIN$/.test(esShort[1].text), JSON.stringify(esShort));
+    await es.evaluate(() => { showView('recipes'); state.savedView = 'quick'; renderHome(); }); await es.waitForTimeout(300);
+    const esQuick = await es.evaluate(() => [...document.querySelectorAll('#recipeGrid .rcard')].map(c => c.dataset.id).filter(id => /^es/.test(id)).sort());
+    check(`    ${look}: Weeknight, under 30 min still counts an estimated 25 min and still leaves out a stated 50 min`,
+          JSON.stringify(esQuick) === JSON.stringify(['es3', 'es4']), JSON.stringify(esQuick));
+    await es.close();
+  }
+
   /* A British browser: the week labels still read SEP, as the design's three letters do. */
   const fg = await browser.newPage({ viewport: { width: 1280, height: 800 }, locale: 'en-GB' });
   fg.__label = 'fixes of 18 Oct, en-GB';
