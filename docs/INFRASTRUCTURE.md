@@ -33,7 +33,7 @@ project's own rule, restated in §4) or a plain identifier that grants nothing o
 | Supabase organisation | CrispyLettuce (`kvfcdgzdurwcqftttukd`) |
 | Supabase project | **RecipeWrangler** (`mhkayefzrtceesgizkjs`), region `eu-west-1`, Postgres 17 |
 | Supabase project URL | `https://mhkayefzrtceesgizkjs.supabase.co` |
-| Household id | `286a8a12-c12a-4b83-afbc-0912533f6b1c` (the family's first, and the only one until 28 Sep; three exist now — see §3. Not a secret) |
+| Household id | The family's: `dfeac187-a044-4f6e-a7a7-d47119930127` (since 18 Oct, 18:02 UTC). `286a8a12-c12a-4b83-afbc-0912533f6b1c`, the family's first until then, is **Test Kitchen**, the test household. Four exist — see §3. Not a secret |
 
 ---
 
@@ -184,18 +184,27 @@ functions key on. *(Until 12 Oct this heading said 13 tables and `recipe_notes` 
 
 ### Households
 
-Three rows in `households`, three in `household_members` and three accounts in `auth.users` (12 Oct
-2026): the family's first, `286a8a12-c12a-4b83-afbc-0912533f6b1c` (13 Sep, and the only one until
-28 Sep); the live check's test household (28 Sep, `docs/HANDOVER.md` §7, 7c); and the family's
-second (10 Oct, `docs/ONBOARDING.md` §4). Every one has a name (Settings sets it through
+Four rows in `households`, four in `household_members`, four accounts in `auth.users` and four `household_settings`
+rows (read 18 Oct 2026, 18:20 UTC):
+
+- **Test Kitchen**, `286a8a12-c12a-4b83-afbc-0912533f6b1c` (13 Sep): the family's first household and its placeholder library,
+  the test household since 18 Oct, with the test account as owner.
+- the live check's test household (28 Sep, `docs/HANDOVER.md` §7, 7c);
+- the relatives' household, the family's second (10 Oct, `docs/ONBOARDING.md` §4);
+- **the family's own**, `dfeac187-a044-4f6e-a7a7-d47119930127` (18 Oct, under the family's household name), with the family's account as owner.
+  It shares its recipes with the relatives' household and with Test Kitchen (two `recipe_shares` rows), and holds the Google
+  connection.
+ Every one has a name (Settings sets it through
 `set_household_name` since 10 Oct) and a `household_settings` row (since 12 Oct). An id is not a secret — RLS is
 enforced by `auth.uid()` against `household_members`, not by anyone knowing a UUID — but the
-first one is useful to have on hand for writing ad-hoc SQL scoped to it. *(Until 12 Oct this
+family's is useful to have on hand for writing ad-hoc SQL scoped to it (since 18 Oct that is `dfeac187…`, not the first one). *(Until 12 Oct this
 section was "The one household".)*
 
-**Waiting (18 Oct 2026): the test-household split**, `docs/PLAN-TEST-HOUSEHOLD.md`. Agreed with the household: the first
-household above keeps its library and becomes the test household, Test Kitchen, and the family's account moves to a new, empty
-household. Not done yet. Until this paragraph says it is, with when and how it was checked, the first id is still the family's.
+**Done (18 Oct 2026): the test-household split**, `docs/PLAN-TEST-HOUSEHOLD.md`. The household ran `switch.sql` from the
+dashboard at 18:02:53 UTC (the new household's `created_at`); the editor's "Success. No rows returned" is a pass, since every
+check in it raises. A session read it back afterwards with `check.sql` (read-only): the counts above, Test Kitchen's library
+intact (34 recipes, 127 logs, 34 files), the word matches, aisles and swaps copied (16, 10, 2), and Google reconnected in the new
+household at 18:11 with one Vault token. The full table is in `PrivateBackup` (`migrations/test-household-split/README.md`).
 
 ### Storage
 

@@ -5,7 +5,11 @@ one household, one membership row today; no insert policy on `households` or
 `household_members`; the app itself has no sign-up form, only sign-in. Part of PR 7 (Sharing),
 `docs/NEXT-SESSION.md`.
 
-*(Corrected 12 Oct 2026, the October review's Appendix B. There are three households now, three accounts and three
+*(Corrected 18 Oct 2026: there are four households now, four accounts and four membership rows. On 18 Oct the family's
+account moved to a new household under the same name, and its first household became Test Kitchen, with a test account of
+its own (`docs/PLAN-TEST-HOUSEHOLD.md`).)*
+
+*(Corrected 12 Oct 2026, the October review's Appendix B. There were three households then, three accounts and three
 membership rows: the households are the family's, the weekly live test's, and the family's second, made by §4. Each has a name of its own,
 set from Settings since 10 Oct. The line numbers below, the "one household" statements and what `hydrate()` does with an
 account in two are brought up to date in place.)*
@@ -77,13 +81,14 @@ in two, with a message, rather than taking the first membership it finds (the Oc
 
 ## 1. The SQL, guarded
 
-Find the household first. There are three (above), so pick yours by its name; the query only reads:
+Find the household first. There are four (above), so pick yours by its name; the query only reads:
 
 ```sql
 select id, name from public.households;
 ```
 
-(As of 28 Sep 2026 that's `286a8a12-c12a-4b83-afbc-0912533f6b1c`, then named "Household"; the name is
+(As of 28 Sep 2026 that was `286a8a12-c12a-4b83-afbc-0912533f6b1c`, then named "Household". Since 18 Oct 2026 the
+family's is `dfeac187-a044-4f6e-a7a7-d47119930127`, and `286a8a12…` is Test Kitchen; the name is
 whatever the household has set since. `docs/INFRASTRUCTURE.md` §1 has the current value if this ever
 drifts; re-run the query rather than trust either document.)
 

@@ -442,7 +442,7 @@ at once. Why there is no search across all tabs. The redraw loop to avoid. One P
 
 **Use it when:** building #95.
 
-### `docs/PLAN-TEST-HOUSEHOLD.md` — a test household, and a fresh start for the real one (18 Oct 2026; agreed, not yet done)
+### `docs/PLAN-TEST-HOUSEHOLD.md` — a test household, and a fresh start for the real one (18 Oct 2026; agreed and done the same day, 18:02 UTC)
 **What:** why the family's account moves to a new, empty household and the placeholder library stays behind as Test Kitchen
 (rather than the library moving), what is tied to a household and what happens to each (photos, the share, Google, calendar
 events, settings), the steps, the scratch-database trial of the switch and its undo, and how the test household is used afterwards.
