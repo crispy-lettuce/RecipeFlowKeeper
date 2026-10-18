@@ -250,6 +250,12 @@ Test Kitchen's DONE is still 2026-10-12.1, so the test account sees the bar too:
 The app's half of the liquids rule (switching a scaled line between tbsp and ml at 50 ml, and the shopping list's breakdown) is
 built and live (#157, 2026-10-18.3); 67a checks it.
 
+**Once the spoons-in-brackets change has merged (converter 2026-10-18.5, app 2026-10-18.7):** the bar will name 2026-10-18.5, so
+load the new `converter/conversion-instructions.md` into your conversion project first, then tap **DONE** as above. Then run
+**test 15** in `converter/test-set.md` (a small recipe with a few solids in spoons): the butter, sugar and cocoa should come back
+in grams with the spoons in brackets, like `45 g butter (3 tbsp)`, and the flour, oats and golden syrup with no bracket. Nothing in
+the library changes. Reload the app on each device and check **SETTINGS → HELP** shows Version **2026-10-18.7**.
+
 ### Otherwise
 
 The master copy of the converter's instructions is `converter/conversion-instructions.md`; when it changes,

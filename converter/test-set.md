@@ -1,6 +1,6 @@
 # Converter test set
 
-Fourteen deliberately awkward cases for checking `conversion-instructions.md` still
+Fifteen deliberately awkward cases for checking `conversion-instructions.md` still
 produces the right shape. Run them whenever those instructions change: paste each
 source into a fresh conversion chat and compare the output against the notes here.
 
@@ -13,7 +13,8 @@ changed recipe. Test 9 is the exception the other way: it has no recipe in it, a
 nothing is converted. Test 10 is its partner: the same unreadable address with the page's text pasted,
 which must convert normally. Test 11 is another of the ingredient-line tests: liquids in spoons under 50 ml
 and in ml from 50 ml. Test 12 is five small cases for the `TIME` line: when it is estimated, when it must not be.
-Test 13 is a tin with no weight, and test 14 several recipes in one message.
+Test 13 is a tin with no weight, and test 14 several recipes in one message. Test 15 is solids measured in spoons: grams, with the
+spoons kept in brackets (version 2026-10-18.5).
 
 **A stand-in run of version 2026-10-18.3, 18 Oct 2026** (not the conversion project). A session followed the rewritten file by
 hand for tests 1 to 8, 10, 11, 12a to 12e and 13, and ran all sixteen results through `test/validate-recipes.js`: 16 valid,
@@ -145,7 +146,7 @@ multipliers, two ingredients on a line, alternatives, size words and preparation
 1 onion (large), diced
 800 g chopped tomatoes (2 tins)
 120 g plain flour
-60 g butter, melted
+60 g butter, melted (4 tbsp)
 1 knob butter, to finish        (or a weight, e.g. 15 g butter, to finish)
 1 lemon, juiced
 2 tbsp golden syrup (or honey)
@@ -160,6 +161,9 @@ black pepper, to taste
 - puts preparation before the name ("juice of", "melted butter");
 - measures more than 1 tbsp of butter in spoons;
 - or uses an alternative ("or") outside brackets.
+
+Since version 2026-10-18.5 the butter keeps its spoons (`60 g butter, melted (4 tbsp)`); the flour, converted from a cup, does not
+(`120 g plain flour`). Test 15 checks that rule on its own.
 
 ---
 
@@ -537,6 +541,49 @@ Buttered Peas' source; Lemon Rice is held back until Buttered Peas' question is 
 **Runs.**
 
 - **18 Oct 2026, the conversion project with version 2026-10-18.4, run by the household: passed** ("tests 11 to 14 OK").
+
+---
+
+## 15. Solids in spoons: grams, with the spoons kept in brackets
+
+**Why:** added 18 Oct 2026, asked for by the household (version 2026-10-18.5). A solid measured in spoons above 1 tbsp is written in
+grams, because the shopping list cannot total spoons with grams; but a small amount is easier to measure with a spoon, so the
+converter keeps the source's spoons in the line's bracket. Only for spoons it converted. The app scales the bracket with the
+grams (`core.js`, `scaleSpoonNote`), which is why the shape is fixed: the spoon amount first, as a number and `tsp` or `tbsp`.
+
+**Source:**
+
+> **Cocoa Oat Bars** — Serves 6. Melt 3 tbsp butter with 4 tbsp light brown sugar and 1 tbsp golden syrup. Stir in 100g rolled
+> oats, 1/2 cup plain flour and 5 tsp cocoa powder, press into a tin and bake for 20 minutes at 180°C.
+
+**Must produce** these lines (order and grouping may vary; a weight may differ from these by a few grams):
+
+```
+45 g butter (3 tbsp)
+55 g light brown sugar (4 tbsp)
+1 tbsp golden syrup
+100 g rolled oats
+60 g plain flour
+12 g cocoa powder (5 tsp)
+```
+
+**Fails if:**
+
+- a solid of more than 1 tbsp is left in spoons (`3 tbsp butter`), or is in grams with no spoons in the bracket (`45 g butter`);
+- the bracket's amount is not the source's (`(2 tbsp)` for 3 tbsp), carries words before it (`(about 3 tbsp)`), or is written in another
+  unit (`(45 ml)`);
+- a line that was not converted from spoons carries one: `100 g rolled oats (…)`, the flour converted from a cup, or the golden
+  syrup, which is 1 tbsp and stays as it is.
+
+**Worth knowing:** the app ignores the bracket on the shopping list (`45 g butter (3 tbsp)` totals with `60 g butter`) and scales it
+with the grams: cooking for twice the people, `45 g butter (3 tbsp)` reads `90 g butter (6 tbsp)`. Recipes already in the library
+have no brackets, and are not changed.
+
+**Runs.**
+
+- None yet. It needs the household's conversion project loaded with version 2026-10-18.5. The weights above are the converter's own
+  best figures, not measured; the test checks the shape and the spoons, not the grams. The source and lines are made up and were not
+  checked against the library.
 
 ---
 

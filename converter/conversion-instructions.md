@@ -1,6 +1,6 @@
 # Recipe Conversion — Project Instructions
 
-**Version 2026-10-18.4.**
+**Version 2026-10-18.5.**
 
 Convert every recipe given here (photo, URL or pasted text) into GROUP / STAGE / MERGE syntax for the recipe merge-flow tool. Work through all four stages in order every time; never skip Check.
 
@@ -51,7 +51,7 @@ black pepper, to taste
 - **One ingredient per line.** "Salt and pepper to taste" → `salt, to taste` and `black pepper, to taste`. A free choice ("any nuts or dried fruit") is one line with one name and the choices in brackets.
 - **Quantity first:** whole number, decimal with a point (`1.5`), fraction (`1/2`) or mixed number with a space (`1 1/2`). A range uses a hyphen (`2-3 tbsp`) and stays as the source gives it; don't pick one end or move it to NOTES. Never `½`, "a"/"an", or a multiplier (`3 x 125 g`): write the total, pack in the note. Omit the quantity only on lines ending `, to taste` or `, to serve`. No article inside a quantity: `1/2 lemon`, not "1/2 a lemon" (the app scales arithmetically and doesn't fix grammar).
 - **Unit:** `g`, `kg`, `ml`, `L`, `tsp`, `tbsp`, or one count word: `pinch`, `bunch`, `handful`, `sprig`, `slice`, `rasher`, `piece`, `tin`. Countables need none (`2 onions`, `3 eggs`). Garlic and celery: `3 garlic cloves`, `2 celery sticks`. Nothing else goes between number and name: `1 onion (large), diced`, not "1 large onion, diced".
-- **Weigh solids:** above 1 tbsp, butter, sugar, flour, cocoa and nut butters go in grams (spoons of a solid can't be totalled with grams). **Tins and packs:** if the source gives a weight or volume, use it with the container in the note: `400 g chopped tomatoes (1 tin)`, `400 ml coconut milk (1 tin)`. If it gives only the container ("a tin of chickpeas"), use `tin` as the unit: `1 tin chickpeas`. Never put the container word in the name ("400 g tin chopped tomatoes") or invent a weight the source didn't give.
+- **Weigh solids:** above 1 tbsp, butter, sugar, flour, cocoa and nut butters go in grams (spoons of a solid can't be totalled with grams). **When spoons become grams, keep the spoons**: the source's amount goes first in the line's bracket, as the source wrote it, with the unit tsp or tbsp: `30 g light brown sugar (2 tbsp)`, `55 g unsalted butter, melted (4 tbsp)`, `12 g cocoa powder (5 tsp)`, `30-45 g butter (2-3 tbsp)`. Anything else for the bracket follows a comma: `(2 tbsp, heaped)`. This is for spoons only, and only when you converted them: a weight the source gave, cups and ounces are grams alone, and 1 tbsp or less stays a spoon with no bracket. **Tins and packs:** if the source gives a weight or volume, use it with the container in the note: `400 g chopped tomatoes (1 tin)`, `400 ml coconut milk (1 tin)`. If it gives only the container ("a tin of chickpeas"), use `tin` as the unit: `1 tin chickpeas`. Never put the container word in the name ("400 g tin chopped tomatoes") or invent a weight the source didn't give.
 - **Liquids** — anything poured: water, stock, milk, cream, oils, vinegars, wine, spirits, juices, thin sauces (soy, fish, Worcestershire, hot sauce), syrups, honey, treacle, extracts. Work out the ml whatever the source's unit, then:
   - under 15 ml → tsp, nearest 1/2 tsp: `1 tsp vanilla extract`, `2 tsp lemon juice`
   - 15 to under 50 ml → tbsp, nearest 1/2 tbsp: `2 tbsp red wine vinegar`, `2 1/2 tbsp lime juice`; one unit per line, never "2 tbsp + 2 tsp"
@@ -163,6 +163,7 @@ Compare the output with the extraction line by line. Confirm:
 - Every ingredient present once, correct quantity, metric (no cups, oz, lb, °F), one base unit per ingredient, scalable phrasing.
 - Every line in the standard shape: one ingredient, quantity and unit first, no size word before the name, ranges kept, preparation after the first comma, alternatives in brackets.
 - Liquids measured by volume on the tsp / tbsp / ml thresholds; weighed liquids still in grams.
+- Every solid you turned from spoons into grams carries those spoons in its bracket (`30 g light brown sugar (2 tbsp)`); no other line does.
 - Every name is the source's product in British English, never swapped or made more specific.
 - Every ingredient joins where the method adds it; late additions have their own group.
 - Every method step is in STEPS, a STAGE or NOTES; every temperature, time, doneness cue and caution retained.

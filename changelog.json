@@ -1,4 +1,7 @@
 [
+  { "version": "2026-10-18.7", "date": "2026-10-18",
+    "changes": ["When the converter turns spoons of a solid into grams, it now keeps the spoons in brackets after the weight: 2 tbsp of sugar becomes 30 g sugar (2 tbsp), so a small amount can still be measured with a spoon. Only a conversion from spoons gets the brackets; a weight the page already gave, a cup and a single tablespoon are written as before. The converter's instructions changed (version 2026-10-18.5), so the CONVERTER bar will ask your household to load the new file.",
+                "In the app, the spoons in brackets scale with the weight: for twice the people, 30 g (2 tbsp) reads 60 g (4 tbsp). Recipes already in your library are not changed; only a line converted from now on carries the spoons."] },
   { "version": "2026-10-18.6", "date": "2026-10-18",
     "changes": ["The recipe converter's instructions change once more today (version 2026-10-18.4), with your answers to the questions on the shorter rewrite, so the CONVERTER bar will ask your household to load the file again. Several recipes from one book or page now share their source, so it is asked once; the walkthrough of the flow is written only if you ask for one; a step the recipe doesn't time is marked as quick or as open-ended, never given a made-up time; and the time allowed for chopping and measuring is 5 minutes for up to 8 ingredients and 10 for more.",
                 "In the app, a line such as 1 tin chickpeas now scales to 2 tins rather than 2 tin, and is no longer called a container word in the name."] },
