@@ -250,11 +250,10 @@ Test Kitchen's DONE is still 2026-10-12.1, so the test account sees the bar too:
 The app's half of the liquids rule (switching a scaled line between tbsp and ml at 50 ml, and the shopping list's breakdown) is
 built and live (#157, 2026-10-18.3); 67a checks it.
 
-**Once the spoons-in-brackets change has merged (converter 2026-10-18.5, app 2026-10-18.7):** the bar will name 2026-10-18.5, so
-load the new `converter/conversion-instructions.md` into your conversion project first, then tap **DONE** as above. Then run
-**test 15** in `converter/test-set.md` (a small recipe with a few solids in spoons): the butter, sugar and cocoa should come back
-in grams with the spoons in brackets, like `45 g butter (3 tbsp)`, and the flour, oats and golden syrup with no bracket. Nothing in
-the library changes. Reload the app on each device and check **SETTINGS → HELP** shows Version **2026-10-18.7**.
+**The spoons-in-brackets change is merged (#163, 18 Oct, 20:13 UTC: converter 2026-10-18.5, app 2026-10-18.7):** the bar will name
+2026-10-18.5. Test 15 has passed in your conversion project (see Recently done), so if it already has the new file, just tap **DONE**
+as above; if not, load `converter/conversion-instructions.md` into it first. Nothing in the library changes. Reload the app on each
+device and check **SETTINGS → HELP** shows Version **2026-10-18.7**.
 
 ### Otherwise
 
@@ -294,6 +293,9 @@ None at the moment.
 
 ## Recently done
 
+- **18 Oct:** **converter test 15 passed** in your conversion project ("Test 15 OK"): solids measured in spoons come back in grams with
+  the spoons in brackets. Reported by you, not seen by a session; you did not say which version you had loaded (2026-10-18.5 is the
+  only one with the rule). The change itself is #163, merged 18 Oct at 20:13 UTC.
 - **18 Oct:** **converter tests 11 to 14 passed** in your conversion project, with version 2026-10-18.4 (your shorter rewrite and
   your answers): liquids, estimated times, a tin with no weight, and several recipes in one message.
 - **18 Oct:** **the test-household split.** `switch.sql` ran at 18:02:53 UTC. Your account is now in a **new household under your household's name**, empty,

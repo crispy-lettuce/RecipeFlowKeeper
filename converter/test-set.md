@@ -581,9 +581,10 @@ have no brackets, and are not changed.
 
 **Runs.**
 
-- None yet. It needs the household's conversion project loaded with version 2026-10-18.5. The weights above are the converter's own
-  best figures, not measured; the test checks the shape and the spoons, not the grams. The source and lines are made up and were not
-  checked against the library.
+- **18 Oct 2026, the conversion project, run by the household: passed** ("Test 15 OK"). The household did not say which version it
+  had loaded; 2026-10-18.5 is the only one with this rule. The result was reported, not seen by a session. The weights above are the
+  converter's own best figures, not measured; the test checks the shape and the spoons, not the grams. The source and lines are
+  made up and were not checked against the library.
 
 ---
 
