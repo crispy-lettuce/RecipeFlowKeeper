@@ -1655,7 +1655,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-18.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-18.2">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2310,12 +2310,12 @@ const EXPECTED_CORE_VERSION = '2026-10-18.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-18.1';
+const APP_VERSION = '2026-10-18.2';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
    .converter_ack_version). test/core.test.js fails if the file changes and the two are not moved. */
-const CONVERTER_VERSION = '2026-10-12.1';
+const CONVERTER_VERSION = '2026-10-18.1';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }

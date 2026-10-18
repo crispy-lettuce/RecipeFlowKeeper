@@ -407,6 +407,14 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
+### `docs/PLAN-LIQUID-MEASURES.md` — liquids in spoons under 50 ml, ml from 50 ml (18 Oct 2026; converter half done, app half planned)
+**What:** the household's four rules for liquids. The converter's half (spoons under 50 ml, ml from 50 ml, a weighed liquid stays
+weighed) is in `converter/conversion-instructions.md` 2026-10-18.1 and test 11. The app's half is a plan: which lines count as
+liquids (a `liquid` flag on dictionary rows), switching a scaled line at 50 ml, and the shopping list's breakdown
+("145 ml (100 ml + 3 tbsp)"). What exists today, the rounding table, risks and five decisions.
+
+**Use it when:** building the app's half, or asking why a scaled liquid did or didn't change unit.
+
 ### `docs/PLAN-SIDES.md` — sides for "serve with rice", #87 (13 Oct 2026; built the same day, #138, #140, #141), and OFTEN WITH, #142 (§9, planned 13 Oct)
 **What:** the app hears "serve with rice or naan" in a recipe (ingredient tails, steps and notes) and offers a matching `course=Side`
 recipe on the Planner; a tap adds it to the day and groups it with the dish. Adds FINISH TOGETHER to the Group Viewer.

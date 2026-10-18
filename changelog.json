@@ -1,4 +1,7 @@
 [
+  { "version": "2026-10-18.2", "date": "2026-10-18",
+    "changes": ["The recipe converter's instructions have changed, so the CONVERTER bar will ask your household to load the new file. Liquids under 50 ml are now written in spoons (3 tbsp, 1 tsp) and from 50 ml in ml (60 ml rather than 4 tbsp). A liquid the recipe weighs, such as honey or syrup in grams, stays in grams.",
+                "Nothing in the app changes yet: recipes already in the library read as before, and the shopping list adds spoons and ml of the same liquid together, as it already did."] },
   { "version": "2026-10-18.1", "date": "2026-10-18",
     "changes": ["RESET TICKS now puts the count beside a recipe's title back to nought (MODERNIST), on a recipe and in the Group Viewer. Until now it cleared the boxes but left the old count showing.",
                 "In MODERNIST, with PREPARATION shown as steps, a step that only adds prepared ingredients is no longer drawn in black as if it joined two steps.",

@@ -1,6 +1,6 @@
 # Converter test set
 
-Ten deliberately awkward cases for checking `conversion-instructions.md` still
+Eleven deliberately awkward cases for checking `conversion-instructions.md` still
 produces the right shape. Run them whenever those instructions change: paste each
 source into a fresh conversion chat and compare the output against the notes here.
 
@@ -11,7 +11,8 @@ and that every MERGE carries a duration. Tests 6 to 8 are the exception: they ch
 themselves, because the shopping list reads their shape, and because a renamed ingredient is a
 changed recipe. Test 9 is the exception the other way: it has no recipe in it, and checks that
 nothing is converted. Test 10 is its partner: the same unreadable address with the page's text pasted,
-which must convert normally.
+which must convert normally. Test 11 is another of the ingredient-line tests: liquids in spoons under 50 ml
+and in ml from 50 ml.
 
 ---
 
@@ -355,6 +356,43 @@ later stage, every MERGE timed.
 
 - **30 Sep 2026, the conversion project, run by the household after reloading the 30 Sep instructions:
   passed** ("test 10 OK"). The household also reported the reload itself as checked.
+
+---
+
+## 11. Liquids: spoons under 50 ml, ml from 50 ml
+
+**Why:** added 18 Oct 2026, asked for by the household. A liquid measured by volume is written in
+teaspoons under 15 ml, tablespoons from 15 ml to under 50 ml and ml from 50 ml, whatever unit the
+source used; a liquid the source weighs stays in grams. The rule is in section 1 of
+`conversion-instructions.md`.
+
+**Source:**
+
+> **Ginger Sesame Dressing** — Serves 4. Whisk 1/4 cup rice vinegar, 4 tbsp sesame oil, 2 tbsp
+> soy sauce, 25 ml lime juice, 1/2 tsp fish sauce, 30g honey and 2 tbsp tahini until smooth, then
+> loosen with 1/2 cup water. Leave for 10 minutes before using.
+
+**Must produce** these lines (order and grouping may vary):
+
+```
+60 ml rice vinegar
+60 ml sesame oil
+2 tbsp soy sauce
+1 1/2 tbsp lime juice
+1/2 tsp fish sauce
+30 g honey
+2 tbsp tahini
+120 ml water
+```
+
+**Fails if:**
+
+- a liquid of 50 ml or more is in spoons (`4 tbsp sesame oil`, `1/4 cup` left as it was);
+- a liquid under 50 ml is in ml (`25 ml lime juice`), or a line carries two units ("1 tbsp + 2 tsp");
+- the honey is anything but `30 g`: turned into spoons or ml, it is a weight converted to a volume;
+- the tahini is turned into ml or grams: it is a paste, so it stays as the source gives it.
+
+**Runs.** None yet: run it once the 18 Oct instructions are loaded into the conversion project.
 
 ---
 

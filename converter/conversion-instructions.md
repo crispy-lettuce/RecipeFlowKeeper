@@ -1,8 +1,8 @@
 # Recipe Conversion — Project Instructions
 
-*Revised 11 Oct 2026 — see the notes at the end for what changed and why.*
+*Revised 18 Oct 2026 — see the notes at the end for what changed and why.*
 
-**Version 2026-10-12.1.** The recipe app shows this number when it asks a household to reload these instructions into its
+**Version 2026-10-18.1.** The recipe app shows this number when it asks a household to reload these instructions into its
 conversion project, so a glance at the project's copy says whether it is the latest.
 
 Whenever a recipe is given here — a photo, a URL, or pasted text — convert it into
@@ -70,7 +70,7 @@ stages in order every time; don't skip Check even for a simple recipe.
   The shopping list reads these lines mechanically and totals two lines only when their
   names agree, so the shape matters more than the wording. Examples:
   ```
-  4 tbsp olive oil
+  3 tbsp olive oil
   1 onion, finely chopped
   3 garlic cloves, crushed
   400 g chopped tomatoes (1 tin)
@@ -100,6 +100,27 @@ stages in order every time; don't skip Check even for a simple recipe.
     thing on the shopping list. **Tins and packs:** use the unit printed on them, with the
     container in the note: `400 g chopped tomatoes (1 tin)`, `400 ml coconut milk (1 tin)`.
     The container word never goes in the name ("400 g tin chopped tomatoes").
+  - **Liquids: spoons under 50 ml, millilitres from 50 ml.** A liquid here is anything you
+    pour: water, stock, milk, cream, oils, vinegars, wine and spirits, juices, thin sauces (soy,
+    fish, Worcestershire, hot sauce), syrups, honey, treacle, extracts. Work out the amount in
+    ml whatever unit the source uses (1 tsp = 5 ml, 1 tbsp = 15 ml, 1 cup = 240 ml), then:
+    - **under 15 ml**, in teaspoons, to the nearest 1/2 tsp: `1 tsp vanilla extract`,
+      `2 tsp lemon juice` (10 ml);
+    - **15 ml to under 50 ml**, in tablespoons, to the nearest 1/2 tbsp: `1 tbsp soy sauce`,
+      `2 tbsp red wine vinegar` (30 ml), `3 tbsp olive oil` (45 ml), `2 1/2 tbsp lime juice`
+      (40 ml). One unit per line: never "2 tbsp + 2 tsp";
+    - **50 ml and over**, in ml, to the nearest 5 ml: `60 ml olive oil` (the source's 4 tbsp),
+      `80 ml maple syrup` (1/3 cup), `240 ml milk` (1 cup). Over 1 litre, `L` as before.
+
+    A range takes its unit from its upper end and keeps both ends in it: `2-3 tbsp olive oil`
+    (30-45 ml), but `45-60 ml chicken stock` for the source's 3-4 tbsp.
+    **A liquid the source weighs stays weighed.** Syrups, honey and treacle are often given in
+    grams: `30 g golden syrup` stays `30 g golden syrup`. Never turn a weight into spoons or ml,
+    or spoons or ml into a weight; the rules above are only for a liquid the source measures by
+    volume. Thick things are not liquids for this rule (pastes, purées, yoghurt, mayonnaise,
+    pesto, nut butters): write them as the source gives them, under "Weigh solids" above.
+    The shopping list totals spoons and ml of the same liquid together, so a recipe's
+    `3 tbsp olive oil` and another's `100 ml olive oil` still make one row.
   - **Name**: the product the source asks for, written **as a UK supermarket labels it on the
     shelf**, in plain British English: *aubergine*, not eggplant; *beef mince*, not ground
     beef; *coriander*, not cilantro; *yoghurt*, not yogurt. That is a translation of the same
@@ -131,7 +152,9 @@ stages in order every time; don't skip Check even for a simple recipe.
   smaller unit (`g`, `ml`) unless the quantity is naturally large enough to read oddly
   that way — a 1.5kg joint stays `1.5kg`, not `1500g`. The shopping list combines
   quantities across recipes and picks its own display unit, so it needs a consistent
-  base to work from.
+  base to work from. Spoons and ml of one liquid are the exception: a liquid split across two
+  groups follows the 50 ml rule line by line (`2 tbsp olive oil` to fry, `100 ml olive oil` for
+  the dressing), and the list adds the two.
 - **Phrase quantities so they still read correctly when scaled.** Write "1/2 lemon",
   not "1/2 a lemon"; "1/4 onion", not "1/4 of an onion". The app scales these
   arithmetically and doesn't correct grammar, so "1/2 a lemon" doubled becomes
@@ -285,6 +308,9 @@ line:
   (`g`/`kg`/`ml`/`L`/`tbsp`/`tsp`, a count word such as `pinch` or `bunch`, `°C` — no cups, oz, lb, or °F left over from
   the source), using one consistent base unit per ingredient.
 - Every quantity phrased so it survives scaling — "1/2 lemon", not "1/2 a lemon".
+- **Every liquid the source measures by volume** in tsp under 15 ml, tbsp from 15 ml to under
+  50 ml, ml from 50 ml; and **every liquid the source weighs still in grams**, never turned into
+  spoons or ml.
 - **Every ingredient line in the standard shape**: one ingredient each, quantity and unit
   first, no size word before the name, ranges kept as ranges, preparation after the first
   comma, and alternatives in brackets on the line.
@@ -321,6 +347,17 @@ Report gaps as a short list (found → fixed), not a long essay.
   and when.
 
 ---
+
+## Revision note (18 Oct 2026)
+
+- **Liquids under 50 ml are written in spoons, and from 50 ml in ml** (asked for by the household,
+  18 Oct): `3 tbsp olive oil` (45 ml), but `60 ml olive oil` where the source says 4 tbsp. Under
+  15 ml is teaspoons. Spoons round to the nearest half, ml to the nearest 5 ml, and one unit per line.
+- **A liquid the source weighs stays weighed**: `30 g golden syrup` is never turned into spoons.
+- The example line `4 tbsp olive oil` in section 1 became `3 tbsp olive oil`, since 4 tbsp is 60 ml.
+- Test 11 in `test-set.md` checks the rule. The app does not yet switch a scaled line between tbsp
+  and ml at the 50 ml mark; that is planned separately (`docs/PLAN-LIQUID-MEASURES.md`).
+- **Reload this file into the conversion project.**
 
 ## Revision note (11 Oct 2026)
 
