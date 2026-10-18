@@ -407,11 +407,11 @@ handful of` reading; `canned`/`tinned`).
 
 ---
 
-### `docs/PLAN-LIQUID-MEASURES.md` — liquids in spoons under 50 ml, ml from 50 ml (18 Oct 2026; converter half done, app half planned)
+### `docs/PLAN-LIQUID-MEASURES.md` — liquids in spoons under 50 ml, ml from 50 ml (18 Oct 2026; answered "defaults"; both halves built the same day)
 **What:** the household's four rules for liquids. The converter's half (spoons under 50 ml, ml from 50 ml, a weighed liquid stays
-weighed) is in `converter/conversion-instructions.md` 2026-10-18.1 and test 11. The app's half is a plan: which lines count as
-liquids (a `liquid` flag on dictionary rows), switching a scaled line at 50 ml, and the shopping list's breakdown
-("145 ml (100 ml + 3 tbsp)"). What exists today, the rounding table, risks and five decisions.
+weighed) is in `converter/conversion-instructions.md` 2026-10-18.1 and test 11. The app's half: which lines count as
+liquids (a `liquid` flag on dictionary rows, and a word rule for names it has no row for), switching a scaled line at 15 and
+50 ml, and the shopping list's breakdown ("145 ml (100 ml + 3 tbsp)"). The rounding table, risks, the five decisions and §6, as built.
 
 **Use it when:** building the app's half, or asking why a scaled liquid did or didn't change unit.
 

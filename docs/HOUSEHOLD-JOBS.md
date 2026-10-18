@@ -22,6 +22,8 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | Job | Where | Time | Saves anything? |
 | --- | --- | --- | --- |
 | [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
+| [L1. Reload the converter](#l1-reload-the-converter-liquids-18-oct), once the converter PR merges | conversion project | 5 min | No |
+| [67a. Liquids in spoons or ml](#67a-liquids-in-spoons-or-ml-new-18-oct-docsplan-liquid-measuresmd), once the app PR merges | tablet | 5 min | No |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
 ---
@@ -166,6 +168,24 @@ request has merged and you have reloaded. It takes about ten minutes. Steps 1 an
 Tell the next session anything that looks wrong, is hard to tap, or that you would like changed. The decisions made while building
 it, with the reasons, are listed at the end of `docs/PLAN-MODERNIST.md`; a few are questions for you (for example, whether the
 sign-in card should say "Recipe Wrangler" too).
+
+### 67a. Liquids in spoons or ml (new 18 Oct, `docs/PLAN-LIQUID-MEASURES.md`)
+
+Nothing is saved: COOK FOR and the shopping list only change what is shown. **Before** you reload into the new version, tick one oil,
+stock or milk row on the shopping list, so step 4 can check it is still ticked.
+
+1. Open a recipe with an oil in tablespoons (1 or 2 tbsp). Use **COOK FOR** to cook for enough people to make it 50 ml or more
+   (2 tbsp for 4 is 60 ml for 8). **You should see:** that line in ml, e.g. **60 ml**. Tap **RESET**. **You should see:** the
+   tablespoons exactly as written.
+2. On a recipe with a spice or a paste in spoons (ground cumin, curry paste), cook for twice the people. **You should see:** it
+   stays in spoons.
+3. On a recipe with honey or a syrup in grams, if you have one, cook for twice the people. **You should see:** it stays in grams.
+4. Open **SHOPPING**. **You should see:** an oil, stock or milk of 50 ml or more in ml, with the recipes' own amounts after it when
+   any are spoons, e.g. **145 ml (100 ml + 3 tbsp)**; under 50 ml, spoons, e.g. **2 tbsp + 1 tsp**. The row you ticked before
+   reloading is still ticked.
+
+Tell the next session if any line reads oddly, or if something poured stays in spoons when scaled (the list may not know it is a
+liquid: the session can add it).
 
 ---
 

@@ -832,6 +832,11 @@ reported one by one.*
     both counts; EXPORT PNG has the squares and leaves ticked rows out. (9) *History:* square arrows, today ringed in red, COOKED and
     AD HOC under days; a picked day fills with ink; the meal-base mixes are bars. (10) *Settings:* tabs as words, the open one underlined in
     red. (11) *APPEARANCE dark then back:* Modernist in dark. (12) *STYLE → CLASSIC:* exactly as before. Writes nothing.
+67a. **Liquids in spoons or ml (new 18 Oct; `docs/PLAN-LIQUID-MEASURES.md`).** Looks only; writes nothing. Tick one liquid row on the
+    shopping list before reloading into the new version. (1) *COOK FOR* past 50 ml on a recipe with an oil in tbsp: the line reads in ml;
+    RESET restores the tbsp as written. (2) A spice or paste in spoons, doubled: stays in spoons. (3) Honey or syrup in grams, doubled:
+    stays in grams. (4) *Shopping:* a liquid from 50 ml reads in ml with the spoon lines in brackets, under 50 ml in spoons, and the
+    ticked row is still ticked.
 
 ## Deferred to the tablet, after merging
 

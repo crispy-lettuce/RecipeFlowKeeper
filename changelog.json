@@ -1,4 +1,7 @@
 [
+  { "version": "2026-10-18.2", "date": "2026-10-18",
+    "changes": ["A liquid now changes unit when you scale a recipe: under 15 ml it reads in teaspoons, under 50 ml in tablespoons and from 50 ml in ml. 3 tbsp of oil for twice the people reads 90 ml, and 100 ml of stock for a quarter reads 1 1/2 tbsp. Spoons are rounded to the nearest half and ml to the nearest 5 ml. A recipe still reads exactly as written until you scale it, and amounts in grams stay in grams.",
+                "The shopping list shows a liquid of 50 ml or more in ml, with the recipes' own amounts after it, e.g. 145 ml (100 ml + 3 tbsp). Under 50 ml it stays in spoons. Spices and pastes measured in spoons are shown in spoons as before, and no tick is lost."] },
   { "version": "2026-10-18.1", "date": "2026-10-18",
     "changes": ["The recipe converter's instructions have changed, so the CONVERTER bar will ask your household to load the new file. Liquids under 50 ml are now written in spoons (3 tbsp, 1 tsp) and from 50 ml in ml (60 ml rather than 4 tbsp). A liquid the recipe weighs, such as honey or syrup in grams, stays in grams.",
                 "Nothing in the app changes yet: recipes already in the library read as before, and the shopping list adds spoons and ml of the same liquid together, as it already did."] },

@@ -9,9 +9,10 @@
    shown as `145 ml (3 × 15 ml + 100 ml)` or similar.
 4. A scaled recipe ideally changes from tbsp to ml once the 50 ml mark is reached.
 
-Rules 1 and 2 are the converter's, and are **done** in this PR: `converter/conversion-instructions.md` version 2026-10-18.1,
-with test 11 in `converter/test-set.md`. Rules 3 and 4 are the app's, and are **planned here, not built**. The household asked
-for the converter first, so conversions can start; nothing in the app has to change for the new lines to work (§1).
+Rules 1 and 2 are the converter's: `converter/conversion-instructions.md` version 2026-10-18.1, with test 11 in
+`converter/test-set.md` (PR #155). Rules 3 and 4 are the app's, **built 18 Oct 2026** in the PR after it (`core.js`
+2026-10-18.1, app 2026-10-18.2). The household answered §5 "defaults" the same day, and settled D4 as two thresholds:
+teaspoons under 15 ml, tablespoons from 15 ml to under 50 ml (§6 has what changed from the plan while building).
 
 **Every example line here is made up.** *Not verified*: they were not checked against the library, since this session could
 not read the backup. The session that builds §3 checks them (an exact-match count of 0) before merging.
@@ -108,7 +109,7 @@ An ml total is shown by the same table as 3a, **if the row is a liquid** (§2):
 - **Older recipes** keep their spoons at ×1 (D2). Rewriting their text is a recipe-text job under CLAUDE.md's procedure
   (approved lines, a fresh export, guarded statements), and is not proposed here.
 
-## 5. Decisions for the household
+## 5. Decisions for the household (answered 18 Oct 2026: "defaults"; D4 as below)
 
 - **D1, the list's wording.** Recommended `145 ml (100 ml + 3 tbsp)`: the lines as the recipes write them. The alternative
   is the household's own example, `145 ml (100 ml + 3 × 15 ml)`.
@@ -116,5 +117,29 @@ An ml total is shown by the same table as 3a, **if the row is a liquid** (§2):
   `4 tbsp olive oil` reads `60 ml olive oil` everywhere without touching the stored text.
 - **D3, scaling down.** Recommended: yes, the same table both ways, so `100 ml` scaled to a quarter reads `1 1/2 tbsp`.
 - **D4, teaspoons under 15 ml.** The household's rule says tablespoons below 50 ml; this plan and the converter use teaspoons
-  under 1 tbsp (`1 tsp vanilla extract`, not `1/3 tbsp`), as recipes do. Confirm.
+  under 1 tbsp (`1 tsp vanilla extract`, not `1/3 tbsp`), as recipes do. **Answered:** two rules, a threshold for each:
+  teaspoons under 15 ml, tablespoons from 15 ml to under 50 ml, ml from 50 ml (asked as a question with three thresholds;
+  15 ml chosen).
 - **D5, rounding.** Recommended: nearest 1/2 spoon, nearest 5 ml, as the converter now does.
+
+## 6. As built (18 Oct 2026), and where it differs from the plan
+
+- **Which lines are liquids.** As §2, with one addition: a name the dictionary has **no row for** is a liquid when it ends in a
+  word that is always poured (`LIQUID_NAME` in `core.js`: oil, vinegar, juice, stock, milk, wine, syrup, honey, water, extract, fish
+  or soy sauce and a few more), except condensed milk. Without it the vinegars, fish sauce, lime juice, water and golden syrup, none
+  of which has a row, would never switch. A row always decides for its own name, so `coconut oil` (a row, weighed) and `stock cubes`
+  stay in spoons or counts. 21 rows carry `liquid: true`. The flag and the rule read the key and never change it, so no tick moves.
+- **The list's brackets** appear whenever a total of 50 ml or more includes a spoon line, one line included: `60 ml (4 tbsp)`, so an
+  older recipe's 4 tbsp can be found in the total. A total made only of ml lines has none (`500 ml`).
+- **The list's spoons under 50 ml are exact**, not rounded (`2 tbsp + 1 tsp`, as `spoonsMixed` did since 25 Sep), since nothing is
+  being rewritten. A row whose every volume line is in ml is a liquid even when its name is unknown (`30 ml ponzu` reads `2 tbsp`);
+  a row mixing spoons and ml of an unknown name keeps the old reading (`1 tsp cumin` + `1 tbsp cumin` + `10 ml cumin` is `30 ml`).
+- **Litres** in scaling round to the nearest 50 ml and are written as a decimal (`1.3 L`); the list's own litres are unchanged.
+- **Two existing checks changed their expected text**, both because the line is a liquid: `core.test.js` "scaling doubles both ends
+  of a range" (`2-3 tbsp olive oil` ×2 is now `60-90 ml`) and the spoon-mix check, which now uses ground cumin; `smoke.js`'s
+  golden-syrup alternative check (`4 tbsp` is now `60 ml (3 tbsp + 1 tbsp)`).
+- **Checked:** `core.test.js` 223 checks (seven new), `smoke.js` 709 (one new), `help-guide.js` 7; nine mutations of `core.js`, each
+  caught by name, and the scaling one by the smoke check too. **Not verified:** the library was not re-measured (this session could
+  not read it), so how many of its spoon lines the rule reads as liquids is not known; no key can move, since neither the flag nor
+  the rule touches a name. The word-match path in the page (`applyIngredientAlias` passed to each `scaleRecipeSyntax` call) is
+  covered in `core.test.js` only; the smoke data has no word matches.
