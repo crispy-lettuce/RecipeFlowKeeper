@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct.**
+**Last brought up to date: 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first the same day.**
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
 households sort out their own converter and need no steps here.
@@ -21,13 +21,52 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 | Job | Where | Time | Saves anything? |
 | --- | --- | --- | --- |
-| [Merge the fixes, then reload the app](#reload-the-app-on-every-device) | GitHub, then every device | 3 min | No |
+| **1.** [Split off the test household](#split-off-the-test-household-new-18-oct) | app, Supabase dashboard | 20 min | Yes: your household moves to a new, empty one |
+| **2.** [Reload the converter](#l1-reload-the-converter-liquids-18-oct), once #155 has merged | app, conversion project | 10 min | Only the converter's DONE |
+| [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
 | [61a–65a: the readability changes](#61a-quieter-text-is-easier-to-read-new-14-oct-docsplan-readabilitymd-change-t), **in Classic** | tablet (62a and 63a end on the phone) | 25 min | Only Appearance, switched to dark and put back (61a, 62a, 64a) |
 | [66a: the Modernist style](#66a-a-second-style-modernist-new-15-oct-revised-18-oct-docsplan-modernistmd) | tablet, landscape | 15 min | Two things, each undone in the next tap (see 66a) |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
-**Do them in this order.** 61a to 65a describe the **Classic** look (plum, gold, rounded corners), which is how the app opens
+**Do them in this order.** The split first. Then the converter, once #155 has merged: its DONE is kept per household, so a
+DONE tapped before the split has to be tapped again after it. Then, after the split, your own library is empty until you add recipes,
+so do 61a to 66a signed in as the test account, in Test Kitchen, which has the recipes and the plan they look at. 61a to 65a describe the **Classic** look (plum, gold, rounded corners), which is how the app opens
 unless a device has been switched. Do them first, then 66a, which switches to Modernist and back at the end.
+
+---
+
+## First job
+
+Do this before the others.
+
+### Split off the test household (new 18 Oct)
+
+The plan is `docs/PLAN-TEST-HOUSEHOLD.md`, and the SQL is in `PrivateBackup` (`migrations/test-household-split/`). Today's
+library becomes **Test Kitchen**, for testing; your account moves to a new, empty household with your household's name. Your word
+matches, aisles and swaps come with you, and so does sharing with the relatives' household.
+
+1. In `PrivateBackup`'s Actions tab, open the latest **backup-supabase** run. **You should see:** a green tick from this morning.
+2. In the app, tap **EXPORT DATA** and keep the file. **You should see:** a backup file downloaded.
+3. **PLANNER:** tap each day from today on that shows **✓ IN CALENDAR**. **You should see:** the tick goes, and the day leaves
+   the RecipeWrangler calendar in Google.
+4. **SETTINGS → APP → CALENDAR → DISCONNECT.** **You should see:** CONNECT GOOGLE CALENDAR in its place.
+5. **SETTINGS → APP → RECIPE SHARING:** change the name to `Test Kitchen` and tap **SAVE**. **You should see:** the new name.
+6. Supabase dashboard → Authentication → Users → **Add user**: the test account's address from `PrivateBackup`, with a
+   password you keep. **You should see:** the new user in the list.
+7. Supabase SQL editor: paste `switch.sql` from `PrivateBackup` and run it. **You should see:** "Switched: new household …".
+   If it stops with a message, nothing has changed. The message names the step to do first.
+8. Reload the app on every device. **You should see:** an empty library under your household's name. Settings has your word
+   matches, aisles and swaps, and RECIPE SHARING still lists the relatives' household.
+9. Set **Appearance** to Dark. **You should see:** the CONVERTER bar, because the new household has confirmed no version yet. If it
+   names the version your conversion project already has, tap **DONE**. If it names 2026-10-18.1 (#155), do the next job,
+   [Reload the converter](#l1-reload-the-converter-liquids-18-oct), instead.
+10. **CONNECT GOOGLE CALENDAR**, and say yes to Google. **You should see:** the same RecipeWrangler calendar as before, not a
+    second one.
+11. In another browser profile or a private window, sign in as the test account. **You should see:** Test Kitchen with every
+    old recipe, its photo and its history.
+12. Tell the next session it is done. It checks the database and updates the documents.
+
+Something wrong after step 7? `undo.sql` puts it back, as long as nothing has been added to the new household yet.
 
 ---
 
@@ -38,13 +77,13 @@ unless a device has been switched. Do them first, then 66a, which switches to Mo
 Live now (checked 18 Oct): **2026-10-15.1**, the Modernist style, merged as #153 on 15 Oct; its tests and the site's deployment
 passed. Everything before it (2026-10-14.1 to 2026-10-14.5, the readability changes) is live too.
 
-Waiting: **2026-10-18.1**, the fixes found when #153 was reviewed (RESET TICKS and its count, the meal-base colours, prepared
-ingredients drawn as steps, the month names, and Enter on a card's buttons). It is in the pull request opened on 18 Oct.
+Merged: **2026-10-18.1**, the fixes found when #153 was reviewed (RESET TICKS and its count, the meal-base colours, prepared
+ingredients drawn as steps, the month names, and Enter on a card's buttons), as #154 at 11:11 UTC on 18 Oct. *Not verified:* that
+the site is serving it (a session could not reach the site that day).
 
-1. Merge the 18 Oct pull request on GitHub once its check (**offline-harness**) is green.
-2. On the tablet, the phone and the laptop, open the app.
-3. If a bar says **A new version is ready.**, tap **RELOAD**. Otherwise refresh the page.
-4. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-18.1**.
+1. On the tablet, the phone and the laptop, open the app.
+2. If a bar says **A new version is ready.**, tap **RELOAD**. Otherwise refresh the page.
+3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-18.1**.
 
 ---
 
@@ -193,7 +232,23 @@ sign-in card should say "Recipe Wrangler" too).
 
 ## Library jobs
 
-None at the moment. The master copy of the converter's instructions is `converter/conversion-instructions.md`; when it changes,
+### L1. Reload the converter (liquids, 18 Oct)
+
+Once the PR that changes `converter/conversion-instructions.md` to version 2026-10-18.1 is merged:
+
+1. Open the app. **Shows:** the gold **CONVERTER** bar, naming version 2026-10-18.1.
+2. Follow the bar's steps to replace the file in your conversion project, then tap **DONE**. **Shows:** the bar goes.
+3. In a fresh conversion chat, paste test 11's source from `converter/test-set.md` (Ginger Sesame Dressing). **Shows:** the
+   eight lines the test lists: `60 ml rice vinegar`, `60 ml sesame oil`, `2 tbsp soy sauce`, `1 1/2 tbsp lime juice`,
+   `1/2 tsp fish sauce`, `30 g honey`, `2 tbsp tahini`, `120 ml water`.
+4. Tell the next session "test 11 OK", or which line differed.
+
+The app's half (switching a scaled line between tbsp and ml at 50 ml, and the shopping list's breakdown) is planned in
+`docs/PLAN-LIQUID-MEASURES.md`, with five questions for you in its §5. Nothing there stops you converting now.
+
+### Otherwise
+
+The master copy of the converter's instructions is `converter/conversion-instructions.md`; when it changes,
 the gold **CONVERTER** bar says so in your household, and the steps are in the bar. The other files under `converter/` are
 reference material only.
 

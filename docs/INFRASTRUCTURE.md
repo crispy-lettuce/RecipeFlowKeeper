@@ -193,6 +193,10 @@ enforced by `auth.uid()` against `household_members`, not by anyone knowing a UU
 first one is useful to have on hand for writing ad-hoc SQL scoped to it. *(Until 12 Oct this
 section was "The one household".)*
 
+**Waiting (18 Oct 2026): the test-household split**, `docs/PLAN-TEST-HOUSEHOLD.md`. Agreed with the household: the first
+household above keeps its library and becomes the test household, Test Kitchen, and the family's account moves to a new, empty
+household. Not done yet. Until this paragraph says it is, with when and how it was checked, the first id is still the family's.
+
 ### Storage
 
 Two buckets (12 Oct 2026), with eight policies on `storage.objects` between them:
