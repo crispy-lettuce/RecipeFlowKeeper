@@ -4,6 +4,23 @@ What changed in `conversion-instructions.md`, and why, newest first. Until 18 Oc
 file, so every conversion read them; they say nothing a conversion needs, so they live here, for reference. **This file is
 not loaded into the conversion project.** Each household loads `conversion-instructions.md` alone.
 
+## Revision note (18 Oct 2026, version 2026-10-18.5: spoons kept in brackets)
+
+Asked for by the household, after seeing spoons of a solid become grams with nothing to say where the figure came from.
+
+- **A solid the converter turns from spoons into grams keeps the spoons in its bracket**, first and as the source wrote them:
+  `30 g light brown sugar (2 tbsp)`, `55 g unsalted butter, melted (4 tbsp)`, `12 g cocoa powder (5 tsp)`. Only for spoons that were
+  converted: a weight the source gave, cups and ounces are grams alone, and 1 tbsp or less stays a spoon.
+- **Why the grams stay.** The shopping list adds grams to grams and never a weight to a volume, so a solid in spoons would sit
+  beside the same thing in grams (`30 g + 2 tbsp`) instead of totalling. The weights are the converter's own recall of standard
+  figures (the file gives only flour and granulated sugar per cup); the bracket lets the cook measure with a spoon, and shows
+  what the grams came from.
+- **The app scales the bracket** with the grams (`scaleSpoonNote` in `core.js`, core 2026-10-18.5), so a doubled recipe reads
+  `60 g light brown sugar (4 tbsp)`. Without that the bracket would be a stale quantity, which is why the converter is told the exact
+  shape. The shopping list, the line check and the source check ignore it.
+- **Test 15 added; test 6 now expects `60 g butter, melted (4 tbsp)`.**
+- **Reload this file into the conversion project.** Recipes already in the library are not changed (that would be a recipe-text job).
+
 ## Revision note (18 Oct 2026, version 2026-10-18.4: the household's answers)
 
 A session tested the rewrite (2026-10-18.3) and raised five queries; the household answered them the same evening. Version

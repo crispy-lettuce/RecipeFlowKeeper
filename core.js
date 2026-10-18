@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-18.4';
+const KITCHEN_CORE_VERSION = '2026-10-18.5';
 
 
 /* ======================= quantity split ======================= */
@@ -531,6 +531,11 @@ function scaleRecipeSyntax(syntaxText, multiplier, alias){
       }
       return (parsed.upTo ? 'up to ' : '') + body + word + ' ' + restOut;
     }
+    /* A solid the converter turned from spoons into grams keeps its spoons in the note ("30 g light brown sugar (2 tbsp)"),
+       and they scale with it: see scaleSpoonNote. Only a line in grams, only away from ×1. */
+    if(multiplier !== 1 && parsed.count === undefined && (parsed.unit === 'g' || parsed.unit === 'kg')){
+      restOut = scaleSpoonNote(restOut, multiplier);
+    }
     let rebuiltQty;
     if(parsed.count !== undefined){
       /* "3 x 125 g tins": more people means more tins, not bigger ones. */
@@ -554,6 +559,30 @@ function scaleRecipeSyntax(syntaxText, multiplier, alias){
   });
 
   return result;
+}
+
+/* The spoons a solid was converted from (converter 2026-10-18.5, 18 Oct 2026): "30 g light brown sugar (2 tbsp)". Scaled with the
+   grams, or doubling the recipe would read "60 g light brown sugar (2 tbsp)" and the note would be a wrong quantity. Only a bracket
+   that opens with a spoon amount is touched, so "(or honey)", "(1 tin)" and "(3 × 125 g tins)" never are; a range, a mixed
+   number, "heaped" before the unit and anything after the amount ("(2 tbsp, at room temperature)") all keep their words, and
+   the unit is kept as typed. The first such bracket only. A bracket that is not a clean spoon amount is left as it was: a
+   stale note is better than a guessed one, and the converter is told to write it this way. */
+const SPOON_NOTE_RE = new RegExp('^(\\s*)(' + QTY_NUM + ')(?:(\\s*(?:-|–|—|\\s+to\\s+)\\s*)(' + QTY_NUM + '))?(\\s?)' +
+  '((?:heaped|heaping|level|scant|generous|rounded)\\s+)?(tsp|tbsp|teaspoons?|tablespoons?)\\b', 'i');
+function scaleSpoonNote(rest, multiplier){
+  let done = false;
+  return rest.replace(/\(([^()]*)\)/g, (whole, inner) => {
+    if(done) return whole;
+    const m = inner.match(SPOON_NOTE_RE);
+    if(!m) return whole;
+    const lo = parseFraction(m[2]), hi = m[4] === undefined ? null : parseFraction(m[4]);
+    if(lo === null || (m[4] !== undefined && hi === null)) return whole;
+    done = true;
+    const top = (hi === null ? lo : hi) * multiplier;
+    const unit = /^(teaspoon|tablespoon)s?$/i.test(m[7]) ? m[7].replace(/s$/i, '') + (top > 1 ? 's' : '') : m[7];
+    const body = hi === null ? formatAmount(lo * multiplier) : `${formatAmount(lo * multiplier)}${m[3]}${formatAmount(hi * multiplier)}`;
+    return `(${m[1]}${body}${m[5]}${m[6] || ''}${unit}${inner.slice(m[0].length)})`;
+  });
 }
 
 function buildRows(groups){

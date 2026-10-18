@@ -316,7 +316,7 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
    The file's fingerprint is pinned here against its version: change the file, and this fails until the "Version" line
    in the file and CONVERTER_VERSION in index.html are both moved on, and the new fingerprint (printed below) is put
    here beside the new version. */
-const CONVERTER_PINNED = { version: '2026-10-18.4', sha256: 'b32ad40b1ba628edb7be9dce87ce33b5df0b0458954b369ca0101c4889634390' };
+const CONVERTER_PINNED = { version: '2026-10-18.5', sha256: 'cecdb3dbd5abd66c7273de5ce9615e8326501956ccb70c635572a1f3800d8ba6' };
 {
   const convSrc = fs.readFileSync(path.join(ROOT, 'converter', 'conversion-instructions.md'), 'utf8');
   const convSha = require('crypto').createHash('sha256').update(convSrc).digest('hex');
@@ -441,6 +441,37 @@ check('a bare tin scales with its word agreeing, and is not called a container i
       && core.ingredientLineFaults('1 can chickpeas').some(f => f.code === 'container'),
       [sc1('1 tin chickpeas, drained', 2), sc1('2 tins chickpeas', 0.5), sc1('1 tin chickpeas', 1.5),
        core.ingredientLineFaults('1 tin chickpeas, drained').map(f => f.code).join('+') || 'none'].join(' | '));
+/* A solid the converter turned from spoons into grams keeps them in its note (converter 2026-10-18.5): "30 g light brown
+   sugar (2 tbsp)". The note is a quantity, so it must scale with the grams or a doubled recipe reads "60 g (2 tbsp)". Lines here
+   are made up. */
+{
+  const tracked = [
+    ['30 g light brown sugar (2 tbsp)', 2, '60 g light brown sugar (4 tbsp)'], ['30 g light brown sugar (2 tbsp)', 1.25, '37 1/2 g light brown sugar (2 1/2 tbsp)'],
+    ['55 g unsalted butter, melted (4 tbsp)', 3, '165 g unsalted butter, melted (12 tbsp)'], ['30-45 g butter (2-3 tbsp)', 2, '60-90 g butter (4-6 tbsp)'],
+    ['12 g cocoa powder (5 tsp)', 2, '24 g cocoa powder (10 tsp)'], ['25 g cocoa powder (1 1/2 tbsp, heaped)', 2, '50 g cocoa powder (3 tbsp, heaped)'],
+    ['25 g cocoa powder (2 heaped tbsp)', 2, '50 g cocoa powder (4 heaped tbsp)'], ['30 g butter (2 tablespoons)', 0.5, '15 g butter (1 tablespoon)'],
+    ['30 g light brown sugar (2 tbsp) (or muscovado)', 2, '60 g light brown sugar (4 tbsp) (or muscovado)']];
+  const off = tracked.filter(([l, m, want]) => sc1(l, m) !== want).map(([l, m, want]) => `${l} ×${m}: ${sc1(l, m)}, not ${want}`);
+  check('the spoons kept beside a converted solid scale with its grams (a range, a mixed number, "heaped", other notes and words kept)',
+        off.length === 0, off.join('; '));
+  const still = [['375 g tinned tuna (3 × 125 g tins)', '750 g tinned tuna (3 × 125 g tins)'], ['100 g golden syrup (or honey)', '200 g golden syrup (or honey)'],
+    ['400 g chopped tomatoes (1 tin)', '800 g chopped tomatoes (1 tin)'], ['100 ml chicken stock (3 tbsp)', '200 ml chicken stock (3 tbsp)'],
+    ['2 tbsp tahini (1 tbsp, heaped)', '4 tbsp tahini (1 tbsp, heaped)']];
+  const touched = still.filter(([l, want]) => sc1(l, 2) !== want).map(([l, want]) => `${l}: ${sc1(l, 2)}, not ${want}`);
+  check('    a bracket that is not spoons, or a spoon note on a line not in grams, is left as it was; at ×1 nothing is rewritten',
+        touched.length === 0 && sc1('30 g light brown sugar (2 tbsp)', 1) === '30 g light brown sugar (2 tbsp)', touched.join('; '));
+  const sugar = core.aggregateShoppingLines([{ recipeTitle: 'A', raw: '30 g light brown sugar (2 tbsp)' }, { recipeTitle: 'B', raw: '70 g light brown sugar' }], null);
+  check('    the shopping list totals the grams and ignores the note, and the line check has nothing to say about it',
+        sugar.length === 1 && sugar[0].qtyText === '100 g' && core.ingredientLineFaults('30 g light brown sugar (2 tbsp)').length === 0,
+        JSON.stringify(sugar.map(r => [r.name, r.qtyText])));
+  /* The converter's own examples are what it will write, so each must be a line the app scales. */
+  const convExamples = [...fs.readFileSync(path.join(ROOT, 'converter', 'conversion-instructions.md'), 'utf8')
+    .matchAll(/`(\d[^`]* g [^`]*\([^`]*\b(?:tsp|tbsp)\b[^`]*\))`/g)].map(m => m[1]);
+  const note = l => (l.match(/\(([^)]*)\)/) || [])[1];
+  const stale = convExamples.filter(l => note(sc1(l, 2)) === note(l) || sc1(sc1(l, 2), 0.5) !== l);
+  check('the converter file shows the spoons-in-brackets shape, and every one of its examples scales with its grams',
+        convExamples.length >= 4 && stale.length === 0, `${convExamples.length} examples; stale: ${stale.join(' | ')}`);
+}
 check('scaling updates SERVINGS and leaves the step text alone', /^SERVINGS: 4$/m.test(scaled) && /Cook for 10 min \[10 min\]/.test(scaled), scaled);
 
 /* ---- Parsing and layout ---- */
