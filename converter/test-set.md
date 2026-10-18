@@ -400,7 +400,9 @@ source used; a liquid the source weighs stays in grams. The rule is in section 1
 - the honey is anything but `30 g`: turned into spoons or ml, it is a weight converted to a volume;
 - the tahini is turned into ml or grams: it is a paste, so it stays as the source gives it.
 
-**Runs.** None yet: run it once the 18 Oct instructions are loaded into the conversion project.
+**Runs.**
+
+- **18 Oct 2026, the conversion project with version 2026-10-18.4, run by the household: passed** ("tests 11 to 14 OK").
 
 ---
 
@@ -482,8 +484,10 @@ plus 5 for a short ingredient list.
 **Fails if:** there is no estimate (the marinade is not open-ended: the source gives its minimum), or
 the time ignores the marinade (`est. 15 min`).
 
-**Runs.** None yet: run them once the 18 Oct instructions (version 2026-10-18.2) are loaded into the
-conversion project.
+**Runs.**
+
+- **18 Oct 2026, the conversion project with version 2026-10-18.4, run by the household: passed** ("tests 11 to 14 OK"). All
+  five cases.
 
 ---
 
@@ -506,6 +510,10 @@ in the name (`1 tin of chickpeas`); or the article stays as the quantity (`a tin
 in the name"), and scaling writes `2 tins chickpeas`. On the shopping list such a line sits with others of the same name as
 `400 g + 1 tin`, not as one figure: the app does not guess what a tin weighs.
 
+**Runs.**
+
+- **18 Oct 2026, the conversion project with version 2026-10-18.4, run by the household: passed** ("tests 11 to 14 OK").
+
 ---
 
 ## 14. Several recipes in one message
@@ -526,7 +534,9 @@ the source is the one value that is shared, since they come from the same page.
 **Fails if:** Buttered Peas gets `SERVINGS: 4` without asking (a value carried from the other recipe); the converter asks for
 Buttered Peas' source; Lemon Rice is held back until Buttered Peas' question is answered; or the two share one code block.
 
-**Runs.** None yet.
+**Runs.**
+
+- **18 Oct 2026, the conversion project with version 2026-10-18.4, run by the household: passed** ("tests 11 to 14 OK").
 
 ---
 
