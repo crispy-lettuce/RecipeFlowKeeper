@@ -1,6 +1,6 @@
 # Converter test set
 
-Twelve deliberately awkward cases for checking `conversion-instructions.md` still
+Fourteen deliberately awkward cases for checking `conversion-instructions.md` still
 produces the right shape. Run them whenever those instructions change: paste each
 source into a fresh conversion chat and compare the output against the notes here.
 
@@ -13,6 +13,14 @@ changed recipe. Test 9 is the exception the other way: it has no recipe in it, a
 nothing is converted. Test 10 is its partner: the same unreadable address with the page's text pasted,
 which must convert normally. Test 11 is another of the ingredient-line tests: liquids in spoons under 50 ml
 and in ml from 50 ml. Test 12 is five small cases for the `TIME` line: when it is estimated, when it must not be.
+Test 13 is a tin with no weight, and test 14 several recipes in one message.
+
+**A stand-in run of version 2026-10-18.3, 18 Oct 2026** (not the conversion project). A session followed the rewritten file by
+hand for tests 1 to 8, 10, 11, 12a to 12e and 13, and ran all sixteen results through `test/validate-recipes.js`: 16 valid,
+0 held back, every MERGE timed, no Source note. Each `est.` figure was the app's own longest chain (`computeTimeline`) plus the
+hands-on allowance, rounded: 12a 50 + 5 = 55, 12e 40 + 5 = 45, as the test says. 12b kept the source's `1 hr`; 12c and 12d left
+`TIME` out with a reason. Test 13's lines drew the app's "container word in the name" advice (test 13 says why). The household's
+own runs in the conversion project are the ones that count.
 
 ---
 
@@ -476,6 +484,48 @@ the time ignores the marinade (`est. 15 min`).
 
 **Runs.** None yet: run them once the 18 Oct instructions (version 2026-10-18.2) are loaded into the
 conversion project.
+
+---
+
+## 13. A tin with no weight
+
+**Why:** added 18 Oct 2026, with the household's rewrite (version 2026-10-18.3). Some sources say only "a tin of chickpeas". The
+rule (section 1, "Tins and packs") is to use `tin` as the unit and never to invent the weight a tin usually holds.
+
+**Source:**
+
+> **Quick Chickpea Curry** — Serves 2. Fry 1 onion, sliced, in 1 tbsp oil for 5 minutes. Add a tin of chickpeas, drained, and a
+> tin of coconut milk, and simmer for 10 minutes.
+
+**Must produce:** `1 tin chickpeas, drained` and `1 tin coconut milk`.
+
+**Fails if:** a weight or volume appears that the source did not give (`400 g chickpeas`, `400 ml coconut milk`); the container is
+in the name (`1 tin of chickpeas`); or the article stays as the quantity (`a tin chickpeas`).
+
+**Worth knowing:** the app's line check (`ingredientLineFaults`) calls a line that starts `1 tin` "container word in the name"
+and suggests brackets. It is advice, never shown in the preview (it does not affect the list), but `validate-recipes.js` prints
+it. On the shopping list such a line totals with others of the same name as `400 g + 1 tin`, not as one figure.
+
+---
+
+## 14. Several recipes in one message
+
+**Why:** added 18 Oct 2026, with the household's rewrite. A photo of a cookbook spread often holds two recipes. Each must be
+converted on its own, with nothing carried from one to the other, and a recipe that needs an answer must not hold up the rest.
+
+**Source** (the whole message):
+
+> Two recipes from one page. **Lemon Rice** (from *Blue Door Bakery*) — Serves 4. Simmer 250g basmati rice in 550ml water for
+> 12 minutes, then stir in the zest of 1 lemon. **Buttered Peas** — Cook 250g frozen peas for 3 minutes, drain and stir through
+> 25g butter.
+
+**Must produce:** Lemon Rice in its own code block, `SOURCE: Blue Door Bakery`, `SERVINGS: 4`. Then, at the end, the questions for
+Buttered Peas, naming it: what it serves, and where it is from (or Buttered Peas converted after those answers).
+
+**Fails if:** Buttered Peas gets `SERVINGS: 4` or `SOURCE: Blue Door Bakery` without asking (a value carried from the other
+recipe); Lemon Rice is held back until Buttered Peas' questions are answered; or the two share one code block.
+
+**Runs.** None yet.
 
 ---
 

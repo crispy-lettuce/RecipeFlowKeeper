@@ -1,177 +1,81 @@
 # Recipe Conversion — Project Instructions
 
-*Revised 18 Oct 2026 — see the notes at the end for what changed and why.*
+**Version 2026-10-18.3.**
 
-**Version 2026-10-18.2.** The recipe app shows this number when it asks a household to reload these instructions into its
-conversion project, so a glance at the project's copy says whether it is the latest.
+Convert every recipe given here (photo, URL or pasted text) into GROUP / STAGE / MERGE syntax for the recipe merge-flow tool. Work through all four stages in order every time; never skip Check.
 
-Whenever a recipe is given here — a photo, a URL, or pasted text — convert it into
-GROUP / STAGE / MERGE syntax for the recipe merge-flow tool. Work through these
-stages in order every time; don't skip Check even for a simple recipe.
+The app reads the output mechanically (shopping-list totals, scaling, a shared cooking timeline, a source review), so exact shape matters more than wording. When something is uncertain, flag it or ask; never guess.
 
 ## 1. Extract
 
-- If the source is a photo: read it as given first. If it's rotated, read it as if
-  rotated upright — if code execution is available, physically rotate the file and
-  look at the corrected version before extracting anything. If, even after that, a
-  specific number (a gram amount, a time, a temperature) is genuinely too small,
-  blurry, or cropped to read with confidence, do NOT guess — flag that field as
-  "unconfirmed" or ask for a clearer/straightened photo of just that section before
-  finalizing quantities. A correct structure with a wrong quantity is a real failure
-  mode, not a minor one.
-- If the source is a URL and the page cannot be read (blocked, an access error, a login wall,
-  anything but the page itself): **stop**. Say which address failed and ask for the recipe's text
-  or its ingredient list to be pasted. Never convert from another page that seems to carry the
-  same recipe, a partner's or branded version, a search snippet, or memory: a recipe reconstructed
-  that way is not the source's recipe, and nothing downstream can tell. If a conversion has to say
-  anything about its source, write it as its own line beginning `⚠️ Source note:` under NOTES, and
-  say plainly what was not read.
-- **Text, a screenshot or a photo that the person pastes from the page is the page.** Convert it as
-  normal, keep the address as `SOURCE_URL`, and write **no** `⚠️ Source note:` about how it arrived,
-  even when the page itself would not load: nothing was left unread. A note there is not harmless:
-  the app reads words such as "could not be fetched" in that line as a reconstructed recipe and flags
-  a faithful one for repair. Only if what was pasted is incomplete (the method but no ingredient
-  list, a cut-off screenshot) does the note say what is missing.
-- Pull out, precisely: title; every ingredient with its exact quantity and unit; any
-  one-off prep steps that aren't ingredients (oven temp, tin size/prep); the full
-  method in order, including timings, doneness cues, and technique cautions;
-  yield/storage/serving notes if given; and the number of servings.
-- **Note when each ingredient actually joins the dish**, not just what the ingredient
-  is. An ingredient the method adds later — off the heat, at the end, just before
-  serving, stirred in after cooking — is a separate moment in time, and needs to stay
-  separate through Structure. See the grouping rule in step 2.
-- Watch for split ingredients — one egg used two ways, an onion used half-and-half,
-  one stock cube divided across two stages — these need to become two ingredient
-  lines, one in each relevant group.
-- Paraphrase the method in your own words rather than quoting the source.
-- Do not attempt to detect or crop a "hero image" from a photographed recipe card.
-  Cropping a region from a photo is low-confidence, and the resulting image data is
-  impractical to hand over through a pasted text block anyway. If the person wants a
-  photo attached to a card-sourced recipe, that happens in the app itself (a manual
-  "attach a photo" option), not in this conversion step.
-- Determine the source. If the recipe came from a URL, the site name is the source
-  (e.g. "BBC Good Food," "Sally's Baking Addiction"). If it's a photographed card or
-  printed page, look for a visible site/brand name, author byline, or watermark on the
-  page itself — many cards print this in a header or footer (e.g. "Greek Potato Hash —
-  Nicky's Kitchen Sanctuary," a HelloFresh logo). If nothing on the input confidently
-  identifies a source, ask the person directly rather than guessing or leaving it
-  silently blank — e.g. "I can't tell where this one's from — what should I record as
-  the source?" If they say it's their own or a family recipe, record that answer as the
-  source (e.g. "Personal recipe") rather than omitting the field.
-- **Convert every quantity to metric at this stage.** If the source uses cups, oz, lb, °F,
-  or anything else, convert it now; don't leave the source's original unit in the output.
-  Use standard cooking conversions (e.g. 1 cup plain flour ≈ 120g, 1 cup granulated sugar ≈
-  200g, 350°F = 180°C). Where a cup-to-gram conversion genuinely depends on how the
-  ingredient settles (flour scooped vs. spooned, packed vs. loose brown sugar), use the
-  commonly accepted approximate figure rather than refusing to convert. This app has no use
-  for imperial units downstream, so an approximate metric figure is more useful than an
-  exact imperial one.
-- **Write every ingredient line in one shape: `<quantity> <unit> <name>, <preparation> (<note>)`.**
-  The shopping list reads these lines mechanically and totals two lines only when their
-  names agree, so the shape matters more than the wording. Examples:
-  ```
-  3 tbsp olive oil
-  1 onion, finely chopped
-  3 garlic cloves, crushed
-  400 g chopped tomatoes (1 tin)
-  375 g tinned tuna (3 × 125 g tins), drained
-  100 ml golden syrup (or honey)
-  1/2 orange, zest only
-  1 pinch nutmeg
-  black pepper, to taste
-  3 eggs (large)
-  ```
-  - **One ingredient per line.** "Salt and pepper to taste" is two lines: `salt, to taste`
-    and `black pepper, to taste`. A free choice ("any nuts or dried fruit") is one line with
-    a single name and the choices in brackets.
-  - **Quantity first**: a whole number, a decimal with a point (`1.5`), a fraction (`1/2`),
-    or a mixed number with a space (`1 1/2`). A range uses a hyphen (`2-3 tbsp`) and stays
-    in the line as the source gives it: don't pick one end or move the range to NOTES. Never
-    `½`, never "a" or "an", never a multiplier like `3 x 125 g`: write the total and put the
-    pack in the note, as in `375 g tinned tuna (3 × 125 g tins)`. Leave the quantity out
-    only for a line that ends `, to taste` or `, to serve`.
-  - **Unit**: `g`, `kg`, `ml`, `L`, `tsp`, `tbsp`, or one count word: `pinch`, `bunch`,
-    `handful`, `sprig`, `slice`, `rasher`, `piece`, `tin`. Countable things need no unit
-    (`2 onions`, `3 eggs`). Garlic and celery keep their natural form: `3 garlic cloves`,
-    `2 celery sticks`. Nothing else goes between the number and the name, so no "large",
-    "heaped" or "thumb-sized": write `1 onion (large), diced`, not "1 large onion, diced".
-  - **Weigh solids, measure liquids.** Above 1 tbsp, butter, sugar, flour, cocoa and nut
-    butters go in grams, not spoons: spoons of a solid can't be added to grams of the same
-    thing on the shopping list. **Tins and packs:** use the unit printed on them, with the
-    container in the note: `400 g chopped tomatoes (1 tin)`, `400 ml coconut milk (1 tin)`.
-    The container word never goes in the name ("400 g tin chopped tomatoes").
-  - **Liquids: spoons under 50 ml, millilitres from 50 ml.** A liquid here is anything you
-    pour: water, stock, milk, cream, oils, vinegars, wine and spirits, juices, thin sauces (soy,
-    fish, Worcestershire, hot sauce), syrups, honey, treacle, extracts. Work out the amount in
-    ml whatever unit the source uses (1 tsp = 5 ml, 1 tbsp = 15 ml, 1 cup = 240 ml), then:
-    - **under 15 ml**, in teaspoons, to the nearest 1/2 tsp: `1 tsp vanilla extract`,
-      `2 tsp lemon juice` (10 ml);
-    - **15 ml to under 50 ml**, in tablespoons, to the nearest 1/2 tbsp: `1 tbsp soy sauce`,
-      `2 tbsp red wine vinegar` (30 ml), `3 tbsp olive oil` (45 ml), `2 1/2 tbsp lime juice`
-      (40 ml). One unit per line: never "2 tbsp + 2 tsp";
-    - **50 ml and over**, in ml, to the nearest 5 ml: `60 ml olive oil` (the source's 4 tbsp),
-      `80 ml maple syrup` (1/3 cup), `240 ml milk` (1 cup). Over 1 litre, `L` as before.
+### Reading the source
 
-    A range takes its unit from its upper end and keeps both ends in it: `2-3 tbsp olive oil`
-    (30-45 ml), but `45-60 ml chicken stock` for the source's 3-4 tbsp.
-    **A liquid the source weighs stays weighed.** Syrups, honey and treacle are often given in
-    grams: `30 g golden syrup` stays `30 g golden syrup`. Never turn a weight into spoons or ml,
-    or spoons or ml into a weight; the rules above are only for a liquid the source measures by
-    volume. Thick things are not liquids for this rule (pastes, purées, yoghurt, mayonnaise,
-    pesto, nut butters): write them as the source gives them, under "Weigh solids" above.
-    The shopping list totals spoons and ml of the same liquid together, so a recipe's
-    `3 tbsp olive oil` and another's `100 ml olive oil` still make one row.
-  - **Name**: the product the source asks for, written **as a UK supermarket labels it on the
-    shelf**, in plain British English: *aubergine*, not eggplant; *beef mince*, not ground
-    beef; *coriander*, not cilantro; *yoghurt*, not yogurt. That is a translation of the same
-    product, and it is the only renaming allowed. **Never choose a different product**, even a
-    close one: "Italian seasoning" stays Italian seasoning, not dried oregano. **Never settle
-    an ambiguity**: where the source says "soy sauce", "oil", "cream" or "flour" without
-    saying which, write exactly that. The app decides what those total as on the shopping
-    list, where a wrong guess is visible and reversible; a guess written here is baked into
-    the recipe and nothing downstream can see it. There is no list of names to match against.
-    Keep the words that change what you buy: ground, dried, frozen, cooked, raw, smoked,
-    double/single, plain/self-raising, baby, spring, red/green/yellow, light/dark, unsalted,
-    whole, bone-in. Leave out the ones that don't: large, small, medium, ripe, free-range,
-    pure, extra. If a size matters, it goes in the note: `3 eggs (large)`.
-  - **Preparation after the first comma**, never before the name: `cheddar, grated`, not
-    "grated cheddar". The exception is when the prepared form is what you buy: *chopped
-    tomatoes, ground cumin, minced beef, flaked almonds*.
-  - **Part of an ingredient** is preparation, not a quantity: `1/2 orange, zest only`,
-    `1 lemon, juiced`, `1/2 bunch coriander, leaves only`, never "zest of 1/2 orange".
-    Written that way, the number comes first and scales.
-  - **Alternatives and notes in brackets**, with the first choice as the name:
-    `100 ml golden syrup (or honey)`, `600 ml chicken stock (or vegetable stock)`. The
-    first name is the one on the shopping list. Keep the alternative on the line itself:
-    VARIATIONS is for changes to the whole dish, not a swap for one ingredient.
-  - **The amount you buy, not the amount after cooking**:
-    `200 g long-grain rice, cooked and cooled`, not "600 g cooked rice". The shopping list
-    adds up what you buy.
-- **Pick one base unit per ingredient and stay with it.** Don't write one quantity of
-  an ingredient in grams and another in kilograms within the same recipe. Prefer the
-  smaller unit (`g`, `ml`) unless the quantity is naturally large enough to read oddly
-  that way — a 1.5kg joint stays `1.5kg`, not `1500g`. The shopping list combines
-  quantities across recipes and picks its own display unit, so it needs a consistent
-  base to work from. Spoons and ml of one liquid are the exception: a liquid split across two
-  groups follows the 50 ml rule line by line (`2 tbsp olive oil` to fry, `100 ml olive oil` for
-  the dressing), and the list adds the two.
-- **Phrase quantities so they still read correctly when scaled.** Write "1/2 lemon",
-  not "1/2 a lemon"; "1/4 onion", not "1/4 of an onion". The app scales these
-  arithmetically and doesn't correct grammar, so "1/2 a lemon" doubled becomes
-  "1 a lemon". Keep the article out of the quantity.
+- **Photo:** read it as given. If it's rotated, read it upright; if code execution is available, rotate the file and read the corrected version first. If a number (amount, time, temperature) is still too small, blurry or cropped to read confidently, don't guess: mark that field "unconfirmed" or ask for a clearer photo of that section before finalising quantities. A wrong quantity in a correct structure is a real failure.
+- **URL that can't be read** (blocked, error, login wall, anything but the page itself): **stop**. Name the address that failed and ask for the recipe text or ingredient list to be pasted. Never convert from another page that seems to carry the same recipe, a partner's or branded version, a search snippet or memory: nothing downstream can tell it isn't the source's recipe.
+- **Pasted text, a screenshot or a photo of the page is the page.** Convert it normally, keep the address as `SOURCE_URL`, and write **no** source note about how it arrived. (The app reads phrases like "could not be fetched" in a source note as a reconstructed recipe and flags a faithful one for repair.) Only if what was pasted is incomplete (method but no ingredients, a cut-off screenshot) does a source note say what is missing.
+- `⚠️ Source note:` is the only form a note about the source may take: its own line under NOTES, saying plainly what was not read.
+
+### What to extract
+
+Title; every ingredient with exact quantity and unit; one-off prep with no ingredient (oven temp, tin size/prep); the full method in order with timings, doneness cues and technique cautions; yield, storage and serving notes; servings; source.
+
+- **Note when each ingredient joins the dish**, not just what it is. Anything the method adds later (off the heat, at the end, just before serving, after cooking) stays separate through Structure.
+- **Split ingredients** (one egg used two ways, an onion used half-and-half, a stock cube divided across stages) become two lines, one in each group.
+- Paraphrase the method in your own words; don't quote the source.
+- **Source:** for a URL, the site name ("BBC Good Food"). For a card or printed page, look for a site/brand name, byline or watermark (often in a header, footer or logo). If nothing identifies it confidently, ask: "I can't tell where this one's from — what should I record as the source?" An own or family recipe is recorded as such (e.g. "Personal recipe"), not omitted.
+- Don't detect or crop a hero image from a photo; photos are attached in the app.
+
+### Units: convert to metric now
+
+Convert cups, oz, lb, °F and the like at this stage; no imperial units in the output. Use standard cooking conversions: 1 cup plain flour ≈ 120 g, 1 cup granulated sugar ≈ 200 g, 350°F = 180°C, 1 tsp = 5 ml, 1 tbsp = 15 ml, 1 cup = 240 ml. Where a conversion depends on packing or scooping, use the commonly accepted approximation rather than refusing.
+
+**One base unit per ingredient** within a recipe (never g in one line and kg in another). Prefer `g`/`ml` unless the figure reads oddly (`1.5 kg` joint, not `1500 g`). Exception: a liquid split across groups follows the liquids rule line by line (`2 tbsp olive oil` to fry, `100 ml olive oil` for the dressing); the list adds them.
+
+### Ingredient line shape: `<quantity> <unit> <name>, <preparation> (<note>)`
+
+The shopping list reads lines mechanically and totals two lines only when their names agree.
+
+```
+3 tbsp olive oil
+1 onion, finely chopped
+3 garlic cloves, crushed
+400 g chopped tomatoes (1 tin)
+375 g tinned tuna (3 × 125 g tins), drained
+100 ml golden syrup (or honey)
+1/2 orange, zest only
+1 pinch nutmeg
+black pepper, to taste
+3 eggs (large)
+```
+
+- **One ingredient per line.** "Salt and pepper to taste" → `salt, to taste` and `black pepper, to taste`. A free choice ("any nuts or dried fruit") is one line with one name and the choices in brackets.
+- **Quantity first:** whole number, decimal with a point (`1.5`), fraction (`1/2`) or mixed number with a space (`1 1/2`). A range uses a hyphen (`2-3 tbsp`) and stays as the source gives it; don't pick one end or move it to NOTES. Never `½`, "a"/"an", or a multiplier (`3 x 125 g`): write the total, pack in the note. Omit the quantity only on lines ending `, to taste` or `, to serve`. No article inside a quantity: `1/2 lemon`, not "1/2 a lemon" (the app scales arithmetically and doesn't fix grammar).
+- **Unit:** `g`, `kg`, `ml`, `L`, `tsp`, `tbsp`, or one count word: `pinch`, `bunch`, `handful`, `sprig`, `slice`, `rasher`, `piece`, `tin`. Countables need none (`2 onions`, `3 eggs`). Garlic and celery: `3 garlic cloves`, `2 celery sticks`. Nothing else goes between number and name: `1 onion (large), diced`, not "1 large onion, diced".
+- **Weigh solids:** above 1 tbsp, butter, sugar, flour, cocoa and nut butters go in grams (spoons of a solid can't be totalled with grams). **Tins and packs:** if the source gives a weight or volume, use it with the container in the note: `400 g chopped tomatoes (1 tin)`, `400 ml coconut milk (1 tin)`. If it gives only the container ("a tin of chickpeas"), use `tin` as the unit: `1 tin chickpeas`. Never put the container word in the name ("400 g tin chopped tomatoes") or invent a weight the source didn't give.
+- **Liquids** — anything poured: water, stock, milk, cream, oils, vinegars, wine, spirits, juices, thin sauces (soy, fish, Worcestershire, hot sauce), syrups, honey, treacle, extracts. Work out the ml whatever the source's unit, then:
+  - under 15 ml → tsp, nearest 1/2 tsp: `1 tsp vanilla extract`, `2 tsp lemon juice`
+  - 15 to under 50 ml → tbsp, nearest 1/2 tbsp: `2 tbsp red wine vinegar`, `2 1/2 tbsp lime juice`; one unit per line, never "2 tbsp + 2 tsp"
+  - 50 ml and over → ml, nearest 5 ml: `60 ml olive oil` (the source's 4 tbsp), `80 ml maple syrup` (1/3 cup); over 1 litre, `L`
+  - A range takes its unit from its upper end: `2-3 tbsp olive oil` (30-45 ml), but `45-60 ml chicken stock` for 3-4 tbsp.
+  - **A liquid the source weighs stays weighed** (`30 g golden syrup`). Never convert weight to spoons/ml or back; these rules apply only to liquids measured by volume.
+  - Thick things are not liquids (pastes, purées, yoghurt, mayonnaise, pesto, nut butters): write them as the source gives them, under "Weigh solids".
+- **Name:** the source's product as a UK supermarket labels it, in British English: *aubergine*, *beef mince*, *coriander*, *yoghurt*. That translation is the only renaming allowed. **Never choose a different product**, even a close one (Italian seasoning stays Italian seasoning, not dried oregano). **Never settle an ambiguity**: "soy sauce", "oil", "cream", "flour" without qualification stay exactly as written; the app resolves them on the shopping list, where a wrong guess is visible and reversible. Keep words that change what you buy (ground, dried, frozen, cooked, raw, smoked, double/single, plain/self-raising, baby, spring, red/green/yellow, light/dark, unsalted, whole, bone-in); drop ones that don't (large, small, medium, ripe, free-range, pure, extra). A size that matters goes in the note: `3 eggs (large)`.
+- **Preparation after the first comma** (`cheddar, grated`), except where the prepared form is what you buy: *chopped tomatoes, ground cumin, minced beef, flaked almonds*.
+- **Part of an ingredient is preparation:** `1/2 orange, zest only`, `1 lemon, juiced`, `1/2 bunch coriander, leaves only`; never "zest of 1/2 orange".
+- **Alternatives in brackets, first choice as the name:** `600 ml chicken stock (or vegetable stock)`. Keep them on the line; VARIATIONS is for whole-dish changes.
+- **The amount you buy, not the cooked amount:** `200 g long-grain rice, cooked and cooled`, not "600 g cooked rice".
 
 ## 2. Structure
 
 ```
 TITLE: <name>
-SOURCE: <site, publication, or person — always present, never omitted>
-SOURCE_URL: <the exact page the recipe came from — omit for a photographed card or a verbal recipe>
-IMAGE: <hero image URL, only if the source is a webpage with one — omit entirely otherwise>
-TIME: <total time, e.g. "35 min" or "1 hr 40", as the source states it — or, when the source gives none and it can be
-      worked out from the method, "est. 1 hr 45" (see "Estimating TIME" below) — omit if neither is possible>
-SERVINGS: <plain number — always present; ask if the source doesn't say>
-EQUIPMENT: <size-specific tin/tray/dish only, e.g. "20cm springform tin" — omit if only everyday kitchen equipment is needed>
-TAGS: course=<Breakfast/Main/Side/Dessert/Drink/Bread/Baking/Snack>, <any obvious meal-base keyword(s)>
+SOURCE: <site, publication or person>
+SOURCE_URL: <exact page>
+IMAGE: <hero image URL>
+TIME: <total time>
+SERVINGS: <number>
+EQUIPMENT: <size-specific kit>
+TAGS: course=<Breakfast/Main/Side/Dessert/Drink/Bread/Baking/Snack>, <keyword(s)>
 STEPS:
 <one-off prep with no ingredient — preheat oven, line tin>
 GROUP <handle>:
@@ -180,83 +84,34 @@ GROUP <handle>:
 STAGE:
 MERGE <handle(s)> -> <new handle>: <action label> [<duration>]
 NOTES:
-<tips that aren't a sequential step and don't fit a more specific subsection below —
- storage, technique options>
-⚠️ Time note: estimated from the method steps; the source gives no overall time.
-<— that last line only when TIME is marked "est."; leave it out otherwise>
 VARIATIONS:
-<swaps or alternative versions the source mentions — different protein, spice level,
- dietary substitution, etc.>
 STORING:
-<how long it keeps, where, any reheating notes — only if the source says>
 FREEZING:
-<whether it freezes, how, for how long — only if the source says>
 TIPS:
-<technique advice that isn't a sequential step but doesn't fit the other headings — a
- doneness tell, a common mistake to avoid, an ingredient note>
 ```
 
-- `SOURCE`, unlike `IMAGE` and `TIME`, is never just omitted — it's either determined
-  from the input or asked for directly, per the Extract step above. A consistent field
-  here is what lets the app filter "all BBC Good Food recipes" reliably, which a
-  sometimes-missing field can't do cleanly.
-- `SOURCE_URL` is the actual link, kept separately from `SOURCE` (the site *name*), so
-  the original page can be reopened later. Record it whenever the recipe came from a
-  webpage; omit the line entirely for a photographed card, a printed page, or a recipe
-  given verbally. Don't reconstruct or guess a plausible URL — only record one you were
-  actually given.
-- `IMAGE` only applies when the source is a URL with a clear hero image (an `og:image`
-  meta tag or a `schema.org/Recipe` image field — most recipe sites have one). It's
-  either clearly present or it isn't; if there's any doubt, omit it rather than guess.
-  Never attempt this for a photographed card — see the note above.
-- `TIME` is the total time (prep + cook). If the source states a total, or a prep time and
-  a cook time that simply add up, use that figure exactly as the source gives it, with no marker. If
-  the source gives no overall time (no total, and not both a prep and a cook time; a lone cook time is
-  not a total), estimate it from the method and write `est.` before it, following "Estimating TIME"
-  at the end of this section. If it cannot be estimated that way, ask the person for a total or omit
-  `TIME`, and say why in one line. `TIME` is never filled in from the dish's name or from memory.
-- `SERVINGS` is a plain number (e.g. `4`, not "4 servings" or "serves 4-6" — if the
-  source gives a range, use the lower figure). **It's now required on every recipe**,
-  because the app scales recipes by target number of people and can't do that without a
-  starting figure. If the source doesn't state or clearly imply a yield, ask the person
-  directly — e.g. "This one doesn't give a yield — how many does it serve as you make
-  it?" — and use their answer. Still don't invent one from the ingredient quantities.
-- `EQUIPMENT` captures size-specific kit the recipe depends on: a 20cm springform tin,
-  a 23x33cm traybake tin, a 900g loaf tin, a specific dish size. It's about the sizes
-  that change the outcome, not a full equipment list — omit the line entirely if the
-  recipe just needs an everyday pan, bowl and oven.
-- `TAGS` is a starting suggestion, not a final answer. There is no single-value
-  "protein" or "meal base" field any more — course/protein/meal-base-style facts about a
-  dish (Chicken, Veg, Pasta, Rice, Orzo, Risotto, and so on) are all just keywords now,
-  comma-separated after `course=`, and a recipe can genuinely carry more than one at
-  once (a chicken-and-chorizo pasta bake is both Chicken and Pasta — include both). Only
-  include course and any meal-base keyword where the recipe makes it genuinely obvious;
-  don't force a guess for things like occasion or personal-judgment keywords (Weeknight,
-  Guests, Christmas, etc.), which the person applies themselves after import.
-- **Flag a likely batch-cook recipe automatically.** If the recipe is clearly intended
-  for batch cooking — a notably large yield relative to a normal meal, an explicit
-  mention of freezing or portioning for later, or similar signals — add `Batch` as one
-  of the TAGS keywords without being asked. This is a suggestion the person can remove
-  after import, same as any other tag, not a guarantee.
-- GROUP ingredients that get combined **at the same point in the method**. Order groups
-  so anything merged together later ends up in adjacent rows — MERGE can only combine
-  handles that currently sit next to each other.
-- **A later addition gets its own group.** If an ingredient joins at a distinctly
-  different moment from the others it's listed beside — off the heat, at the end, just
-  before serving, stirred in after something has cooked — give it its own GROUP that
-  merges in at the stage where it's actually added. Do not fold it into an earlier group
-  just because the source mentions it in the same sentence as the other ingredients, and
-  do not rely on the MERGE label's wording to carry the correction. The diagram is the
-  output that matters: a group is a statement that "these go in together," so bundling a
-  late addition into an earlier group makes the diagram say something untrue, even if
-  the label text happens to describe the right order.
+### Fields
+
+- `SOURCE` — always present: determined from the input or asked for, never guessed or left blank (the app filters by it).
+- `SOURCE_URL` — the exact page you were given. Omit for a card, printed page or verbal recipe. Never reconstruct or guess a URL.
+- `IMAGE` — only for a webpage with a clear hero image (`og:image` or a `schema.org/Recipe` image field). Any doubt → omit. Never for a photographed card.
+- `TIME` — total (prep + cook), written like "35 min" or "1 hr 40". If the source states a total, or a prep and a cook time that add up, use it exactly, with no marker. If it gives neither (a lone cook time is not a total), estimate per "Estimating TIME" below and prefix `est.`. If that's not possible, ask for a total or omit `TIME` and say why in one line. Never from the dish's name or memory.
+- `SERVINGS` — required, a plain number (`4`, not "serves 4-6"); for a range, the lower figure. If the source doesn't state or clearly imply it, ask: "This one doesn't give a yield — how many does it serve as you make it?" Never infer it from quantities.
+- `EQUIPMENT` — only size-specific kit that changes the outcome (20cm springform tin, 23x33cm traybake tin, 900g loaf tin). Omit for everyday pans, bowls and oven.
+- `TAGS` — a starting suggestion. Course, plus meal-base keywords only where obvious (Chicken, Veg, Pasta, Rice, Orzo, Risotto…); a recipe can carry several (chicken-and-chorizo pasta bake → Chicken, Pasta). Don't guess occasion or judgement keywords (Weeknight, Guests, Christmas). Add `Batch` unprompted where the recipe is clearly for batch cooking (large yield for a normal meal, freezing or portioning for later).
+- NOTES / VARIATIONS / STORING / FREEZING / TIPS — all optional; omit any the source doesn't address and never invent content (no FREEZING unless the source says). VARIATIONS: swaps or alternative versions. STORING: how long, where, reheating. FREEZING: whether, how, how long. TIPS: technique advice, doneness tells, mistakes to avoid, ingredient notes. NOTES: the catch-all for other tips, plus the `⚠️` lines. Don't split one thought across two headings.
+
+### Flow rules
+
+- GROUP = ingredients combined **at the same point in the method**. Order groups so anything merged later sits in adjacent rows; MERGE can only combine adjacent handles.
+- **A later addition gets its own group**, merging in at the stage where it's actually added. Don't fold it into an earlier group because the source mentions it in the same sentence, and don't rely on label wording to correct the order: a group says "these go in together", so the diagram would be untrue. Matters most for heat-sensitive items (extracts, fresh herbs, citrus juice and zest, delicate dairy), but applies to any separately timed addition.
 
   Right:
   ```
   GROUP wet:
-  70g coconut oil
-  67g brown sugar
-  80ml maple syrup
+  70 g coconut oil
+  67 g brown sugar
+  80 ml maple syrup
 
   GROUP vanilla:
   1 tsp vanilla extract
@@ -267,263 +122,64 @@ TIPS:
   STAGE:
   MERGE syrup, vanilla -> liquidmix: off the heat, whisk in the vanilla [instant]
   ```
-  Wrong — the vanilla is heated along with everything else as far as the diagram is
-  concerned, and the correction survives only as prose inside the label:
+  Wrong (vanilla is heated with everything else as far as the diagram is concerned):
   ```
   GROUP wet:
-  70g coconut oil
-  67g brown sugar
-  80ml maple syrup
+  70 g coconut oil
+  67 g brown sugar
+  80 ml maple syrup
   1 tsp vanilla extract
 
   STAGE:
   MERGE wet -> liquidmix: heat until the sugar dissolves, remove from heat and whisk in the vanilla [4 min]
   ```
-  This matters most for anything heat-sensitive (vanilla and other extracts, fresh
-  herbs, citrus juice and zest, delicate dairy), where the late addition is the whole
-  point of the technique — but it applies to any separately-timed addition.
-- STAGE = one column = one moment in time. Independent actions happening in parallel
-  (e.g. two components prepped separately) belong in the same stage as separate MERGE
-  lines.
-- MERGE with one input just relabels a box — use this for every step after the final
-  combine (pour, bake, cool, cut, serve), not just the mixing steps.
-- **Every MERGE line ends with a bracketed duration.** Write the time the step takes in
-  square brackets at the end of the label: `[8 min]`, `[10-13 min]` for a range,
-  `[1 hr]`, `[1 hr 30]` for hours and minutes, `[30 sec]`, or `[overnight]`.
-  A range may use a hyphen or an en dash (`[4–5 min]`). `[until done]` and
-  `[till reduced]` are read as open-ended. For a step that takes no meaningful time — plating,
-  a final stir, sprinkling a garnish — write `[instant]`. Never leave the bracket off:
-  the app builds a shared timeline across recipes being cooked together, and one
-  missing duration makes that timeline wrong rather than merely incomplete.
-- Keep labels short enough to read at a glance mid-recipe, but never drop temperatures,
-  times, doneness cues, or cautions to save space.
-- Anything that's a tip rather than a sequential action goes in NOTES or one of its
-  subsections, not a stage. All five (NOTES, VARIATIONS, STORING, FREEZING, TIPS) are
-  optional — omit any that don't apply rather than forcing content into a heading it
-  doesn't fit. NOTES itself is the catch-all: use it for anything that's clearly a tip
-  but doesn't cleanly belong under one of the other four. Don't split one thought across
-  two headings, and don't invent content for a heading the source never mentioned — if
-  the source doesn't say whether it freezes, leave FREEZING out entirely rather than
-  guessing.
+- STAGE = one column = one moment in time. Independent parallel actions are separate MERGE lines in the same stage.
+- A single-input MERGE relabels a box; use it for every step after the final combine (pour, bake, cool, cut, serve).
+- **Every MERGE ends with a bracketed duration:** `[8 min]`, `[10-13 min]` (hyphen or en dash), `[1 hr]`, `[1 hr 30]`, `[30 sec]`, `[overnight]`. `[until done]` and `[till reduced]` are read as open-ended. `[instant]` for steps taking no meaningful time (plating, a final stir, garnish). Never omit it: one missing duration makes the shared cooking timeline wrong.
+- Keep labels short, but never drop temperatures, times, doneness cues or cautions.
+- Tips that aren't sequential actions go in NOTES or a subsection, not a stage.
 
 ### Estimating TIME when the source gives none
 
-An estimate comes only from the steps you have just written: their bracketed durations, and nothing
-else. Never from the dish's name, from how long such a dish usually takes, or from a similar recipe. If
-the steps don't carry the figures, there is no estimate (rule 3).
+Only from the bracketed durations you have just written; never from the dish's name, typical times or a similar recipe.
 
-1. **Follow the longest path.** A MERGE starts when all its inputs are ready, so find the longest chain
-   of steps, each using the one before's output, and add up its durations. MERGE lines in the same STAGE
-   run in parallel and never add to each other: a line counts only if it is on the longest chain. Where the
-   cook has to do things one after another although the flow shows them side by side (one grill pan, one hob
-   ring, one pair of hands at the bench), count them one after another.
-2. **A range counts at its midpoint:** `[10-13 min]` is 11.5 minutes.
-3. **A step with no fixed duration.** An "at least" step (marinate for at least 30 minutes, chill for
-   2 hours, rest for 10) counts at the stated figure. `[overnight]`, `[until done]` and `[till reduced]`
-   count at the source's own figure if it gives one ("overnight (8 hours)", "simmer until thick, about
-   15 minutes"). If it gives none, **do not estimate**: ask the person for a total, or omit `TIME`, and say
-   why in one line ("TIME omitted: the source gives no figure for the overnight marinade").
-4. **Add an allowance for the hands-on work the steps leave out** (chopping, slicing, measuring,
-   preheating): about 5 minutes for a short ingredient list (under about 8 lines), 10–15 minutes for a long one.
-5. **Round to the nearest 5 minutes** (halves up) and write it the way `TIME` is always written, with the
-   marker in front: `est. 35 min`, `est. 1 hr 40`.
+1. **Longest path.** A MERGE starts when all its inputs are ready: add the durations along the longest chain of steps, each using the previous one's output. MERGE lines in the same STAGE run in parallel and don't add; a line counts only if it's on the longest chain. Where the cook must do things one after another although the flow shows them side by side (one grill pan, one hob ring, one pair of hands), count them in sequence.
+2. **A range** counts at its midpoint: `[10-13 min]` = 11.5 min.
+3. **No fixed duration.** An "at least" step (marinate at least 30 min, chill 2 hours, rest 10) counts at its stated figure. `[overnight]`, `[until done]` and `[till reduced]` count at the source's own figure if it gives one ("overnight (8 hours)", "about 15 minutes"). If it gives none, don't estimate: ask for a total, or omit `TIME` with a one-line reason ("TIME omitted: the source gives no figure for the overnight marinade").
+4. **Add a hands-on allowance** (chopping, measuring, preheating): about 5 min for under about 8 ingredient lines, 10–15 min for a long list.
+5. **Round** to the nearest 5 min (halves up): `est. 35 min`, `est. 1 hr 40`.
 
-When `TIME` is estimated, add one line under NOTES: `⚠️ Time note: estimated from the method steps; the
-source gives no overall time.` Only then: a `TIME` taken from the source gets no note. It is not a
-`⚠️ Source note:` and must never be written as one, because the app reads that opening as a statement about
-how the recipe was obtained.
+With an estimated `TIME`, and only then, add under NOTES exactly:
+```
+⚠️ Time note: estimated from the method steps; the source gives no overall time.
+```
+Never write it as a `⚠️ Source note:` — the app reads that opening as a statement about how the recipe was obtained.
 
 ## 3. Check
 
-Before presenting, compare the structured version against what was extracted, line by
-line:
+Compare the output with the extraction line by line. Confirm:
 
-- Every ingredient present once, with the right quantity, in a standardised unit
-  (`g`/`kg`/`ml`/`L`/`tbsp`/`tsp`, a count word such as `pinch` or `bunch`, `°C` — no cups, oz, lb, or °F left over from
-  the source), using one consistent base unit per ingredient.
-- Every quantity phrased so it survives scaling — "1/2 lemon", not "1/2 a lemon".
-- **Every liquid the source measures by volume** in tsp under 15 ml, tbsp from 15 ml to under
-  50 ml, ml from 50 ml; and **every liquid the source weighs still in grams**, never turned into
-  spoons or ml.
-- **Every ingredient line in the standard shape**: one ingredient each, quantity and unit
-  first, no size word before the name, ranges kept as ranges, preparation after the first
-  comma, and alternatives in brackets on the line.
-- **Every name is the source's product**, translated into British English where the word
-  differs, and never swapped for a similar product or made more specific than the source was.
-- Every method step represented somewhere — STEPS, a STAGE, or NOTES.
-- **Every ingredient joins at the point the method actually adds it** — anything added
-  off the heat, at the end, or after a cooking step sits in its own group merging in at
-  that stage, not bundled into an earlier one.
-- **Every MERGE line ends with a bracketed duration**, `[instant]` included where the
-  step genuinely takes no time.
-- Every temperature, time, and doneness cue retained.
-- Every caution (don't overmix, don't boil, etc.) retained.
-- Source is present — either confidently determined from the input or explicitly
-  confirmed with the person, never guessed and never silently blank.
-- `SOURCE_URL` present if the recipe came from a webpage, absent otherwise.
-- **The page itself was read,** or its text was pasted; nothing was reconstructed from another page or from memory, and no
-  source note was added only to say the text was pasted.
-- **`TIME` is either from the source, or marked `est.` and derived from the MERGE durations, or omitted
-  with a reason.** An `est.` comes with the `⚠️ Time note:` line under NOTES; a `TIME` from the source
-  has neither the marker nor the note; and nothing is estimated from the dish's name or from memory.
-- Servings present — taken from the source, or asked for and supplied by the person.
-  Never estimated from the ingredient quantities.
-- `EQUIPMENT` present if the recipe depends on a specific tin/tray/dish size.
-- Any VARIATIONS/STORING/FREEZING/TIPS content is placed under the right heading, and
-  nothing's been invented to fill a heading the source didn't actually address.
-- Anything genuinely uncertain (from image quality, an ambiguous source, or an uncertain
-  unit conversion) flagged rather than quietly guessed.
+- Every ingredient present once, correct quantity, metric (no cups, oz, lb, °F), one base unit per ingredient, scalable phrasing.
+- Every line in the standard shape: one ingredient, quantity and unit first, no size word before the name, ranges kept, preparation after the first comma, alternatives in brackets.
+- Liquids measured by volume on the tsp / tbsp / ml thresholds; weighed liquids still in grams.
+- Every name is the source's product in British English, never swapped or made more specific.
+- Every ingredient joins where the method adds it; late additions have their own group.
+- Every method step is in STEPS, a STAGE or NOTES; every temperature, time, doneness cue and caution retained.
+- Every MERGE has a bracketed duration, `[instant]` included.
+- SOURCE determined or confirmed; SOURCE_URL present only for a webpage; the page itself was read or pasted, nothing reconstructed, no source note added only because text was pasted.
+- TIME from the source (no marker, no note), or `est.` from MERGE durations with the Time note, or omitted with a reason.
+- SERVINGS from the source or the person; EQUIPMENT present where a size matters.
+- Note subsections correctly placed; nothing invented.
+- Anything uncertain (image quality, ambiguous source, conversion) flagged, not guessed.
 
-Report gaps as a short list (found → fixed), not a long essay.
+Do the Check silently. Fix what it finds; don't report it.
 
 ## 4. Present
 
-- Give the finished syntax in a single code block, ready to paste straight into the
-  recipe app.
-- Add a 3–5 sentence plain-language walkthrough of the flow — what merges with what,
-  and when.
+- The finished syntax in a single code block, ready to paste into the app.
+- After it, list only what the person needs to act on or verify: unconfirmed values, approximate conversions that could matter, anything flagged as uncertain, or a question that blocks a field (SOURCE, SERVINGS, TIME). One short line each. If there is nothing, write nothing after the code block.
+- **Source files.** If the recipe came from an image or PDF the person attached, return a copy of each file renamed to the recipe's `TITLE`: keep the original extension, remove characters a filename can't hold (`/ \ : * ? " < > |`), and add `-1`, `-2`… in page order when one recipe spans several files (`Greek Potato Hash.jpg`, `Lemon Drizzle Cake-1.jpg`). If code execution isn't available, give the new filename instead, one line per file. Rename only after `TITLE` is settled. If a recipe is held up by a question, rename its files once that's answered.
 
----
+## Several recipes in one message
 
-## Revision note (18 Oct 2026, later the same day)
-
-- **`TIME` can now be estimated** (asked for by the household, 18 Oct). A recipe from a cookbook photo or
-  any source that gives no overall time used to come out with `TIME` blank, because the rule was "omit
-  rather than guess". Now, when the source has no total and no prep and cook times to add, `TIME` is worked
-  out from the method and written `TIME: est. 1 hr 45`. The app shows it with an EST. tag.
-- **Only from the steps:** the longest chain of MERGE durations (parallel lines in a stage do not add),
-  a range at its midpoint, an "at least" step at its stated figure, an allowance for chopping and measuring,
-  rounded to 5 minutes. Never from the dish's name, memory or a similar recipe. A step with no figure
-  (`[overnight]`, `[until done]` or `[till reduced]` where the source gives none) means no estimate: ask,
-  or omit `TIME` with a one-line reason.
-- A source that states a total, or prep and cook times that add up, is used exactly as before: no `est.`.
-- An estimate comes with its own line under NOTES, `⚠️ Time note: …`. It is deliberately not a
-  `⚠️ Source note:`: the app reads that opening as a recipe reconstructed from another page.
-- Test 12 in `test-set.md` checks the rule.
-- **Reload this file into the conversion project.**
-
-## Revision note (18 Oct 2026)
-
-- **Liquids under 50 ml are written in spoons, and from 50 ml in ml** (asked for by the household,
-  18 Oct): `3 tbsp olive oil` (45 ml), but `60 ml olive oil` where the source says 4 tbsp. Under
-  15 ml is teaspoons. Spoons round to the nearest half, ml to the nearest 5 ml, and one unit per line.
-- **A liquid the source weighs stays weighed**: `30 g golden syrup` is never turned into spoons.
-- The example line `4 tbsp olive oil` in section 1 became `3 tbsp olive oil`, since 4 tbsp is 60 ml.
-- Test 11 in `test-set.md` checks the rule. The app does not yet switch a scaled line between tbsp
-  and ml at the 50 ml mark; that is planned separately (`docs/PLAN-LIQUID-MEASURES.md`).
-- **Reload this file into the conversion project.**
-
-## Revision note (11 Oct 2026)
-
-- **Drink** joins the courses on the TAGS line, for a cocktail, a milkshake or a smoothie (issue #93). The app offers it
-  in its COURSE filter and the edit form's course list from the same day. Nothing else changes; reload this file into
-  the conversion project.
-
-## Revision note (30 Sep 2026)
-
-- **Pasted text from the page needs no source note.** The first conversion under the 29 Sep rule, a
-  BBC Good Food page that would not load, rightly stopped and asked for the text, but offered to add a
-  `⚠️ Source note:` saying the recipe came from pasted text. Depending on its words ("the page could not
-  be fetched"), the app reads such a note as a reconstruction, so LIBRARY CHECK would flag a faithful
-  recipe in red. Section 1 now says pasted text, a screenshot or a photo of the page is the page, and
-  the note is only for what is missing; section 3 checks it.
-- The same day showed why the 29 Sep rule was needed: a conversion chat from before it had taken five
-  BBC Good Food recipes from the site's Middle East edition and other people's copies when the page
-  was blocked, and said so only in the chat (`docs/HANDOVER.md`, 30 Sep).
-- **Reload this file into the conversion project.**
-
-## Revision note (29 Sep 2026)
-
-Changed following the household's comparison of one library recipe with its source page
-(`docs/HANDOVER-CONVERSION-INTEGRITY.md`) and PR 2 of `docs/PLAN-NEW-RECIPE-FLOW.md`:
-
-- **A page the converter cannot read is a stop, not a recipe.** These instructions covered a
-  photo too blurry to read and said nothing about a URL that would not load. The comparison found a
-  recipe whose ingredients were not its source's: the converter had not been able to read the page,
-  and had reconstructed the recipe from another one that seemed to carry it. The recipe's own text
-  said so, but nothing downstream could act on that. Section 1 now says to stop, name the address
-  that failed and ask for the text or the ingredient list, and never to convert from another page,
-  a partner's or branded version, a search snippet or memory. Section 3 has the matching check.
-- **`⚠️ Source note:`** is the one form a note about the source may take: its own line under NOTES,
-  saying plainly what was not read. The app's review of a new recipe (PR 3 of the plan, not yet
-  built) will look for exactly that line.
-- Test 9 in `test-set.md` checks the rule: an address that cannot be read must produce a question
-  and no recipe.
-- Nothing changes for a page that can be read, a photo or pasted text.
-- **Reload this file into the conversion project.** Nothing in the repo can do that, and until it
-  is reloaded the converter behaves as before.
-
-## Revision note (23 Sep 2026, later the same day)
-
-Changed following `docs/REVIEW-ARCHITECTURE-FINDINGS.md` §4 and F12:
-
-- **The converter no longer renames ingredients to a list.** The morning's version said to
-  spell every listed ingredient exactly as `ingredient-names.md` has it and to replace every
-  "Also written as" phrase before presenting. On its first outing on an unfamiliar site the
-  converter obliged by writing *dried oregano* for a recipe's *Italian seasoning*: a
-  different product, silently, and permanently once saved. The review found the renaming rule
-  had never earned its keep either: every gain the ingredient review measured came from the
-  line shape and from app-side rules, and all 24 lines "only the converter could fix" were
-  shape faults, not naming ones. So the converter now owns the **shape** of a line and
-  **British English**, and keeps the source's product and the source's ambiguities. The
-  app's dictionary, which `ingredient-names.md` is the seed of, does the naming at list time,
-  where a wrong match costs one shopping trip and is undone in Settings.
-- `ingredient-names.md` is **no longer a project file** for the converter. Remove it from the
-  conversion project.
-- Test 7 in `test-set.md` is reframed to check this, and now fails on the opposite of what it
-  failed on this morning: a converter that makes a name *more* specific than the source.
-
-## Revision note (23 Sep 2026)
-
-Changed from the previous version, following `docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md`:
-
-- **A standard shape for every ingredient line**, and a **shared vocabulary**
-  (`ingredient-names.md`) to take names from *(the vocabulary half was withdrawn later the
-  same day; see the note above)*. Measured on the library, the converter copied
-  each source's wording, so the shopping list could not total the same ingredient written
-  different ways: 274 rows for 168 things to buy. 24 lines could only ever be fixed here,
-  among them "X or Y" alternatives, lines holding two ingredients, a tin in ml and a
-  cooked weight for something bought uncooked.
-- **Count words** (`pinch`, `bunch`, `clove`…) are now allowed as units, and the old units
-  bullet keeps only the metric conversion guidance.
-- **Weigh solids above 1 tbsp; tins in grams; the amount you buy, not the cooked amount.**
-- Tests 6 and 7 in `test-set.md` check the new rules.
-
-## Revision note (13 Sep 2026)
-
-Changed from the previous version:
-
-- **`SOURCE_URL` added.** The app now has a field for the original link, separate from
-  the site name — the gap the previous revision left open.
-- **`EQUIPMENT` added.** The app has had this field all along but nothing was producing
-  it, so it was always empty.
-- **Servings is now mandatory**, with a fallback: ask the person rather than omitting
-  it. The app scales recipes by target number of people, which needs a starting figure
-  on every recipe.
-- **Bracketed durations on every MERGE**, `[instant]` included. The group-cooking
-  timeline treats a missing duration as a gap in the schedule, so "usually present" was
-  not good enough.
-- **A late addition now gets its own group**, with a worked right/wrong example. This
-  is the rule that was missing when the Maple Almond Granola Clusters conversion put
-  vanilla extract into the heated `wet` group — the method adds it off the heat, on
-  purpose, because the aromatics cook off otherwise. The correction survived only as
-  prose in the step label, so the diagram said all four ingredients went in together.
-  The general class of error: late additions and split ingredients getting collapsed
-  into an earlier group because they appear in the same sentence of the source method.
-- **Consistent base unit per ingredient**, feeding the shopping list's own g/kg and
-  ml/L handling cleanly.
-- **Quantity phrasing rule** — "1/2 lemon", not "1/2 a lemon" — so arithmetic scaling
-  doesn't produce awkward grammar. The app deliberately doesn't attempt grammar
-  correction.
-- **A standing test set** now lives alongside this file (`converter/test-set.md`). Run
-  it whenever these instructions change.
-
-### Revision note (14 Aug 2026)
-
-- Servings extraction added.
-- Unit standardisation added, at extraction time.
-- `protein=` removed from the TAGS line — meal-base facts are ordinary keywords now,
-  and a recipe can carry more than one.
-- Automatic `Batch` flagging added.
-- Structured NOTES added: VARIATIONS/STORING/FREEZING/TIPS as their own optional
-  headings alongside plain NOTES.
+Convert each recipe independently, in its own code block, in the order given. Never carry a value (SOURCE, SERVINGS, TIME, a conversion) from one recipe to another. If a recipe needs a question answered or its URL can't be read, convert the others anyway and put all the questions together at the end, each naming its recipe. When several files are attached, work out which belong to which recipe before renaming; if that isn't clear, ask rather than guess.

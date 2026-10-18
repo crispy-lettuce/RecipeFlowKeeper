@@ -316,7 +316,7 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
    The file's fingerprint is pinned here against its version: change the file, and this fails until the "Version" line
    in the file and CONVERTER_VERSION in index.html are both moved on, and the new fingerprint (printed below) is put
    here beside the new version. */
-const CONVERTER_PINNED = { version: '2026-10-18.2', sha256: '09f54bcbd9d6924369055c63a8d4d9322df910297ba467cc54cde193bb694158' };
+const CONVERTER_PINNED = { version: '2026-10-18.3', sha256: 'a63292f79b1d892a0d420fd6ccdf292e9ca55578dd7fe69908e526a86584c2e3' };
 {
   const convSrc = fs.readFileSync(path.join(ROOT, 'converter', 'conversion-instructions.md'), 'utf8');
   const convSha = require('crypto').createHash('sha256').update(convSrc).digest('hex');
