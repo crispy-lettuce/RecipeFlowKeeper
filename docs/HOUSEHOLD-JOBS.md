@@ -44,11 +44,12 @@ which only the 2026-10-18.4 app asks about, so the device you used was running i
 
 It covers **2026-10-18.1** (#154, the fixes from #153's review), **2026-10-18.2** (#155, the converter's liquids rule),
 **2026-10-18.3** (#157, liquids when scaled and on the list; check 67a) and **2026-10-18.4** (estimated times shown with EST.;
-check 68a). Reload any device that has not been opened since.
+check 68a), then **2026-10-18.5** (#160, the converter's shorter rewrite) and **2026-10-18.6** (its follow-up with your answers, and
+`1 tin` lines scaled as `2 tins`). Reload any device that has not been opened since.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready.**, tap **RELOAD**. Otherwise refresh the page.
-3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-18.4**.
+3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-18.6** once the follow-up has merged (**2026-10-18.5** before it).
 
 ---
 
@@ -238,13 +239,13 @@ Tell the next session if the tag is hard to see or read, or if anything wraps on
 
 ### L1. Reload the converter (the rewrite, 18 Oct)
 
-Once the PR that changes `converter/conversion-instructions.md` to version **2026-10-18.3** (your shorter rewrite) is merged. You
-reloaded 2026-10-18.2 after the split, so the bar comes back once more: the file in the repo differs from the copy you tested in
-two lines only (the `**Version 2026-10-18.3.**` line, and the Time note on a line of its own), so load the repo's copy. Test
+Once the PR that changes `converter/conversion-instructions.md` to version **2026-10-18.4** (your shorter rewrite, 2026-10-18.3, with
+your answers to the five queries) is merged. Load the repo's copy, not the one you tested: it differs in the version line, the Time
+note on a line of its own, and your answers. If you loaded 2026-10-18.3 in the meantime, this replaces it. Test
 Kitchen's DONE is still 2026-10-12.1, so the test account sees the bar too: tap **LATER** there, or **DONE**, since it shares your
 conversion project.
 
-1. Open the app. **Shows:** the gold **CONVERTER** bar, naming version 2026-10-18.3.
+1. Open the app. **Shows:** the gold **CONVERTER** bar, naming version 2026-10-18.4.
 2. Follow the bar's steps to replace the file in your conversion project, then tap **DONE**. **Shows:** the bar goes.
 3. In a fresh conversion chat, paste test 11's source from `converter/test-set.md` (Ginger Sesame Dressing). **Shows:** the
    eight lines the test lists: `60 ml rice vinegar`, `60 ml sesame oil`, `2 tbsp soy sauce`, `1 1/2 tbsp lime juice`,
@@ -259,8 +260,8 @@ conversion project.
    - **12e** (Honey Garlic Tofu, "at least 30 minutes"): `TIME: est. 45 min` and the Time note.
 5. Then tests 13 and 14, each in a fresh conversion chat. **Shows:**
    - **13** (Quick Chickpea Curry): `1 tin chickpeas, drained` and `1 tin coconut milk`, with no weight added.
-   - **14** (Lemon Rice and Buttered Peas, one message): Lemon Rice in its own code block, then questions for Buttered Peas, naming
-     it (what it serves, where it is from), nothing copied from Lemon Rice.
+   - **14** (Lemon Rice and Buttered Peas, one page of a book): Lemon Rice in its own code block, then a question for Buttered Peas,
+     naming it, asking what it serves. Both have `SOURCE: Blue Door Bakery` (the source is shared); nothing else is copied.
 6. Tell the next session "tests 11 to 14 OK", or which line differed.
 
 The app's half (switching a scaled line between tbsp and ml at 50 ml, and the shopping list's breakdown) is built and live
