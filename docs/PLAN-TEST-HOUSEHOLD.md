@@ -1,5 +1,11 @@
 # Plan: a test household, and a fresh start for the real one
 
+**Done 18 Oct 2026.** `switch.sql` ran at 18:02:53 UTC; the family's account is in a new household under its own name
+(`dfeac187-a044-4f6e-a7a7-d47119930127`), and `286a8a12…` is **Test Kitchen** with the test account. Read back by a session
+afterwards (`check.sql`, read-only); the result, and the two differences from §2 (the household cleared its planned meals
+from 18 Oct on just before the switch, and later shared the new library with Test Kitchen), are in `PrivateBackup`'s
+`migrations/test-household-split/README.md`. Steps 8 to 11 of the household's job were reported done the same evening.
+
 **Written 18 Oct 2026** (`date -u`), against `main` at the commit this branch started from, and the live database read
 (read-only) that morning. A plan only: nothing in the app changes, and no production row was written to write it.
 

@@ -21,54 +21,17 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 | Job | Where | Time | Saves anything? |
 | --- | --- | --- | --- |
-| **1.** [Split off the test household](#split-off-the-test-household-new-18-oct) | app, Supabase dashboard | 20 min | Yes: your household moves to a new, empty one |
-| **2.** [L1. Reload the converter](#l1-reload-the-converter-liquids-and-times-18-oct), once the estimated-times PR has merged | app, conversion project | 10 min | Only the converter's DONE |
-| [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
+| [L1. Converter tests 11 and 12](#l1-reload-the-converter-liquids-and-times-18-oct) (the reload itself is done) | conversion project | 10 min | No |
+| [Reload the app](#reload-the-app-on-every-device), on any device not opened since 18 Oct | every device | 1 min | No |
 | [61a–65a: the readability changes](#61a-quieter-text-is-easier-to-read-new-14-oct-docsplan-readabilitymd-change-t), **in Classic** | tablet (62a and 63a end on the phone) | 25 min | Only Appearance, switched to dark and put back (61a, 62a, 64a) |
 | [66a: the Modernist style](#66a-a-second-style-modernist-new-15-oct-revised-18-oct-docsplan-modernistmd) | tablet, landscape | 15 min | Two things, each undone in the next tap (see 66a) |
-| [67a: liquids in spoons or ml](#67a-liquids-in-spoons-or-ml-new-18-oct-docsplan-liquid-measuresmd), once #157 has merged, in Test Kitchen | tablet | 5 min | No |
-| [68a: EST. beside an estimated time](#68a-est-beside-a-time-the-converter-worked-out-new-18-oct-version-2026-10-184), once that PR has merged, in Test Kitchen | tablet | 10 min | One recipe's TIME, put back in step 6 |
+| [67a: liquids in spoons or ml](#67a-liquids-in-spoons-or-ml-new-18-oct-docsplan-liquid-measuresmd), in Test Kitchen | tablet | 5 min | No |
+| [68a: EST. beside an estimated time](#68a-est-beside-a-time-the-converter-worked-out-new-18-oct-version-2026-10-184), in Test Kitchen | tablet | 10 min | One recipe's TIME, put back in step 6 |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
-**Do them in this order.** The split first. Then the converter, once the estimated-times PR has merged: its DONE is kept per household, so a
-DONE tapped before the split has to be tapped again after it. Then, after the split, your own library is empty until you add recipes,
-so do 61a to 66a signed in as the test account, in Test Kitchen, which has the recipes and the plan they look at. 61a to 65a describe the **Classic** look (plum, gold, rounded corners), which is how the app opens
+**The split is done** (18 Oct, see Recently done), so your own library is empty until you add recipes. Do 61a to 68a signed in as the
+test account, in Test Kitchen, which has the recipes and the plan they look at. 61a to 65a describe the **Classic** look (plum, gold, rounded corners), which is how the app opens
 unless a device has been switched. Do them first, then 66a, which switches to Modernist and back at the end.
-
----
-
-## First job
-
-Do this before the others.
-
-### Split off the test household (new 18 Oct)
-
-The plan is `docs/PLAN-TEST-HOUSEHOLD.md`, and the SQL is in `PrivateBackup` (`migrations/test-household-split/`). Today's
-library becomes **Test Kitchen**, for testing; your account moves to a new, empty household with your household's name. Your word
-matches, aisles and swaps come with you, and so does sharing with the relatives' household.
-
-1. In `PrivateBackup`'s Actions tab, open the latest **backup-supabase** run. **You should see:** a green tick from this morning.
-2. In the app, tap **EXPORT DATA** and keep the file. **You should see:** a backup file downloaded.
-3. **PLANNER:** tap each day from today on that shows **✓ IN CALENDAR**. **You should see:** the tick goes, and the day leaves
-   the RecipeWrangler calendar in Google.
-4. **SETTINGS → APP → CALENDAR → DISCONNECT.** **You should see:** CONNECT GOOGLE CALENDAR in its place.
-5. **SETTINGS → APP → RECIPE SHARING:** change the name to `Test Kitchen` and tap **SAVE**. **You should see:** the new name.
-6. Supabase dashboard → Authentication → Users → **Add user**: the test account's address from `PrivateBackup`, with a
-   password you keep. **You should see:** the new user in the list.
-7. Supabase SQL editor: paste `switch.sql` from `PrivateBackup` and run it. **You should see:** "Switched: new household …".
-   If it stops with a message, nothing has changed. The message names the step to do first.
-8. Reload the app on every device. **You should see:** an empty library under your household's name. Settings has your word
-   matches, aisles and swaps, and RECIPE SHARING still lists the relatives' household.
-9. Set **Appearance** to Dark. **You should see:** the CONVERTER bar, because the new household has confirmed no version yet. If it
-   names the version your conversion project already has, tap **DONE**. If it names 2026-10-18.2 (the liquids and times instructions), do the next job,
-   [Reload the converter](#l1-reload-the-converter-liquids-and-times-18-oct), instead.
-10. **CONNECT GOOGLE CALENDAR**, and say yes to Google. **You should see:** the same RecipeWrangler calendar as before, not a
-    second one.
-11. In another browser profile or a private window, sign in as the test account. **You should see:** Test Kitchen with every
-    old recipe, its photo and its history.
-12. Tell the next session it is done. It checks the database and updates the documents.
-
-Something wrong after step 7? `undo.sql` puts it back, as long as nothing has been added to the new household yet.
 
 ---
 
@@ -76,14 +39,12 @@ Something wrong after step 7? `undo.sql` puts it back, as long as nothing has be
 
 ### Reload the app on every device
 
-Live now (checked 18 Oct): **2026-10-15.1**, the Modernist style, merged as #153 on 15 Oct; its tests and the site's deployment
-passed. Everything before it (2026-10-14.1 to 2026-10-14.5, the readability changes) is live too.
+Live now: **2026-10-18.4** (checked 18 Oct, 18:20 UTC, indirectly: your household's converter DONE is stored for 2026-10-18.2,
+which only the 2026-10-18.4 app asks about, so the device you used was running it; a session could not reach the site itself).
 
-Merged: **2026-10-18.1**, the fixes found when #153 was reviewed (RESET TICKS and its count, the meal-base colours, prepared
-ingredients drawn as steps, the month names, and Enter on a card's buttons), as #154 at 11:11 UTC on 18 Oct. *Not verified:* that
-the site is serving it (a session could not reach the site that day). After it: **2026-10-18.2** (#155, the converter's liquids
-rule; only the converter's instructions changed), **2026-10-18.3** (#157, liquids when scaled and on the list; check 67a) and
-**2026-10-18.4** (estimated times shown with EST.; check 68a, and the converter's instructions change again).
+It covers **2026-10-18.1** (#154, the fixes from #153's review), **2026-10-18.2** (#155, the converter's liquids rule),
+**2026-10-18.3** (#157, liquids when scaled and on the list; check 67a) and **2026-10-18.4** (estimated times shown with EST.;
+check 68a). Reload any device that has not been opened since.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready.**, tap **RELOAD**. Otherwise refresh the page.
@@ -280,6 +241,9 @@ Tell the next session if the tag is hard to see or read, or if anything wraps on
 Once the PR that changes `converter/conversion-instructions.md` to version 2026-10-18.2 is merged. (Version 2026-10-18.1, the liquids
 rule alone, was the converter's version for a few hours on 18 Oct. If your conversion project already has it, this replaces it.)
 
+**Steps 1 and 2 are done** (18 Oct, after the split): your household's DONE is stored for version 2026-10-18.2. Test Kitchen's
+is still 2026-10-12.1, so the test account will see the bar too: tap **LATER** there, or **DONE**, since it shares your conversion project.
+
 1. Open the app. **Shows:** the gold **CONVERTER** bar, naming version 2026-10-18.2.
 2. Follow the bar's steps to replace the file in your conversion project, then tap **DONE**. **Shows:** the bar goes.
 3. In a fresh conversion chat, paste test 11's source from `converter/test-set.md` (Ginger Sesame Dressing). **Shows:** the
@@ -295,8 +259,8 @@ rule alone, was the converter's version for a few hours on 18 Oct. If your conve
    - **12e** (Honey Garlic Tofu, "at least 30 minutes"): `TIME: est. 45 min` and the Time note.
 5. Tell the next session "tests 11 and 12 OK", or which line differed.
 
-The app's half (switching a scaled line between tbsp and ml at 50 ml, and the shopping list's breakdown) is planned in
-`docs/PLAN-LIQUID-MEASURES.md`, with five questions for you in its §5. Nothing there stops you converting now.
+The app's half (switching a scaled line between tbsp and ml at 50 ml, and the shopping list's breakdown) is built and live
+(#157, 2026-10-18.3); 67a checks it.
 
 ### Otherwise
 
@@ -336,6 +300,12 @@ None at the moment.
 
 ## Recently done
 
+- **18 Oct:** **the test-household split.** `switch.sql` ran at 18:02:53 UTC. Your account is now in a **new household under your household's name**, empty,
+  with your 16 word matches, 10 aisles and 2 swaps, sharing with the relatives' household, and Google reconnected to the same calendar and
+  Drive folder (18:11). The old household is **Test Kitchen**, with the test account and every placeholder recipe, log, photo and
+  plan day up to 17 Oct; you cleared the planned meals from 18 Oct on just before switching, on purpose. You also shared your new
+  library with Test Kitchen (18:13). Steps 8 to 11 reported done by you; a session read the database afterwards and the result is
+  in `PrivateBackup` (`migrations/test-household-split/README.md`). You reloaded the converter and tapped DONE (2026-10-18.2).
 - **18 Oct:** the photo backup's first run on the new mirror script passed (05:05 UTC, checked by a session in the run's log):
   every photo and source file fetched and checked against the database, and 4 new photos and 4 new source files committed to
   `PrivateBackup`. The nightly database backup has passed every night since 12 Oct.
