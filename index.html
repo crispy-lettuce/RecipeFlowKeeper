@@ -1655,7 +1655,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-18.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-18.2">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2297,7 +2297,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-15.1"></script>
+<script src="core.js?v=2026-10-18.1"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2305,12 +2305,12 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-15.1';
+const EXPECTED_CORE_VERSION = '2026-10-18.1';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-18.1';
+const APP_VERSION = '2026-10-18.2';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -2839,6 +2839,15 @@ function viewerTickSet(key){
   return state.viewerTicks[key];
 }
 function clearViewerTicks(key){ delete state.viewerTicks[key]; }
+/* Modernist's "3 / 19 TICKED" beside a recipe's title (only its markup has the place for it), read from the cells as they
+   stand, so whatever ticks or unticks in place brings it up to date: a tap, and RESET TICKS, which until 18 Oct cleared
+   the cells and left the old count showing. */
+function showTickedCount(container){
+  const el = container && container.querySelector('.recipe-ticked');
+  if(!el) return;
+  const cells = container.querySelectorAll('.ing-cell, .box-cell');
+  el.textContent = `${container.querySelectorAll('.ing-cell.done, .box-cell.done').length} / ${cells.length} TICKED`;
+}
 
 /* PREPARATION (#88, 13 Oct 2026, docs/PLAN-PREP-STEPS.md): whether this device draws "leeks, thinly sliced" as a step of
    its own (withPrepSteps, core.js). Per device, as decided, like SHOW TIMELINE: the tablet at the hob and the laptop used for
@@ -2888,10 +2897,7 @@ function mountFlow(container, parsed, opts){
   /* Columns move when preparation is drawn as steps, so each drawing keeps its own ticks: switching mid-cook loses neither. */
   const ticks = opts.tickKey ? viewerTickSet(opts.tickKey + (withPrep ? '|prep' : '')) : null;
   if(ticks) cells.forEach(cell=>{ if(ticks.has(cellKey(cell))) cell.classList.add('done'); });
-  /* Modernist's "3 / 19 TICKED" beside the title (only its markup has the place for it). */
-  const tickedEl = container.querySelector('.recipe-ticked');
-  const showTicked = ()=>{ if(tickedEl) tickedEl.textContent = `${cells.filter(c=> c.classList.contains('done')).length} / ${cells.length} TICKED`; };
-  showTicked();
+  showTickedCount(container);
 
   cells.forEach(cell=>{
     cell.addEventListener('click', ()=>{
@@ -2909,7 +2915,7 @@ function mountFlow(container, parsed, opts){
       } else {
         cell.classList.remove('done');
       }
-      showTicked();
+      showTickedCount(container);
       /* Recorded before onToggle, which is free to re-render. */
       if(ticks){
         ticks.clear();
@@ -5464,6 +5470,9 @@ function initHomeListeners(){
     if(e.key !== 'Enter' && e.key !== ' ') return;
     const card = e.target.closest('.rcard');
     if(!card) return;
+    /* A button on the card (the star, + or ✓) does its own job, as it does when tapped: until 18 Oct this took Enter from
+       it too and opened the recipe, so the shortlist and favourite buttons could not be used from a keyboard. */
+    if(e.target !== card && e.target.closest('button, a')) return;
     e.preventDefault();
     activateCard(card.dataset.id);
   });
@@ -5660,6 +5669,7 @@ document.getElementById('groupResetTicksBtn').addEventListener('click', ()=>{
   const group = loadGroups().find(g=>g.id === state.selectedGroupId);
   (group ? group.recipeIds : []).forEach(clearViewerTicks);
   document.querySelectorAll('#groupFlowMount .done').forEach(c=> c.classList.remove('done'));
+  document.querySelectorAll('#groupFlowMount .stacked-recipe-flow').forEach(showTickedCount);
   showToast('Ticks cleared');
 });
 
@@ -6309,7 +6319,8 @@ function weekBucketLabel(i, bucketDays){
    alike (docs/PLAN-MODERNIST.md). The week after next has its dates, so it needs no "WEEK OF" date of its own. */
 function weekDatesLabel(days){
   if(!days.length) return '';
-  const month = d => d.toLocaleDateString(undefined, { month:'short' }).toUpperCase();
+  /* Fixed, not the browser's: a British browser calls September "Sept", and the design's labels are three letters. */
+  const month = d => ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][d.getMonth()];
   const first = days[0], last = days[days.length - 1];
   return first.getMonth() === last.getMonth()
     ? `${first.getDate()}–${last.getDate()} ${month(last)}` : `${first.getDate()} ${month(first)}–${last.getDate()} ${month(last)}`;
@@ -7740,7 +7751,12 @@ function renderMixBar(data, opts){
   opts = opts || {};
   const total = data.reduce((s,d)=>s+d.count, 0);
   if(!total) return `<p class="hstat-weekday-empty">Nothing to show yet.</p>`;
-  const segs = data.map((d, i)=>({ label: d.label, count: d.count, colour: `var(--km-mix-${i % 5 + 1})`, pct: Math.round(d.count / total * 100) }));
+  /* Five colours, then the same five striped, so all nine meal bases (MEAL_BASE_KEYWORDS) look different: until 18 Oct the
+     sixth repeated the first, and Pasta was drawn in Chicken's red. Stripes rather than four more reds and greys, which the
+     palette does not have to give without two of them looking alike. */
+  const fill = i => { const n = i % 10; return n < 5 ? `var(--km-mix-${n + 1})`
+    : `repeating-linear-gradient(135deg, var(--km-mix-${n - 4}) 0 3px, transparent 3px 6px)`; };
+  const segs = data.map((d, i)=>({ label: d.label, count: d.count, colour: fill(i), pct: Math.round(d.count / total * 100) }));
   return `<div class="hstat-bar" role="img" aria-label="${escapeHtml(opts.ariaLabel||'Chart')}">` +
     segs.map(sg=> `<span style="flex:${sg.count};background:${sg.colour}"></span>`).join('') + `</div>
     <div class="hstat-legend">` + segs.map(sg=>
@@ -8593,6 +8609,7 @@ document.getElementById('editRecipeBtn').addEventListener('click', ()=>{
 document.getElementById('resetTicksBtn').addEventListener('click', ()=>{
   if(state.selectedRecipeId) clearViewerTicks(state.selectedRecipeId);
   document.querySelectorAll('#flowMount .done').forEach(c=> c.classList.remove('done'));
+  showTickedCount(document.getElementById('flowMount'));
   showToast('Ticks cleared');
 });
 document.getElementById('closeAddModal').addEventListener('click', closeAddModal);
