@@ -22,6 +22,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | Job | Where | Time | Saves anything? |
 | --- | --- | --- | --- |
 | [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
+| [L1. Reload the converter](#l1-reload-the-converter-liquids-18-oct), once the converter PR merges | conversion project | 5 min | No |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
 ---
