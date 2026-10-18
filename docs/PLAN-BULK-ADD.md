@@ -3,7 +3,7 @@
 **Written 18 Oct 2026** (date from `date -u`), in a planning session that changed no code. Checked against `main`
 at `10c86c3` (PR #163), by reading the code. Nothing was run against the live app. The household asked for the
 feature after a session loaded 62 converted recipes straight into the database (record and undo in `PrivateBackup`,
-`migrations/2026-10-18-batch-62/` there), which worked, but is not something the household can do for itself.
+a dated folder under `migrations/` there), which worked, but is not something the household can do for itself.
 
 **Who this is for.** An implementation session taking one PR at a time. Each PR entry in §7 says what to change,
 the rule, the checks to add and the mutation that must make each fail. If anything here disagrees with the code,
