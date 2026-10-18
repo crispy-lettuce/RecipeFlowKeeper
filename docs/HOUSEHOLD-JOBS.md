@@ -21,7 +21,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 | Job | Where | Time | Saves anything? |
 | --- | --- | --- | --- |
-| [L1. Converter tests 11 and 12](#l1-reload-the-converter-liquids-and-times-18-oct) (the reload itself is done) | conversion project | 10 min | No |
+| [L1. Reload the converter (the rewrite) and run tests 11 to 14](#l1-reload-the-converter-the-rewrite-18-oct), once the rewrite's PR has merged | app, conversion project | 15 min | Only the converter's DONE |
 | [Reload the app](#reload-the-app-on-every-device), on any device not opened since 18 Oct | every device | 1 min | No |
 | [61a–65a: the readability changes](#61a-quieter-text-is-easier-to-read-new-14-oct-docsplan-readabilitymd-change-t), **in Classic** | tablet (62a and 63a end on the phone) | 25 min | Only Appearance, switched to dark and put back (61a, 62a, 64a) |
 | [66a: the Modernist style](#66a-a-second-style-modernist-new-15-oct-revised-18-oct-docsplan-modernistmd) | tablet, landscape | 15 min | Two things, each undone in the next tap (see 66a) |
@@ -236,15 +236,15 @@ Tell the next session if the tag is hard to see or read, or if anything wraps on
 
 ## Library jobs
 
-### L1. Reload the converter (liquids and times, 18 Oct)
+### L1. Reload the converter (the rewrite, 18 Oct)
 
-Once the PR that changes `converter/conversion-instructions.md` to version 2026-10-18.2 is merged. (Version 2026-10-18.1, the liquids
-rule alone, was the converter's version for a few hours on 18 Oct. If your conversion project already has it, this replaces it.)
+Once the PR that changes `converter/conversion-instructions.md` to version **2026-10-18.3** (your shorter rewrite) is merged. You
+reloaded 2026-10-18.2 after the split, so the bar comes back once more: the file in the repo differs from the copy you tested in
+two lines only (the `**Version 2026-10-18.3.**` line, and the Time note on a line of its own), so load the repo's copy. Test
+Kitchen's DONE is still 2026-10-12.1, so the test account sees the bar too: tap **LATER** there, or **DONE**, since it shares your
+conversion project.
 
-**Steps 1 and 2 are done** (18 Oct, after the split): your household's DONE is stored for version 2026-10-18.2. Test Kitchen's
-is still 2026-10-12.1, so the test account will see the bar too: tap **LATER** there, or **DONE**, since it shares your conversion project.
-
-1. Open the app. **Shows:** the gold **CONVERTER** bar, naming version 2026-10-18.2.
+1. Open the app. **Shows:** the gold **CONVERTER** bar, naming version 2026-10-18.3.
 2. Follow the bar's steps to replace the file in your conversion project, then tap **DONE**. **Shows:** the bar goes.
 3. In a fresh conversion chat, paste test 11's source from `converter/test-set.md` (Ginger Sesame Dressing). **Shows:** the
    eight lines the test lists: `60 ml rice vinegar`, `60 ml sesame oil`, `2 tbsp soy sauce`, `1 1/2 tbsp lime juice`,
@@ -257,7 +257,11 @@ is still 2026-10-12.1, so the test account will see the bar too: tap **LATER** t
      reason. No figure.
    - **12d** (Sunday Roast Chicken, no times in the steps): no `TIME`, or a question. No figure.
    - **12e** (Honey Garlic Tofu, "at least 30 minutes"): `TIME: est. 45 min` and the Time note.
-5. Tell the next session "tests 11 and 12 OK", or which line differed.
+5. Then tests 13 and 14, each in a fresh conversion chat. **Shows:**
+   - **13** (Quick Chickpea Curry): `1 tin chickpeas, drained` and `1 tin coconut milk`, with no weight added.
+   - **14** (Lemon Rice and Buttered Peas, one message): Lemon Rice in its own code block, then questions for Buttered Peas, naming
+     it (what it serves, where it is from), nothing copied from Lemon Rice.
+6. Tell the next session "tests 11 to 14 OK", or which line differed.
 
 The app's half (switching a scaled line between tbsp and ml at 50 ml, and the shopping list's breakdown) is built and live
 (#157, 2026-10-18.3); 67a checks it.

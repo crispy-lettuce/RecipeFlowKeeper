@@ -577,7 +577,8 @@ app's flow format. Covers extraction, structure, a mandatory check pass, and how
 result. Includes worked right/wrong examples for the grouping rule that late additions get their
 own group. Since 29 Sep (PR 2 of the add-recipe plan) it also says what to do with a URL it cannot
 read: stop, name the address and ask for the text, never convert from another page, and write any
-note about the source as a `⚠️ Source note:` line.
+note about the source as a `⚠️ Source note:` line. Since 18 Oct (version 2026-10-18.3, the household's rewrite) it is about half
+as long: the same rules, said briefly, with its revision history moved to `converter/revision-history.md`.
 
 **Use it when:** adding any recipe. Paste it, or its contents, into a conversation along with the
 source recipe.
@@ -592,8 +593,16 @@ recognise, leaving raw bracket text visible in the diagram).
 
 ---
 
+### `converter/revision-history.md` — what changed in the converter's instructions, and why
+**What:** every revision note, newest first, from 14 Aug 2026. Until 18 Oct they sat at the end of
+`conversion-instructions.md`, where every conversion read them.
+
+**Use it when:** you want to know why a rule is there. **Not** a conversion-project file.
+
+---
+
 ### `converter/test-set.md` — the converter's regression tests
-**What:** Ten deliberately awkward cases, each isolating one failure mode — a late addition, a
+**What:** Fourteen deliberately awkward cases (ten until 18 Oct), each isolating one failure mode — a late addition, a
 split ingredient, parallel prep, a zero-length step, a missing yield, and (since 23 Sep) the
 shape of ingredient lines, British English without over-specifying, and ingredients no list has seen,
 (since 29 Sep) an address it cannot read, and (since 30 Sep) a page's text pasted in — with what a correct
@@ -601,7 +610,7 @@ conversion must produce and what counts as a failure. Plus three audits of the r
 first two (13 and 14 Sep) describe the pre-reprocess library and are history now; the third
 (20 Sep) re-runs all five tests against what's actually in the database.
 
-**Use it when:** you change `conversion-instructions.md`. Run all ten through the revised
+**Use it when:** you change `conversion-instructions.md`. Run them all through the revised
 instructions and compare. Also the record of which library faults have been fixed and when.
 *(Corrected 12 Oct 2026, the October review's Appendix B: this said nine; the tenth was added 30 Sep.)*
 

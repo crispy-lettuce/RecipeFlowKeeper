@@ -1,4 +1,7 @@
 [
+  { "version": "2026-10-18.5", "date": "2026-10-18",
+    "changes": ["The recipe converter's instructions have been rewritten to be shorter, so each conversion uses less of the conversion project's allowance. The CONVERTER bar will ask your household to load the new file (version 2026-10-18.3), even if you loaded one earlier today.",
+                "What changes in a conversion: the reply after the recipe lists only what you need to check or answer, with no walkthrough; a tin with no weight on the page is written as 1 tin; a photo or PDF you attach comes back renamed to the recipe's title; and several recipes in one message are each converted on their own, with any questions together at the end. Nothing in the app changes."] },
   { "version": "2026-10-18.4", "date": "2026-10-18",
     "changes": ["When a recipe's source gives no overall time, the converter now works one out from the method steps and marks it. Such a time shows an EST. tag beside it, on the recipe card, in the recipe, in the Planner and in the Shortlist, and shows as est. 1 hr 45 in the TIME box when you edit it. Type a real time over it and the tag goes.",
                 "The converter's instructions changed, so the CONVERTER bar will ask your household to load the new file into the conversion project. Recipes already in the library are not touched: a recipe with no time still shows none."] },
