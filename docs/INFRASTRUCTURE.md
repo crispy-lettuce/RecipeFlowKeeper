@@ -116,7 +116,10 @@ project's own rule, restated in §4) or a plain identifier that grants nothing o
   `recipe-images` bucket into `photos/recipe-images/` at the bucket's own paths with a manifest,
   checking every download's size and MD5 against `storage.objects`, and the private
   `recipe-sources` bucket too, through `scripts/mirror-private-bucket.sh` (the October review,
-  F22, read it on 10 Oct). Added 23 Sep, `PrivateBackup` PR #1. *(Until 12 Oct the
+  F22, read it on 10 Oct). Added 23 Sep, `PrivateBackup` PR #1. **First run on the new mirror script: 18 Oct 2026, 05:05 UTC,
+  passed** (run 39099322057, checked by a session in its log): every `recipe-images` object fetched and checked against
+  `storage.objects`, "5 objects in recipe-sources" mirrored, and 4 new photos and 4 new source files committed as `3870dd2`
+  ("Recipe photo backup 2026-10-18"). *(Until 12 Oct the
   14 Sep sentence above sat under this bullet, where it could not be true, and this bullet named
   only the one bucket.)*
 - `.github/workflows/weekly-live-check.yml` — the live-backend test (`PrivateBackup` PR #3,

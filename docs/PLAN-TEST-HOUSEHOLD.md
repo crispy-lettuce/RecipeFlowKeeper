@@ -108,6 +108,9 @@ the switch, which is step 5's to see.
   second RecipeWrangler calendar.
 - **One account, one household** (`docs/ONBOARDING.md`). The test account stays in Test Kitchen; sign in to it in a
   separate browser profile, not on the tablet.
-- **Open question for the household:** `docs/HOUSEHOLD-JOBS.md` says app checks are done "in your household only"
-  (14 Oct). Once Test Kitchen exists, checks that write (adding, cooking, planning) could be done there instead, keeping
-  the family's new library clean. That is the household's call; nothing changes until they make it.
+- **App checks after the split.** The family's new library is empty until recipes are added, so `docs/HOUSEHOLD-JOBS.md`
+  has the checks that look at recipes and the plan (61a to 66a, 18 Oct) done in Test Kitchen. Whether later checks that write
+  (adding, cooking, planning) go there too is the household's call.
+- **The converter's DONE is kept per household** (`household_settings.converter_ack_version`). The new household starts with none,
+  so the CONVERTER bar shows there once; Test Kitchen keeps the old household's. That is why the job list puts the converter
+  reload (#155) after the split.

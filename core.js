@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-15.1';
+const KITCHEN_CORE_VERSION = '2026-10-18.1';
 
 
 /* ======================= quantity split ======================= */
@@ -555,12 +555,16 @@ function computeColumns(groups, stages){
   const columns = [];
   /* Which handles still name a GROUP of raw ingredients rather than the output of a step. A box that brings together two or
      more step outputs is marked `merge`: the Modernist style draws those differently from a step that adds raw ingredients
-     to one thing being cooked (docs/PLAN-MODERNIST.md, 15 Oct 2026). Layout and colour do not read it. */
+     to one thing being cooked (docs/PLAN-MODERNIST.md, 15 Oct 2026). Layout and colour do not read it.
+     A preparation step's output (withPrepSteps: "slice the leeks") is still raw ingredients, only cut, so it stays in the
+     set: otherwise PREPARATION drawn as steps turned "Fry the veg" into a merge it is not as written (18 Oct 2026). The set
+     changes only between stages, as `active` does, so the order of lines within a stage cannot change the mark. */
   const rawHandles = new Set(groups.map(g=> g.handle));
 
   stages.forEach((stageOps, stageIdx)=>{
     const consumed = new Set();
     const newBoxes = [];
+    const stageOutputs = [];
     stageOps.forEach(op=>{
       const missing = op.inputs.filter(h=>!active[h]);
       if(missing.length){ errors.push(`Stage ${stageIdx+1}: unknown or already-used handle "${missing.join(', ')}".`); return; }
@@ -579,8 +583,9 @@ function computeColumns(groups, stages){
       const stepInputs = op.inputs.filter(h=> !rawHandles.has(h)).length;
       newBoxes.push({ outputHandle:op.output, rowStart, rowSpan, label:op.label, duration:op.duration||null, color, family, passthrough:false,
         ...(op.prep ? { prep:true } : {}), ...(stepInputs > 1 ? { merge:true } : {}) });
-      rawHandles.delete(op.output);
+      stageOutputs.push(op);
     });
+    stageOutputs.forEach(op=>{ if(op.prep) rawHandles.add(op.output); else rawHandles.delete(op.output); });
 
     const carried = [];
     Object.keys(active).forEach(h=>{

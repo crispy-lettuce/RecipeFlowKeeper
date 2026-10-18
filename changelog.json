@@ -1,4 +1,10 @@
 [
+  { "version": "2026-10-18.1", "date": "2026-10-18",
+    "changes": ["RESET TICKS now puts the count beside a recipe's title back to nought (MODERNIST), on a recipe and in the Group Viewer. Until now it cleared the boxes but left the old count showing.",
+                "In MODERNIST, with PREPARATION shown as steps, a step that only adds prepared ingredients is no longer drawn in black as if it joined two steps.",
+                "History's meal-base bars in MODERNIST give every meal base its own look: five colours, then the same five striped. Before, the sixth repeated the first.",
+                "The week labels on the Planner and the Shopping List in MODERNIST always say SEP for September, as the other months have three letters, whatever language the device is set to.",
+                "With a keyboard, Enter on a recipe card's star, + or tick now does what tapping it does, instead of opening the recipe. This is in both styles."] },
   { "version": "2026-10-15.1", "date": "2026-10-15",
     "changes": ["A second look for the app, MODERNIST, beside the one you know, now called CLASSIC. Choose it in Settings, on the APP tab, under STYLE. It is flat and square, set in one typeface, with red kept for the main action and for what is switched on. Everything works the same in both, in light and dark, and the choice is for this device only.",
                 "In MODERNIST the side menu folds to a narrow strip on the Planner and while cooking, the Planner's shortlist can fold away to give the days more room, and the tick on a recipe card takes a recipe off the shortlist. The how-to guide in Settings, on the HELP tab, says more.",

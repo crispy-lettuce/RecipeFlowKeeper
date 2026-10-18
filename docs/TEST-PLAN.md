@@ -15,7 +15,7 @@
 ## Context
 
 Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 708 automated checks pass, plus 216 in Node (15 Oct 2026, after the Modernist style; 622 and 206 after R, 14 Oct; 620 and 205 after F, 617 and 202 after H, 613 and 199 after S, 609 and 194 after T, 606 and 189 on 13 Oct; 102 when this was
+story that used to open this paragraph is history. 713 automated checks pass, plus 218 in Node (18 Oct 2026, after the Modernist review's fixes; 708 and 216 after the Modernist style, 15 Oct; 622 and 206 after R, 14 Oct; 620 and 205 after F, 617 and 202 after H, 613 and 199 after S, 609 and 194 after T, 606 and 189 on 13 Oct; 102 when this was
 written; until 12 Oct this line said 329 and 133, corrected 12 Oct 2026, the October review's Appendix B). But those checks run against a **stubbed** Supabase: every
 query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
 So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
@@ -820,19 +820,23 @@ reported one by one.*
     corners as the other buttons. (3) *Planner:* the + beside CHOOSE A RECIPE and ADD ANOTHER, and the SERVES and COOKED labels, are
     squares and rectangles too. (4) *Settings and the add-recipe screen:* the boxes share one corner. (5) *Print and EXPORT PNG* of a recipe:
     the same as the screen. Writes nothing.
-66a. **The Modernist style (new 15 Oct; `docs/PLAN-MODERNIST.md`).** Looks and taps; writes nothing to the household's data (the style is
-    in this device's storage, `kitchen.style`). On the tablet in landscape: (1) *Settings → APP → STYLE → MODERNIST:* the whole app
-    changes at once, "Recipe Wrangler" and numbered links in the side menu. (2) *Reload:* still Modernist, with no flash of Classic.
-    (3) *Recipes:* title and count beside the search, three cards to a row, photos in colour; the card's + then ✓ puts a recipe on the
-    shortlist and takes it off. (4) *A recipe:* the large title with SERVES and the tick count; square flow boxes, the last column red;
-    cooking mode shows the red bar and folds the side menu to a strip, which opens and folds again. (5) *EXPORT PNG and PRINT / A4 PDF*
-    of a recipe: as on screen. (6) *Planner:* the menu folded; week bands with dates and counts; the shortlist's › folds it to a strip
-    and the strip opens it; the red SHOPPING LIST block opens the list. (7) *Planner pills:* SERVES, PRE-MADE and COOKED ✓ each answer
-    the first tap without catching the dish's name. (8) *Shopping:* two columns, square boxes; a tick turns red, fades the row and moves
-    both counts; EXPORT PNG has the squares and leaves ticked rows out. (9) *History:* square arrows, today ringed in red, COOKED and
-    AD HOC under days; a picked day fills with ink; the meal-base mixes are bars. (10) *Settings:* tabs as words, the open one underlined in
-    red. (11) *APPEARANCE dark then back:* Modernist in dark. (12) *STYLE → CLASSIC:* exactly as before. Writes nothing.
-
+66a. **The Modernist style (new 15 Oct, revised 18 Oct for 2026-10-18.1; `docs/PLAN-MODERNIST.md`).** Mostly looks: the style is in
+    this device's storage (`kitchen.style`); (3) adds a shortlist entry and deletes it, (8) writes a tick and removes it, (11) changes
+    Appearance and puts it back; in (4) tap boxes outside the last column, which would log the recipe as cooked. On the tablet in
+    landscape: (1) *Settings → APP → STYLE → MODERNIST:* the whole app changes at once, "Recipe Wrangler" and numbered links in the
+    side menu. (2) *Reload:* still Modernist, with no flash of Classic. (3) *Recipes:* title and count beside the search, three cards
+    to a row, photos in colour; the card's + then ✓ puts a recipe on the shortlist and takes it off. (4) *A recipe:* the large title
+    with SERVES and the tick count; square flow boxes, the last column red; two ticks raise the count and RESET TICKS clears the boxes
+    and puts the count back to 0 / N; cooking mode shows the red bar and folds the side menu to a strip, which opens and folds again.
+    (5) *EXPORT PNG and PRINT / A4 PDF* of a recipe: as on screen. (6) *Planner:* the menu folded; week bands with dates and counts;
+    the shortlist's › folds it to a strip and the strip opens it; the red SHOPPING LIST block opens the list. (7) *Planner pills:*
+    SERVES and PRE-MADE (each question cancelled) answer the first tap without catching the dish's name. (8) *Shopping:* two columns,
+    square boxes; a tick turns red, fades the row and moves both counts; EXPORT PNG has the squares and leaves ticked rows out.
+    (9) *History:* square arrows, today ringed in red, COOKED and AD HOC under days; a picked day fills with ink; the meal-base mixes
+    are bars with no two meal bases alike (striped after five). (10) *Settings:* tabs as words, the open one underlined in red.
+    (11) *APPEARANCE dark then back:* Modernist in dark. (12) *Only with PREPARATION as steps:* a step that cooks prepared ingredients
+    is grey with a black bar, not a black merge box. (13) *STYLE → CLASSIC:* exactly as before. *Keyboard, optional, either style:*
+    Enter on a card's + adds it to the shortlist without opening the recipe.
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in
