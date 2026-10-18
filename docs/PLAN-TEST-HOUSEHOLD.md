@@ -15,8 +15,8 @@ placeholders somewhere to test with.
 - **The new household keeps sharing with the relatives' household**, so the share moves with the account.
 - **Three things come with it, copied:** the word matches (16), the shopping aisles (10) and the swaps (2). Nothing
   else: no recipes, history, plan, diary, meal groups, keywords, shortlist or ticks.
-- The test account's address, like every account's, is in `PrivateBackup` (`migrations/test-household-split/`), not
-  here: this repo is public.
+- The test account is the household's own address with `+testkitchen` added before the @. The exact address is written in
+  `PrivateBackup` (`migrations/test-household-split/switch.sql`), not here: this repo is public.
 
 ## 1. Why move the account rather than the data
 
@@ -56,8 +56,8 @@ The household's own steps are also in `docs/HOUSEHOLD-JOBS.md`, with what each s
       CALENDAR was off on 18 Oct, so nothing puts them back). The event goes from Google.
    2. **SETTINGS → APP → CALENDAR → DISCONNECT.**
    3. **SETTINGS → APP → RECIPE SHARING:** change the household's name to `Test Kitchen`, then SAVE.
-3. **Supabase dashboard → Authentication → Users → Add user:** the test account (address in `PrivateBackup`), with a
-   password.
+3. **Supabase dashboard → Authentication → Users → Add user:** the test account (your own address with `+testkitchen`
+   before the @, exactly as `switch.sql` has it), with a password.
 4. **Supabase SQL editor:** run `PrivateBackup/migrations/test-household-split/switch.sql`. It checks that steps 2 and 3
    happened (renamed; disconnected and the token gone; nothing from today on in the calendar; the test account exists
    and is in no household) and raises, changing nothing, if one did not. Otherwise, in one go:

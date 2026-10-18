@@ -53,8 +53,10 @@ matches, aisles and swaps come with you, and so does sharing with the relatives'
    the RecipeWrangler calendar in Google.
 4. **SETTINGS → APP → CALENDAR → DISCONNECT.** **You should see:** CONNECT GOOGLE CALENDAR in its place.
 5. **SETTINGS → APP → RECIPE SHARING:** change the name to `Test Kitchen` and tap **SAVE**. **You should see:** the new name.
-6. Supabase dashboard → Authentication → Users → **Add user**: the test account's address from `PrivateBackup`, with a
-   password you keep. **You should see:** the new user in the list.
+6. Supabase dashboard → Authentication → Users → **Add user** (Create new user). For the email, use your own address with
+   `+testkitchen` added before the @ (name+testkitchen@gmail.com): it arrives in your usual inbox, and it is the address `switch.sql`
+   expects, so type it exactly. Choose a password you keep, and tick **Auto Confirm User** if it is offered, so the account can sign in
+   straight away. **You should see:** the new user in the list.
 7. Supabase SQL editor: paste `switch.sql` from `PrivateBackup` and run it. **You should see:** "Switched: new household …".
    If it stops with a message, nothing has changed. The message names the step to do first.
 8. Reload the app on every device. **You should see:** an empty library under your household's name. Settings has your word
