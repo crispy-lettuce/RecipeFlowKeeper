@@ -662,7 +662,8 @@ was confirmed to strip every grant *and* the default privileges, data-only needs
 in dependency order, the rebuild-without-dropping-the-schema path restores with no errors, and
 a fresh-project restore ends with row-level security verified for a new user, a stranger and
 `anon`. The photo backup is written and reviewed but has not run: its first run is the one
-after the merge. The runbook and the rehearsed/not-rehearsed table are `PrivateBackup/README.md`.
+after the merge. *(It has run every Sunday since; the 18 Oct run, the first on the new mirror script, passed: see
+`docs/INFRASTRUCTURE.md`.)* The runbook and the rehearsed/not-rehearsed table are `PrivateBackup/README.md`.
 *(13 tables then; 16 in `public` and 1 in `private` on 12 Oct 2026, so a data-only restore today has more tables to order.
 `PrivateBackup/README.md`, not this paragraph, is the runbook. Noted 12 Oct 2026, the October review's Appendix B.)*
 
@@ -747,7 +748,7 @@ own build order, so they were never overdue — but they were invisible, which i
 ## 7. Testing
 
 `test/` holds an offline harness: `build.js` bakes `index.html` against a fake Supabase,
-`smoke.js` runs **708 checks** (15 Oct 2026, after the Modernist style; 622 on 14 Oct, 620 after F, 617 after H, 613 after S, 609 after T and 606 on 13 Oct; `core.test.js` adds 216 in Node, 206 on 14 Oct, 205 after F, 202 after H, 199 after S, 194 after T and 189 on 13 Oct) across every screen, `shots.js` captures screenshots. Run
+`smoke.js` runs **713 checks** (18 Oct 2026, after the Modernist review's fixes; 708 on 15 Oct, 622 on 14 Oct, 620 after F, 617 after H, 613 after S, 609 after T and 606 on 13 Oct; `core.test.js` adds 218 in Node, 216 on 15 Oct, 206 on 14 Oct, 205 after F, 202 after H, 199 after S, 194 after T and 189 on 13 Oct) across every screen, `shots.js` captures screenshots. Run
 `build.js` first, every time — see §2d. Since 24 Sep the harness runs on one fixed date
 (`test/fixture-time.js`), because a fixture dated from the real clock failed two checks every
 Thursday. *(Until 12 Oct this paragraph said 329 and 133, the counts at PR 5 of the add-recipe plan; corrected 12 Oct 2026,
@@ -2382,7 +2383,8 @@ the plan made from `docs/REVIEW-2026-10-FINDINGS.md`.
   spot-check, not a full diff.
 - The same morning, PrivateBackup's first scheduled backup on the new workflow (04:15 UTC) passed every step. It logged
   `dump: tables=16 policies=52; live: tables=16 policies=52`, and its prune removed only the oldest dump (14 Sep). The
-  photo backup's first run on the new mirror script is the weekly one on 18 Oct.
+  photo backup's first run on the new mirror script is the weekly one on 18 Oct. *(It ran at 05:05 UTC on 18 Oct and
+  passed every step; a session read its log: see `docs/INFRASTRUCTURE.md`.)*
 
 **The October review, PR 3: the public repo and the test harness (12 Oct 2026; F9, F28, F29, F30, F47).**
 - **`index-old.html` removed (F9).** It was the pre-Supabase app, renamed on 17 Aug.

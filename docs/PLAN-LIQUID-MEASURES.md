@@ -10,8 +10,8 @@
 4. A scaled recipe ideally changes from tbsp to ml once the 50 ml mark is reached.
 
 Rules 1 and 2 are the converter's: `converter/conversion-instructions.md` version 2026-10-18.1, with test 11 in
-`converter/test-set.md` (PR #155). Rules 3 and 4 are the app's, **built 18 Oct 2026** in the PR after it (`core.js`
-2026-10-18.1, app 2026-10-18.2). The household answered §5 "defaults" the same day, and settled D4 as two thresholds:
+`converter/test-set.md` (PR #155). Rules 3 and 4 are the app's, **built 18 Oct 2026** in #157 (`core.js`
+2026-10-18.2, app 2026-10-18.3). The household answered §5 "defaults" the same day, and settled D4 as two thresholds:
 teaspoons under 15 ml, tablespoons from 15 ml to under 50 ml (§6 has what changed from the plan while building).
 
 **Every example line here is made up.** *Not verified*: they were not checked against the library, since this session could
