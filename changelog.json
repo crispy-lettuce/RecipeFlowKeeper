@@ -1,4 +1,7 @@
 [
+  { "version": "2026-10-18.1", "date": "2026-10-18",
+    "changes": ["The recipe converter's instructions have changed, so the CONVERTER bar will ask your household to load the new file. Liquids under 50 ml are now written in spoons (3 tbsp, 1 tsp) and from 50 ml in ml (60 ml rather than 4 tbsp). A liquid the recipe weighs, such as honey or syrup in grams, stays in grams.",
+                "Nothing in the app changes yet: recipes already in the library read as before, and the shopping list adds spoons and ml of the same liquid together, as it already did."] },
   { "version": "2026-10-15.1", "date": "2026-10-15",
     "changes": ["A second look for the app, MODERNIST, beside the one you know, now called CLASSIC. Choose it in Settings, on the APP tab, under STYLE. It is flat and square, set in one typeface, with red kept for the main action and for what is switched on. Everything works the same in both, in light and dark, and the choice is for this device only.",
                 "In MODERNIST the side menu folds to a narrow strip on the Planner and while cooking, the Planner's shortlist can fold away to give the days more room, and the tick on a recipe card takes a recipe off the shortlist. The how-to guide in Settings, on the HELP tab, says more.",

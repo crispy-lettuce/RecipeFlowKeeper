@@ -171,7 +171,23 @@ sign-in card should say "Recipe Wrangler" too).
 
 ## Library jobs
 
-None at the moment. The master copy of the converter's instructions is `converter/conversion-instructions.md`; when it changes,
+### L1. Reload the converter (liquids, 18 Oct)
+
+Once the PR that changes `converter/conversion-instructions.md` to version 2026-10-18.1 is merged:
+
+1. Open the app. **Shows:** the gold **CONVERTER** bar, naming version 2026-10-18.1.
+2. Follow the bar's steps to replace the file in your conversion project, then tap **DONE**. **Shows:** the bar goes.
+3. In a fresh conversion chat, paste test 11's source from `converter/test-set.md` (Ginger Sesame Dressing). **Shows:** the
+   eight lines the test lists: `60 ml rice vinegar`, `60 ml sesame oil`, `2 tbsp soy sauce`, `1 1/2 tbsp lime juice`,
+   `1/2 tsp fish sauce`, `30 g honey`, `2 tbsp tahini`, `120 ml water`.
+4. Tell the next session "test 11 OK", or which line differed.
+
+The app's half (switching a scaled line between tbsp and ml at 50 ml, and the shopping list's breakdown) is planned in
+`docs/PLAN-LIQUID-MEASURES.md`, with five questions for you in its §5. Nothing there stops you converting now.
+
+### Otherwise
+
+The master copy of the converter's instructions is `converter/conversion-instructions.md`; when it changes,
 the gold **CONVERTER** bar says so in your household, and the steps are in the bar. The other files under `converter/` are
 reference material only.
 
