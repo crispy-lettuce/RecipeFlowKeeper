@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 15 Oct 2026, when 66a (the Modernist style) was added.**
+**Last brought up to date: 18 Oct 2026, when the test-household split was added.**
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
 households sort out their own converter and need no steps here.
@@ -22,6 +22,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | Job | Where | Time | Saves anything? |
 | --- | --- | --- | --- |
 | [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
+| [Split off the test household](#split-off-the-test-household-new-18-oct) | app, Supabase dashboard | 20 min | Yes: your household moves to a new, empty one |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
 ---
@@ -171,7 +172,36 @@ sign-in card should say "Recipe Wrangler" too).
 
 ## Library jobs
 
-None at the moment. The master copy of the converter's instructions is `converter/conversion-instructions.md`; when it changes,
+### Split off the test household (new 18 Oct)
+
+The plan is `docs/PLAN-TEST-HOUSEHOLD.md`, and the SQL is in `PrivateBackup` (`migrations/test-household-split/`). Today's
+library becomes **Test Kitchen**, for testing; your account moves to a new, empty household with your household's name. Your word
+matches, aisles and swaps come with you, and so does sharing with the relatives' household.
+
+1. In `PrivateBackup`'s Actions tab, open the latest **backup-supabase** run. **You should see:** a green tick from this morning.
+2. In the app, tap **EXPORT DATA** and keep the file. **You should see:** a backup file downloaded.
+3. **PLANNER:** tap each day from today on that shows **✓ IN CALENDAR**. **You should see:** the tick goes, and the day leaves
+   the RecipeWrangler calendar in Google.
+4. **SETTINGS → APP → CALENDAR → DISCONNECT.** **You should see:** CONNECT GOOGLE CALENDAR in its place.
+5. **SETTINGS → APP → RECIPE SHARING:** change the name to `Test Kitchen` and tap **SAVE**. **You should see:** the new name.
+6. Supabase dashboard → Authentication → Users → **Add user**: the test account's address from `PrivateBackup`, with a
+   password you keep. **You should see:** the new user in the list.
+7. Supabase SQL editor: paste `switch.sql` from `PrivateBackup` and run it. **You should see:** "Switched: new household …".
+   If it stops with a message, nothing has changed. The message names the step to do first.
+8. Reload the app on every device. **You should see:** an empty library under your household's name. Settings has your word
+   matches, aisles and swaps, and RECIPE SHARING still lists the relatives' household.
+9. Set **Appearance** to Dark, and tap **DONE** on the CONVERTER bar.
+10. **CONNECT GOOGLE CALENDAR**, and say yes to Google. **You should see:** the same RecipeWrangler calendar as before, not a
+    second one.
+11. In another browser profile or a private window, sign in as the test account. **You should see:** Test Kitchen with every
+    old recipe, its photo and its history.
+12. Tell the next session it is done. It checks the database and updates the documents.
+
+Something wrong after step 7? `undo.sql` puts it back, as long as nothing has been added to the new household yet.
+
+### The converter
+
+Nothing to do. The master copy of the converter's instructions is `converter/conversion-instructions.md`; when it changes,
 the gold **CONVERTER** bar says so in your household, and the steps are in the bar. The other files under `converter/` are
 reference material only.
 

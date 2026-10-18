@@ -434,6 +434,16 @@ at once. Why there is no search across all tabs. The redraw loop to avoid. One P
 
 **Use it when:** building #95.
 
+### `docs/PLAN-TEST-HOUSEHOLD.md` — a test household, and a fresh start for the real one (18 Oct 2026; agreed, not yet done)
+**What:** why the family's account moves to a new, empty household and the placeholder library stays behind as Test Kitchen
+(rather than the library moving), what is tied to a household and what happens to each (photos, the share, Google, calendar
+events, settings), the steps, the scratch-database trial of the switch and its undo, and how the test household is used afterwards.
+The SQL, which names the accounts, is in `PrivateBackup` (`migrations/test-household-split/`).
+
+**Use it when:** doing the split, or wondering why the id in `docs/INFRASTRUCTURE.md` holds test data.
+
+---
+
 ### `docs/PLAN-PREVIEW-SITE.md` — trying a change before it goes live, #100 (13 Oct 2026; **parked**)
 **What:** everything that depends on the site's address, the one-database catch (a preview writes real data), three options
 compared, and the recommendation: GitHub Pages stays live and Cloudflare Pages gives each PR a preview address. Household and
