@@ -22,7 +22,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | Job | Where | Time | Saves anything? |
 | --- | --- | --- | --- |
 | **1.** [Split off the test household](#split-off-the-test-household-new-18-oct) | app, Supabase dashboard | 20 min | Yes: your household moves to a new, empty one |
-| **2.** [Reload the converter](#l1-reload-the-converter-liquids-18-oct), once #155 has merged | app, conversion project | 10 min | Only the converter's DONE |
+| **2.** [L1. Reload the converter](#l1-reload-the-converter-liquids-18-oct), once #155 has merged | app, conversion project | 10 min | Only the converter's DONE |
 | [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
 | [61a–65a: the readability changes](#61a-quieter-text-is-easier-to-read-new-14-oct-docsplan-readabilitymd-change-t), **in Classic** | tablet (62a and 63a end on the phone) | 25 min | Only Appearance, switched to dark and put back (61a, 62a, 64a) |
 | [66a: the Modernist style](#66a-a-second-style-modernist-new-15-oct-revised-18-oct-docsplan-modernistmd) | tablet, landscape | 15 min | Two things, each undone in the next tap (see 66a) |
