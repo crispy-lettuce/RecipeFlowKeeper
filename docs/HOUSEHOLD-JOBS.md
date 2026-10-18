@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 15 Oct 2026, when 66a (the Modernist style) was added.**
+**Last brought up to date: 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct.**
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
 households sort out their own converter and need no steps here.
@@ -21,8 +21,13 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 | Job | Where | Time | Saves anything? |
 | --- | --- | --- | --- |
-| [Reload the app](#reload-the-app-on-every-device) | every device | 1 min | No |
+| [Merge the fixes, then reload the app](#reload-the-app-on-every-device) | GitHub, then every device | 3 min | No |
+| [61a–65a: the readability changes](#61a-quieter-text-is-easier-to-read-new-14-oct-docsplan-readabilitymd-change-t), **in Classic** | tablet (62a and 63a end on the phone) | 25 min | Only Appearance, switched to dark and put back (61a, 62a, 64a) |
+| [66a: the Modernist style](#66a-a-second-style-modernist-new-15-oct-revised-18-oct-docsplan-modernistmd) | tablet, landscape | 15 min | Two things, each undone in the next tap (see 66a) |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
+
+**Do them in this order.** 61a to 65a describe the **Classic** look (plum, gold, rounded corners), which is how the app opens
+unless a device has been switched. Do them first, then 66a, which switches to Modernist and back at the end.
 
 ---
 
@@ -30,12 +35,16 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 
 ### Reload the app on every device
 
-The newest version is 2026-10-15.1 (a second style, Modernist). Once it has merged, reload on every device. The one before it,
-2026-10-14.5 (one corner), and the four before that, 2026-10-14.1 (colours), 2026-10-14.2 (bigger writing), 2026-10-14.3 (bigger
-buttons) and 2026-10-14.4 (keyboard focus), should already be live. Steps 61a to 66a are below.
+Live now (checked 18 Oct): **2026-10-15.1**, the Modernist style, merged as #153 on 15 Oct; its tests and the site's deployment
+passed. Everything before it (2026-10-14.1 to 2026-10-14.5, the readability changes) is live too.
 
-1. On the tablet, the phone and the laptop, open the app.
-2. If a bar says **A new version is ready**, tap **RELOAD**. Otherwise refresh the page.
+Waiting: **2026-10-18.1**, the fixes found when #153 was reviewed (RESET TICKS and its count, the meal-base colours, prepared
+ingredients drawn as steps, the month names, and Enter on a card's buttons). It is in the pull request opened on 18 Oct.
+
+1. Merge the 18 Oct pull request on GitHub once its check (**offline-harness**) is green.
+2. On the tablet, the phone and the laptop, open the app.
+3. If a bar says **A new version is ready.**, tap **RELOAD**. Otherwise refresh the page.
+4. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-18.1**.
 
 ---
 
@@ -46,10 +55,10 @@ buttons) and 2026-10-14.4 (keyboard focus), should already be live. Steps 61a to
 Colours only: nothing moves. Do this after the readability pull request has merged and you have reloaded the app.
 
 1. In the light theme, open **RECIPES**. **You should see:** the small grey words (COURSE and SORT above the filters, the
-   "3 OF 3" count, the dashed chips, SAVED VIEWS and EXPORT DATA in the sidebar) a little darker than before, still the quietest
-   text on the page, and none of them hard to read.
+   count in the search bar such as "40 OF 40", the dashed chips, SAVED VIEWS and EXPORT DATA in the sidebar) a little darker than
+   before, still the quietest text on the page, and none of them hard to read.
 2. Open a recipe. **You should see:** the line under the title and the hint under the grid read clearly, and the quantity beside
-   each ingredient is still in its pale plum pill, no heavier than before.
+   each ingredient is still on its pale plum patch, no heavier than before.
 3. Open **PLANNER**. **You should see:** the day numbers, and SERVES n and × on a planned dish, read clearly; today's row has a
    faint tint, as before.
 4. **SETTINGS → APP → Appearance → Dark**, then look at 1 to 3 again. **You should see:** the quantity pills now show as pills
@@ -86,7 +95,7 @@ Tell the next session what looks too big or too cramped, and anything you can't 
 Nothing is saved. Do this after the buttons pull request has merged and you have reloaded the app. Tablet first; step 6 is the phone.
 
 1. Open **RECIPES**. **You should see:** the filter chips and the SOURCE and SORT boxes taller and easy to hit. The star and **+** on a
-   card look the same, but a tap just outside the circle still works. A tap anywhere along the search bar puts the cursor in it.
+   card look the same size, but a tap just outside one still works. A tap anywhere along the search bar puts the cursor in it.
 2. Open a recipe. **You should see:** every button above it, the **2 4 6 8** buttons under COOK FOR, **GO**, **RESET** and the
    **COOKING MODE** switch comfortable to press with a thumb.
 3. Switch **COOKING MODE** on. **You should see:** a tidy header, with **RESET TICKS** and **SHOW TIMELINE** together on one line.
@@ -131,10 +140,15 @@ have reloaded the app.
 
 Tell the next session if any square looks too sharp, or if you want a circle back anywhere.
 
-### 66a. A second style, Modernist (new 15 Oct, `docs/PLAN-MODERNIST.md`)
+### 66a. A second style, Modernist (new 15 Oct, revised 18 Oct, `docs/PLAN-MODERNIST.md`)
 
-Nothing is saved to the household's data: the style is kept on each device. Do this on the tablet, held landscape, after the pull
-request has merged and you have reloaded. It takes about ten minutes. Steps 1 and 12 can be done on the phone as well.
+Do this on the tablet, held landscape, after the 18 Oct pull request has merged and you have reloaded (version 2026-10-18.1).
+It takes about fifteen minutes. Steps 1 and 13 can be done on the phone as well.
+
+**What it saves:** the style is kept on each device, not shared. Step 3 puts a recipe on the shortlist and takes it off again;
+step 8 ticks a shopping row and unticks it. In step 4, tap boxes that are **not** in the last column: ticking the last column
+logs the recipe as cooked today. Step 7 only opens two questions, which you cancel. Step 11 changes the household's Appearance
+and puts it back. Nothing else is saved.
 
 1. Open **SETTINGS**, then **APP**. Under **STYLE**, choose **MODERNIST**. **You should see:** the whole app change at once to a flat,
    square look in one typeface, with **Recipe Wrangler** at the top of the side menu and the menu's links numbered 01 to 06.
@@ -142,26 +156,34 @@ request has merged and you have reloaded. It takes about ten minutes. Steps 1 an
 3. Open **RECIPES**. **You should see:** "Recipes" in large type with the number of recipes beside it, the search bar beside that, and
    three cards to a row, photos in colour. Tap **+** on a card: it becomes **✓**. Tap **✓**: the recipe comes off the shortlist.
 4. Open a recipe. **You should see:** the title very large, with SERVES and "0 / N TICKED" beside it; the flow table with square boxes,
-   the last column in red. Tap a box: the count goes up. Turn **COOKING MODE** on: a red bar says the screen will stay on, and the side
-   menu folds to a strip. Tap the strip to open the menu, and ‹ to fold it again. Turn cooking mode off.
+   the last column in red. Tap two boxes that are not in the last column: the count goes up. Tap **RESET TICKS**: every box clears
+   and the count goes back to **0 / N TICKED**. Turn **COOKING MODE** on: a red bar says the screen will stay on, and the side menu
+   folds to a strip. Tap the strip to open the menu, and ‹ to fold it again. Turn cooking mode off.
 5. On that recipe, tap **EXPORT PNG**. **You should see:** a picture of the recipe, looking as it does on screen. If you print, try
    **PRINT / A4 PDF** too.
 6. Open **PLANNER**. **You should see:** the side menu folded to a strip, "Next Fourteen Days", each week under a black line with its
    dates and how many are planned, and the shortlist on the right with numbered ideas and a red **SHOPPING LIST** block at its foot.
    Tap **›** at the top of the shortlist: it folds to a strip. Tap the strip: it opens again. Tap the red block: the shopping list opens.
-7. On the Planner, tap a dish's **SERVES**, **PRE-MADE** and **COOKED ✓** as you normally would (and undo them). **You should see:** each
-   answers your thumb first time, without catching the dish's name above it.
+7. Back on the Planner, on a dish that is not already pre-made, tap **SERVES** and cancel the box that asks how many, then tap
+   **PRE-MADE** and cancel the question it asks. **You should see:** each answers your thumb first time, without catching the dish's
+   name above it.
 8. Open **SHOPPING**. **You should see:** the aisles in two columns, a square box on each row. Tick a row: the box goes red, the row
    fades and is struck through, and the count by the aisle and under the title goes up. Untick it. Tap **EXPORT PNG**: the picture
    has the square boxes, with ticked rows left out.
 9. Open **HISTORY**. **You should see:** the month in large type between two square arrows, today ringed in red, and words like
-   COOKED at the foot of the days. Tap a day: it fills with ink (black, in light) and the panel on the right shows what was eaten. Scroll the panel:
-   the meal-base mixes are bars, not pies.
+   COOKED at the foot of the days. Tap a day: it fills with ink (black, in light) and the panel on the right shows what was eaten.
+   Scroll the panel: the meal-base mixes are bars, not pies, and no two meal bases share a look (after five colours they are striped).
 10. Open **SETTINGS**. **You should see:** the four tabs as words, the open one underlined in red, and each section between lines.
 11. Under **APPEARANCE**, choose dark, then light again (it is shared with the household, so put it back as it was). **You should
     see:** Modernist in dark, then light.
-12. Under **STYLE**, choose **CLASSIC**. **You should see:** the app exactly as it was before this change. Choose whichever style you
+12. Only if you use **PREPARATION → AS STEPS IN THE FLOW** (Settings → APP): open a recipe with sliced or diced ingredients. **You
+    should see:** the step that cooks them grey with a black bar down its left, not a solid black box (black boxes are for steps
+    that join two cooked things).
+13. Under **STYLE**, choose **CLASSIC**. **You should see:** the app exactly as it was before this change. Choose whichever style you
     want to keep.
+
+With a keyboard on the laptop (optional, either style): press **Tab** until a card's **+** is outlined and press **Enter**. **You
+should see:** the recipe goes on the shortlist and does not open. Enter on the card itself still opens it. Take it off again.
 
 Tell the next session anything that looks wrong, is hard to tap, or that you would like changed. The decisions made while building
 it, with the reasons, are listed at the end of `docs/PLAN-MODERNIST.md`; a few are questions for you (for example, whether the
@@ -201,11 +223,17 @@ You chose the order on 13 Oct: #94, then #95, #88 and #87; #100 stays parked.
 
 ## Nothing to do: a session checks these
 
-- **The photo backup** on Sunday 18 Oct: the first run of the new mirror script in `PrivateBackup`.
+None at the moment.
 
 ---
 
 ## Recently done
+
+- **18 Oct:** the photo backup's first run on the new mirror script passed (05:05 UTC, checked by a session in the run's log):
+  every photo and source file fetched and checked against the database, and 4 new photos and 4 new source files committed to
+  `PrivateBackup`. The nightly database backup has passed every night since 12 Oct.
+- **15 Oct:** the Modernist style merged (#153); its tests and the site's deployment passed. A review afterwards found five faults,
+  fixed in the 18 Oct pull request (66a now covers them).
 
 - **14 Oct:** tablet step 60a (OFTEN WITH) passed; every app check is done. Testing is in your household only; the
   second household's converter is theirs to sort out, so it is off this list.

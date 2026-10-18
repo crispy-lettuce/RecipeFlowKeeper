@@ -434,6 +434,21 @@ check('adjacent rows merge without an error', core.computeColumns(parsed.groups,
   const r = core.parseRecipe('GROUP a:\n1 x\n\nGROUP b:\n1 y\n\nSTAGE:\nMERGE a -> x: Fry [5 min]\n\nSTAGE:\nMERGE b -> a: Stir [5 min]\n\nSTAGE:\nMERGE x, a -> y: Join [5 min]');
   const rc = core.computeColumns(r.groups, r.stages), rm = rc.columns.flat().filter(b => b.merge).map(b => b.outputHandle);
   check('    a step output that reuses a used-up group\'s name counts as a step', rc.errors.length === 0 && JSON.stringify(rm) === '["y"]', JSON.stringify({ rm, errors: rc.errors }));
+  /* PREPARATION as steps (18 Oct 2026): "Fry the veg" takes two prepared halves of one group, which are raw ingredients cut,
+     not steps; as written it is no merge, and drawing the preparation must not make it one. */
+  const pv = core.parseRecipe('TITLE: P\nSERVINGS: 2\n\nGROUP veg:\n2 leeks, thinly sliced\n1 onion, diced\n\nGROUP s:\n1 x\n\n' +
+    'STAGE:\nMERGE s -> S: Simmer [10 min]\n\nSTAGE:\nMERGE veg -> V: Fry the veg [8 min]\n\nSTAGE:\nMERGE V, S -> W: Combine [5 min]');
+  const pd = core.withPrepSteps(pv), pc = core.computeColumns(pd.groups, pd.stages);
+  const pm = pc.columns.flat().filter(b => b.merge).map(b => b.outputHandle);
+  const pAsWritten = core.computeColumns(pv.groups, pv.stages).columns.flat().filter(b => b.merge).map(b => b.outputHandle);
+  check('    with PREPARATION drawn as steps, a step fed only by prepared ingredients is not a merge; joining two steps still is',
+        pd !== pv && pc.errors.length === 0 && pd.stages.some(st => st.some(op => op.prep)) && JSON.stringify(pm) === '["W"]' && JSON.stringify(pAsWritten) === '["W"]',
+        JSON.stringify({ pm, pAsWritten, errors: pc.errors }));
+  /* The mark cannot depend on the order of lines within a stage: a stage's outputs only become steps after the stage. */
+  const ord = (first, second) => { const q = core.parseRecipe('GROUP b:\n1 y\n\nGROUP a:\n1 x\n\nGROUP c:\n1 z\n\nSTAGE:\nMERGE c -> C: Fry [5 min]\n\n' +
+    `STAGE:\n${first}\n${second}`); const qc = core.computeColumns(q.groups, q.stages); return qc.errors.length + ':' + JSON.stringify(qc.columns.flat().filter(b => b.merge).map(b => b.outputHandle)); };
+  const o1 = ord('MERGE b -> a: Stir [5 min]', 'MERGE a, C -> D: Join [5 min]'), o2 = ord('MERGE a, C -> D: Join [5 min]', 'MERGE b -> a: Stir [5 min]');
+  check('    the order of two lines within one stage does not change which boxes are merges', o1 === o2 && o1 === '0:[]', JSON.stringify({ o1, o2 }));
 }
 /* F41 (October review): each used to be laid out silently. */
 const colErrs = t => { const p = core.parseRecipe(t); return core.computeColumns(p.groups, p.stages).errors; };

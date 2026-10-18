@@ -7736,6 +7736,86 @@ const check = (name, pass, detail) => {
         e6.name === 'Kitchen' && e6.size === '32px' && e6.frame === '2px' && e6.btn === 'rgb(221, 43, 15)' && e6.btnH >= 44 && e6.inH >= 44, JSON.stringify(e6));
   await em.close();
 
+  /* ---- Fixes of 18 Oct (the review of the Modernist pull request, #153) ----
+     RESET TICKS brings the "n / N TICKED" count back to nought; nine meal bases look different on History's bars; the week
+     labels say SEP on a British browser; and Enter on a card's own buttons does their job rather than opening the recipe. */
+  const fx = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  fx.__label = 'fixes of 18 Oct, modernist';
+  await fx.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await fx.clock.setFixedTime(FIXTURE_NOW);
+  await fx.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await fx.waitForTimeout(1200);
+  await openStew(fx); await fx.waitForTimeout(300);
+  await fx.click('#flowMount .box-cell[data-handle="C"]'); await fx.waitForTimeout(200);
+  const fxBefore = await fx.textContent('#flowMount .recipe-ticked');
+  await fx.click('#resetTicksBtn'); await fx.waitForTimeout(200);
+  const fxAfter = await fx.evaluate(() => ({ count: document.querySelector('#flowMount .recipe-ticked').textContent, done: document.querySelectorAll('#flowMount .done').length }));
+  await openGroup(fx);
+  await fx.locator('#groupFlowMount .stacked-recipe-flow').first().locator('.ing-cell').first().click(); await fx.waitForTimeout(200);
+  const fxG1 = await fx.evaluate(() => [...document.querySelectorAll('#groupFlowMount .recipe-ticked')].map(e => e.textContent));
+  await fx.click('#groupResetTicksBtn'); await fx.waitForTimeout(200);
+  const fxG2 = await fx.evaluate(() => [...document.querySelectorAll('#groupFlowMount .recipe-ticked')].map(e => e.textContent));
+  check('RESET TICKS brings the "n / N TICKED" count back to nought, on a recipe and in the Group Viewer',
+        fxBefore === '5 / 14 TICKED' && fxAfter.count === '0 / 14 TICKED' && fxAfter.done === 0 && /^1 \//.test(fxG1[0]) && fxG2.length === 2 && fxG2.every(t => /^0 \//.test(t)),
+        JSON.stringify([fxBefore, fxAfter, fxG1, fxG2]));
+
+  /* Seven meal bases in the library (the fixture's Veg and Pasta, and five made up here): seven different looks. */
+  await fx.evaluate(() => {
+    ['Chicken', 'Beef', 'Fish', 'Pulses', 'Rice'].forEach((kw, i) => loadRecipes().push({ id: 'mb' + i, title: 'Test Base ' + kw, source: 'Test Kitchen', time: '20 min', servings: 2,
+      tags: { course: 'Main', keywords: [kw] }, history: [], syntax: 'TITLE: Test Base ' + kw }));
+    showView('history');
+  });
+  await fx.waitForTimeout(300);
+  const fxBars = await fx.evaluate(() => { const bar = document.querySelector('#historyStats .hstat-bar'), cs = el => getComputedStyle(el);
+    const looks = [...bar.children].map(x => cs(x).backgroundColor + ' ' + cs(x).backgroundImage);
+    const swatches = [...bar.nextElementSibling.querySelectorAll('.hstat-legend-swatch')].map(x => cs(x).backgroundColor + ' ' + cs(x).backgroundImage);
+    return { n: looks.length, distinct: new Set(looks).size, legendMatches: JSON.stringify(looks) === JSON.stringify(swatches), sixth: looks[5] }; });
+  check('    seven meal bases on History\'s bar are seven different looks (the sixth on striped), each matched in the legend',
+        fxBars.n === 7 && fxBars.distinct === 7 && fxBars.legendMatches && /repeating-linear-gradient/.test(fxBars.sixth), JSON.stringify(fxBars));
+
+  /* Enter on a card's + and ✓ does what a tap does; Enter on the card itself still opens it. */
+  await fx.evaluate(() => showView('recipes')); await fx.waitForTimeout(300);
+  const kId = await fx.evaluate(() => document.querySelector('#recipeGrid .rcard').dataset.id);
+  const kOn = () => fx.evaluate(id => ({ on: loadShortlist().filter(i => i.recipeId === id).length, view: state.view }), kId);
+  const fk0 = await kOn();
+  await fx.focus(`#recipeGrid [data-shortlist="${kId}"]`); await fx.keyboard.press('Enter'); await fx.waitForTimeout(300);
+  const fk1 = await kOn();
+  await fx.focus(`#recipeGrid [data-shortlist="${kId}"]`); await fx.keyboard.press('Enter'); await fx.waitForTimeout(300);
+  const fk2 = await kOn();
+  await fx.focus(`#recipeGrid .rcard[data-id="${kId}"]`); await fx.keyboard.press('Enter'); await fx.waitForTimeout(300);
+  const fk3 = await kOn();
+  check('    Enter on a card\'s + puts it on the shortlist and Enter on its ✓ takes it off, without opening the recipe; Enter on the card opens it',
+        fk0.on === 0 && fk1.on === 1 && fk1.view === 'recipes' && fk2.on === 0 && fk2.view === 'recipes' && fk3.view === 'viewer', JSON.stringify([fk0, fk1, fk2, fk3]));
+  await fx.close();
+
+  /* A British browser: the week labels still read SEP, as the design's three letters do. */
+  const fg = await browser.newPage({ viewport: { width: 1280, height: 800 }, locale: 'en-GB' });
+  fg.__label = 'fixes of 18 Oct, en-GB';
+  await fg.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await fg.clock.setFixedTime(FIXTURE_NOW);
+  await fg.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await fg.waitForTimeout(1200);
+  await fg.evaluate(() => showView('planner')); await fg.waitForTimeout(300);
+  const fgBand = await fg.evaluate(() => document.querySelector('#view-planner .week-name').textContent);
+  await fg.evaluate(() => showView('shopping')); await fg.waitForTimeout(300);
+  const fgOpt = await fg.evaluate(() => document.querySelector('#shopWeekSelect option').textContent);
+  const fgSays = await fg.evaluate(() => new Date(2026, 8, 22).toLocaleDateString(undefined, { month: 'short' }));
+  check('    on a British browser the Planner\'s band and the Shopping List\'s weeks read "22–24 SEP", not "SEPT"',
+        fgBand === 'THIS WEEK · 22–24 SEP' && fgOpt === 'THIS WEEK · 22–24 SEP' && fgSays === 'Sept', JSON.stringify([fgBand, fgOpt, fgSays]));
+  await fg.close();
+
+  /* Classic's cards too: Enter on + adds to the shortlist rather than opening the recipe. */
+  const fxc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  fxc.__label = 'fixes of 18 Oct, classic';
+  await fxc.clock.setFixedTime(FIXTURE_NOW);
+  await fxc.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await fxc.waitForTimeout(1200);
+  const fxcId = await fxc.evaluate(() => document.querySelector('#recipeGrid .rcard').dataset.id);
+  await fxc.focus(`#recipeGrid [data-shortlist="${fxcId}"]`); await fxc.keyboard.press('Enter'); await fxc.waitForTimeout(300);
+  const fxc1 = await fxc.evaluate(id => ({ on: loadShortlist().filter(i => i.recipeId === id).length, view: state.view }), fxcId);
+  check('Classic: Enter on a card\'s + puts it on the shortlist and leaves the recipe closed', fxc1.on === 1 && fxc1.view === 'recipes', JSON.stringify(fxc1));
+  await fxc.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:
