@@ -1555,6 +1555,67 @@ check('Frozen is the last aisle, and the last section of the shopping list',
         core.groupedWith('m', groups).find(x => x.id === 'twice').last === '2026-08-20');
 }
 
+// splitRecipeBlocks: the blocks in a combined file (docs/PLAN-BULK-ADD.md §3). Every recipe here is made up.
+{
+  const split = core.splitRecipeBlocks;
+  const titles = r => r.blocks.map(b => b.title);
+  const R = (t, extra) => 'TITLE: ' + t + '\nSOURCE: Test Book\nSERVINGS: 2\nGROUP a:\n1 tbsp oil\n' + (extra || '');
+
+  const fenced = 'Here you go:\n\n```\n' + R('Alpha Soup') + '```\n\nsome prose\n\n```sh\nnpm test\n```\n\n```\n' + R('Beta Bake') + '```\n';
+  const f = split(fenced);
+  check('splitRecipeBlocks (fenced): blocks in file order; a fence whose first line is not TITLE: is ignored; prose is ignored',
+        JSON.stringify(titles(f)) === '["Alpha Soup","Beta Bake"]' && f.stray.length === 0, JSON.stringify(titles(f)));
+  check('    a fenced block gives the line of its opening fence, and its text exactly as written (no trimming, quotes kept)',
+        f.blocks[0].line === 3 && f.blocks[0].text === R('Alpha Soup').replace(/\n$/, '')
+        && split('```\nTITLE: Q\nSOURCE: Sally\u2019s Book  \nGROUP a:\n1 egg\n\n\n1 pinch salt\n```').blocks[0].text.includes('Sally\u2019s Book  \nGROUP a:\n1 egg\n\n\n1 pinch salt'),
+        JSON.stringify(f.blocks[0]));
+
+  const edge = split('```\n\nTITLE: Q\nSOURCE: Test Book\n1 egg  \n```').blocks[0];
+  check('    a fenced block keeps a leading blank line and trailing spaces: nothing inside the fences is trimmed',
+        edge.text === '\nTITLE: Q\nSOURCE: Test Book\n1 egg  ', JSON.stringify(edge.text));
+
+  const unfenced = 'Some intro\n\n1. Alpha Soup\n' + R('Alpha Soup') + '\n2. Beta Bake\n' + R('Beta Bake', 'NOTES:\nKeeps well.\n') + '\n\n3. Different Name\n' + R('Gamma Stew');
+  const u = split(unfenced);
+  check('splitRecipeBlocks (unfenced): a block starts at each TITLE: line, and a numbered heading with the same title is left out of the block above',
+        JSON.stringify(titles(u)) === '["Alpha Soup","Beta Bake","Gamma Stew"]' && !u.blocks[0].text.includes('2. Beta Bake') && !u.blocks[1].text.includes('1. Alpha'),
+        JSON.stringify(u.blocks.map(b => b.text.split('\n').slice(-2))));
+  check('    a numbered heading whose title differs stays with the block above (the splitter cannot tell it from a numbered step), and trailing blank lines go',
+        u.blocks[1].text.endsWith('3. Different Name') && !u.blocks[0].text.endsWith('\n') && u.blocks[1].text.includes('Keeps well.'),
+        JSON.stringify(u.blocks[1].text.slice(-40)));
+  check('    the line of an unfenced block is the line of its TITLE:', u.blocks[0].line === 4 && u.blocks[1].line === 11, JSON.stringify(u.blocks.map(b => b.line)));
+
+  const mixed = '```\n' + R('Inside One') + '```\n\n' + R('Outside Two');
+  const m = split(mixed);
+  check('splitRecipeBlocks: in a file that has fences, a TITLE: outside them is not a block, and is reported as stray with its line',
+        JSON.stringify(titles(m)) === '["Inside One"]' && JSON.stringify(m.stray) === '[' + (R('Inside One').split('\n').length + 3) + ']', JSON.stringify([titles(m), m.stray]));
+
+  const crlf = split('\uFEFF' + R('Alpha Soup').replace(/\n/g, '\r\n') + '\r\n' + R('Beta Bake').replace(/\n/g, '\r\n'));
+  check('splitRecipeBlocks: a BOM and CRLF line endings are normalised (no stray \\r in any block)',
+        JSON.stringify(titles(crlf)) === '["Alpha Soup","Beta Bake"]' && !crlf.blocks.some(b => b.text.includes('\r')), JSON.stringify(titles(crlf)));
+
+  const cut = split('```\n' + R('Cut Off'));
+  const junk = split('```\nnot a recipe\n');
+  check('splitRecipeBlocks: a fence that never closes gives a block marked unterminated; one that is not a recipe gives nothing',
+        cut.blocks.length === 1 && cut.blocks[0].unterminated === true && split(fenced).blocks.every(b => b.unterminated === false) && junk.blocks.length === 0);
+
+  const inline = split(R('Alpha Soup', 'NOTES:\nA note that says TITLE: Not A Block\n   TITLE: nor this\n'));
+  check('splitRecipeBlocks (unfenced): TITLE: inside a line, or indented, does not start a block',
+        inline.blocks.length === 1 && inline.stray.length === 0, JSON.stringify(titles(inline)));
+
+  const noSteps = split(R('No Steps Here', 'STAGE:\nMERGE a -> done: stir [instant]\n')).blocks[0];
+  const parsed = core.parseRecipe(noSteps.text);
+  check('a block with no STEPS: line is returned whole and the parser reads it (a missing STEPS: is not a fault)',
+        noSteps.text.includes('MERGE a -> done') && parsed.groups.length === 1 && parsed.stages.length === 1 && parsed.unread.length === 0,
+        JSON.stringify([parsed.groups.length, parsed.stages.length, parsed.unread.length]));
+
+  check('splitRecipeBlocks: empty, whitespace and null input give no blocks, and nothing throws',
+        split('').blocks.length === 0 && split('  \n\n').blocks.length === 0 && split(null).blocks.length === 0 && split(undefined).stray.length === 0);
+
+  const validatorSrc = fs.readFileSync(path.join(ROOT, 'test', 'validate-recipes.js'), 'utf8');
+  check('test/validate-recipes.js reads blocks with core.js splitRecipeBlocks and keeps no fence loop of its own',
+        /splitRecipeBlocks\(md\)/.test(validatorSrc) && !/inFence/.test(validatorSrc));
+}
+
 const failed = checks.filter(c => !c.pass).length;
 console.log(`\n${checks.length} checks, ${failed} failed`);
 process.exit(failed ? 1 : 0);

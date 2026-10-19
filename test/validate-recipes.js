@@ -12,7 +12,8 @@
      node test/validate-recipes.js <file.md> [--json out.json] [--source sources.txt]
 
    The input is whatever the conversion prompt's Present step produces:
-   markdown with one fenced code block per recipe, each starting TITLE:.
+   markdown with one fenced code block per recipe, each starting TITLE:, or (since 18 Oct 2026)
+   an unfenced file with a TITLE: line at the start of each recipe.
    Prose between blocks is ignored. NOTHING is read from this repo — recipe
    data is never committed here, so the file lives outside it.
 
@@ -62,30 +63,15 @@ function readSourceLists(file){
   return lists;
 }
 
-/* Pull out fenced blocks that look like recipe syntax. A block only counts
-   if its first non-blank line is TITLE: — that keeps stray shell/JSON
-   samples in the same document from being treated as recipes. */
+/* Which blocks count is decided by splitRecipeBlocks in core.js, the same function the app's ADD SEVERAL uses
+   (docs/PLAN-BULK-ADD.md §3), so the command line and the app cannot disagree about what a block is. A fenced file
+   needs each block's first non-blank line to be TITLE:, which keeps stray shell or JSON samples from being read as
+   recipes; an unfenced file (no ``` line at all) is split at each TITLE: line. */
+const { splitRecipeBlocks } = require(path.join(__dirname, '..', 'core.js'));
 function extractBlocks(md){
-  const out = [];
-  const lines = md.split('\n');
-  let inFence = false, buf = null, fenceLine = 0;
-  for(let i=0;i<lines.length;i++){
-    const line = lines[i];
-    if(/^\s*```/.test(line)){
-      if(!inFence){ inFence = true; buf = []; fenceLine = i+1; }
-      else {
-        inFence = false;
-        const text = buf.join('\n');
-        const first = text.split('\n').find(l=>l.trim()!=='') || '';
-        if(/^TITLE:/i.test(first.trim())) out.push({ line: fenceLine, text });
-        buf = null;
-      }
-      continue;
-    }
-    if(inFence) buf.push(line);
-  }
-  if(inFence) out.push({ line: fenceLine, text: buf.join('\n'), unterminated: true });
-  return out;
+  const { blocks, stray } = splitRecipeBlocks(md);
+  stray.forEach(line => console.error(`warning: line ${line} starts TITLE: but is outside the fenced blocks, so it was not read`));
+  return blocks;
 }
 
 /* The ingredient-line checks live in test/ingredient-lines.js, shared with

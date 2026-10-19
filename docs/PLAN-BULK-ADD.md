@@ -1,7 +1,8 @@
 # Plan: adding several recipes at once, from one combined file
 
-**Written 18 Oct 2026** (date from `date -u`), in a planning session that changed no code. Checked against `main`
-at `10c86c3` (PR #163), by reading the code. Nothing was run against the live app. The household asked for the
+**Written 18 Oct 2026** (date from `date -u`), in a planning session that changed no code. **Updated 19 Oct 2026:** the household
+answered §9 (all four as recommended), and PR 1 is built on the session branch (not yet merged); PR 4 is dropped. Checked against `main`
+at `10c86c3` (PR #163), by reading the code (§3 was checked by running the splitter, 19 Oct). Nothing was run against the live app. The household asked for the
 feature after a session loaded 62 converted recipes straight into the database (record and undo in `PrivateBackup`,
 a dated folder under `migrations/` there), which worked, but is not something the household can do for itself.
 
@@ -10,7 +11,7 @@ the rule, the checks to add and the mutation that must make each fail. If anythi
 the code wins and the disagreement is reported (§10), not worked around.
 
 **How to read it.** **Fact** means read in the code on 18 Oct. **Decided** means the household said so. **Recommendation**
-is this document's choice, open to being overruled. §9 lists the questions that are still the household's.
+is this document's choice, open to being overruled. §9 records the household's answers.
 
 ---
 
@@ -44,7 +45,7 @@ What the session's insert did not give, and what this plan does about each:
 | Source spelling asked about (`evaluateSourceSpelling`) | Fixed by hand in the file | A SOURCES band: one question per distinct source |
 | Duplicate by source link | Checked by hand | Per-recipe DUPLICATE status |
 | Keywords added to the vocabulary (`mergeKeywordVocab`) | Added by hand with SQL | Same function, once for the batch |
-| Source comparison runs by itself on paste (`autoCheckSource`) | Not run | **Not run** (§5, §9 Q3): Edit does not run it on opening either. LIBRARY CHECK already lists every recipe "not compared" |
+| Source comparison runs by itself on paste (`autoCheckSource`) | Not run | **Not run** (§5; decided, §9 Q3): Edit does not run it on opening either. LIBRARY CHECK already lists every recipe "not compared" |
 | Photo re-host queued per recipe (`rehostImageFor`) | Not queued (a household button press) | Queued per recipe |
 
 ---
@@ -77,21 +78,26 @@ What the session's insert did not give, and what this plan does about each:
 
 ## 3. The splitter
 
-`splitRecipeBlocks(text)` in `core.js`, pure, returning `[{ text, line, titleHint }]` in file order. **Recommendation:**
-it lives in `core.js` and `test/validate-recipes.js` is changed to call it, so the CLI and the app cannot disagree
-about what a block is (the precedent is `ingredientLineFaults`, 27 Sep). Rules:
+`splitRecipeBlocks(text)` in `core.js`, pure, returning `{ blocks, stray }` with `blocks` as `[{ text, line, title, unterminated }]`
+in file order. `test/validate-recipes.js` calls it, so the command line and the app cannot disagree about what a block is
+(the precedent is `ingredientLineFaults`, 27 Sep). **Built 19 Oct as PR 1.** Rules:
 
-1. **Fenced input wins.** If the text contains any fence line (` ``` `, optionally indented), a block is the text
-   between a pair of fences whose first non-blank line starts `TITLE:` (any case). Other fenced text is ignored.
-   An unterminated fence is a block marked `unterminated`, held back by the review (a cut-off paste).
-2. **Unfenced input.** A block starts at a line beginning `TITLE:` at column 0 and ends before the next such line.
-   **Fact:** the household's 18 Oct file had no fences, and put a numbered heading (`12. Some Title`) before each
-   `TITLE:`. A line immediately before a `TITLE:` line, matching `^\d+[.)]\s+` and containing the same title, is
-   dropped; any other prose between blocks is dropped with it.
-3. **Line endings.** CRLF and a leading BOM are normalised before anything else.
-4. **Typographic quotes are kept.** The splitter changes no text inside a block. (Source spelling is the SOURCES
-   band's job, not the splitter's.)
-5. A block whose text is empty after its `TITLE:` line is returned and held back ("nothing after the title").
+1. **Fenced input wins.** If the text contains any fence line (a line starting with three backticks, indented or not), a block
+   is the text between a pair of fences whose first non-blank line starts `TITLE:` (any case). Other fenced text (a shell
+   sample, JSON) is ignored, and so is anything outside the fences. A fence that never closes gives a block marked
+   `unterminated` (a cut-off paste) if it starts with `TITLE:`; one that is not a recipe gives nothing.
+2. **Stray lines.** In a fenced file, a `TITLE:` line at column 0 that falls outside every block is listed in `stray` (by line
+   number), so a half-fenced paste says so instead of silently losing recipes. The review shows it; the command line warns.
+3. **Unfenced input.** A block starts at a line beginning `TITLE:` at column 0 and ends before the next one. A numbered
+   heading (`12. Some Title`) directly above a `TITLE:` line with the same title (case and spacing ignored) is the file's own
+   label and is left out of the block above it. **Corrected from the first draft:** any other text before the next `TITLE:`
+   stays with the block above, because nothing here can tell prose from the tail of a recipe; the parser's NOT READ list
+   shows what it could not use. A heading whose title differs also stays (it cannot be told from a numbered step).
+   Trailing blank lines are dropped. `TITLE:` mid-line or indented starts nothing.
+4. **Nothing inside a block is changed.** No trimming (a fenced block keeps a leading blank line and trailing spaces), no
+   quote or dash changes. Source spelling is the SOURCES band's job. A BOM and CRLF line endings are normalised first.
+5. A block empty after its `TITLE:` line is returned and held back by the review ("nothing after the title").
+   `line` is the 1-based line of the opening fence (fenced) or of the `TITLE:` line (unfenced).
 
 **Fact (tested 18 Oct):** a block with no `STEPS:` line parses cleanly (5 groups, 6 stages, no NOT READ lines),
 because `parseRecipe` treats the groups and stages as the steps. A missing `STEPS:` is therefore not a fault and
@@ -146,7 +152,7 @@ count line ("60 added, queued to save"). Closing it is final. This is the househ
 - **No schema change, no Edge Function change, no converter change** (so no `CONVERTER_VERSION` bar). Nothing for the
   household to apply first.
 - **No automatic source comparison.** It would fetch the source page 60 times in a row, and "some sites turn that
-  check away". Offered as a follow-on (§7, PR 4), not built in.
+  check away". Declined (§9 Q3).
 - **No SAME AS / AISLE actions in the batch band.** They stay in the edit form (and Settings → Word Matches).
 
 ---
@@ -161,18 +167,18 @@ count line ("60 added, queued to save"). Closing it is final. This is the househ
 | 60 image re-host calls in a row | **Recommendation:** per recipe via `rehostImageFor`, queued behind the recipe's own write, as the form does. The sweep button stays the catch-up. A failure keeps the external URL, which still displays. |
 | Huge paste | The textarea holds it (the 18 Oct file was about 200 KB). **Recommendation:** warn, do not refuse, above 100 recipes. |
 | Private data | All fixtures in tests are made up (CLAUDE.md, "Read your diff for private data"). The household's real batch lives only in `PrivateBackup`. |
-| A mistaken batch | Undo is the delete the app already has, one recipe at a time. A single UNDO BATCH is PR 4 (§9 Q4). |
+| A mistaken batch | Undo is the delete the app already has, one recipe at a time. Declined: no UNDO BATCH (§9 Q4). |
 
 ---
 
 ## 7. The PRs
 
-**PR 1 — the splitter (core.js).** `splitRecipeBlocks` per §3; `test/validate-recipes.js` calls it instead of its own
+**PR 1 — the splitter (core.js). Built 19 Oct** on the session branch, not yet merged: core version `2026-10-19.1`, 13 new checks in `test/core.test.js` (248 in all; each seen to fail once, by mutation), `validate-recipes.js` on the shared splitter (a 62-recipe test file reads 62 valid both fenced and unfenced; smoke 724 of 724). `splitRecipeBlocks` per §3; `test/validate-recipes.js` calls it instead of its own
 `extractBlocks`. Bump `KITCHEN_CORE_VERSION` in all three places (CLAUDE.md, item 2). No UI, so no changelog entry.
 Checks in `test/core.test.js` (all with invented recipes): fenced; unfenced with numbered headings; mixed fenced and
 prose; CRLF and BOM; unterminated fence; empty block; two blocks one title; a line `NOTES: TITLE: x` mid-block does
-not start a block; a block with no `STEPS:` is returned whole. Plus one check that `validate-recipes.js` and
-`splitRecipeBlocks` return the same blocks for the same file.
+not start a block; a block with no `STEPS:` is returned whole. Plus one check that `validate-recipes.js` reads blocks only through
+`splitRecipeBlocks` (it keeps no fence loop of its own).
 
 **PR 2 — ADD SEVERAL: read, review, save.** The button, the dialog, file and paste input, the review list with the
 §4 statuses, the SOURCES band, the save, the result panel, `mergeKeywordVocab` once. `help.html`: a new short section
@@ -189,9 +195,7 @@ written until the button is pressed; closing the dialog writes nothing.
 Other flagged. Smoke: a name used by two batch recipes shows once with "2 recipes"; a name already in the library
 does not show.
 
-**PR 4 (optional, only if the household says yes).** COMPARE ALL WITH SOURCE: runs `compareWithSource` over the added
-recipes one at a time with a pause, stores each result the way the form does, reports the counts. And UNDO BATCH:
-deletes the batch's recipes that are still unchanged since being added.
+**PR 4 — dropped (19 Oct).** It was COMPARE ALL WITH SOURCE and UNDO BATCH; the household declined both (§9 Q3, Q4).
 
 Each PR: `node test/core.test.js`; `node test/build.js && node test/smoke.js`; read the exit codes; make each new
 check fail once and restore (CLAUDE.md, items 1 and 3); update the check counts quoted in CLAUDE.md and
@@ -207,13 +211,12 @@ refresh; closing the dialog before ADD adds nothing; airplane mode: ADD shows "q
 
 ---
 
-## 9. Questions that are the household's
+## 9. The household's answers (19 Oct 2026: "happy with recommendations", and deleting one recipe at a time is fine)
 
-1. **Duplicates.** Leave them unticked, adding only (recommended), or offer UPDATE for a duplicate? Update keeps
-   history but needs a before-and-after view and its own PR.
-2. **The button.** Beside NEW RECIPE as a separate dialog (recommended), or a mode inside the NEW RECIPE form?
-3. **Source comparison.** Leave it to LIBRARY CHECK and the per-recipe button (recommended), or build COMPARE ALL (PR 4)?
-4. **Undo.** Is UNDO BATCH wanted, or is deleting a recipe at a time enough?
+1. **Duplicates.** Decided: unticked by default, the feature only adds. No UPDATE for a duplicate.
+2. **The button.** Decided: ADD SEVERAL beside NEW RECIPE, its own dialog.
+3. **Source comparison.** Decided: left to LIBRARY CHECK and the per-recipe COMPARE WITH SOURCE. No COMPARE ALL.
+4. **Undo.** Decided: no UNDO BATCH. A mistaken batch is removed with the delete the app already has, one recipe at a time.
 
 ---
 
