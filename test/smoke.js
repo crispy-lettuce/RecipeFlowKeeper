@@ -7342,6 +7342,54 @@ const check = (name, pass, detail) => {
         r1.sourceRow === 'SOURCE' && r1.sources === 1 && r2.sourceRow === 'KEYWORD' && r2.sources === 1, JSON.stringify([r1.sourceRow, r2.sourceRow]));
   await rc.close();
 
+  /* ---- Modernist, step 3 again: a library big enough to scroll (19 Oct 2026) ----
+     The fixture's three recipes make one row, so nothing above ever made the grid scroll, and cards drawn as strips 20px tall
+     went unseen until the household opened the app on the tablet: above 860px the grid is a scroller of a fixed height, and
+     rows that were `auto` were shared out between that height. So this adds 30 recipes (a title of one line, then of two) and
+     measures the cards at the sizes the household uses: the tablet held sideways, two other tablets sideways, one upright and
+     a phone, where the page scrolls and the grid never had the fault. Classic is measured as the control: its rows are fixed. */
+  const manyLook = async (look, vp) => {
+    const pg = await browser.newPage({ viewport: vp });
+    pg.__label = 'recipes, many, ' + look;
+    await pg.addInitScript(l => { try { localStorage.setItem('kitchen.style', l); } catch (e) {} }, look);
+    await pg.clock.setFixedTime(FIXTURE_NOW);
+    await pg.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await pg.waitForTimeout(1200);
+    await pg.evaluate(() => {
+      for (let i = 0; i < 30; i++) loadRecipes().push({ id: 'many-' + i, title: i % 2 ? 'Test dish ' + i : 'A test dish with a name long enough to take two lines on a card ' + i,
+        source: 'Test Kitchen', time: '30 min', servings: 4, tags: { course: 'Main', keywords: [] }, history: [], syntax: 'TITLE: Test dish ' + i });
+      showView('recipes'); renderHome();
+    });
+    await pg.waitForTimeout(300);
+    return pg;
+  };
+  const manyMeasure = pg => pg.evaluate(() => {
+    const g = document.getElementById('recipeGrid'), cards = [...g.querySelectorAll('.rcard')], hs = cards.map(c => Math.round(c.getBoundingClientRect().height));
+    return { n: cards.length, min: Math.min(...hs), max: Math.max(...hs), clipped: cards.filter(c => c.scrollHeight > c.clientHeight + 1).length,
+      gridScrolls: g.scrollHeight > g.clientHeight + 1, vh: innerHeight, gridH: Math.round(g.getBoundingClientRect().height) };
+  });
+  const rbm = await manyLook('modernist', { width: 1280, height: 800 });
+  const sideways = [];
+  for (const vp of [{ width: 1280, height: 800 }, { width: 1024, height: 768 }, { width: 1366, height: 1024 }]) {
+    await rbm.setViewportSize(vp); await rbm.waitForTimeout(300);
+    sideways.push({ vp: vp.width + 'x' + vp.height, ...(await manyMeasure(rbm)) });
+  }
+  check('Modernist\'s Recipes with 33 recipes, tablet sideways at 1280x800, 1024x768 and 1366x1024: every card keeps its full height (250px or more), none is clipped, and the grid scrolls',
+        sideways.every(m => m.n === 33 && m.min >= 250 && m.clipped === 0 && m.gridScrolls), JSON.stringify(sideways));
+  const upright = [];
+  for (const vp of [{ width: 820, height: 1180 }, { width: 412, height: 915 }]) {
+    await rbm.setViewportSize(vp); await rbm.waitForTimeout(300);
+    upright.push({ vp: vp.width + 'x' + vp.height, ...(await manyMeasure(rbm)) });
+  }
+  check('    upright and on a phone the page scrolls instead, and the cards are as full',
+        upright.every(m => m.n === 33 && m.min >= 250 && m.clipped === 0 && !m.gridScrolls), JSON.stringify(upright));
+  await rbm.close();
+  const rbc = await manyLook('classic', { width: 1280, height: 800 });
+  const kc = await manyMeasure(rbc);
+  check('    Classic, the control: the same library at 1280x800 is 252px rows in a grid that scrolls',
+        kc.n === 33 && kc.min === 252 && kc.max === 252 && kc.gridScrolls, JSON.stringify(kc));
+  await rbc.close();
+
   /* ---- Modernist, step 4: the recipe viewer ----
      A made-up recipe shaped like the design's own example (groups a to e; two steps, a step that adds raw ingredients to
      one, a merge of two steps, a last column), so the table has every kind of cell and four group rules. */

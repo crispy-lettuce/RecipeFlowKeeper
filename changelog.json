@@ -1,4 +1,6 @@
 [
+  { "version": "2026-10-19.2", "date": "2026-10-19",
+    "changes": ["Fixed: in the Modernist style, on a tablet held sideways or a laptop, the cards on the Recipes screen were squashed into thin strips once there were more than a few recipes. They are back to full size, and the list scrolls. Held upright, and on a phone, the cards were already fine, and Classic was never affected."] },
   { "version": "2026-10-19.1", "date": "2026-10-19",
     "changes": ["New: ADD SEVERAL, under NEW RECIPE, adds a whole batch of converted recipes at once. Choose the file your conversions are in, or paste them all in. The app reads every one and lists what it found before adding anything: which are ready, which are held back and why (no source, no servings, nothing to cook), and which look like recipes you already have, which are left unticked. Untick any you don't want, press the button, then check each recipe as you do now. It only adds: it never changes a recipe you already have.",
                 "ADD SEVERAL asks about a source spelt differently from one you already have, as the form does, so a batch does not split a source in two. The recipes you add are not compared with their source pages for you: Settings, Library, LIBRARY CHECK lists the ones not yet compared.",
