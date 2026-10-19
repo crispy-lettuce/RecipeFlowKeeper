@@ -310,8 +310,12 @@ html[data-style="modernist"] #view-recipes select.sort{
 }
 
 /* The grid: rules shared between cards. The first row draws the top rule and the first column the left one, so no line is
-   drawn twice (the divider is translucent, and a doubled one shows darker). The number of columns follows the width. */
-html[data-style="modernist"] #recipeGrid{ padding:24px 28px 32px; grid-auto-rows:auto; gap:0; }
+   drawn twice (the divider is translucent, and a doubled one shows darker). The number of columns follows the width.
+   Rows are max-content, never auto (19 Oct 2026): above 860px the grid is a scroller of fixed height (.app is 100vh), and an
+   auto row can shrink to nothing under a card that is overflow:hidden, so the browser shared the height out between the rows
+   and a library of more than a few recipes was drawn as strips about 20px tall. It showed from four to seven recipes, by how tall the
+   filters are, which the smoke fixture's three never reach. At 860px and below the page scrolls and the grid has no height to share. */
+html[data-style="modernist"] #recipeGrid{ padding:24px 28px 32px; grid-auto-rows:max-content; gap:0; }
 html[data-style="modernist"] .rcard{
   padding:0; gap:4px; border:0;
   border-right:2px solid var(--color-divider); border-bottom:2px solid var(--color-divider);

@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day.**
+**Last brought up to date: 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
 households sort out their own converter and need no steps here.
@@ -160,7 +160,9 @@ and puts it back. Nothing else is saved.
    square look in one typeface, with **Recipe Wrangler** at the top of the side menu and the menu's links numbered 01 to 06.
 2. Reload the page. **You should see:** it comes back in **MODERNIST**, without the old look flashing up first.
 3. Open **RECIPES**. **You should see:** "Recipes" in large type with the number of recipes beside it, the search bar beside that, and
-   three cards to a row, photos in colour. Tap **+** on a card: it becomes **✓**. Tap **✓**: the recipe comes off the shortlist.
+   three cards to a row, photos in colour. Scroll down the list: every card keeps its full size, with its photo, title and time, however
+   far you go (until 19 Oct they were squashed to thin strips). Turn the tablet upright: two cards to a row, as full. Turn it back.
+   Tap **+** on a card: it becomes **✓**. Tap **✓**: the recipe comes off the shortlist.
 4. Open a recipe. **You should see:** the title very large, with SERVES and "0 / N TICKED" beside it; the flow table with square boxes,
    the last column in red. Tap two boxes that are not in the last column: the count goes up. Tap **RESET TICKS**: every box clears
    and the count goes back to **0 / N TICKED**. Turn **COOKING MODE** on: a red bar says the screen will stay on, and the side menu

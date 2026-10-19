@@ -1,7 +1,8 @@
 # PLAN-MODERNIST: a second visual style, "Modernist" (15 Oct 2026)
 
 **Status:** built (15 Oct 2026), all nine steps, merged as #153 on 15 Oct (version 2026-10-15.1). A review afterwards found five
-faults; they are fixed in version 2026-10-18.1 ("After the review", below). What is left is the household's: the tablet check 66a
+faults; they are fixed in version 2026-10-18.1 ("After the review", below). The household then saw the recipe cards squashed to
+strips on the tablet, a sixth fault, fixed in 2026-10-19.2 ("The recipe grid on the tablet", below). What is left is the household's: the tablet check 66a
 in `docs/HOUSEHOLD-JOBS.md`, and the questions in the "Decision log" at the end, which records every choice made and why.
 
 The household has a design handoff (a README, an HTML prototype and a token sheet) for a flat, square, one-typeface look for the
@@ -94,7 +95,7 @@ Each step's entry below is added when it lands: what was measured, and where it 
 - **Markup:** the search bar now sits in `.recipes-head-row` beside a `.mod-only` title and count (`#recipesCountMod`: "3 RECIPES",
   or "1 OF 3" under a filter). In Modernist, `renderFilterRows` puts the one SOURCE select beside SORT on the KEYWORD row
   (`currentStyle()`), and switching style redraws it. Classic is byte-identical.
-- **Cards:** three to a row at 861px and up, two to 560px, one below, sharing 2px rules (the first row draws the top and the
+- **Cards:** *(corrected 19 Oct 2026: the rows were `auto`, which squashed every card to a strip in a library of more than a few recipes; see "The recipe grid on the tablet")* three to a row at 861px and up, two to 560px, one below, sharing 2px rules (the first row draws the top and the
   first column the left, so no translucent line is drawn twice). Photo 176px, in colour. The favourite is the Lucide star drawn
   as a CSS mask (filled and red when on); its ☆/★ text stays, at no size, and the button's label is unchanged.
 - **Behaviour, Modernist only (decision 8):** the card's ✓ takes the recipe off the shortlist (one delete, as the panel's ×),
@@ -256,6 +257,24 @@ Also corrected: `docs/ARCHITECTURE.md` gave the 15 Oct test counts the date 12 O
 has four dish colours (a group of five repeats one), a last stage with several steps has several red boxes but one red lane in the
 overview, and the Edit dialog's preview shows a "0 / N TICKED" count.
 
+### The recipe grid on the tablet (19 Oct 2026, version 2026-10-19.2)
+The household opened Modernist's Recipes on the tablet, held sideways, and every card was a strip about 20px tall. Reproduced the same
+day in Chromium with 70 made-up recipes, then fixed.
+- **Cause:** step 3 gave the grid `grid-auto-rows:auto` in place of Classic's fixed 252px. Above 860px `.app` is `100vh` and the grid
+  is a scroller of fixed height, so the browser shared that height out between the rows (a card is `overflow:hidden`, so its row
+  could shrink to nothing): 24 rows in about 480px, 20px each, and the grid never scrolled because everything "fitted". At 860px and below
+  the page scrolls and the grid has no height to share, so a phone and an upright tablet were never affected. Classic was not either.
+- **Measured** (cards, in Modernist, 70 recipes): 12px at 1024x768, 22px at 1280x800, 31px at 1366x1024, against 275 to 299px upright and on
+  a phone. After the fix 275 to 299px at every size, and the grid scrolls.
+- **Why the checks missed it:** the fixture has three recipes, one row, which is never short of height. The step 3 checks measured
+  the cards' widths, rules and photo height, never a card's own height, and "Classic proved unchanged by screenshots" could not see a
+  fault Classic does not have. Measured on the unfixed page, it starts at 7 recipes on a 1280x800 screen with a short filter area, 4 or 5
+  with the twelve keyword chips the household has, and at 4 on 1024x768.
+- **Fix:** `#recipeGrid{ grid-auto-rows:max-content }` (D37). One check in `test/smoke.js` adds 30 recipes and measures the cards at
+  1280x800, 1024x768 and 1366x1024, then upright and on a phone, with Classic as the control. Seen to fail by putting `auto` back.
+- **Looked for elsewhere:** every other screen, in both styles, at 1430x667 and 1280x800, for a grid item clipped by its own row.
+  None, on the fixture's small planner and history. History's own grid already uses `minmax(92px, auto)`.
+
 ## Decision log
 
 Every choice made while building, beyond the twelve agreed at the top, with the reason. "Household" means you chose it; "session"
@@ -302,6 +321,8 @@ means it was decided while building and is yours to overturn. Newest last.
 | D34 | 18 Oct | session | The week labels' months are fixed three-letter names (JAN … DEC), not the browser's. | A British browser says "Sept"; the design's labels are three letters, and the labels must not change with the device's language. |
 | D35 | 18 Oct | session | Enter or Space on a card's own button (star, +, ✓) does that button's job, in both styles; on the card itself it still opens the recipe. | The grid took Enter from every element in a card, so the shortlist and favourite buttons could not be used from a keyboard; Classic's + had the same fault. |
 | D36 | 18 Oct | session | A preparation step's output counts as raw ingredients for the `merge` mark. | Slicing leeks does not make "Fry the veg" a joining of two cooked things; as written it is a step, and drawing preparation must not change that. |
+| D37 | 19 Oct | session | The recipe grid's rows are `max-content`: each row is as tall as its tallest card, so a row of one-line titles is about 22px shorter than a row with a two-line title. | Self-adjusting, and a larger text size cannot clip a card. `minmax(300px, max-content)` would make every row the same height, as Classic's are, at the cost of a number to keep right; yours to choose. |
+| D38 | 19 Oct | session | Not done: at 1024px wide the header (title, search, filters) takes about 460px of 768, because the keyword chips are squeezed beside SOURCE and SORT. | In a trial, SOURCE and SORT on a row of their own at 1180px and below gave back about 150px at 1024px and changed nothing at 1280px, the plan's tablet. Waiting to hear the household's tablet is that narrow. |
 
 ### Follow-ups found while building (not done here)
 - **D10:** the shortlist's × has no spoken label (both styles).

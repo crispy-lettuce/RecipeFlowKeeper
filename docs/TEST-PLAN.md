@@ -825,7 +825,8 @@ reported one by one.*
     Appearance and puts it back; in (4) tap boxes outside the last column, which would log the recipe as cooked. On the tablet in
     landscape: (1) *Settings → APP → STYLE → MODERNIST:* the whole app changes at once, "Recipe Wrangler" and numbered links in the
     side menu. (2) *Reload:* still Modernist, with no flash of Classic. (3) *Recipes:* title and count beside the search, three cards
-    to a row, photos in colour; the card's + then ✓ puts a recipe on the shortlist and takes it off. (4) *A recipe:* the large title
+    to a row, photos in colour, every card at full height down the whole list (19 Oct: they were strips 20px tall), two to a row when the
+    tablet is turned upright; the card's + then ✓ puts a recipe on the shortlist and takes it off. (4) *A recipe:* the large title
     with SERVES and the tick count; square flow boxes, the last column red; two ticks raise the count and RESET TICKS clears the boxes
     and puts the count back to 0 / N; cooking mode shows the red bar and folds the side menu to a strip, which opens and folds again.
     (5) *EXPORT PNG and PRINT / A4 PDF* of a recipe: as on screen. (6) *Planner:* the menu folded; week bands with dates and counts;
