@@ -1260,6 +1260,139 @@ const check = (name, pass, detail) => {
   await page.waitForTimeout(300);
   check('Escape closes the Add modal', !(await page.isVisible('#addModalOverlay.open')));
 
+  /* ---- ADD SEVERAL (docs/PLAN-BULK-ADD.md, PR 2) ----
+     A combined file in, a review, one button. Every recipe here is made up. Nothing may be written until ADD, except a
+     source spelling answered with USE THAT; a duplicate is never added unless ticked; a held-back recipe never is. */
+  {
+    const R = (title, o) => ['TITLE: ' + title, 'SOURCE: ' + ((o && o.source) || "Zq Cook's Diary"), (o && o.noServings) ? '' : 'SERVINGS: 2',
+      (o && o.url) ? 'SOURCE_URL: ' + o.url : '', (o && o.image) ? 'IMAGE: ' + o.image : '', 'TAGS: course=Main, ' + ((o && o.tag) || 'Zzalpha'), '',
+      'GROUP a:', '2 zzbulk onions', '', 'STAGE:', 'MERGE a -> done: cook the zzbulk onions [5 min]'].filter((l, i, a) => l !== '' || a[i - 1] !== '').join('\n');
+    const A = R('Bulk Alpha', { url: 'https://example.com/bulk-alpha', image: 'https://example.com/bulk-alpha.jpg', tag: 'Zzalpha' });
+    const B = R('Bulk Beta', { noServings: true });
+    const C = R('Bulk Gamma', { url: 'https://example.com/bulk-gamma', tag: 'Zzgamma' });
+    const rw = () => page.evaluate(() => (window.__WRITES__ || []).filter(w => w.table === 'recipes' && w.op === 'upsert').length);
+    const kw = () => page.evaluate(() => (window.__WRITES__ || []).filter(w => w.table === 'keywords').length);
+    const shown = sel => page.isVisible(sel);
+
+    await page.click('#openBulkBtn');
+    await page.waitForTimeout(300);
+    check('ADD SEVERAL opens its own dialog, with the text box and a file picker', (await shown('#bulkOverlay.open')) && (await shown('#bulkText')) && (await shown('#bulkFileBtn')));
+    const w0 = await rw(), k0 = await kw(), n0 = await page.evaluate(() => loadRecipes().length);
+    await page.fill('#bulkText', 'Here you go:\n\n1. Bulk Alpha\n' + A + '\n\n2. Bulk Beta\n' + B + '\n\n3. Bulk Gamma\n' + C + '\n');
+    await page.click('#bulkReadBtn');
+    await page.waitForTimeout(300);
+    const sum = (await page.textContent('#bulkSummary')).trim();
+    check('the review says what was read: 3 blocks, 2 ready, 1 held back', sum === '3 read: 2 ready, 1 held back.', sum);
+    const heldTxt = await page.textContent('.bulk-row.held');
+    check('    the recipe with no servings is held back, says why and where, and cannot be ticked',
+          /HELD BACK: SERVINGS is missing/.test(heldTxt) && /Line \d+ of the text/.test(heldTxt) && (await page.isDisabled('.bulk-row.held input[type=checkbox]')), heldTxt.trim().slice(0, 120));
+    check('    the button counts the ticked ones', (await page.textContent('#bulkAddBtn')).trim() === 'ADD 2 RECIPES');
+    check('    reading wrote nothing: no recipe row, no keyword', (await rw()) === w0 && (await kw()) === k0 && (await page.evaluate(() => loadRecipes().length)) === n0);
+    await page.click('[data-bulk-tick="0"]');
+    check('    unticking one updates the button', (await page.textContent('#bulkAddBtn')).trim() === 'ADD 1 RECIPE');
+    await page.click('[data-bulk-tick="0"]');
+    await page.click('[data-bulk-open="0"]');
+    await page.waitForTimeout(200);
+    check('    SHOW THE RECIPE draws the flow table only when asked', (await page.locator('#bulkDetail0 .bulk-flow *').count()) > 0
+          && (await page.locator('#bulkDetail1 .bulk-flow').count()) === 0);
+    check('    the sources band names the one source once, as new', /Zq Cook's Diary/.test(await page.textContent('#bulkSources')) && /a new source\. 2 recipes/.test(await page.textContent('#bulkSources')), await page.textContent('#bulkSources'));
+
+    await page.evaluate(() => { bulk.items[1].ticked = true; });   // as if it had been ticked some other way: it still must not be added
+    await page.click('#bulkAddBtn');
+    await page.waitForTimeout(600);
+    const added = await page.evaluate(() => {
+      const ups = (window.__WRITES__ || []).filter(w => w.table === 'recipes' && w.op === 'upsert').slice(-2).map(w => w.rows[0]);
+      const k = (window.__WRITES__ || []).filter(w => w.table === 'keywords').map(w => w.rows.map(r => r.name));
+      return { ups, k, cache: loadRecipes().filter(r => /^Bulk /.test(r.title)).map(r => ({ id: r.id, t: r.title, d: r.dateAdded, h: r.history.length })) };
+    });
+    check('ADD saves each ticked recipe as one new row: two upserts, two new ids, none for the held-back one',
+          (await rw()) === w0 + 2 && added.ups.length === 2 && added.ups[0].id !== added.ups[1].id
+          && JSON.stringify(added.ups.map(r => r.title)) === '["Bulk Alpha","Bulk Gamma"]' && added.cache.length === 2, JSON.stringify(added.ups.map(r => r.title)));
+    check('    the rows carry no column that may not exist yet (no source_check, source_photos, copied_from) and no favourite',
+          added.ups.every(r => !('source_check' in r) && !('source_photos' in r) && !('copied_from' in r) && !('favourite' in r)));
+    check('    the text is the pasted block, a date is set, and the recipes start with no history',
+          added.ups[0].syntax === A && added.ups[1].syntax === C && added.cache.every(c => /^\d{4}-\d\d-\d\d$/.test(c.d)) && added.cache.every(c => c.h === 0));
+    check('    the new keywords are added to the vocabulary in one write', added.k.length === k0 + 1 && ['Zzalpha', 'Zzgamma'].every(n => added.k[added.k.length - 1].includes(n)), JSON.stringify(added.k));
+    const rehosts = await page.evaluate(() => (window.__INVOKES__ || []).filter(c => c.name === 'rehost-images').map(c => c.body && c.body.recipeId));
+    const alphaId = added.cache.find(c => c.t === 'Bulk Alpha').id, gammaId = added.cache.find(c => c.t === 'Bulk Gamma').id;
+    check('    the one with an external photo asks for that recipe\'s photo to be re-hosted, and the one with no photo asks for nothing',
+          rehosts.includes(alphaId) && !rehosts.includes(gammaId), JSON.stringify(rehosts));
+    const doneTxt = await page.textContent('#bulkDonePane');
+    check('    the result panel says how many were added and lists them with OPEN', /2 recipes added/.test(doneTxt) && (await page.locator('[data-bulk-edit]').count()) === 2, doneTxt.trim().slice(0, 80));
+    await page.click('[data-bulk-edit]');
+    await page.waitForTimeout(400);
+    check('    OPEN closes the dialog and opens that recipe in the edit form', !(await shown('#bulkOverlay.open')) && (await shown('#addModalOverlay.open')) && (await page.inputValue('#f-title')) === 'Bulk Alpha');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+
+    // A second batch: the first recipe again (same link), one new with the source spelt with a curly apostrophe.
+    const D = R('Bulk Delta', { source: 'Zq Cook\u2019s Diary', tag: 'Zzdelta' });
+    await page.click('#openBulkBtn');
+    await page.fill('#bulkText', A + '\n\n' + D);
+    await page.click('#bulkReadBtn');
+    await page.waitForTimeout(300);
+    const dupTxt = await page.textContent('.bulk-row:nth-child(1)');
+    check('a recipe whose source link is already in the library is shown as a duplicate, unticked, and says which',
+          /Looks like Bulk Alpha, already in your library \(the same source link\)/.test(dupTxt) && !(await page.isChecked('[data-bulk-tick="0"]')) && (await page.isChecked('[data-bulk-tick="1"]')), dupTxt.trim().slice(0, 140));
+    check('    the summary counts it', /2 read: 2 ready, 1 looks like a recipe you already have\./.test(await page.textContent('#bulkSummary')), await page.textContent('#bulkSummary'));
+    const askTxt = await page.textContent('#bulkSources');
+    check('    a source spelt unlike the library\'s (curly for straight apostrophe) is asked about, as the form asks',
+          /looks like Zq Cook's Diary, which 2 of your recipes have/.test(askTxt) && (await shown('[data-bulk-src="use"]')) && (await shown('[data-bulk-src="keep"]')), askTxt.trim().slice(0, 160));
+    await page.click('[data-bulk-src="use"]');
+    await page.waitForTimeout(300);
+    const aliasW = await page.evaluate(() => (window.__WRITES__ || []).filter(w => w.table === 'aliases').slice(-1)[0]);
+    check('    USE THAT writes the form\'s own word match, and the band says it is now recorded as the library\'s spelling',
+          aliasW && aliasW.rows[0].kind === 'source' && aliasW.rows[0].alias === 'Zq Cook\u2019s Diary' && aliasW.rows[0].canonical === "Zq Cook's Diary"
+          && /is recorded as Zq Cook's Diary/.test(await page.textContent('#bulkSources')), JSON.stringify(aliasW && aliasW.rows));
+    const w1 = await rw();
+    await page.click('#bulkAddBtn');
+    await page.waitForTimeout(500);
+    const d = await page.evaluate(() => { const r = loadRecipes().find(x => x.title === 'Bulk Delta'); return r && { source: r.source, line: (r.syntax.match(/^SOURCE: (.*)$/m) || [])[1], n: loadRecipes().filter(x => x.title === 'Bulk Alpha').length }; });
+    check('    ADD then saves only the new one, under the library\'s spelling in both the field and the SOURCE: line; the duplicate is not added',
+          (await rw()) === w1 + 1 && d && d.source === "Zq Cook's Diary" && d.line === "Zq Cook's Diary" && d.n === 1, JSON.stringify(d));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+    check('Escape closes the ADD SEVERAL dialog', !(await shown('#bulkOverlay.open')));
+    if(await shown('#bulkOverlay.open')) await page.click('#closeBulk');
+
+    // The library moves while the dialog is open: a ticked recipe that has become a duplicate is not added blind.
+    const E = R('Bulk Epsilon', { url: 'https://example.com/bulk-epsilon' });
+    await page.click('#openBulkBtn');
+    await page.fill('#bulkText', E);
+    await page.click('#bulkReadBtn');
+    await page.waitForTimeout(300);
+    await page.evaluate(() => saveRecipe({ id: uid(), title: 'Bulk Epsilon Elsewhere', source: 'Zq Cook\'s Diary', sourceUrl: 'https://example.com/bulk-epsilon', servings: 2, syntax: 'TITLE: Bulk Epsilon Elsewhere\nSOURCE: Zq Cook\'s Diary\nSERVINGS: 2\n\nGROUP a:\n1 zzbulk onion\n\nSTAGE:\nMERGE a -> done: cook [1 min]', history: [], dateAdded: todayStr(), tags: { course: 'Main', keywords: [] } }));
+    const w2 = await rw();
+    await page.click('#bulkAddBtn');
+    await page.waitForTimeout(400);
+    check('a recipe that became a duplicate while the dialog was open is unticked and not added; the list is shown again',
+          (await rw()) === w2 && !(await page.isChecked('[data-bulk-tick="0"]')) && /changed while this was open/.test(await page.textContent('.toast')) && (await shown('#bulkReview')), await page.textContent('.toast'));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+    check('Escape closes the dialog and the text is forgotten', !(await shown('#bulkOverlay.open')) && (await page.inputValue('#bulkText')) === '');
+
+    // A file, a half-fenced paste, and a text with no recipes in it.
+    await page.click('#openBulkBtn');
+    await page.setInputFiles('#bulkFile', { name: 'batch.md', mimeType: 'text/markdown', buffer: Buffer.from('```\n' + R('Bulk Zeta', { tag: 'Zzzeta' }) + '\n```\n\n' + R('Bulk Eta', { tag: 'Zzeta' })) });
+    await page.waitForTimeout(500);
+    check('a file is read like pasted text, and a TITLE: left outside the code blocks is reported, not silently lost',
+          /1 read: 1 ready\./.test(await page.textContent('#bulkSummary')) && /A line starting TITLE: sit outside the code blocks and was not read/.test(await page.textContent('#bulkStray')), await page.textContent('#bulkStray'));
+    await page.click('#bulkBackBtn');
+    await page.fill('#bulkText', 'just some notes, no recipes');
+    await page.click('#bulkReadBtn');
+    check('text with no recipe in it says so and stays on the input', /No recipes found/.test(await page.textContent('#bulkNone')) && (await shown('#bulkInputPane')));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+
+    // Put the library back as it was.
+    await page.evaluate(() => {
+      loadRecipes().filter(r => /^Bulk /.test(r.title)).forEach(r => deleteRecipe(r.id));
+      ['Zzalpha', 'Zzgamma', 'Zzdelta'].forEach(k => removeKeywordFromVocab(k));
+      const a = loadAliases().find(x => x.kind === 'source' && x.alias === 'Zq Cook\u2019s Diary'); if(a) removeAlias(a.id);
+    });
+    await page.waitForTimeout(400);
+  }
+
   /* ---- The review band (PR 3 of the add-recipe plan, 29 Sep 2026) ----
      The add form now reads in the order the work goes (what the app read, the checks, then the
      fields) and reviews a recipe against the library, read-only: nothing here may write a row.

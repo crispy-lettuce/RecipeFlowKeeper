@@ -276,6 +276,8 @@ function loadArchivoFont(){
     font-size:14px; letter-spacing:.04em; font-weight:500;
   }
   .new-recipe:hover{ background:var(--plum-wash); }
+  .new-recipe.secondary{ height:38px; margin-top:8px; border-color:var(--line); color:var(--ink-soft); }
+  .new-recipe.secondary:hover{ border-color:var(--plum); color:var(--plum); }
   .data-actions{ display:flex; flex-wrap:wrap; justify-content:center; gap:0 16px; margin:6px 22px 0; }
   .data-link{
     background:none; border:none; padding:0; cursor:pointer;
@@ -1061,6 +1063,37 @@ function loadArchivoFont(){
   }
   .modal-close:hover{ border-color:var(--plum); color:var(--plum); }
 
+  /* ---- Add several (docs/PLAN-BULK-ADD.md) ---- */
+  #bulkOverlay{ padding:20px; }
+  #bulkOverlay .modal-panel{ max-width:1100px; }
+  textarea#bulkText{ display:block; width:100%; min-height:220px; margin:6px 0 12px; padding:10px 12px; font-family:'IBM Plex Mono', monospace;
+    font-size:13px; line-height:1.5; border:1px solid var(--line); border-radius:var(--r); background:var(--paper); color:var(--ink); }
+  textarea#bulkText:focus{ border-color:var(--plum); }
+  #bulkFileBtn{ margin-bottom:14px; }
+  .bulk-row{ padding:10px 0; border-top:1px solid var(--line-soft); }
+  .bulk-row:first-child{ border-top:none; }
+  .bulk-row.held{ opacity:.85; }
+  .bulk-pick{ display:inline-flex; align-items:center; gap:8px; cursor:pointer; }
+  .bulk-pick input{ width:18px; height:18px; flex:none; }
+  .bulk-meta{ display:block; margin:2px 0 0 26px; font-size:13px; color:var(--ink-soft); }
+  .bulk-held{ margin:4px 0 0 26px; font-size:14px; color:var(--danger); }
+  .bulk-dup{ margin:4px 0 0 26px; font-size:14px; color:var(--ink-soft); }
+  .bulk-dup-detail{ margin-top:6px; font-size:13px; }
+  .bulk-dup-detail ul{ margin:4px 0 0 18px; }
+  .bulk-warn{ display:block; margin:4px 0 0 26px; font-size:13px; color:var(--ink-soft); }
+  .bulk-row .link-btn{ margin:4px 0 0 26px; display:inline-block; }
+  .bulk-row .bulk-dup .link-btn{ margin:0 0 0 8px; }
+  .bulk-detail{ margin:8px 0 0 26px; overflow-x:auto; }
+  .bulk-note{ margin:0 0 6px; font-size:13px; color:var(--ink-soft); }
+  .bulk-note code{ font-size:13px; }
+  .bulk-stray{ margin:10px 0; padding:8px 12px; border:1px solid var(--danger); border-radius:var(--r); font-size:14px; }
+  .bulk-src{ padding:5px 0; font-size:14px; }
+  .bulk-src.quiet{ color:var(--ink-soft); }
+  .bulk-src .link-btn{ margin-left:8px; }
+  .bulk-actions{ margin-top:18px; display:flex; align-items:center; gap:14px; }
+  .bulk-done-row{ padding:6px 0; border-top:1px solid var(--line-soft); }
+  .bulk-done-row .link-btn{ margin-left:10px; }
+
   /* ---- Source photos (docs/PLAN-SOURCE-PHOTOS.md) ---- */
   .source-photos{ margin-bottom:16px; }
   .source-photos-label{ display:block; font-size:14px; letter-spacing:.04em; color:var(--ink-soft); margin-bottom:6px; font-weight:500; }
@@ -1662,7 +1695,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-18.7">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-19.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -1710,6 +1743,7 @@ function loadArchivoFont(){
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
       NEW RECIPE
     </button>
+    <button class="new-recipe secondary" id="openBulkBtn">ADD SEVERAL</button>
     <div class="data-actions">
       <button class="data-link" id="exportDataBtn">EXPORT DATA</button>
       <button class="data-link" id="importDataBtn">IMPORT DATA</button>
@@ -2211,6 +2245,37 @@ function loadArchivoFont(){
   </div>
 </div>
 
+<div class="modal-overlay" id="bulkOverlay">
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-label="Add several recipes">
+    <button class="modal-close" id="closeBulk" aria-label="Close">×</button>
+    <h1>Add several recipes</h1>
+    <div id="bulkInputPane">
+      <p class="subtle">For a batch from your conversion chat. Choose the file the recipes are in, or paste them all into the box, one after another. Each recipe starts with a line beginning TITLE:. You see what was read before anything is added.</p>
+      <button type="button" class="btn" id="bulkFileBtn">CHOOSE A FILE</button>
+      <input type="file" id="bulkFile" accept=".md,.markdown,.txt,text/plain,text/markdown" hidden>
+      <label class="field-label" for="bulkText">OR PASTE THEM</label>
+      <textarea id="bulkText" spellcheck="false" placeholder="TITLE: ...&#10;SOURCE: ...&#10;...&#10;&#10;TITLE: ...&#10;SOURCE: ..."></textarea>
+      <button class="btn primary" id="bulkReadBtn">READ THEM</button>
+      <p class="paste-read" id="bulkNone" role="status" hidden></p>
+    </div>
+    <div id="bulkReview" hidden>
+      <p class="paste-read" id="bulkSummary" role="status"></p>
+      <div id="bulkStray"></div>
+      <div id="bulkSources"></div>
+      <div class="band-title">THE RECIPES — UNTICK ANY YOU DON'T WANT</div>
+      <div id="bulkList"></div>
+      <div class="bulk-actions">
+        <button class="btn primary" id="bulkAddBtn">ADD 0 RECIPES</button>
+        <button type="button" class="link-btn" id="bulkBackBtn">CHANGE THE TEXT</button>
+      </div>
+    </div>
+    <div id="bulkDonePane" hidden>
+      <p class="paste-read" id="bulkDoneText" role="status"></p>
+      <div id="bulkDoneList"></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="addModalOverlay">
   <div class="modal-panel" role="dialog" aria-modal="true" aria-label="Add a recipe">
     <button class="modal-close" id="closeAddModal" aria-label="Close">×</button>
@@ -2317,7 +2382,7 @@ const EXPECTED_CORE_VERSION = '2026-10-19.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-18.7';
+const APP_VERSION = '2026-10-19.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -4948,7 +5013,7 @@ function sourceCounts(recipes){
   return counts;
 }
 function normalizeTermForMatch(s){
-  return String(s||'').toLowerCase().replace(/'s\b/g,'').replace(/[^\w\s]/g,' ').replace(/\s+/g,' ').trim();
+  return String(s||'').toLowerCase().replace(/[\u2018\u2019]/g,"'").replace(/'s\b/g,'').replace(/[^\w\s]/g,' ').replace(/\s+/g,' ').trim();
 }
 /* Suggests a likely-existing match for a newly-typed source using
    normalized substring containment — cheap, and tested against a range
@@ -10060,6 +10125,7 @@ document.getElementById('swapAddBtn').addEventListener('click', ()=>{
 document.addEventListener('keydown', e=>{
   if(e.key !== 'Escape') return;
   if(document.getElementById('addModalOverlay').classList.contains('open')){ closeAddModal(); return; }
+  if(document.getElementById('bulkOverlay').classList.contains('open')){ closeBulk(); return; }
   if(state.view === 'viewer'){ backFromViewer(); return; }
   if(state.pickingForDate){ state.pickingForDate = null; renderHome(); return; }
   if(state.selectedShortlistId){ state.selectedShortlistId = null; renderPlanner(); }
@@ -10980,6 +11046,290 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     renderHome();
     showToast(`Saved "${recipe.title}"`);
   }
+});
+
+/* =====================================================================
+   ADD SEVERAL (docs/PLAN-BULK-ADD.md, 19 Oct 2026).
+   One combined file of converted recipes in, a review, one button, and each ticked recipe saved as a new row through the
+   same saveRecipe the form uses. It only ever ADDS: a recipe the library seems to have already is shown and left unticked,
+   never merged, because an update in place is the write that can lose cooking history. Nothing is written until ADD, except
+   a source spelling the household answers with USE THAT or KEEP MINE (the same writes the form makes, at the tap).
+   Not done here, on purpose (the plan, §5): no source comparison (Edit runs none on opening either, and LIBRARY CHECK lists
+   every recipe not yet compared), no SAME AS or AISLE (they stay in the edit form), no undo of a batch (delete one at a time).
+   ===================================================================== */
+let bulk = null;   // { items, stray } while the review is on screen; null otherwise
+const bulkEl = id => document.getElementById(id);
+const bulkTitleKey = t => String(t || '').trim().replace(/\s+/g, ' ').toLowerCase();
+
+/* The library as the duplicate test wants it: by source link and by title, first one wins. */
+function bulkLibraryIndex(){
+  const byUrl = new Map(), byTitle = new Map();
+  loadRecipes().forEach(r=>{
+    const u = normalisedSourceUrl(r.sourceUrl);
+    if(u && !byUrl.has(u)) byUrl.set(u, r);
+    const t = bulkTitleKey(r.title);
+    if(t && !byTitle.has(t)) byTitle.set(t, r);
+  });
+  return { byUrl, byTitle };
+}
+/* The library recipe this one looks like, by the same link first (as the form's ALREADY IN YOUR LIBRARY? does), then the title. */
+function bulkDuplicateOf(item, idx){
+  const u = normalisedSourceUrl(item.sourceUrl);
+  const byUrl = u ? idx.byUrl.get(u) : null;
+  const hit = byUrl || idx.byTitle.get(bulkTitleKey(item.title));
+  return hit ? { id: hit.id, title: hit.title, why: byUrl ? 'the same source link' : 'the same title' } : null;
+}
+function bulkItem(block, n){
+  const parsed = parseRecipe(block.text);
+  const lines = ingredientLinesOf(parsed);
+  const servings = parseInt(parsed.servings, 10);
+  /* What the form refuses on save, and what makes a block not a recipe at all. */
+  const held = [];
+  if(block.unterminated) held.push('the code block never closes');
+  if(!String(parsed.title || '').trim()) held.push('TITLE: is empty');
+  if(!String(parsed.source || '').trim()) held.push('no SOURCE');
+  if(!(servings >= 1)) held.push('SERVINGS is missing or not a whole number');
+  if(!parsed.groups.length || !lines.length) held.push('no ingredients to cook');
+  /* Advice only, as in the form: none of these stops an add. */
+  const warn = [];
+  const unread = (parsed.unread || []).length;
+  if(unread) warn.push(`${unread} line${unread === 1 ? '' : 's'} not read`);
+  const cant = lines.filter(l=> ingredientLineFaults(l).some(f=> f.affectsList)).length;
+  if(cant) warn.push(`${cant} line${cant === 1 ? '' : 's'} the list cannot total`);
+  if(!parsed.sourceUrl) warn.push('no link');
+  if(!parsed.imageUrl) warn.push('no image');
+  if(!parsed.time) warn.push('no time');
+  const note = sourceNoteIn(block.text);
+  if(note && note.reconstructed) warn.push('says it was not read from its own page');
+  return {
+    n, text: block.text, line: block.line, parsed, lines, held, warn, dup: null, ticked: false, open: false,
+    title: String(parsed.title || '').trim(), source: String(parsed.source || '').trim(),
+    sourceUrl: parsed.sourceUrl || '', servings: servings >= 1 ? servings : null,
+    steps: parsed.stages.reduce((s, ops)=> s + ops.length, 0)
+  };
+}
+function bulkRead(){
+  const { blocks, stray } = splitRecipeBlocks(bulkEl('bulkText').value);
+  const msg = bulkEl('bulkNone');
+  if(!blocks.length){
+    msg.textContent = 'No recipes found. Each recipe starts with a line beginning TITLE:.';
+    msg.hidden = false;
+    return;
+  }
+  msg.hidden = true;
+  const items = blocks.map((b, i)=> bulkItem(b, i + 1));
+  /* The same title twice in one file: the first is kept, the later ones held back. */
+  const seen = new Map();
+  items.forEach(it=>{
+    const k = bulkTitleKey(it.title);
+    if(!k) return;
+    if(seen.has(k)) it.held.push(`the same title as recipe ${seen.get(k)} above`);
+    else seen.set(k, it.n);
+  });
+  const idx = bulkLibraryIndex();
+  items.forEach(it=>{
+    it.dup = bulkDuplicateOf(it, idx);
+    it.ticked = !it.held.length && !it.dup;
+  });
+  bulk = { items, stray };
+  bulkEl('bulkInputPane').hidden = true;
+  bulkEl('bulkDonePane').hidden = true;
+  bulkEl('bulkReview').hidden = false;
+  renderBulk();
+}
+function bulkWarnHtml(it){
+  return it.warn.length ? `<span class="bulk-warn">${it.warn.map(escapeHtml).join(' · ')}</span>` : '';
+}
+function renderBulk(){
+  const b = bulk;
+  bulkEl('bulkStray').innerHTML = b.stray.length
+    ? `<div class="bulk-stray">${b.stray.length === 1 ? 'A line' : b.stray.length + ' lines'} starting TITLE: sit outside the code blocks and ${b.stray.length === 1 ? 'was' : 'were'} not read (line${b.stray.length === 1 ? '' : 's'} ${b.stray.slice(0, 8).join(', ')}${b.stray.length > 8 ? '…' : ''} of the text). Put them inside code blocks, or remove the code blocks altogether, and read again.</div>`
+    : '';
+  bulkEl('bulkList').innerHTML = b.items.map((it, i)=>{
+    const meta = [it.source || 'no source', it.servings ? `serves ${it.servings}` : '', `${it.lines.length} ingredient${it.lines.length === 1 ? '' : 's'}`,
+      `${it.steps} step${it.steps === 1 ? '' : 's'}`].filter(Boolean).join(' · ');
+    return `<div class="bulk-row${it.held.length ? ' held' : ''}" data-i="${i}">
+      <label class="bulk-pick"><input type="checkbox" data-bulk-tick="${i}"${it.ticked ? ' checked' : ''}${it.held.length ? ' disabled' : ''}>
+        <b>${escapeHtml(it.title || '(no title)')}</b></label>
+      <span class="bulk-meta">${escapeHtml(meta)}</span>
+      ${it.held.length ? `<div class="bulk-held">HELD BACK: ${it.held.map(escapeHtml).join('; ')}. Line ${it.line} of the text.</div>` : ''}
+      ${it.dup ? `<div class="bulk-dup">Looks like <b>${escapeHtml(it.dup.title)}</b>, already in your library (${it.dup.why}). Left unticked.
+        <button type="button" class="link-btn" data-bulk-dup="${i}">SHOW IT</button><div class="bulk-dup-detail" id="bulkDup${i}" hidden></div></div>` : ''}
+      ${bulkWarnHtml(it)}
+      <button type="button" class="link-btn" data-bulk-open="${i}">${it.open ? 'HIDE THE RECIPE' : 'SHOW THE RECIPE'}</button>
+      <div class="bulk-detail" id="bulkDetail${i}"${it.open ? '' : ' hidden'}></div>
+    </div>`;
+  }).join('');
+  b.items.forEach((it, i)=>{ if(it.open) bulkMountDetail(i); });
+  renderBulkTotals();
+}
+/* The preview is drawn when a row is opened, and again after a redraw of the list: sixty flow tables at once is slow. */
+function bulkMountDetail(i){
+  const it = bulk.items[i], box = bulkEl('bulkDetail' + i);
+  if(!box) return;
+  const unread = (it.parsed.unread || []);
+  const faulty = it.lines.map(l=> ({ l, f: ingredientLineFaults(l).filter(x=> x.affectsList) })).filter(x=> x.f.length);
+  box.innerHTML = (unread.length ? `<div class="bulk-note"><b>NOT READ:</b> ${unread.map(u=> `<code>${escapeHtml(u.line)}</code> (${escapeHtml(u.why)})`).join('; ')}</div>` : '')
+    + (faulty.length ? `<div class="bulk-note"><b>THE LIST CAN'T TOTAL:</b> ${faulty.map(x=> `<code>${escapeHtml(x.l)}</code> (${escapeHtml(x.f.map(y=> y.text).join('; '))})`).join('; ')}</div>` : '')
+    + '<div class="bulk-flow"></div>';
+  mountFlow(box.querySelector('.bulk-flow'), it.parsed, {});
+}
+function renderBulkTotals(){
+  const items = bulk.items;
+  const ready = items.filter(i=> !i.held.length).length, held = items.length - ready;
+  const dups = items.filter(i=> i.dup && !i.held.length).length;
+  const ticked = items.filter(i=> i.ticked).length;
+  bulkEl('bulkSummary').textContent = `${items.length} read: ${ready} ready${held ? `, ${held} held back` : ''}${dups ? `, ${dups} look${dups === 1 ? 's' : ''} like ${dups === 1 ? 'a recipe' : 'recipes'} you already have` : ''}.`;
+  const btn = bulkEl('bulkAddBtn');
+  btn.textContent = `ADD ${ticked} RECIPE${ticked === 1 ? '' : 'S'}`;
+  btn.disabled = !ticked;
+  renderBulkSources();
+}
+/* One row per distinct SOURCE among the ticked recipes, asking the form's own question where the library spells it another
+   way. A spelling already settled is applied and said so. Left unanswered, the recipes are saved as typed. */
+function renderBulkSources(){
+  const typed = new Map();
+  bulk.items.filter(i=> i.ticked).forEach(i=> typed.set(i.source, (typed.get(i.source) || 0) + 1));
+  const libCounts = sourceCounts(loadRecipes());
+  const rows = [...typed.entries()].map(([s, n])=>{
+    const count = `${n} recipe${n === 1 ? '' : 's'}`;
+    const known = applySourceAlias(s);
+    if(known !== s) return `<div class="bulk-src">Source <b>${escapeHtml(s)}</b> is recorded as <b>${escapeHtml(known)}</b>, a spelling you settled before (Settings → Word Matches). ${count}.</div>`;
+    if(libCounts.has(s)) return `<div class="bulk-src quiet"><b>${escapeHtml(s)}</b>: already one of your sources. ${count}.</div>`;
+    const match = findSimilarTerm(s, libCounts);
+    if(match && !isPairDistinct('source', s, match.term)){
+      const d = `data-typed="${escapeHtml(s)}" data-term="${escapeHtml(match.term)}"`;
+      return `<div class="bulk-src ask"><b>${escapeHtml(s)}</b> (${count}) looks like <b>${escapeHtml(match.term)}</b>, which ${match.count} of your recipe${match.count === 1 ? ' has' : 's have'}.
+        <button type="button" class="link-btn" data-bulk-src="use" ${d}>USE THAT</button> · <button type="button" class="link-btn" data-bulk-src="keep" ${d}>KEEP MINE</button></div>`;
+    }
+    return `<div class="bulk-src quiet"><b>${escapeHtml(s)}</b>: a new source. ${count}.</div>`;
+  });
+  bulkEl('bulkSources').innerHTML = rows.length ? `<div class="band-title">SOURCES</div>${rows.join('')}` : '';
+}
+function bulkAdd(){
+  if(!bulk) return;
+  /* The library may have moved while this was open (another device, a refresh on coming back to the tab). A ticked recipe
+     that has become a duplicate since it was read is unticked and the list shown again, so nothing is added blind. */
+  const idx = bulkLibraryIndex();
+  let moved = 0;
+  bulk.items.forEach(it=>{
+    const now = bulkDuplicateOf(it, idx);
+    if(now && !it.dup && it.ticked){ it.ticked = false; moved++; }
+    it.dup = now;
+  });
+  if(moved){
+    renderBulk();
+    showToast(`Your library changed while this was open: ${moved} recipe${moved === 1 ? ' now looks' : 's now look'} like one you have. Check the list, then ADD again.`);
+    return;
+  }
+  const chosen = bulk.items.filter(i=> i.ticked && !i.held.length);
+  if(!chosen.length) return;
+  const keywords = new Set();
+  const added = [];
+  chosen.forEach(it=>{
+    const p = parseRecipe(it.text);
+    /* Exactly what the form's SAVE builds: a settled spelling of the source is used, the header lines are reconciled with
+       the fields (a no-op when nothing changed), a new id and today's date, no favourite and no comparison. */
+    const fields = {
+      title: it.title, source: applySourceAlias(it.source), imageUrl: p.imageUrl || null, sourceUrl: p.sourceUrl || null,
+      time: p.time || '', servings: it.servings, equipment: p.equipment || '',
+      tags: { course: p.tags.course || '', keywords: p.tags.keywords || [] }
+    };
+    fields.syntax = withUpdatedHeaderLines(it.text, fields);
+    const recipe = { id: uid(), ...fields, history: [], dateAdded: todayStr() };
+    saveRecipe(recipe);
+    rehostImageFor(recipe.id, fields.imageUrl || '');
+    fields.tags.keywords.forEach(k=> keywords.add(k));
+    added.push({ id: recipe.id, title: recipe.title });
+  });
+  mergeKeywordVocab([...keywords]);
+  showView('recipes');
+  renderHome();
+  updateSidebarCounts();
+  bulk = null;
+  bulkEl('bulkReview').hidden = true;
+  bulkEl('bulkDonePane').hidden = false;
+  bulkEl('bulkDoneText').textContent = `${added.length} recipe${added.length === 1 ? '' : 's'} added. They are saving in the background (the bar at the top says if the connection is down), and their photos are being moved into your own storage. Open each one to check it, and press COMPARE WITH SOURCE if it has a link. Settings → Library → LIBRARY CHECK lists the ones not yet compared.`;
+  bulkEl('bulkDoneList').innerHTML = added.map(a=> `<div class="bulk-done-row"><b>${escapeHtml(a.title)}</b> <button type="button" class="link-btn" data-bulk-edit="${escapeHtml(a.id)}">OPEN</button></div>`).join('');
+  showToast(`Added ${added.length} recipe${added.length === 1 ? '' : 's'}`);
+}
+function openBulk(){
+  bulk = null;
+  bulkEl('bulkText').value = '';
+  bulkEl('bulkNone').hidden = true;
+  bulkEl('bulkInputPane').hidden = false;
+  bulkEl('bulkReview').hidden = true;
+  bulkEl('bulkDonePane').hidden = true;
+  bulkEl('bulkOverlay').classList.add('open');
+  bulkEl('bulkOverlay').scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+  bulkEl('bulkText').focus();
+}
+function closeBulk(){
+  bulkEl('bulkOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  bulkEl('bulkText').value = '';
+  bulkEl('bulkList').innerHTML = ''; bulkEl('bulkSources').innerHTML = ''; bulkEl('bulkDoneList').innerHTML = '';
+  bulk = null;
+}
+bulkEl('openBulkBtn').addEventListener('click', openBulk);
+bulkEl('closeBulk').addEventListener('click', closeBulk);
+bulkEl('bulkReadBtn').addEventListener('click', bulkRead);
+bulkEl('bulkText').addEventListener('paste', ()=>{ setTimeout(bulkRead, 0); });
+bulkEl('bulkAddBtn').addEventListener('click', bulkAdd);
+bulkEl('bulkBackBtn').addEventListener('click', ()=>{
+  bulkEl('bulkReview').hidden = true;
+  bulkEl('bulkInputPane').hidden = false;
+  bulk = null;
+});
+bulkEl('bulkFileBtn').addEventListener('click', ()=> bulkEl('bulkFile').click());
+bulkEl('bulkFile').addEventListener('change', async e=>{
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  if(file.size > 8 * 1024 * 1024){ showToast('That file is too big to be recipes (over 8 MB).'); return; }
+  bulkEl('bulkText').value = await file.text();
+  bulkRead();
+});
+bulkEl('bulkList').addEventListener('click', e=>{
+  const tick = e.target.closest('[data-bulk-tick]');
+  if(tick){ bulk.items[+tick.dataset.bulkTick].ticked = tick.checked; renderBulkTotals(); return; }
+  const open = e.target.closest('[data-bulk-open]');
+  if(open){
+    const i = +open.dataset.bulkOpen, it = bulk.items[i];
+    it.open = !it.open;
+    bulkEl('bulkDetail' + i).hidden = !it.open;
+    open.textContent = it.open ? 'HIDE THE RECIPE' : 'SHOW THE RECIPE';
+    if(it.open) bulkMountDetail(i);
+    return;
+  }
+  const dup = e.target.closest('[data-bulk-dup]');
+  if(dup){
+    const i = +dup.dataset.bulkDup, box = bulkEl('bulkDup' + i);
+    const lib = loadRecipes().find(r=> r.id === bulk.items[i].dup.id);
+    if(box.hidden && lib){
+      const lines = ingredientLinesOf(parseRecipe(lib.syntax || ''));
+      box.innerHTML = `<b>${escapeHtml(lib.title)}</b> · ${escapeHtml(lib.source || '')}${lib.dateAdded ? ' · added ' + escapeHtml(formatDate(lib.dateAdded)) : ''}<ul>${lines.map(l=> `<li>${escapeHtml(l)}</li>`).join('')}</ul>`;
+    }
+    box.hidden = !box.hidden;
+  }
+});
+bulkEl('bulkSources').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-bulk-src]');
+  if(!btn) return;
+  const { typed, term } = btn.dataset;
+  /* The form's own writes: USE THAT makes the typed spelling an alias of the library's, KEEP MINE records the "no". */
+  if(btn.dataset.bulkSrc === 'use') addAlias('source', typed, term);
+  else addAlias('source_distinct', pairKeyFor(typed, term), '');
+  renderAliasesList();
+  renderBulkSources();
+});
+bulkEl('bulkDoneList').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-bulk-edit]');
+  if(!btn) return;
+  const id = btn.dataset.bulkEdit;
+  closeBulk();
+  openEditModal(id);
 });
 
 /* =====================================================================

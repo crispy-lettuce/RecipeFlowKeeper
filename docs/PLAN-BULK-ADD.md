@@ -1,7 +1,7 @@
 # Plan: adding several recipes at once, from one combined file
 
 **Written 18 Oct 2026** (date from `date -u`), in a planning session that changed no code. **Updated 19 Oct 2026:** the household
-answered §9 (all four as recommended), and PR 1 is built on the session branch (not yet merged); PR 4 is dropped. Checked against `main`
+answered §9 (all four as recommended), PR 1 and PR 2 are built on the session branch (not yet merged); PR 4 is dropped. Checked against `main`
 at `10c86c3` (PR #163), by reading the code (§3 was checked by running the splitter, 19 Oct). Nothing was run against the live app. The household asked for the
 feature after a session loaded 62 converted recipes straight into the database (record and undo in `PrivateBackup`,
 a dated folder under `migrations/` there), which worked, but is not something the household can do for itself.
@@ -180,7 +180,7 @@ prose; CRLF and BOM; unterminated fence; empty block; two blocks one title; a li
 not start a block; a block with no `STEPS:` is returned whole. Plus one check that `validate-recipes.js` reads blocks only through
 `splitRecipeBlocks` (it keeps no fence loop of its own).
 
-**PR 2 — ADD SEVERAL: read, review, save.** The button, the dialog, file and paste input, the review list with the
+**PR 2 — ADD SEVERAL: read, review, save. Built 19 Oct** on the session branch, stacked on PR 1, version 2026-10-19.1 (changelog entry, help section 9, `docs/HOUSEHOLD-JOBS.md` 69a, `docs/TEST-PLAN.md` 69a); 25 new smoke checks, each of the main rules seen to fail by mutation. Differences from the text below: OPEN in the result panel closes the dialog and opens the edit form (stacking the edit form over a dialog left the viewer drawing behind it), so the persisted checklist is LIBRARY CHECK; the dialog does not close on a tap outside it (a long review is not lost to a misplaced tap); the curly apostrophe is now read as the straight one when looking for a similar source, for the single form too (the 18 Oct file's *It’s* against the library's *It's* would not have been asked about otherwise). Text as first planned: The button, the dialog, file and paste input, the review list with the
 §4 statuses, the SOURCES band, the save, the result panel, `mergeKeywordVocab` once. `help.html`: a new short section
 and the quoted button labels as `<b class="ui">` (`test/help-guide.js` fails if a label is wrong). `changelog.json`
 entry (new `version`, no recipe names) and `APP_VERSION` (CLAUDE.md, 2a). A tablet step in `docs/HOUSEHOLD-JOBS.md`

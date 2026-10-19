@@ -849,6 +849,13 @@ reported one by one.*
     the Planner's time on one line and clear of SERVES. (4) *Weeknight, under 30 min* lists a Weeknight recipe with `est. 25 min`.
     (5) *Type the real time back:* the tag goes with the old figure.
 
+69a. **Add several recipes at once (new 19 Oct; version 2026-10-19.1; `docs/PLAN-BULK-ADD.md`).** Writes three recipes, which step 7 deletes (use Test Kitchen).
+    (1) *ADD SEVERAL* opens a dialog; pasting the three made-up recipes in `docs/HOUSEHOLD-JOBS.md` reads them at once and says "3 read: 2 ready,
+    1 held back", the held one naming SERVINGS and its line. (2) *Nothing is written* by reading: Recipes still has its old count behind the
+    dialog. (3) *Untick one:* the button counts 1 fewer. (4) *SHOW THE RECIPE* draws its table. (5) *ADD:* the recipes are in Recipes at
+    once, the new tags are in the filter row, and the result panel lists them with OPEN. (6) *OPEN* lands in that recipe's edit form.
+    (7) *Paste the same recipe again:* it shows as already in the library (same link), unticked. Delete the three recipes.
+
 ## Deferred to the tablet, after merging
 
 - **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in

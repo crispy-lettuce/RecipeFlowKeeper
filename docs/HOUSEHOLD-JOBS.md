@@ -27,9 +27,10 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | [66a: the Modernist style](#66a-a-second-style-modernist-new-15-oct-revised-18-oct-docsplan-modernistmd) | tablet, landscape | 15 min | Two things, each undone in the next tap (see 66a) |
 | [67a: liquids in spoons or ml](#67a-liquids-in-spoons-or-ml-new-18-oct-docsplan-liquid-measuresmd), in Test Kitchen | tablet | 5 min | No |
 | [68a: EST. beside an estimated time](#68a-est-beside-a-time-the-converter-worked-out-new-18-oct-version-2026-10-184), in Test Kitchen | tablet | 10 min | One recipe's TIME, put back in step 6 |
+| [69a: add several recipes at once](#69a-add-several-recipes-at-once-new-19-oct-version-2026-10-191-docsplan-bulk-addmd), in Test Kitchen | tablet | 10 min | Three made-up recipes, deleted in step 8 |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
-**The split is done** (18 Oct, see Recently done), so your own library is empty until you add recipes. Do 61a to 68a signed in as the
+**The split is done** (18 Oct, see Recently done), so your own library is empty until you add recipes. Do 61a to 69a signed in as the
 test account, in Test Kitchen, which has the recipes and the plan they look at. 61a to 65a describe the **Classic** look (plum, gold, rounded corners), which is how the app opens
 unless a device has been switched. Do them first, then 66a, which switches to Modernist and back at the end.
 
@@ -232,6 +233,56 @@ style. You do not need the new converter file for it: you type the marker yourse
    the tag gone with the old figure.
 
 Tell the next session if the tag is hard to see or read, or if anything wraps onto two lines.
+
+### 69a. Add several recipes at once (new 19 Oct, version 2026-10-19.1, `docs/PLAN-BULK-ADD.md`)
+
+This adds three made-up recipes, so do it in Test Kitchen and delete them in step 8. You need the app reloaded on this device first.
+Copy this whole block (all three recipes) to paste in step 2:
+
+```
+TITLE: Bulk Test One
+SOURCE: Bulk Test Book
+SERVINGS: 2
+SOURCE_URL: https://example.com/bulk-test-one
+TAGS: course=Main, Bulktest
+GROUP a:
+2 onions
+STAGE:
+MERGE a -> done: soften the onions [5 min]
+
+TITLE: Bulk Test Two
+SOURCE: Bulk Test Book
+TAGS: course=Main, Bulktest
+GROUP a:
+1 carrot
+STAGE:
+MERGE a -> done: boil the carrot [8 min]
+
+TITLE: Bulk Test Three
+SOURCE: Bulk Test Book
+SERVINGS: 4
+TAGS: course=Side, Bulktest
+GROUP a:
+1 leek
+STAGE:
+MERGE a -> done: fry the leek [4 min]
+```
+
+1. Note how many recipes **RECIPES** shows. Tap **ADD SEVERAL** (under **NEW RECIPE**). **You should see:** a box to paste into and
+   **CHOOSE A FILE**.
+2. Paste the block. **You should see:** "3 read: 2 ready, 1 held back." Bulk Test Two is held back, with the reason SERVINGS and the
+   line it starts on, and its box cannot be ticked. The button reads **ADD 2 RECIPES**.
+3. Behind the dialog, **RECIPES** still shows the same number: reading added nothing.
+4. Untick Bulk Test One. **You should see:** the button reads **ADD 1 RECIPE**. Tick it again. Tap **SHOW THE RECIPE** under it.
+   **You should see:** its table of steps.
+5. Under **SOURCES** you should see "Bulk Test Book: a new source. 2 recipes." Tap **ADD 2 RECIPES**. **You should see:** a panel saying
+   2 recipes added, listing both with **OPEN**, and the two recipes in **RECIPES** at once.
+6. Tap **OPEN** beside Bulk Test One. **You should see:** its edit form, with the title and source filled in. Close it.
+7. Tap **ADD SEVERAL** again and paste only the Bulk Test One recipe. **You should see:** it listed as already in your library (the same
+   source link), unticked, and the button reading **ADD 0 RECIPES** and greyed.
+8. Close the dialog, then delete Bulk Test One and Bulk Test Three the usual way. In Settings → Keywords, delete **Bulktest** if it is listed.
+
+Tell the next session if a step didn't say what it should, or if anything is hard to read on the tablet.
 
 ---
 

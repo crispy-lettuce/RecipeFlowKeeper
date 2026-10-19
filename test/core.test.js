@@ -139,11 +139,11 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
      mono is a decision to make here, not a drift. */
   const MONO_OK = ['.mono', '.qty', '.step-duration', '.day-recipe-time', '.day-num', '.scale-btn', '.history-day-num', '.side-count',
     '.result-count', '.shortlist-count', '.ingr-count', '.source-row-count', 'ol.setup li::before', 'textarea#importInput',
-    'textarea#sourcePasteInput', '.rv-row code', '.line-check code', '.rv-undo code', '.hstat-legend-value', '.swap-row-ratio',
+    'textarea#sourcePasteInput', 'textarea#bulkText', '.rv-row code', '.line-check code', '.rv-undo code', '.hstat-legend-value', '.swap-row-ratio',
     '.timeline-ruler', '.cn-date', '.stacked-recipe-start', '.stacked-recipe-serves', '.photo-overlay-head', '.pdf-card-mark'];
   const mono = rules.filter(r => /IBM Plex Mono/.test(r.body)).map(r => r.sel);
   const stray = mono.filter(sel => !MONO_OK.includes(sel)), unused = MONO_OK.filter(sel => !mono.includes(sel));
-  check('IBM Plex Mono is on exactly the rules for numbers, times and code (26), and nowhere else',
+  check('IBM Plex Mono is on exactly the rules for numbers, times and code (27), and nowhere else',
         mono.length > 0 && stray.length === 0 && unused.length === 0, [stray.length ? 'mono but not listed: ' + stray.join(' | ') : '', unused.length ? 'listed but not mono: ' + unused.join(' | ') : ''].filter(Boolean).join('; '));
 
   /* Weight 300 is thin on the tablet. Titles of 19px and up keep it; body text is 400. */
