@@ -551,7 +551,9 @@ from the plan's text, and what is left for the household to decide).
 replacement: per device, a scoped stylesheet over a shared DOM, Classic untouched. The decisions made on 15 Oct (what differs from
 the prototype and why), how it is checked (its own lint, the smoke checks, and Classic proved unchanged screen by screen), what
 cannot be verified without the tablet, the build order with a "built as" note per step, and a **decision log** of every choice made
-while building, with the reason and who made it (the household's, or the session's and theirs to overturn).
+while building, with the reason and who made it (the household's, or the session's and theirs to overturn). Since 19 Oct it also records
+"The filter sheet": Recipes' filters moved into a panel opened from a FILTERS button (PR 1; the find field is PR 2), with the tablet
+measurements that decided it, and "The recipe grid on the tablet", a fault found on the tablet and fixed the same day.
 
 **Use it when:** changing or extending Modernist, or asked why a screen differs between the two styles.
 

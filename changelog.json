@@ -1,4 +1,8 @@
 [
+  { "version": "2026-10-19.4", "date": "2026-10-19",
+    "changes": ["New: in the Modernist style's filter panel, a box above the keywords, Find a keyword, narrows them as you type. Any part of a word will do, in capitals or not. If nothing matches it says so, and Enter adds what you typed as a keyword filter; + ADD takes you to the box. The keywords are listed with the ones that are switched on first and then the most used, and the order holds while the panel is open, so a keyword does not jump away from your finger. On a computer the cursor starts in the box; on the tablet it does not, so the keyboard stays down until you tap the box or + ADD."] },
+  { "version": "2026-10-19.3", "date": "2026-10-19",
+    "changes": ["New: in the Modernist style, the filters on the Recipes screen now open from a FILTERS button beside the search. Course, source, sort and every keyword are in a panel that slides in from the right, and each tap changes the recipes behind it at once. What is switched on shows as a row of small chips under the search, each removed with one tap, with CLEAR ALL at the end. That leaves the recipe cards much more of the screen: on the tablet, three-quarters of it or more. Classic keeps its rows of filters exactly as before."] },
   { "version": "2026-10-19.2", "date": "2026-10-19",
     "changes": ["Fixed: in the Modernist style, on a tablet held sideways or a laptop, the cards on the Recipes screen were squashed into thin strips once there were more than a few recipes. They are back to full size, and the list scrolls. Held upright, and on a phone, the cards were already fine, and Classic was never affected."] },
   { "version": "2026-10-19.1", "date": "2026-10-19",

@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
+**Last brought up to date: 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
 households sort out their own converter and need no steps here.
@@ -28,9 +28,10 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | [67a: liquids in spoons or ml](#67a-liquids-in-spoons-or-ml-new-18-oct-docsplan-liquid-measuresmd), in Test Kitchen | tablet | 5 min | No |
 | [68a: EST. beside an estimated time](#68a-est-beside-a-time-the-converter-worked-out-new-18-oct-version-2026-10-184), in Test Kitchen | tablet | 10 min | One recipe's TIME, put back in step 6 |
 | [69a: add several recipes at once](#69a-add-several-recipes-at-once-new-19-oct-version-2026-10-191-docsplan-bulk-addmd), in Test Kitchen | tablet | 10 min | Three made-up recipes, deleted in step 8 |
+| [70a: the Recipes filter sheet](#70a-the-recipes-filter-sheet-new-19-oct-version-2026-10-193-docsplan-modernistmd), in Modernist | tablet, landscape | 10 min | No |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
-**The split is done** (18 Oct, see Recently done), so your own library is empty until you add recipes. Do 61a to 69a signed in as the
+**The split is done** (18 Oct, see Recently done), so your own library is empty until you add recipes. Do 61a to 70a signed in as the
 test account, in Test Kitchen, which has the recipes and the plan they look at. 61a to 65a describe the **Classic** look (plum, gold, rounded corners), which is how the app opens
 unless a device has been switched. Do them first, then 66a, which switches to Modernist and back at the end.
 
@@ -285,6 +286,38 @@ MERGE a -> done: fry the leek [4 min]
 8. Close the dialog, then delete Bulk Test One and Bulk Test Three the usual way. In Settings → Keywords, delete **Bulktest** if it is listed.
 
 Tell the next session if a step didn't say what it should, or if anything is hard to read on the tablet.
+
+### 70a. The Recipes filter sheet (new 19 Oct, version 2026-10-19.3, `docs/PLAN-MODERNIST.md`)
+
+Do this on the tablet held landscape, in **MODERNIST**, after reloading into 2026-10-19.3. Filters are not saved anywhere, so it writes
+nothing. Use Test Kitchen's recipes if your own library is still small, so there is something to filter.
+
+1. Open **RECIPES**. **You should see:** the header on one line: "Recipes", the count, the search box and a black **FILTERS** button, with
+   no rows of **COURSE** or **KEYWORD** chips under it. The first row of recipe cards starts about a quarter of the way down the page, so
+   cards fill at least three-quarters of it, with the **OUR RECIPES** / **TEST KITCHEN'S RECIPES** buttons showing.
+2. Tap **FILTERS**. **You should see:** a panel slide in from the right, about 440 px wide, over the whole app, the side menu included, with
+   the rest dimmed. In it: **COURSE**, **SOURCE** and **SORT**, then every **KEYWORD**, with how many there are at the right.
+3. Tap a course, then a keyword. **You should see:** the recipes behind the dim change at once, and the red button at the foot says how
+   many are left (for example **SHOW 7 RECIPES**). Tapping a pill again switches it off. The list does not jump to the top when you tap.
+4. Change **SORT** to **A – Z**. **You should see:** the recipes re-order behind the panel.
+5. Tap the red **SHOW** button. **You should see:** the panel slides away. Under the search there is a row of small chips (the course, the
+   keyword, **SORT: A – Z**), a red number on **FILTERS**, and **CLEAR ALL** after the chips. Open the panel again and close it with the
+   **×**, then with a tap on the dimmed area. (With a keyboard, **Esc** closes it too.)
+6. Tap one chip. **You should see:** that filter goes off and the recipes change. Tap **CLEAR ALL**. **You should see:** every filter off, the
+   chip row gone, and no empty band left under the search.
+7. Switch on four or five filters in a row. **You should see:** the chips stay on one line. If they cannot all fit, the last place says
+   something like **+2**; tap it and the panel opens.
+8. Open the panel: **You should see:** no keyboard. The keywords are listed with the ones that are on first, then the most used. Tap the
+   box above them (**Find a keyword…**) and type a few letters from the middle of a word. **You should see:** the keyboard now, and the
+   keywords narrowing as you type, in capitals or not. Type something no keyword has. **You should see:** "No keyword matches — Enter to
+   add". Send it: it becomes a chip and a filled pill at the head of the list, and the box empties. Tap **+ ADD**: the cursor goes to the
+   box. Close the panel and open it again: the box is empty and every keyword is back.
+9. Tap **Weeknight, under 30 min** in the side menu. **You should see:** one chip carrying that name. Tap the chip to clear it.
+10. In **SETTINGS**, **APP**, choose **CLASSIC**. **You should see:** Recipes with its rows of filters as before, and no **FILTERS** button.
+    Choose whichever style you want to keep.
+
+Tell the next session how the panel feels to use with one hand, whether anything is hard to tap, and whether you miss seeing the
+keyword suggestions in the header.
 
 ---
 

@@ -257,11 +257,14 @@ html[data-style="modernist"] :focus-visible{ outline-color:var(--color-accent); 
 }
 
 /* ============================== RECIPES ==============================
-   The header is the prototype's "title-search": the title and its count, with the search taking the rest of the row; then
-   COURSE and KEYWORD on a 96px label column, SOURCE and SORT pushed right on the KEYWORD row (renderFilterRows puts the
-   select there in this style). The cards share 2px rules, three to a row. Photos stay in colour (a team decision that
-   overrides the design system's grayscale rule). .filter-head is Settings' header too, so everything is under #view-recipes. */
-html[data-style="modernist"] #view-recipes .filter-head{ padding:20px 28px 16px; gap:12px; border-bottom:2px solid var(--color-divider); }
+   The header is one row: the title and its count, the search taking the rest, and the FILTERS button. What is switched on
+   shows as a row of chips under it, and the controls themselves are in the sheet (RECIPES FILTERS, below). Before 20 Oct
+   2026 COURSE, KEYWORD, SOURCE and SORT were rows here, and on the household's tablet they left the cards half the page.
+   The cards share 2px rules, three to a row. Photos stay in colour (a team decision that overrides the design system's
+   grayscale rule). .filter-head is Settings' header too, so everything is under #view-recipes. */
+html[data-style="modernist"] #view-recipes .filter-head{ padding:16px 28px 12px; gap:10px; border-bottom:2px solid var(--color-divider); }
+html[data-style="modernist"] #view-recipes #filterRows{ display:none; }
+html[data-style="modernist"] #librarySwitch{ margin:8px 28px 0; }
 html[data-style="modernist"] .recipes-head-row{ display:flex; align-items:flex-end; gap:24px; flex-wrap:wrap; }
 html[data-style="modernist"] .recipes-titleblock{ display:flex; align-items:flex-end; gap:16px; }
 html[data-style="modernist"] .recipes-titleblock h1{ margin:0; font-size:56px; font-weight:800; line-height:.9; letter-spacing:-0.035em; }
@@ -279,43 +282,13 @@ html[data-style="modernist"] #view-recipes .searchbar input{ font-size:16px; col
 /* Classic's "3 OF 34" inside the search bar: here the count is beside the title instead. */
 html[data-style="modernist"] #resultCount{ display:none; }
 
-html[data-style="modernist"] #view-recipes .filter-rows{ gap:10px; }
-html[data-style="modernist"] #view-recipes .filter-row{ align-items:center; gap:0; }
-html[data-style="modernist"] #view-recipes .filter-row-label{
-  width:96px; flex:none; padding-top:0; line-height:1.2;
-  font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text);
-}
-html[data-style="modernist"] #view-recipes .chips{ gap:6px; }
-html[data-style="modernist"] #view-recipes .sort-wrap{ gap:8px; }
-html[data-style="modernist"] #view-recipes .chip{
-  position:relative; min-height:0; padding:7px 12px; line-height:normal;
-  border:2px solid var(--color-divider); background:transparent; color:var(--color-text);
-  font-size:13px; font-weight:600; letter-spacing:.04em;
-}
-/* About 32px to see and 44px to tap (decision 10): the inset is from the padding box, inside the 2px border. */
-html[data-style="modernist"] #view-recipes .chip::before{ content:''; position:absolute; left:-2px; right:-2px; top:-8px; bottom:-8px; }
-html[data-style="modernist"] #view-recipes .chip:hover{ border-color:var(--color-accent); color:var(--color-accent); }
-html[data-style="modernist"] #view-recipes .chip.on{ background:var(--km-fill); border-color:var(--km-fill); color:var(--km-on-accent); font-weight:800; }
-html[data-style="modernist"] #view-recipes .chip.on:hover{ background:var(--km-fill-hover); border-color:var(--km-fill-hover); color:var(--km-on-accent); }
-html[data-style="modernist"] #view-recipes .chip.ghost{ border-style:dashed; border-color:var(--color-divider); color:var(--color-text); opacity:.8; }
-html[data-style="modernist"] #view-recipes .chip.ghost:hover{ border-color:var(--color-accent); color:var(--color-accent); opacity:1; }
-html[data-style="modernist"] #view-recipes .kw-input{
-  height:32px; min-height:0; padding:0 10px; border:2px solid var(--color-accent); background:var(--color-surface);
-  color:var(--color-text); font-size:13px; font-weight:600;
-}
-/* A select cannot carry an invisible hit area, so it keeps Classic's 44px height (decision 10); the prototype's is 34px. */
-html[data-style="modernist"] #view-recipes select.sort{
-  padding:0 8px; border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text);
-  font-size:13px; font-weight:600; letter-spacing:.04em;
-}
-
 /* The grid: rules shared between cards. The first row draws the top rule and the first column the left one, so no line is
    drawn twice (the divider is translucent, and a doubled one shows darker). The number of columns follows the width.
    Rows are max-content, never auto (19 Oct 2026): above 860px the grid is a scroller of fixed height (.app is 100vh), and an
    auto row can shrink to nothing under a card that is overflow:hidden, so the browser shared the height out between the rows
    and a library of more than a few recipes was drawn as strips about 20px tall. It showed from four to seven recipes, by how tall the
    filters are, which the smoke fixture's three never reach. At 860px and below the page scrolls and the grid has no height to share. */
-html[data-style="modernist"] #recipeGrid{ padding:24px 28px 32px; grid-auto-rows:max-content; gap:0; }
+html[data-style="modernist"] #recipeGrid{ padding:16px 28px 32px; grid-auto-rows:max-content; gap:0; }
 html[data-style="modernist"] .rcard{
   padding:0; gap:4px; border:0;
   border-right:2px solid var(--color-divider); border-bottom:2px solid var(--color-divider);
@@ -340,10 +313,6 @@ html[data-style="modernist"] .rcard:hover{ background:var(--color-surface); bord
 }
 @media (max-width: 860px){
   html[data-style="modernist"] #view-recipes .filter-head{ padding:16px; }
-  html[data-style="modernist"] #view-recipes .filter-row{ align-items:flex-start; }
-  /* SOURCE and SORT share the KEYWORD row's right end here, so on a phone they wrap rather than run off the edge. */
-  html[data-style="modernist"] #view-recipes .sort-wrap{ flex-wrap:wrap; }
-  html[data-style="modernist"] #view-recipes .sort-wrap select.sort{ max-width:100%; }
 }
 
 html[data-style="modernist"] .rcard-photo{
@@ -386,6 +355,107 @@ html[data-style="modernist"] .rcard-copied{
   font-size:11px; font-weight:800; letter-spacing:.1em;
 }
 html[data-style="modernist"] .grid-empty{ padding:40px 0; color:var(--color-text); }
+
+/* ============================== RECIPES FILTERS ==============================
+   The FILTERS button beside the search, the row of chips for what is on, and the sheet that holds the controls
+   (docs/PLAN-MODERNIST.md, "The filter sheet"). The sheet slides in from the right over the whole app, side menu included.
+   Hover is only for a pointer that can hover: on the tablet a tapped pill would otherwise stay tinted until the next tap. */
+html[data-style="modernist"] .filters-btn{
+  position:relative; display:flex; align-items:center; gap:10px; flex:none; height:48px; padding:0 16px;
+  border:2px solid var(--color-text); background:var(--color-text); color:var(--color-bg);
+  font-size:13px; font-weight:800; letter-spacing:.08em; cursor:pointer;
+}
+html[data-style="modernist"] .filters-btn:active{ background:var(--color-accent-600); border-color:var(--color-accent-600); color:var(--km-on-accent); }
+html[data-style="modernist"] .filters-badge{ padding:1px 6px; background:var(--km-fill); color:var(--km-on-accent); font-size:11px; font-weight:800; letter-spacing:.04em; }
+html[data-style="modernist"] .filters-badge[hidden]{ display:none; }
+@media (hover: hover){
+  html[data-style="modernist"] .filters-btn:hover{ background:var(--km-fill); border-color:var(--km-fill); color:var(--km-on-accent); }
+  html[data-style="modernist"] .filters-btn:hover .filters-badge{ background:var(--color-bg); color:var(--color-text); }
+}
+
+/* One line, never wrapped: fitActiveChips hides what does not fit and puts a +N chip in its place. Each is drawn about 24px
+   tall and answers a tap 10px above and below (44px). The row clips sideways only, or the hit areas would be cut off. */
+html[data-style="modernist"] .active-chips{ display:flex; align-items:center; flex-wrap:nowrap; gap:6px; min-width:0; overflow-x:clip; }
+html[data-style="modernist"] .active-chips[hidden]{ display:none; }
+html[data-style="modernist"] :is(.active-chip, .active-more){
+  position:relative; flex:none; display:flex; align-items:center; gap:4px; max-width:260px; padding:4px 8px;
+  border:2px solid var(--color-text); background:transparent; color:var(--color-text);
+  font-size:11px; font-weight:700; letter-spacing:.04em; line-height:1.2; cursor:pointer;
+}
+html[data-style="modernist"] :is(.active-chip, .active-more)[hidden]{ display:none; }
+html[data-style="modernist"] .ac-label{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+html[data-style="modernist"] :is(.active-chip, .active-more, .active-clear)::before{ content:''; position:absolute; left:0; right:0; top:-10px; bottom:-10px; }
+html[data-style="modernist"] :is(.active-chip, .active-more):active{ background:var(--color-accent-600); border-color:var(--color-accent-600); color:var(--km-on-accent); }
+html[data-style="modernist"] .active-clear{
+  position:relative; flex:none; padding:4px 6px; border:0; background:transparent; color:var(--color-accent-700);
+  font-size:11px; font-weight:800; letter-spacing:.08em; cursor:pointer;
+}
+@media (hover: hover){
+  html[data-style="modernist"] :is(.active-chip, .active-more):hover{ background:var(--color-accent-100); }
+  html[data-style="modernist"] .active-clear:hover{ color:var(--color-accent); }
+}
+
+/* The sheet: fixed to the right edge, full height, 440px (the whole width on a phone). The backdrop fades and the panel slides
+   in over 180ms; with reduced motion there is neither. Above the dialogs (100) and below the toast (200). Not drawn while
+   hidden, and not clickable while it is closing. */
+html[data-style="modernist"] .filter-sheet{ position:fixed; inset:0; z-index:110; }
+html[data-style="modernist"] .filter-sheet[hidden]{ display:none; }
+html[data-style="modernist"] .filter-sheet:not(.open){ pointer-events:none; }
+html[data-style="modernist"] .filter-sheet-backdrop{ position:absolute; inset:0; background:var(--km-scrim); opacity:0; transition:opacity .18s ease-out; touch-action:none; }
+html[data-style="modernist"] .filter-sheet.open .filter-sheet-backdrop{ opacity:1; }
+html[data-style="modernist"] .filter-sheet-panel{
+  position:absolute; top:0; right:0; bottom:0; width:min(440px, 100%); display:flex; flex-direction:column; outline:none;
+  background:var(--color-bg); color:var(--color-text); border-left:2px solid var(--color-text); box-shadow:-8px 0 24px var(--km-shadow-strong);
+  transform:translateX(100%); transition:transform .18s ease-out;
+}
+html[data-style="modernist"] .filter-sheet.open .filter-sheet-panel{ transform:none; }
+@media (prefers-reduced-motion: reduce){
+  html[data-style="modernist"] :is(.filter-sheet-backdrop, .filter-sheet-panel){ transition:none; }
+}
+html[data-style="modernist"] .filter-sheet-head{ flex:none; display:flex; align-items:center; justify-content:space-between; padding:20px 24px; border-bottom:2px solid var(--color-divider); }
+html[data-style="modernist"] .filter-sheet-head h2{ margin:0; font-size:28px; font-weight:800; line-height:1; letter-spacing:-0.02em; }
+html[data-style="modernist"] .filter-sheet-close{
+  position:relative; width:36px; height:36px; display:flex; align-items:center; justify-content:center;
+  border:2px solid var(--color-text); background:transparent; color:var(--color-text); cursor:pointer;
+}
+html[data-style="modernist"] .filter-sheet-close::before{ content:''; position:absolute; inset:-4px; }
+html[data-style="modernist"] .filter-sheet-close svg{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2.5; stroke-linecap:square; }
+html[data-style="modernist"] .filter-sheet-close:active{ background:var(--color-accent-600); border-color:var(--color-accent-600); color:var(--km-on-accent); }
+html[data-style="modernist"] .filter-sheet-body{ flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+html[data-style="modernist"] .fs-section{ padding:16px 24px; border-bottom:2px solid var(--color-divider); }
+html[data-style="modernist"] .fs-section:last-child{ border-bottom:0; }
+html[data-style="modernist"] .fs-label{ display:block; margin:0 0 10px; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] .fs-label-row{ display:flex; align-items:baseline; justify-content:space-between; }
+html[data-style="modernist"] .fs-count{ margin-bottom:10px; font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--km-ink-72); }
+html[data-style="modernist"] .fs-two{ display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:12px; }
+html[data-style="modernist"] .fs-two select.sort{
+  width:100%; min-width:0; height:44px; padding:0 8px; border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text);
+  font-size:13px; font-weight:600; letter-spacing:.04em;
+}
+html[data-style="modernist"] .fs-pills{ display:flex; flex-wrap:wrap; gap:8px; }
+html[data-style="modernist"] .fs-pill{
+  min-height:44px; padding:0 12px; border:2px solid var(--color-text); background:transparent; color:var(--color-text);
+  font-size:12px; font-weight:700; letter-spacing:.04em; cursor:pointer;
+}
+html[data-style="modernist"] .fs-pill.kw{ border-style:dashed; font-weight:600; }
+html[data-style="modernist"] .fs-pill.on{ border-style:solid; background:var(--color-text); color:var(--color-bg); font-weight:800; }
+html[data-style="modernist"] .fs-pill:active{ border-style:solid; background:var(--color-accent-600); border-color:var(--color-accent-600); color:var(--km-on-accent); }
+@media (hover: hover){
+  html[data-style="modernist"] .fs-pill:not(.on):hover{ background:var(--color-accent-100); }
+}
+/* The find field narrows the keyword pills as you type. 16px, so a tablet browser does not zoom the page when it takes focus. */
+html[data-style="modernist"] .fs-find{
+  display:block; width:100%; height:44px; margin:0 0 10px; padding:0 10px;
+  border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text);
+  font-size:16px; font-weight:600;
+}
+html[data-style="modernist"] .fs-find:focus{ border-color:var(--color-accent); }
+html[data-style="modernist"] .fs-empty{ margin:0 0 10px; font-size:13px; font-weight:700; letter-spacing:.02em; color:var(--color-accent-700); }
+html[data-style="modernist"] .fs-empty[hidden]{ display:none; }
+html[data-style="modernist"] .filter-sheet-foot{ flex:none; display:flex; gap:8px; padding:16px 24px; border-top:2px solid var(--color-divider); }
+html[data-style="modernist"] .filter-sheet-foot .btn{ height:48px; padding:0 16px; }
+html[data-style="modernist"] .filter-sheet-foot .btn.primary{ flex:1; }
+@media print{ html[data-style="modernist"] .filter-sheet{ display:none !important; } }
 
 /* ============================== BUTTONS AND SWITCHES (every screen) ==============================
    The prototype's secondary button: a 1px rule, 13px capitals in 800, flush left. Drawn about 33px tall, with an invisible
