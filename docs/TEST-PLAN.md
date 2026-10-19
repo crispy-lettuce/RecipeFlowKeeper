@@ -856,6 +856,15 @@ reported one by one.*
     dialog. (3) *Untick one:* the button counts 1 fewer. (4) *SHOW THE RECIPE* draws its table. (5) *ADD:* the recipes are in Recipes at
     once, the new tags are in the filter row, and the result panel lists them with OPEN. (6) *OPEN* lands in that recipe's edit form.
     (7) *Paste the same recipe again:* it shows as already in the library (same link), unticked. Delete the three recipes.
+70a. **The Recipes filter sheet (new 19 Oct; version 2026-10-19.3; `docs/PLAN-MODERNIST.md`, "The filter sheet").** Modernist only; writes nothing
+    (filters are in memory). On the tablet in landscape: (1) *Recipes:* one header line (title, count, search, black FILTERS), no filter rows,
+    and with the OUR RECIPES / TEST KITCHEN'S band showing the cards fill at least 75% of the page. (2) *FILTERS:* a 440px panel slides in
+    from the right over the whole app, side menu included, the rest dimmed; COURSE, SOURCE, SORT, every KEYWORD with its count. (3) *A course,
+    then a keyword:* the recipes behind change at once; the red foot button counts what is left (SHOW n RECIPES); the list keeps its scroll.
+    (4) *SORT A – Z:* re-orders. (5) *SHOW:* closes it; chips for each filter and SORT: A – Z, a red count on FILTERS, CLEAR ALL; the ×, a tap
+    on the dim and Esc close it too. (6) *A chip:* removes its filter; CLEAR ALL clears all and the row goes, leaving no gap. (7) *Five filters:*
+    the chips stay on one line with a +N that opens the panel. (8) *+ ADD:* the keyboard appears only now; the word becomes a chip and a filled
+    pill; opening the panel alone raises no keyboard. (9) *A saved view:* one chip with its name. (10) *STYLE → CLASSIC:* its rows as before.
 
 ## Deferred to the tablet, after merging
 

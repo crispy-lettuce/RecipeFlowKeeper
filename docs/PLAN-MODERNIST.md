@@ -93,8 +93,9 @@ Each step's entry below is added when it lands: what was measured, and where it 
 
 ### Step 3 as built
 - **Markup:** the search bar now sits in `.recipes-head-row` beside a `.mod-only` title and count (`#recipesCountMod`: "3 RECIPES",
-  or "1 OF 3" under a filter). In Modernist, `renderFilterRows` puts the one SOURCE select beside SORT on the KEYWORD row
-  (`currentStyle()`), and switching style redraws it. Classic is byte-identical.
+  or "1 OF 3" under a filter). In Modernist, `renderFilterRows` put the one SOURCE select beside SORT on the KEYWORD row
+  (`currentStyle()`), and switching style redraws it. Classic is byte-identical. *(Replaced 19 Oct 2026: the filters are in a sheet now;
+  see "The filter sheet".)*
 - **Cards:** *(corrected 19 Oct 2026: the rows were `auto`, which squashed every card to a strip in a library of more than a few recipes; see "The recipe grid on the tablet")* three to a row at 861px and up, two to 560px, one below, sharing 2px rules (the first row draws the top and the
   first column the left, so no translucent line is drawn twice). Photo 176px, in colour. The favourite is the Lucide star drawn
   as a CSS mask (filled and red when on); its ☆/★ text stays, at no size, and the button's label is unchanged.
@@ -275,6 +276,36 @@ day in Chromium with 70 made-up recipes, then fixed.
 - **Looked for elsewhere:** every other screen, in both styles, at 1430x667 and 1280x800, for a grid item clipped by its own row.
   None, on the fixture's small planner and history. History's own grid already uses `minmax(92px, auto)`.
 
+### The filter sheet (19 Oct 2026, version 2026-10-19.3; PR 1 of 2)
+The household's tablet screenshot (about 1389 x 731 CSS px under Chrome's bars) showed the cards getting about half the page, and the household
+asked for at least three-quarters. The handoff folder's brief for a filter sheet (its concept 2b) was read as a proposal, not a spec, and
+criticised against the code first (the brief's "40+ keywords wrap the header" is not what the code does: the header shows 12 suggestions
+whatever the library holds; what made it tall was SOURCE and SORT beside the chips and the course row).
+- **Measured** at 1389 x 731 with the household's twelve suggestions, a share (the OUR RECIPES / TEST KITCHEN'S band) and a 350px SOURCE
+  select, a scratch copy of the page gave the cards 49% (the screenshot's own figure: 51%). Mocked, and then built: every filter in a sheet
+  gives 81% with nothing on and 76% with three filters on. COURSE kept in the header with the rest in the sheet gives 75% and 70%; one
+  sideways-scrolling strip gives 75% with no room to spare. Only the sheet holds the target with filters on (D39).
+- **Built:** a FILTERS button beside the search, with a red count of what is on; under the head row one line of chips for the saved view, each
+  course, each keyword, the source and a sort that is not the default, each removed with a tap, with CLEAR ALL after them; when they do not
+  fit, the ones that do not are hidden and a +N chip opens the sheet. The sheet is 440px, slides in from the right over the whole app over
+  180ms (none with reduced motion), and holds COURSE, SOURCE, SORT and every keyword, with + ADD. Every tap applies at once; its foot says
+  SHOW n RECIPES and closes it, as do the ×, the backdrop and Esc. Focus goes to the panel on opening and back to FILTERS on closing; Tab
+  stays inside; `.app` is inert behind it. Classic is unchanged, shown by screenshots (24 comparisons, taken from `main` and from this build,
+  with and without filters, light and dark, at 1280, 1024 and 412px: 22 identical on the first run; the other two, at 1280px light, were run
+  again eight times each: one came out identical every time, and the other came out in the same few images from both builds, `main`
+  varying against itself).
+- **The code:** one state (`state.course`, `.keywords`, `.source`, `.savedView`, `.sort`) and one filter (`filterRecipes`). The small helpers
+  that change the state (`toggleCourseFilter`, `addKeywordFilter`, `removeKeywordFilter`, `toggleKeywordFilter`) are used by Classic's rows,
+  the sheet and the chips alike. `renderFilterRows` takes the Modernist path first and leaves Classic's code as it was, with its select
+  markup and its keyword-box wiring moved into functions both paths use. The sheet's body is drawn only while it is open, and is redrawn on
+  every change with its scroll place and focused control put back. The old Modernist rules for the header's filter rows are gone.
+- **Checks:** 22 in `test/smoke.js` (the header; the 75% target at 1389 x 731 and 1280 x 800 with the band and with filters on; chips and badge;
+  the dialog, its contents, Tab; live apply; SOURCE and SORT; scroll and focus kept; + ADD; Esc, the ×, the backdrop and SHOW; Esc leaving a
+  recipe-for-a-day alone; leaving the screen; chips removed and cleared; one line and +N; reduced motion; dark; Classic as it was), and two
+  existing checks changed to say SOURCE is no longer a header row. Each was seen to fail by breaking the code it guards, in a scratch copy.
+- **Not verified:** the tablet itself (Chrome on Android: `inert`, the soft keyboard, touch), and the household's real header.
+- **Still to come (PR 2):** a find field above the keywords, which are in the app's own order for now, and selected pills first.
+
 ## Decision log
 
 Every choice made while building, beyond the twelve agreed at the top, with the reason. "Household" means you chose it; "session"
@@ -322,7 +353,15 @@ means it was decided while building and is yours to overturn. Newest last.
 | D35 | 18 Oct | session | Enter or Space on a card's own button (star, +, ✓) does that button's job, in both styles; on the card itself it still opens the recipe. | The grid took Enter from every element in a card, so the shortlist and favourite buttons could not be used from a keyboard; Classic's + had the same fault. |
 | D36 | 18 Oct | session | A preparation step's output counts as raw ingredients for the `merge` mark. | Slicing leeks does not make "Fry the veg" a joining of two cooked things; as written it is a step, and drawing preparation must not change that. |
 | D37 | 19 Oct | session | The recipe grid's rows are `max-content`: each row is as tall as its tallest card, so a row of one-line titles is about 22px shorter than a row with a two-line title. | Self-adjusting, and a larger text size cannot clip a card. `minmax(300px, max-content)` would make every row the same height, as Classic's are, at the cost of a number to keep right; yours to choose. |
-| D38 | 19 Oct | session | Not done: at 1024px wide the header (title, search, filters) takes about 460px of 768, because the keyword chips are squeezed beside SOURCE and SORT. | In a trial, SOURCE and SORT on a row of their own at 1180px and below gave back about 150px at 1024px and changed nothing at 1280px, the plan's tablet. Waiting to hear the household's tablet is that narrow. |
+| D38 | 19 Oct | session | Not done: at 1024px wide the header (title, search, filters) takes about 460px of 768, because the keyword chips are squeezed beside SOURCE and SORT. *(Superseded the same day by D39: the sheet takes every filter row out of the header.)* | In a trial, SOURCE and SORT on a row of their own at 1180px and below gave back about 150px at 1024px and changed nothing at 1280px, the plan's tablet. The household's tablet turned out to be about 1389px wide. |
+| D39 | 19 Oct | household | Every filter, COURSE included, moves into a sheet opened by a FILTERS button; the header shows what is on as chips. | The household asked for the cards to have at least three-quarters of the page. Measured on the tablet's size: the sheet gives 81% and 76% with three filters on; COURSE kept in the header gives 75% and 70%. |
+| D40 | 19 Oct | session | The sheet is outside `.app`, which is `inert` while it is open; Tab wraps inside it as well. | The backdrop must cover the side menu, and `inert` is the one thing that keeps a screen reader and a keyboard out of the page behind; the wrap covers a browser without it. |
+| D41 | 19 Oct | session | Opening the sheet puts focus on the panel, not in a text box. | A text box would raise the tablet's keyboard over the keyword list every time. + ADD still focuses its own box, as it always did. PR 2's find field is the place to decide if a keyboard device should land in it. |
+| D42 | 19 Oct | session | A saved view is one chip carrying its name; typed search text is not a chip and is not counted; CLEAR and CLEAR ALL do what CLEAR ALL FILTERS did (search text included) and also put a sort that is not the default back. | A saved view is a rule (not cooked in 3 months, favourites), not a set of courses and keywords, so it cannot be shown as the chips it would set. The search box is in front of you. A sort is a chip now, so clearing the chips clears it. |
+| D43 | 19 Oct | session | The header's count still reads "N OF M" under a filter; the sheet's foot says SHOW N RECIPES, SHOW 1 RECIPE, or NO RECIPES MATCH. | "N OF M" is decision 9 above and is checked; the foot is a button, and a button that says SHOW 0 RECIPES says the wrong thing. |
+| D44 | 19 Oct | session | The "Recipes" title stays 56px. | The brief said 48px; 48 saves 2px on the row, which the search box (48px) sets. |
+| D45 | 19 Oct | session | Hover tints apply only where a pointer can hover (`@media (hover: hover)`). | On the tablet a tapped pill would otherwise stay tinted until the next tap. |
+| D46 | 19 Oct | session | The browser's Back button is not handled; it leaves the page as it does from every dialog. | The app has never used the history API. Making the sheet the first thing that does is a decision for the household. |
 
 ### Follow-ups found while building (not done here)
 - **D10:** the shortlist's × has no spoken label (both styles).

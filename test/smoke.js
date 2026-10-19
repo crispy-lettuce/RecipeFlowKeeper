@@ -7269,6 +7269,7 @@ const check = (name, pass, detail) => {
       inBar: vis(document.getElementById('resultCount')) ? document.getElementById('resultCount').textContent : null,
       beside: vis(h1) ? (r(sb).left > r(h1).right && r(sb).top < r(h1).bottom && r(sb).bottom > r(h1).top) : null, barH: Math.round(r(sb).height),
       sources: document.querySelectorAll('#sourceFilterSelect').length, sourceRow: row ? row.querySelector('.filter-row-label').textContent : null,
+      filters: vis(document.getElementById('filtersBtn')) ? document.getElementById('filtersBtn').firstChild.textContent : null,
       cards, gridRight, photoH: Math.round(r(document.querySelector('#recipeGrid .rcard-photo')).height) };
   });
   const rcc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
@@ -7295,7 +7296,7 @@ const check = (name, pass, detail) => {
   const r0 = await recipesLook(rc);
   check('Modernist\'s Recipes: "Recipes" and "3 RECIPES" beside a 48px search bar, and no count inside the bar',
         r0.title === 'Recipes' && r0.count === '3 RECIPES' && r0.inBar === null && r0.beside === true && r0.barH === 48, JSON.stringify(r0));
-  check('    SOURCE sits on the KEYWORD row, and there is still one source select', r0.sources === 1 && r0.sourceRow === 'KEYWORD', JSON.stringify(r0));
+  check('    SOURCE is not in the header (20 Oct 2026: its select is in the filter sheet, which is closed), and FILTERS is', r0.sources === 0 && r0.sourceRow === null && r0.filters === 'FILTERS', JSON.stringify(r0));
   const [ca, cb, cc] = r0.cards;
   check('    three cards to a row, equal widths filling it, sharing 2px rules (the first row draws the top, the first card the left)',
         ca.top === cb.top && cb.top === cc.top && ca.left < cb.left && cb.left < cc.left && Math.abs(ca.w - cb.w) <= 1 && Math.abs(cb.w - cc.w) <= 1 && Math.abs(cc.right - r0.gridRight) <= 1 &&
@@ -7338,8 +7339,8 @@ const check = (name, pass, detail) => {
   const r1 = await recipesLook(rc);
   await rc.evaluate(() => applyStyle('modernist')); await rc.waitForTimeout(200);
   const r2 = await recipesLook(rc);
-  check('switching style redraws Recipes at once: SOURCE moves to its own row in Classic and back in Modernist',
-        r1.sourceRow === 'SOURCE' && r1.sources === 1 && r2.sourceRow === 'KEYWORD' && r2.sources === 1, JSON.stringify([r1.sourceRow, r2.sourceRow]));
+  check('switching style redraws Recipes at once: Classic has SOURCE on a row of its own and no FILTERS button, Modernist the button and no row',
+        r1.sourceRow === 'SOURCE' && r1.sources === 1 && r1.filters === null && r2.sourceRow === null && r2.sources === 0 && r2.filters === 'FILTERS', JSON.stringify([r1, r2].map(r => [r.sourceRow, r.sources, r.filters])));
   await rc.close();
 
   /* ---- Modernist, step 3 again: a library big enough to scroll (19 Oct 2026) ----
@@ -7389,6 +7390,190 @@ const check = (name, pass, detail) => {
   check('    Classic, the control: the same library at 1280x800 is 252px rows in a grid that scrolls',
         kc.n === 33 && kc.min === 252 && kc.max === 252 && kc.gridScrolls, JSON.stringify(kc));
   await rbc.close();
+
+  { // in a block of its own: this file's one scope has more names than it can spare
+  /* ---- Modernist, the Recipes filter sheet (20 Oct 2026, docs/PLAN-MODERNIST.md, "The filter sheet") ----
+     The header is one row (title, count, search, FILTERS); what is on shows as a row of chips; the controls are in a sheet
+     that slides over the whole app. The household's tablet gave the reason: with the old header, the cards had half the page.
+     Ten recipes are added to the fixture's three (four desserts with the keyword Quick from Test Bakery, six sides with Veg)
+     and a share, so the OUR RECIPES / TEST KITCHEN'S band is on screen as it is on the tablet. */
+  const fsPage = async (vp, look, opts) => {
+    opts = opts || {};
+    const pg = await browser.newPage({ viewport: vp });
+    pg.__label = 'filter sheet, ' + look;
+    await pg.addInitScript(l => { try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
+    if (opts.reduced) await pg.emulateMedia({ reducedMotion: 'reduce' });
+    await pg.clock.setFixedTime(FIXTURE_NOW);
+    await pg.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await pg.waitForTimeout(1200);
+    await pg.evaluate(() => {
+      const mk = (i, course, kws, source) => ({ id: 'fs-' + i, title: 'Filter dish ' + i, source, time: '20 min', servings: 4, tags: { course, keywords: kws }, history: [], syntax: 'TITLE: Filter dish ' + i });
+      for (let i = 0; i < 4; i++) loadRecipes().push(mk(i, 'Dessert', ['Quick'], 'Test Bakery'));
+      for (let i = 4; i < 10; i++) loadRecipes().push(mk(i, 'Side', ['Veg'], 'Test Kitchen'));
+      shared.sharingWithMe = [{ id: 'fs-t', name: 'Test Kitchen', count: 5 }]; shared.available = true;
+      showView('recipes'); renderHome();
+    });
+    await pg.waitForTimeout(300);
+    return pg;
+  };
+  const fsState = pg => pg.evaluate(() => {
+    const vis = e => !!e && !e.hidden && e.getClientRects().length > 0, sheet = document.getElementById('filterSheet'), panel = sheet.querySelector('.filter-sheet-panel');
+    const chips = [...document.querySelectorAll('#activeChips .active-chip')].filter(vis).map(c => c.textContent.trim());
+    const more = document.getElementById('activeMore');
+    return { btn: vis(document.getElementById('filtersBtn')), badge: vis(document.getElementById('filtersBadge')) ? document.getElementById('filtersBadge').textContent : null,
+      chipRow: vis(document.getElementById('activeChips')), chips, more: more && vis(more) ? more.textContent : null,
+      sheetShown: vis(sheet), open: sheet.classList.contains('open'), inert: document.querySelector('.app').inert, expanded: document.getElementById('filtersBtn').getAttribute('aria-expanded'),
+      focus: document.activeElement === panel ? 'panel' : (panel.contains(document.activeElement) ? 'in sheet: ' + (document.activeElement.id || document.activeElement.className) : 'outside: ' + (document.activeElement.id || document.activeElement.tagName)),
+      cards: document.querySelectorAll('#recipeGrid .rcard').length, count: (document.getElementById('recipesCountMod') || {}).textContent, show: document.getElementById('filterSheetShow').textContent,
+      oldRows: document.querySelectorAll('#filterRows .chip, #filterRows select').length, selectsInPage: document.querySelectorAll('#sourceFilterSelect, #sortSelect').length,
+      pillOn: [...document.querySelectorAll('#filterSheetBody .fs-pill.on')].map(p => p.textContent.trim()) };
+  });
+  const fsGone = pg => pg.waitForTimeout(350);
+
+  const fm = await fsPage({ width: 1389, height: 731 }, 'modernist');
+  const f0 = await fsState(fm);
+  check('Modernist\'s Recipes header is one row with a FILTERS button, and none of the old filter rows or selects are in the page',
+        f0.btn && !f0.badge && !f0.chipRow && !f0.sheetShown && f0.oldRows === 0 && f0.selectsInPage === 0, JSON.stringify(f0));
+  const share = pg => pg.evaluate(() => { const c = document.querySelector('#recipeGrid .rcard').getBoundingClientRect(); return { top: Math.round(c.top), vh: innerHeight, pct: Math.round(100 * (innerHeight - c.top) / innerHeight) }; });
+  const s0 = await share(fm);
+  await fm.evaluate(() => { state.course = ['Dessert']; state.keywords = ['Quick']; state.sort = 'az'; renderHome(); });
+  const s1 = await share(fm), f1 = await fsState(fm);
+  check('    on the tablet\'s 1389x731, with the OUR RECIPES / TEST KITCHEN\'S band showing, the cards get at least 75% of the page, and still do with three filters on',
+        s0.pct >= 75 && s1.pct >= 75, JSON.stringify([s0, s1]));
+  check('    three filters show as three chips and a red 3 on FILTERS, with CLEAR ALL after them',
+        f1.chips.join('|') === 'DESSERT×|QUICK×|SORT: A – Z×' && f1.badge === '3' && f1.chipRow, JSON.stringify(f1));
+  await fm.evaluate(() => { clearAllFilters(); });
+  await fm.setViewportSize({ width: 1280, height: 800 }); await fm.waitForTimeout(200);
+  const s2 = await share(fm);
+  check('    and at 1280x800 too', s2.pct >= 75, JSON.stringify(s2));
+  await fm.setViewportSize({ width: 1389, height: 731 });
+
+  /* The sheet: what opens it, what it holds, and the way out. */
+  await fm.click('#filtersBtn'); await fm.waitForTimeout(350);
+  const o0 = await fsState(fm);
+  const dlg = await fm.evaluate(() => { const p = document.querySelector('.filter-sheet-panel'), t = document.getElementById(p.getAttribute('aria-labelledby')); return { role: p.getAttribute('role'), modal: p.getAttribute('aria-modal'), title: t && t.textContent, w: Math.round(p.getBoundingClientRect().width), right: Math.round(innerWidth - p.getBoundingClientRect().right),
+    sel: !!document.querySelector('#filterSheetBody #sourceFilterSelect') && !!document.querySelector('#filterSheetBody #sortSelect'), course: document.querySelectorAll('#filterSheetBody [data-cat="course"]').length, kw: document.querySelectorAll('#filterSheetBody [data-kw-pill]').length,
+    label: document.querySelector('#fsKeyword + .fs-count, .fs-count').textContent }; });
+  check('FILTERS opens the sheet: a 440px dialog on the right edge titled Filters, the app behind it inert, focus on the sheet and not in a text box',
+        o0.sheetShown && o0.open && o0.inert && o0.expanded === 'true' && o0.focus === 'panel' && dlg.role === 'dialog' && dlg.modal === 'true' && dlg.title === 'Filters' && dlg.w === 440 && dlg.right === 0, JSON.stringify([o0, dlg]));
+  check('    it holds every control: the eight courses, SOURCE and SORT, and every keyword with its count',
+        dlg.course === 8 && dlg.sel && dlg.kw >= 2 && /^\d+ KEYWORDS?$/.test(dlg.label) && o0.show === 'SHOW 13 RECIPES', JSON.stringify([dlg, o0.show]));
+  /* Tab never leaves it. */
+  const tabs = [];
+  for (let i = 0; i < 40; i++) { await fm.keyboard.press('Tab'); tabs.push((await fsState(fm)).focus.startsWith('outside') ? 'OUT' : 'in'); }
+  await fm.keyboard.press('Shift+Tab'); await fm.keyboard.press('Shift+Tab');
+  const back = (await fsState(fm)).focus;
+  check('    Tab and Shift+Tab stay inside it: forty Tabs and two Shift+Tabs never reach the page behind',
+        !tabs.includes('OUT') && !back.startsWith('outside'), tabs.join('') + ' ' + back);
+  /* Live. */
+  await fm.click('#filterSheetBody [data-cat="course"][data-val="Dessert"]'); await fm.waitForTimeout(250);
+  const l1 = await fsState(fm);
+  check('    a tap applies at once: DESSERT leaves four of the thirteen behind the backdrop, as a chip, a red 1 and "SHOW 4 RECIPES", and the pill is on',
+        l1.cards === 4 && l1.count === '4 OF 13' && l1.chips.join('|') === 'DESSERT×' && l1.badge === '1' && l1.show === 'SHOW 4 RECIPES' && l1.pillOn.join('|') === 'DESSERT', JSON.stringify(l1));
+  await fm.selectOption('#filterSheetBody #sourceFilterSelect', 'Test Bakery', { timeout: 3000 }).catch(() => {}); await fm.waitForTimeout(250);
+  await fm.selectOption('#filterSheetBody #sortSelect', 'az', { timeout: 3000 }).catch(() => {}); await fm.waitForTimeout(250);
+  const l2 = await fsState(fm);
+  check('    SOURCE and SORT apply too, and a sort that is not the default is a chip',
+        l2.chips.join('|') === 'DESSERT×|SOURCE: TEST BAKERY×|SORT: A – Z×' && l2.badge === '3' && l2.cards === 4, JSON.stringify(l2));
+  /* The list keeps its place and the finger's place when it redraws. */
+  const keep = await fm.evaluate(async () => { const b = document.getElementById('filterSheetBody'); b.scrollTop = 40;
+    const pill = b.querySelector('[data-kw-pill="Veg"]'); pill.focus(); pill.click(); await new Promise(r => setTimeout(r, 200));
+    return { top: b.scrollTop, focus: document.activeElement.getAttribute('data-kw-pill'), on: document.querySelector('#filterSheetBody [data-kw-pill="Veg"]').getAttribute('aria-pressed'), maxScroll: b.scrollHeight - b.clientHeight }; });
+  check('    the list is redrawn on every tap but keeps its scroll place and the focus on the pill that was tapped',
+        keep.focus === 'Veg' && keep.on === 'true' && (keep.maxScroll < 40 || keep.top === 40), JSON.stringify(keep));
+  await fm.evaluate(() => { state.keywords = []; renderHome(); });
+  /* + ADD, and a word kept from the search. */
+  await fm.click('#addKwBtn'); await fm.waitForTimeout(200);
+  const add0 = await fm.evaluate(() => document.activeElement && document.activeElement.id);
+  await fm.keyboard.type('saffron'); await fm.keyboard.press('Enter'); await fm.waitForTimeout(250);
+  const add1 = await fsState(fm);
+  check('    + ADD opens the keyword box with focus in it; Enter applies the word as a chip and a selected pill',
+        add0 === 'kwInput' && add1.chips.includes('SAFFRON×') && add1.pillOn.includes('SAFFRON'), JSON.stringify([add0, add1.chips, add1.pillOn]));
+  /* The ways out. */
+  await fm.keyboard.press('Escape'); await fsGone(fm);
+  const c1 = await fsState(fm);
+  check('Esc closes the sheet and focus goes back to FILTERS; the app is no longer inert',
+        !c1.sheetShown && !c1.open && !c1.inert && c1.expanded === 'false' && c1.focus === 'outside: filtersBtn', JSON.stringify(c1));
+  if (c1.sheetShown) await fm.evaluate(() => closeFilterSheet({ now: true }));   // a sheet that stayed up must fail the check, not hang the next click behind its backdrop
+  const ways = [];
+  for (const [name, act] of [['the × button', () => fm.click('#filterSheetClose')], ['the backdrop', () => fm.mouse.click(100, 400)], ['the SHOW button', () => fm.click('#filterSheetShow')]]) {
+    await fm.click('#filtersBtn'); await fm.waitForTimeout(300);
+    await act(); await fsGone(fm);
+    const w = await fsState(fm); ways.push(name + ': ' + (!w.sheetShown && w.focus === 'outside: filtersBtn' ? 'closed' : 'STILL OPEN ' + JSON.stringify(w)));
+    if (w.sheetShown) await fm.evaluate(() => closeFilterSheet({ now: true }));
+  }
+  check('    so do the × button, a tap on the backdrop (over the side menu too) and the SHOW button', ways.every(w => /closed$/.test(w)), ways.join('; '));
+  /* Esc does one thing: closing the sheet does not also cancel choosing a recipe for a day. */
+  await fm.evaluate(() => { state.pickingForDate = '2026-10-20'; renderHome(); });
+  await fm.click('#filtersBtn'); await fm.waitForTimeout(300);
+  await fm.keyboard.press('Escape'); await fsGone(fm);
+  const esc = await fm.evaluate(() => ({ picking: state.pickingForDate, shown: !document.getElementById('filterSheet').hidden }));
+  check('    Esc with the sheet up only closes it: choosing a recipe for a day carries on', esc.picking === '2026-10-20' && !esc.shown, JSON.stringify(esc));
+  if (esc.shown) await fm.evaluate(() => closeFilterSheet({ now: true }));
+  await fm.evaluate(() => { state.pickingForDate = null; renderHome(); });
+  /* Leaving the screen, or the style, closes it. */
+  await fm.click('#filtersBtn'); await fm.waitForTimeout(300);
+  await fm.evaluate(() => showView('planner')); await fm.waitForTimeout(100);
+  const gone1 = await fsState(fm);
+  await fm.evaluate(() => { closeFilterSheet({ now: true, noFocus: true }); showView('recipes'); });
+  await fm.click('#filtersBtn'); await fm.waitForTimeout(300);
+  await fm.evaluate(() => applyStyle('classic')); await fm.waitForTimeout(100);
+  const gone2 = await fsState(fm);
+  await fm.evaluate(() => closeFilterSheet({ now: true, noFocus: true }));
+  check('    going to another screen, or switching style, closes it at once and leaves the app usable', !gone1.sheetShown && !gone1.inert && !gone2.sheetShown && !gone2.inert, JSON.stringify([gone1, gone2]));
+  await fm.close();
+
+  /* The chips: removing, clearing, a saved view, and the row that never wraps. */
+  const fc = await fsPage({ width: 1389, height: 731 }, 'modernist');
+  await fc.evaluate(() => { state.course = ['Dessert']; state.keywords = ['Quick']; state.savedView = 'fav'; renderHome(); });
+  const k0 = await fsState(fc);
+  await fc.click('#activeChips .active-chip[data-chip="kw"]'); await fc.waitForTimeout(200);
+  const k1 = await fsState(fc);
+  await fc.click('#activeChips .active-chip[data-chip="saved"]'); await fc.waitForTimeout(200);
+  const k2 = await fsState(fc);
+  check('A chip removes its own filter with one tap; a saved view is one chip carrying its name',
+        k0.chips.join('|') === 'FAVOURITES×|DESSERT×|QUICK×' && k1.chips.join('|') === 'FAVOURITES×|DESSERT×' && k2.chips.join('|') === 'DESSERT×' && k2.badge === '1', JSON.stringify([k0.chips, k1.chips, k2.chips]));
+  await fc.click('#activeClearAll'); await fc.waitForTimeout(200);
+  const k3 = await fsState(fc);
+  check('    CLEAR ALL clears every one, the row and the badge go, and no empty band is left behind',
+        k3.chips.length === 0 && !k3.chipRow && !k3.badge && k3.cards === 13, JSON.stringify(k3));
+  await fc.evaluate(() => { state.keywords = ['alpha-one', 'bravo-two', 'charlie-three', 'delta-four', 'echo-five', 'foxtrot-six', 'golf-seven', 'hotel-eight', 'india-nine', 'juliet-ten']; renderHome(); });
+  await fc.setViewportSize({ width: 1000, height: 700 }); await fc.waitForTimeout(300);
+  const wrap = await fc.evaluate(() => { const box = document.getElementById('activeChips'), vis = [...box.querySelectorAll('.active-chip')].filter(c => !c.hidden), more = document.getElementById('activeMore'), clear = document.getElementById('activeClearAll');
+    const mids = [...vis, more, clear].filter(e => e && !e.hidden).map(e => { const r = e.getBoundingClientRect(); return r.top + r.height / 2; });
+    return { visible: vis.length, hidden: 10 - vis.length, more: more.hidden ? null : more.textContent, lines: Math.max(...mids) - Math.min(...mids) <= 2 ? 1 : 2, fits: clear.getBoundingClientRect().right <= box.getBoundingClientRect().right + 1 }; });
+  check('    ten chips in a narrow window stay on one line: what does not fit is hidden behind a +N chip that counts them, with CLEAR ALL still in view',
+        wrap.lines === 1 && wrap.visible >= 1 && wrap.visible < 10 && wrap.more === '+' + wrap.hidden && wrap.fits, JSON.stringify(wrap));
+  await fc.click('#activeMore', { timeout: 3000 }).catch(() => {}); await fc.waitForTimeout(300);
+  const more1 = await fsState(fc);
+  check('    and +N opens the sheet', more1.sheetShown && more1.open, JSON.stringify(more1));
+  await fc.close();
+
+  /* Reduced motion, dark, and Classic left alone. */
+  const fr = await fsPage({ width: 1389, height: 731 }, 'modernist', { reduced: true });
+  await fr.click('#filtersBtn'); await fr.waitForTimeout(60);
+  const rm = await fr.evaluate(() => ({ panel: getComputedStyle(document.querySelector('.filter-sheet-panel')).transitionDuration, back: getComputedStyle(document.getElementById('filterSheetBackdrop')).transitionDuration }));
+  await fr.keyboard.press('Escape'); await fr.waitForTimeout(30);
+  const rmGone = await fr.evaluate(() => document.getElementById('filterSheet').hidden);
+  check('With reduced motion there is no slide and no fade, and the sheet is gone the moment it is closed', rm.panel === '0s' && rm.back === '0s' && rmGone, JSON.stringify([rm, rmGone]));
+  await fr.close();
+  const fd = await fsPage({ width: 1389, height: 731 }, 'modernist');
+  await fd.evaluate(() => { document.documentElement.setAttribute('data-theme', 'dark'); });
+  await fd.click('#filtersBtn'); await fd.waitForTimeout(350);
+  const dk = await fd.evaluate(() => { const cs = e => getComputedStyle(e); const p = document.querySelector('.filter-sheet-panel'), on = document.querySelector('#filterSheetBody .fs-pill'), show = document.getElementById('filterSheetShow');
+    return { panel: cs(p).backgroundColor, ink: cs(p).borderLeftColor, scrim: cs(document.getElementById('filterSheetBackdrop')).backgroundColor, showBg: cs(show).backgroundColor, showFg: cs(show).color }; });
+  check('    in dark the sheet is the dark page colour with a light edge, over the darker scrim, and its red button carries the dark theme\'s own text colour',
+        dk.panel === 'rgb(22, 21, 20)' && dk.ink === 'rgb(241, 238, 236)' && dk.scrim === 'rgba(0, 0, 0, 0.6)' && dk.showBg === 'rgb(255, 86, 60)' && dk.showFg === 'rgb(22, 21, 20)', JSON.stringify(dk));
+  await fd.close();
+  const fk = await fsPage({ width: 1280, height: 800 }, 'classic');
+  const kc = await fk.evaluate(() => { const vis = e => !!e && e.getClientRects().length > 0; return { btn: vis(document.getElementById('filtersBtn')), chips: vis(document.getElementById('activeChips')), rows: document.querySelectorAll('#filterRows .filter-row').length,
+    sheet: vis(document.getElementById('filterSheet')), ghosts: document.querySelectorAll('#filterRows .chip.ghost[data-suggest-kw]').length, source: !!document.querySelector('#filterRows #sourceFilterSelect') }; });
+  await fk.evaluate(() => openFilterSheet());
+  const kc2 = await fk.evaluate(() => document.getElementById('filterSheet').hidden);
+  check('Classic is as it was: no FILTERS button, no chip row, its three rows of COURSE, SOURCE and KEYWORD in the header, and the sheet cannot be opened',
+        !kc.btn && !kc.chips && kc.rows === 3 && !kc.sheet && kc.ghosts >= 1 && kc.source && kc2, JSON.stringify([kc, kc2]));
+  await fk.close();
+  }
 
   /* ---- Modernist, step 4: the recipe viewer ----
      A made-up recipe shaped like the design's own example (groups a to e; two steps, a step that adds raw ingredients to
