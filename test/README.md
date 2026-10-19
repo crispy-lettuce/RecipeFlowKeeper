@@ -29,7 +29,7 @@ CDN `<script>` tags swapped for `stub.js` and a set of canned rows injected.
 Re-run it after every change to `index.html`; `smoke.js` reads only that copy,
 never the original.
 
-`node test/validate-recipes.js <file>` checks a converted batch against the app's own parser,
+`node test/validate-recipes.js <file>` checks a converted batch against the app's own parser (fenced blocks or an unfenced file with a `TITLE:` line per recipe; since 19 Oct the blocks are found by `splitRecipeBlocks` in `core.js`, the function the planned ADD SEVERAL uses),
 and `node test/ingredient-survey.js <files> [--out report.md]` surveys bulk ingredient
 extractions (`converter/ingredient-extraction-prompt.md`). Both read their input from outside
 this repo, and share the ingredient-line checks, which since 27 Sep live in `core.js`

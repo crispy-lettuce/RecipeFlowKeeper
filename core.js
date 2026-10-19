@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-18.5';
+const KITCHEN_CORE_VERSION = '2026-10-19.1';
 
 
 /* ======================= quantity split ======================= */
@@ -2310,6 +2310,67 @@ function newRecipeReview({ lines, sourceUrl, recipeId, library, alias, isSettled
   return { names, knownCount: names.length - isNew.size, newCount: isNew.size, sameAs, duplicates };
 }
 
+/* ======================= several recipes in one text ======================= */
+
+/* The blocks in a combined file of converted recipes (docs/PLAN-BULK-ADD.md §3), in file order.
+
+   Two shapes, because the household's 18 Oct file was the second and the converter's own output is the first:
+   - FENCED: if the text has any ``` line, a block is the text between a pair of fences whose first non-blank
+     line starts TITLE:. Other fenced text (a shell sample, JSON) is ignored, and so is anything outside the fences.
+   - UNFENCED: a block starts at a line that begins TITLE: at column 0 and ends before the next one. A numbered
+     heading ("12. Some Title") directly above a TITLE: line with the same title is the file's own label and is
+     left out of the block above it. Any other text before the next TITLE: stays with the block above, because
+     nothing here can tell prose from the tail of a recipe; the parser's NOT READ list shows what it could not use.
+
+   Nothing inside a block is changed: no trimming of lines, no quote or dash changes (the source's spelling is the
+   review's job). Only the unfenced blocks lose trailing blank lines, which were the gap before the next block.
+
+   Returns { blocks, stray }. A block is { text, line, title, unterminated }; `line` is the 1-based line of the
+   opening fence (fenced) or of the TITLE: line (unfenced); `unterminated` is a fence that never closed.
+   `stray` lists the 1-based lines of column-0 TITLE: lines that ended up in no block (outside the fences of a
+   fenced file), so a half-fenced paste says so instead of silently losing recipes.
+   test/validate-recipes.js uses this too, so the command line and the app cannot disagree about what a block is. */
+function splitRecipeBlocks(text){
+  const lines = String(text == null ? '' : text).replace(/^\uFEFF/, '').split(/\r?\n/);
+  const titleOf = l => { const m = String(l).trim().match(/^TITLE:\s*(.*?)\s*$/i); return m ? m[1] : null; };
+  const isFence = l => /^\s*```/.test(l);
+  const blocks = [];
+  const inBlock = new Set();
+  if(lines.some(isFence)){
+    let buf = null, start = 0;
+    const close = (unterminated) => {
+      const first = buf.find(l => l.trim() !== '');
+      if(first !== undefined && titleOf(first) !== null){
+        blocks.push({ text: buf.join('\n'), line: start, title: titleOf(first), unterminated });
+        for(let k = 0; k < buf.length; k++) inBlock.add(start + k);
+      }
+      buf = null;
+    };
+    lines.forEach((l, i) => {
+      if(isFence(l)){ if(buf === null){ buf = []; start = i + 1; } else close(false); }
+      else if(buf !== null) buf.push(l);
+    });
+    if(buf !== null) close(true);
+  } else {
+    const starts = [];
+    lines.forEach((l, i) => { if(/^TITLE:/i.test(l)) starts.push(i); });
+    starts.forEach((s, n) => {
+      let end = n + 1 < starts.length ? starts[n + 1] : lines.length;
+      const squash = x => String(x).toLowerCase().replace(/\s+/g, ' ').trim();
+      if(n + 1 < starts.length && end - 1 > s){
+        const head = lines[end - 1].match(/^\s*\d+[.)]\s+(.+?)\s*$/);
+        if(head && squash(head[1]) === squash(titleOf(lines[end]))) end -= 1;
+      }
+      while(end - 1 > s && lines[end - 1].trim() === '') end -= 1;
+      blocks.push({ text: lines.slice(s, end).join('\n'), line: s + 1, title: titleOf(lines[s]), unterminated: false });
+      for(let k = s; k < end; k++) inBlock.add(k + 1);
+    });
+  }
+  const stray = [];
+  lines.forEach((l, i) => { if(/^TITLE:/i.test(l) && !inBlock.has(i + 1)) stray.push(i + 1); });
+  return { blocks, stray };
+}
+
 /* So Node can load this file too (test/core.test.js, the validators). In the
    page there is no `module`, and everything above is simply global, as it was
    when it lived in index.html. */
@@ -2325,6 +2386,7 @@ if(typeof module !== 'undefined' && module.exports){
     NEVER_IGNORE, foldPlural, dictionaryRow, dictionaryPhrases, dictionaryKey, shoppingLine, formatShoppingParts, aggregateShoppingLines,
     shoppingKeyForName, strictMatchSuggestions,
     ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, fidelityAmount, fidelityAgree, pastedIngredientLines, ingredientMatchMap, aisleOverrideMap,
-    sourceNoteIn, normalisedSourceUrl, linesHash, fidelityCounts, sourceCheckStatus, newRecipeReview
+    sourceNoteIn, normalisedSourceUrl, linesHash, fidelityCounts, sourceCheckStatus, newRecipeReview,
+    splitRecipeBlocks
   };
 }

@@ -100,7 +100,7 @@ node test/core.test.js
 node test/build.js && node test/smoke.js
 ```
 
-`core.test.js` is 230 checks in Node, in about two seconds: the pure functions, the dictionary, the
+`core.test.js` is 248 checks in Node, in about two seconds: the pure functions, the dictionary, the
 shopping list's naming rules, and the rules that keep `core.js` and `index.html` apart. The smoke
 suite is 724 checks. **Run both,
 always** — `smoke.js` loads what `build.js` wrote, so skipping the build
