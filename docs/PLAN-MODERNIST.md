@@ -276,7 +276,7 @@ day in Chromium with 70 made-up recipes, then fixed.
 - **Looked for elsewhere:** every other screen, in both styles, at 1430x667 and 1280x800, for a grid item clipped by its own row.
   None, on the fixture's small planner and history. History's own grid already uses `minmax(92px, auto)`.
 
-### The filter sheet (19 Oct 2026, version 2026-10-19.3; PR 1 of 2)
+### The filter sheet (19 Oct 2026, versions 2026-10-19.3 and 2026-10-19.4; PRs 1 and 2)
 The household's tablet screenshot (about 1389 x 731 CSS px under Chrome's bars) showed the cards getting about half the page, and the household
 asked for at least three-quarters. The handoff folder's brief for a filter sheet (its concept 2b) was read as a proposal, not a spec, and
 criticised against the code first (the brief's "40+ keywords wrap the header" is not what the code does: the header shows 12 suggestions
@@ -293,7 +293,8 @@ whatever the library holds; what made it tall was SOURCE and SORT beside the chi
   stays inside; `.app` is inert behind it. Classic is unchanged, shown by screenshots (24 comparisons, taken from `main` and from this build,
   with and without filters, light and dark, at 1280, 1024 and 412px: 22 identical on the first run; the other two, at 1280px light, were run
   again eight times each: one came out identical every time, and the other came out in the same few images from both builds, `main`
-  varying against itself).
+  varying against itself). Repeated for PR 2 (14 runs of each build on the cases that differed): the odd images differ from the usual one by 2 to 5
+  pixels at the edge of a scroll bar, and `main` produces the same kind against itself.
 - **The code:** one state (`state.course`, `.keywords`, `.source`, `.savedView`, `.sort`) and one filter (`filterRecipes`). The small helpers
   that change the state (`toggleCourseFilter`, `addKeywordFilter`, `removeKeywordFilter`, `toggleKeywordFilter`) are used by Classic's rows,
   the sheet and the chips alike. `renderFilterRows` takes the Modernist path first and leaves Classic's code as it was, with its select
@@ -304,7 +305,18 @@ whatever the library holds; what made it tall was SOURCE and SORT beside the chi
   recipe-for-a-day alone; leaving the screen; chips removed and cleared; one line and +N; reduced motion; dark; Classic as it was), and two
   existing checks changed to say SOURCE is no longer a header row. Each was seen to fail by breaking the code it guards, in a scratch copy.
 - **Not verified:** the tablet itself (Chrome on Android: `inert`, the soft keyboard, touch), and the household's real header.
-- **Still to come (PR 2):** a find field above the keywords, which are in the app's own order for now, and selected pills first.
+- **PR 2 (2026-10-19.4), the keyword find field:** a field above the keyword pills narrows them as you type, ignoring case and matching any
+  part of a word (a keyword stays if what was typed is anywhere in it). With no match the sheet says "No keyword matches — Enter to add", and
+  Enter applies the typed word as a keyword filter, the way + ADD and the search always have, and puts it at the head of the list; with a
+  match in view Enter does nothing, as the brief said (D49). The pills are ordered when the sheet opens: the ones that are on first, then by
+  how many recipes carry each, the most first, ties in the app's own order, and that order holds while it is open (D48). + ADD stays at the
+  end and puts the cursor in the field (D50); the inline keyword box and its datalist, which PR 1 kept, are gone from the sheet (Classic keeps
+  them). The field is empty each time the sheet opens. Opening it puts the cursor in the field with a mouse or keyboard, and on the panel
+  itself on touch, so the tablet's keyboard stays down (D47). The pills are drawn on their own, so typing does not redraw the field.
+- **Checks in PR 2:** nine, and one of PR 1's replaced: the opening order; a tapped pill staying put and coming first next time; the narrowing,
+  in any case and on any part of a word; the no-match line and Enter adding; Enter with a match adding nothing; + ADD; the field emptying on
+  opening; and, on a touch screen (`hasTouch`, where `(pointer: fine)` is false), no cursor in a text box. Each was seen to fail by breaking
+  the code it guards. 782 in all.
 
 ## Decision log
 
@@ -356,12 +368,16 @@ means it was decided while building and is yours to overturn. Newest last.
 | D38 | 19 Oct | session | Not done: at 1024px wide the header (title, search, filters) takes about 460px of 768, because the keyword chips are squeezed beside SOURCE and SORT. *(Superseded the same day by D39: the sheet takes every filter row out of the header.)* | In a trial, SOURCE and SORT on a row of their own at 1180px and below gave back about 150px at 1024px and changed nothing at 1280px, the plan's tablet. The household's tablet turned out to be about 1389px wide. |
 | D39 | 19 Oct | household | Every filter, COURSE included, moves into a sheet opened by a FILTERS button; the header shows what is on as chips. | The household asked for the cards to have at least three-quarters of the page. Measured on the tablet's size: the sheet gives 81% and 76% with three filters on; COURSE kept in the header gives 75% and 70%. |
 | D40 | 19 Oct | session | The sheet is outside `.app`, which is `inert` while it is open; Tab wraps inside it as well. | The backdrop must cover the side menu, and `inert` is the one thing that keeps a screen reader and a keyboard out of the page behind; the wrap covers a browser without it. |
-| D41 | 19 Oct | session | Opening the sheet puts focus on the panel, not in a text box. | A text box would raise the tablet's keyboard over the keyword list every time. + ADD still focuses its own box, as it always did. PR 2's find field is the place to decide if a keyboard device should land in it. |
+| D41 | 19 Oct | session | Opening the sheet puts focus on the panel, not in a text box. *(Amended in PR 2 by D47: with a mouse or keyboard it goes to the find field.)* | A text box would raise the tablet's keyboard over the keyword list every time. + ADD still focuses its own box, as it always did. PR 2's find field is the place to decide if a keyboard device should land in it. |
 | D42 | 19 Oct | session | A saved view is one chip carrying its name; typed search text is not a chip and is not counted; CLEAR and CLEAR ALL do what CLEAR ALL FILTERS did (search text included) and also put a sort that is not the default back. | A saved view is a rule (not cooked in 3 months, favourites), not a set of courses and keywords, so it cannot be shown as the chips it would set. The search box is in front of you. A sort is a chip now, so clearing the chips clears it. |
 | D43 | 19 Oct | session | The header's count still reads "N OF M" under a filter; the sheet's foot says SHOW N RECIPES, SHOW 1 RECIPE, or NO RECIPES MATCH. | "N OF M" is decision 9 above and is checked; the foot is a button, and a button that says SHOW 0 RECIPES says the wrong thing. |
 | D44 | 19 Oct | session | The "Recipes" title stays 56px. | The brief said 48px; 48 saves 2px on the row, which the search box (48px) sets. |
 | D45 | 19 Oct | session | Hover tints apply only where a pointer can hover (`@media (hover: hover)`). | On the tablet a tapped pill would otherwise stay tinted until the next tap. |
 | D46 | 19 Oct | session | The browser's Back button is not handled; it leaves the page as it does from every dialog. | The app has never used the history API. Making the sheet the first thing that does is a decision for the household. |
+| D47 | 19 Oct | session | Opening the sheet puts the cursor in the find field where the main pointer is fine (a mouse or a trackpad), and on the panel where it is a finger. | The brief says the field; the tablet is the household's main device and a text box that takes focus raises its keyboard over the list on every opening. |
+| D48 | 19 Oct | session | The keyword pills are ordered once, when the sheet opens: on first, then by use, the most first, ties in the app's own order. | The brief orders them so; re-ordering after every tap would move a pill from under the finger that had just tapped it. |
+| D49 | 19 Oct | session | Enter in the find field acts only when nothing matches. | The brief says so. With matches in view there is nothing to create, and the pill meant is one tap away; a shortcut for exactly one match is a possible follow-up. |
+| D50 | 19 Oct | session | + ADD in the sheet puts the cursor in the find field; the inline keyword box and its datalist are gone from the sheet. | One way to add a word, not two; Classic keeps its box. |
 
 ### Follow-ups found while building (not done here)
 - **D10:** the shortlist's × has no spoken label (both styles).

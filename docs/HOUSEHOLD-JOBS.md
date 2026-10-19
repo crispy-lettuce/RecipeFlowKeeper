@@ -307,8 +307,11 @@ nothing. Use Test Kitchen's recipes if your own library is still small, so there
    chip row gone, and no empty band left under the search.
 7. Switch on four or five filters in a row. **You should see:** the chips stay on one line. If they cannot all fit, the last place says
    something like **+2**; tap it and the panel opens.
-8. In the panel tap **+ ADD** and type a word. **You should see:** the tablet's keyboard appears now, and only now. Send the word: it
-   becomes a chip and a filled pill. Open the panel without tapping **+ ADD**: no keyboard appears.
+8. Open the panel: **You should see:** no keyboard. The keywords are listed with the ones that are on first, then the most used. Tap the
+   box above them (**Find a keyword…**) and type a few letters from the middle of a word. **You should see:** the keyboard now, and the
+   keywords narrowing as you type, in capitals or not. Type something no keyword has. **You should see:** "No keyword matches — Enter to
+   add". Send it: it becomes a chip and a filled pill at the head of the list, and the box empties. Tap **+ ADD**: the cursor goes to the
+   box. Close the panel and open it again: the box is empty and every keyword is back.
 9. Tap **Weeknight, under 30 min** in the side menu. **You should see:** one chip carrying that name. Tap the chip to clear it.
 10. In **SETTINGS**, **APP**, choose **CLASSIC**. **You should see:** Recipes with its rows of filters as before, and no **FILTERS** button.
     Choose whichever style you want to keep.

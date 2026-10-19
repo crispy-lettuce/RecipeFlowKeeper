@@ -863,8 +863,9 @@ reported one by one.*
     then a keyword:* the recipes behind change at once; the red foot button counts what is left (SHOW n RECIPES); the list keeps its scroll.
     (4) *SORT A – Z:* re-orders. (5) *SHOW:* closes it; chips for each filter and SORT: A – Z, a red count on FILTERS, CLEAR ALL; the ×, a tap
     on the dim and Esc close it too. (6) *A chip:* removes its filter; CLEAR ALL clears all and the row goes, leaving no gap. (7) *Five filters:*
-    the chips stay on one line with a +N that opens the panel. (8) *+ ADD:* the keyboard appears only now; the word becomes a chip and a filled
-    pill; opening the panel alone raises no keyboard. (9) *A saved view:* one chip with its name. (10) *STYLE → CLASSIC:* its rows as before.
+    the chips stay on one line with a +N that opens the panel. (8) *The find field (version 2026-10-19.4):* opening the panel raises no keyboard; the keywords are ordered
+    on-first then by use; tapping the box raises it, and typing narrows the pills (any part of a word, any case); a word nothing has says "No
+    keyword matches — Enter to add" and Enter makes it a chip and a pill at the head; + ADD puts the cursor in the box; reopening empties it. (9) *A saved view:* one chip with its name. (10) *STYLE → CLASSIC:* its rows as before.
 
 ## Deferred to the tablet, after merging
 

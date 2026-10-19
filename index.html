@@ -1695,7 +1695,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-19.3">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-19.4">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2402,7 +2402,7 @@ const EXPECTED_CORE_VERSION = '2026-10-19.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-19.3';
+const APP_VERSION = '2026-10-19.4';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -5444,7 +5444,7 @@ function renderFilterRows(recipes){
    (docs/PLAN-MODERNIST.md, "The filter sheet"). The state is the same `state` Classic's rows use; only where the controls
    sit changes. The sheet is drawn only while it is open, and the chip row and the badge follow every renderHome().
    ===================================================================== */
-const filterSheet = { open: false, timer: null, count: 0 };
+const filterSheet = { open: false, timer: null, count: 0, find: '', order: [] };
 
 /* What is switched on, as the chips show it: the saved view, then each course, each keyword, the source and a sort that is
    not the default. A saved view is a rule (not cooked in 3 months, favourites), not a set of courses and keywords, so it is
@@ -5545,6 +5545,44 @@ function filterFocusKey(el){
   return null;
 }
 
+/* One pill, as the sheet draws them. */
+function fsPill(attrs, on, label, extra){
+  return `<button type="button" class="fs-pill${extra||''}${on?' on':''}" aria-pressed="${on}" ${attrs}>${escapeHtml(label.toUpperCase())}</button>`;
+}
+
+/* The keywords in the order the sheet lists them: the ones that are on first, then by how many recipes carry each, the most
+   first, and any that tie in the app's own order. Worked out when the sheet opens and kept while it is open, so a pill does not
+   jump to the front under the finger that has just tapped it; it takes its place the next time. */
+function keywordOrder(recipes){
+  const counts = keywordCounts(recipes);
+  const on = state.keywords.slice();
+  const rest = fullKeywordVocab(recipes).filter(k=> !on.includes(k));
+  rest.sort((a,b)=> (counts.get(b) || 0) - (counts.get(a) || 0));   // a stable sort: ties stay in the app's order
+  return on.concat(rest);
+}
+
+/* What is listed: the opening order, less any word that has since left (a typed word whose chip was removed), and any that
+   arrived since at the end. Every keyword, and any word typed into the search and kept with Enter, which is applied the same
+   way but may be in no recipe's tags. */
+function sheetKeywords(recipes){
+  const live = new Set(fullKeywordVocab(recipes).concat(state.keywords));
+  const known = new Set(filterSheet.order);
+  return filterSheet.order.filter(k=> live.has(k)).concat([...live].filter(k=> !known.has(k)));
+}
+
+/* The pills, narrowed by the find field: a keyword stays if what was typed is any part of it, in any case. Drawn on its own,
+   so typing does not redraw the field. With no match the sheet says so and what Enter will do. */
+function renderKeywordPills(recipes){
+  const box = document.getElementById('fsKwPills');
+  if(!box) return;
+  const q = filterSheet.find.trim().toLowerCase();
+  const list = sheetKeywords(recipes);
+  const shown = q ? list.filter(k=> k.toLowerCase().includes(q)) : list;
+  box.innerHTML = shown.map(k=> fsPill(`data-kw-pill="${escapeHtml(k)}"`, state.keywords.includes(k), k, ' kw')).join('') +
+    `<button type="button" class="fs-pill kw ghost" id="fsAddKw">+ ADD</button>`;
+  document.getElementById('fsKwEmpty').hidden = !(q && !shown.length);
+}
+
 /* The sheet's controls. Every tap applies at once (renderHome redraws the grid behind the backdrop), so there is no draft and
    no APPLY; the footer button only closes. The body is redrawn on each change, and its scroll position and the focused
    control are put back, or a tap would send the list to the top and drop the keyboard's place. */
@@ -5552,19 +5590,9 @@ function renderFilterSheetBody(recipes){
   const body = document.getElementById('filterSheetBody');
   const key = body.contains(document.activeElement) ? filterFocusKey(document.activeElement) : null;
   const top = body.scrollTop;
-  const pill = (attrs, on, label, extra) => `<button type="button" class="fs-pill${extra||''}${on?' on':''}" aria-pressed="${on}" ${attrs}>${escapeHtml(label.toUpperCase())}</button>`;
 
-  const courses = tagVocab('course', recipes).map(v=> pill(`data-cat="course" data-val="${escapeHtml(v)}"`, state.course.includes(v), v)).join('');
-
-  /* Every keyword, and any word typed into the search and kept with Enter, which is applied the same way but may be in no
-     recipe's tags. */
-  const vocab = fullKeywordVocab(recipes);
-  const all = vocab.concat(state.keywords.filter(k=> !vocab.includes(k)));
-  const kws = all.map(k=> pill(`data-kw-pill="${escapeHtml(k)}"`, state.keywords.includes(k), k, ' kw')).join('');
-  const addBit = state.addingKeyword
-    ? `<input class="fs-kw-input" id="kwInput" list="kwAddVocab" placeholder="keyword…" autocomplete="off" aria-label="New keyword">
-       <datalist id="kwAddVocab">${vocab.filter(v=> !state.keywords.includes(v)).map(v=>`<option value="${escapeHtml(v)}"></option>`).join('')}</datalist>`
-    : `<button type="button" class="fs-pill kw ghost" id="addKwBtn">+ ADD</button>`;
+  const courses = tagVocab('course', recipes).map(v=> fsPill(`data-cat="course" data-val="${escapeHtml(v)}"`, state.course.includes(v), v)).join('');
+  const total = fullKeywordVocab(recipes).length;
 
   body.innerHTML = `
     <section class="fs-section" aria-labelledby="fsCourse">
@@ -5576,11 +5604,13 @@ function renderFilterSheetBody(recipes){
       <div><label class="fs-label" for="sortSelect">SORT</label>${sortSelectHtml()}</div>
     </section>
     <section class="fs-section" aria-labelledby="fsKeyword">
-      <div class="fs-label-row"><h3 class="fs-label" id="fsKeyword">KEYWORD</h3><span class="fs-count">${vocab.length} KEYWORD${vocab.length === 1 ? '' : 'S'}</span></div>
-      <div class="fs-pills">${kws}${addBit}</div>
+      <div class="fs-label-row"><h3 class="fs-label" id="fsKeyword">KEYWORD</h3><span class="fs-count">${total} KEYWORD${total === 1 ? '' : 'S'}</span></div>
+      <input type="text" class="fs-find" id="kwFind" placeholder="Find a keyword…" aria-label="Find a keyword" autocomplete="off" autocapitalize="off" spellcheck="false" value="${escapeHtml(filterSheet.find)}">
+      <p class="fs-empty" id="fsKwEmpty" role="status" hidden>No keyword matches — Enter to add</p>
+      <div class="fs-pills" id="fsKwPills"></div>
     </section>`;
+  renderKeywordPills(recipes);
   body.scrollTop = top;
-  wireKeywordAdd();
   wireFilterSelects();
   if(key){ const again = body.querySelector(key); if(again && again !== document.activeElement) again.focus({ preventScroll: true }); }
 }
@@ -5589,7 +5619,28 @@ document.getElementById('filterSheetBody').addEventListener('click', e=>{
   const course = e.target.closest('[data-cat="course"]');
   if(course){ toggleCourseFilter(course.dataset.val); renderHome(); return; }
   const kw = e.target.closest('[data-kw-pill]');
-  if(kw){ toggleKeywordFilter(kw.dataset.kwPill); renderHome(); }
+  if(kw){ toggleKeywordFilter(kw.dataset.kwPill); renderHome(); return; }
+  /* + ADD is the find field with the cursor in it: type the word, and Enter adds it when no keyword already has it. */
+  if(e.target.closest('#fsAddKw')) document.getElementById('kwFind').focus();
+});
+document.getElementById('filterSheetBody').addEventListener('input', e=>{
+  if(e.target.id !== 'kwFind') return;
+  filterSheet.find = e.target.value;
+  renderKeywordPills(homeRecipes());
+});
+document.getElementById('filterSheetBody').addEventListener('keydown', e=>{
+  if(e.target.id !== 'kwFind' || e.key !== 'Enter') return;
+  e.preventDefault();
+  const word = e.target.value.trim();
+  if(!word) return;
+  /* Only when nothing matches: with matches in view, Enter has nothing to create, and the pill that was meant is one tap away.
+     A word added is applied as every kept word is (addKeywordFilter, as + ADD and the search always did), and heads the list. */
+  const q = word.toLowerCase();
+  if(sheetKeywords(homeRecipes()).some(k=> k.toLowerCase().includes(q))) return;
+  addKeywordFilter(word);
+  filterSheet.order.unshift(word);
+  filterSheet.find = '';
+  renderHome();
 });
 
 function openFilterSheet(){
@@ -5597,6 +5648,8 @@ function openFilterSheet(){
   const root = document.getElementById('filterSheet');
   filterSheet.open = true;
   clearTimeout(filterSheet.timer);
+  filterSheet.find = '';
+  filterSheet.order = keywordOrder(homeRecipes());
   renderFilterSheetBody(homeRecipes());
   root.hidden = false;
   /* The app behind is inert while the sheet is up: the focus trap below covers a browser without it. */
@@ -5604,8 +5657,10 @@ function openFilterSheet(){
   void root.offsetWidth;   // so the slide starts from where it was drawn closed
   root.classList.add('open');
   document.getElementById('filtersBtn').setAttribute('aria-expanded', 'true');
-  /* The panel itself, not a control in it: a text box here would raise the tablet's keyboard over the list every time. */
-  root.querySelector('.filter-sheet-panel').focus();
+  /* With a mouse or a keyboard the cursor goes to the find field. On touch it stays on the panel itself: a text box here would
+     raise the tablet's keyboard over the list every time the sheet opened. */
+  const find = document.getElementById('kwFind');
+  (window.matchMedia('(pointer: fine)').matches && find ? find : root.querySelector('.filter-sheet-panel')).focus({ preventScroll: true });
 }
 
 /* opts.now skips the slide (leaving the screen, changing style); opts.noFocus leaves focus where it is. */

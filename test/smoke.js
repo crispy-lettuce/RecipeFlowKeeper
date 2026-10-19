@@ -7399,7 +7399,7 @@ const check = (name, pass, detail) => {
      and a share, so the OUR RECIPES / TEST KITCHEN'S band is on screen as it is on the tablet. */
   const fsPage = async (vp, look, opts) => {
     opts = opts || {};
-    const pg = await browser.newPage({ viewport: vp });
+    const pg = await browser.newPage(Object.assign({ viewport: vp }, opts.touch ? { hasTouch: true, isMobile: true } : {}));
     pg.__label = 'filter sheet, ' + look;
     await pg.addInitScript(l => { try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
     if (opts.reduced) await pg.emulateMedia({ reducedMotion: 'reduce' });
@@ -7410,6 +7410,7 @@ const check = (name, pass, detail) => {
       const mk = (i, course, kws, source) => ({ id: 'fs-' + i, title: 'Filter dish ' + i, source, time: '20 min', servings: 4, tags: { course, keywords: kws }, history: [], syntax: 'TITLE: Filter dish ' + i });
       for (let i = 0; i < 4; i++) loadRecipes().push(mk(i, 'Dessert', ['Quick'], 'Test Bakery'));
       for (let i = 4; i < 10; i++) loadRecipes().push(mk(i, 'Side', ['Veg'], 'Test Kitchen'));
+      cache.keywords = ['Pasta', 'Pancakes', 'Pastry', 'Chicken', 'Curry', 'Salad'];   // the app's own order; five of them are in no recipe
       shared.sharingWithMe = [{ id: 'fs-t', name: 'Test Kitchen', count: 5 }]; shared.available = true;
       showView('recipes'); renderHome();
     });
@@ -7454,8 +7455,8 @@ const check = (name, pass, detail) => {
   const dlg = await fm.evaluate(() => { const p = document.querySelector('.filter-sheet-panel'), t = document.getElementById(p.getAttribute('aria-labelledby')); return { role: p.getAttribute('role'), modal: p.getAttribute('aria-modal'), title: t && t.textContent, w: Math.round(p.getBoundingClientRect().width), right: Math.round(innerWidth - p.getBoundingClientRect().right),
     sel: !!document.querySelector('#filterSheetBody #sourceFilterSelect') && !!document.querySelector('#filterSheetBody #sortSelect'), course: document.querySelectorAll('#filterSheetBody [data-cat="course"]').length, kw: document.querySelectorAll('#filterSheetBody [data-kw-pill]').length,
     label: document.querySelector('#fsKeyword + .fs-count, .fs-count').textContent }; });
-  check('FILTERS opens the sheet: a 440px dialog on the right edge titled Filters, the app behind it inert, focus on the sheet and not in a text box',
-        o0.sheetShown && o0.open && o0.inert && o0.expanded === 'true' && o0.focus === 'panel' && dlg.role === 'dialog' && dlg.modal === 'true' && dlg.title === 'Filters' && dlg.w === 440 && dlg.right === 0, JSON.stringify([o0, dlg]));
+  check('FILTERS opens the sheet: a 440px dialog on the right edge titled Filters, the app behind it inert, and with a mouse or keyboard the cursor in the find field',
+        o0.sheetShown && o0.open && o0.inert && o0.expanded === 'true' && o0.focus === 'in sheet: kwFind' && dlg.role === 'dialog' && dlg.modal === 'true' && dlg.title === 'Filters' && dlg.w === 440 && dlg.right === 0, JSON.stringify([o0, dlg]));
   check('    it holds every control: the eight courses, SOURCE and SORT, and every keyword with its count',
         dlg.course === 8 && dlg.sel && dlg.kw >= 2 && /^\d+ KEYWORDS?$/.test(dlg.label) && o0.show === 'SHOW 13 RECIPES', JSON.stringify([dlg, o0.show]));
   /* Tab never leaves it. */
@@ -7482,13 +7483,6 @@ const check = (name, pass, detail) => {
   check('    the list is redrawn on every tap but keeps its scroll place and the focus on the pill that was tapped',
         keep.focus === 'Veg' && keep.on === 'true' && (keep.maxScroll < 40 || keep.top === 40), JSON.stringify(keep));
   await fm.evaluate(() => { state.keywords = []; renderHome(); });
-  /* + ADD, and a word kept from the search. */
-  await fm.click('#addKwBtn'); await fm.waitForTimeout(200);
-  const add0 = await fm.evaluate(() => document.activeElement && document.activeElement.id);
-  await fm.keyboard.type('saffron'); await fm.keyboard.press('Enter'); await fm.waitForTimeout(250);
-  const add1 = await fsState(fm);
-  check('    + ADD opens the keyword box with focus in it; Enter applies the word as a chip and a selected pill',
-        add0 === 'kwInput' && add1.chips.includes('SAFFRON×') && add1.pillOn.includes('SAFFRON'), JSON.stringify([add0, add1.chips, add1.pillOn]));
   /* The ways out. */
   await fm.keyboard.press('Escape'); await fsGone(fm);
   const c1 = await fsState(fm);
@@ -7548,6 +7542,55 @@ const check = (name, pass, detail) => {
   const more1 = await fsState(fc);
   check('    and +N opens the sheet', more1.sheetShown && more1.open, JSON.stringify(more1));
   await fc.close();
+
+  /* The find field, the order of the pills, and + ADD (PR 2). The seed has the keywords Veg (on 7 recipes), Quick (4), Pasta and Batch
+     (1 each) and five more that no recipe has, so the order they open in is known. */
+  const fqList = pg => pg.evaluate(() => [...document.querySelectorAll('#fsKwPills [data-kw-pill]')].map(p => p.textContent.trim()));
+  const fq = await fsPage({ width: 1389, height: 731 }, 'modernist');
+  await fq.click('#filtersBtn'); await fq.waitForTimeout(350);
+  const q0 = await fqList(fq);
+  check('The keyword pills open in order of use, the most used first, and those no recipe has in the app\'s own order',
+        q0.join(' ') === 'VEG QUICK PASTA BATCH PANCAKES PASTRY CHICKEN CURRY SALAD', q0.join(' '));
+  await fq.click('#fsKwPills [data-kw-pill="Pastry"]'); await fq.waitForTimeout(250);
+  const q1 = await fqList(fq), q1s = await fsState(fq);
+  check('    a pill tapped while the sheet is open stays where it is, on but not jumped to the front',
+        q1.join(' ') === q0.join(' ') && q1s.pillOn.join() === 'PASTRY', q1.join(' ') + ' / ' + q1s.pillOn.join());
+  await fq.keyboard.press('Escape'); await fsGone(fq);
+  await fq.click('#filtersBtn'); await fq.waitForTimeout(350);
+  const q2 = await fqList(fq);
+  check('    and the next time it opens, the ones that are on come first', q2.join(' ') === 'PASTRY VEG QUICK PASTA BATCH PANCAKES CHICKEN CURRY SALAD', q2.join(' '));
+  await fq.keyboard.type('PA'); await fq.waitForTimeout(150);
+  const qf1 = await fqList(fq);
+  await fq.fill('#kwFind', 'ick'); await fq.waitForTimeout(100);
+  const qf2 = await fqList(fq);
+  check('    typing in the find field narrows the pills as you type, ignoring case and finding any part of a word: PA gives PASTRY, PASTA and PANCAKES; ick gives QUICK and CHICKEN',
+        qf1.join(' ') === 'PASTRY PASTA PANCAKES' && qf2.join(' ') === 'QUICK CHICKEN', qf1.join(' ') + ' / ' + qf2.join(' '));
+  await fq.fill('#kwFind', 'zzz'); await fq.waitForTimeout(100);
+  const n1 = await fq.evaluate(() => ({ note: !document.getElementById('fsKwEmpty').hidden, text: document.getElementById('fsKwEmpty').textContent, pills: document.querySelectorAll('#fsKwPills [data-kw-pill]').length, add: !!document.getElementById('fsAddKw') }));
+  await fq.press('#kwFind', 'Enter'); await fq.waitForTimeout(250);
+  const n2 = await fsState(fq), n3 = await fqList(fq), n4 = await fq.evaluate(() => ({ value: document.getElementById('kwFind').value, focus: document.activeElement.id }));
+  check('    with no match it says "No keyword matches — Enter to add", and Enter adds the word: a chip, a selected pill at the head of the list, and the field empty and still in use',
+        n1.note && n1.text === 'No keyword matches — Enter to add' && n1.pills === 0 && n1.add && n2.chips.join('|') === 'PASTRY×|ZZZ×' && n3[0] === 'ZZZ' && n2.pillOn.includes('ZZZ') && n4.value === '' && n4.focus === 'kwFind',
+        JSON.stringify([n1, n2.chips, n3.slice(0, 3), n4]));
+  await fq.fill('#kwFind', 'pa'); await fq.press('#kwFind', 'Enter'); await fq.waitForTimeout(200);
+  const e1 = await fsState(fq);
+  check('    Enter with a match in view adds nothing: the pill that was meant is one tap away', e1.chips.join('|') === 'PASTRY×|ZZZ×', e1.chips.join('|'));
+  await fq.fill('#kwFind', '');
+  await fq.click('#fsAddKw'); await fq.waitForTimeout(100);
+  const a1 = await fq.evaluate(() => { const l = [...document.querySelectorAll('#fsKwPills .fs-pill')]; return { focus: document.activeElement.id, last: l[l.length - 1].id, box: !!document.getElementById('kwInput') }; });
+  check('    + ADD stays at the end of the list and puts the cursor in the find field; there is no second keyword box', a1.focus === 'kwFind' && a1.last === 'fsAddKw' && !a1.box, JSON.stringify(a1));
+  await fq.fill('#kwFind', 'pa'); await fq.keyboard.press('Escape'); await fsGone(fq);
+  await fq.click('#filtersBtn'); await fq.waitForTimeout(350);
+  const r1 = await fq.evaluate(() => ({ value: document.getElementById('kwFind').value, pills: document.querySelectorAll('#fsKwPills [data-kw-pill]').length, note: !document.getElementById('fsKwEmpty').hidden }));
+  check('    the find field is empty each time the sheet opens, with every pill listed again', r1.value === '' && r1.pills === 10 && !r1.note, JSON.stringify(r1));
+  await fq.close();
+  const ft = await fsPage({ width: 1389, height: 731 }, 'modernist', { touch: true });
+  const fine = await ft.evaluate(() => matchMedia('(pointer: fine)').matches);
+  await ft.tap('#filtersBtn'); await ft.waitForTimeout(350);
+  const t1 = await ft.evaluate(() => ({ focus: document.activeElement === document.querySelector('.filter-sheet-panel') ? 'panel' : document.activeElement.tagName + '#' + document.activeElement.id, open: !document.getElementById('filterSheet').hidden }));
+  check('On a touch screen, where the main pointer is a finger, opening the sheet leaves the cursor on the panel, so the keyboard does not rise over the list',
+        !fine && t1.open && t1.focus === 'panel', JSON.stringify([fine, t1]));
+  await ft.close();
 
   /* Reduced motion, dark, and Classic left alone. */
   const fr = await fsPage({ width: 1389, height: 731 }, 'modernist', { reduced: true });
