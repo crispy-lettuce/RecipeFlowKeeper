@@ -2228,7 +2228,7 @@ days in Google are **not seen**.
 and `calendar_items` `{in,remind}` (flags true, true), and a sync followed at 19:42:58 UTC with no error; the household's screenshot shows the Planner as
 designed on that day, on a one-group day and on a one-dish day. Google, read at about 20:05 UTC through the Calendar connector: 24 Oct has the two events as designed (`…24n`, no reminder; `…24r`, a 20:00 pop-up the evening before),
 and 20 and 23 Oct are single `…r` events; no plain-id event of this household is left. Found on the way, not this change's: thirteen events from Test Kitchen's old household (9 to 22 Oct, not the 17th) remain in
-the calendar and nothing will delete them (`docs/INFRASTRUCTURE.md`). Still **not seen:** a reminder arriving on a phone.
+the calendar and nothing will delete them (`docs/INFRASTRUCTURE.md`); the household decided on 20 Oct to leave them as they are. Still **not seen:** a reminder arriving on a phone.
 
 **Issues #85, #86, #89, #93: parse feedback, seconds, COOKING MODE, Drink (11 Oct 2026).** Raised on GitHub on 11 Oct,
 the first issues from the second household; planned and approved the same day.

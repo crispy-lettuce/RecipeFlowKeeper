@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 20 Oct 2026 (old calendar events from before the split, added; 75a, the calendar reminder per meal, reported done and taken off; C1, the calendar SQL and function, before it; 74a, the denser Planner, before it; 73a, the second batch from the tablet review, before that), earlier 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
+**Last brought up to date: 20 Oct 2026 (the old calendar events from before the split: decided to leave them; 75a, the calendar reminder per meal, reported done and taken off; C1, the calendar SQL and function, before it; 74a, the denser Planner, before it; 73a, the second batch from the tablet review, before that), earlier 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
 households sort out their own converter and need no steps here.
@@ -56,14 +56,6 @@ check 68a), then **2026-10-18.5** (#160, the converter's shorter rewrite) and **
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready.**, tap **RELOAD**. Otherwise refresh the page.
 3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-18.6** once the follow-up has merged (**2026-10-18.5** before it).
-
-### Old calendar events from before the split (found 20 Oct)
-
-The RecipeWrangler calendar in Google still holds thirteen events from **Test Kitchen**, the household that was connected before 18 Oct (created 9 to 12 Oct, one for each day from 9 to 22 Oct but the 17th). Your household's sync cannot touch them, so nothing will remove them. Most are in the past and harmless. **Three are today or later:** 20 Oct, 21 Oct and 22 Oct. The one for **22 Oct**
-(a dish that is not in your plan) would pop up at 20:00 on 21 Oct.
-
-1. In Google Calendar, open the RecipeWrangler calendar and delete the events on 20, 21 and 22 Oct that are not your plan's dishes (or tell the next session to, and it will ask first). **You should see:** each of
-   those days with only the event your plan makes (or none).
 
 ---
 
@@ -469,6 +461,9 @@ None at the moment.
 
 ## Recently done
 
+- **20 Oct:** **you decided to leave the 13 old Test Kitchen events in the RecipeWrangler calendar as they are** ("leave as is"). They are from the household connected before the 18 Oct split
+  (9 to 22 Oct, not the 17th), and the family household's sync cannot reach them. Three are today or later; the 22 Oct one, for a dish that is in nobody's plan, will pop up at 20:00 on 21 Oct. Nothing
+  was deleted. If one becomes a nuisance, delete it by hand in Google Calendar, or ask a session to (it asks first).
 - **20 Oct:** **tablet step 75a (a calendar reminder per meal) reported done** ("done", with a screenshot of the Planner). A session read the database
   afterwards: one day, Saturday 24 Oct, was saved by the new app at 19:42:32 UTC with two dishes and `calendar_items` `{in,remind}` (the day's own flags,
   `calendar` and `calendar_remind`, both true, as "some dish"), and `calendar-sync` finished a sync at 19:42:58 UTC with no error. The screenshot shows that
