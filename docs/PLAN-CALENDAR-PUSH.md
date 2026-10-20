@@ -9,6 +9,8 @@ merged (#69, 1 Oct); the app (PR 2, #71) merged 9 Oct, and the household applied
 connection is dated 17:52 UTC). Then `docs/TEST-PLAN.md` step 40a, the household's tablet and phone pass, and PR 3 records it.
 **§11** is the follow-up asked for on 9 Oct: two toggles that switch days on automatically (`docs/migrations/add-calendar-auto.md`,
 step 40b).
+**§12** (20 Oct) is a **proposal, not built**: a reminder per meal rather than per day, so that a breakfast and a dinner on one day
+can differ, and a group cooked together has one. It asks the household six questions (§12.10).
 
 ## 1. What it is for
 
@@ -268,3 +270,152 @@ The household's answers, 9 Oct:
 How it is built: the rules live in one place, `addPlanRecipe`, which both the recipe picker and the shortlist use; the day is then
 saved and synced as any other. The sweep writes only the days whose switches change, then makes one `calendar-sync` call. Tablet
 and phone step 40b.
+
+
+## 12. A reminder per meal, not per day (proposed 20 Oct 2026; nothing built)
+
+**Status: a proposal for the household to answer (§12.10).** Written from the code as it stands on 20 Oct 2026 (version 2026-10-20.6),
+not from §9, which it corrects in one place (§12.1).
+
+### 12.1 The brief, and what is there now
+
+On 20 Oct, looking at the Planner with the calendar connected, the household saw IN CALENDAR once for a day with a breakfast and a
+dinner on it, and said that *"for a given day you may want a reminder for one of the planned meals (say dinner) but not another"*,
+and then that ***grouped meals should have one reminder***. Both are right, and neither can be done today:
+
+- **One pair of switches per day.** `planner_days.calendar` and `calendar_remind` are booleans on the day's row; on the plan entry
+  they are `calendar` and `remind`, present only while true (`isCalendarDay`, `withCalendarFlags`, `keepCalendarFlags`). Nothing is
+  kept per dish. (§9 says "nothing stored per planned recipe": that was the decision, and this section is the first to reopen it.)
+- **One event per switched-on day** (`eventForDay` in `calendar-sync`): the day's recipes joined with " + " as the title, one line
+  each in the description with its servings and "(from the freezer)" for a PRE-MADE one, transparent, and a single popup at REMIND AT
+  the evening before when `calendar_remind` is true, none otherwise. Its id is `meal` + the household's hex + the date's digits, so a
+  day has exactly one (`calendarEventId`, `dateFromEventId`); SYNC NOW deletes any of ours the plan no longer wants.
+- **The automatic toggle works per day too** (§11, `applyCalendarAuto`): a day with a Main-course dish or any PRE-MADE one gets REMIND
+  ME when a dish is put on it. So a day with a breakfast and a Main reminds about both.
+- **`calendar-sync` does not read `meal_groups`.** It reads `planner_days`, the recipes' titles, `household_settings` and
+  `calendar_connections`. A group (two or more dishes cooked together on a day) is invisible to it.
+- **The shape a per-dish setting already has.** `servings` and `premade` are arrays beside `recipe_ids`, one slot per dish in the
+  same order, padded when read, spliced together when a dish is removed (`planServings`, `planPremade`, `removePlanRecipeAt`), each
+  introduced by a migration page (`docs/migrations/add-premade.md`).
+
+### 12.2 The idea: the unit is the meal
+
+A **meal** is a group (its dishes are cooked and eaten together, so they are one reminder) or a dish that is in no group. A day has
+one or more meals. IN CALENDAR and REMIND ME become settings of a meal. A day with a single meal, which is most days and every day with
+one group, looks and behaves exactly as it does now.
+
+### 12.3 The data
+
+One more array beside `premade`: **`planner_days.calendar_items text[] not null default '{}'`**, one slot per dish: `''` (not in the
+calendar), `'in'` (in the calendar) or `'remind'` (in, with the reminder: REMIND ME still needs IN CALENDAR, as now). Padded on
+reading like `premade`, so an older tab that writes only `recipe_ids` reads back as a day with nothing switched on in the array. On
+the plan entry it is `calendarItems`, present only while some dish is on, so an ordinary day keeps the shape it always had.
+
+- **The day-level `calendar` and `calendar_remind` columns stay**, written as "some dish is in" and "some dish is reminded". The
+  deployed `calendar-sync`, a stale tab, an export and a restore all keep making sense. They can be dropped in a later clean-up.
+- **Existing days need no data move.** A day whose `calendar_items` is empty but whose `calendar` is true reads as every dish in, and
+  every dish reminded if `calendar_remind` is true. The first save of the day writes the array.
+- **A group has one state.** The app keeps every member of a group equal (§12.5). `calendar-sync` does not trust that: it reads
+  `meal_groups` for the dates it is syncing (one more select) and treats a group's state as the strongest of its members' ('remind'
+  over 'in' over off), so a group made or changed on another device, or by a stale tab, still gets one reminder.
+
+### 12.4 The events
+
+Each switched-on day has **at most two events**: one for the meals that have the reminder, one for those that are in the calendar
+without it.
+
+- **Reminded:** the title is its dishes joined with " + ", and it has the popup at REMIND ME the evening before. The popup on the phone
+  therefore names the dishes it is about, which is the point of the freezer reminder.
+- **Not reminded:** the other switched-on dishes, no reminder at all (as now, not the calendar's default).
+- **A group is never split across the two**, by construction. A day with no reminders, or with every dish reminded, is **one event with
+  the same title and text as today**: only a day that differs gets two.
+- **Ids:** `meal…date` plus a suffix, `r` for the reminded event and `n` for the other (both inside Google's a–v, 0–9). The old plain
+  id is retired: `dateFromEventId` learns the suffix, and `syncActions` wants up to two ids a date, writes those, and deletes the
+  other one and any old plain one. SYNC NOW does that for every day from today (§12.8 step 4), and any later sync of a day does it for
+  that day.
+- **What was rejected: one event per dish.** It puts five entries on a busy day, doubles the Google calls, and goes against §9, where the
+  household chose one event a day. This keeps the calendar as it reads now and still lets the reminder name only what it is for.
+
+### 12.5 The Planner
+
+Measured on the household's real plan (landscape tablet, dark, calendar on, as in the screenshot of 20 Oct) by a mock-up in a scratch
+page (in the working folder, not in the repository), run again on 20 Oct against the same plan without the pills for the "before"
+figures.
+
+- **A day with one meal: nothing changes.** The strip at the end of the day keeps IN CALENDAR and REMIND ME 20:00 THE EVENING BEFORE;
+  with one meal, its REMIND ME is that meal's. That is every day with one dish, and every day whose dishes are all one group.
+- **A day with two or more meals** (a group and a loose dish, or two loose dishes, such as a breakfast and a Main)
+  **gets a REMIND ME 20:00 pill on each meal**: on a loose dish's own line, after its other pills; on a group's GROUPED bar, beside
+  UNGROUP. The strip then keeps IN CALENDAR for the whole day. The pill's text is short; "the evening before" is in Settings, in the
+  guide and in the event itself. A tap switches that meal's reminder; IN CALENDAR off clears every reminder on the day, as it does now.
+- **Cost, measured:** with the shortlist open the one two-meal day grows by 62px (the list from 1,479px to 1,541px; still five whole
+  days on the screen) because that day's two names have 313px and 319px instead of 421px and 474px and wrap to a second line; with the
+  shortlist folded nothing grows (the list stays 1,459px). A mock-up also showed the × falling onto a line of its own on the longest such
+  line: **the build must keep the × beside the name.** Days with a single meal are untouched.
+- **The GROUPED bar is a `<button>` today** (`data-action="viewGroup"`) with UNGROUP, a `<span data-action="ungroup">`, inside it. A pill is a
+  third control and cannot sit inside a button, so **the build turns the bar into a `<div>` holding the view area, the pill and UNGROUP as
+  separate controls**, each reaching 44px. (The mock-up's tap scan already reports UNGROUP's upper reach as missing, with the pills and
+  without them: the span's own box is short and the point lands on the bar. That is how it is now; the rebuilt bar should settle it.)
+- **The group rule in the app.** Switching a reminder on a group switches all its members. Putting dishes in a group that differ takes
+  the strongest state; adding a side to a group (the SERVE WITH and OFTEN WITH + buttons) gives it the group's; UNGROUP leaves each
+  member as it was. Each of those is one more write to the day's row, queued with the group's own write, and one `calendar-sync`.
+- **The automatic toggles, per meal.** AUTOMATICALLY ADD TO CALENDAR switches every meal of a day in. AUTOMATICALLY REMIND ME FOR MAIN
+  MEALS gives REMIND ME to a meal that has a Main-course dish or a PRE-MADE one, not to the whole day. Switching on only, at the same
+  two moments as now (a dish put on a day; the toggle switched on, which sweeps upcoming days).
+- **Considered and left for later:** an IN CALENDAR pill on each meal as well (wider, and the household asked about reminders); a
+  small chooser dialog from the strip (a dialog to build and test, and one more tap on every multi-meal day).
+
+### 12.6 What changes, and what does not
+
+**Changes:** `index.html` (hydrate reads the column, with a probe like `premadeAvailable`; `calendarColumns`, `savePlanDay` and
+`pushPlan` name it only once it is there; `withCalendarFlags`, `keepCalendarFlags`, `isCalendarDay`, `setPlanCalendar`,
+`setPlanRemind`, `addWeekToCalendar`, `applyCalendarAuto` and the sweep; the array kept in lockstep in `addPlanRecipe`,
+`setPlanServingsAt`, `setPlanPremadeAt` and `removePlanRecipeAt`; the group functions; the Planner's strip, the new pills and the GROUPED bar rebuilt as in §12.5;
+export and restore carry `calendarItems`; UNDO for the × already restores the whole entry, so it needs nothing but a check);
+`supabase/functions/calendar-sync` (the event for a day becomes up to two, the ids, the group read); a migration page
+`docs/migrations/add-calendar-items.md`; `docs/INFRASTRUCTURE.md`; the guide and the job list.
+**Does not change:** the connection, REMIND AT, SYNC NOW, DISCONNECT, the 20:00 default, the all-day transparent event, the food
+diary, or any day with one meal.
+
+### 12.7 Tests
+
+`test/calendar-push.js`, which lifts `calendar-sync`'s pure code from the real source, gains: the suffixed ids and that they stay in
+a–v and 0–9; a day split into a reminded and an unreminded event, and a day that is all one stays one event with today's title and
+text; a group never split, and a group whose stored members disagree resolved to the strongest; an old row with an empty
+`calendar_items` read as the day's flags; the old plain id deleted. `test/smoke.js`, with the calendar on (the checks added on 20 Oct
+for the Planner already run so): the pills on a two-meal day and none on a one-meal day; a group's one pill; every button 44px to tap;
+UNDO bringing back the array; the day-level columns written as "some". Each new check seen to fail once, as always.
+
+### 12.8 The order, and what the household does
+
+1. **Apply the migration** (a markdown page, applied from the dashboard's SQL editor, `add column calendar_items text[] not null
+   default '{}'`; nothing else). First, as for any schema change (`CLAUDE.md`).
+2. **Merge the app.** Safe before step 3: it keeps writing `calendar` and `calendar_remind` as "some", so the function deployed now
+   carries on exactly as it does (one event a day, a reminder if any meal has one). Until step 3 a reminder on one meal reminds for
+   the whole day's event.
+3. **Deploy the new `calendar-sync`** by pasting the file from its raw GitHub URL; it reads rows with and without the array.
+4. **Press SYNC NOW once** (Settings → App → CALENDAR). Every day from today is rewritten under the new ids and the old ones removed; a
+   day with all its dishes reminded, or none, comes out as one event as before.
+5. `docs/INFRASTRUCTURE.md` records the migration and the deploy, with how each was checked (`CLAUDE.md`).
+
+Two PRs: the migration page and the function with their tests (the household applies, then deploys), then the app. A session does neither.
+
+### 12.9 Risks
+
+- **A stale tab** that saves a day without the array leaves the column as it was (an upsert that omits a column keeps it) while its
+  recipes change: the array can then be shorter or longer than the dish list. Reading pads or truncates it, as it does `servings`.
+- **Google keeps deleted events as "cancelled"** under their id; the function already revives or replaces on a 409, and the new ids
+  are new. A phone may show a changed event once at the next sync; a reminder for tonight survives, because the new event carries
+  the same reminder time.
+- **Two events on a mixed day** is the one visible change in the calendar. It is the point of the feature.
+
+### 12.10 Questions for the household (each with a recommendation)
+
+1. **The events.** At most two a day, reminded and not (**recommended**); one per dish; or keep one a day and put the reminder on it if
+   any meal has one?
+2. **First build.** A reminder per meal and IN CALENDAR still per day (**recommended**), or IN CALENDAR per meal as well?
+3. **Existing days.** Every dish takes the day's state as it is (**recommended**), or start with every reminder off?
+4. **Dishes with different states put in one group.** The group takes the stronger state, so a reminder is never lost (**recommended**).
+5. **The automatic rule.** Per meal (**recommended**), or keep it per day?
+6. **The pill's words.** "REMIND ME 20:00" on a meal, the full "THE EVENING BEFORE" staying on the day's strip and in Settings and the
+   guide (**recommended**), or the full words on every pill (wider)?
