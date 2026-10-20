@@ -687,7 +687,7 @@ function loadArchivoFont(){
 
   .assign-banner{
     display:flex; align-items:center; gap:12px; justify-content:space-between;
-    margin:14px 0 4px; padding:11px 16px;
+    margin:14px 0 4px; padding:0 16px; min-height:44px;   /* its buttons are 44px now (tablet review F6), so the banner is that tall and no taller */
     background:var(--plum-wash); border:1px solid var(--plum); border-radius:var(--r);
     font-size:14px; color:var(--plum);
   }
@@ -727,7 +727,7 @@ function loadArchivoFont(){
   .assign-banner button{
     background:none; border:none; color:var(--plum); cursor:pointer;
     font-size:14px; letter-spacing:.04em;
-    text-decoration:underline; flex:none; font-weight:500;
+    text-decoration:underline; flex:none; font-weight:500; padding:0 10px;   /* 10px a side, so the target is wider than the words */
   }
 
   .day-row{
@@ -1458,7 +1458,8 @@ function loadArchivoFont(){
   .btn, .chip, .scale-btn, select.sort, .kw-input,
   .day-recipe-premade, .day-recipe-cooked, .backlink, .toggle-switch,
   .day-choose, .day-recipe-title, .day-recipe-serves, .day-recipe-remove, .day-side-add, .day-side-hide, .day-cal-btn,
-  .group-badge, .sl-remove, .saved-view, .data-link, .new-recipe, .serve-with-link{ min-height:44px; }
+  .group-badge, .sl-remove, .saved-view, .data-link, .new-recipe, .serve-with-link,
+  .library-switch button, .assign-banner button, .shop-aisle-select, .shop-merge-with{ min-height:44px; }   /* the last four: tablet review F6 and F9, 20 Oct 2026 */
   .scale-btn, .day-recipe-remove, .day-side-hide, .sl-remove{ min-width:44px; }
   #viewerServesCustom{ min-height:44px; }
   /* A link styled as a button: an inline-block link sets its words at the top of a taller box. */
@@ -1698,7 +1699,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-20.2">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-20.3">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2385,8 +2386,10 @@ function loadArchivoFont(){
       </div>
 
       <div id="addBeforeSave" style="display:none;"></div>
-      <button class="btn primary" id="saveBtn">SAVE RECIPE</button>
-      <p class="field-error" id="saveError" style="display:none;"></p>
+      <div class="save-bar">
+        <button class="btn primary" id="saveBtn">SAVE RECIPE</button>
+        <p class="field-error" id="saveError" style="display:none;"></p>
+      </div>
     </div>
   </div>
 </div>
@@ -2410,7 +2413,7 @@ const EXPECTED_CORE_VERSION = '2026-10-19.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-20.2';
+const APP_VERSION = '2026-10-20.3';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -9813,7 +9816,14 @@ function showSettingsTab(tab){
     b.setAttribute('aria-selected', on ? 'true' : 'false');
   });
 }
-document.querySelectorAll('[data-settings-tab-btn]').forEach(b=> b.addEventListener('click', ()=> showSettingsTab(b.dataset.settingsTabBtn)));
+/* A tab opens at its own top (tablet review F5, 20 Oct 2026): the page scrolls, not the tab, so LIBRARY used to open already as far down
+   as INGREDIENTS had been scrolled. Here and not in showSettingsTab(), which renderSettings() calls after every action and which must
+   not throw the page to the top each time. */
+document.querySelectorAll('[data-settings-tab-btn]').forEach(b=> b.addEventListener('click', ()=>{
+  showSettingsTab(b.dataset.settingsTabBtn);
+  const body = document.querySelector('#view-settings .settings-body');
+  if(body) body.scrollTop = 0;
+}));
 
 /* A tick belongs to the week it was made in, keyed by that week's first day, so a new first day leaves every tick
    under a key no list will ask for again (12 Oct 2026, the October review, F40). They used to be left there, unseen

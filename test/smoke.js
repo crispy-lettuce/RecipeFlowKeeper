@@ -7710,6 +7710,143 @@ const check = (name, pass, detail) => {
   await fk.close();
   }
 
+  {
+  /* ---- Modernist, the tablet review's first batch (20 Oct 2026, docs/PLAN-MODERNIST.md, "The tablet review") ----
+     Seven small changes from the household's own tablet, 1389x868 CSS px held sideways. Each is measured on screen; the 44px list in
+     core.test.js reads the stylesheet. A made-up recipe stands in for the library: what the review found held on every recipe in it, so
+     none of these depends on which one is open (the header rows depend on whether it has a SERVE WITH line, so both are tried). */
+  const tbPage = async (vp, look) => {
+    const pg = await browser.newPage({ viewport: vp, hasTouch: true });
+    pg.__label = 'tablet review, ' + look;
+    await pg.addInitScript(l => { try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
+    await pg.clock.setFixedTime(FIXTURE_NOW);
+    await pg.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await pg.waitForTimeout(1200);
+    await pg.evaluate(() => {
+      const mk = (id, title, course, body) => loadRecipes().push({ id, title, source: 'Test Kitchen', time: '30 min', servings: 4, tags: { course, keywords: [] }, history: [],
+        syntax: `TITLE: ${title}\nSERVINGS: 4\n\nGROUP a:\n1 swede\n\nSTAGE:\nMERGE a -> b: ${body}` });
+      mk('tb-plain', 'Test Plain Bake', 'Main', 'Bake until soft [40 min]');
+      mk('tb-with', 'Test Swede Bake', 'Main', 'Bake, then serve with freekeh [40 min]');
+      loadRecipes().push({ id: 'tb-side', title: 'Test Plain Freekeh', source: 'Test', servings: 2, tags: { course: 'Side', keywords: [] }, history: [],
+        syntax: 'TITLE: Test Plain Freekeh\nSERVINGS: 2\n\nGROUP a:\n100 g freekeh\n\nSTAGE:\nMERGE a -> b: Bubble gently [15 min]' });
+      shared.sharingWithMe = [{ id: 'tb-t', name: 'Test Kitchen', count: 3 }]; shared.available = true;
+      showView('recipes'); renderHome();
+    });
+    await pg.waitForTimeout(300);
+    return pg;
+  };
+  const tm = await tbPage({ width: 1389, height: 868 }, 'modernist');
+
+  /* F1: the pinned header. The source chip, the SERVE WITH line and the meta line share a row, so the header and COOK FOR bar take
+     about a quarter of the screen, not a third. Measured by what is pinned (down to the foot of the COOK FOR bar). */
+  const pinned = (pg, id) => pg.evaluate(id => { openRecipe(id, 'recipes'); const head = document.querySelector('#view-viewer .viewer-head'), kids = sel => document.querySelector(sel);
+    const top = sel => { const e = kids(sel); return e && !e.hidden && e.getClientRects().length ? Math.round(e.getBoundingClientRect().top) : null; };
+    return { pinned: Math.round(document.querySelector('#view-viewer .viewer-scale-row').getBoundingClientRect().bottom), vh: innerHeight, head: Math.round(head.getBoundingClientRect().height),
+      meta: top('#viewerMeta'), chip: top('#viewerProvenance'), serve: top('#viewerServeWith') }; }, id);
+  const p0 = await pinned(tm, 'tb-plain'), p1 = await pinned(tm, 'tb-with');
+  check('F1: with the sidebar showing, the pinned header and COOK FOR bar are under 30% of the screen, with or without a SERVE WITH line',
+        p0.pinned / p0.vh < 0.30 && p1.pinned / p1.vh < 0.30 && p1.serve !== null, JSON.stringify([p0, p1]));
+  check('    the source chip sits on the same row as the meta line, and the SERVE WITH line does not need a row to itself',
+        Math.abs(p0.chip - p0.meta) < 30 && p1.head < 200, JSON.stringify([p0, p1]));
+  await tm.setViewportSize({ width: 820, height: 1000 }); await tm.waitForTimeout(250);
+  const pNarrow = await pinned(tm, 'tb-with');
+  check('    below 861px (the phone layout) the header is as it was: the chip and the SERVE WITH line keep rows of their own',
+        pNarrow.chip > pNarrow.meta + 10 && pNarrow.serve > pNarrow.chip + 10, JSON.stringify(pNarrow));
+  /* A button is drawn 34px and its ::before reaches 6px past it to make the 44px tap, so two rows of them must be 10px apart or the upper
+     row loses the overlap (an 8px gap left FAVOURITE answering 42px, and no bounding box shows it). Points 21px above and below the middle
+     of each header button must land on that button. Held upright (868px wide) the buttons wrap onto three rows, which is the worst case. */
+  const headHits = pg => pg.evaluate(() => { openRecipe('tb-with', 'recipes'); const miss = []; let n = 0;
+    for (const b of document.querySelectorAll('#view-viewer .viewer-head .btn')) { const r = b.getBoundingClientRect(); if (r.width < 4 || !b.getClientRects().length) continue; n++;
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      for (const dy of [-21, 21]) { const hit = document.elementFromPoint(cx, cy + dy); if (!hit || hit.closest('.btn') !== b) miss.push((b.id || b.textContent.trim().slice(0, 12)) + ' ' + dy); } }
+    /* The probe only sees an overlap where one button sits right above another, which depends on the layout, so the cause is measured too:
+       the rows' gap must be at least twice the ::before's reach less 1px (measured: 10px left 93 of 568 buttons answering 43px). */
+    const head = document.querySelector('#view-viewer .viewer-head'), b0 = head.querySelector('.btn');
+    const reach = -parseFloat(getComputedStyle(b0, '::before').top), gap = parseFloat(getComputedStyle(head).rowGap);
+    return { n, miss, gap, reach, enough: gap >= 2 * reach - 1 }; });
+  await tm.setViewportSize({ width: 868, height: 1389 }); await tm.waitForTimeout(250);
+  const hitsUp = await headHits(tm);
+  await tm.setViewportSize({ width: 1389, height: 868 }); await tm.waitForTimeout(250);
+  const hitsWide = await headHits(tm);
+  check('    every header button still answers a tap 21px above and below its middle (44px), on the tablet held either way',
+        hitsUp.n >= 6 && hitsWide.n >= 6 && hitsUp.miss.length === 0 && hitsWide.miss.length === 0 && hitsUp.enough && hitsWide.enough && hitsWide.reach >= 5, JSON.stringify([hitsUp, hitsWide]));
+
+  /* F3: SAVE stays in reach in the add / edit dialog, with the save error beside it. A long recipe makes the dialog several screens tall. */
+  await tm.evaluate(() => { const g = ['TITLE: Test Long Stew', 'SERVINGS: 4', '']; for (let i = 0; i < 40; i++) g.push('GROUP g' + i + ':', i + ' test onion', ''); g.push('STAGE:', 'MERGE g0 -> z: Cook it [10 min]');
+    loadRecipes().push({ id: 'tb-long', title: 'Test Long Stew', source: 'Test', time: '1 hr', servings: 4, tags: { course: 'Main', keywords: [] }, history: [], syntax: g.join('\n') }); openEditModal('tb-long'); });
+  await tm.waitForTimeout(500);
+  const saveAt = pg => pg.evaluate(() => { const o = document.getElementById('addModalOverlay'), b = document.getElementById('saveBtn').getBoundingClientRect(), bar = document.querySelector('.save-bar');
+    return { tall: Math.round(o.scrollHeight / innerHeight * 10) / 10, top: Math.round(b.top), bottom: Math.round(b.bottom), vh: innerHeight, barOk: !!bar && bar.contains(document.getElementById('saveBtn')) && bar.contains(document.getElementById('saveError')) }; });
+  const sv0 = await saveAt(tm);
+  await tm.evaluate(() => { const o = document.getElementById('addModalOverlay'); o.scrollTop = o.scrollHeight; }); await tm.waitForTimeout(200);
+  const sv1 = await saveAt(tm);
+  await tm.evaluate(() => { const o = document.getElementById('addModalOverlay'); o.scrollTop = Math.round(o.scrollHeight / 2); }); await tm.waitForTimeout(200);
+  const sv2 = await saveAt(tm);
+  check('F3: in the add / edit dialog SAVE is on screen at the top, in the middle and at the end of a dialog several screens tall, and the save error is beside it',
+        sv0.tall > 2 && [sv0, sv1, sv2].every(s => s.bottom <= s.vh && s.top >= 0) && sv0.barOk, JSON.stringify([sv0, sv1, sv2]));
+  await tm.evaluate(() => closeAddModal());
+
+  /* F5: a Settings tab opens at its own top. The page is made tall so there is something to scroll past. */
+  await tm.evaluate(() => { showView('settings'); showSettingsTab('ingredients'); document.querySelector('#view-settings [data-settings-tab="ingredients"]').insertAdjacentHTML('beforeend', '<div id="tb-spacer" style="height:3000px"></div>'); });
+  await tm.waitForTimeout(250);
+  const scrollOf = pg => pg.evaluate(() => { const b = document.querySelector('#view-settings .settings-body'); return { top: Math.round(b.scrollTop), room: b.scrollHeight - b.clientHeight }; });
+  await tm.evaluate(() => { document.querySelector('#view-settings .settings-body').scrollTop = 900; });
+  const st0 = await scrollOf(tm);
+  await tm.click('[data-settings-tab-btn="library"]'); await tm.waitForTimeout(250);
+  const st1 = await scrollOf(tm);
+  check('F5: tapping another Settings tab opens it at its top, not as far down as the last one was scrolled', st0.top >= 800 && st1.top === 0, JSON.stringify([st0, st1]));
+  await tm.evaluate(() => { document.getElementById('tb-spacer').remove(); });
+  await tm.click('[data-settings-tab-btn="ingredients"]');
+
+  /* F6: 44px where the 44px list had missed. The library switch and, while choosing a recipe for a day, MARK DAY AWAY and CANCEL. */
+  await tm.evaluate(() => { showView('recipes'); renderHome(); state.pickingForDate = null; });
+  const heightsOf = (pg, sel) => pg.evaluate(sel => [...document.querySelectorAll(sel)].filter(e => e.getClientRects().length).map(e => { const r = e.getBoundingClientRect(); return Math.round(r.height) + 'x' + Math.round(r.width); }), sel);
+  const sw0 = await heightsOf(tm, '#librarySwitch button');
+  await tm.evaluate(() => { state.pickingForDate = '2026-10-25'; renderHome(); });
+  const pk0 = await heightsOf(tm, '#pickBanner button');
+  const pkGap = await tm.evaluate(() => { const a = document.getElementById('pickMarkAway').getBoundingClientRect(), b = document.getElementById('pickCancel').getBoundingClientRect(); return { gap: Math.round(b.left - a.right), banner: Math.round(document.getElementById('pickBanner').getBoundingClientRect().height) }; });
+  await tm.evaluate(() => { state.pickingForDate = null; renderHome(); });
+  check('F6: OUR RECIPES and the other household\'s recipes are 44px tall', sw0.length === 2 && sw0.every(s => +s.split('x')[0] >= 44), JSON.stringify(sw0));
+  check('    MARK DAY AWAY and CANCEL are 44px tall with a gap between them, and the banner is no taller than they are',
+        pk0.length === 2 && pk0.every(s => +s.split('x')[0] >= 44) && pkGap.gap >= 0 && pkGap.banner < 52, JSON.stringify([pk0, pkGap]));
+
+  /* F7: the shortlist button is a picture like the star, with the same label for a screen reader; ticked, it keeps its tick. */
+  const plus = await tm.evaluate(() => { const rows = [...document.querySelectorAll('#recipeGrid .rcard-shortlist')]; const b = rows.find(x => !x.classList.contains('on')); const a = getComputedStyle(b, '::after');
+    const mask = a.webkitMaskImage || a.maskImage || '';
+    return { n: rows.length, size: b.getBoundingClientRect().width + 'x' + b.getBoundingClientRect().height, fontSize: getComputedStyle(b).fontSize, after: a.content, w: a.width, mask: /svg/.test(mask), label: b.getAttribute('aria-label') }; });
+  check('F7: a card\'s shortlist button is an 18px picture like the star (not a bare +), still 36px and still labelled for a screen reader',
+        plus.n >= 3 && plus.fontSize === '0px' && plus.w === '18px' && plus.mask && plus.after !== 'none' && plus.size === '36x36' && /shortlist/i.test(plus.label), JSON.stringify(plus));
+  await tm.evaluate(() => { const b = [...document.querySelectorAll('#recipeGrid .rcard-shortlist')][0]; addShortlistRecipe(b.dataset.shortlist); renderHome(); });
+  const ticked = await tm.evaluate(() => { const b = document.querySelector('#recipeGrid .rcard-shortlist.on'); return b ? { text: b.textContent.trim(), fontSize: getComputedStyle(b).fontSize, mask: getComputedStyle(b, '::after').content } : null; });
+  check('    and a card already on the shortlist keeps its tick', ticked && ticked.text === '✓' && ticked.fontSize !== '0px' && (ticked.mask === 'none' || ticked.mask === 'normal'), JSON.stringify(ticked));
+
+  /* F9: AUDIT's aisle pick and MERGE WITH… are 44px tall on every row. */
+  await tm.evaluate(() => { showView('shopping'); });
+  await tm.evaluate(() => { const r = loadRecipes().find(x => x.id === 'tb-with'); const d = isoLocal(new Date()); const p = loadPlan(); p[d] = { recipeIds: ['tb-with', 'tb-plain'] }; try { savePlan(p); } catch (e) {} showView('shopping'); renderShopping(); });
+  await tm.waitForTimeout(300);
+  await tm.evaluate(() => { if (document.getElementById('shopAuditBtn').getAttribute('aria-pressed') !== 'true') document.getElementById('shopAuditBtn').click(); });
+  await tm.waitForTimeout(300);
+  const aud = await tm.evaluate(() => { const sel = [...document.querySelectorAll('#shopBody .shop-aisle-select')], mg = [...document.querySelectorAll('#shopBody .shop-merge-with')];
+    const h = e => Math.round(e.getBoundingClientRect().height); return { selects: sel.length, merges: mg.length, minSelect: sel.length ? Math.min(...sel.map(h)) : 0, minMerge: mg.length ? Math.min(...mg.map(h)) : 0 }; });
+  check('F9: in AUDIT every aisle pick and every MERGE WITH… is 44px tall', aud.selects >= 1 && aud.merges >= 1 && aud.minSelect >= 44 && aud.minMerge >= 44, JSON.stringify(aud));
+  await tm.evaluate(() => { if (document.getElementById('shopAuditBtn').getAttribute('aria-pressed') === 'true') document.getElementById('shopAuditBtn').click(); });
+
+  /* F11: an empty day is one big button. */
+  await tm.evaluate(() => { showView('planner'); renderPlanner(); });
+  await tm.waitForTimeout(300);
+  const emp = await tm.evaluate(() => { const b = [...document.querySelectorAll('#view-planner .day-main > .day-choose:not(.day-add-more)')].filter(e => e.getClientRects().length)[0];
+    if (!b) return null; const r = b.getBoundingClientRect(), row = b.closest('.day-row, .day-main').getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), rowW: Math.round(row.width) }; });
+  check('F11: on an empty day the button runs the width of the row (and is 44px or more tall), not only the width of its words', emp && emp.w >= emp.rowW * 0.6 && emp.h >= 44, JSON.stringify(emp));
+  await tm.close();
+
+  /* Classic is as it was for the Modernist-only changes: the + is still a +, the header keeps its rows. */
+  const tcl = await tbPage({ width: 1389, height: 868 }, 'classic');
+  const cl = await tcl.evaluate(() => { const b = document.querySelector('#recipeGrid .rcard-shortlist:not(.on)'); const a = getComputedStyle(b, '::after');
+    return { fontSize: getComputedStyle(b).fontSize, text: b.textContent.trim(), after: a.content, saveBar: (sb => sb ? getComputedStyle(sb).position : 'missing')(document.querySelector('.save-bar')) }; });
+  check('Classic is as it was: the shortlist button is still a + at its own size and the save button is not pinned', cl.fontSize === '16px' && cl.text === '+' && (cl.after === 'none' || cl.after === 'normal') && cl.saveBar === 'static', JSON.stringify(cl));
+  await tcl.close();
+  }
+
   /* ---- Modernist, step 4: the recipe viewer ----
      A made-up recipe shaped like the design's own example (groups a to e; two steps, a step that adds raw ingredients to
      one, a merge of two steps, a last column), so the table has every kind of cell and four group rules. */

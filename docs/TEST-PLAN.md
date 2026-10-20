@@ -870,6 +870,14 @@ reported one by one.*
     dish on a future day shows PRE-MADE beside SERVES, in both styles; (2) PRE-MADE asks the meal and reads PRE-MADE · <MEAL>; tapping it
     again makes it fresh with no question. *(1) reported by the household on 20 Oct, on the tablet; (2) still to do.* Before 2026-10-20.1 the switch was decided by a `premade` key on a planner or diary row, so a
     household with neither had none, and its saves left the column out (the edge logs show it, 20 Oct 06:12 UTC).
+72a. **The first changes from the tablet review (new 20 Oct; version 2026-10-20.3; `docs/PLAN-MODERNIST.md`, "The tablet review, first batch").**
+    Modernist, on the tablet in landscape; writes nothing. (1) *A recipe:* the header on two rows (three with a SERVE WITH line), so the pinned header
+    and COOK FOR bar are about a quarter of the screen (21 to 27% on every recipe in the household's library, from 32 to 38%). (2) *EDIT, scroll:* SAVE
+    CHANGES stays at the foot of the screen with a rule above it. (3) *A card:* the star and a list-with-plus picture, not a bare +; tapping it ticks it
+    and the ✓ takes it off. (4) *OUR RECIPES / TEST KITCHEN'S RECIPES:* 44px tall. (5) *An empty day on the Planner:* the whole row answers; the "choosing a
+    recipe" bar's MARK DAY AWAY and CANCEL are 44px. (6) *SHOPPING → AUDIT:* each line's aisle box and MERGE WITH… are 44px. (7) *SETTINGS:* scroll
+    INGREDIENTS down, tap LIBRARY, APP or HELP: each opens at its top. Not verified on the tablet itself. Not changed: a recipe of more than five steps
+    scrolls sideways to its last column (54 of 71 recipes), which `docs/PLAN-PREP-STEPS.md` §8 accepts.
 
 ## Deferred to the tablet, after merging
 

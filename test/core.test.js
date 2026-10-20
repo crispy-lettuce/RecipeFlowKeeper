@@ -175,7 +175,8 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
   /* A new button in the viewer, the Planner or the sidebar belongs on this list, and on the one in the stylesheet's TAP TARGETS block. */
   const TALL = ['.btn', '.chip', '.scale-btn', 'select.sort', '.kw-input', '.day-recipe-premade', '.day-recipe-cooked', '.backlink', '.toggle-switch',
     '.day-choose', '.day-recipe-title', '.day-recipe-serves', '.day-recipe-remove', '.day-side-add', '.day-side-hide', '.day-cal-btn', '.group-badge',
-    '.sl-remove', '.saved-view', '.data-link', '.new-recipe', '.navlink', '.serve-with-link', '#viewerServesCustom'];
+    '.sl-remove', '.saved-view', '.data-link', '.new-recipe', '.navlink', '.serve-with-link', '#viewerServesCustom',
+    '.library-switch button', '.assign-banner button', '.shop-aisle-select', '.shop-merge-with'];   // the last four: tablet review F6 and F9, 20 Oct 2026
   const WIDE = ['.scale-btn', '.day-recipe-remove', '.day-side-hide', '.sl-remove'];   // × and the round scale buttons were 13px and 27px wide
   const short = TALL.filter(sel => !has(sel, 'min-height', 44)), narrow = WIDE.filter(sel => !has(sel, 'min-width', 44));
   check('every button in the viewer, Planner and sidebar has a min-height of 44px, and the × and scale buttons a min-width of 44px',
