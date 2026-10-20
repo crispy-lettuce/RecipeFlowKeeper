@@ -747,6 +747,9 @@ function loadArchivoFont(){
 
   .day-main{ flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; }
   .day-recipe-row{ display:flex; align-items:center; gap:10px; }
+  /* The course, time and pills as one group, so the second style's own stylesheet can keep them together when a dish's line is too narrow
+     for them beside its name. Here they are the row's own items, as they were before the group existed. */
+  .day-recipe-meta{ display:contents; }
   /* SERVE WITH under a dish (#87): the sides that would do, each one tap from joining the day and the dish's group. */
   .day-side-offer{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin:2px 0 6px 18px; font-size:14px; letter-spacing:.04em; color:var(--ink-soft); font-weight:500; }
   .day-side-add{ background:none; border:1px dashed var(--line); padding:3px 8px; font:inherit; letter-spacing:inherit; color:var(--ink); cursor:pointer; }
@@ -1713,7 +1716,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-20.4">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-20.5">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2427,7 +2430,7 @@ const EXPECTED_CORE_VERSION = '2026-10-19.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-20.4';
+const APP_VERSION = '2026-10-20.5';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -6993,11 +6996,13 @@ function renderPlannerDays(){
           return `<div class="day-recipe-row">
             ${group ? `<span class="group-tie" title="Cooking together as a group"></span>` : ''}
             <button class="day-recipe-title" data-action="view" data-idx="${idx}">${escapeHtml(recipe.title||'Untitled')}</button>
-            ${course ? `<span class="day-recipe-course${tone}">${escapeHtml(course.toUpperCase())}</span>` : ''}
-            <span class="day-recipe-time">${timeHtml(recipe.time)}</span>
-            ${servesPill(recipe, serves, idx)}
-            ${premadePill(premade, idx)}
-            ${cookedPill(recipe, iso, todayIso, premade, idx)}
+            <span class="day-recipe-meta">
+              ${course ? `<span class="day-recipe-course${tone}">${escapeHtml(course.toUpperCase())}</span>` : ''}
+              <span class="day-recipe-time">${timeHtml(recipe.time)}</span>
+              ${servesPill(recipe, serves, idx)}
+              ${premadePill(premade, idx)}
+              ${cookedPill(recipe, iso, todayIso, premade, idx)}
+            </span>
             <button class="day-recipe-remove" data-action="removeOne" data-idx="${idx}" aria-label="Remove from this day">×</button>
           </div>${sideOfferHtml(iso, recipe, ids, idx)}${oftenOfferHtml(iso, recipe, ids, idx)}`;
         }).join('');
@@ -7034,12 +7039,13 @@ function renderPlannerDays(){
           ${calStrip}
         </div>`;
       } else {
-        inner = `<div class="day-main"><button class="day-choose" data-action="choose"><span class="circle">+</span>CHOOSE A RECIPE</button></div>`;
+        inner = `<div class="day-main day-main-empty"><button class="day-choose" data-action="choose"><span class="circle">+</span>CHOOSE A RECIPE</button></div>`;
       }
 
       /* The bar from the × (tablet review F10): only while the day is still as the removal left it. */
       if(plannerUndo && plannerUndo.date === iso && JSON.stringify(plan[iso] || null) === plannerUndo.after){
-        inner = inner.replace('<div class="day-main">', `<div class="day-main"><div class="day-undo" role="status"><span>Removed ${escapeHtml(plannerUndo.label)}</span><button data-action="undoRemove">UNDO</button></div>`);
+        /* Whatever else the day's box is called (an empty day is also .day-main-empty): the bar goes first inside it. */
+        inner = inner.replace(/<div class="day-main[^"]*">/, box => `${box}<div class="day-undo" role="status"><span>Removed ${escapeHtml(plannerUndo.label)}</span><button data-action="undoRemove">UNDO</button></div>`);
       }
 
       html += `<div class="day-row${isToday?' today':''}${(state.selectedShortlistId && state.groupingDate!==iso)?' assignable':''}" data-date="${iso}">

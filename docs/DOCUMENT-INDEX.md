@@ -559,6 +559,8 @@ the household chose (the viewer's header, SAVE kept in reach, a Settings tab ope
 shortlist picture, an empty Planner day as one button), decisions D51 to D58, and why one finding that rested on a single recipe was not made.
 Its second batch (also 20 Oct) adds the sidebar's rail on every screen up to 1100px so the app works held upright, an UNDO for the
 Planner's ×, and an arrow on a flow table that scrolls sideways, decisions D59 to D64.
+Its third batch is "The Planner, denser": a dish on one line, an empty day as one short row and tighter spacing, so seven days of the fortnight fit the tablet
+screen where three did, with every tap still 44px, decisions D65 to D67.
 
 **Use it when:** changing or extending Modernist, or asked why a screen differs between the two styles.
 

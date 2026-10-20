@@ -7983,7 +7983,7 @@ const check = (name, pass, detail) => {
   const before2 = await t10.evaluate(D2 => JSON.stringify(loadPlan()[D2]), D2);
   await t10.click(`.day-row[data-date="${D2}"] .day-recipe-remove`); await t10.waitForTimeout(250);
   const l1 = await t10.evaluate(D2 => { const row = document.querySelector(`.day-row[data-date="${D2}"]`); return { entry: JSON.stringify(loadPlan()[D2] || null), strip: !!row.querySelector('.day-undo'), choose: !!row.querySelector('.day-choose:not(.day-add-more)') }; }, D2);
-  await t10.click(`.day-row[data-date="${D2}"] .day-undo button`); await t10.waitForTimeout(250);
+  await t10.evaluate(D2 => { const b = document.querySelector(`.day-row[data-date="${D2}"] .day-undo button`); if (b) b.click(); }, D2); await t10.waitForTimeout(250);   // no bar is a failed check, not a click that waits 30s and stops the run
   const l2 = await t10.evaluate(D2 => JSON.stringify(loadPlan()[D2] || null), D2);
   check('    taking away the last dish of a day leaves CHOOSE A RECIPE and the bar, and UNDO brings back the day with its calendar and reminder switches',
         l1.entry === 'null' && l1.strip && l1.choose && l2 === before2 && /"calendar":true/.test(l2) && /"remind":true/.test(l2), JSON.stringify([before2, l1, l2]));
@@ -8191,8 +8191,8 @@ const check = (name, pass, detail) => {
   check('Modernist\'s Planner: a 46px title, "THIS WEEK · 22–24 SEP" and "3 PLANNED" under a 2px ink rule, each day a 92px column, today\'s date 24px in red',
         q1.h1 === '46px' && /^THIS WEEK · 22–24 SEP/.test(q1.week) && q1.summary === '3 PLANNED' && q1.weekRule === '2px rgb(32, 30, 29)' &&
         q1.num === 'TUE22TODAY' && q1.numW === 92 && q1.date.size === '24px' && q1.date.colour === 'rgb(236, 48, 19)', JSON.stringify(q1));
-  check('    a dish\'s name is 20px/800 on a line of its own with its × beside it, the pills on the next line, drawn 28px; ✓ COOKED in ink, SERVES 6 lit in red',
-        q1.title.size === '20px' && q1.title.weight === '800' && q1.title.h === 44 && q1.xTop === q1.title.top && q1.below && q1.pillTops.length === 3 &&
+  check('    a dish\'s name is 20px/800 and 44px or more to tap, its pills are drawn 28px on one line; ✓ COOKED in ink, SERVES 6 lit in red',
+        q1.title.size === '20px' && q1.title.weight === '800' && q1.title.h >= 44 && q1.pillTops.length === 3 &&
         q1.pillTops.every(y => y === q1.pillTops[0]) && q1.pillH.every(h => h === 28) && q1.cooked === 'rgb(32, 30, 29)' && q1.servesOn === 'rgb(236, 48, 19)', JSON.stringify(q1));
   check('    the 330px shortlist: "Shortlist" and its count with a collapse button, numbered rows in red with no ≡, the shopping block in red',
         q1.panelW === 330 && q1.headTitle && !q1.label && q1.collapseBtn && !q1.rail && q1.count === `${ideas} IDEAS` && !q1.handle &&
@@ -8253,6 +8253,77 @@ const check = (name, pass, detail) => {
         q8.scroll === q8.inner && q8.panelW === 412 && !q8.collapseBtn && !q8.rail && q8.headTitle && planHitsPhone.n >= 10 && planHitsPhone.miss.length === 0,
         JSON.stringify([q8.scroll, q8.inner, q8.panelW, q8.collapseBtn, q8.rail, planHitsPhone.n, planHitsPhone.miss.slice(0, 4)]));
   await plp.close();
+
+  /* ---- Modernist, the Planner denser (20 Oct 2026, docs/PLAN-MODERNIST.md D65 to D67) ----
+     Three days of a fortnight fitted a tablet screen: a dish's name and its pills stood on two lines, ADD ANOTHER took a 44px row of its own and an empty
+     day was 85px. A made-up fortnight (five planned days, one with a very long name and two with a pair of dishes; nine empty; no groups, which would offer OFTEN WITH rows under the dishes). The taps are measured by
+     pointing at each button, as above: the 44px of each had to stay. */
+  {
+  const pdPage = async (vp, look) => {
+    const pg = await browser.newPage({ viewport: vp, hasTouch: true });
+    pg.__label = 'planner density, ' + look + ' ' + vp.width;
+    await pg.addInitScript(l => { try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
+    await pg.clock.setFixedTime(FIXTURE_NOW);
+    await pg.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await pg.waitForTimeout(1200);
+    await pg.evaluate(() => {
+      premadeAvailable = true;
+      const R = (id, title, course, time) => ({ id, title, source: 'Test Kitchen', time, servings: 4, tags: { course, keywords: [] }, history: [], syntax: 'TITLE: ' + title });
+      cache.recipes.push(R('pd-a', 'Test Short Dish', 'Main', '30 min'), R('pd-b', 'Test Green Side', 'Main', '15 min'),
+        R('pd-c', 'Test Slow-Roasted Shoulder of Something with Preserved Lemon, Green Olives and a Very Long Name to See It Wrap Fully', 'Main', '3 hr'));
+      const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return isoLocal(d); };
+      const set = (n, ids) => { cache.plan[day(n)] = { recipeIds: ids, servings: ids.map(() => 0), premade: ids.map(() => '') }; };
+      Object.keys(cache.plan).forEach(k => delete cache.plan[k]); cache.groups.length = 0;
+      set(0, ['pd-a']); set(1, ['pd-c']); set(2, ['pd-a', 'pd-b']); set(3, ['pd-a']); set(4, ['pd-a', 'pd-b']);
+      showView('planner'); renderPlanner();
+    });
+    await pg.waitForTimeout(400);
+    return pg;
+  };
+  const pdLong = 'Test Slow-Roasted Shoulder of Something with Preserved Lemon, Green Olives and a Very Long Name to See It Wrap Fully';
+  const dishLine = (pg, title) => pg.evaluate(title => { const R = el => el.getBoundingClientRect();
+    const t = [...document.querySelectorAll('#view-planner .day-recipe-title')].find(e => e.textContent.trim() === title);
+    const row = t.closest('.day-recipe-row'), meta = row.querySelector('.day-recipe-meta'), x = row.querySelector('.day-recipe-remove'), pills = [...meta.querySelectorAll('.day-recipe-serves, .day-recipe-premade, .day-recipe-cooked')];
+    const mid = el => Math.round((R(el).top + R(el).bottom) / 2), tr = R(t);
+    return { lines: Math.round((tr.height - 20) / 24), titleMid: mid(t), pillMids: pills.map(mid), pillTops: pills.map(p => Math.round(R(p).top)), n: pills.length, metaDisplay: getComputedStyle(meta).display,
+      metaTop: Math.round(R(meta).top), titleBottom: Math.round(tr.bottom), titleTop: Math.round(tr.top), xTop: Math.round(R(x).top), xLeft: Math.round(R(x).left), xRight: Math.round(R(x).right),
+      metaRight: Math.round(R(meta).right), rowRight: Math.round(R(row).right), clip: t.scrollWidth - t.clientWidth, ellipsis: getComputedStyle(t).textOverflow, text: t.textContent.trim() }; }, title);
+
+  const pd = await pdPage({ width: 1389, height: 868 }, 'modernist');
+  const d1 = await dishLine(pd, 'Test Short Dish');
+  check('Planner, denser: a dish is on one line (its name, then its course, time and pills, then the ×) on the tablet held sideways',
+        d1.n >= 2 && d1.metaDisplay === 'flex' && d1.pillMids.every(m => Math.abs(m - d1.titleMid) <= 3) && d1.xLeft >= d1.metaRight && Math.abs(d1.rowRight - d1.xRight) <= 12, JSON.stringify(d1));
+  const d2 = await dishLine(pd, pdLong);
+  check('    a name too long for the room wraps onto more lines, whole, and is never cut with "…"; the pills stay level with it',
+        d2.lines >= 2 && d2.clip <= 1 && d2.ellipsis !== 'ellipsis' && d2.text === pdLong && d2.pillMids.every(m => Math.abs(m - d2.titleMid) <= 3), JSON.stringify(d2));
+  const d3 = await pd.evaluate(() => { const sc = document.querySelector('#view-planner .planner-days'), b = sc.getBoundingClientRect().bottom; sc.scrollTop = 0;
+    const rows = [...document.querySelectorAll('#view-planner .day-row[data-date]')], h = r => Math.round(r.getBoundingClientRect().height);
+    const empty = rows.filter(r => !r.querySelector('.day-recipe-row')), eb = empty[0].querySelector('.day-choose'), er = empty[0].getBoundingClientRect();
+    return { whole: rows.filter(r => r.getBoundingClientRect().bottom <= b + 0.5).length, days: rows.length, emptyH: h(empty[0]), emptyBtnH: Math.round(eb.getBoundingClientRect().height), emptyBtnW: Math.round(eb.getBoundingClientRect().width), emptyRowW: Math.round(er.width),
+      firstTop: Math.round(rows[0].getBoundingClientRect().top - sc.getBoundingClientRect().top),
+      bandGap: (ls => { if (ls.length < 2) return null; const t = ls[1].getBoundingClientRect().top, before = rows.filter(r => r.getBoundingClientRect().bottom <= t + 1).pop(); return Math.round(t - before.getBoundingClientRect().bottom); })(document.querySelectorAll('#view-planner .week-label')),
+      oneDishH: h(rows[0]), adds: [...document.querySelectorAll('#view-planner .day-add-more')].map(a => Math.round(a.getBoundingClientRect().height)) }; });
+  check('    more days fit: six or more whole days of the fortnight on the screen (three before), a day with nothing planned about 57px (85px before) and all of it a button, the first day 93px from the top (115 before) and 14px between weeks (24 before)',
+        d3.whole >= 6 && d3.days === 14 && d3.emptyH <= 60 && d3.emptyBtnH >= 56 && d3.emptyBtnW >= d3.emptyRowW * 0.6 && d3.firstTop <= 100 && d3.bandGap !== null && d3.bandGap <= 16, JSON.stringify(d3));
+  const pdHits = await hitScan(pd, '#view-planner');
+  check('    ADD ANOTHER and GROUP SOME TOGETHER are drawn about 28px, and every button on the Planner still answers a tap 21px above and below its middle (44px)',
+        d3.adds.length >= 3 && d3.adds.every(h => h >= 26 && h <= 32) && pdHits.n >= 20 && pdHits.miss.length === 0, `${pdHits.n} buttons, ADD ANOTHER heights ${d3.adds}` + (pdHits.miss.length ? '; missed: ' + pdHits.miss.slice(0, 5).join(', ') : ''));
+  /* Too narrow for the name to have 280px beside the group: the group (course, time and pills) drops under it as one, as it always did. */
+  await pd.setViewportSize({ width: 1100, height: 800 }); await pd.waitForTimeout(400);
+  const d4 = await dishLine(pd, 'Test Short Dish'), d4w = await pd.evaluate(() => document.documentElement.scrollWidth - innerWidth), d4h = await hitScan(pd, '#view-planner');
+  check('    on a window too narrow for that (1100px, the shortlist open) the course, time and pills drop together under the name, nothing runs off the side, and every tap still lands',
+        d4.metaTop >= d4.titleBottom - 10 && d4.pillTops.every(y => y === d4.pillTops[0]) && d4.xRight <= d4.rowRight + 12 && d4w <= 0 && d4h.n >= 20 && d4h.miss.length === 0, JSON.stringify([d4, d4w, d4h.n, d4h.miss.slice(0, 4)]));
+  await pd.setViewportSize({ width: 412, height: 915 }); await pd.waitForTimeout(400);
+  const d5 = await dishLine(pd, 'Test Short Dish'), d5w = await pd.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  check('    a phone keeps its two lines: the name with its × beside it, the group under them, and nothing runs off the side',
+        Math.min(...d5.pillTops) >= d5.titleBottom - 10 && Math.abs(d5.xTop - d5.titleTop) <= 1 && d5w <= 0, JSON.stringify([d5, d5w]));
+  await pd.close();
+  const pdc = await pdPage({ width: 1389, height: 868 }, 'classic');
+  const d6 = await dishLine(pdc, 'Test Short Dish'), d6e = await pdc.evaluate(() => { const r = document.querySelector('#view-planner .day-row:not(:has(.day-recipe-row)) .day-main'); return r ? Math.round(r.getBoundingClientRect().height) : null; });
+  check('    Classic is as it was: the course, time and pills are the row\'s own items on the name\'s line, and an empty day is as tall as before',
+        d6.metaDisplay === 'contents' && d6.pillMids.every(m => Math.abs(m - d6.titleMid) <= 4) && d6e !== null && d6e > 30, JSON.stringify([d6, d6e]));
+  await pdc.close();
+  }
 
   /* ---- Modernist, step 6: the Shopping List ----
      The fixture's list (PANTRY 3, PRODUCE 2). The square is a span beside the checkbox, which stays the thing that is
