@@ -553,7 +553,10 @@ the prototype and why), how it is checked (its own lint, the smoke checks, and C
 cannot be verified without the tablet, the build order with a "built as" note per step, and a **decision log** of every choice made
 while building, with the reason and who made it (the household's, or the session's and theirs to overturn). Since 19 Oct it also records
 "The filter sheet": Recipes' filters moved into a panel opened from a FILTERS button (PR 1; the find field is PR 2), with the tablet
-measurements that decided it, and "The recipe grid on the tablet", a fault found on the tablet and fixed the same day.
+measurements that decided it, and "The recipe grid on the tablet", a fault found on the tablet and fixed the same day. Since 20 Oct it
+records "The tablet review, first batch": a review of the whole app on the tablet against the household's own library, the seven changes
+the household chose (the viewer's header, SAVE kept in reach, a Settings tab opening at its top, five buttons brought to 44px, the card's
+shortlist picture, an empty Planner day as one button), decisions D51 to D58, and why one finding that rested on a single recipe was not made.
 
 **Use it when:** changing or extending Modernist, or asked why a screen differs between the two styles.
 

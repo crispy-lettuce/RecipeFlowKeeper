@@ -318,6 +318,31 @@ whatever the library holds; what made it tall was SOURCE and SORT beside the chi
   opening; and, on a touch screen (`hasTouch`, where `(pointer: fine)` is false), no cursor in a text box. Each was seen to fail by breaking
   the code it guards. 782 in all.
 
+### The tablet review, first batch (20 Oct 2026, version 2026-10-20.3)
+The household asked for a review of the whole app on its tablet (12.7", 2944 x 1840, held sideways: 1389 x 868 CSS px at 2.12x, touch, about
+0.2mm to the CSS px, so 44px is about 9mm). It was driven in Chromium against the household's own export, loaded through the app's import, with
+the backend stubbed and the photo host blocked (so every card showed "photo can't be shown"; the photo boxes are 176px either way). 30 screens
+sideways and 12 upright were captured and measured (tap targets by pointing at them, text sizes, clipping, sideways scroll, axe). The report,
+the captures and the measurements are in the working folder of that session, **not in the repository**, since they hold recipes. 19 findings; the household chose seven.
+- **A finding from one recipe is not a finding.** The first draft proposed folding the sidebar on the viewer (F2) because one recipe's flow table
+  was cut off at the right. The household pointed out that depends on how many steps a recipe has. All 71 recipes were then opened at the
+  tablet's size: the table is a 270px ingredient column plus 150px a step, the pane is 1,101px, so 17 recipes (2 to 5 steps) fit and 54 (76%)
+  scroll sideways, by a median 219px; folding the sidebar would fix only the 14 six-step ones and leave 40, and `docs/PLAN-PREP-STEPS.md` §8
+  already calls that "acceptable on the tablet, which already scrolls sideways". **F2 is not changed** (D51). Every other finding that depends
+  on a recipe was re-measured on all 71 (F1, F3, F8) and some were changed or dropped (F8: 44px timeline bars would make the median strip 454px).
+- **F1, the viewer's header.** The source chip and the SERVE WITH line each had a row of their own, so the pinned header and COOK FOR bar took
+  278 to 332px of 868 (32 to 38%) on every recipe, before the flow began. Now they share a row, with the buttons 4px closer (Recipe Viewer only, 861px and up): 180 to 232px (21 to 27%),
+  measured on the built page for all 71 recipes (D52). A second step, not done: stop pinning the header outside cooking mode.
+- **F3, SAVE.** In the add / edit dialog it was the last thing, 2,829 to 4,751px below the top (3.3 to 5.5 screens) for every recipe. It and the
+  save error are in a `.save-bar` that sticks to the foot of the screen (D53). On the built page SAVE is on screen at the top, middle and end of the
+  dialog for all 71 recipes.
+- **F5, F6, F7, F9, F11.** A Settings tab opens at its own top (D57). The library switch (33px), the "choosing a recipe for a day" banner's MARK DAY
+  AWAY and CANCEL (17px) and, in AUDIT, the aisle box (22px) and MERGE WITH… (15px) join the 44px list (D54, D55). The card's shortlist button is
+  the Lucide list-plus, like the star, in place of a bare 12px + (D56). An empty day's CHOOSE A RECIPE fills its row (D58).
+- **Checks:** 12 in `test/smoke.js` and the four new selectors on the 44px list in `test/core.test.js`; 16 breakages in a scratch copy, each seen to fail
+  the check that guards it (a phone-width check that could not fail was moved to 820px, where it can). Classic is shown unchanged by a check of its + and its save button, and by the existing Classic checks.
+- **Not verified:** the tablet itself; the live database.
+
 ## Decision log
 
 Every choice made while building, beyond the twelve agreed at the top, with the reason. "Household" means you chose it; "session"
@@ -378,9 +403,22 @@ means it was decided while building and is yours to overturn. Newest last.
 | D48 | 19 Oct | session | The keyword pills are ordered once, when the sheet opens: on first, then by use, the most first, ties in the app's own order. | The brief orders them so; re-ordering after every tap would move a pill from under the finger that had just tapped it. |
 | D49 | 19 Oct | session | Enter in the find field acts only when nothing matches. | The brief says so. With matches in view there is nothing to create, and the pill meant is one tap away; a shortcut for exactly one match is a possible follow-up. |
 | D50 | 19 Oct | session | + ADD in the sheet puts the cursor in the find field; the inline keyword box and its datalist are gone from the sheet. | One way to add a word, not two; Classic keeps its box. |
+| D51 | 20 Oct | household | The tablet review's first batch is F1, F3, F5, F6, F7, F9 and F11. F2 (the flow table scrolling sideways) and the sidebar fold proposed for it are **not** done. | "Go ahead with Batch 1". F2 depends on a recipe's steps: 54 of 71 scroll sideways, the fold would fix 14, and PLAN-PREP-STEPS §8 already accepts it. |
+| D52 | 20 Oct | session | In the Recipe Viewer at 861px and up the source chip and the SERVE WITH line take `flex-basis:auto` and the header's gaps and buttons close up. | 32 to 38% of the screen was pinned on every recipe; now 21 to 27%. Scoped to `#view-viewer` (the Group Viewer has neither line) and to 861px up, where a phone keeps its rows. |
+| D53 | 20 Oct | session | The save button and the save error are wrapped in `<div class="save-bar">`, which Modernist sticks to the foot of the dialog (negative margins are the panel's 30px). | Markup, not only CSS, so Classic gets an unstyled block (`position:static`, as a check shows). SAVE was 3 to 5 screens down on every recipe. |
+| D54 | 20 Oct | session | `.library-switch button`, `.assign-banner button`, `.shop-aisle-select` and `.shop-merge-with` are on the 44px list in `index.html`, so **Classic gets them too**. | That list is the app's own rule for both styles (READABILITY H), and a new button is meant to go on it. The core check lists them. |
+| D55 | 20 Oct | session | `.assign-banner` is `min-height:44px` with no vertical padding, and its buttons have 10px of side padding. | The banner stays about as tall as it was (46px, not 66) now its buttons are 44px. |
+| D56 | 20 Oct | session | The card's shortlist button is the Lucide list-plus as a mask (`:not(.on)`); the ✓ state keeps its text. | A bare + could mean add, copy or new, and a tablet has no tooltip. Modernist only; Classic keeps the +. help.html says so. |
+| D57 | 20 Oct | session | A Settings tab's scroll is reset in the tab buttons' click handler, not in `showSettingsTab()`. | `renderSettings()` calls `showSettingsTab()` after every action, and must not throw the page to the top. |
+| D58 | 20 Oct | session | An empty day's CHOOSE A RECIPE takes the whole row (`flex:1 1 100%`, 64px tall); ADD ANOTHER does not. | Only 166px of an 1,100px row answered a tap. |
 
 ### Follow-ups found while building (not done here)
 - **D10:** the shortlist's × has no spoken label (both styles).
 - **D13:** ticking a shopping row from the keyboard loses focus, as the list is redrawn (both styles).
 - **D22:** History's side panel scrolls sideways in Classic (the 560px table rule reaches its small table).
 - **D29:** on a phone the top bar is 159px tall, as the data links stack at its end (both styles).
+- **From the tablet review (20 Oct), not done, with the household to choose:** F2, a visible cue that the flow table continues to the right (76% of
+  recipes scroll sideways at this size; asked whether the last column is ever missed); F4, the sidebar folded to its rail up to 1100px so that Recipes,
+  History and Shopping work held upright (868px is just over the 861px breakpoint); F10, an UNDO for the Planner's ×; the second step of F1; and the
+  Low findings F12 to F20 (11px capitals, placeholder-only inputs, tooltip-only "EST.", chips at 42px, long lines, the migration text on Settings → APP
+  if it shows on the live app, History's cut titles, a viewer that can be nudged sideways by a few pixels).

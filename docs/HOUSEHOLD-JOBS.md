@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
+**Last brought up to date: 20 Oct 2026 (72a, the first changes from the tablet review, added), earlier 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
 households sort out their own converter and need no steps here.
@@ -30,6 +30,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | [69a: add several recipes at once](#69a-add-several-recipes-at-once-new-19-oct-version-2026-10-191-docsplan-bulk-addmd), in Test Kitchen | tablet | 10 min | Three made-up recipes, deleted in step 8 |
 | [70a: the Recipes filter sheet](#70a-the-recipes-filter-sheet-new-19-oct-version-2026-10-193-docsplan-modernistmd), in Modernist | tablet, landscape | 10 min | No |
 | [71a: PRE-MADE on the Planner again](#71a-pre-made-on-the-planner-in-your-own-household-new-20-oct-version-2026-10-201) (the button is back), in your own household | tablet | 1 min | One dish switched to PRE-MADE and back |
+| [72a: the first changes from the tablet review](#72a-the-first-changes-from-the-tablet-review-new-20-oct-version-2026-10-203-docsplan-modernistmd), in Modernist | tablet, landscape | 8 min | No (AUDIT is switched on and off) |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
 **The split is done** (18 Oct, see Recently done), so your own library is empty until you add recipes. Do 61a to 70a signed in as the
@@ -327,6 +328,28 @@ showing on the tablet again on 20 Oct (the old step 1), so one step is left.
 
 1. On the **PLANNER**, on a dish planned for a day still to come, tap **PRE-MADE**, choose a meal, then tap it again. **You should see:** it reads **PRE-MADE · DINNER** (or the meal you chose), the
    toast says it is off the shopping list, and the second tap makes it an ordinary dish again with no question.
+
+### 72a. The first changes from the tablet review (new 20 Oct, version 2026-10-20.3, `docs/PLAN-MODERNIST.md`)
+
+On the tablet held landscape, in **MODERNIST**, after reloading into 2026-10-20.3. Your own household or Test Kitchen, whichever has recipes.
+Nothing is saved: step 2 closes the edit window without saving, and step 6 turns AUDIT off again.
+
+1. Open a recipe. **You should see:** the top of it on two rows (three if it has a **SERVE WITH** line): the back link, the source line and the
+   grey source note on the first, then **COOKING MODE** and the buttons. The title starts higher than it did, with the steps
+   showing sooner. (It was about a third of the screen; it should now be about a quarter or less.)
+2. Tap **EDIT** and scroll down the window. **You should see:** **SAVE CHANGES** stays at the bottom of the screen with a line above it, wherever
+   you are in the window. Close it with the **×**.
+3. On **RECIPES**, look at a card. **You should see:** the star at one corner and a small list-with-plus picture at the other, in place of a bare **+**.
+   Tap the picture: the recipe goes on the shortlist and the picture turns to a tick. Tap the tick to take it off again.
+4. **OUR RECIPES** and **TEST KITCHEN'S RECIPES** at the top are taller than before, as easy to tap as the other buttons.
+5. In **PLANNER**, tap an empty day anywhere along its row, not only on the words. **You should see:** Recipes open with "Choosing a recipe for
+   …" and **MARK DAY AWAY** and **CANCEL** in the bar, easy to tap. Tap **CANCEL**.
+6. In **SHOPPING**, tap **AUDIT**. **You should see:** on each line the aisle box and **MERGE WITH…** are as tall as the other buttons. Tap **END AUDIT**.
+7. In **SETTINGS**, scroll down **INGREDIENTS** a long way, then tap **LIBRARY**. **You should see:** **LIBRARY** opens at its top, with its heading in view.
+   The same for **APP** and **HELP**.
+
+Tell the next session if a step didn't say what it should, and whether the recipe's top feels better or too cramped. Not changed, and yours to
+say about: a recipe with more than five steps still scrolls sideways to its last column (about three in four do), and nothing says so.
 
 ---
 

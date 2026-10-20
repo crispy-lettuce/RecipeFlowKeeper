@@ -1,4 +1,11 @@
 [
+  { "version": "2026-10-20.3", "date": "2026-10-20",
+    "changes": ["Fixed: in the Modernist style on a tablet, the top of a recipe (its buttons and the COOK FOR bar) took about a third of the screen before the steps began. The source note, SERVE WITH and the buttons now share rows, so it takes about a quarter or less and more of the recipe shows.",
+      "Fixed: in the Modernist style, SAVE RECIPE and SAVE CHANGES in the add and edit window now stay at the bottom of the screen while you scroll, instead of sitting several screens down.",
+      "Changed: in the Modernist style, the button on a recipe card that puts it on the shortlist is now a small list-with-plus picture, like the star beside it, in place of a bare +.",
+      "Fixed: in the Modernist style, an empty day in the Planner answers a tap anywhere along its row, not only on the words CHOOSE A RECIPE.",
+      "Fixed: Settings opens each tab at its top. Before, a tab opened as far down as the one before it had been scrolled.",
+      "Fixed: some small buttons are now as easy to tap as the rest, in both styles: OUR RECIPES and the other household's recipes at the top of Recipes, MARK DAY AWAY and CANCEL when choosing a recipe for a day, and the aisle box and MERGE WITH… on each line in AUDIT on the Shopping list."] },
   { "version": "2026-10-20.2", "date": "2026-10-20",
     "changes": ["New: SHOPPING LIST, at the top of a recipe beside + SHORTLIST, shows what that one recipe needs to buy, sorted by aisle like the week's list. It uses the number of people COOK FOR is showing, or the recipe's own if you have not changed it. Tick things off as you go; those ticks are kept on this device only until you leave the page, and the week's own ticks are not touched. HIDE TICKED, CLEAR TICKS, EXPORT PNG and PRINT / A4 PDF work as they do on the week. BACK TO WEEK returns to the week's list, and OPEN RECIPE goes back to the recipe. The SHOPPING button in the sidebar always shows the week. A recipe from another household's library does not have the button yet."] },
   { "version": "2026-10-20.1", "date": "2026-10-20",
