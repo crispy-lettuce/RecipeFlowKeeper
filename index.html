@@ -750,6 +750,10 @@ function loadArchivoFont(){
   /* The course, time and pills as one group, so the second style's own stylesheet can keep them together when a dish's line is too narrow
      for them beside its name. Here they are the row's own items, as they were before the group existed. */
   .day-recipe-meta{ display:contents; }
+  /* A dish with its own REMIND ME (a day of two meals, docs/PLAN-CALENDAR-PUSH.md §12.5) has a pill more than the row ever held. The title's
+     flex basis is 0, so without a floor the pills squeezed the name to a letter: the floor the phone rules give it (below), and the same wrap. */
+  .day-recipe-row:has(.meal-remind){ flex-wrap:wrap; }
+  .day-recipe-row:has(.meal-remind) .day-recipe-title{ min-width:min(12em, 100%); }
   /* SERVE WITH under a dish (#87): the sides that would do, each one tap from joining the day and the dish's group. */
   .day-side-offer{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin:2px 0 6px 18px; font-size:14px; letter-spacing:.04em; color:var(--ink-soft); font-weight:500; }
   .day-side-add{ background:none; border:1px dashed var(--line); padding:3px 8px; font:inherit; letter-spacing:inherit; color:var(--ink); cursor:pointer; }
@@ -832,16 +836,23 @@ function loadArchivoFont(){
     flex:none; width:3px; align-self:stretch; border-radius:var(--r);
     background:var(--sage); margin-right:2px;
   }
+  /* The GROUPED bar is three separate controls since the reminder per meal (docs/PLAN-CALENDAR-PUSH.md §12.5): the view
+     area, which takes the room, a meal's REMIND ME when the day has more than one meal, and UNGROUP. A button cannot hold
+     another button. The view area and UNGROUP are as tall as the bar, so each is a tap of the bar's height. */
   .group-badge{
-    display:flex; align-items:center; gap:8px; padding:6px 10px;
+    display:flex; flex-wrap:wrap; align-items:center; gap:0 8px; padding:0 10px;
     background:var(--sage-wash); border:1px solid var(--sage-line); border-radius:var(--r);
     font-size:14px; letter-spacing:.04em; color:var(--sage);
-    cursor:pointer; text-align:left; width:100%; font-weight:500;
+    width:100%; font-weight:500;
   }
   .group-badge:hover{ background:var(--sage-wash-strong); }
   .group-badge .group-tie{ background:var(--sage); width:3px; height:14px; margin:0; }
+  .group-badge-view{
+    flex:1 1 160px; min-width:0; align-self:stretch; display:flex; align-items:center; gap:8px;
+    background:none; border:none; padding:0; font:inherit; letter-spacing:inherit; color:inherit; text-align:left; cursor:pointer;
+  }
   .group-ungroup{
-    margin-left:auto; background:none; border:none; cursor:pointer;
+    margin-left:auto; align-self:stretch; background:none; border:none; cursor:pointer; padding:0 4px;
     color:var(--ink-faint); font-size:13px; letter-spacing:.04em;
   }
   .group-ungroup:hover{ color:var(--danger); }
@@ -1474,9 +1485,9 @@ function loadArchivoFont(){
   .btn, .chip, .scale-btn, select.sort, .kw-input,
   .day-recipe-premade, .day-recipe-cooked, .backlink, .toggle-switch,
   .day-choose, .day-recipe-title, .day-recipe-serves, .day-recipe-remove, .day-side-add, .day-side-hide, .day-cal-btn,
-  .group-badge, .sl-remove, .saved-view, .data-link, .new-recipe, .serve-with-link,
+  .group-badge, .group-badge-view, .group-ungroup, .sl-remove, .saved-view, .data-link, .new-recipe, .serve-with-link,
   .library-switch button, .assign-banner button, .shop-aisle-select, .shop-merge-with,
-  .day-undo button{ min-height:44px; }   /* the last five: tablet review F6, F9 and F10, 20 Oct 2026 */
+  .day-undo button{ min-height:44px; }   /* the last five: tablet review F6, F9 and F10, 20 Oct 2026; the GROUPED bar's two controls, §12.5 */
   .scale-btn, .day-recipe-remove, .day-side-hide, .sl-remove{ min-width:44px; }
   #viewerServesCustom{ min-height:44px; }
   /* A link styled as a button: an inline-block link sets its words at the top of a taller box. */
@@ -1716,7 +1727,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-20.6">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-20.7">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2430,7 +2441,7 @@ const EXPECTED_CORE_VERSION = '2026-10-19.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-20.6';
+const APP_VERSION = '2026-10-20.7';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -3565,7 +3576,7 @@ async function hydrate(opts){
     throw new Error('This account belongs to more than one household. Ask whoever set it up to take it out of one.');
   const household = memberships[0].household_id;
 
-  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides, recipeNotes, calendarRow, autoColumns, premadeColumn] = await Promise.all([
+  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides, recipeNotes, calendarRow, autoColumns, premadeColumn, itemsColumn] = await Promise.all([
     sb.from('recipes').select('*'),
     /* Every column, and no recipe_id filter. The filter was here because a
        log could only ever be a cooked recipe; an ad-hoc diary entry (H2) is
@@ -3596,7 +3607,10 @@ async function hydrate(opts){
     sb.from('household_settings').select('calendar_auto').limit(1),
     /* Whether add-premade.md's columns exist, asked of the database rather than read off the rows: a household with
        no planned day and no diary entry has no row to tell by (20 Oct 2026). Read apart: a failure means "not yet". */
-    sb.from('planner_days').select('premade').limit(1)
+    sb.from('planner_days').select('premade').limit(1),
+    /* Whether add-calendar-items.md is in (docs/PLAN-CALENDAR-PUSH.md §12), asked the same way and read apart for the
+       same reason: a failure means "not yet", and until then the Planner keeps its one pair of calendar switches a day. */
+    sb.from('planner_days').select('calendar_items').limit(1)
   ]);
   for(const res of [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases]){
     if(res.error) throw res.error;
@@ -3642,9 +3656,7 @@ async function hydrate(opts){
   cache.keywords = keywords.data.map(k=>k.name);
   cache.plan = {};
   planner.data.forEach(row=>{
-    cache.plan[row.plan_date] = row.is_blank
-      ? {blank:true}
-      : withCalendarFlags(withPremade({recipeIds: row.recipe_ids || [], servings: row.servings || []}, row.premade), !!row.calendar, !!row.calendar_remind);
+    cache.plan[row.plan_date] = row.is_blank ? {blank:true} : rowToPlanEntry(row);
   });
   /* Until docs/migrations/add-premade.md is in, the Planner offers no PRE-MADE switch and no save names the column.
      Until 20 Oct this was read off the rows alone (select('*') names every column, so a `premade` key said the column
@@ -3652,6 +3664,8 @@ async function hydrate(opts){
      household, made empty on 18 Oct, had no PRE-MADE switch, and its first days were saved without the column. The
      rows still count, so a failed probe on a database that plainly has the column cannot take the switch away. */
   premadeAvailable = !premadeColumn.error || planner.data.some(row=> 'premade' in row) || logs.data.some(row=> 'premade' in row);
+  /* The same for docs/migrations/add-calendar-items.md: the rows alone cannot tell a household with no planned day. */
+  calendarItemsAvailable = !itemsColumn.error || planner.data.some(row=> 'calendar_items' in row);
   rebuildCalendarDates();
   cache.shortlist = shortlist.data.map(row=>({
     id: row.id, text: row.text || '', dateAdded: row.date_added, recipeId: row.recipe_id
@@ -4263,12 +4277,13 @@ function deleteRecipe(id){
     if(!entry || entry.blank) return;
     const ids = planRecipeIds(entry);
     if(!ids.includes(id)) return;
-    const servings = planServings(entry), premade = planPremade(entry);
+    const servings = planServings(entry), premade = planPremade(entry), items = planCalendarItems(entry);
     /* PRE-MADE kept in step with the rest (F14): it used to be dropped here, so deleting any recipe turned the
-       other dishes on its days from the freezer back into fresh ones, back on the shopping list. */
-    const keepIds = [], keepServings = [], keepPremade = [];
-    ids.forEach((rid, i) => { if(rid !== id){ keepIds.push(rid); keepServings.push(servings[i]); keepPremade.push(premade[i]); } });
-    if(keepIds.length) p[date] = keepCalendarFlags(entry, withPremade({ recipeIds: keepIds, servings: keepServings }, keepPremade)); else delete p[date];
+       other dishes on its days from the freezer back into fresh ones, back on the shopping list. The calendar's
+       setting per dish goes the same way. */
+    const keepIds = [], keepServings = [], keepPremade = [], keepItems = [];
+    ids.forEach((rid, i) => { if(rid !== id){ keepIds.push(rid); keepServings.push(servings[i]); keepPremade.push(premade[i]); keepItems.push(items[i]); } });
+    if(keepIds.length) p[date] = keepCalendarFlags(entry, withPremade({ recipeIds: keepIds, servings: keepServings }, keepPremade), keepItems); else delete p[date];
     savePlanDay(date);
   }));
   loadGroups().filter(g => g.recipeIds.includes(id)).forEach(g => {
@@ -4541,20 +4556,24 @@ function planEntries(entry){
 }
 function setPlanBlank(dateStr){ const p = loadPlan(); p[dateStr] = {blank:true}; return savePlanDay(dateStr); }
 function clearPlanDay(dateStr){ const p = loadPlan(); delete p[dateStr]; return savePlanDay(dateStr); }
-function addPlanRecipe(dateStr, recipeId, people){
+function addPlanRecipe(dateStr, recipeId, people, calState){
   const p = loadPlan();
   const ids = planRecipeIds(p[dateStr]);
   const servings = planServings(p[dateStr]);
   const premade = planPremade(p[dateStr]);
+  const items = planCalendarItems(p[dateStr]);
   ids.push(recipeId);
   /* As written, until someone says otherwise; a side offered on the Planner (#87) comes in at its main's headcount, in
      this same single upsert rather than a second write. */
   servings.push(parseInt(people, 10) || 0);
   premade.push(''); // cooked fresh, until someone says otherwise
-  p[dateStr] = keepCalendarFlags(p[dateStr], withPremade({recipeIds: ids, servings}, premade));
+  /* On a day that is in the calendar the new dish is in it too (IN CALENDAR is the whole day's), without the reminder
+     unless `calState` says otherwise: a side put with its main takes the main's state (§12.5), in this same write. */
+  items.push(isCalendarDay(p[dateStr]) ? (calState === 'remind' ? 'remind' : 'in') : '');
+  p[dateStr] = keepCalendarFlags(p[dateStr], withPremade({recipeIds: ids, servings}, premade), items);
   /* The one place a recipe is put on a day (the card picker and the shortlist both come here), so the one
      place the automatic toggles act. Before the save, which then writes the day and queues its sync. */
-  applyCalendarAuto(p[dateStr]);
+  applyCalendarAuto(p[dateStr], dateStr, ids.length - 1);
   return savePlanDay(dateStr);
 }
 /* 0 clears the override and falls back to the recipe's own servings. */
@@ -4581,7 +4600,7 @@ function setPlanPremadeAt(dateStr, index, meal){
   const premade = planPremade(entry);
   premade[index] = MEAL_TYPES.includes(meal) ? meal : '';
   p[dateStr] = keepCalendarFlags(entry, withPremade({recipeIds: ids, servings: planServings(entry)}, premade));
-  if(premade[index]) applyCalendarAuto(p[dateStr]);
+  if(premade[index]) applyCalendarAuto(p[dateStr], dateStr, index);
   const saved = savePlanDay(dateStr);
   /* Switched on as a meal while its freezer row is already in the diary as another (PRE-MADE off, which keeps the row,
      then on again as lunch rather than dinner): the row is changed to match (12 Oct 2026, the October review, F39). The
@@ -4602,10 +4621,12 @@ function removePlanRecipeAt(dateStr, index){
   const ids = planRecipeIds(entry);
   const servings = planServings(entry);
   const premade = planPremade(entry);
+  const items = planCalendarItems(entry); // before the splice below, which shortens entry's own list of ids
   ids.splice(index, 1);
   servings.splice(index, 1); // in lockstep, or every later entry's servings shift up one
   premade.splice(index, 1);
-  if(ids.length) p[dateStr] = keepCalendarFlags(entry, withPremade({recipeIds: ids, servings}, premade)); else delete p[dateStr];
+  items.splice(index, 1);
+  if(ids.length) p[dateStr] = keepCalendarFlags(entry, withPremade({recipeIds: ids, servings}, premade), items); else delete p[dateStr];
   return savePlanDay(dateStr);
 }
 
@@ -4660,9 +4681,19 @@ function undoPlannerRemove(){
    recipes: changing the recipes or servings keeps them (keepCalendarFlags), while marking the day away or
    emptying it drops them, and that is what takes the event out of the calendar.
 
+   Since 20 Oct 2026 (docs/PLAN-CALENDAR-PUSH.md §12) the reminder belongs to a meal, which is a group of dishes
+   cooked together or a dish on its own, and the entry also keeps `calendarItems`, one of '' / 'in' / 'remind' per
+   dish beside recipeIds, servings and premade. `calendar` and `remind` stay as "some dish is in the calendar" and
+   "some dish has the reminder", written to the day's row as they always were, so the deployed calendar-sync, a stale
+   tab, an export and a restore all keep meaning what they meant. IN CALENDAR is still the whole day's: a day that
+   is on has every dish in it, and the reminder is what differs from meal to meal. Until add-calendar-items.md is in
+   (calendarItemsAvailable) the Planner shows the one pair of switches and sends no per-dish column.
+
    Nothing shows, and nothing new is sent, until the migration is in (calendarAvailable) and the household
    has connected (calendarShown). */
 let calendarAvailable = false;
+/* Whether docs/migrations/add-calendar-items.md is in: set by hydrate, from a read of the one column. */
+let calendarItemsAvailable = false;
 let calendarConn = null;
 /* The days switched on as last saved, so savePlanDay can tell a day that was on from one that never was:
    the callers change the cache before saving, so the entry alone cannot say what it was. */
@@ -4675,8 +4706,65 @@ function withCalendarFlags(entry, on, remind){
   if(on){ entry.calendar = true; if(remind) entry.remind = true; }
   return entry;
 }
-function keepCalendarFlags(before, after){
-  return isCalendarDay(before) ? withCalendarFlags(after, true, !!before.remind) : after;
+/* ---- A setting per dish (§12) ---- */
+const CAL_STATES = ['', 'in', 'remind'];
+/* What each dish of the day is set to, padded to the dishes. The day's own `calendar` is the gate, as it is in
+   calendar-sync's dishStates: off means every dish is off whatever the list says. A day with no dish marked was saved
+   before add-calendar-items.md or by a tab that does not know it, and its two flags speak for every dish. */
+function planCalendarItems(entry){
+  const ids = planRecipeIds(entry);
+  if(!isCalendarDay(entry)) return ids.map(()=> '');
+  const raw = Array.isArray(entry.calendarItems) ? entry.calendarItems : [];
+  const list = ids.map((_, i)=> CAL_STATES.includes(raw[i]) ? raw[i] : '');
+  return list.some(Boolean) ? list : ids.map(()=> entry.remind ? 'remind' : 'in');
+}
+/* Sets the dishes' states on the entry and brings the day's two flags into step: on if any dish is, with the reminder if
+   any dish has it. Nothing marked removes all three, which is what takes the day out of the calendar. */
+function withCalendarItems(entry, items){
+  const n = planRecipeIds(entry).length;
+  const list = [];
+  for(let i = 0; i < n; i++) list.push(CAL_STATES.includes(items[i]) ? items[i] : '');
+  delete entry.calendar; delete entry.remind; delete entry.calendarItems;
+  if(list.some(Boolean)){
+    entry.calendar = true;
+    if(list.includes('remind')) entry.remind = true;
+    entry.calendarItems = list;
+  }
+  return entry;
+}
+/* `items` is the new list of dishes' states when the dishes themselves changed (one added, one taken off), which the
+   caller has to supply in step with the dishes; otherwise the day's own. */
+function keepCalendarFlags(before, after, items){
+  return isCalendarDay(before) ? withCalendarItems(after, items || planCalendarItems(before)) : after;
+}
+/* A day row as the entry the app keeps. */
+function rowToPlanEntry(row){
+  const entry = withCalendarFlags(withPremade({recipeIds: row.recipe_ids || [], servings: row.servings || []}, row.premade),
+    !!row.calendar, !!row.calendar_remind);
+  if(row.calendar && Array.isArray(row.calendar_items) && row.calendar_items.length){
+    entry.calendarItems = row.calendar_items;
+    withCalendarItems(entry, planCalendarItems(entry));
+  }
+  return entry;
+}
+/* The day's meals (§12.2): each group is one, each dish in no group is one, in the order of their first dish. A group is
+   matched by recipe id, as the Planner has always shown it. */
+function planMeals(dateStr, entry){
+  const meals = [], byGroup = new Map();
+  planRecipeIds(entry).forEach((id, i)=>{
+    const g = groupContaining(dateStr, id);
+    if(g && byGroup.has(g.id)) byGroup.get(g.id).indexes.push(i);
+    else {
+      const meal = { groupId: g ? g.id : null, indexes: [i] };
+      meals.push(meal);
+      if(g) byGroup.set(g.id, meal);
+    }
+  });
+  return meals;
+}
+/* A meal has the reminder if any of its dishes does: calendar-sync reads a group the same way. */
+function mealHasReminder(items, meal){
+  return meal.indexes.some(i=> items[i] === 'remind');
 }
 /* ---- The automatic toggles (docs/PLAN-CALENDAR-PUSH.md §11, 9 Oct 2026) ----
    AUTOMATICALLY ADD TO CALENDAR puts a day in the calendar when a recipe is put on it; AUTOMATICALLY REMIND ME
@@ -4684,6 +4772,11 @@ function keepCalendarFlags(before, after){
    reminder needs an event. Both only ever switch on, and only at two moments: a recipe added to a day, and a
    toggle switched on (the sweep, below). Switching a toggle off changes no day, and a day switched off by
    hand stays off until a recipe is next added to it: the household's own taps win.
+
+   Since §12 the reminder is a meal's: a meal that has a Main course, or any dish coming out of the freezer, is the one
+   that gets it, and the day's other meals stay in the calendar without. When a recipe is put on a day, or a dish made
+   PRE-MADE, only that dish's meal is looked at, so a reminder the household took off another meal by hand is not put
+   back by it; the sweep looks at every meal.
 
    Only while connected: a day reaches the calendar only then, so a toggle switched on while disconnected is
    kept as a preference and flags nothing. */
@@ -4693,19 +4786,24 @@ function isMainCourse(recipeId){
   return !!(r && r.tags && r.tags.course === 'Main');
 }
 /* Changes the entry in place, switching on only. True when it changed anything, so the sweep writes only
-   the days that move. */
-function applyCalendarAuto(entry){
+   the days that move. `onlyIndex` is the one dish whose meal is looked at; without it, every meal is. */
+function applyCalendarAuto(entry, dateStr, onlyIndex){
   if(!calendarShown() || !calendarAutoAvailable) return false;
   if(!entry || entry.blank) return false;
   const ids = planRecipeIds(entry);
   if(!ids.length) return false;
   const st = cache.settings || {};
+  const premade = planPremade(entry);
+  const before = planCalendarItems(entry), next = before.slice();
   /* A Main course, or a meal of any course coming out of the freezer: that one most needs the evening-before reminder. */
-  const remind = !!st.calendarAutoRemind && (ids.some(isMainCourse) || planPremade(entry).some(Boolean));
-  let changed = false;
-  if((st.calendarAuto || remind) && !entry.calendar){ entry.calendar = true; changed = true; }
-  if(remind && !entry.remind){ entry.remind = true; changed = true; }
-  return changed;
+  const remindMeals = !st.calendarAutoRemind ? [] : planMeals(dateStr, entry)
+    .filter(m=> onlyIndex === undefined || m.indexes.includes(onlyIndex))
+    .filter(m=> m.indexes.some(i=> isMainCourse(ids[i]) || premade[i]));
+  if(!isCalendarDay(entry) && (st.calendarAuto || remindMeals.length)) ids.forEach((_, i)=>{ next[i] = 'in'; });
+  remindMeals.forEach(m=> m.indexes.forEach(i=>{ next[i] = 'remind'; }));
+  if(next.every((state, i)=> state === before[i])) return false;
+  withCalendarItems(entry, next);
+  return true;
 }
 /* A toggle switched on also catches up the days already planned from today, once: one Planner write per day
    that changes, then one call to the calendar for all of them. Past days are never rewritten, and a day
@@ -4716,14 +4814,18 @@ function sweepCalendarAuto(){
   let changed = 0;
   withCalendarBatch(()=> Object.keys(plan).sort().forEach(d=>{
     if(d < today) return;
-    if(applyCalendarAuto(plan[d])){ changed++; savePlanDay(d); }
+    if(applyCalendarAuto(plan[d], d)){ changed++; savePlanDay(d); }
   }));
   return changed;
 }
 
 function calendarColumns(entry){
   const on = isCalendarDay(entry);
-  return { calendar: on, calendar_remind: on && !!entry.remind };
+  const items = planCalendarItems(entry);
+  return { calendar: on, calendar_remind: on && items.includes('remind'),
+    /* Named only once its migration is in (calendarItemsAvailable), like the two above before theirs: a row naming a
+       column that does not exist would fail every Planner save. */
+    ...(calendarItemsAvailable ? { calendar_items: on ? items : [] } : {}) };
 }
 function rebuildCalendarDates(){
   calendarDates.clear();
@@ -4764,15 +4866,40 @@ function withCalendarBatch(fn){
 function setPlanCalendar(dateStr, on){
   const entry = loadPlan()[dateStr];
   if(!entry || entry.blank || !planRecipeIds(entry).length) return true;
-  if(on) entry.calendar = true;
-  else { delete entry.calendar; delete entry.remind; } // no reminder for a day that is not in the calendar
+  if(!on) withCalendarItems(entry, []); // no reminder for a day that is not in the calendar
+  else if(!isCalendarDay(entry)) withCalendarItems(entry, planRecipeIds(entry).map(()=> 'in'));
   return savePlanDay(dateStr);
 }
+/* The reminder for the whole day: what the day's one REMIND ME button does, for a day with a single meal and for every
+   day before add-calendar-items.md. */
 function setPlanRemind(dateStr, on){
   const entry = loadPlan()[dateStr];
   if(!isCalendarDay(entry)) return true;
-  if(on) entry.remind = true; else delete entry.remind;
+  withCalendarItems(entry, planCalendarItems(entry).map(state=> state ? (on ? 'remind' : 'in') : state));
   return savePlanDay(dateStr);
+}
+/* The reminder for one meal, by the places of its dishes on the day (§12.5). Its dishes are in the calendar with it. */
+function setMealRemind(dateStr, indexes, on){
+  const entry = loadPlan()[dateStr];
+  if(!isCalendarDay(entry)) return true;
+  const items = planCalendarItems(entry);
+  indexes.forEach(i=>{ if(i >= 0 && i < items.length) items[i] = on ? 'remind' : 'in'; });
+  withCalendarItems(entry, items);
+  return savePlanDay(dateStr);
+}
+/* Dishes put in one group take the strongest of their states, so a reminder is never lost by grouping (§12.11, answer 4).
+   Called when a group is made from several; a side added to a group already takes its main's state as it is put on. */
+function harmonizeGroupCalendar(dateStr, recipeIds){
+  const entry = loadPlan()[dateStr];
+  if(!isCalendarDay(entry)) return false;
+  const items = planCalendarItems(entry);
+  const members = planRecipeIds(entry).map((id, i)=> recipeIds.includes(id) ? i : -1).filter(i=> i >= 0);
+  const top = Math.max(0, ...members.map(i=> CAL_STATES.indexOf(items[i])));
+  if(members.every(i=> CAL_STATES.indexOf(items[i]) === top)) return false;
+  members.forEach(i=>{ items[i] = CAL_STATES[top]; });
+  withCalendarItems(entry, items);
+  savePlanDay(dateStr);
+  return true;
 }
 /* ADD THE WEEK: every planned day of the week that is not already on, in one call to calendar-sync. */
 function addWeekToCalendar(dates){
@@ -6903,7 +7030,7 @@ function oftenOfferHtml(iso, recipe, dayIds, idx){
   </div>`;
 }
 /* At most two writes, one row each: the day (the side at the main's headcount, 0 when that is what the side is written
-   for), then the group: the main's group gains the side, or a new group of the two is made. SERVE WITH's + and OFTEN
+   for, and at the main's calendar state), then the group: the main's group gains the side, or a new group of the two is made. SERVE WITH's + and OFTEN
    WITH's (#142) both come here. */
 function addWithToDay(date, mainIdx, sideId){
   const ent = planEntries(loadPlan()[date])[mainIdx];
@@ -6912,7 +7039,8 @@ function addWithToDay(date, mainIdx, sideId){
   const side = recipes.find(r=> r.id === sideId);
   if(!main || !side) return;
   const people = ent.servings || parseInt(main.servings, 10) || 0;
-  addPlanRecipe(date, sideId, people && people !== (parseInt(side.servings, 10) || 0) ? people : 0);
+  /* It comes in with its main's calendar state, so a group the two make is one meal with one reminder (§12.5). */
+  addPlanRecipe(date, sideId, people && people !== (parseInt(side.servings, 10) || 0) ? people : 0, planCalendarItems(loadPlan()[date])[mainIdx]);
   const group = groupContaining(date, main.id);
   if(group) saveGroup({ ...group, recipeIds: [...group.recipeIds, sideId] });
   else createGroup(date, [main.id, sideId]);
@@ -6972,6 +7100,15 @@ function renderPlannerDays(){
         const dayGroups = groupsForDate(iso);
         const isGroupingThisDay = state.groupingDate === iso;
         const groupingSel = state.groupingSelection || [];
+        /* A day with two or more meals (a group is one) that is in the calendar gets a REMIND ME on each meal, once
+           add-calendar-items.md is in (§12.5); a day with one meal keeps the strip's single REMIND ME. */
+        const dayItems = planCalendarItems(entry);
+        const dayMeals = (calOn && calendarItemsAvailable && entry.calendar && !isGroupingThisDay) ? planMeals(iso, entry) : [];
+        const perMeal = dayMeals.length >= 2;
+        const mealPill = (meal, attrs)=>{
+          const on = mealHasReminder(dayItems, meal);
+          return `<button class="day-cal-btn meal-remind${on ? ' on' : ''}" data-action="calMealRemind" ${attrs} aria-pressed="${on ? 'true' : 'false'}">${on ? '✓ ' : ''}REMIND ME ${formatRemindAt(remindAtNow())}</button>`;
+        };
 
         const rows = items.map(({idx, serves, premade, recipe})=>{
           if(!recipe){
@@ -7002,18 +7139,22 @@ function renderPlannerDays(){
               ${servesPill(recipe, serves, idx)}
               ${premadePill(premade, idx)}
               ${cookedPill(recipe, iso, todayIso, premade, idx)}
+              ${perMeal && !group ? mealPill({ indexes: [idx] }, `data-idx="${idx}"`) : ''}
+              <button class="day-recipe-remove" data-action="removeOne" data-idx="${idx}" aria-label="Remove from this day">×</button>
             </span>
-            <button class="day-recipe-remove" data-action="removeOne" data-idx="${idx}" aria-label="Remove from this day">×</button>
           </div>${sideOfferHtml(iso, recipe, ids, idx)}${oftenOfferHtml(iso, recipe, ids, idx)}`;
         }).join('');
 
         const groupBadges = !isGroupingThisDay && dayGroups.length
           ? dayGroups.map(g=>{
               const names = g.recipeIds.map(id=>{ const r = recipes.find(x=>x.id===id); return r ? r.title : 'Recipe removed'; });
-              return `<button class="group-badge" data-action="viewGroup" data-group-id="${escapeHtml(g.id)}" title="View these recipes together">
-                <span class="group-tie"></span>GROUPED: ${escapeHtml(names.join(' + '))}
-                <span class="group-ungroup" data-action="ungroup" data-group-id="${escapeHtml(g.id)}">UNGROUP</span>
-              </button>`;
+              /* A bar of three separate controls (§12.5): a button cannot hold the REMIND ME that a group's one reminder needs. */
+              const meal = perMeal ? dayMeals.find(m=> m.groupId === g.id) : null;
+              return `<div class="group-badge">
+                <button class="group-badge-view" data-action="viewGroup" data-group-id="${escapeHtml(g.id)}" title="View these recipes together"><span class="group-tie"></span>GROUPED: ${escapeHtml(names.join(' + '))}</button>
+                ${meal ? mealPill(meal, `data-group-id="${escapeHtml(g.id)}"`) : ''}
+                <button class="group-ungroup" data-action="ungroup" data-group-id="${escapeHtml(g.id)}">UNGROUP</button>
+              </div>`;
             }).join('')
           : '';
 
@@ -7027,11 +7168,12 @@ function renderPlannerDays(){
               : '');
 
         /* The day's two calendar switches, once the household has connected. REMIND ME only once the day is
-           in the calendar: a reminder needs an event to hang from. */
+           in the calendar: a reminder needs an event to hang from. With two or more meals the reminders are on the
+           meals and the strip keeps IN CALENDAR. */
         const calStrip = (calOn && !isGroupingThisDay)
           ? `<div class="day-cal">
               <button class="day-cal-btn${entry.calendar ? ' on' : ''}" data-action="calToggle" aria-pressed="${entry.calendar ? 'true' : 'false'}">${entry.calendar ? '✓ ' : ''}IN CALENDAR</button>
-              ${entry.calendar ? `<button class="day-cal-btn${entry.remind ? ' on' : ''}" data-action="calRemind" aria-pressed="${entry.remind ? 'true' : 'false'}">${entry.remind ? '✓ ' : ''}REMIND ME ${formatRemindAt(remindAtNow())} THE EVENING BEFORE</button>` : ''}
+              ${entry.calendar && !perMeal ? `<button class="day-cal-btn${entry.remind ? ' on' : ''}" data-action="calRemind" aria-pressed="${entry.remind ? 'true' : 'false'}">${entry.remind ? '✓ ' : ''}REMIND ME ${formatRemindAt(remindAtNow())} THE EVENING BEFORE</button>` : ''}
             </div>`
           : '';
         inner = `<div class="day-main">${groupBadges}${rows}
@@ -7204,7 +7346,7 @@ function initPlannerListeners(){
        on the headcount button, which would otherwise never be reachable
        while something is selected. */
     if(state.selectedShortlistId && state.groupingDate !== date
-       && !e.target.closest('[data-action="setServes"], [data-action="calToggle"], [data-action="calRemind"], [data-action="premade"], [data-action="cooked"], [data-action="undoRemove"]')){
+       && !e.target.closest('[data-action="setServes"], [data-action="calToggle"], [data-action="calRemind"], [data-action="calMealRemind"], [data-action="premade"], [data-action="cooked"], [data-action="undoRemove"]')){
       const item = loadShortlist().find(i=>i.id === state.selectedShortlistId);
       if(item && item.recipeId){
         addPlanRecipe(date, item.recipeId);
@@ -7304,6 +7446,7 @@ function initPlannerListeners(){
         showToast('Pick at least 2 recipes to group them');
       } else {
         createGroup(date, sel);
+        harmonizeGroupCalendar(date, sel);
         state.groupingDate = null;
         state.groupingSelection = [];
         renderPlanner();
@@ -7341,6 +7484,14 @@ function initPlannerListeners(){
     } else if(action === 'calRemind'){
       const entry = loadPlan()[date];
       setPlanRemind(date, !(entry && entry.remind));
+      renderPlanner();
+    } else if(action === 'calMealRemind'){
+      /* One meal's reminder: a loose dish by its place on the day, a group by its id (all its dishes). */
+      const entry = loadPlan()[date];
+      const meal = actionEl.dataset.groupId
+        ? planMeals(date, entry).find(m=> m.groupId === actionEl.dataset.groupId)
+        : { indexes: [parseInt(actionEl.dataset.idx, 10)] };
+      if(meal) setMealRemind(date, meal.indexes, !mealHasReminder(planCalendarItems(entry), meal));
       renderPlanner();
     }
   });

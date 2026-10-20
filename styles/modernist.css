@@ -779,7 +779,10 @@ html[data-style="modernist"] #view-planner .day-recipe-row{ flex-wrap:wrap; gap:
 html[data-style="modernist"] #view-planner .day-main > :is(.day-recipe-row, .day-side-offer) + .day-recipe-row{ margin-top:10px; }
 html[data-style="modernist"] #view-planner .day-main > .group-badge + .day-recipe-row{ margin-top:2px; }
 html[data-style="modernist"] #view-planner .day-main > :is(.day-recipe-row, .day-side-offer) + .day-side-offer{ margin-top:8px; }
-html[data-style="modernist"] #view-planner .day-recipe-row > .day-recipe-remove{ order:-1; }
+/* The × is the last of the course, time and pills group (§12.5), so that a line too short for the × after them takes the group
+   and the × to the line beneath, together, and the × is never alone on a line of its own. A phone has no group (display:contents), so
+   here the × is still the row's own item, put beside the name. */
+html[data-style="modernist"] #view-planner .day-recipe-row .day-recipe-remove{ order:-1; }
 html[data-style="modernist"] #view-planner .day-recipe-row > :is(.group-tie, .day-recipe-title, .day-away){ order:-2; }
 /* A dish no longer in the library: its line, then CLEAR in words. */
 html[data-style="modernist"] #view-planner .day-recipe-row > .day-away{ flex:1 1 0; }
@@ -841,7 +844,7 @@ html[data-style="modernist"] #view-planner .day-side-hide:hover{ opacity:1; colo
 /* Groups: a 4px ink bar ties a group's dishes; the GROUPED line is grey with the same bar. */
 html[data-style="modernist"] #view-planner .group-tie{ width:4px; margin:0; background:var(--color-text); }
 html[data-style="modernist"] #view-planner .group-badge{
-  gap:10px; padding:6px 10px; border:0; border-left:4px solid var(--color-text); background:var(--color-surface);
+  gap:0 10px; padding:0 10px; border:0; border-left:4px solid var(--color-text); background:var(--color-surface);
   font-size:12px; font-weight:800; letter-spacing:.06em; color:var(--color-text);
 }
 html[data-style="modernist"] #view-planner .group-badge:hover{ background:var(--km-ink-10); }
@@ -887,7 +890,7 @@ html[data-style="modernist"] #view-planner .day-main > .day-choose:not(.day-add-
   html[data-style="modernist"] #view-planner .group-pick-row .day-recipe-title{ flex:1 1 280px; white-space:normal; overflow:visible; text-overflow:clip; }
   html[data-style="modernist"] #view-planner .day-recipe-meta{ display:flex; align-items:center; flex:none; gap:12px; }
   html[data-style="modernist"] #view-planner .day-recipe-time{ margin-right:0; }
-  html[data-style="modernist"] #view-planner .day-recipe-row > .day-recipe-remove{ order:9; margin-left:auto; }
+  html[data-style="modernist"] #view-planner .day-recipe-meta > .day-recipe-remove{ order:0; }
 
   html[data-style="modernist"] #view-planner .day-main > .day-choose.day-add-more{ position:relative; min-height:0; margin-top:10px; padding:4px 0; }
   html[data-style="modernist"] #view-planner .day-main > .day-choose.day-add-more::before{ content:''; position:absolute; left:0; right:0; top:-8px; bottom:-8px; }

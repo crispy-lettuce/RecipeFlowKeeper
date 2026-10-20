@@ -10,8 +10,8 @@ connection is dated 17:52 UTC). Then `docs/TEST-PLAN.md` step 40a, the household
 **§11** is the follow-up asked for on 9 Oct: two toggles that switch days on automatically (`docs/migrations/add-calendar-auto.md`,
 step 40b).
 **§12** (20 Oct) is a reminder per meal rather than per day, so that a breakfast and a dinner on one day can differ, and a group
-cooked together has one. The household took the recommendation on all six questions (§12.11). **Status: in two PRs** — the
-function, its tests and the migration page first (built, waiting for the household to apply and deploy), then the app.
+cooked together has one. The household took the recommendation on all six questions (§12.11). **Status: built in two PRs** — the
+function, its tests and the migration page (#176, merged, waiting for the household to apply and deploy), then the app (2026-10-20.7).
 
 ## 1. What it is for
 
@@ -275,7 +275,7 @@ and phone step 40b.
 
 ## 12. A reminder per meal, not per day (proposed and agreed 20 Oct 2026)
 
-**Status: agreed (§12.11); being built in two PRs (§12.12).** Written from the code as it stands on 20 Oct 2026 (version
+**Status: agreed (§12.11); built in two PRs (§12.12); the household's steps are C1 and 75a in `docs/HOUSEHOLD-JOBS.md`.** Written from the code as it stands on 20 Oct 2026 (version
 2026-10-20.6), not from §9, which it corrects in one place (§12.1).
 
 ### 12.1 The brief, and what is there now
@@ -442,4 +442,13 @@ Two PRs: the migration page and the function with their tests (the household app
   Postgres 16 (applied as a non-superuser owner, the checks, the undo); **not** applied to the live project, which is the
   household's. `docs/INFRASTRUCTURE.md` lists both as waiting. **Not verified:** the function against Google, which can only be
   seen on the phones (steps in `docs/HOUSEHOLD-JOBS.md` once the app's PR is in).
-- **PR B: the app** (§12.6, §12.5). Not started when this line was written.
+- **PR B (20 Oct 2026, app 2026-10-20.7): the app.** `planner_days.calendar_items` is read (a one-column probe, like `premade`'s) and written with
+  every day save and every restore once the column exists, and never before: until then the Planner is as it was, one pair of switches a day. A day's
+  entry keeps `calendarItems` beside `recipeIds`, `servings` and `premade`, one of `''` / `'in'` / `'remind'` a dish, spliced in lockstep when a dish is
+  put on or taken off or a recipe deleted; `calendar` and `remind` stay as "some dish is in / has the reminder" and are what the deployed function reads.
+  A day with two or more meals has REMIND ME 20:00 on each (a group's on its bar, which is now three controls and no longer a button holding a span);
+  IN CALENDAR is still the day's. A dish added to a day in the calendar joins without a reminder; a side put with its main takes the main's state; grouping
+  takes the strongest; UNGROUP changes nothing; the automatic reminder looks at the meal of the dish just put on, not the whole day. The × moved into its
+  dish's group of pills so it cannot stand alone on a line. Decisions D70 to D72 in `docs/PLAN-MODERNIST.md`; the household's steps are 75a. *Measured on
+  the real plan, after:* the one two-meal day is 62px taller with the shortlist open (the list 1,463px to 1,525px, five whole days either way) and no
+  taller with it folded. **Not verified:** the tablet, Google, or the live database; nothing of this has run against them.

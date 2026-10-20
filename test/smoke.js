@@ -8286,13 +8286,14 @@ const check = (name, pass, detail) => {
     const row = t.closest('.day-recipe-row'), meta = row.querySelector('.day-recipe-meta'), x = row.querySelector('.day-recipe-remove'), pills = [...meta.querySelectorAll('.day-recipe-serves, .day-recipe-premade, .day-recipe-cooked')];
     const mid = el => Math.round((R(el).top + R(el).bottom) / 2), tr = R(t);
     return { lines: Math.round((tr.height - 20) / 24), titleMid: mid(t), pillMids: pills.map(mid), pillTops: pills.map(p => Math.round(R(p).top)), n: pills.length, metaDisplay: getComputedStyle(meta).display,
+      lastPillRight: Math.round(Math.max(...pills.map(p => R(p).right))),
       metaTop: Math.round(R(meta).top), titleBottom: Math.round(tr.bottom), titleTop: Math.round(tr.top), xTop: Math.round(R(x).top), xLeft: Math.round(R(x).left), xRight: Math.round(R(x).right),
       metaRight: Math.round(R(meta).right), rowRight: Math.round(R(row).right), clip: t.scrollWidth - t.clientWidth, ellipsis: getComputedStyle(t).textOverflow, text: t.textContent.trim() }; }, title);
 
   const pd = await pdPage({ width: 1389, height: 868 }, 'modernist');
   const d1 = await dishLine(pd, 'Test Short Dish');
   check('Planner, denser: a dish is on one line (its name, then its course, time and pills, then the ×) on the tablet held sideways',
-        d1.n >= 2 && d1.metaDisplay === 'flex' && d1.pillMids.every(m => Math.abs(m - d1.titleMid) <= 3) && d1.xLeft >= d1.metaRight && Math.abs(d1.rowRight - d1.xRight) <= 12, JSON.stringify(d1));
+        d1.n >= 2 && d1.metaDisplay === 'flex' && d1.pillMids.every(m => Math.abs(m - d1.titleMid) <= 3) && d1.xLeft >= d1.lastPillRight && Math.abs(d1.rowRight - d1.xRight) <= 12, JSON.stringify(d1));
   const d2 = await dishLine(pd, pdLong);
   check('    a name too long for the room wraps onto more lines, whole, and is never cut with "…"; the pills stay level with it',
         d2.lines >= 2 && d2.clip <= 1 && d2.ellipsis !== 'ellipsis' && d2.text === pdLong && d2.pillMids.every(m => Math.abs(m - d2.titleMid) <= 3), JSON.stringify(d2));
@@ -8363,6 +8364,221 @@ const check = (name, pass, detail) => {
   const c5 = await calLine(cpc, 0);
   check('    Classic is as it was: its own line under ADD ANOTHER', c5.calTop >= c5.addBottom - 2, JSON.stringify(c5));
   await cpc.close();
+
+  /* ---- A calendar reminder per meal (docs/PLAN-CALENDAR-PUSH.md §12, 20 Oct 2026) ----
+     Made-up dishes again. The days, in this order from today: one dish (n0); two loose dishes, the first reminded (n1); a group of two with a
+     loose third, the group reminded (n2); a group of two and nothing else (n3); two loose dishes with the day not in the calendar (n4).
+     add-calendar-items.md is "in" for these pages (calendarItemsAvailable), and the writes the page makes are read from __WRITES__. */
+  /* A page that throws inside the app (a TypeError in the code under test) answers { crashed } instead of ending the run, so the check that reads it fails by name. */
+  const softEval = pg => { const ev = pg.evaluate.bind(pg); pg.evaluate = (...a) => ev(...a).catch(e => ({ crashed: String(e.message).slice(0, 120) })); return pg; };
+  const mpPage = async (vp, look, items) => {
+    const pg = await pdPage(vp, look);
+    pg.setDefaultTimeout(4000);   // a button that is not there fails its check by name, not after thirty seconds
+    await pg.evaluate(items => {
+      window.__its = e => (e && e.calendarItems ? e.calendarItems.join(',') : 'none');
+      calendarAvailable = true; calendarConn = { connected: true }; calendarItemsAvailable = items;
+      const R = (id, title, course, time) => ({ id, title, source: 'Test Kitchen', time, servings: 4, tags: { course, keywords: [] }, history: [], syntax: 'TITLE: ' + title });
+      cache.recipes.push(R('mp-side', 'Test Side Salad', 'Side', '10 min'), R('mp-dessert', 'Test Fruit Fool', 'Dessert', '10 min'));
+      const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return isoLocal(d); };
+      const set = (n, ids, marks) => { const e = { recipeIds: ids, servings: ids.map(() => 0), premade: ids.map(() => '') }; cache.plan[day(n)] = marks ? withCalendarItems(e, marks) : e; };
+      Object.keys(cache.plan).forEach(k => delete cache.plan[k]); cache.groups.length = 0;
+      set(0, ['pd-a'], ['in']);
+      set(1, ['pd-a', 'pd-b'], ['remind', 'in']);
+      set(2, ['pd-a', 'pd-b', 'pd-c'], ['remind', 'remind', 'in']); cache.groups.push({ id: 'mp-g2', dateIso: day(2), recipeIds: ['pd-a', 'pd-b'], name: '' });
+      set(3, ['pd-a', 'pd-b'], ['remind', 'remind']); cache.groups.push({ id: 'mp-g3', dateIso: day(3), recipeIds: ['pd-a', 'pd-b'], name: '' });
+      set(4, ['pd-a', 'pd-b']);
+      rebuildCalendarDates(); window.__MP__ = [0, 1, 2, 3, 4].map(day); window.__WRITES__.length = 0; window.__INVOKES__.length = 0;
+      showView('planner'); renderPlanner();
+    }, items);
+    await pg.waitForTimeout(400);
+    softEval(pg);
+    return pg;
+  };
+  const mpDay = (pg, n) => pg.evaluate(n => { const date = window.__MP__[n], row = document.querySelector(`#view-planner .day-row[data-date="${date}"]`), e = cache.plan[date];
+    const strip = [...row.querySelectorAll('.day-cal .day-cal-btn')].map(b => b.textContent.trim());
+    return { strip, pills: [...row.querySelectorAll('.meal-remind')].map(b => ({ text: b.textContent.trim(), on: b.classList.contains('on'), pressed: b.getAttribute('aria-pressed'), inBar: !!b.closest('.group-badge'), inMeta: !!b.closest('.day-recipe-meta') })),
+      items: e && e.calendarItems ? e.calendarItems.join(',') : null, flags: e ? [!!e.calendar, !!e.remind].join(',') : null }; }, n);
+  const mpRow = (pg, n) => pg.evaluate(n => { const date = window.__MP__[n]; const w = window.__WRITES__.filter(x => x.table === 'planner_days' && x.op === 'upsert' && x.rows[0].plan_date === date).pop();
+    return w ? { calendar: w.rows[0].calendar, remind: w.rows[0].calendar_remind, items: 'calendar_items' in w.rows[0] ? w.rows[0].calendar_items.join(',') : 'not sent' } : null; }, n);
+
+  const mp = await mpPage({ width: 1389, height: 868 }, 'modernist', true);
+  const m0 = await mpDay(mp, 0), m1 = await mpDay(mp, 1), m2 = await mpDay(mp, 2), m3 = await mpDay(mp, 3), m4 = await mpDay(mp, 4);
+  check('Planner, a reminder per meal: a day with one meal (one dish, or a group alone) keeps the strip\'s IN CALENDAR and REMIND ME … THE EVENING BEFORE and has no REMIND ME on its meals',
+        m0.strip.length === 2 && /THE EVENING BEFORE$/.test(m0.strip[1]) && m0.pills.length === 0 && m3.strip.length === 2 && /THE EVENING BEFORE$/.test(m3.strip[1]) && m3.pills.length === 0, JSON.stringify([m0, m3]));
+  check('    a day with two meals has REMIND ME 20:00 on each, the first lit with a ✓ and the second not, and the strip is IN CALENDAR alone',
+        m1.pills.length === 2 && m1.pills.every(p => p.inMeta && !p.inBar) && m1.pills[0].text === '✓ REMIND ME 20:00' && m1.pills[0].on && m1.pills[0].pressed === 'true'
+        && m1.pills[1].text === 'REMIND ME 20:00' && !m1.pills[1].on && m1.pills[1].pressed === 'false' && m1.strip.length === 1 && /IN CALENDAR$/.test(m1.strip[0]), JSON.stringify(m1));
+  check('    a group is one meal with one reminder, on its GROUPED bar, and its dishes have none of their own; a loose dish beside it has its own',
+        m2.pills.length === 2 && m2.pills.filter(p => p.inBar).length === 1 && m2.pills.filter(p => p.inMeta).length === 1 && (m2.pills.find(p => p.inBar) || {}).on && !(m2.pills.find(p => p.inMeta) || { on: true }).on, JSON.stringify(m2));
+  check('    a day that is not in the calendar has no REMIND ME at all, only IN CALENDAR to switch it on',
+        m4.pills.length === 0 && m4.strip.length === 1 && /^IN CALENDAR$/.test(m4.strip[0]) && m4.flags === 'false,false' && m4.items === null, JSON.stringify(m4));
+  const bar = await mp.evaluate(() => { const b = document.querySelector('#view-planner .group-badge'), v = b.querySelector('.group-badge-view'), u = b.querySelector('.group-ungroup');
+    const R = el => el.getBoundingClientRect(), h = el => el ? Math.round(R(el).height) : 0;
+    return { tag: b.tagName, view: v && v.tagName, ungroup: u && u.tagName, nested: document.querySelectorAll('#view-planner button button, #view-planner button [data-action]').length, vh: h(v), uh: h(u),
+      order: [v, b.querySelector('.meal-remind'), u].filter(Boolean).map(x => Math.round(R(x).left)) }; });
+  check('    the GROUPED bar is three separate controls (view, REMIND ME, UNGROUP), left to right, none inside another, the first and last as tall as the bar (44px)',
+        bar.tag === 'DIV' && bar.view === 'BUTTON' && bar.ungroup === 'BUTTON' && bar.nested === 0 && bar.vh >= 44 && bar.uh >= 44 && bar.order.length === 3 && bar.order[0] < bar.order[1] && bar.order[1] < bar.order[2], JSON.stringify(bar));
+  const mpHits = await hitScan(mp, '#view-planner');
+  check('    every button on those days, the new REMIND ME pills and the bar\'s two controls among them, answers a tap 21px above and below its middle (44px)',
+        mpHits.n >= 25 && mpHits.miss.length === 0, `${mpHits.n} buttons` + (mpHits.miss.length ? '; missed: ' + mpHits.miss.slice(0, 6).join(', ') : ''));
+  /* The × was on a line of its own when a name and its group of pills fitted beside each other but not with the × as well. It is the last of the group now. */
+  const xs = await mp.evaluate(() => [...document.querySelectorAll('#view-planner .day-recipe-row')].filter(r => r.querySelector('.day-recipe-meta .day-recipe-remove')).map(r => {
+    const x = r.querySelector('.day-recipe-remove'), pills = [...r.querySelectorAll('.day-recipe-meta button:not(.day-recipe-remove)')], last = pills[pills.length - 1], R = el => el.getBoundingClientRect(), mid = el => (R(el).top + R(el).bottom) / 2;
+    return { alone: Math.abs(mid(x) - mid(last)) > 4 || R(x).left < R(last).right - 1, name: r.querySelector('.day-recipe-title').textContent.trim().slice(0, 14) }; }));
+  check('    the × is never on a line of its own: it stands on the line of the last pill of its dish, after it, on every dish', xs.length >= 8 && xs.every(x => !x.alone), JSON.stringify(xs.filter(x => x.alone)));
+  await mp.setViewportSize({ width: 1100, height: 800 }); await mp.waitForTimeout(400);
+  const mpHits2 = await hitScan(mp, '#view-planner'), xs2 = await mp.evaluate(() => [...document.querySelectorAll('#view-planner .day-recipe-row')].filter(r => r.querySelector('.day-recipe-meta .day-recipe-remove')).map(r => {
+    const x = r.querySelector('.day-recipe-remove'), pills = [...r.querySelectorAll('.day-recipe-meta button:not(.day-recipe-remove)')], last = pills[pills.length - 1], R = el => el.getBoundingClientRect(), mid = el => (R(el).top + R(el).bottom) / 2;
+    return Math.abs(mid(x) - mid(last)) > 4 || R(x).left < R(last).right - 1; })), mpW2 = await mp.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  check('    and on a window too narrow for them beside the name (1100px, the shortlist open) the × still stands with its pills, nothing runs off the side, and every tap lands',
+        xs2.every(a => !a) && mpW2 <= 0 && mpHits2.n >= 25 && mpHits2.miss.length === 0, JSON.stringify([xs2.filter(Boolean).length, mpW2, mpHits2.miss.slice(0, 4)]));
+  await mp.setViewportSize({ width: 412, height: 915 }); await mp.waitForTimeout(400);
+  const mpHits3 = await hitScan(mp, '#view-planner'), mpW3 = await mp.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  check('    a phone keeps its rows, with nothing off the side and every tap landing', mpW3 <= 0 && mpHits3.n >= 10 && mpHits3.miss.length === 0, JSON.stringify([mpW3, mpHits3.n, mpHits3.miss.slice(0, 4)]));
+  await mp.close();
+
+  /* Taps, and what they write. One page, in order: each step reads the last one's result. */
+  const mt = await mpPage({ width: 1389, height: 868 }, 'modernist', true);
+  mt.on('dialog', d => d.accept());
+  const pillOf = (n, i) => `#view-planner .day-row[data-date="${'DATE' + n}"] .meal-remind`;
+  const tapPill = async (n, i) => { const date = await mt.evaluate(n => window.__MP__[n], n); try { await mt.locator(`#view-planner .day-row[data-date="${date}"] .meal-remind`).nth(i).click(); } catch (e) { /* the check that reads the result says so */ } await mt.waitForTimeout(250); };
+  await tapPill(1, 1);
+  const t1 = await mpDay(mt, 1), t1w = await mpRow(mt, 1);
+  check('REMIND ME on the second meal of a two-meal day lights it, keeps the first, and writes the day: the dishes\' states, and the day\'s flags as "some dish"',
+        t1.items === 'remind,remind' && t1.flags === 'true,true' && t1.pills.every(p => p.on) && t1w && t1w.items === 'remind,remind' && t1w.calendar === true && t1w.remind === true, JSON.stringify([t1, t1w]));
+  const sync1 = await mt.evaluate(() => ({ calls: window.__INVOKES__.filter(c => c.name === 'calendar-sync').map(c => JSON.stringify(c.body)), log: window.__LOG__.filter(l => /^(write-done:planner_days|invoke:calendar-sync)$/.test(l)).slice(-2).join(' > '), date: window.__MP__[1] }));
+  check('    and the calendar hears of that one day, after the day\'s write has landed', sync1.calls.length === 1 && sync1.calls[0] === JSON.stringify({ dates: [sync1.date] }) && sync1.log === 'write-done:planner_days > invoke:calendar-sync', JSON.stringify(sync1));
+  await tapPill(1, 0); await tapPill(1, 1);
+  const t2 = await mpDay(mt, 1), t2w = await mpRow(mt, 1);
+  check('    both taken off leaves the day in the calendar without a reminder: IN CALENDAR still lit, the strip offering REMIND ME again, "some dish" false',
+        t2.items === 'in,in' && t2.flags === 'true,false' && t2w && t2w.items === 'in,in' && t2w.calendar === true && t2w.remind === false && t2.pills.every(p => !p.on), JSON.stringify([t2, t2w]));
+  await tapPill(2, 0);
+  const t3 = await mpDay(mt, 2);
+  check('    a group\'s REMIND ME takes the reminder off both its dishes at once, and leaves the loose dish as it was; again puts it back on both',
+        t3.items === 'in,in,in' && t3.flags === 'true,false', JSON.stringify(t3));
+  await tapPill(2, 0);
+  check('    (and on again)', (await mpDay(mt, 2)).items === 'remind,remind,in');
+  /* A group changed on another device or by an old tab can have members that differ: it reads as reminded if any dish is, as calendar-sync reads it. */
+  await mt.evaluate(() => { withCalendarItems(cache.plan[window.__MP__[2]], ['in', 'remind', 'in']); renderPlanner(); });
+  const t3b = await mpDay(mt, 2); await tapPill(2, 0); const t3c = await mpDay(mt, 2);
+  check('    a group whose dishes differ (changed elsewhere) shows as reminded if any of them is, and one tap takes the reminder off all of them',
+        (t3b.pills.find(p => p.inBar) || {}).on && t3c.items === 'in,in,in' && !(t3c.pills.find(p => p.inBar) || { on: true }).on, JSON.stringify([t3b, t3c]));
+  await mt.evaluate(() => { withCalendarItems(cache.plan[window.__MP__[2]], ['remind', 'remind', 'in']); renderPlanner(); });
+  /* IN CALENDAR is the whole day's. */
+  const calDate = await mt.evaluate(() => window.__MP__[1]);
+  await mt.locator(`#view-planner .day-row[data-date="${calDate}"] [data-action="calToggle"]`).click().catch(() => {}); await mt.waitForTimeout(250);
+  const t4 = await mpDay(mt, 1), t4w = await mpRow(mt, 1);
+  check('    IN CALENDAR off takes every dish and every reminder out and writes the day as not in the calendar (an empty list); on again puts every dish in, none reminded',
+        t4.items === null && t4.flags === 'false,false' && t4w && t4w.calendar === false && t4w.remind === false && t4w.items === '' && t4.pills.length === 0, JSON.stringify([t4, t4w]));
+  await mt.locator(`#view-planner .day-row[data-date="${calDate}"] [data-action="calToggle"]`).click().catch(() => {}); await mt.waitForTimeout(250);
+  const t5 = await mpDay(mt, 1);
+  check('    (on again)', t5.items === 'in,in' && t5.flags === 'true,false' && t5.pills.length === 2 && t5.pills.every(p => !p.on), JSON.stringify(t5));
+  await mt.close();
+
+  /* Making a group, adding to a day, taking away: the dishes' states travel with the dishes. */
+  const mg = await mpPage({ width: 1389, height: 868 }, 'modernist', true);
+  mg.on('dialog', d => d.accept());
+  const g1 = await mg.evaluate(() => { const d = window.__MP__[1];
+    state.groupingDate = d; state.groupingSelection = ['pd-a', 'pd-b']; renderPlanner();
+    const go = document.querySelector(`#view-planner .day-row[data-date="${d}"] [data-action="confirmGroup"]`); if (go) go.click();
+    const e = cache.plan[d];
+    return { items: __its(e), flags: [!!e.calendar, !!e.remind].join(','), groups: loadGroups().filter(g => g.dateIso === d).length, dayWrites: 0 }; });
+  await mg.waitForTimeout(300);
+  const g1w = await mpRow(mg, 1);
+  check('Grouping two dishes in different states (reminded, and in the calendar only) gives both the stronger, so the reminder is not lost, and the day is written so',
+        g1.items === 'remind,remind' && g1.flags === 'true,true' && g1w && g1w.items === 'remind,remind' && g1w.remind === true && g1.groups === 1, JSON.stringify([g1, g1w]));
+  const g2 = await mg.evaluate(() => { const d = window.__MP__[1]; const before = __its(cache.plan[d]);
+    deleteGroup(loadGroups().find(g => g.dateIso === d).id); renderPlanner(); return { before, after: __its(cache.plan[d]), pills: document.querySelectorAll(`#view-planner .day-row[data-date="${d}"] .meal-remind`).length }; });
+  check('    UNGROUP leaves each dish as it was, and the two loose dishes then have a REMIND ME each again', g2.before === 'remind,remind' && g2.after === 'remind,remind' && g2.pills === 2, JSON.stringify(g2));
+  const g3 = await mg.evaluate(() => { const out = {}; const d1 = window.__MP__[1], d4 = window.__MP__[4];
+    addPlanRecipe(d1, 'pd-c'); out.onDay = __its(cache.plan[d1]);
+    addPlanRecipe(d4, 'pd-c'); out.offDay = cache.plan[d4].calendarItems === undefined && !cache.plan[d4].calendar ? 'off' : 'on';
+    addPlanRecipe(d1, 'mp-side', 0, 'remind'); out.withMain = __its(cache.plan[d1]);
+    return out; });
+  await mg.waitForTimeout(300);
+  const g3w = await mg.evaluate(() => { const d1 = window.__MP__[1], w = window.__WRITES__.filter(x => x.table === 'planner_days' && x.rows[0].plan_date === d1).pop(); return w ? { written: (w.rows[0].calendar_items || ['not sent']).join(','), len: w.rows[0].recipe_ids.length } : { written: 'no write', len: 0 }; });
+  check('    a dish put on a day that is in the calendar joins it without the reminder (a loose dish is its own meal); on a day that is not, it stays out; a side put with its main takes the main\'s state; every write carries one state per dish',
+        g3.onDay === 'remind,remind,in' && g3.offDay === 'off' && g3.withMain === 'remind,remind,in,remind' && g3w.written === g3.withMain && g3w.len === 4, JSON.stringify([g3, g3w]));
+  const g4 = await mg.evaluate(() => { const d1 = window.__MP__[1], out = {}; const ent = cache.plan[d1];
+    removePlanRecipeAt(d1, 0); out.afterFirst = __its(cache.plan[d1]);
+    removePlanRecipeAt(d1, 0); removePlanRecipeAt(d1, 1); out.reminderGone = __its(cache.plan[d1]) + '|' + !!cache.plan[d1].remind + '|' + !!cache.plan[d1].calendar;
+    return out; });
+  await mg.waitForTimeout(300);
+  const g4w = await mpRow(mg, 1);
+  check('    taking a dish off takes its state with it (the others\' stay in step), and taking off the last reminded dish leaves the day in the calendar with no reminder',
+        g4.afterFirst === 'remind,in,remind' && g4.reminderGone === 'in|false|true' && g4w && g4w.items === 'in' && g4w.remind === false && g4w.calendar === true, JSON.stringify([g4, g4w]));
+  const g5 = await mg.evaluate(() => { const d3 = window.__MP__[3], d0 = window.__MP__[0]; deleteRecipe('pd-b');
+    return { n3: cache.plan[d3] ? __its(cache.plan[d3]) : null, n0: __its(cache.plan[d0]) }; });
+  check('    deleting a recipe takes its dishes\' states out of every day it is on, in step with the dishes', g5.n3 === 'remind' && g5.n0 === 'in', JSON.stringify(g5));
+  await mg.close();
+
+  /* UNDO for the ×, with a reminder on the dish. */
+  const mu = await mpPage({ width: 1389, height: 868 }, 'modernist', true);
+  const u1 = await mu.evaluate(() => ({ before: JSON.stringify(cache.plan[window.__MP__[2]]), d: window.__MP__[2] }));
+  await mu.locator(`#view-planner .day-row[data-date="${u1.d}"] .day-recipe-row:has(.day-recipe-title:text-is("Test Short Dish")) .day-recipe-remove`).click().catch(() => {});
+  await mu.waitForTimeout(300);
+  await mu.locator('#view-planner .day-undo button').first().click().catch(() => {}); await mu.waitForTimeout(300);
+  const u2 = await mu.evaluate(d => JSON.stringify(cache.plan[d]), u1.d);
+  check('    UNDO for the × brings back the dish with its reminder: the day is exactly as it was, calendar states included', u1.before === u2 && /"calendarItems":\["remind","remind","in"\]/.test(u2), u1.before + ' | ' + u2);
+  await mu.close();
+
+  /* The automatic toggles, a meal at a time. */
+  const ma = await mpPage({ width: 1389, height: 868 }, 'modernist', true);
+  const a1 = await ma.evaluate(() => { const out = {}; calendarAutoAvailable = true; cache.settings.calendarAuto = false; cache.settings.calendarAutoRemind = true;
+    const d = window.__MP__[4]; Object.keys(cache.plan).forEach(k => delete cache.plan[k]);
+    addPlanRecipe(d, 'pd-a'); out.main = __its(cache.plan[d]);
+    addPlanRecipe(d, 'mp-side'); out.side = __its(cache.plan[d]);
+    setPlanPremadeAt(d, 1, 'lunch'); out.premade = __its(cache.plan[d]);
+    setMealRemind(d, [0], false); addPlanRecipe(d, 'mp-dessert'); out.handOff = __its(cache.plan[d]);
+    return out; });
+  check('Automatic reminders, a meal at a time: a Main put on a day gets the reminder and the day goes in; a side put beside it goes in without; a dish made PRE-MADE gets its own; and a reminder taken off by hand is not put back by adding another dish',
+        a1.main === 'remind' && a1.side === 'remind,in' && a1.premade === 'remind,remind' && a1.handOff === 'in,remind,in', JSON.stringify(a1));
+  const a2 = await ma.evaluate(() => { const d = window.__MP__[3]; Object.keys(cache.plan).forEach(k => delete cache.plan[k]); cache.groups.length = 0;
+    cache.plan[d] = { recipeIds: ['mp-side', 'pd-a', 'mp-dessert'], servings: [0, 0, 0], premade: ['', '', ''] };
+    cache.groups.push({ id: 'mp-ga', dateIso: d, recipeIds: ['mp-side', 'pd-a'], name: '' });
+    cache.settings.calendarAuto = true; const n = sweepCalendarAuto(); return { n, items: __its(cache.plan[d]) }; });
+  check('    a group with a Main in it is one meal and gets one reminder, the loose dessert beside it goes in without; and with AUTOMATICALLY ADD TO CALENDAR on, every meal goes in',
+        a2.n === 1 && a2.items === 'remind,remind,in', JSON.stringify(a2));
+  await ma.close();
+
+  /* Before the migration, and reading a day back. */
+  const mb = await mpPage({ width: 1389, height: 868 }, 'modernist', false);
+  const b1 = await mpDay(mb, 1);
+  await mb.locator(`#view-planner .day-row[data-date="${await mb.evaluate(() => window.__MP__[1])}"] [data-action="calRemind"]`).click().catch(() => {}); await mb.waitForTimeout(250);
+  const b2 = await mpRow(mb, 1), b3 = await mpDay(mb, 1);
+  check('Before add-calendar-items.md the Planner keeps its one pair of switches a day, even for a day with two meals; the reminder is the whole day\'s, and a save does not name the new column',
+        b1.pills.length === 0 && b1.strip.length === 2 && /THE EVENING BEFORE$/.test(b1.strip[1]) && b2 && b2.items === 'not sent' && b2.remind === false && b2.calendar === true && b3.items === 'in,in', JSON.stringify([b1, b2, b3]));
+  await mb.close();
+  const rd = softEval(await pdPage({ width: 1389, height: 868 }, 'modernist'));
+  const r1 = await rd.evaluate(() => { const base = { plan_date: '2026-10-21', is_blank: false, recipe_ids: ['a', 'b'], servings: [0, 0], premade: [] };
+    const e = x => rowToPlanEntry({ ...base, ...x });
+    const out = { legacyOn: e({ calendar: true, calendar_remind: true }), legacyEmpty: e({ calendar: true, calendar_remind: false, calendar_items: [] }), items: e({ calendar: true, calendar_remind: true, calendar_items: ['in', 'remind'] }),
+      off: e({ calendar: false, calendar_remind: false, calendar_items: ['remind', 'remind'] }), noneMarked: e({ calendar: true, calendar_remind: true, calendar_items: ['', ''] }), drift: e({ calendar: true, calendar_remind: true, calendar_items: ['in', 'in'] }) };
+    const was = calendarItemsAvailable; calendarItemsAvailable = true;
+    out.cols = calendarColumns({ recipeIds: ['a', 'b'], calendar: true, remind: true }); out.colsOff = calendarColumns({ recipeIds: ['a', 'b'] });
+    calendarItemsAvailable = false; out.colsBefore = Object.keys(calendarColumns({ recipeIds: ['a', 'b'], calendar: true, remind: true })).join(',');
+    calendarItemsAvailable = was;
+    return { legacyOn: [out.legacyOn.calendar, out.legacyOn.remind, planCalendarItems(out.legacyOn).join(',')].join('|'), legacyEmpty: [out.legacyEmpty.calendar, planCalendarItems(out.legacyEmpty).join(',')].join('|'),
+      items: [out.items.calendar, out.items.remind, (out.items.calendarItems || []).join(',')].join('|'), off: [!!out.off.calendar, !!out.off.remind, !!out.off.calendarItems, planCalendarItems(out.off).join(',')].join('|'),
+      noneMarked: planCalendarItems(out.noneMarked).join(','), drift: [!!out.drift.remind, (out.drift.calendarItems || []).join(',')].join('|'),
+      cols: JSON.stringify(out.cols), colsOff: JSON.stringify(out.colsOff), colsBefore: out.colsBefore }; });
+  check('A day is read back from its row: with no dish marked (every day today) its two flags speak for every dish; with dishes marked they do, and the day\'s flags follow them; a day that is off is off whatever the list says',
+        r1.legacyOn === 'true|true|remind,remind' && r1.legacyEmpty === 'true|in,in' && r1.items === 'true|true|in,remind' && r1.off === 'false|false|false|,' && r1.noneMarked === 'remind,remind' && r1.drift === 'false|in,in', JSON.stringify(r1));
+  check('    and written: the day\'s columns say "some dish", and the list says each dish (an old backup\'s day, flags only, becomes every dish at the day\'s state); a day that is off writes an empty list, and before the migration the list is not sent',
+        r1.cols === '{"calendar":true,"calendar_remind":true,"calendar_items":["remind","remind"]}' && r1.colsOff === '{"calendar":false,"calendar_remind":false,"calendar_items":[]}' && r1.colsBefore === 'calendar,calendar_remind', JSON.stringify(r1));
+  await rd.close();
+  const probe = async extra => { const p = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    await p.addInitScript(c => { window.__STUB_EXTRA__ = { planner_days: [], recipe_logs: [] }; if (c) window.__STUB_COLUMNS__ = c; }, extra);
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html')); await p.waitForTimeout(900);
+    const v = await p.evaluate(() => calendarItemsAvailable); await p.close(); return v; };
+  const pr0 = await probe(null), pr1 = await probe(['planner_days.calendar_items']);
+  check('The app asks the database whether add-calendar-items.md is in, as it does for PRE-MADE: not before it is, yes once it is, even for a household with no planned day', pr0 === false && pr1 === true, JSON.stringify([pr0, pr1]));
+
+  const mc = await mpPage({ width: 1280, height: 800 }, 'classic', true);
+  const c6 = await mpDay(mc, 1), c7 = await hitScan(mc, '#view-planner'), c8 = await mc.evaluate(() => ({ tag: document.querySelector('#view-planner .group-badge').tagName, nested: document.querySelectorAll('#view-planner button button').length }));
+  check('    Classic has them too: REMIND ME on each of a two-meal day\'s meals, the GROUPED bar as separate controls, and every tap landing',
+        c6.pills.length === 2 && c8.tag === 'DIV' && c8.nested === 0 && c7.n >= 20 && c7.miss.length === 0, JSON.stringify([c6.pills.length, c8, c7.n, c7.miss.slice(0, 4)]));
+  await mc.close();
   }
 
   /* ---- Modernist, step 6: the Shopping List ----
