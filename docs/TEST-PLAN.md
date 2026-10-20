@@ -897,7 +897,7 @@ reported one by one.*
     when too narrow); ADD ANOTHER, IN CALENDAR, REMIND ME and ADD THE WEEK each 44px to tap. Not verified on the tablet itself, nor against the live database.
 
 75a. **A calendar reminder per meal (new 20 Oct; version 2026-10-20.7; `docs/PLAN-CALENDAR-PUSH.md` §12).** After `add-calendar-items.md` is applied and the new
-    `calendar-sync` deployed (job C1); tablet, calendar connected; writes a second dish and its reminders, undone at the end. (1) *A day with one meal* (one dish or a group
+    `calendar-sync` deployed (both done 20 Oct; read back by a session, which found no day yet saved with a setting per dish); tablet, calendar connected; writes a second dish and its reminders, undone at the end. (1) *A day with one meal* (one dish or a group
     alone): the strip as before. (2) *A second dish:* REMIND ME 20:00 on each dish, after its pills, the × the last of its group so never alone on a line; the new dish in the
     calendar without a reminder; the strip IN CALENDAR alone. (3) *One dish's reminder:* a `planner_days` write with `calendar_items` one per dish, `calendar` and
     `calendar_remind` as "some"; then `calendar-sync` for that date. (4) *The phone:* one event with both dishes when both are reminded or neither; two events (the pop-up on the

@@ -263,7 +263,7 @@ drops. *(Until 25 Sep this paragraph said the next deploy would be v9.)*
 | `find-recipe-image` | **Removed 11 Oct 2026** (the October review, F3): nothing called it, and it fetched any address a signed-in account gave it. Its source left the repo in the hardening PR (#102), and the household deleted the deployed function on 12 Oct; `list_edge_functions` no longer lists it | — |
 | `source-ingredients` | **v6, redeployed 12 Oct 2026 at 17:06 UTC after #123** (F37: the capped body reader, one timer to the end of the body), JWT verification on; read back in full with `get_edge_function` and matching `main`. (v5, 17:01, was the old code from a cached link; v4, after #102 that morning, the October review's hardening.) Before that: v1, deployed 27 Sep through the dashboard editor from `main` after PR #22 merged; checked the same day against the repo with `get_edge_function` | Read-only. Reads the Schema.org recipe block at a `SOURCE_URL` and returns the source's ingredient strings, for the preview's COMPARE WITH SOURCE. `{"pageUrl": "https://…"}` or `{"recipeId": "…"}`. Fetches public https pages only, re-checking every redirect. Deploy with JWT verification on, like every function but `calendar-auth`; it needs no secrets beyond the ones Supabase provides |
 | `calendar-auth` | **v4, redeployed 12 Oct 2026 after #102** (the October review's hardening), JWT verification off; read back with `get_edge_function` that morning and spot-checked against `main`. Before that: v3, redeployed 10 Oct 2026 after PR #75 (v1 was 9 Oct), JWT verification off; read back with `get_edge_function` at 17:50 UTC and carrying the Drive change (`requestedScope`) | CONNECT (Google's consent link), Google's callback (stores the token in Vault, makes the RecipeWrangler calendar), DISCONNECT. **Deploy with JWT verification OFF**: Google calls the callback with no Supabase sign-in; the function checks the sign-in itself on everything else, and the callback is guarded by a one-time value. Needs the secrets `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Since 10 Oct it asks for `drive.file` beside the calendar, for `drive-backup` |
-| `calendar-sync` | **v6, redeployed 12 Oct 2026 at 17:06 UTC after #123** (F38: SYNC NOW to 400 days, a 100-second budget), JWT verification on; read back in full with `get_edge_function`, carrying `ALL_DAYS_AHEAD`, `SYNC_BUDGET_MS` and the deadline, and pasted cleanly this time (no added indentation). (v5, 17:01, was the old code from a cached link; v4, after #102 that morning.) Before that: v3, redeployed 10 Oct 2026 after PR #78 (v2 was 9 Oct; v1 carried `calendar-auth`'s code by mistake), JWT verification on. Read back with `get_edge_function` at 20:31 UTC: the same code as `main` line for line, carrying "(from the freezer)" and `select('*')`, **but every line indented further than the last** (up to 659 spaces; 105 KB against 17.6 KB), which the dashboard editor added on paste. It changes nothing the code does (the file has no string or template literal spanning lines), so compare it ignoring whitespace; the next redeploy can paste it cleanly |
+| `calendar-sync` | **v8, deployed 20 Oct 2026 at 19:07 UTC after #176** (the reminder per meal, `docs/PLAN-CALENDAR-PUSH.md` §12: up to two events a day under the ids `…r` and `…n`, the retired plain id deleted, `meal_groups` read), JWT verification on; read back with `get_edge_function` at about 19:10 UTC and carrying `dishStates`, `mealEventId`, `dayEventIds` and the `meal_groups` read (spot-checked, not diffed line for line; the code came through with its own indentation). Before that: **v6, redeployed 12 Oct 2026 at 17:06 UTC after #123** (F38: SYNC NOW to 400 days, a 100-second budget), JWT verification on; read back in full with `get_edge_function`, carrying `ALL_DAYS_AHEAD`, `SYNC_BUDGET_MS` and the deadline, and pasted cleanly this time (no added indentation). (v5, 17:01, was the old code from a cached link; v4, after #102 that morning.) Before that: v3, redeployed 10 Oct 2026 after PR #78 (v2 was 9 Oct; v1 carried `calendar-auth`'s code by mistake), JWT verification on. Read back with `get_edge_function` at 20:31 UTC: the same code as `main` line for line, carrying "(from the freezer)" and `select('*')`, **but every line indented further than the last** (up to 659 spaces; 105 KB against 17.6 KB), which the dashboard editor added on paste. It changes nothing the code does (the file has no string or template literal spanning lines), so compare it ignoring whitespace; the next redeploy can paste it cleanly |
 | `drive-backup` | **v2, redeployed 12 Oct 2026 after #102** (the October review's hardening), JWT verification on; read back with `get_edge_function` that morning and spot-checked against `main`. Before that: v1, deployed 10 Oct 2026, JWT verification on; read back with `get_edge_function` at 17:50 UTC and matching `main`. First backup saved 18:05:55 UTC that day | Saves the app's backup file, the one EXPORT DATA downloads, into a "RecipeWrangler backups" folder in the household's own Google Drive, one file a day and the newest 8 kept. `{"backup": <the export>}`. JWT verification on. The same two secrets, and the household's Google connection with the Drive permission (`docs/PLAN-DRIVE-BACKUP.md`) |
 
 The two calendar functions are P3 (`docs/PLAN-CALENDAR-PUSH.md` §9, §10); `drive-backup` uses the same Google connection.
@@ -273,14 +273,10 @@ gives: `rehost-images` v16, `source-ingredients` v6 and `calendar-sync` v6 deplo
 `find-recipe-image` v6, `source-ingredients` v3, `calendar-sync` v2 and `calendar-auth` v1, later than this table said then; the
 October review diffed all six against the repo that night, its Appendix C.)*
 
-**Waiting to be redeployed: `calendar-sync`** (20 Oct 2026, with the PR that adds `docs/migrations/add-calendar-items.md`). The repo's
-source now writes up to two events a day, one for the dishes with the reminder and one for the rest, under new ids (the old plain
-id is deleted), and reads `meal_groups` and the new column when they are there (`docs/PLAN-CALENDAR-PUSH.md` §12). The deployed v6
-still writes one event a day and carries on correctly beside the new app; deploy the new one after the household has applied the
-SQL (it works either side of it), then press SYNC NOW once. The rest was current on 12 Oct 2026, 17:06 UTC: the F37 and F38
-redeploys (#123) are the table's v16, v6 and v6. On 13 Oct the repo's `rehost-images` changed in comments only (two recipe titles
-became "recipe A" and "recipe B"): no redeploy is needed, and the deployed v16 still names them in its comments, which only the
-dashboard shows.
+**Waiting to be redeployed: nothing** (20 Oct 2026, 19:09 UTC). `calendar-sync` v8 is the repo's `main` as of #176 (the reminder per meal);
+`list_edge_functions` gave it as v8, updated 19:07:09 UTC, and the other four as in the table. Before that: the F37 and F38 redeploys
+(#123) were the table's v16, v6 and v6, and on 13 Oct the repo's `rehost-images` changed in comments only (two recipe titles became
+"recipe A" and "recipe B"): no redeploy is needed, and the deployed v16 still names them in its comments, which only the dashboard shows.
 
 **These are deployed straight to Supabase, not through GitHub Pages**, which is why the image
 fixes reached the live app without a merge. A change to their source in this repo is a record,
@@ -376,9 +372,16 @@ shows no `anon` on `S`, `f` or `r`, and no household is without a settings row.
 the household on 13 Oct 2026, after #129 merged (02:24 UTC; the page allows either order, and at 02:24 the column was not yet there).
 Checked read-only at 05:53 UTC: `converter_ack_version` `text`, nullable, no default; 3 households, 0 confirmed; granted to `authenticated` (and `postgres`, `service_role`), not to `anon`.
 
-**Waiting to be applied: `docs/migrations/add-calendar-items.md`** (20 Oct 2026: `planner_days.calendar_items text[] not null
-default '{}'`, for a calendar reminder per meal, `docs/PLAN-CALENDAR-PUSH.md` §12; tested on a scratch Postgres 16, not on the live
-project). Every other page in `docs/migrations/` carries its "Applied" line (checked 13 Oct 2026). A PR that adds a
+`docs/migrations/add-calendar-items.md` (`planner_days.calendar_items text[] not null default '{}'`, for a calendar reminder per meal,
+`docs/PLAN-CALENDAR-PUSH.md` §12) was applied by the household on 20 Oct 2026 (the time of the SQL itself was not read; the page was written
+that day, and the column was there at about 19:10 UTC). Checked read-only at about 19:10 UTC with the page's check
+query: `planner_days | calendar_items | ARRAY | NO | '{}'::text[]`. Of 44 planned days none has a dish marked yet and the last plan save
+was at 17:13:58 UTC, before the app that writes the column (2026-10-20.7) was merged, so **no day has been saved with a setting per dish**:
+every day still reads from its two flags, as the page says it will. The household ran SYNC NOW after deploying `calendar-sync` v8:
+`calendar_connections` shows `connected` true, `last_sync_at` 19:07:30 UTC (21 seconds after the deploy) and no `last_error`. *Not seen:*
+what the sync wrote to Google, or the Planner's new buttons on the tablet.
+
+**Waiting to be applied: nothing** (20 Oct 2026; every page in `docs/migrations/` carries its "Applied" line). A PR that adds a
 migration page lists it here as waiting, and the household applies it (first, unless the page says why the order may be
 reversed: `CLAUDE.md`); whoever applies it moves it into the list and
 paragraphs above, as the rule at the top of this card says.
