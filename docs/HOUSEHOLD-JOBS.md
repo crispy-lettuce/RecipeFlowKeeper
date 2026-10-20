@@ -392,6 +392,9 @@ On the tablet held landscape, in **MODERNIST**, after reloading into 2026-10-20.
    and never its neighbour's.
 5. Tap the **×** on a dish, then **UNDO**. **You should see:** the dish goes and comes back in its place.
 6. Tap **›** to fold the shortlist away. **You should see:** the days take the room, and fewer long names need a second line.
+7. *(Version 2026-10-20.6, with your calendar connected.)* Look at a day with a dish. **You should see:** **IN CALENDAR** (and **REMIND ME** once it is on) on the same
+   line as **ADD ANOTHER**, at the right-hand end of the day, and not on a line of their own. Tap the top and bottom edges of **ADD ANOTHER**, **IN CALENDAR** and, in the
+   week's grey band, **ADD THE WEEK**: each should do its own job, and **ADD THE WEEK** should now be as easy to hit as the others.
 
 Tell the next session what felt cramped, if anything: the gaps between dishes, a name on two lines, or the smaller **ADD ANOTHER**. Not changed: a phone, and
 the Planner in Classic. A third layout was left out for now (**ADD ANOTHER** and **GROUP SOME TOGETHER** in a column at the right of each day, nine days on the

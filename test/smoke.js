@@ -8323,6 +8323,46 @@ const check = (name, pass, detail) => {
   check('    Classic is as it was: the course, time and pills are the row\'s own items on the name\'s line, and an empty day is as tall as before',
         d6.metaDisplay === 'contents' && d6.pillMids.every(m => Math.abs(m - d6.titleMid) <= 4) && d6e !== null && d6e > 30, JSON.stringify([d6, d6e]));
   await pdc.close();
+
+  /* With the calendar connected (20 Oct 2026, the next change): IN CALENDAR and REMIND ME share ADD ANOTHER's line, at the right. The checks above all ran with
+     the calendar off, and so did not see that ADD ANOTHER's lower tap area overlapped IN CALENDAR's upper one when it had a line of its own beneath. */
+  const calPage = async (vp, look) => {
+    const pg = await pdPage(vp, look);
+    await pg.evaluate(() => {
+      calendarAvailable = true; calendarConn = { connected: true };
+      const keys = Object.keys(cache.plan).sort(); cache.plan[keys[2]].calendar = true; cache.plan[keys[2]].remind = true;
+      renderPlanner();
+    });
+    await pg.waitForTimeout(300);
+    return pg;
+  };
+  const calLine = (pg, which) => pg.evaluate(which => { const R = el => el.getBoundingClientRect();
+    const rows = [...document.querySelectorAll('#view-planner .day-row[data-date]')].filter(r => r.querySelector('.day-cal'));
+    const r = rows[which], main = r.querySelector('.day-main'), add = main.querySelector('.day-add-more'), cal = main.querySelector('.day-cal'), btns = [...cal.querySelectorAll('.day-cal-btn')];
+    return { rows: rows.length, btns: btns.length, addMid: Math.round((R(add).top + R(add).bottom) / 2), calMid: Math.round((R(cal).top + R(cal).bottom) / 2), addBottom: Math.round(R(add).bottom), calTop: Math.round(R(cal).top),
+      calRight: Math.round(R(cal).right), mainRight: Math.round(R(main).right), btnTops: btns.map(b => Math.round(R(b).top)), rowH: Math.round(R(r).height) }; }, which);
+  const cp = await calPage({ width: 1389, height: 868 }, 'modernist');
+  const c0 = await calLine(cp, 0), c2 = await calLine(cp, 2);
+  /* A day with ADD ANOTHER, GROUP SOME TOGETHER and both buttons is as wide as the line in some fonts and not in others (the browser here and CI's do not share one), so only the
+     one-dish day is asked to be level with ADD ANOTHER; the two-dish day's pair must be together and at the right, on the line or wrapped beneath it. */
+  check('Planner, calendar on: IN CALENDAR (and REMIND ME) sit on ADD ANOTHER\'s line at the right-hand end of the day, level with it, and a one-dish day is shorter for it',
+        c0.rows >= 4 && c0.btns === 1 && Math.abs(c0.calMid - c0.addMid) <= 3 && c0.mainRight - c0.calRight <= 4 && c2.btns === 2 && c2.btnTops[0] === c2.btnTops[1] && c2.mainRight - c2.calRight <= 4 && c0.rowH <= 105, JSON.stringify([c0, c2]));
+  const cHits = await hitScan(cp, '#view-planner');
+  check('    and every button, IN CALENDAR and REMIND ME among them, still answers a tap 21px above and below its middle (44px): ADD ANOTHER no longer shares the edge of its tap area with the button beneath',
+        cHits.n >= 25 && cHits.miss.length === 0, `${cHits.n} buttons` + (cHits.miss.length ? '; missed: ' + cHits.miss.slice(0, 5).join(', ') : ''));
+  await cp.setViewportSize({ width: 1100, height: 800 }); await cp.waitForTimeout(400);
+  const c3 = await calLine(cp, 2), c3w = await cp.evaluate(() => document.documentElement.scrollWidth - innerWidth), c3h = await hitScan(cp, '#view-planner');
+  check('    on a window too narrow for them beside ADD ANOTHER (1100px, the shortlist open) they wrap beneath it, still at the right, with nothing off the side and every tap landing',
+        c3.calTop >= c3.addBottom - 2 && c3.mainRight - c3.calRight <= 4 && c3w <= 0 && c3h.n >= 25 && c3h.miss.length === 0, JSON.stringify([c3, c3w, c3h.n, c3h.miss.slice(0, 4)]));
+  await cp.setViewportSize({ width: 412, height: 915 }); await cp.waitForTimeout(400);
+  const c4 = await calLine(cp, 0), c4h = await hitScan(cp, '#view-planner');
+  check('    a phone keeps them on a line of their own under ADD ANOTHER, and its buttons, ADD THE WEEK among them, answer a tap 44px tall',
+        c4.calTop >= c4.addBottom - 2 && c4h.n >= 10 && c4h.miss.length === 0, JSON.stringify([c4, c4h.n, c4h.miss.slice(0, 4)]));
+  await cp.close();
+  const cpc = await calPage({ width: 1389, height: 868 }, 'classic');
+  const c5 = await calLine(cpc, 0);
+  check('    Classic is as it was: its own line under ADD ANOTHER', c5.calTop >= c5.addBottom - 2, JSON.stringify(c5));
+  await cpc.close();
   }
 
   /* ---- Modernist, step 6: the Shopping List ----
