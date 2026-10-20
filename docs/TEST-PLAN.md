@@ -888,6 +888,12 @@ reported one by one.*
     written over it. (6) *A recipe wider than its pane (more than five steps at this size):* a 32px dark square with an arrow at the table's top right, fixed on screen while the
     table scrolls, gone at the right end, back at the left; none on a recipe that fits. (7) *EXPORT PNG* (recipe and group) and print leave it out.
     Not verified on the tablet itself, nor against the live database (the two planner writes are the same ones a save makes).
+74a. **The denser Planner (new 20 Oct; version 2026-10-20.5; `docs/PLAN-MODERNIST.md`, "The Planner, denser").** Modernist, tablet landscape; writes nothing but
+    (5). (1) *A dish is one line:* name, then course, time and pills, then the ×; a long name wraps whole, never "…". (2) *Days on screen:* six or seven of the
+    fortnight (three before); an empty day is a 57px button across its row (85px before); the first day 93px from the top (115), 14px between weeks (24).
+    (3) *ADD ANOTHER / GROUP SOME TOGETHER:* drawn 28px, the tap 44px, 18px under the dish above. (4) *Every button 44px to tap:* 21px above and below its middle
+    answers (the smoke check points at each). (5) *×, then UNDO.* (6) *A narrow window (1100px, shortlist open):* the course, time and pills drop together under
+    the name, as before. A phone and Classic unchanged. Not verified on the tablet itself, nor against the live database.
 
 ## Deferred to the tablet, after merging
 

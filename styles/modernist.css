@@ -860,6 +860,36 @@ html[data-style="modernist"] #view-planner .day-undo button{ padding:0 14px; tex
 /* An empty day is one big button (tablet review F11, 20 Oct 2026): the whole row answers a tap, not only the 166px of its words. */
 html[data-style="modernist"] #view-planner .day-main > .day-choose:not(.day-add-more){ flex:1 1 100%; justify-content:flex-start; min-height:64px; }
 
+/* The Planner, denser (20 Oct 2026, docs/PLAN-MODERNIST.md D65 to D67). Three days of the fortnight fitted a tablet screen. The taps keep their 44px,
+   so the rows could not simply be closed up: a name reaches 10px past its line each way and a pill 8px past its border. What was spare was the
+   width, so what stood on two lines stands on one:
+   - a dish is its name, then its course, time and pills (.day-recipe-meta, which move together), then the ×. A name too long for the room
+     wraps onto a second line (never to "…"), and when the line cannot hold the name and the group the group drops under it, as it always did;
+   - ADD ANOTHER and GROUP SOME TOGETHER are drawn 28px like the pills, their 44px reaching past them, so no 44px row is spent on them;
+   - an empty day is one 56px button, the whole of its row;
+   - the date's block, the top of the page and the week bands lose some padding.
+   From 861px up: a phone keeps its rows as they were. */
+@media (min-width: 861px){
+  html[data-style="modernist"] #view-planner .planner-days{ padding-top:14px; }
+  html[data-style="modernist"] #view-planner .planner-head{ padding-bottom:10px; }
+  html[data-style="modernist"] #view-planner .week-label{ margin-top:14px; padding:5px 0; }
+  html[data-style="modernist"] #view-planner .day-num{ gap:0; padding:8px 0 8px 12px; }
+
+  html[data-style="modernist"] #view-planner .day-recipe-row{ align-items:center; }
+  html[data-style="modernist"] #view-planner .day-recipe-row > .day-recipe-title,
+  html[data-style="modernist"] #view-planner .group-tie + .day-recipe-title,
+  html[data-style="modernist"] #view-planner .group-pick-row .day-recipe-title{ flex:1 1 280px; white-space:normal; overflow:visible; text-overflow:clip; }
+  html[data-style="modernist"] #view-planner .day-recipe-meta{ display:flex; align-items:center; flex:none; gap:12px; }
+  html[data-style="modernist"] #view-planner .day-recipe-time{ margin-right:0; }
+  html[data-style="modernist"] #view-planner .day-recipe-row > .day-recipe-remove{ order:9; margin-left:auto; }
+
+  html[data-style="modernist"] #view-planner .day-main > .day-choose.day-add-more{ position:relative; min-height:0; margin-top:10px; padding:4px 0; }
+  html[data-style="modernist"] #view-planner .day-main > .day-choose.day-add-more::before{ content:''; position:absolute; left:0; right:0; top:-8px; bottom:-8px; }
+
+  html[data-style="modernist"] #view-planner .day-main.day-main-empty{ padding-top:0; padding-bottom:0; }
+  html[data-style="modernist"] #view-planner .day-main.day-main-empty > .day-choose:not(.day-add-more){ min-height:56px; }
+}
+
 /* ============================== THE SHORTLIST PANEL ==============================
    330px with a 2px rule; "Shortlist" at 26px with its count and a › that collapses the panel to a 56px rail (Modernist
    only; SHORTLIST in the sidebar opens it again); the jot box in red; numbered rows; the shopping block in red at the foot,

@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 20 Oct 2026 (73a, the second batch from the tablet review, added; 72a before it), earlier 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
+**Last brought up to date: 20 Oct 2026 (74a, the denser Planner, added; 73a, the second batch from the tablet review, before it), earlier 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
 households sort out their own converter and need no steps here.
@@ -32,6 +32,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | [71a: PRE-MADE on the Planner again](#71a-pre-made-on-the-planner-in-your-own-household-new-20-oct-version-2026-10-201) (the button is back), in your own household | tablet | 1 min | One dish switched to PRE-MADE and back |
 | [72a: the first changes from the tablet review](#72a-the-first-changes-from-the-tablet-review-new-20-oct-version-2026-10-203-docsplan-modernistmd), in Modernist | tablet, landscape | 8 min | No (AUDIT is switched on and off) |
 | [73a: the second batch from the tablet review](#73a-the-second-batch-from-the-tablet-review-new-20-oct-version-2026-10-204-docsplan-modernistmd), in Modernist | tablet, upright then landscape | 10 min | One dish taken off a day and put back (step 5) |
+| [74a: the denser Planner](#74a-the-denser-planner-new-20-oct-version-2026-10-205-docsplan-modernistmd), in Modernist | tablet, landscape | 8 min | One dish taken off and put back (step 5) |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
 **The split is done** (18 Oct, see Recently done), so your own library is empty until you add recipes. Do 61a to 70a signed in as the
@@ -376,6 +377,25 @@ Step 5 changes one day of the Planner and puts it back with UNDO. Use a day stil
 
 Tell the next session if a step didn't say what it should. The strip now also applies to a computer window narrower than 1100 pixels, and to a
 tablet held sideways in a split screen; say if you'd rather it did not.
+
+### 74a. The denser Planner (new 20 Oct, version 2026-10-20.5, `docs/PLAN-MODERNIST.md`)
+
+On the tablet held landscape, in **MODERNIST**, after reloading into 2026-10-20.5. Step 5 takes one dish off a day and puts it back with UNDO.
+
+1. Open the **PLANNER**. **You should see:** each dish on one line: its name, then its course and time and its buttons (**SERVES**, **PRE-MADE**,
+   **COOKED**), then the **×** at the right end. A name too long for the room runs onto a second line; none is cut off with "…".
+2. Look down the list. **You should see:** six or seven days of the fortnight on the screen where there were three. A day with nothing planned is one short
+   row, and a tap anywhere along it opens **CHOOSE A RECIPE**.
+3. **ADD ANOTHER** and **GROUP SOME TOGETHER** are a little smaller than they were. Tap **ADD ANOTHER** on a day. **You should see:** Recipes open with "Choosing
+   a recipe for …"; tap **CANCEL**.
+4. Tap the edges of the buttons: the top and bottom of **SERVES**, **PRE-MADE**, **ADD ANOTHER** and a dish's name. **You should see:** each does its own job
+   and never its neighbour's.
+5. Tap the **×** on a dish, then **UNDO**. **You should see:** the dish goes and comes back in its place.
+6. Tap **›** to fold the shortlist away. **You should see:** the days take the room, and fewer long names need a second line.
+
+Tell the next session what felt cramped, if anything: the gaps between dishes, a name on two lines, or the smaller **ADD ANOTHER**. Not changed: a phone, and
+the Planner in Classic. A third layout was left out for now (**ADD ANOTHER** and **GROUP SOME TOGETHER** in a column at the right of each day, nine days on the
+screen); say if you want it.
 
 ---
 
