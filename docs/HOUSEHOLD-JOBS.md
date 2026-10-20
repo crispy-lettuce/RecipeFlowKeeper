@@ -384,7 +384,7 @@ On the tablet held landscape, in **MODERNIST**, after reloading into 2026-10-20.
 
 1. Open the **PLANNER**. **You should see:** each dish on one line: its name, then its course and time and its buttons (**SERVES**, **PRE-MADE**,
    **COOKED**), then the **×** at the right end. A name too long for the room runs onto a second line; none is cut off with "…".
-2. Look down the list. **You should see:** about seven days of the fortnight on the screen where there were three. A day with nothing planned is one short
+2. Look down the list. **You should see:** six or seven days of the fortnight on the screen where there were three. A day with nothing planned is one short
    row, and a tap anywhere along it opens **CHOOSE A RECIPE**.
 3. **ADD ANOTHER** and **GROUP SOME TOGETHER** are a little smaller than they were. Tap **ADD ANOTHER** on a day. **You should see:** Recipes open with "Choosing
    a recipe for …"; tap **CANCEL**.

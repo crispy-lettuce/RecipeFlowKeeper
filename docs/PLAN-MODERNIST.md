@@ -379,7 +379,8 @@ days), and about 20px of padding and rule a day. The household chose "A + C + D"
   another. What was spare was the width, so what stood on two lines stands on one (D66) and the rows that spent 44px for a 12px word were drawn 28px with the 44px
   reaching past them (D67).
 - **Measured on the household's real plan** (landscape, shortlist open, the real Archivo files): whole days on the screen 3 (and part of a fourth) to 7 (and part
-  of an eighth); the whole list 1,975px to 1,345px; a one-dish day 143px to 95px, two dishes 258px to 168px, an empty day 85px to 57px. Every button on the page answers
+  of an eighth) as the test harness draws it, and **6 (and part of a seventh) with PRE-MADE shown as the live app does**, where today's dish, with three
+  buttons, has its name on two lines; the whole list 1,975px to 1,345px (1,365px with PRE-MADE); a one-dish day 143px to 95px, two dishes 258px to 168px, an empty day 85px to 57px. Every button on the page answers
   a tap 21px above and below its middle, as it did: 38 of 39 (the 39th is UNGROUP, a link inside the grey GROUPED bar, which is short in the layout before too and
   was not changed). The name's room, with PRE-MADE ready as in the live app and the shortlist open: 370 to 474px on the plan's seven dishes, every one on a single line with its group beside it; of the 71 recipe names, 59 stay on one line even at 370px and 12 take two (8 at a typical dish's width), none three. Folded away, the shortlist gives 644 to 748px and all 71 names are on one line.
 - **Checks:** 7 in `test/smoke.js` (833 in all; the check that said a dish's name stood on a line of its own with the pills under it now says what is still true), on
