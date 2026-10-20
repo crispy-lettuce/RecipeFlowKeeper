@@ -2206,6 +2206,20 @@ row-only rule, the second (and the existing before-migration check) when the swi
 family's household since the split. The household then reported PRE-MADE showing on the tablet (20 Oct, 71a step 1; which styles
 not stated). *Not verified:* 71a step 2, switching a dish to PRE-MADE and back, in the family's household.
 
+**A calendar reminder per meal (20 Oct 2026; the function and the SQL page in #176, merged 17:59 UTC; the app 2026-10-20.7).** The household
+saw IN CALENDAR once a day and asked for a reminder per meal, with a group cooked together as one; the plan is `docs/PLAN-CALENDAR-PUSH.md` §12 and
+they took its recommendation on all six questions. *First part (#176):* `calendar-sync` writes up to two events a day (`…r` with the 20:00 pop-up,
+`…n` without), deletes the retired plain id, resolves a group to its strongest member by reading `meal_groups`, and falls back to the day's two flags
+when no dish is marked; `test/calendar-push.js` 39 to 62 checks, each seen to fail (18 breakages); `docs/migrations/add-calendar-items.md`
+(`planner_days.calendar_items text[]`) ran on a scratch Postgres 16 and is **not applied to the live project**. *Second part (this PR):* the app reads the
+column (a one-column probe), keeps `calendarItems` per dish beside `premade`, splices it in lockstep, writes it with every day save only once the column
+exists, and shows REMIND ME 20:00 on each meal of a day with two or more (a group's on its bar, now three controls and not a button holding a span);
+until then the Planner is as it was. The × moved into its dish's group of pills so it cannot stand alone on a line. Smoke 838 to 868 checks, run
+under CI's fonts and the local ones; 30 breakages of the app, each caught by name (two only after tightening the check, and one,
+the bar's `align-self`, is equivalent at every width tested: the 44px floor in the core test, seen failing, guards it instead). Measured on the real
+plan: the one two-meal day is 62px taller with the shortlist open and no taller folded. **Not verified:** any of it against the live database,
+Google, or the tablet. The household's steps are C1 (SQL, deploy, SYNC NOW) and 75a in `docs/HOUSEHOLD-JOBS.md`.
+
 **Issues #85, #86, #89, #93: parse feedback, seconds, COOKING MODE, Drink (11 Oct 2026).** Raised on GitHub on 11 Oct,
 the first issues from the second household; planned and approved the same day.
 - **#85, parse feedback.** PARSE & PREVIEW, a paste, or WRITE ONE BY HAND now does two things. It says beside the button

@@ -9,11 +9,11 @@
      says so, unless a test puts rows for them in __STUB_DATA__ (an empty list is "created, no rows"): so the
      default fixture is the live app as it is today, and every check written before them runs unchanged. */
   const PENDING_TABLES = ['calendar_connections'];
-  /* Columns the same way (20 Oct 2026, for the PRE-MADE probe): a select that names one of these fails as PostgREST
+  /* Columns the same way (20 Oct 2026, for the PRE-MADE probe, and the calendar-per-meal one, add-calendar-items.md): a select that names one of these fails as PostgREST
      says so, unless some fixture row carries it or a test lists it in __STUB_COLUMNS__ ('table.column', for a column
      that exists in a table with no rows yet). The default fixture carries none, so it stays the database before the
      migration, as every check written before the probe expects. select('*') is never refused: it names no column. */
-  const PENDING_COLUMNS = { planner_days: ['premade'] };
+  const PENDING_COLUMNS = { planner_days: ['premade', 'calendar_items'] };
   window.__WRITES__ = [];
 
   /* Switches for the paths that only exist when the network misbehaves —
