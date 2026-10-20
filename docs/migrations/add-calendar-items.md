@@ -7,8 +7,8 @@ data.
 *(A markdown page rather than a `.sql` file because `.gitignore` excludes `*.sql`, on purpose: nothing that looks like a data dump
 may be committed to this public repo.)*
 
-**Not applied yet** (written 20 Oct 2026). When it is, record the date and the check at the bottom of this page and in
-`docs/INFRASTRUCTURE.md` (`CLAUDE.md`: a migration is not finished until the card says so).
+**Applied by the household on 20 Oct 2026** (the time was not read; the column was there at about 19:10 UTC). Checked read-only at about 19:10 UTC: `planner_days | calendar_items | ARRAY | NO | '{}'::text[]`, and no day had a dish marked yet
+(`docs/INFRASTRUCTURE.md`).
 
 Tested on 20 Oct 2026 on a scratch Postgres 16.15 with `planner_days` shaped as live and owned by a role that is not a
 superuser, like the live `postgres`: it applies; an existing day (calendar on, reminder on) reads `calendar_items = '{}'`; a day

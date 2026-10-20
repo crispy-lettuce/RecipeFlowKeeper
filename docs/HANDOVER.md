@@ -2218,7 +2218,12 @@ until then the Planner is as it was. The × moved into its dish's group of pills
 under CI's fonts and the local ones; 30 breakages of the app, each caught by name (two only after tightening the check, and one,
 the bar's `align-self`, is equivalent at every width tested: the 44px floor in the core test, seen failing, guards it instead). Measured on the real
 plan: the one two-meal day is 62px taller with the shortlist open and no taller folded. **Not verified:** any of it against the live database,
-Google, or the tablet. The household's steps are C1 (SQL, deploy, SYNC NOW) and 75a in `docs/HOUSEHOLD-JOBS.md`.
+Google, or the tablet. The household's tablet check is 75a in `docs/HOUSEHOLD-JOBS.md`.
+**Applied, deployed and read back (20 Oct 2026, about 19:10 UTC).** The household applied the SQL, deployed `calendar-sync` v8 (19:07:09 UTC) and ran SYNC
+NOW. Read-only: `planner_days.calendar_items` is `ARRAY`, not null, default `'{}'::text[]`; the function's source carries `dishStates`, `mealEventId`,
+`dayEventIds` and the `meal_groups` read; `calendar_connections` has `last_sync_at` 19:07:30 UTC and no error. Of 44 planned days none has a setting per
+dish and the last plan save was at 17:13 UTC, before 2026-10-20.7: nothing has yet been saved by the new app, so the Planner's buttons and the two-event
+days in Google are **not seen**.
 
 **Issues #85, #86, #89, #93: parse feedback, seconds, COOKING MODE, Drink (11 Oct 2026).** Raised on GitHub on 11 Oct,
 the first issues from the second household; planned and approved the same day.

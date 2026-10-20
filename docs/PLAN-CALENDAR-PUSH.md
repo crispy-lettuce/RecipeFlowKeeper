@@ -11,7 +11,7 @@ connection is dated 17:52 UTC). Then `docs/TEST-PLAN.md` step 40a, the household
 step 40b).
 **§12** (20 Oct) is a reminder per meal rather than per day, so that a breakfast and a dinner on one day can differ, and a group
 cooked together has one. The household took the recommendation on all six questions (§12.11). **Status: built in two PRs** — the
-function, its tests and the migration page (#176, merged, waiting for the household to apply and deploy), then the app (2026-10-20.7).
+function, its tests and the migration page (#176), then the app (2026-10-20.7, #177). Both merged; the SQL applied and the function deployed on 20 Oct (§12.13).
 
 ## 1. What it is for
 
@@ -275,7 +275,7 @@ and phone step 40b.
 
 ## 12. A reminder per meal, not per day (proposed and agreed 20 Oct 2026)
 
-**Status: agreed (§12.11); built in two PRs (§12.12); the household's steps are C1 and 75a in `docs/HOUSEHOLD-JOBS.md`.** Written from the code as it stands on 20 Oct 2026 (version
+**Status: agreed (§12.11); built in two PRs (§12.12); the SQL is applied and `calendar-sync` v8 deployed (20 Oct, §12.13); the tablet check is 75a in `docs/HOUSEHOLD-JOBS.md`.** Written from the code as it stands on 20 Oct 2026 (version
 2026-10-20.6), not from §9, which it corrects in one place (§12.1).
 
 ### 12.1 The brief, and what is there now
@@ -452,3 +452,12 @@ Two PRs: the migration page and the function with their tests (the household app
   dish's group of pills so it cannot stand alone on a line. Decisions D70 to D72 in `docs/PLAN-MODERNIST.md`; the household's steps are 75a. *Measured on
   the real plan, after:* the one two-meal day is 62px taller with the shortlist open (the list 1,463px to 1,525px, five whole days either way) and no
   taller with it folded. **Not verified:** the tablet, Google, or the live database; nothing of this has run against them.
+
+### 12.13 Applied and deployed (20 Oct 2026)
+
+The household applied `docs/migrations/add-calendar-items.md`, deployed `calendar-sync` v8 and pressed SYNC NOW, then reported "checks complete". A session read the
+live project back, read-only, at about 19:10 UTC (it is in `docs/INFRASTRUCTURE.md`): the column is there as the page's check query says; `calendar-sync` is v8,
+updated 19:07:09 UTC, and carries the new code; and `calendar_connections` shows a sync at 19:07:30 UTC with no error. **Not seen:** what that sync wrote to
+Google (the phones are the only place), and the Planner's new buttons. **No planned day has been saved with a setting per dish**: of 44 days none has
+`calendar_items` set and the last plan save was at 17:13:58 UTC, before the app that writes it (2026-10-20.7, merged 18:55 UTC) existed. So 75a (the tablet check
+that puts a second dish on a day and switches reminders) has left no trace in the database, and stays on `docs/HOUSEHOLD-JOBS.md` until the household says it passed.
