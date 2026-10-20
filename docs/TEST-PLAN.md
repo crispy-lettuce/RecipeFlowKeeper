@@ -878,6 +878,16 @@ reported one by one.*
     recipe" bar's MARK DAY AWAY and CANCEL are 44px. (6) *SHOPPING → AUDIT:* each line's aisle box and MERGE WITH… are 44px. (7) *SETTINGS:* scroll
     INGREDIENTS down, tap LIBRARY, APP or HELP: each opens at its top. Not verified on the tablet itself. Not changed: a recipe of more than five steps
     scrolls sideways to its last column (54 of 71 recipes), which `docs/PLAN-PREP-STEPS.md` §8 accepts.
+73a. **The second batch from the tablet review (new 20 Oct; version 2026-10-20.4; `docs/PLAN-MODERNIST.md`, "The tablet review, second batch").**
+    Modernist, on the tablet; (1) to (4) held upright, (5) to (7) sideways. (1) *RECIPES:* the sidebar is the 56px rail (it was 228px), the cards are three
+    columns of 240px or more (195px before); tapping the rail opens the 228px menu over the page and ‹ or a choice folds it. (2) *HISTORY:* no
+    sideways scroll, all seven weekday labels, days 56px or wider (34px before). (3) *SHOPPING:* every toolbar button on the screen, wrapping to a second row.
+    (4) *SETTINGS and PLANNER:* the rail, nothing off the right edge. (5) *PLANNER, ×:* the dish goes at once, a bar in the day says "Removed “…”" with a
+    44px UNDO; UNDO restores the entry exactly (order, people, calendar and reminder switches) and its group, writing one `planner_days` row and one
+    `meal_groups` row; the bar goes after ten seconds or on leaving the Planner; if the day was changed meanwhile there is no bar and nothing is
+    written over it. (6) *A recipe wider than its pane (more than five steps at this size):* a 32px dark square with an arrow at the table's top right, fixed on screen while the
+    table scrolls, gone at the right end, back at the left; none on a recipe that fits. (7) *EXPORT PNG* (recipe and group) and print leave it out.
+    Not verified on the tablet itself, nor against the live database (the two planner writes are the same ones a save makes).
 
 ## Deferred to the tablet, after merging
 

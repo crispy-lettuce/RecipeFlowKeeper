@@ -176,7 +176,7 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
   const TALL = ['.btn', '.chip', '.scale-btn', 'select.sort', '.kw-input', '.day-recipe-premade', '.day-recipe-cooked', '.backlink', '.toggle-switch',
     '.day-choose', '.day-recipe-title', '.day-recipe-serves', '.day-recipe-remove', '.day-side-add', '.day-side-hide', '.day-cal-btn', '.group-badge',
     '.sl-remove', '.saved-view', '.data-link', '.new-recipe', '.navlink', '.serve-with-link', '#viewerServesCustom',
-    '.library-switch button', '.assign-banner button', '.shop-aisle-select', '.shop-merge-with'];   // the last four: tablet review F6 and F9, 20 Oct 2026
+    '.library-switch button', '.assign-banner button', '.shop-aisle-select', '.shop-merge-with', '.day-undo button'];   // the last five: tablet review F6, F9 and F10, 20 Oct 2026
   const WIDE = ['.scale-btn', '.day-recipe-remove', '.day-side-hide', '.sl-remove'];   // × and the round scale buttons were 13px and 27px wide
   const short = TALL.filter(sel => !has(sel, 'min-height', 44)), narrow = WIDE.filter(sel => !has(sel, 'min-width', 44));
   check('every button in the viewer, Planner and sidebar has a min-height of 44px, and the × and scale buttons a min-width of 44px',
@@ -194,6 +194,18 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
   const tw = track ? px(track, 'width') : 0, th = track ? px(track, 'height') : 0, tt = thumb ? px(thumb, 'width') : 0;
   check('the toggle is 44px by 26px, and its thumb travels exactly the room it has',
         tw === 44 && th === 26 && tt === 20 && +travel === tw - 2 - tt - 4, `track ${tw}x${th}, thumb ${tt}px, travel ${travel}px (should be ${tw - 2 - tt - 4})`);
+}
+
+/* ---- The arrow on the flow table (tablet review F2, 20 Oct 2026) ----
+   It is a sibling of .tablewrap that attachFlowCues adds, so a PNG of the flow (which captures the node) or a printed page would carry it
+   unless it is left out of both. Read from the source, as the checks above are; smoke.js measures where it sits. */
+{
+  const exportCalls = [...pageSrc.matchAll(/\{ scrollFixSelectors: \[[^\]]*'\.tablewrap'[^\]]*\][^{}]*\}/g)].map(m => m[0]);
+  const printBlock = (pageSrc.match(/@media print\{[\s\S]*?\n  \}/) || [''])[0];
+  const css = pageSrc.slice(pageSrc.indexOf('<style>') + 7, pageSrc.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
+  check('the flow table\'s arrow is left out of both PNG exports and of print, and is off by default in the shared stylesheet',
+        exportCalls.length >= 2 && exportCalls.every(c => /hideSelectors:\s*\[[^\]]*'\.flow-more'/.test(c)) && /\.flow-more/.test(printBlock) && /\.flow-more\s*\{\s*display\s*:\s*none/.test(css),
+        `${exportCalls.length} exports, ${exportCalls.filter(c => /\.flow-more/.test(c)).length} hide it; print ${/\.flow-more/.test(printBlock)}`);
 }
 
 /* ---- Keyboard focus (READABILITY F, 14 Oct 2026, docs/PLAN-READABILITY.md) ----

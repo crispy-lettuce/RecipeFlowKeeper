@@ -153,8 +153,8 @@ html[data-style="modernist"] :focus-visible{ outline-color:var(--color-accent); 
    Folding: on the Planner, and on a viewer in cooking mode, the sidebar folds to a 56px rail (the red square, a › and
    the name set vertically). Tapping the rail peeks the full sidebar, ‹ folds it back, and going to another screen resets
    the peek: that is Classic's own .sidebar-peek, which showView already clears. Between 861 and 1180px Classic folds the
-   sidebar on a viewer whatever the cooking mode, for the width; here that is the rail too. Classic's floating ☰ tab is not
-   used at these widths.
+   sidebar on a viewer whatever the cooking mode, for the width; here that is the rail too, and since the tablet review of 20 Oct 2026
+   every screen folds to it up to 1100px (the tablet held upright is 868px). Classic's floating ☰ tab is not used at these widths.
 
    Everything here is for 861px and up. Narrower, the sidebar is Classic's bar across the top, in these colours.
 
@@ -254,6 +254,18 @@ html[data-style="modernist"] :focus-visible{ outline-color:var(--color-accent); 
   html[data-style="modernist"] .app.viewer-open:not(.sidebar-peek) .nav-rail{ display:flex; }
   html[data-style="modernist"] .app.viewer-open .brand .brand-square{ display:none; }
   html[data-style="modernist"] .app.viewer-open .nav-hide-btn{ display:flex; }
+}
+/* Held upright the tablet is 868px wide, just over the 861px where the wide layouts begin, and the full 228px sidebar left them 640px
+   (tablet review F4, 20 Oct 2026): Recipes' cards were 195px with their titles cut, History's month title and THU were cut off and its days
+   34px wide, and Shopping's toolbar ran off the side. So every screen folds to the rail up to 1100px (cards 252px, days 59px, toolbar in view).
+   The cost is a tap more to reach NEW RECIPE, ADD SEVERAL and the data links, as on the Planner already. A laptop window between 861 and
+   1100px gets the same. */
+@media (min-width: 861px) and (max-width: 1100px){
+  html[data-style="modernist"] .app:not(.sidebar-peek){ --mod-nav-w:56px; }
+  html[data-style="modernist"] .app:not(.sidebar-peek) .sidebar > :not(.nav-rail){ display:none; }
+  html[data-style="modernist"] .app:not(.sidebar-peek) .nav-rail{ display:flex; }
+  html[data-style="modernist"] .app .brand .brand-square{ display:none; }
+  html[data-style="modernist"] .app .nav-hide-btn{ display:flex; }
 }
 
 /* ============================== RECIPES ==============================
@@ -506,6 +518,12 @@ html[data-style="modernist"] .viewer-provenance .prov-chip.prov-stale{ backgroun
 html[data-style="modernist"] .viewer-serve-with{ font-size:12px; font-weight:600; letter-spacing:.06em; color:var(--color-text); }
 html[data-style="modernist"] .serve-with-link{ color:var(--color-accent-700); text-decoration:none; font-weight:800; }
 html[data-style="modernist"] .viewer-theirs-note{ margin:10px 28px 0; color:var(--color-accent-700); }
+/* The arrow that says the flow table goes on to the right (tablet review F2, 20 Oct 2026). 54 of the household's 71 recipes scroll sideways on the
+   tablet and nothing said so, with the last column, whose tick logs the dish as cooked, off screen. It sits at the table's top right edge, outside
+   the scroller so it stays put as the table moves, and goes when the end is reached. Not tappable (a swipe does it), and left out of print and PNG. */
+html[data-style="modernist"] .flow-more:not([hidden]){ display:block; position:relative; height:0; z-index:5; pointer-events:none; }
+html[data-style="modernist"] .flow-more span{ position:absolute; top:10px; right:10px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; background:var(--color-text); color:var(--color-bg); }
+html[data-style="modernist"] .flow-more svg{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2.5; stroke-linecap:square; }
 /* The header on a tablet (tablet review F1, 20 Oct 2026). The source chip and the SERVE WITH line each took a row of their own, so the
    pinned header was three or four rows and, with COOK FOR, 32 to 38% of the screen on every recipe in the library before the flow
    began. They now share a row when there is room, and the header's padding and the buttons' side padding are a little less: 21 to 27%.
@@ -836,6 +854,9 @@ html[data-style="modernist"] #view-planner .assign-banner{
   font-size:14px; font-weight:600; color:var(--color-text);
 }
 html[data-style="modernist"] #view-planner .assign-banner button{ text-decoration:none; font-size:12px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+/* UNDO for the × (tablet review F10, 20 Oct 2026): a bar in the day, in the assign banner's own look, with a 44px UNDO. */
+html[data-style="modernist"] #view-planner .day-undo{ padding:0 0 0 14px; border:0; border-left:4px solid var(--color-accent); background:var(--color-accent-100); font-size:14px; font-weight:600; color:var(--color-text); }
+html[data-style="modernist"] #view-planner .day-undo button{ padding:0 14px; text-decoration:none; font-size:12px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
 /* An empty day is one big button (tablet review F11, 20 Oct 2026): the whole row answers a tap, not only the 166px of its words. */
 html[data-style="modernist"] #view-planner .day-main > .day-choose:not(.day-add-more){ flex:1 1 100%; justify-content:flex-start; min-height:64px; }
 
@@ -930,7 +951,7 @@ html[data-style="modernist"] .shop-wrap{ padding:0; }
 html[data-style="modernist"] .shop-head{ align-items:flex-end; gap:16px 20px; margin:0; padding:22px 28px 18px; border-bottom:2px solid var(--color-divider); }
 html[data-style="modernist"] .shop-head h1{ margin:0 0 8px; font-size:56px; font-weight:800; line-height:.9; letter-spacing:-0.035em; }
 html[data-style="modernist"] .shop-meta{ font-size:13px; font-weight:800; letter-spacing:.08em; color:var(--color-accent-700); }
-html[data-style="modernist"] .shop-head-right{ flex-wrap:wrap; gap:6px; }
+html[data-style="modernist"] .shop-head-right{ flex:0 1 auto; max-width:100%; flex-wrap:wrap; gap:6px; }   /* it was flex:none, so its wrap never had anything to wrap (tablet review F4) */
 /* The week select keeps 44px (decision 10: a select cannot carry an invisible tap area). */
 html[data-style="modernist"] #shopWeekSelect{
   padding:0 10px; border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text);

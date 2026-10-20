@@ -7847,6 +7847,188 @@ const check = (name, pass, detail) => {
   await tcl.close();
   }
 
+  {
+  /* ---- Modernist, the tablet review's second batch (20 Oct 2026, docs/PLAN-MODERNIST.md, "The tablet review, second batch") ----
+     F4: held upright the tablet is 868px wide, just over the 861px where the wide layouts begin, and the full sidebar left them 640px: every screen
+     folds to the rail up to 1100px. F10: the Planner's × takes a dish off a day at once; a bar in the day offers it back for ten seconds.
+     F2: an arrow says the flow table goes on to the right. Made-up recipes stand in for the library: a wide one (7 steps) and short ones. */
+  const t2Page = async (vp, look) => {
+    const pg = await browser.newPage({ viewport: vp, hasTouch: true });
+    pg.__label = 'tablet review 2, ' + look;
+    await pg.addInitScript(l => { try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
+    await pg.clock.setFixedTime(FIXTURE_NOW);
+    await pg.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await pg.waitForTimeout(1200);
+    await pg.evaluate(() => {
+      const flow = (title, n) => ['TITLE: ' + title, 'SERVINGS: 4', '', 'GROUP a:', '1 test onion', ''].concat(Array.from({ length: n }, (_, i) =>
+        ['STAGE:', `MERGE ${String.fromCharCode(97 + i)} -> ${String.fromCharCode(98 + i)}: Step ${i + 1} [1 min]`, ''].join('\n'))).join('\n');
+      const mk = (id, title, course, n) => loadRecipes().push({ id, title, source: 'Test Kitchen', time: '30 min', servings: 4, tags: { course, keywords: [] }, history: [], syntax: flow(title, n) });
+      mk('t2-wide', 'Test Wide Flow', 'Main', 7); mk('t2-short', 'Test Short Flow', 'Main', 2);
+      mk('t2-a', 'Test Alpha Bake', 'Main', 2); mk('t2-b', 'Test Beta Side', 'Side', 2); mk('t2-c', 'Test Gamma Pud', 'Dessert', 2);
+      for (let i = 0; i < 6; i++) mk('t2-g' + i, 'Test Grid Dish ' + i, 'Main', 2);
+      shared.sharingWithMe = [{ id: 't2-t', name: 'Test Kitchen', count: 3 }]; shared.available = true;
+      showView('recipes'); renderHome();
+    });
+    await pg.waitForTimeout(300);
+    return pg;
+  };
+  const t2Drain = pg => pg.evaluate(async () => { let t; do { t = writeQueue; await t; } while (t !== writeQueue); });
+
+  /* ===== F4: the rail on every screen up to 1100px ===== */
+  const tu = await t2Page({ width: 868, height: 1389 }, 'modernist');
+  const sideOf = pg => pg.evaluate(() => { const sb = document.querySelector('.sidebar'), rail = document.querySelector('.nav-rail');
+    return { w: Math.round(sb.getBoundingClientRect().width), rail: getComputedStyle(rail).display, links: [...document.querySelectorAll('.navlink')].filter(e => e.getClientRects().length).length,
+      docW: document.documentElement.scrollWidth - innerWidth, peek: document.querySelector('.app').classList.contains('sidebar-peek') }; });
+  const folded = {};
+  for (const v of ['recipes', 'history', 'shopping', 'settings', 'planner']) { await tu.evaluate(v => showView(v), v); await tu.waitForTimeout(250); folded[v] = await sideOf(tu); }
+  check('F4: held upright (868px) the sidebar is the 56px rail on Recipes, History, Shopping, Settings and the Planner, and nothing runs off the side',
+        Object.values(folded).every(s => s.w === 56 && s.rail === 'flex' && s.links === 0 && s.docW <= 0), JSON.stringify(folded));
+  await tu.evaluate(() => showView('recipes')); await tu.waitForTimeout(250);
+  const grid = await tu.evaluate(() => { const g = document.getElementById('recipeGrid'), c = g.querySelector('.rcard');
+    return { cols: getComputedStyle(g).gridTemplateColumns.split(' ').length, card: Math.round(c.getBoundingClientRect().width) }; });
+  check('    Recipes has three columns of cards at least 240px wide (they were 195px with the full sidebar)', grid.cols === 3 && grid.card >= 240, JSON.stringify(grid));
+  await tu.evaluate(() => showView('history')); await tu.waitForTimeout(300);
+  const hist = await tu.evaluate(() => { const cal = document.querySelector('.history-calendar'), labels = [...document.querySelectorAll('.history-weekday-labels span')], day = document.querySelector('.history-day:not(.other-month)');
+    return { scrollOver: cal.scrollWidth - cal.clientWidth, labels: labels.length, lastLabelRight: Math.round(labels[labels.length - 1].getBoundingClientRect().right), calRight: Math.round(cal.getBoundingClientRect().right), day: Math.round(day.getBoundingClientRect().width) }; });
+  check('    History fits: no sideways scroll, all seven weekday labels inside the calendar, days at least 56px wide (34px before)',
+        hist.scrollOver <= 1 && hist.labels === 7 && hist.lastLabelRight <= hist.calRight + 1 && hist.day >= 56, JSON.stringify(hist));
+  await tu.evaluate(() => showView('shopping')); await tu.waitForTimeout(300);
+  const shop = await tu.evaluate(() => { const bar = document.querySelector('.shop-head-right'), wrap = document.querySelector('.shop-wrap'), b = [...bar.querySelectorAll('button')].filter(e => e.getClientRects().length);
+    return { right: Math.round(bar.getBoundingClientRect().right), vw: innerWidth, buttons: b.length, outside: b.filter(e => e.getBoundingClientRect().right > innerWidth + 0.5).length, wrapOver: wrap.scrollWidth - wrap.clientWidth }; });
+  check('    Shopping\'s toolbar is inside the screen with every button, wrapping onto a second row (it was 879px wide)',
+        shop.right <= shop.vw && shop.buttons >= 4 && shop.outside === 0 && shop.wrapOver <= 1, JSON.stringify(shop));
+  /* The rail still opens the full menu, and a screen chosen from it folds it again. */
+  await tu.evaluate(() => showView('recipes')); await tu.waitForTimeout(200);
+  await tu.click('#navRailBtn'); await tu.waitForTimeout(250);
+  const peek = await sideOf(tu), hideShown = await tu.evaluate(() => document.getElementById('navHideBtn').getClientRects().length > 0);
+  await tu.evaluate(() => { const b = document.getElementById('navHideBtn'); if (b && b.getClientRects().length) b.click(); }); await tu.waitForTimeout(250);   // a hidden ‹ is a failed check, not a timeout that stops the run
+  const peeked = await sideOf(tu);
+  await tu.evaluate(() => { const b = document.getElementById('navRailBtn'); if (b && b.getClientRects().length) b.click(); }); await tu.waitForTimeout(250);
+  await tu.click('.navlink[data-view="shopping"]'); await tu.waitForTimeout(300);
+  const chosen = await sideOf(tu), onShop = await tu.evaluate(() => state.view);
+  check('    the rail opens the full 228px menu with its ‹ to fold it again, and choosing a screen from it folds it back',
+        peek.w === 228 && peek.peek && hideShown && peeked.w === 56 && onShop === 'shopping' && chosen.w === 56 && !chosen.peek, JSON.stringify([peek, hideShown, peeked, onShop, chosen]));
+  const edge = {};
+  for (const w of [1100, 1101]) { await tu.setViewportSize({ width: w, height: 800 }); await tu.evaluate(() => showView('recipes')); await tu.waitForTimeout(250); edge[w] = (await sideOf(tu)).w; }
+  check('    the rail reaches 1100px and not 1101px, where the full sidebar is as it was', edge[1100] === 56 && edge[1101] === 228, JSON.stringify(edge));
+  await tu.setViewportSize({ width: 412, height: 915 }); await tu.evaluate(() => showView('recipes')); await tu.waitForTimeout(250);
+  const phoneBar = await tu.evaluate(() => ({ rail: getComputedStyle(document.querySelector('.nav-rail')).display, links: [...document.querySelectorAll('.navlink')].filter(e => e.getClientRects().length).length }));
+  check('    on a phone it is the top bar as it was, with no rail', phoneBar.rail === 'none' && phoneBar.links >= 5, JSON.stringify(phoneBar));
+  await tu.close();
+  const tuc = await t2Page({ width: 868, height: 1389 }, 'classic');
+  const clUp = await sideOf(tuc);
+  check('    Classic held upright is as it was: no rail, its own sidebar', clUp.rail === 'none' && clUp.w >= 200, JSON.stringify(clUp));
+  await tuc.close();
+
+  /* ===== F10: UNDO for the Planner's × ===== */
+  const t10 = await t2Page({ width: 1389, height: 868 }, 'modernist');
+  const D = await t10.evaluate(() => { const d = new Date(); d.setDate(d.getDate() + 1); return isoLocal(d); });
+  const D2 = await t10.evaluate(() => { const d = new Date(); d.setDate(d.getDate() + 2); return isoLocal(d); });
+  const setDay = pg => pg.evaluate(D => { const p = loadPlan(); delete p[D]; loadGroups().filter(g => g.dateIso === D).forEach(g => deleteGroup(g.id));
+    addPlanRecipe(D, 't2-a', 6); addPlanRecipe(D, 't2-b', 0); addPlanRecipe(D, 't2-c', 0); createGroup(D, ['t2-a', 't2-b']); loadPlan()[D].calendar = true; savePlanDay(D);
+    PLANNER_UNDO_MS = 10000; clearPlannerUndo(); showView('planner'); renderPlanner(); }, D);
+  const dayNow = pg => pg.evaluate(D => { const row = document.querySelector(`.day-row[data-date="${D}"]`), u = row.querySelector('.day-undo'), b = u && u.querySelector('button');
+    return { entry: JSON.stringify(loadPlan()[D] || null), groups: groupsForDate(D).map(g => g.id + ':' + g.recipeIds.join('+')), strip: u ? u.textContent.replace(/\s+/g, ' ').trim() : null,
+      undoH: b ? Math.round(b.getBoundingClientRect().height) : null, titles: [...row.querySelectorAll('.day-recipe-title')].map(e => e.textContent), choose: !!row.querySelector('.day-choose:not(.day-add-more)') }; }, D);
+  const rowX = (title) => `.day-row[data-date="${D}"] .day-recipe-row:has(.day-recipe-title:text-is("${title}")) .day-recipe-remove`;
+  await setDay(t10); await t10.waitForTimeout(250);
+  const d0 = await dayNow(t10);
+  await t10.click(rowX('Test Alpha Bake')); await t10.waitForTimeout(250);
+  const d1 = await dayNow(t10);
+  check('F10: the × takes the dish off as it always did (and the group it was in), and a bar in that day says what was removed, with a 44px UNDO',
+        /^Removed “Test Alpha Bake”\s*UNDO$/.test(d1.strip) && d1.undoH >= 44 && !d1.titles.includes('Test Alpha Bake') && d1.groups.length === 0 && d0.groups.length === 1 && d0.titles.length === 3, JSON.stringify([d0, d1]));
+  const m0 = await t10.evaluate(() => window.__WRITES__.length);
+  await t10.click(`.day-row[data-date="${D}"] .day-undo button`); await t10.waitForTimeout(250); await t2Drain(t10);
+  const d2 = await dayNow(t10), w2 = await t10.evaluate(m => window.__WRITES__.slice(m), m0);
+  check('    UNDO puts the day back exactly: the same dishes in the same order, the 6 people, the calendar switch, and the group with the same id',
+        d2.entry === d0.entry && JSON.stringify(d2.groups) === JSON.stringify(d0.groups) && d2.strip === null, JSON.stringify([d0, d2]));
+  check('    and writes it the way a save does: one planner_days upsert for that day, one meal_groups upsert for the group, nothing else',
+        w2.filter(w => w.table === 'planner_days' && w.op === 'upsert').flatMap(w => w.rows).length === 1 && w2.filter(w => w.table === 'meal_groups' && w.op === 'upsert').flatMap(w => w.rows).length === 1
+        && w2.every(w => ['planner_days', 'meal_groups'].includes(w.table)), JSON.stringify(w2.map(w => w.table + ':' + w.op)));
+  /* It does not last. */
+  await t10.evaluate(() => { PLANNER_UNDO_MS = 250; });
+  await t10.click(rowX('Test Beta Side')); await t10.waitForTimeout(120);
+  const e1 = await dayNow(t10); await t10.waitForTimeout(450);
+  const e2 = await dayNow(t10), e3 = await t10.evaluate(() => plannerUndo);
+  check('    the bar goes by itself (the time is ten seconds; shortened here), and there is then nothing to undo', e1.strip && e2.strip === null && e3 === null, JSON.stringify([e1.strip, e2.strip, e3]));
+  /* The day changing since: the bar is gone and nothing is written over the change. */
+  await setDay(t10); await t10.click(rowX('Test Gamma Pud')); await t10.waitForTimeout(200);
+  await t10.evaluate(D => { addPlanRecipe(D, 't2-wide', 0); renderPlanner(); }, D);
+  const c1 = await dayNow(t10);
+  await t10.evaluate(() => undoPlannerRemove()); await t10.waitForTimeout(150);
+  const c2 = await dayNow(t10);
+  check('    if the day has changed since, the bar is not shown, and UNDO would leave the day as it is (it does not write the old day over the new one)',
+        c1.strip === null && c2.entry === c1.entry && !c2.titles.includes('Test Gamma Pud') && c2.titles.includes('Test Wide Flow'), JSON.stringify([c1, c2]));
+  /* A group comes back only if its dishes are still free of other groups: grouping the others differently first is not a change to the day's
+     entry (the bar stays), and UNDO then brings the dish back without the old group, which would clash with the new one. */
+  await setDay(t10); await t10.click(rowX('Test Alpha Bake')); await t10.waitForTimeout(200);
+  await t10.evaluate(D => { createGroup(D, ['t2-b', 't2-c']); renderPlanner(); }, D);
+  const g1 = await dayNow(t10);
+  await t10.click(`.day-row[data-date="${D}"] .day-undo button`); await t10.waitForTimeout(250);
+  const g2 = await dayNow(t10);
+  check('    if the others have been grouped differently since, UNDO brings the dish back but not the old group (a dish is in one group a day)',
+        g1.strip && g1.groups.length === 1 && /t2-b\+t2-c/.test(g1.groups[0]) && g2.titles.length === 3 && g2.titles.includes('Test Alpha Bake') && g2.groups.length === 1 && /t2-b\+t2-c/.test(g2.groups[0]), JSON.stringify([g1, g2]));
+  /* The last dish of a day, with the day's calendar switch. */
+  await t10.evaluate(D2 => { const p = loadPlan(); delete p[D2]; addPlanRecipe(D2, 't2-short', 0); loadPlan()[D2].calendar = true; loadPlan()[D2].remind = true; savePlanDay(D2); renderPlanner(); }, D2);
+  const before2 = await t10.evaluate(D2 => JSON.stringify(loadPlan()[D2]), D2);
+  await t10.click(`.day-row[data-date="${D2}"] .day-recipe-remove`); await t10.waitForTimeout(250);
+  const l1 = await t10.evaluate(D2 => { const row = document.querySelector(`.day-row[data-date="${D2}"]`); return { entry: JSON.stringify(loadPlan()[D2] || null), strip: !!row.querySelector('.day-undo'), choose: !!row.querySelector('.day-choose:not(.day-add-more)') }; }, D2);
+  await t10.click(`.day-row[data-date="${D2}"] .day-undo button`); await t10.waitForTimeout(250);
+  const l2 = await t10.evaluate(D2 => JSON.stringify(loadPlan()[D2] || null), D2);
+  check('    taking away the last dish of a day leaves CHOOSE A RECIPE and the bar, and UNDO brings back the day with its calendar and reminder switches',
+        l1.entry === 'null' && l1.strip && l1.choose && l2 === before2 && /"calendar":true/.test(l2) && /"remind":true/.test(l2), JSON.stringify([before2, l1, l2]));
+  /* A recipe that has since been deleted, and leaving the screen. */
+  await t10.evaluate(D2 => { const p = loadPlan(); p[D2] = { recipeIds: ['gone-recipe'], servings: [0] }; savePlanDay(D2); renderPlanner(); }, D2);
+  await t10.click(`.day-row[data-date="${D2}"] .day-recipe-remove`); await t10.waitForTimeout(200);
+  const r1 = await t10.evaluate(D2 => (document.querySelector(`.day-row[data-date="${D2}"] .day-undo span`) || {}).textContent || null, D2);
+  await t10.evaluate(() => { showView('recipes'); }); await t10.waitForTimeout(150);
+  const r2 = await t10.evaluate(() => plannerUndo);
+  check('    a dish whose recipe was deleted (CLEAR) can be undone too, and going to another screen drops the offer', /Removed a recipe that has since been deleted/.test(r1 || '') && r2 === null, JSON.stringify([r1, r2]));
+  /* With a shortlist item chosen, a tap on a day assigns it, except on UNDO. */
+  await setDay(t10); await t10.click(rowX('Test Alpha Bake')); await t10.waitForTimeout(200);
+  await t10.evaluate(() => { loadShortlist().unshift({ id: 't2-sl', recipeId: 't2-wide', text: '', dateAdded: todayStr() }); state.selectedShortlistId = 't2-sl'; renderPlanner(); });
+  await t10.click(`.day-row[data-date="${D}"] .day-undo button`); await t10.waitForTimeout(250);
+  const s1 = await dayNow(t10), s2 = await t10.evaluate(() => ({ sel: state.selectedShortlistId, still: loadShortlist().some(i => i.id === 't2-sl') }));
+  check('    with a shortlist dish picked to assign, tapping UNDO puts the removed dish back and does not assign the picked one', s1.titles.includes('Test Alpha Bake') && !s1.titles.includes('Test Wide Flow') && s2.sel === 't2-sl' && s2.still, JSON.stringify([s1, s2]));
+  await t10.close();
+  const t10c = await t2Page({ width: 1389, height: 868 }, 'classic');
+  await t10c.evaluate(D => { delete loadPlan()[D]; addPlanRecipe(D, 't2-a', 0); addPlanRecipe(D, 't2-b', 0); showView('planner'); renderPlanner(); }, D);
+  await t10c.click(`.day-row[data-date="${D}"] .day-recipe-row:has(.day-recipe-title:text-is("Test Alpha Bake")) .day-recipe-remove`); await t10c.waitForTimeout(200);
+  const k1 = await t10c.evaluate(D => { const u = document.querySelector(`.day-row[data-date="${D}"] .day-undo`); return u ? { h: Math.round(u.querySelector('button').getBoundingClientRect().height), n: planRecipeIds(loadPlan()[D]).length } : null; }, D);
+  await t10c.click(`.day-row[data-date="${D}"] .day-undo button`); await t10c.waitForTimeout(200);
+  const k2 = await t10c.evaluate(D => planRecipeIds(loadPlan()[D]).join(','), D);
+  check('    Classic has it too: the bar, a 44px UNDO, and the dish back in its place', k1 && k1.h >= 44 && k1.n === 1 && k2 === 't2-a,t2-b', JSON.stringify([k1, k2]));
+  await t10c.close();
+
+  /* ===== F2: the arrow on the flow table ===== */
+  const t2 = await t2Page({ width: 1389, height: 868 }, 'modernist');
+  const cueOf = pg => pg.evaluate(() => { const wrap = document.querySelector('#flowMount .tablewrap'), cue = document.querySelector('#flowMount .flow-more'); if (!wrap || !cue) return { wrap: !!wrap, cue: !!cue };
+    const sp = cue.querySelector('span'), wr = wrap.getBoundingClientRect(), sr = sp.getBoundingClientRect(), cs = getComputedStyle(cue);
+    return { cue: true, shown: !cue.hidden && cs.display === 'block', sibling: cue.nextElementSibling === wrap && !wrap.contains(cue), aria: cue.getAttribute('aria-hidden'), over: wrap.scrollWidth - wrap.clientWidth,
+      rightGap: Math.round(wr.right - sr.right), topGap: Math.round(sr.top - wr.top), size: Math.round(sr.width) + 'x' + Math.round(sr.height), left: wrap.scrollLeft, svg: !!cue.querySelector('svg path'), pointer: cs.pointerEvents }; });
+  await t2.evaluate(() => openRecipe('t2-wide', 'recipes')); await t2.waitForTimeout(500);
+  const f0 = await cueOf(t2);
+  check('F2: a recipe wider than its pane (7 steps, 1,320px in 1,101) has an arrow at the table\'s top right edge: a 32px square just inside it, above the table, not a thing to tap',
+        f0.shown && f0.over > 100 && f0.rightGap >= 6 && f0.rightGap <= 14 && f0.topGap >= 6 && f0.topGap <= 14 && f0.size === '32x32' && f0.sibling && f0.aria === 'true' && f0.svg && f0.pointer === 'none', JSON.stringify(f0));
+  await t2.evaluate(() => { document.querySelector('#flowMount .tablewrap').scrollLeft = 100; }); await t2.waitForTimeout(200);
+  const f1 = await cueOf(t2);
+  await t2.evaluate(() => { const w = document.querySelector('#flowMount .tablewrap'); w.scrollLeft = w.scrollWidth; }); await t2.waitForTimeout(200);
+  const f2 = await cueOf(t2);
+  await t2.evaluate(() => { document.querySelector('#flowMount .tablewrap').scrollLeft = 0; }); await t2.waitForTimeout(200);
+  const f3 = await cueOf(t2);
+  check('    it stays at the same place on screen while the table scrolls under it, goes when the right end is reached, and comes back at the left',
+        f1.shown && f1.left === 100 && f1.rightGap === f0.rightGap && f1.topGap === f0.topGap && !f2.shown && f2.left > 0 && f3.shown, JSON.stringify([f0, f1, f2, f3]));
+  await t2.evaluate(() => openRecipe('t2-short', 'recipes')); await t2.waitForTimeout(400);
+  const f4 = await cueOf(t2);
+  check('    a recipe that fits (2 steps) has no arrow', f4.cue && !f4.shown && f4.over <= 2, JSON.stringify(f4));
+  await t2.close();
+  const t2c = await t2Page({ width: 1389, height: 868 }, 'classic');
+  await t2c.evaluate(() => openRecipe('t2-wide', 'recipes')); await t2c.waitForTimeout(400);
+  const f5 = await t2c.evaluate(() => { const cue = document.querySelector('#flowMount .flow-more'); return { cue: !!cue, display: cue && getComputedStyle(cue).display, over: document.querySelector('#flowMount .tablewrap').scrollWidth - document.querySelector('#flowMount .tablewrap').clientWidth }; });
+  check('    Classic is as it was: nothing is drawn for the arrow, though its table overflows too', f5.cue && f5.display === 'none' && f5.over > 0, JSON.stringify(f5));
+  await t2c.close();
+  }
+
   /* ---- Modernist, step 4: the recipe viewer ----
      A made-up recipe shaped like the design's own example (groups a to e; two steps, a step that adds raw ingredients to
      one, a merge of two steps, a last column), so the table has every kind of cell and four group rules. */
