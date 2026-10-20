@@ -1,4 +1,6 @@
 [
+  { "version": "2026-10-20.1", "date": "2026-10-20",
+    "changes": ["Fixed: PRE-MADE, for a meal coming out of the freezer, was missing from the Planner in a household with nothing planned and nothing in the food diary yet, which is how a new household starts. The app now asks the database whether PRE-MADE is ready, rather than looking for it on days already saved, so the button is there from the first dish you plan, in both styles."] },
   { "version": "2026-10-19.4", "date": "2026-10-19",
     "changes": ["New: in the Modernist style's filter panel, a box above the keywords, Find a keyword, narrows them as you type. Any part of a word will do, in capitals or not. If nothing matches it says so, and Enter adds what you typed as a keyword filter; + ADD takes you to the box. The keywords are listed with the ones that are switched on first and then the most used, and the order holds while the panel is open, so a keyword does not jump away from your finger. On a computer the cursor starts in the box; on the tablet it does not, so the keyboard stays down until you tap the box or + ADD."] },
   { "version": "2026-10-19.3", "date": "2026-10-19",

@@ -1695,7 +1695,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-19.4">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-20.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2402,7 +2402,7 @@ const EXPECTED_CORE_VERSION = '2026-10-19.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-19.4';
+const APP_VERSION = '2026-10-20.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -3515,7 +3515,7 @@ async function hydrate(opts){
     throw new Error('This account belongs to more than one household. Ask whoever set it up to take it out of one.');
   const household = memberships[0].household_id;
 
-  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides, recipeNotes, calendarRow, autoColumns] = await Promise.all([
+  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides, recipeNotes, calendarRow, autoColumns, premadeColumn] = await Promise.all([
     sb.from('recipes').select('*'),
     /* Every column, and no recipe_id filter. The filter was here because a
        log could only ever be a cooked recipe; an ad-hoc diary entry (H2) is
@@ -3543,7 +3543,10 @@ async function hydrate(opts){
     sb.from('calendar_connections').select('*').maybeSingle(),
     /* Whether add-calendar-auto.md's columns exist, for a household with no settings row to tell by its shape (F23).
        Read apart, like the two above: a failure means "not yet", never a sign-out. */
-    sb.from('household_settings').select('calendar_auto').limit(1)
+    sb.from('household_settings').select('calendar_auto').limit(1),
+    /* Whether add-premade.md's columns exist, asked of the database rather than read off the rows: a household with
+       no planned day and no diary entry has no row to tell by (20 Oct 2026). Read apart: a failure means "not yet". */
+    sb.from('planner_days').select('premade').limit(1)
   ]);
   for(const res of [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases]){
     if(res.error) throw res.error;
@@ -3593,10 +3596,12 @@ async function hydrate(opts){
       ? {blank:true}
       : withCalendarFlags(withPremade({recipeIds: row.recipe_ids || [], servings: row.servings || []}, row.premade), !!row.calendar, !!row.calendar_remind);
   });
-  /* select('*') names every column, so a `premade` key on any planner or diary row says docs/migrations/add-premade.md is
-     in. Until it is, the Planner offers no PRE-MADE switch and no save names the column. A household with neither yet
-     finds out from its first saved day. */
-  premadeAvailable = planner.data.some(row=> 'premade' in row) || logs.data.some(row=> 'premade' in row);
+  /* Until docs/migrations/add-premade.md is in, the Planner offers no PRE-MADE switch and no save names the column.
+     Until 20 Oct this was read off the rows alone (select('*') names every column, so a `premade` key said the column
+     was there), and a household with no planned day and no diary entry had nothing to tell by: the family's new
+     household, made empty on 18 Oct, had no PRE-MADE switch, and its first days were saved without the column. The
+     rows still count, so a failed probe on a database that plainly has the column cannot take the switch away. */
+  premadeAvailable = !premadeColumn.error || planner.data.some(row=> 'premade' in row) || logs.data.some(row=> 'premade' in row);
   rebuildCalendarDates();
   cache.shortlist = shortlist.data.map(row=>({
     id: row.id, text: row.text || '', dateAdded: row.date_added, recipeId: row.recipe_id

@@ -866,6 +866,10 @@ reported one by one.*
     the chips stay on one line with a +N that opens the panel. (8) *The find field (version 2026-10-19.4):* opening the panel raises no keyboard; the keywords are ordered
     on-first then by use; tapping the box raises it, and typing narrows the pills (any part of a word, any case); a word nothing has says "No
     keyword matches — Enter to add" and Enter makes it a chip and a pill at the head; + ADD puts the cursor in the box; reopening empties it. (9) *A saved view:* one chip with its name. (10) *STYLE → CLASSIC:* its rows as before.
+71a. **PRE-MADE in a household that started empty (new 20 Oct; version 2026-10-20.1).** In the family's household, after a reload: (1) a
+    dish on a future day shows PRE-MADE beside SERVES, in both styles; (2) PRE-MADE asks the meal and reads PRE-MADE · <MEAL>; tapping it
+    again makes it fresh with no question. Before 2026-10-20.1 the switch was decided by a `premade` key on a planner or diary row, so a
+    household with neither had none, and its saves left the column out (the edge logs show it, 20 Oct 06:12 UTC).
 
 ## Deferred to the tablet, after merging
 

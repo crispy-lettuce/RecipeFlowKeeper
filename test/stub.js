@@ -9,6 +9,11 @@
      says so, unless a test puts rows for them in __STUB_DATA__ (an empty list is "created, no rows"): so the
      default fixture is the live app as it is today, and every check written before them runs unchanged. */
   const PENDING_TABLES = ['calendar_connections'];
+  /* Columns the same way (20 Oct 2026, for the PRE-MADE probe): a select that names one of these fails as PostgREST
+     says so, unless some fixture row carries it or a test lists it in __STUB_COLUMNS__ ('table.column', for a column
+     that exists in a table with no rows yet). The default fixture carries none, so it stays the database before the
+     migration, as every check written before the probe expects. select('*') is never refused: it names no column. */
+  const PENDING_COLUMNS = { planner_days: ['premade'] };
   window.__WRITES__ = [];
 
   /* Switches for the paths that only exist when the network misbehaves —
@@ -53,8 +58,14 @@
      existed, so the timing every other check was written against is kept. */
   const later = (v, ms) => ms ? new Promise(r => setTimeout(() => r(v), ms)) : Promise.resolve(v);
 
-  function result(table){
+  function result(table, cols){
     if(window.__READ_FAIL__) return { data: null, error: NETWORK_ERROR };
+    const missing = (cols || []).find(c => (PENDING_COLUMNS[table] || []).includes(c)
+      && !(window.__STUB_COLUMNS__ || []).includes(table + '.' + c)
+      && !(DATA[table] || []).some(row => c in row));
+    if(missing){
+      return { data: null, error: { message: `column ${table}.${missing} does not exist`, details: null, hint: null, code: '42703' } };
+    }
     if((window.__MISSING_TABLES__ || []).includes(table) || (PENDING_TABLES.includes(table) && DATA[table] === undefined)){
       return { data: null, error: { message: `Could not find the table 'public.${table}' in the schema cache`, details: null, hint: null, code: 'PGRST205' } };
     }
@@ -63,9 +74,9 @@
   }
 
   function builder(table){
-    let single = false;
+    let single = false, cols = null;
     const api = {
-      select(){ return api; },
+      select(list){ if(list && list !== '*') cols = String(list).split(',').map(c => c.trim()); return api; },
       order(){ return api; },
       limit(){ return api; },
       not(){ return api; },
@@ -88,7 +99,7 @@
       update(patch){ const w = {table, op:'update', patch}; window.__WRITES__.push(w); return filterChain(w, table); },
       then(res, rej){
         window.__LOG__.push('read:' + table);
-        const r = result(table);
+        const r = result(table, cols);
         const out = (single && !r.error) ? { data: Array.isArray(r.data) ? (r.data[0] || null) : r.data, error: null } : r;
         return later(out, window.__READ_DELAY__).then(res, rej);
       }
