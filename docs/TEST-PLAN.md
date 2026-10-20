@@ -893,7 +893,8 @@ reported one by one.*
     fortnight (three before); an empty day is a 57px button across its row (85px before); the first day 93px from the top (115), 14px between weeks (24).
     (3) *ADD ANOTHER / GROUP SOME TOGETHER:* drawn 28px, the tap 44px, 18px under the dish above. (4) *Every button 44px to tap:* 21px above and below its middle
     answers (the smoke check points at each). (5) *×, then UNDO.* (6) *A narrow window (1100px, shortlist open):* the course, time and pills drop together under
-    the name, as before. A phone and Classic unchanged. Not verified on the tablet itself, nor against the live database.
+    the name, as before. A phone and Classic unchanged. (7) *With the calendar connected (version 2026-10-20.6):* IN CALENDAR and REMIND ME on ADD ANOTHER's line at the right (under it, still at the right,
+    when too narrow); ADD ANOTHER, IN CALENDAR, REMIND ME and ADD THE WEEK each 44px to tap. Not verified on the tablet itself, nor against the live database.
 
 ## Deferred to the tablet, after merging
 

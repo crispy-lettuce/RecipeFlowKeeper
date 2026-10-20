@@ -736,6 +736,12 @@ html[data-style="modernist"] #view-planner .week-name{ margin-right:auto; }
 html[data-style="modernist"] #view-planner .week-summary{ color:var(--color-accent-700); }
 html[data-style="modernist"] #view-planner .week-cal{ margin:0; text-decoration:none; color:var(--color-accent-700); font-weight:800; }
 html[data-style="modernist"] #view-planner .week-cal:hover{ color:var(--color-accent); }
+/* ADD THE WEEK is 14px of words in a 28px band, so a tap 21px above or below its middle missed it. It gets the reach the pills have (15px each
+   way, 44px in all), and a band that has it gets room under it so that its reach and the first dish's do not meet. Found on 20 Oct 2026 by the
+   Planner checks with the calendar on; it was so before the Planner was made denser, and at every width. */
+html[data-style="modernist"] #view-planner .week-cal{ position:relative; }
+html[data-style="modernist"] #view-planner .week-cal::before{ content:''; position:absolute; left:-8px; right:-8px; top:-15px; bottom:-15px; }
+html[data-style="modernist"] #view-planner .week-label.has-cal{ padding-bottom:13px; }
 
 /* A third column takes a left-blank day's UNDO; on any other day it is empty and takes no room. */
 html[data-style="modernist"] #view-planner .day-row{
@@ -885,6 +891,10 @@ html[data-style="modernist"] #view-planner .day-main > .day-choose:not(.day-add-
 
   html[data-style="modernist"] #view-planner .day-main > .day-choose.day-add-more{ position:relative; min-height:0; margin-top:10px; padding:4px 0; }
   html[data-style="modernist"] #view-planner .day-main > .day-choose.day-add-more::before{ content:''; position:absolute; left:0; right:0; top:-8px; bottom:-8px; }
+  /* With the calendar on, IN CALENDAR and REMIND ME share ADD ANOTHER's line, at the right (they had a line of their own, and ADD ANOTHER's
+     lower reach overlapped IN CALENDAR's upper one by about 6px). Too long for the line, they wrap beneath it, still at the right. The four
+     classes beat the rule above that gives every child of the day but a .day-choose a line to itself. */
+  html[data-style="modernist"] #view-planner .day-main > .day-cal:not(.day-choose):not(.day-away){ flex:0 1 auto; margin:10px 0 0 auto; }
 
   html[data-style="modernist"] #view-planner .day-main.day-main-empty{ padding-top:0; padding-bottom:0; }
   html[data-style="modernist"] #view-planner .day-main.day-main-empty > .day-choose:not(.day-add-more){ min-height:56px; }

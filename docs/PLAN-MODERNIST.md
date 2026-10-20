@@ -390,6 +390,27 @@ days), and about 20px of padding and rule a day. The household chose "A + C + D"
   two lines more often). Not verified: the tablet itself; days with SERVE WITH / OFTEN WITH rows, the calendar's switches, choosing dishes to group and assigning
   a shortlisted dish were not measured, and ride on the same rules.
 
+### The Planner, denser: the calendar line (20 Oct 2026, version 2026-10-20.6)
+The household's own screenshot of the merged Planner (dark, calendar connected, an OFTEN WITH row) showed what the measurements had left out: with the calendar on every
+day also carries an IN CALENDAR row, about as tall as the ADD ANOTHER row the first change had removed. The household asked for the right-hand column for ADD ANOTHER (D65's
+unbuilt third layout) and for it to be described and mocked up. Mocked up and measured on the real plan (dark, calendar on, shortlist open / folded; whole days on the
+screen and the list's height):
+- as merged: 4 days, 1,703px / 4 days, 1,683px;
+- the right-hand column (ADD ANOTHER and GROUP SOME TOGETHER): 4 days, 1,747px (worse) / 5 days, 1,455px. With the shortlist open the 190px column leaves the dishes too
+  little room, so the buttons of many dishes drop under their names; the "nine days" of the first brainstorm had no calendar row and forced every dish onto one line, and does
+  not hold;
+- the column and IN CALENDAR in it: 4 days, 1,619px / 6 days, 1,383px, but it parts IN CALENDAR from REMIND ME and needs padding under the column;
+- **IN CALENDAR and REMIND ME on ADD ANOTHER's line, at the right: 5 days, 1,463px / 5 days, 1,443px, CSS only, with the shortlist open or folded** (D68). Chosen: "Go ahead with
+  the calendar line option".
+Built (the real page, same plan): 5 days, 1,479px open / 5 days, 1,459px folded (the 16px more than the mock-up is the room D69 gives two week bands).
+- **A defect the check found.** In the layout as merged, ADD ANOTHER's lower tap reach (8px) overlapped IN CALENDAR's upper one (10px) by about 6px, because 12px lay between them; the
+  first checks all ran with the calendar off. Beside each other they cannot overlap. The same check, with the calendar on, found that **ADD THE WEEK** in the week band is 14px
+  of words with no reach (a tap 21px above or below its middle missed it): so before the Planner was made denser too (34px band, then 28px), at every width (D69).
+- **Checks:** 5 in `test/smoke.js` (838 in all), with the calendar connected (a day's two buttons level with ADD ANOTHER at the right and a one-dish day under 105px; every button, IN
+  CALENDAR, REMIND ME and ADD THE WEEK included, answering a tap 21px above and below its middle; the wrap under ADD ANOTHER at 1100px with the shortlist open; a phone and Classic keeping
+  their own line, and on the phone every tap landing). 6 breakages in a scratch copy, each seen to fail the check that guards it.
+- **Not done:** the right-hand column, which may be worth another look if the household folds the shortlist by habit.
+
 ## Decision log
 
 Every choice made while building, beyond the twelve agreed at the top, with the reason. "Household" means you chose it; "session"
@@ -467,6 +488,8 @@ means it was decided while building and is yours to overturn. Newest last.
 | D65 | 20 Oct | household | The Planner is made denser by A (a dish on one line), C (an empty day as one short row) and D (the date block, the heading and the week bands tighter), with ADD ANOTHER drawn 28px (the brainstorm's picture included it). The right-hand column for ADD ANOTHER is not done. | "Go ahead with A + C + D". |
 | D66 | 20 Oct | session | A dish is its name (`flex:1 1 280px`, wrapping, never "…"), then `.day-recipe-meta` (course, time, SERVES, PRE-MADE, COOKED, one group), then the × (`order:9`). `.day-recipe-meta` is `display:contents` in the base stylesheet, so Classic and a phone keep their rows exactly; Modernist makes it a flex group from 861px up, which wraps under the name as one when the line cannot hold the name at 280px and the group. | The group is markup, not just CSS: a wrapping row moves an item to a new line before it shrinks anything, so without a wrapper the pills would split between two lines. 280px is what keeps a name from becoming a column of words. |
 | D67 | 20 Oct | session | ADD ANOTHER and GROUP SOME TOGETHER are 28px with a `::before` reaching 8px past each side and 10px above them (18px to the dish above, as the pills need); an empty day's button is 56px with no padding in its row (`.day-main-empty`), so the whole row is the button; `.day-num` padding 8px; `.planner-days` top padding 14px, `.planner-head` bottom 10px, `.week-label` margin 14px and padding 5px. | Each is a measured amount of height that was not a tap target. An empty day's row was a 64px button inside 10px of padding that did not answer a tap; now all 57px do. |
+| D68 | 20 Oct | household | With the calendar connected, IN CALENDAR and REMIND ME (`.day-cal`) share ADD ANOTHER's line at the right (`flex:0 1 auto; margin:10px 0 0 auto`, from 861px up); too long for the line, they wrap under it, still at the right. The right-hand column is not built. | "Go ahead with the calendar line option". It saves what the column saves with the shortlist folded (5 days, about 1,450px) and also with it open, needs no new markup, and puts the two buttons side by side so their tap areas cannot overlap. |
+| D69 | 20 Oct | session | ADD THE WEEK (`.week-cal`) has a `::before` reach (15px above and below, 8px either side), and a week band that has it (`.week-label.has-cal`, a class added in the template) is 13px padded under it instead of 5px. At every width. | A tap 21px above or below its middle missed it (14px of words in a 28px band). 13px is what keeps its reach (15px) from meeting the first dish's (10px) above a 17px gap. The first change to the Planner did not cause it, but its checks, with the calendar off, could not have seen it. |
 
 ### Follow-ups found while building (not done here)
 - **D10:** the shortlist's × has no spoken label (both styles).
