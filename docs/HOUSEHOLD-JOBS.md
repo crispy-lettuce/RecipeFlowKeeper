@@ -29,6 +29,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | [68a: EST. beside an estimated time](#68a-est-beside-a-time-the-converter-worked-out-new-18-oct-version-2026-10-184), in Test Kitchen | tablet | 10 min | One recipe's TIME, put back in step 6 |
 | [69a: add several recipes at once](#69a-add-several-recipes-at-once-new-19-oct-version-2026-10-191-docsplan-bulk-addmd), in Test Kitchen | tablet | 10 min | Three made-up recipes, deleted in step 8 |
 | [70a: the Recipes filter sheet](#70a-the-recipes-filter-sheet-new-19-oct-version-2026-10-193-docsplan-modernistmd), in Modernist | tablet, landscape | 10 min | No |
+| [71a: PRE-MADE on the Planner again](#71a-pre-made-on-the-planner-in-your-own-household-new-20-oct-version-2026-10-201), in your own household | tablet | 2 min | One dish switched to PRE-MADE and back |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
 **The split is done** (18 Oct, see Recently done), so your own library is empty until you add recipes. Do 61a to 70a signed in as the
@@ -318,6 +319,16 @@ nothing. Use Test Kitchen's recipes if your own library is still small, so there
 
 Tell the next session how the panel feels to use with one hand, whether anything is hard to tap, and whether you miss seeing the
 keyword suggestions in the header.
+
+### 71a. PRE-MADE on the Planner, in your own household (new 20 Oct, version 2026-10-20.1)
+
+Your own household, not Test Kitchen: the button was missing there because the household started empty on 18 Oct. Reload the app
+first, so it is on 2026-10-20.1 (Settings → HELP shows the version).
+
+1. Open **PLANNER** and look at a dish planned for a day still to come. **You should see:** **PRE-MADE** beside **SERVES**, in Classic and
+   in Modernist.
+2. Tap **PRE-MADE**, choose a meal, then tap it again. **You should see:** it reads **PRE-MADE · DINNER** (or the meal you chose), the
+   toast says it is off the shopping list, and the second tap makes it an ordinary dish again with no question.
 
 ---
 

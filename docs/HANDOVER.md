@@ -2189,6 +2189,20 @@ freezer row and the 20:41 double entry are both gone; it has one row for today, 
 all three things at once. The FROM THE FREEZER branch and the phone layout rest on the smoke checks and the household's
 word.
 
+**PRE-MADE missing in a household that started empty (20 Oct 2026, app 2026-10-20.1).** The household reported no PRE-MADE
+on the Planner, in either style. The columns were in (read-only, 20 Oct: `planner_days.premade` `ARRAY` and
+`recipe_logs.premade` `boolean`, both granted to `authenticated`). The cause was how `hydrate` decided: a `premade` key on any
+planner or diary row. The family's household was made empty at the split (18 Oct), so when the tablet loaded at 06:10 UTC it
+had neither, and every save that morning left the column out. The edge logs show seven `planner_days` upserts from the tablet
+between 06:12 and 06:13 UTC, and one from the phone on 19 Oct at 21:41, all with `columns=` that leave out `premade`. A reload
+after the first saved day would have brought the button back, and emptying the plan would have taken it away again.
+`hydrate` now asks the database directly, with `planner_days.select('premade').limit(1)`, read apart like the
+`calendar_auto` probe, so a failure means "not yet" and never signs anyone out. The rows still count as well. The stub refuses
+a select that names a column in its `PENDING_COLUMNS` unless a fixture row carries the column or `__STUB_COLUMNS__` lists it.
+Two smoke checks cover an empty household with the column and without it. Each was seen to fail: the first with the old
+row-only rule, the second (and the existing before-migration check) when the switch was always on. Tablet step 71a.
+*Not verified:* the live app after merging. The edge logs will show `premade` in the next `planner_days` upsert's `columns=`.
+
 **Issues #85, #86, #89, #93: parse feedback, seconds, COOKING MODE, Drink (11 Oct 2026).** Raised on GitHub on 11 Oct,
 the first issues from the second household; planned and approved the same day.
 - **#85, parse feedback.** PARSE & PREVIEW, a paste, or WRITE ONE BY HAND now does two things. It says beside the button

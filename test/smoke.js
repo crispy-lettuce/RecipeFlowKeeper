@@ -5476,6 +5476,38 @@ const check = (name, pass, detail) => {
   check('    logging a recipe for an earlier day writes that day, says the date, and keeps its history in order',
         JSON.stringify(pmPast.on) === JSON.stringify([PM_YESTERDAY]) && !/cooked today/.test(pmPast.toast) && pmPast.sorted, JSON.stringify(pmPast));
 
+  /* A household with no planned day and no diary entry, as the family's was after the split (18 Oct): until 20 Oct the
+     app read the column off the rows, found none, and hid PRE-MADE on a database that had it. With the column and then
+     without: the switch is offered and the first save names the column, or neither. */
+  const pmEmpty = async hasColumn => {
+    const p = await browser.newPage();
+    p.__label = 'pre-made, empty household';
+    await p.addInitScript(c => { window.__STUB_EXTRA__ = { planner_days: [], recipe_logs: [] }; if (c) window.__STUB_COLUMNS__ = ['planner_days.premade']; }, hasColumn);
+    await p.clock.setFixedTime(FIXTURE_NOW);
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1500);
+    const out = await p.evaluate(async ([today, r1]) => {
+      const before = Object.keys(loadPlan()).length;
+      showView('planner');
+      const m = window.__WRITES__.length;
+      addPlanRecipe(today, r1);
+      renderPlanner();
+      let t; do { t = writeQueue; await t; } while(t !== writeQueue);
+      const row = window.__WRITES__.slice(m).filter(w => w.table === 'planner_days').flatMap(w => w.rows || [])[0] || {};
+      return { before, available: premadeAvailable, pills: document.querySelectorAll('#dayList .day-recipe-premade').length,
+        premade: 'premade' in row ? row.premade : 'not sent', signouts: window.__SIGNOUTS__ };
+    }, [PM_TODAY, PM_R1]);
+    await p.close();
+    return out;
+  };
+  const pmEmptyOn = await pmEmpty(true), pmEmptyOff = await pmEmpty(false);
+  check('    a household with nothing planned and no diary, on a database with the column: PRE-MADE is offered and the first save names it',
+        pmEmptyOn.before === 0 && pmEmptyOn.available && pmEmptyOn.pills === 1 && JSON.stringify(pmEmptyOn.premade) === '[""]'
+        && pmEmptyOn.signouts === 0, JSON.stringify(pmEmptyOn));
+  check('    the same household before the database change: no PRE-MADE, no column sent, and nobody signed out',
+        pmEmptyOff.before === 0 && !pmEmptyOff.available && pmEmptyOff.pills === 0 && pmEmptyOff.premade === 'not sent'
+        && pmEmptyOff.signouts === 0, JSON.stringify(pmEmptyOff));
+
   // After the migration: a fresh page whose rows carry the columns.
   const pmPage = await browser.newPage();
   pmPage.__label = 'pre-made';
