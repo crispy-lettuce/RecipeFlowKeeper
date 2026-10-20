@@ -331,15 +331,18 @@ the captures and the measurements are in the working folder of that session, **n
   already calls that "acceptable on the tablet, which already scrolls sideways". **F2 is not changed** (D51). Every other finding that depends
   on a recipe was re-measured on all 71 (F1, F3, F8) and some were changed or dropped (F8: 44px timeline bars would make the median strip 454px).
 - **F1, the viewer's header.** The source chip and the SERVE WITH line each had a row of their own, so the pinned header and COOK FOR bar took
-  278 to 332px of 868 (32 to 38%) on every recipe, before the flow began. Now they share a row, with the buttons 4px closer (Recipe Viewer only, 861px and up): 180 to 232px (21 to 27%),
+  278 to 332px of 868 (32 to 38%) on every recipe, before the flow began. Now they share a row, with a little less padding (Recipe Viewer only, 861px and up): 183 to 238px (21 to 27%),
   measured on the built page for all 71 recipes (D52). A second step, not done: stop pinning the header outside cooking mode.
+  **A fault in the first attempt, caught by measuring what answers a tap rather than the boxes:** closing the rows to 8px apart made each upper row of
+  buttons lose part of its 44px (a button is drawn 34px and its `::before` reaches 6px past it, so neighbouring rows' reaches overlap). Held upright, where the
+  buttons wrap onto three rows, over all 71 recipes: 8px left some at 42px, the base 10px left 93 of 568 at 43px, and 11px leaves every one at 44px, as on `main`.
 - **F3, SAVE.** In the add / edit dialog it was the last thing, 2,829 to 4,751px below the top (3.3 to 5.5 screens) for every recipe. It and the
   save error are in a `.save-bar` that sticks to the foot of the screen (D53). On the built page SAVE is on screen at the top, middle and end of the
   dialog for all 71 recipes.
 - **F5, F6, F7, F9, F11.** A Settings tab opens at its own top (D57). The library switch (33px), the "choosing a recipe for a day" banner's MARK DAY
   AWAY and CANCEL (17px) and, in AUDIT, the aisle box (22px) and MERGE WITH… (15px) join the 44px list (D54, D55). The card's shortlist button is
   the Lucide list-plus, like the star, in place of a bare 12px + (D56). An empty day's CHOOSE A RECIPE fills its row (D58).
-- **Checks:** 12 in `test/smoke.js` and the four new selectors on the 44px list in `test/core.test.js`; 16 breakages in a scratch copy, each seen to fail
+- **Checks:** 13 in `test/smoke.js` and the four new selectors on the 44px list in `test/core.test.js`; 18 breakages in a scratch copy, each seen to fail
   the check that guards it (a phone-width check that could not fail was moved to 820px, where it can). Classic is shown unchanged by a check of its + and its save button, and by the existing Classic checks.
 - **Not verified:** the tablet itself; the live database.
 
@@ -404,7 +407,7 @@ means it was decided while building and is yours to overturn. Newest last.
 | D49 | 19 Oct | session | Enter in the find field acts only when nothing matches. | The brief says so. With matches in view there is nothing to create, and the pill meant is one tap away; a shortcut for exactly one match is a possible follow-up. |
 | D50 | 19 Oct | session | + ADD in the sheet puts the cursor in the find field; the inline keyword box and its datalist are gone from the sheet. | One way to add a word, not two; Classic keeps its box. |
 | D51 | 20 Oct | household | The tablet review's first batch is F1, F3, F5, F6, F7, F9 and F11. F2 (the flow table scrolling sideways) and the sidebar fold proposed for it are **not** done. | "Go ahead with Batch 1". F2 depends on a recipe's steps: 54 of 71 scroll sideways, the fold would fix 14, and PLAN-PREP-STEPS §8 already accepts it. |
-| D52 | 20 Oct | session | In the Recipe Viewer at 861px and up the source chip and the SERVE WITH line take `flex-basis:auto` and the header's gaps and buttons close up. | 32 to 38% of the screen was pinned on every recipe; now 21 to 27%. Scoped to `#view-viewer` (the Group Viewer has neither line) and to 861px up, where a phone keeps its rows. |
+| D52 | 20 Oct | session | In the Recipe Viewer at 861px and up the source chip and the SERVE WITH line take `flex-basis:auto`; the header's padding and the buttons' side padding shrink; the rows are 11px apart (`row-gap`). | 32 to 38% of the screen was pinned on every recipe; now 21 to 27%. 11px, not 8 or the base 10, because the buttons' 44px tap reaches 6px past their 34px (measured: every header button 44px, 568 of 568, upright). Scoped to `#view-viewer` (the Group Viewer has neither line) and to 861px up, where a phone keeps its rows. |
 | D53 | 20 Oct | session | The save button and the save error are wrapped in `<div class="save-bar">`, which Modernist sticks to the foot of the dialog (negative margins are the panel's 30px). | Markup, not only CSS, so Classic gets an unstyled block (`position:static`, as a check shows). SAVE was 3 to 5 screens down on every recipe. |
 | D54 | 20 Oct | session | `.library-switch button`, `.assign-banner button`, `.shop-aisle-select` and `.shop-merge-with` are on the 44px list in `index.html`, so **Classic gets them too**. | That list is the app's own rule for both styles (READABILITY H), and a new button is meant to go on it. The core check lists them. |
 | D55 | 20 Oct | session | `.assign-banner` is `min-height:44px` with no vertical padding, and its buttons have 10px of side padding. | The banner stays about as tall as it was (46px, not 66) now its buttons are 44px. |

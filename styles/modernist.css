@@ -508,11 +508,14 @@ html[data-style="modernist"] .serve-with-link{ color:var(--color-accent-700); te
 html[data-style="modernist"] .viewer-theirs-note{ margin:10px 28px 0; color:var(--color-accent-700); }
 /* The header on a tablet (tablet review F1, 20 Oct 2026). The source chip and the SERVE WITH line each took a row of their own, so the
    pinned header was three or four rows and, with COOK FOR, 32 to 38% of the screen on every recipe in the library before the flow
-   began. They now share a row when there is room and the buttons sit a little closer: 21 to 27%. The Recipe Viewer only (the Group
-   Viewer has neither line), and 861px up, since a phone wraps them onto rows of their own. */
+   began. They now share a row when there is room, and the header's padding and the buttons' side padding are a little less: 21 to 27%.
+   The rows are 11px apart, not the 8px first tried and not the base 10px: a button is drawn 34px and its ::before reaches 6px past it to
+   make the 44px tap, so the rows' reaches overlap and the upper row loses the overlap. Measured on all 71 recipes held upright, where the
+   buttons wrap onto three rows: 8px left some answering 42px, 10px left 93 of 568 answering 43px, and 11px left every one at 44px. The
+   Recipe Viewer only (the Group Viewer has neither line), and 861px up, since a phone wraps them onto rows of their own. */
 @media (min-width: 861px){
   html[data-style="modernist"] #view-viewer :is(.viewer-provenance, .viewer-serve-with){ flex-basis:auto; }
-  html[data-style="modernist"] #view-viewer .viewer-head{ gap:8px 10px; padding-top:14px; padding-bottom:12px; }
+  html[data-style="modernist"] #view-viewer .viewer-head{ row-gap:11px; padding-top:14px; padding-bottom:12px; }
   html[data-style="modernist"] #view-viewer .viewer-head .btn{ padding-left:12px; padding-right:12px; }
 }
 

@@ -7752,7 +7752,24 @@ const check = (name, pass, detail) => {
   const pNarrow = await pinned(tm, 'tb-with');
   check('    below 861px (the phone layout) the header is as it was: the chip and the SERVE WITH line keep rows of their own',
         pNarrow.chip > pNarrow.meta + 10 && pNarrow.serve > pNarrow.chip + 10, JSON.stringify(pNarrow));
+  /* A button is drawn 34px and its ::before reaches 6px past it to make the 44px tap, so two rows of them must be 10px apart or the upper
+     row loses the overlap (an 8px gap left FAVOURITE answering 42px, and no bounding box shows it). Points 21px above and below the middle
+     of each header button must land on that button. Held upright (868px wide) the buttons wrap onto three rows, which is the worst case. */
+  const headHits = pg => pg.evaluate(() => { openRecipe('tb-with', 'recipes'); const miss = []; let n = 0;
+    for (const b of document.querySelectorAll('#view-viewer .viewer-head .btn')) { const r = b.getBoundingClientRect(); if (r.width < 4 || !b.getClientRects().length) continue; n++;
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      for (const dy of [-21, 21]) { const hit = document.elementFromPoint(cx, cy + dy); if (!hit || hit.closest('.btn') !== b) miss.push((b.id || b.textContent.trim().slice(0, 12)) + ' ' + dy); } }
+    /* The probe only sees an overlap where one button sits right above another, which depends on the layout, so the cause is measured too:
+       the rows' gap must be at least twice the ::before's reach less 1px (measured: 10px left 93 of 568 buttons answering 43px). */
+    const head = document.querySelector('#view-viewer .viewer-head'), b0 = head.querySelector('.btn');
+    const reach = -parseFloat(getComputedStyle(b0, '::before').top), gap = parseFloat(getComputedStyle(head).rowGap);
+    return { n, miss, gap, reach, enough: gap >= 2 * reach - 1 }; });
+  await tm.setViewportSize({ width: 868, height: 1389 }); await tm.waitForTimeout(250);
+  const hitsUp = await headHits(tm);
   await tm.setViewportSize({ width: 1389, height: 868 }); await tm.waitForTimeout(250);
+  const hitsWide = await headHits(tm);
+  check('    every header button still answers a tap 21px above and below its middle (44px), on the tablet held either way',
+        hitsUp.n >= 6 && hitsWide.n >= 6 && hitsUp.miss.length === 0 && hitsWide.miss.length === 0 && hitsUp.enough && hitsWide.enough && hitsWide.reach >= 5, JSON.stringify([hitsUp, hitsWide]));
 
   /* F3: SAVE stays in reach in the add / edit dialog, with the save error beside it. A long recipe makes the dialog several screens tall. */
   await tm.evaluate(() => { const g = ['TITLE: Test Long Stew', 'SERVINGS: 4', '']; for (let i = 0; i < 40; i++) g.push('GROUP g' + i + ':', i + ' test onion', ''); g.push('STAGE:', 'MERGE g0 -> z: Cook it [10 min]');
