@@ -273,9 +273,14 @@ gives: `rehost-images` v16, `source-ingredients` v6 and `calendar-sync` v6 deplo
 `find-recipe-image` v6, `source-ingredients` v3, `calendar-sync` v2 and `calendar-auth` v1, later than this table said then; the
 October review diffed all six against the repo that night, its Appendix C.)*
 
-**Waiting to be redeployed: nothing** (12 Oct 2026, 17:06 UTC). The F37 and F38 redeploys (#123) are the table's v16, v6
-and v6. On 13 Oct the repo's `rehost-images` changed in comments only (two recipe titles became "recipe A"
-and "recipe B"): no redeploy is needed, and the deployed v16 still names them in its comments, which only the dashboard shows.
+**Waiting to be redeployed: `calendar-sync`** (20 Oct 2026, with the PR that adds `docs/migrations/add-calendar-items.md`). The repo's
+source now writes up to two events a day, one for the dishes with the reminder and one for the rest, under new ids (the old plain
+id is deleted), and reads `meal_groups` and the new column when they are there (`docs/PLAN-CALENDAR-PUSH.md` §12). The deployed v6
+still writes one event a day and carries on correctly beside the new app; deploy the new one after the household has applied the
+SQL (it works either side of it), then press SYNC NOW once. The rest was current on 12 Oct 2026, 17:06 UTC: the F37 and F38
+redeploys (#123) are the table's v16, v6 and v6. On 13 Oct the repo's `rehost-images` changed in comments only (two recipe titles
+became "recipe A" and "recipe B"): no redeploy is needed, and the deployed v16 still names them in its comments, which only the
+dashboard shows.
 
 **These are deployed straight to Supabase, not through GitHub Pages**, which is why the image
 fixes reached the live app without a merge. A change to their source in this repo is a record,
@@ -371,7 +376,9 @@ shows no `anon` on `S`, `f` or `r`, and no household is without a settings row.
 the household on 13 Oct 2026, after #129 merged (02:24 UTC; the page allows either order, and at 02:24 the column was not yet there).
 Checked read-only at 05:53 UTC: `converter_ack_version` `text`, nullable, no default; 3 households, 0 confirmed; granted to `authenticated` (and `postgres`, `service_role`), not to `anon`.
 
-**Waiting to be applied: nothing** (13 Oct 2026; every page in `docs/migrations/` carries its "Applied" line). A PR that adds a
+**Waiting to be applied: `docs/migrations/add-calendar-items.md`** (20 Oct 2026: `planner_days.calendar_items text[] not null
+default '{}'`, for a calendar reminder per meal, `docs/PLAN-CALENDAR-PUSH.md` §12; tested on a scratch Postgres 16, not on the live
+project). Every other page in `docs/migrations/` carries its "Applied" line (checked 13 Oct 2026). A PR that adds a
 migration page lists it here as waiting, and the household applies it (first, unless the page says why the order may be
 reversed: `CLAUDE.md`); whoever applies it moves it into the list and
 paragraphs above, as the rule at the top of this card says.

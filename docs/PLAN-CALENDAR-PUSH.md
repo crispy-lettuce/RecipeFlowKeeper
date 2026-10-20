@@ -9,8 +9,9 @@ merged (#69, 1 Oct); the app (PR 2, #71) merged 9 Oct, and the household applied
 connection is dated 17:52 UTC). Then `docs/TEST-PLAN.md` step 40a, the household's tablet and phone pass, and PR 3 records it.
 **§11** is the follow-up asked for on 9 Oct: two toggles that switch days on automatically (`docs/migrations/add-calendar-auto.md`,
 step 40b).
-**§12** (20 Oct) is a **proposal, not built**: a reminder per meal rather than per day, so that a breakfast and a dinner on one day
-can differ, and a group cooked together has one. It asks the household six questions (§12.10).
+**§12** (20 Oct) is a reminder per meal rather than per day, so that a breakfast and a dinner on one day can differ, and a group
+cooked together has one. The household took the recommendation on all six questions (§12.11). **Status: in two PRs** — the
+function, its tests and the migration page first (built, waiting for the household to apply and deploy), then the app.
 
 ## 1. What it is for
 
@@ -272,10 +273,10 @@ saved and synced as any other. The sweep writes only the days whose switches cha
 and phone step 40b.
 
 
-## 12. A reminder per meal, not per day (proposed 20 Oct 2026; nothing built)
+## 12. A reminder per meal, not per day (proposed and agreed 20 Oct 2026)
 
-**Status: a proposal for the household to answer (§12.10).** Written from the code as it stands on 20 Oct 2026 (version 2026-10-20.6),
-not from §9, which it corrects in one place (§12.1).
+**Status: agreed (§12.11); being built in two PRs (§12.12).** Written from the code as it stands on 20 Oct 2026 (version
+2026-10-20.6), not from §9, which it corrects in one place (§12.1).
 
 ### 12.1 The brief, and what is there now
 
@@ -419,3 +420,26 @@ Two PRs: the migration page and the function with their tests (the household app
 5. **The automatic rule.** Per meal (**recommended**), or keep it per day?
 6. **The pill's words.** "REMIND ME 20:00" on a meal, the full "THE EVENING BEFORE" staying on the day's strip and in Settings and the
    guide (**recommended**), or the full words on every pill (wider)?
+
+### 12.11 The household's answers (20 Oct 2026)
+
+"Go with the recommendations on all six." So:
+
+1. **Events:** at most two a day, one for the meals with the reminder and one for those without (§12.4).
+2. **First build:** a reminder per meal; IN CALENDAR stays per day.
+3. **Existing days:** every dish takes its day's state as it is (no data move; §12.3).
+4. **Dishes with different states put in one group:** the group takes the strongest, so a reminder is never lost.
+5. **The automatic rule:** per meal (§12.5).
+6. **The pill:** "REMIND ME 20:00" on a meal; the full words stay on the day's strip, in Settings and in the guide.
+
+### 12.12 What is built, and when
+
+- **PR A (20 Oct 2026): the function, its tests and the migration page.** `calendar-sync` writes up to two events a day under the new
+  ids (`…r` with the reminder, `…n` without), deletes the retired plain id, resolves a group to its strongest member (reading
+  `meal_groups` for the same days), and falls back to the day's two flags when no dish is marked, so it is correct beside the old
+  app and the new one, before or after the SQL. `test/calendar-push.js` went from 39 to 62 checks; each new check was seen to
+  fail by breaking the code it guards, 18 breakages in all. `docs/migrations/add-calendar-items.md` was run on a scratch
+  Postgres 16 (applied as a non-superuser owner, the checks, the undo); **not** applied to the live project, which is the
+  household's. `docs/INFRASTRUCTURE.md` lists both as waiting. **Not verified:** the function against Google, which can only be
+  seen on the phones (steps in `docs/HOUSEHOLD-JOBS.md` once the app's PR is in).
+- **PR B: the app** (§12.6, §12.5). Not started when this line was written.

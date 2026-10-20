@@ -8,13 +8,16 @@
  * recipe_logs). The design and the household's answers are
  * docs/PLAN-CALENDAR-PUSH.md §9.
  *
- * WHAT IT DOES: for each day asked about, one all-day event in the
- * RecipeWrangler calendar while the day is planned and switched on (IN
- * CALENDAR), none otherwise. It reads the day from the database and never
- * trusts what the browser sends, so a stale tab can ask for any date and
- * the answer is still the saved plan. The event's id is worked out from
- * the household and the date, so there is no table of which event is which
- * and a retry can never make a second event.
+ * WHAT IT DOES: for each day asked about, all-day events in the
+ * RecipeWrangler calendar for the dishes of the day that are switched on
+ * (IN CALENDAR), none otherwise. A day has at most two: one for the dishes
+ * with the reminder and one for those without, and a group of dishes cooked
+ * together is never split across them (docs/PLAN-CALENDAR-PUSH.md §12). It
+ * reads the day from the database and never trusts what the browser sends,
+ * so a stale tab can ask for any date and the answer is still the saved
+ * plan. An event's id is worked out from the household, the date and which
+ * of the two it is, so there is no table of which event is which and a
+ * retry can never make a second event.
  *
  *   await sb.functions.invoke('calendar-sync', { body: { dates: ['2026-10-05'] } });
  *   await sb.functions.invoke('calendar-sync', { body: { all: true } });   // every day from today: SYNC NOW
@@ -52,15 +55,17 @@ function corsHeaders(req: Request): Record<string, string> {
   };
 }
 
-type PlanRow = { plan_date: string; is_blank: boolean; recipe_ids: string[]; servings: number[]; calendar: boolean; calendar_remind: boolean; premade?: string[] };
-type SyncInput = { household: string; rows: PlanRow[]; titles: Titles; remindAt: number; today: string;
+type PlanRow = { plan_date: string; is_blank: boolean; recipe_ids: string[]; servings: number[]; calendar: boolean; calendar_remind: boolean; premade?: string[];
+  calendar_items?: string[] };
+type GroupRow = { date_iso: string; recipe_ids: string[] };
+type SyncInput = { household: string; rows: PlanRow[]; groups?: GroupRow[]; titles: Titles; remindAt: number; today: string;
   dates?: string[]; all?: boolean; existingIds?: string[] };
 type EventBody = Record<string, unknown>;
 type SyncAction = { op: 'put' | 'delete'; id: string; date: string; event?: EventBody };
 type Titles = Record<string, string>;
 // deno-lint-ignore no-explicit-any
 type Body = any;
-type DayItem = { title: string; serves: number; frozen: boolean };
+type DayItem = { title: string; serves: number; frozen: boolean; remind: boolean };
 type SyncRequest = { dates?: string[]; all?: boolean; error?: string };
 /* The pure section below keeps every parameter's type to one name, with no
    commas or braces in it: test/calendar-push.js strips the types with the
@@ -79,9 +84,19 @@ const ALL_DAYS_AHEAD = 400;
 /* Google's event ids may use only base32hex: the digits and a to v. So the
    prefix is "meal" (no w), then the household's id without its dashes
    (hex, so inside the alphabet), then the date's digits. Stable, so the
-   same day always names the same event; unique per household and date. */
+   same day always names the same event; unique per household and date.
+   This plain id was the day's only event until docs/PLAN-CALENDAR-PUSH.md
+   §12 (20 Oct 2026); it is retired now and only ever deleted. */
 function calendarEventId(household: string, date: string): string {
   return 'meal' + String(household).toLowerCase().replace(/-/g, '') + String(date).replace(/-/g, '');
+}
+/* A day's two events: the dishes with the reminder ("r") and those without ("n"). Both letters are inside a to v. */
+function mealEventId(household: string, date: string, remind: boolean): string {
+  return calendarEventId(household, date) + (remind ? 'r' : 'n');
+}
+/* Every id a day's event can have, the retired plain one last. */
+function dayEventIds(household: string, date: string): string[] {
+  return [mealEventId(household, date, true), mealEventId(household, date, false), calendarEventId(household, date)];
 }
 function eventIdPrefix(household: string): string {
   return 'meal' + String(household).toLowerCase().replace(/-/g, '');
@@ -89,7 +104,7 @@ function eventIdPrefix(household: string): string {
 function dateFromEventId(household: string, id: string): string | null {
   const prefix = eventIdPrefix(household);
   if (!String(id).startsWith(prefix)) return null;
-  const m = String(id).slice(prefix.length).match(/^(\d{4})(\d{2})(\d{2})$/);
+  const m = String(id).slice(prefix.length).match(/^(\d{4})(\d{2})(\d{2})[rn]?$/);
   return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
 }
 
@@ -129,53 +144,84 @@ function londonToday(now: Date): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
 }
 
-/* The day's event, or null when there is nothing to show (every recipe on
-   it since deleted). Transparent, so it never makes the household look
-   busy to anyone they share their calendar with. With REMIND ME off the
-   event carries no reminder at all, not the calendar's default. */
-function eventForDay(household: string, row: PlanRow, titles: Titles, remindAt: number): EventBody | null {
+/* What each dish of the day is set to: 0 not in the calendar, 1 in it, 2 in it with the reminder. The day's own
+   `calendar` is the gate (it is "some dish is in", and a tab that does not know the per-dish column still switches the
+   whole day off by clearing it). Inside it, `calendar_items` holds one slot per dish: '' / 'in' / 'remind'. A day with no
+   dish marked there was saved before docs/migrations/add-calendar-items.md, or by a tab that does not know the column, and
+   its two flags speak for every dish. The app keeps the members of a group equal; this does not trust that, so a group
+   changed elsewhere still gets one reminder: the strongest of its members' (§12.3). */
+function dishStates(row: PlanRow, groups: GroupRow[]): number[] {
+  const ids = row.recipe_ids || [];
+  if (!row.calendar) return ids.map(() => 0);
+  const slots = ids.map((_rid, i) => { const v = (row.calendar_items || [])[i]; return v === 'remind' ? 2 : v === 'in' ? 1 : 0; });
+  const states = slots.some(n => n > 0) ? slots : ids.map(() => (row.calendar_remind ? 2 : 1));
+  for (const g of groups || []) {
+    if (g.date_iso !== row.plan_date) continue;
+    const members: number[] = [];
+    ids.forEach((rid, i) => { if ((g.recipe_ids || []).includes(rid)) members.push(i); });
+    if (members.length < 2) continue;
+    const top = Math.max(...members.map(i => states[i]));
+    for (const i of members) states[i] = top;
+  }
+  return states;
+}
+
+/* The day's events, none when there is nothing to show (nothing switched on, or every recipe on it since deleted),
+   otherwise one for the dishes with the reminder and one for the rest, whichever there are. Transparent, so they never
+   make the household look busy to anyone they share their calendar with. Only the first carries a reminder; the other
+   carries none at all, not the calendar's default. A day that is all one state comes out as one event, titled and
+   described as the day's only event always was. */
+function eventsForDay(household: string, row: PlanRow, groups: GroupRow[], titles: Titles, remindAt: number): EventBody[] {
+  const states = dishStates(row, groups);
   const items: DayItem[] = [];
   (row.recipe_ids || []).forEach((rid, i) => {
     const title = titles[rid];
-    if (!title) return;
+    if (!title || !states[i]) return;
     const n = Number((row.servings || [])[i]);
     /* PRE-MADE (docs/PLAN-FOOD-DIARY.md): a slot holding a meal means this one comes out of the freezer. Before
        docs/migrations/add-premade.md the column is absent, and every item reads as fresh. */
     const frozen = !!(Array.isArray(row.premade) && row.premade[i]);
-    items.push({ title: String(title).trim(), serves: Number.isInteger(n) && n > 0 ? n : 0, frozen });
+    items.push({ title: String(title).trim(), serves: Number.isInteger(n) && n > 0 ? n : 0, frozen, remind: states[i] === 2 });
   });
-  if (!items.length) return null;
-  /* The description says which come out of the freezer: the evening-before reminder is the one that matters for them.
-     The title stays the recipes' names. */
-  const description = items.map(it => (it.serves ? `${it.title}, for ${it.serves}` : it.title) + (it.frozen ? ' (from the freezer)' : '')).join('\n')
-    + `\n\nPlanned in RecipeWrangler: ${APP_URL}`;
-  return {
-    id: calendarEventId(household, row.plan_date),
-    summary: items.map(it => it.title).join(' + '),
-    description,
-    start: { date: row.plan_date },
-    end: { date: nextDate(row.plan_date) },
-    transparency: 'transparent',
-    reminders: { useDefault: false, overrides: row.calendar_remind ? [{ method: 'popup', minutes: reminderMinutes(remindAt) }] : [] },
-  };
+  const events: EventBody[] = [];
+  for (const remind of [true, false]) {
+    const these = items.filter(it => it.remind === remind);
+    if (!these.length) continue;
+    /* The description says which come out of the freezer: the evening-before reminder is the one that matters for them.
+       The title stays the recipes' names. */
+    const description = these.map(it => (it.serves ? `${it.title}, for ${it.serves}` : it.title) + (it.frozen ? ' (from the freezer)' : '')).join('\n')
+      + `\n\nPlanned in RecipeWrangler: ${APP_URL}`;
+    events.push({
+      id: mealEventId(household, row.plan_date, remind),
+      summary: these.map(it => it.title).join(' + '),
+      description,
+      start: { date: row.plan_date },
+      end: { date: nextDate(row.plan_date) },
+      transparency: 'transparent',
+      reminders: { useDefault: false, overrides: remind ? [{ method: 'popup', minutes: reminderMinutes(remindAt) }] : [] },
+    });
+  }
+  return events;
 }
 
 /* What to do, given the saved plan. A day from today on that is planned,
-   not away and switched on gets its event written (created or brought up
-   to date); any other day asked about has its event deleted, which is how
-   switching off, marking away and emptying a day all reach the calendar.
-   Past days are left as they were: the calendar is not rewritten
-   backwards. With `all`, events of this household's in the calendar that
-   no longer match a wanted day are deleted too, so SYNC NOW also mends
-   anything a missed sync left behind. */
+   not away and switched on gets its events written (created or brought up
+   to date); every other id the day could have is deleted, which is how
+   switching off, marking away, emptying a day, a dish moving between the
+   two events and the retired plain id all reach the calendar. Writes come
+   first on a day, so a reminder is never missing between a delete and the
+   write that replaces it. Past days are left as they were: the calendar is
+   not rewritten backwards. With `all`, events of this household's in the
+   calendar that no longer match a wanted day are deleted too, so SYNC NOW
+   also mends anything a missed sync left behind. */
 function syncActions(input: SyncInput): SyncAction[] {
   const byDate: Map<string, PlanRow> = new Map();
   for (const r of input.rows || []) byDate.set(r.plan_date, r);
-  const wanted: Map<string, EventBody> = new Map();
+  const wanted: Map<string, EventBody[]> = new Map();
   for (const r of input.rows || []) {
     if (r.plan_date < input.today || r.is_blank || !r.calendar) continue;
-    const event = eventForDay(input.household, r, input.titles || {}, input.remindAt);
-    if (event) wanted.set(r.plan_date, event);
+    const events = eventsForDay(input.household, r, input.groups || [], input.titles || {}, input.remindAt);
+    if (events.length) wanted.set(r.plan_date, events);
   }
   const consider: Set<string> = new Set();
   if (input.all) {
@@ -192,9 +238,10 @@ function syncActions(input: SyncInput): SyncAction[] {
   for (const date of [...consider].sort()) {
     if (date < input.today) continue;
     if (last && date > last) continue;
-    const id = calendarEventId(input.household, date);
-    if (wanted.has(date)) actions.push({ op: 'put', id, date, event: wanted.get(date) });
-    else actions.push({ op: 'delete', id, date });
+    const events = wanted.get(date) || [];
+    const kept: Set<string> = new Set(events.map(e => String(e.id)));
+    for (const event of events) actions.push({ op: 'put', id: String(event.id), date, event });
+    for (const id of dayEventIds(input.household, date)) if (!kept.has(id)) actions.push({ op: 'delete', id, date });
   }
   return actions;
 }
@@ -326,7 +373,8 @@ Deno.serve(async (req: Request) => {
   }
 
   const today = londonToday(new Date());
-  /* Every column, so `premade` is read once its migration is in, and naming it before then cannot break the sync. */
+  /* Every column, so `premade` and `calendar_items` are read once their migrations are in, and naming them before then
+     cannot break the sync. */
   let q = admin.from('planner_days').select('*').eq('household_id', household);
   q = ask.all ? q.gte('plan_date', today).lte('plan_date', lastAllDate(today)) : q.in('plan_date', ask.dates!);
   const { data: rows, error: rowsErr } = await q;
@@ -338,6 +386,11 @@ Deno.serve(async (req: Request) => {
     const { data: recipes } = await admin.from('recipes').select('id, title').eq('household_id', household).in('id', recipeIds);
     for (const r of recipes ?? []) titles[r.id] = r.title;
   }
+  /* Groups (cooked together, one reminder): read for the same days. A failed read leaves them out; the app keeps a group's
+     members equal anyway, and this is only the second line of defence (§12.3). */
+  let gq = admin.from('meal_groups').select('date_iso, recipe_ids').eq('household_id', household);
+  gq = ask.all ? gq.gte('date_iso', today).lte('date_iso', lastAllDate(today)) : gq.in('date_iso', ask.dates!);
+  const { data: groupRows } = await gq;
   const { data: settings } = await admin.from('household_settings').select('calendar_remind_at').eq('household_id', household).maybeSingle();
 
   let existingIds: string[] = [];
@@ -346,7 +399,7 @@ Deno.serve(async (req: Request) => {
     catch (e) { await note({ last_error: String((e as Error).message ?? e) }); return json({ error: String((e as Error).message ?? e) }); }
   }
 
-  const actions = syncActions({ household, rows: rows ?? [], titles, remindAt: settings?.calendar_remind_at ?? 1200, today,
+  const actions = syncActions({ household, rows: rows ?? [], groups: groupRows ?? [], titles, remindAt: settings?.calendar_remind_at ?? 1200, today,
     dates: ask.dates, all: ask.all, existingIds });
   const failed: { date: string; op: string; status: number }[] = [];
   let put = 0, deleted = 0, unsent = 0;

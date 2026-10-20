@@ -119,7 +119,7 @@ node test/image-integrity.js
 It lifts the code out of the real source rather than copying it, so a signature change makes it
 throw rather than pass vacuously. After a change to `source-ingredients`, or to `sourceFidelity`
 in `core.js`, run `node test/source-ingredients.js` (16 checks, lifted the same way). After a change to
-`calendar-auth` or `calendar-sync`, run `node test/calendar-push.js` (39 checks, lifted the same way); after a change to
+`calendar-auth` or `calendar-sync`, run `node test/calendar-push.js` (62 checks, lifted the same way); after a change to
 `drive-backup`, `node test/drive-backup.js` (13 checks). After changing
 an on-screen label, or `help.html`, run `node test/help-guide.js` (7 checks).
 
