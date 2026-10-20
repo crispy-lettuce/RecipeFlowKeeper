@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 20 Oct 2026 (72a, the first changes from the tablet review, added), earlier 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
+**Last brought up to date: 20 Oct 2026 (73a, the second batch from the tablet review, added; 72a before it), earlier 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
 households sort out their own converter and need no steps here.
@@ -31,6 +31,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | [70a: the Recipes filter sheet](#70a-the-recipes-filter-sheet-new-19-oct-version-2026-10-193-docsplan-modernistmd), in Modernist | tablet, landscape | 10 min | No |
 | [71a: PRE-MADE on the Planner again](#71a-pre-made-on-the-planner-in-your-own-household-new-20-oct-version-2026-10-201) (the button is back), in your own household | tablet | 1 min | One dish switched to PRE-MADE and back |
 | [72a: the first changes from the tablet review](#72a-the-first-changes-from-the-tablet-review-new-20-oct-version-2026-10-203-docsplan-modernistmd), in Modernist | tablet, landscape | 8 min | No (AUDIT is switched on and off) |
+| [73a: the second batch from the tablet review](#73a-the-second-batch-from-the-tablet-review-new-20-oct-version-2026-10-204-docsplan-modernistmd), in Modernist | tablet, upright then landscape | 10 min | One dish taken off a day and put back (step 5) |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
 **The split is done** (18 Oct, see Recently done), so your own library is empty until you add recipes. Do 61a to 70a signed in as the
@@ -350,6 +351,31 @@ Nothing is saved: step 2 closes the edit window without saving, and step 6 turns
 
 Tell the next session if a step didn't say what it should, and whether the recipe's top feels better or too cramped. Not changed, and yours to
 say about: a recipe with more than five steps still scrolls sideways to its last column (about three in four do), and nothing says so.
+(73a below adds an arrow for that.)
+
+### 73a. The second batch from the tablet review (new 20 Oct, version 2026-10-20.4, `docs/PLAN-MODERNIST.md`)
+
+On the tablet, in **MODERNIST**, after reloading into 2026-10-20.4. Steps 1 to 4 are with the tablet held **upright**; steps 5 to 7 sideways.
+Step 5 changes one day of the Planner and puts it back with UNDO. Use a day still to come, in your own household or Test Kitchen.
+
+1. Held upright, open **RECIPES**. **You should see:** the menu down the left is a thin strip with the app's name along it and a **›**, not the full menu, and the
+   cards are in three columns, each wider than before (about 250 px, where they were about 195). Tap the strip: the full menu slides out over the page. Tap
+   the **‹** at the top of it, or choose a screen, and it folds back.
+2. Still upright, open **HISTORY**. **You should see:** the whole calendar on the screen, with all seven days named along the top and none cut off
+   at the right, no sideways scroll, and the month's name with **‹** and **›** either side of it on one line. Tap **›** a few times: the same for
+   every month, including September, November and December.
+3. Open **SHOPPING**. **You should see:** every button along the top on the screen, onto a second row if they don't fit on one.
+4. Open **SETTINGS** and the **PLANNER**. **You should see:** the strip on both and nothing running off to the right.
+5. Turn the tablet sideways. In the **PLANNER**, on a day with a dish, tap the **×** beside the dish. **You should see:** the dish goes, as it did, and a bar
+   in that day says **Removed "…"** with **UNDO**, easy to tap. Tap **UNDO**: the dish is back in the same place, with the same number of people, and in its
+   group if it was in one. Then take it off again and wait ten seconds, or go to another screen: the bar goes, and the dish stays off.
+6. Open a recipe with several steps (one that you have to scroll sideways). **You should see:** a small dark square with an arrow at the top right
+   corner of the table. Scroll the table: the arrow stays where it is. Scroll to the end: it goes. Scroll back: it returns. A recipe that fits on
+   the screen has none.
+7. In that recipe, tap **EXPORT PNG**. **You should see:** the picture has no arrow in it.
+
+Tell the next session if a step didn't say what it should. The strip now also applies to a computer window narrower than 1100 pixels, and to a
+tablet held sideways in a split screen; say if you'd rather it did not.
 
 ---
 

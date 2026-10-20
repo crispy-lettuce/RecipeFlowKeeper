@@ -346,6 +346,30 @@ the captures and the measurements are in the working folder of that session, **n
   the check that guards it (a phone-width check that could not fail was moved to 820px, where it can). Classic is shown unchanged by a check of its + and its save button, and by the existing Classic checks.
 - **Not verified:** the tablet itself; the live database.
 
+### The tablet review, second batch (20 Oct 2026, version 2026-10-20.4)
+The household chose F4 and F10, and "a small arrow cue" for F2 in place of a layout change (D59). Measured on the built page against the household's
+own export, as in the first batch (the export and the pictures are in the working folder, not in the repository).
+- **F4, the rail up to 1100px (D60, D61).** Held upright (868 x 1389), Recipes, History, Shopping, Settings and the Planner all have the 56px rail and
+  nothing runs off the right. Recipes: three columns, all 71 cards 252px wide (195px before). History: seven weekday labels, days 61px wide (34px
+  before), no sideways scroll, and ‹ month › on one row for all twelve months (D64). **The first version of this batch had ‹ and › stacked under each
+  other**: the 56px title was wider than the 314px beside the two squares, and in a wrapping row that sends › to a line of its own. The check then only
+  looked for sideways scroll, so it passed here (where the stand-in font, Inter, is narrow) and failed in CI, whose fallback font is wider, on the same
+  cause; the first picture of it that went to the household showed the fault, and it was not noticed until CI failed. Shopping: five toolbar buttons on two rows, all inside the screen (drawn 34px, 44px to tap, as everywhere in Modernist).
+  A made-up library shows the same, and 1100px is folded where 1101px is not. A phone keeps its top bar, and Classic held upright is as it was.
+- **F10, UNDO (D62).** The Planner, with the export's own plan, shows 5 planned days with 7 dishes, 2 of them in a group. Each dish was taken off with its
+  × and put back with UNDO: all 7 came back with the day's entry identical to what it was, both groups returned with their ids, and each UNDO wrote only
+  `planner_days` and `meal_groups` rows. A bar goes after ten seconds, on leaving the Planner, and when the day has been changed meanwhile (UNDO then
+  writes nothing).
+- **F2, the arrow (D63).** All 71 recipes opened at 1389px: 54 scroll sideways (median 219px over) and have the arrow, 17 fit and have none, which is exactly
+  the set the first batch measured. The arrow is a 32px square 10px in from the table's top right corner; on all 54 it goes at the right end and returns at
+  the left. **One recipe has text under it at rest**: it covers about a sixth of the first line of a greyed repeat step, which stays legible, and the
+  square moves off it as soon as the table is scrolled (on average 0.6% of a recipe's scroll positions have anything under it).
+- **Checks:** 22 in `test/smoke.js` (825 in all) and one in `test/core.test.js` (249: the arrow is left out of both PNG exports and of print, and off in the
+  shared stylesheet), and `.day-undo button` joins the 44px list. 24 breakages in a scratch copy, each seen to fail the check that guards it; a click on a
+  hidden menu button had made one of the first runs crash rather than fail, so those two clicks only act on a visible button.
+- **Not verified:** the tablet itself (the arrow's size and corner, whether the strip feels right upright); the live database (the planner writes are
+  the ones a save makes, counted against the stub). The strip also takes a computer window of 861 to 1100px (D60), for the household to say about.
+
 ## Decision log
 
 Every choice made while building, beyond the twelve agreed at the top, with the reason. "Household" means you chose it; "session"
@@ -414,14 +438,18 @@ means it was decided while building and is yours to overturn. Newest last.
 | D56 | 20 Oct | session | The card's shortlist button is the Lucide list-plus as a mask (`:not(.on)`); the ✓ state keeps its text. | A bare + could mean add, copy or new, and a tablet has no tooltip. Modernist only; Classic keeps the +. help.html says so. |
 | D57 | 20 Oct | session | A Settings tab's scroll is reset in the tab buttons' click handler, not in `showSettingsTab()`. | `renderSettings()` calls `showSettingsTab()` after every action, and must not throw the page to the top. |
 | D58 | 20 Oct | session | An empty day's CHOOSE A RECIPE takes the whole row (`flex:1 1 100%`, 64px tall); ADD ANOTHER does not. | Only 166px of an 1,100px row answered a tap. |
+| D59 | 20 Oct | household | The tablet review's second batch is F4 and F10, with F2 as "a small arrow cue" and no layout change. | "Go ahead with Batch 2 (F4, F10). For F2 a small arrow cue will be sufficient". |
+| D60 | 20 Oct | session | The sidebar is the 56px rail on **every** screen from 861px to 1100px (it was the Planner and a recipe in cooking mode, at any width, and a recipe from 861 to 1180). The rail opens the 228px menu over the page (`sidebar-peek`) and a choice folds it back. | The upright tablet is 868px wide, so the full sidebar left 640px: Recipes' cards 195px, History's week with days 34px wide, Shopping's toolbar 879px. **It also applies to a computer window of 861 to 1100px**, and the household may say if it should not. A check shows 1100px folded and 1101px not. |
+| D61 | 20 Oct | session | `.shop-head-right` is `flex:0 1 auto; max-width:100%` in Modernist, so the Shopping toolbar can shrink and wrap (it was `flex:none`, 879px). | With the rail the pane is 812px; the toolbar wraps to a second row rather than being cut off. |
+| D62 | 20 Oct | session | UNDO for the Planner's × is a bar inside that day (`.day-undo`), kept in memory (one at a time, `PLANNER_UNDO_MS` = 10s), in **both** styles. The × still writes at once; UNDO writes the day back as a save does (one `planner_days` upsert, one `meal_groups` upsert per group). | A removal is a delete of the dish and of its group, and the household has no way back. In the day, beside what was removed, rather than a message elsewhere on a long screen. The bar shows only while the day's entry is exactly what the removal left (`after`), and UNDO refuses if it is not, so a change made on the day since is never written over. A dissolved group is put back only if none of its dishes is now in another group (a dish is in one group a day). Another device sees the removal for up to ten seconds. |
+| D63 | 20 Oct | session | F2's arrow (`.flow-more`) is Modernist only (`display:none` in the base CSS), a sibling placed before each viewer table (not inside it, so it does not scroll with it), a 32px dark square with a Lucide arrow-right at the table's top right, `aria-hidden`, `pointer-events:none`. It is shown while the table can scroll further right and hidden at the right end, by a scroll listener and a `ResizeObserver`. Only the two viewers draw it (`opts.prepSteps`), not the Add / Edit preview; both PNG exports (`hideSelectors`) and print leave it out. | "A small arrow cue". Beside the table rather than in it, so it stays still while the table slides under it. A core check reads the export calls and the print block. |
+| D64 | 20 Oct | session | History's month title is `max-width:calc(100% - 112px)` and may wrap, at every width; from 861px to 1100px it is 40px (56px elsewhere) and the calendar's side padding is 20px (28px). | Held upright the calendar is 482px, leaving 314px beside the two 40px squares; "September 2026" at 56px is 433px in Archivo 800 (the tablet's font, measured from the font files for all twelve months) and a wrapping row moves an item to a new line before it shrinks it, so › stacked under ‹. At 40px every month is one line in Archivo (widest 309px); a wider fallback font (DejaVu Sans, CI's) wraps a few months to two lines, with the squares level. At 1101px a long month wraps to two lines at 56px (it used to stack the squares). The 40px is not guarded by a check, which cannot know the tablet's font: the check is that ‹ and › stay on one row for the month as it is and for a deliberately long one. |
 
 ### Follow-ups found while building (not done here)
 - **D10:** the shortlist's × has no spoken label (both styles).
 - **D13:** ticking a shopping row from the keyboard loses focus, as the list is redrawn (both styles).
 - **D22:** History's side panel scrolls sideways in Classic (the 560px table rule reaches its small table).
 - **D29:** on a phone the top bar is 159px tall, as the data links stack at its end (both styles).
-- **From the tablet review (20 Oct), not done, with the household to choose:** F2, a visible cue that the flow table continues to the right (76% of
-  recipes scroll sideways at this size; asked whether the last column is ever missed); F4, the sidebar folded to its rail up to 1100px so that Recipes,
-  History and Shopping work held upright (868px is just over the 861px breakpoint); F10, an UNDO for the Planner's ×; the second step of F1; and the
+- **From the tablet review (20 Oct), not done, with the household to choose:** the second step of F1; and the
   Low findings F12 to F20 (11px capitals, placeholder-only inputs, tooltip-only "EST.", chips at 42px, long lines, the migration text on Settings → APP
   if it shows on the live app, History's cut titles, a viewer that can be nudged sideways by a few pixels).

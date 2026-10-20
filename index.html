@@ -800,6 +800,19 @@ function loadArchivoFont(){
     font-size:14px; line-height:1; padding:2px;
   }
   .day-recipe-remove:hover{ color:var(--danger); }
+  /* UNDO for the × (tablet review F10, 20 Oct 2026): a bar in the day the dish was taken from, for ten seconds. */
+  .day-undo{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; padding:0 4px 0 12px;
+    background:var(--plum-wash); border:1px solid var(--plum); border-radius:var(--r);
+    font-size:14px; letter-spacing:.04em; color:var(--plum);
+  }
+  .day-undo span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .day-undo button{
+    flex:none; background:none; border:none; padding:0 10px; cursor:pointer; color:var(--plum);
+    font-size:14px; letter-spacing:.04em; text-decoration:underline; font-weight:500;
+  }
+  /* The arrow that says the flow table goes on to the right: the second style's own stylesheet draws it (tablet review F2). */
+  .flow-more{ display:none; }
   .day-choose{
     display:inline-flex; align-items:center; gap:8px; background:none; border:none; padding:0; cursor:pointer;
     font-size:14px; letter-spacing:.04em; color:var(--plum); font-weight:500;
@@ -1459,7 +1472,8 @@ function loadArchivoFont(){
   .day-recipe-premade, .day-recipe-cooked, .backlink, .toggle-switch,
   .day-choose, .day-recipe-title, .day-recipe-serves, .day-recipe-remove, .day-side-add, .day-side-hide, .day-cal-btn,
   .group-badge, .sl-remove, .saved-view, .data-link, .new-recipe, .serve-with-link,
-  .library-switch button, .assign-banner button, .shop-aisle-select, .shop-merge-with{ min-height:44px; }   /* the last four: tablet review F6 and F9, 20 Oct 2026 */
+  .library-switch button, .assign-banner button, .shop-aisle-select, .shop-merge-with,
+  .day-undo button{ min-height:44px; }   /* the last five: tablet review F6, F9 and F10, 20 Oct 2026 */
   .scale-btn, .day-recipe-remove, .day-side-hide, .sl-remove{ min-width:44px; }
   #viewerServesCustom{ min-height:44px; }
   /* A link styled as a button: an inline-block link sets its words at the top of a taller box. */
@@ -1634,7 +1648,7 @@ function loadArchivoFont(){
     body{ overflow:visible !important; }
     .sidebar, .navlink, .btn, .backlink, .toggle-switch,
     .keep-awake-status, #keepAwakeVideo,
-    .filter-head, .assign-banner, .offline-bar,
+    .filter-head, .assign-banner, .offline-bar, .flow-more,
     .shop-head-right, #shopWeekSelect,
     #shopHideCheckedBtn, #shopClearBtn,
     .sidebar-peek-btn, .cooking-notes{ display:none !important; }
@@ -1699,7 +1713,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-20.3">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-20.4">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2413,7 +2427,7 @@ const EXPECTED_CORE_VERSION = '2026-10-19.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-20.3';
+const APP_VERSION = '2026-10-20.4';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -2959,6 +2973,26 @@ function showTickedCount(container){
 function prepStepsOn(){
   try { return localStorage.getItem('kitchen.prepSteps') === 'steps'; } catch(e){ return false; }
 }
+/* The arrow that says the flow table goes on to the right (tablet review F2, 20 Oct 2026). A 6-step recipe is 1,170px wide and a 14-step one
+   2,370px, in a pane 1,101px wide on the household's tablet: 54 of its 71 recipes scroll sideways, and until now nothing said so. The cue is a
+   sibling just above each .tablewrap, not inside it, so it does not scroll away with the table; it is hidden while the whole table is in view
+   and again once the right end has been reached. Drawn by Modernist's stylesheet only, aria-hidden (the table is scrolled by touch), and left
+   out of print and PNG (hideSelectors). Redrawn with the flow, so a new tick or a scaling change needs nothing from it; a change of width (the
+   sidebar's peek, turning the tablet) is picked up by the observer. */
+function attachFlowCues(container){
+  container.querySelectorAll('.tablewrap').forEach(wrap=>{
+    const cue = document.createElement('div');
+    cue.className = 'flow-more';
+    cue.setAttribute('aria-hidden', 'true');
+    cue.hidden = true;
+    cue.innerHTML = '<span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>';
+    wrap.parentNode.insertBefore(cue, wrap);
+    const update = ()=>{ cue.hidden = !(wrap.scrollWidth - wrap.clientWidth > 2 && wrap.scrollLeft + wrap.clientWidth < wrap.scrollWidth - 2); };
+    wrap.addEventListener('scroll', update, { passive: true });
+    if(typeof ResizeObserver === 'function') new ResizeObserver(update).observe(wrap);
+    update();
+  });
+}
 function mountFlow(container, parsed, opts){
   opts = opts || {};
   /* Only the two viewers ask for it (opts.prepSteps). The Add/Edit preview shows the recipe as written, since it is there
@@ -2984,6 +3018,8 @@ function mountFlow(container, parsed, opts){
 
   container.innerHTML = timelineHtml + html;
   if(colCount === 0) return;
+  /* The two viewers only, as with prepSteps: the Add/Edit preview is not cooked from. */
+  if(opts.prepSteps) attachFlowCues(container);
 
   if(timelineHtml) wireTimelineInteractions(container);
 
@@ -4570,6 +4606,46 @@ function removePlanRecipeAt(dateStr, index){
   return savePlanDay(dateStr);
 }
 
+/* UNDO for the Planner's × (tablet review F10, 20 Oct 2026). The × takes a dish off a day at once, and with it the dish's own headcount, its
+   PRE-MADE, its place in a group, and (if it was the day's last dish) the day's calendar switches. A bar in that day offers it back for ten
+   seconds. What is kept is the day's entry as it was, and the groups the removal dissolved, in this tab's memory only.
+   It is put back only if the day is still exactly as the removal left it: any other change to that day, here or from another device, and
+   the bar goes and UNDO would do nothing, since writing the old day over the new one would lose that change. The restore is the same
+   one-row write a save is (savePlanDay, so the calendar hears of it as it does of any change) and one write per group. PLANNER_UNDO_MS is a
+   `let` so that a check can shorten it. */
+let PLANNER_UNDO_MS = 10000;
+let plannerUndo = null;
+function clearPlannerUndo(){
+  if(plannerUndo){ clearTimeout(plannerUndo.timer); plannerUndo = null; }
+}
+function startPlannerUndo(date, label, before, groups){
+  clearPlannerUndo();
+  plannerUndo = { date, label, before, groups, after: JSON.stringify(loadPlan()[date] || null), timer: setTimeout(()=>{
+    plannerUndo = null;
+    if(state.view === 'planner') renderPlanner();
+  }, PLANNER_UNDO_MS) };
+}
+function undoPlannerRemove(){
+  const u = plannerUndo;
+  if(!u) return;
+  clearPlannerUndo();
+  if(JSON.stringify(loadPlan()[u.date] || null) !== u.after){
+    showToast('That day has changed since, so it was left as it is');
+    renderPlanner();
+    return;
+  }
+  const p = loadPlan();
+  if(u.before) p[u.date] = u.before; else delete p[u.date];
+  savePlanDay(u.date);
+  /* A group comes back only if none of its dishes has since joined another group that day: a dish is in one group a day. */
+  const taken = new Set();
+  groupsForDate(u.date).forEach(g=> g.recipeIds.forEach(id=> taken.add(id)));
+  u.groups.forEach(g=>{ if(!g.recipeIds.some(id=> taken.has(id))) saveGroup(g); });
+  renderPlanner();
+  updateSidebarCounts();
+  showToast('Put back');
+}
+
 /* ------------------------- The calendar push (P3) -------------------------
    docs/PLAN-CALENDAR-PUSH.md §9. A planned day can be switched on (IN CALENDAR), and then REMIND ME;
    calendar-sync turns each switched-on day into one all-day event in the household's RecipeWrangler
@@ -5173,6 +5249,7 @@ function showView(name){
     return;
   }
   if(name !== 'recipes') closeFilterSheet({ now: true, noFocus: true });
+  if(name !== 'planner') clearPlannerUndo();
   /* A one-recipe shopping list lasts as long as you stay on the screen: coming back later, or from the sidebar, is the week. */
   if(name !== 'shopping') state.shoppingRecipe = null;
   state.view = name;
@@ -6113,7 +6190,7 @@ document.getElementById('groupExportPngBtn').addEventListener('click', ()=>{
   exportNodeAsPng(
     document.querySelector('#view-group-viewer .viewer-body'),
     (names || 'meal-group').toLowerCase().replace(/[^a-z0-9]+/g,'-'),
-    { scrollFixSelectors: ['#view-group-viewer .viewer-body', '.tablewrap'], dropStickySelectors: ['.ing-cell'] }
+    { scrollFixSelectors: ['#view-group-viewer .viewer-body', '.tablewrap'], dropStickySelectors: ['.ing-cell'], hideSelectors: ['.flow-more'] }
   );
 });
 
@@ -6712,7 +6789,7 @@ document.getElementById('exportPngBtn').addEventListener('click', ()=>{
   exportNodeAsPng(
     document.getElementById('flowMount'),
     (recipe.title||'recipe').toLowerCase().replace(/[^a-z0-9]+/g,'-'),
-    { scrollFixSelectors: ['.tablewrap'], dropStickySelectors: ['.ing-cell'] }
+    { scrollFixSelectors: ['.tablewrap'], dropStickySelectors: ['.ing-cell'], hideSelectors: ['.flow-more'] }
   );
 });
 
@@ -6960,6 +7037,11 @@ function renderPlannerDays(){
         inner = `<div class="day-main"><button class="day-choose" data-action="choose"><span class="circle">+</span>CHOOSE A RECIPE</button></div>`;
       }
 
+      /* The bar from the × (tablet review F10): only while the day is still as the removal left it. */
+      if(plannerUndo && plannerUndo.date === iso && JSON.stringify(plan[iso] || null) === plannerUndo.after){
+        inner = inner.replace('<div class="day-main">', `<div class="day-main"><div class="day-undo" role="status"><span>Removed ${escapeHtml(plannerUndo.label)}</span><button data-action="undoRemove">UNDO</button></div>`);
+      }
+
       html += `<div class="day-row${isToday?' today':''}${(state.selectedShortlistId && state.groupingDate!==iso)?' assignable':''}" data-date="${iso}">
         <div class="day-num">${mod ? `<span class="day-dow">${d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase()}</span><span class="day-date">${d.getDate()}</span>` : formatDayLabel(d)}${isToday?'<span class="today-tag">TODAY</span>':''}</div>
         ${inner}
@@ -7116,7 +7198,7 @@ function initPlannerListeners(){
        on the headcount button, which would otherwise never be reachable
        while something is selected. */
     if(state.selectedShortlistId && state.groupingDate !== date
-       && !e.target.closest('[data-action="setServes"], [data-action="calToggle"], [data-action="calRemind"], [data-action="premade"], [data-action="cooked"]')){
+       && !e.target.closest('[data-action="setServes"], [data-action="calToggle"], [data-action="calRemind"], [data-action="premade"], [data-action="cooked"], [data-action="undoRemove"]')){
       const item = loadShortlist().find(i=>i.id === state.selectedShortlistId);
       if(item && item.recipeId){
         addPlanRecipe(date, item.recipeId);
@@ -7178,12 +7260,22 @@ function initPlannerListeners(){
       showView('recipes');
       renderHome();
     } else if(action === 'removeOne'){
-      const ids = planRecipeIds(loadPlan()[date]);
-      const removedId = ids[parseInt(actionEl.dataset.idx, 10)];
-      removePlanRecipeAt(date, parseInt(actionEl.dataset.idx, 10));
+      const idx = parseInt(actionEl.dataset.idx, 10);
+      const entry = loadPlan()[date];
+      const before = entry ? JSON.parse(JSON.stringify(entry)) : null;
+      const ids = planRecipeIds(entry);
+      const removedId = ids[idx];
+      const dissolved = removedId ? groupsForDate(date).filter(g=> g.recipeIds.includes(removedId)).map(g=> ({ ...g, recipeIds: [...g.recipeIds] })) : [];
+      removePlanRecipeAt(date, idx);
       if(removedId) dissolveGroupsContainingOnDate(date, removedId);
+      if(before){
+        const gone = loadRecipes().find(r=> r.id === removedId);
+        startPlannerUndo(date, gone ? `\u201c${gone.title || 'Untitled'}\u201d` : 'a recipe that has since been deleted', before, dissolved);
+      }
       renderPlanner();
       updateSidebarCounts();
+    } else if(action === 'undoRemove'){
+      undoPlannerRemove();
     } else if(action === 'clear'){
       clearPlanDay(date);
       clearGroupsForDate(date);

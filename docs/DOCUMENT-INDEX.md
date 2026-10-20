@@ -557,6 +557,8 @@ measurements that decided it, and "The recipe grid on the tablet", a fault found
 records "The tablet review, first batch": a review of the whole app on the tablet against the household's own library, the seven changes
 the household chose (the viewer's header, SAVE kept in reach, a Settings tab opening at its top, five buttons brought to 44px, the card's
 shortlist picture, an empty Planner day as one button), decisions D51 to D58, and why one finding that rested on a single recipe was not made.
+Its second batch (also 20 Oct) adds the sidebar's rail on every screen up to 1100px so the app works held upright, an UNDO for the
+Planner's ×, and an arrow on a flow table that scrolls sideways, decisions D59 to D64.
 
 **Use it when:** changing or extending Modernist, or asked why a screen differs between the two styles.
 
