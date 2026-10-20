@@ -495,12 +495,14 @@ browse the whole library read-only, switched on from Settings on each side; ADD 
 
 ---
 
-### `docs/PLAN-CALENDAR-PUSH.md` — planned meals in Google Calendar, P3 (30 Sep 2026; answered 1 Oct; PRs 1 and 2 merged; §11 the toggles, 9 Oct)
+### `docs/PLAN-CALENDAR-PUSH.md` — planned meals in Google Calendar, P3 (30 Sep 2026; answered 1 Oct; PRs 1 and 2 merged; §11 the toggles, 9 Oct; §12 a reminder per meal, proposed 20 Oct)
 **What:** The brief's P3: what exists, a live connection against a subscribed feed, the first proposal and seven decisions
 (§1–§7), the first answers (§8), and **§9, the design being built**: one all-day event per switched-on planned day in a
 RecipeWrangler calendar, an optional reminder at 20:00 the evening before (for the freezer), ADD THE WEEK, DISCONNECT leaving the
 calendar in place, the token in Vault; no meal times, and no change to the food diary. **§10** is the household's Google and
 Supabase setup, step by step.
+**§12** (20 Oct) is a proposal only, nothing built: a reminder per meal (a group is one meal) instead of per day, the data
+(`calendar_items`), at most two events a day, the Planner's pills as measured, the rollout, and six questions for the household.
 
 **Use it when:** doing the setup, running tablet and phone steps 40a and 40b, or checking what P3 does.
 
