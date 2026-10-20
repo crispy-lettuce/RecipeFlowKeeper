@@ -2201,7 +2201,10 @@ after the first saved day would have brought the button back, and emptying the p
 a select that names a column in its `PENDING_COLUMNS` unless a fixture row carries the column or `__STUB_COLUMNS__` lists it.
 Two smoke checks cover an empty household with the column and without it. Each was seen to fail: the first with the old
 row-only rule, the second (and the existing before-migration check) when the switch was always on. Tablet step 71a.
-*Not verified:* the live app after merging. The edge logs will show `premade` in the next `planner_days` upsert's `columns=`.
+**Seen live after #168 merged (07:42 UTC).** The edge logs show the probe (`planner_days?select=premade&limit=1`) answered 200 at
+07:44:53 UTC, and two `planner_days` upserts at 07:45:09 and 07:45:14 UTC with `premade` in their `columns=`, the first from the
+family's household since the split. The household then reported PRE-MADE showing on the tablet (20 Oct, 71a step 1; which styles
+not stated). *Not verified:* 71a step 2, switching a dish to PRE-MADE and back, in the family's household.
 
 **Issues #85, #86, #89, #93: parse feedback, seconds, COOKING MODE, Drink (11 Oct 2026).** Raised on GitHub on 11 Oct,
 the first issues from the second household; planned and approved the same day.

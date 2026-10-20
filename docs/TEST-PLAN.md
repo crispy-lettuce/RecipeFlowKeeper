@@ -868,7 +868,7 @@ reported one by one.*
     keyword matches — Enter to add" and Enter makes it a chip and a pill at the head; + ADD puts the cursor in the box; reopening empties it. (9) *A saved view:* one chip with its name. (10) *STYLE → CLASSIC:* its rows as before.
 71a. **PRE-MADE in a household that started empty (new 20 Oct; version 2026-10-20.1).** In the family's household, after a reload: (1) a
     dish on a future day shows PRE-MADE beside SERVES, in both styles; (2) PRE-MADE asks the meal and reads PRE-MADE · <MEAL>; tapping it
-    again makes it fresh with no question. Before 2026-10-20.1 the switch was decided by a `premade` key on a planner or diary row, so a
+    again makes it fresh with no question. *(1) reported by the household on 20 Oct, on the tablet; (2) still to do.* Before 2026-10-20.1 the switch was decided by a `premade` key on a planner or diary row, so a
     household with neither had none, and its saves left the column out (the edge logs show it, 20 Oct 06:12 UTC).
 
 ## Deferred to the tablet, after merging
