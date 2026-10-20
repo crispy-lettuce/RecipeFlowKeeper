@@ -913,6 +913,66 @@ const check = (name, pass, detail) => {
   await page.selectOption('#shopWeekSelect', '0');
   await page.waitForTimeout(300);
 
+  /* The shopping list for one recipe (20 Oct 2026): the recipe's own lines for the headcount COOK FOR shows, none of the week's
+     other recipes, ticks that stay in the tab, and the sidebar always back on the week. Test Pasta is 300 g pasta and 500 g
+     tomatoes for 4, so for 8 it is 600 g and 1 kg; the week's list has Test Soup's onion and 2 kg of tomatoes. */
+  await page.click('.navlink[data-view="recipes"]');
+  await page.waitForTimeout(300);
+  await page.locator('.rcard', { hasText: 'Test Pasta' }).first().click();
+  await page.waitForTimeout(400);
+  await page.click('.viewer-scale-row .scale-btn[data-viewer-serves="8"]');
+  await page.waitForTimeout(300);
+  const tickWritesBefore = await page.evaluate(() => (window.__WRITES__ || []).filter(w => w.table === 'shopping_checked').length);
+  await page.click('#viewerShoppingBtn');
+  await page.waitForTimeout(400);
+  const oneList = await page.evaluate(() => ({
+    view: document.querySelector('.view.active').id,
+    meta: document.getElementById('shopMeta').textContent.trim(),
+    rows: [...document.querySelectorAll('.shop-item')].map(el => (el.dataset.name || '') + ' = ' + el.querySelector('.shop-item-name').textContent.replace(/\s+/g, ' ').trim()),
+    recipeNames: [...document.querySelectorAll('.shop-item-recipes')].map(el => el.textContent.trim()).filter(Boolean),
+    weekSelectShown: getComputedStyle(document.getElementById('shopWeekSelect')).display !== 'none',
+    scopeShown: getComputedStyle(document.getElementById('shopScope')).display !== 'none',
+    auditShown: getComputedStyle(document.getElementById('shopAuditBtn')).display !== 'none'
+  }));
+  check('SHOPPING LIST on a recipe opens the shopping screen for that recipe and its headcount',
+        oneList.view === 'view-shopping' && /Test Pasta/.test(oneList.meta) && /for 8/.test(oneList.meta) && oneList.scopeShown && !oneList.weekSelectShown && !oneList.auditShown,
+        JSON.stringify(oneList));
+  check('and lists only that recipe\'s ingredients, scaled to 8 (600 g pasta, 1 kg tomatoes, no onion from another recipe)',
+        oneList.rows.length === 4 && oneList.rows.some(r => /pasta = 600 g/i.test(r)) && oneList.rows.some(r => /tomato.* = 1 kg/i.test(r))
+        && !oneList.rows.some(r => /onion/i.test(r)) && oneList.recipeNames.length === 0,
+        JSON.stringify(oneList.rows));
+  /* click, not check(): check() throws when the box does not stay ticked, which would crash the run instead of naming this check. */
+  await page.locator('.shop-item').first().locator('input').click();
+  await page.waitForTimeout(300);
+  check('ticking a row on a one-recipe list sticks',
+        (await page.locator('.shop-item.checked').count()) === 1 && (await page.locator('.shop-row').count()) === 4);
+  await page.click('#shopBackToWeekBtn');
+  await page.waitForTimeout(400);
+  const backToWeek = await page.evaluate(() => ({
+    weekSelectShown: getComputedStyle(document.getElementById('shopWeekSelect')).display !== 'none',
+    scopeShown: getComputedStyle(document.getElementById('shopScope')).display !== 'none',
+    ticked: document.querySelectorAll('.shop-item.checked').length,
+    onion: [...document.querySelectorAll('.shop-item')].some(el => /onion/i.test(el.dataset.name || '')),
+    writes: (window.__WRITES__ || []).filter(w => w.table === 'shopping_checked').length
+  }));
+  check('BACK TO WEEK returns to the week\'s list, with none of the one-recipe ticks on it and nothing written for them',
+        backToWeek.weekSelectShown && !backToWeek.scopeShown && backToWeek.ticked === 0 && backToWeek.onion && backToWeek.writes === tickWritesBefore,
+        JSON.stringify({ backToWeek, tickWritesBefore }));
+  await page.click('.navlink[data-view="recipes"]');
+  await page.locator('.rcard', { hasText: 'Test Pasta' }).first().click();
+  await page.waitForTimeout(300);
+  await page.click('#viewerShoppingBtn');
+  await page.waitForTimeout(300);
+  check('the one-recipe list starts at the recipe\'s own headcount when COOK FOR was not changed', /for 4/.test(await page.locator('#shopMeta').textContent()),
+        (await page.locator('#shopMeta').textContent()).trim());
+  await page.click('.navlink[data-view="planner"]');
+  await page.waitForTimeout(200);
+  await page.click('.navlink[data-view="shopping"]');
+  await page.waitForTimeout(300);
+  check('and the sidebar\'s SHOPPING is always the week, not the recipe',
+        !(await page.locator('#shopMeta').textContent()).includes('Test Pasta')
+        && (await page.evaluate(() => getComputedStyle(document.getElementById('shopWeekSelect')).display !== 'none')));
+
   // Scaling is by target servings, not a multiplier.
   await page.click('.navlink[data-view="recipes"]');
   await page.waitForTimeout(300);

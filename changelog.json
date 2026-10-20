@@ -1,4 +1,6 @@
 [
+  { "version": "2026-10-20.2", "date": "2026-10-20",
+    "changes": ["New: SHOPPING LIST, at the top of a recipe beside + SHORTLIST, shows what that one recipe needs to buy, sorted by aisle like the week's list. It uses the number of people COOK FOR is showing, or the recipe's own if you have not changed it. Tick things off as you go; those ticks are kept on this device only until you leave the page, and the week's own ticks are not touched. HIDE TICKED, CLEAR TICKS, EXPORT PNG and PRINT / A4 PDF work as they do on the week. BACK TO WEEK returns to the week's list, and OPEN RECIPE goes back to the recipe. The SHOPPING button in the sidebar always shows the week. A recipe from another household's library does not have the button yet."] },
   { "version": "2026-10-20.1", "date": "2026-10-20",
     "changes": ["Fixed: PRE-MADE, for a meal coming out of the freezer, was missing from the Planner in a household with nothing planned and nothing in the food diary yet, which is how a new household starts. The app now asks the database whether PRE-MADE is ready, rather than looking for it on days already saved, so the button is there from the first dish you plan, in both styles."] },
   { "version": "2026-10-19.4", "date": "2026-10-19",

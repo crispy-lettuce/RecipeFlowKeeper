@@ -915,6 +915,9 @@ function loadArchivoFont(){
   .shop-meta{ font-size:14px; letter-spacing:.04em; color:var(--ink-faint); font-weight:500; }
   .shop-head-right{ display:flex; align-items:center; gap:10px; flex:none; }
   #shopWeekSelect{ min-width:150px; }
+  /* The two buttons that stand in for the week list while one recipe is shown. */
+  .shop-scope{ display:none; align-items:center; gap:10px; }
+  .shop-scope.on{ display:inline-flex; }
 
   .shop-body{ display:flex; flex-direction:column; gap:28px; }
   .shop-category-title{
@@ -1521,7 +1524,7 @@ function loadArchivoFont(){
      stay in reach on a phone, where the page itself scrolls. The timeline is hidden by default while cooking,
      and SHOW TIMELINE is remembered on the device (kitchen.cookingTimeline): the tablet and the laptop are used
      differently. */
-  .app.keep-awake #view-viewer #viewerProvenance, .app.keep-awake #favouriteBtn, .app.keep-awake #shortlistBtn,
+  .app.keep-awake #view-viewer #viewerProvenance, .app.keep-awake #favouriteBtn, .app.keep-awake #shortlistBtn, .app.keep-awake #viewerShoppingBtn,
   .app.keep-awake #editRecipeBtn, .app.keep-awake #exportPngBtn, .app.keep-awake #printBtn, .app.keep-awake #deleteBtn,
   .app.keep-awake #view-viewer .viewer-scale-row,
   .app.keep-awake #groupExportPngBtn, .app.keep-awake #groupPrintBtn, .app.keep-awake #groupUngroupBtn{ display:none !important; }
@@ -1695,7 +1698,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-20.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-20.2">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -1819,6 +1822,7 @@ function loadArchivoFont(){
         </label>
         <button class="btn" id="favouriteBtn" data-ours-only>☆ FAVOURITE</button>
         <button class="btn" id="shortlistBtn" data-ours-only>+ SHORTLIST</button>
+        <button class="btn" id="viewerShoppingBtn" data-ours-only>SHOPPING LIST</button>
         <button class="btn" id="editRecipeBtn" data-ours-only>EDIT</button>
         <button class="btn primary" id="addToOursBtn" data-theirs-only>ADD TO OUR RECIPES</button>
         <button class="btn" id="resetTicksBtn">RESET TICKS</button>
@@ -1914,6 +1918,10 @@ function loadArchivoFont(){
             <div class="shop-meta" id="shopMeta"></div>
           </div>
           <div class="shop-head-right">
+            <span class="shop-scope" id="shopScope">
+              <button class="btn" id="shopBackToWeekBtn">BACK TO WEEK</button>
+              <button class="btn" id="shopOpenRecipeBtn">OPEN RECIPE</button>
+            </span>
             <select class="sort" id="shopWeekSelect" aria-label="Select week"></select>
             <button class="btn" id="shopHideCheckedBtn" aria-pressed="false">HIDE TICKED</button>
             <button class="btn" id="shopClearBtn">CLEAR TICKS</button>
@@ -2402,7 +2410,7 @@ const EXPECTED_CORE_VERSION = '2026-10-19.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-20.1';
+const APP_VERSION = '2026-10-20.2';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -5084,6 +5092,8 @@ const state = {
   pickingForDate: null,        // date string Home is currently picking a recipe for, if any
   shoppingWeekIndex: 0,        // which week-bucket the Shopping List is currently showing
   shoppingBothWeeks: false,    // showing this week and next as one combined list
+  shoppingRecipe: null,        // {recipeId, servings} while the Shopping List shows one recipe instead of a week; leaving the screen clears it
+  shoppingRecipeTicks: {},     // recipeId -> {item key: true}: ticks on a one-recipe list, session-only like the viewer's own
   shoppingHideChecked: false,  // hide items already ticked off, for shopping with
   viewerTicks: {},             // recipeId -> Set of ticked flow cells, session-only and cleared on reload
   editingRecipeId: null,       // recipe id currently open in the Add/Edit modal, if editing rather than adding
@@ -5160,6 +5170,8 @@ function showView(name){
     return;
   }
   if(name !== 'recipes') closeFilterSheet({ now: true, noFocus: true });
+  /* A one-recipe shopping list lasts as long as you stay on the screen: coming back later, or from the sidebar, is the week. */
+  if(name !== 'shopping') state.shoppingRecipe = null;
   state.view = name;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const el = document.getElementById('view-'+name);
@@ -5215,6 +5227,7 @@ document.querySelectorAll('.navlink[data-view]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     /* In Modernist the shortlist panel can be collapsed; asking for SHORTLIST opens it again. Classic never collapses it. */
     if(btn.dataset.view === 'shortlist') setShortlistCollapsed(false);
+    if(btn.dataset.view === 'shopping') state.shoppingRecipe = null; // SHOPPING in the sidebar is always the week
     showView(target);
   });
 });
@@ -6476,6 +6489,16 @@ document.getElementById('viewerServesCustomBtn').addEventListener('click', ()=>{
   state.viewerServes = val;
   renderViewer();
 });
+/* The shopping list for this recipe alone, for the headcount COOK FOR is showing (the recipe's own when it is not scaled,
+   or when it has no SERVINGS to scale from). Ours only: the word matches and aisles it is named by are our household's. */
+document.getElementById('viewerShoppingBtn').addEventListener('click', ()=>{
+  const recipe = viewerRecipe();
+  if(!recipe) return;
+  const base = parseInt(recipe.servings, 10) || 0;
+  state.shoppingRecipe = { recipeId: recipe.id, servings: base ? (state.viewerServes || base) : 0 };
+  showView('shopping');
+});
+
 document.getElementById('viewerServesResetBtn').addEventListener('click', ()=>{
   state.viewerServes = null;
   document.getElementById('viewerServesCustom').value = '';
@@ -7419,28 +7442,11 @@ function buildShoppingList(weekDays){
       const recipe = recipes.find(r=>r.id === recipeId);
       if(!recipe) return; // orphaned reference — nothing to shop for, skip quietly
       recipeTitles.add(recipe.title);
-      /* Shop for the number of people the day actually asks for. Scaled from
-         the recipe's own untouched syntax every build, so there's no drift. */
-      const base = parseInt(recipe.servings, 10) || 0;
-      const multiplier = (base && servings && servings !== base) ? servings / base : 1;
-      const syntax = multiplier !== 1 ? scaleRecipeSyntax(recipe.syntax, multiplier, applyIngredientAlias) : recipe.syntax;
-      parseRecipe(syntax).groups.forEach(g=>{
-        g.items.forEach(item=> lineItems.push({ recipeTitle: recipe.title, raw: item, group: g.handle }));
-      });
+      pushRecipeShoppingLines(lineItems, recipe, servings);
     });
   });
 
-  /* The totalling is in core.js (aggregateShoppingLines), pure and tested
-     in Node: rules, dictionary, one row per ingredient. The household's word
-     matches go in as an override. */
-  const items = aggregateShoppingLines(lineItems, applyIngredientAlias, applyAisleOverride);
-  const byCategory = {};
-  items.forEach(it=>{ (byCategory[it.category] = byCategory[it.category] || []).push(it); });
-  const order = [...SHOPPING_CATEGORIES.map(c=>c.name), 'Other'];
-  const categories = order
-    .filter(name => byCategory[name] && byCategory[name].length)
-    .map(name => ({ name, items: byCategory[name].sort((a,b)=>a.name.localeCompare(b.name)) }));
-
+  const { categories, items } = shoppingCategories(lineItems);
   return {
     categories, totalItems: items.length, recipeCount: recipeTitles.size,
     /* Reported, never asked: this runs on every planner change via
@@ -7449,6 +7455,42 @@ function buildShoppingList(weekDays){
        times in 103 on the real library. */
     suggestions: strictMatchSuggestions(items, (a, b)=> isPairDistinct('ingredient', a, b))
   };
+}
+
+/* One recipe's ingredient lines, scaled to the number of people asked for. Shared by the week's list and the one-recipe
+   list (SHOPPING LIST on the recipe), so a recipe is named, scaled and totalled the same way in both. */
+function pushRecipeShoppingLines(lineItems, recipe, servings){
+  /* Shop for the number of people the day actually asks for. Scaled from
+     the recipe's own untouched syntax every build, so there's no drift. */
+  const base = parseInt(recipe.servings, 10) || 0;
+  const multiplier = (base && servings && servings !== base) ? servings / base : 1;
+  const syntax = multiplier !== 1 ? scaleRecipeSyntax(recipe.syntax, multiplier, applyIngredientAlias) : recipe.syntax;
+  parseRecipe(syntax).groups.forEach(g=>{
+    g.items.forEach(item=> lineItems.push({ recipeTitle: recipe.title, raw: item, group: g.handle }));
+  });
+}
+
+/* The totalling is in core.js (aggregateShoppingLines), pure and tested
+   in Node: rules, dictionary, one row per ingredient. The household's word
+   matches go in as an override. */
+function shoppingCategories(lineItems){
+  const items = aggregateShoppingLines(lineItems, applyIngredientAlias, applyAisleOverride);
+  const byCategory = {};
+  items.forEach(it=>{ (byCategory[it.category] = byCategory[it.category] || []).push(it); });
+  const order = [...SHOPPING_CATEGORIES.map(c=>c.name), 'Other'];
+  const categories = order
+    .filter(name => byCategory[name] && byCategory[name].length)
+    .map(name => ({ name, items: byCategory[name].sort((a,b)=>a.name.localeCompare(b.name)) }));
+  return { categories, items };
+}
+
+/* What one recipe needs on its own, for `servings` people (0 or null: as written). Side-effect free like the week's,
+   and with no suggestions: the fixing tools belong to the week's list. */
+function buildRecipeShoppingList(recipe, servings){
+  const lineItems = [];
+  pushRecipeShoppingLines(lineItems, recipe, servings);
+  const { categories, items } = shoppingCategories(lineItems);
+  return { categories, totalItems: items.length, recipeCount: 1, suggestions: [] };
 }
 
 /* Every name MERGE WITH… can offer: every ingredient line in the whole
@@ -7479,15 +7521,22 @@ function renderShopping(){
   const buckets = groupDaysByWeek(dayList());
   if(state.shoppingWeekIndex >= buckets.length) state.shoppingWeekIndex = 0;
 
+  /* One recipe instead of a week, opened from the recipe's SHOPPING LIST. Its ticks are held for this tab only, like the
+     viewer's, so nothing is written and the week's own ticks are never touched. A recipe deleted since means the week. */
+  const one = state.shoppingRecipe ? loadRecipes().find(r=> r.id === state.shoppingRecipe.recipeId) : null;
+  if(!one) state.shoppingRecipe = null;
+
   /* Modernist (docs/PLAN-MODERNIST.md): the weeks carry their dates, the line under the title counts the ticks too, and each
      tick box is drawn by a span of its own. Classic's words and markup are as they were. */
   const mod = currentStyle() === 'modernist';
   const weekLabels = buckets.map((bucketDays, i)=> mod ? modWeekLabel(i, bucketDays) : weekBucketLabel(i, bucketDays));
   const canCombine = buckets.length >= 2;
   if(state.shoppingBothWeeks && !canCombine) state.shoppingBothWeeks = false;
-  const both = state.shoppingBothWeeks;
+  const both = state.shoppingBothWeeks && !one;
 
   const sel = document.getElementById('shopWeekSelect');
+  sel.style.display = one ? 'none' : '';
+  document.getElementById('shopScope').classList.toggle('on', !!one);
   sel.innerHTML = weekLabels.map((label, i)=>
     `<option value="${i}"${(!both && i===state.shoppingWeekIndex)?' selected':''}>${label}</option>`
   ).join('') + (canCombine ? `<option value="both"${both?' selected':''}>BOTH WEEKS</option>` : '');
@@ -7501,8 +7550,12 @@ function renderShopping(){
     : (buckets[state.shoppingWeekIndex] || []);
   const weekStartIso = weekStartIsoOf(weekDays);
   const keyPrefix = both ? 'both|' : '';
-  const { categories: allCategories, totalItems, recipeCount, suggestions } = buildShoppingList(weekDays);
-  const checkedForWeek = loadShoppingChecked()[weekStartIso] || {};
+  const { categories: allCategories, totalItems, recipeCount, suggestions } = one
+    ? buildRecipeShoppingList(one, state.shoppingRecipe.servings)
+    : buildShoppingList(weekDays);
+  const checkedForWeek = one
+    ? (state.shoppingRecipeTicks[one.id] = state.shoppingRecipeTicks[one.id] || {})
+    : (loadShoppingChecked()[weekStartIso] || {});
 
   /* Hiding ticked items can empty a category out; drop the heading too
      rather than leaving a title with nothing under it. */
@@ -7516,7 +7569,7 @@ function renderShopping(){
      pick — are drawn only while it is on, so the list taken to the shop is just the list. Off, the button still counts
      the questions waiting, so one is never missed. One suggestion per row at most, shown on the rarer spelling, asked
      in place and answered when convenient — never a dialog (D10). */
-  const audit = shopAuditOn();
+  const audit = shopAuditOn() && !one; // the week's list is the one to fix; a single recipe is only read
   const namesByKey = new Map(allCategories.flatMap(c=> c.items.map(it=> [it.key, it.name])));
   const suggestionFor = new Map();
   (suggestions || []).forEach(sg=>{
@@ -7525,6 +7578,7 @@ function renderShopping(){
   const auditBtn = document.getElementById('shopAuditBtn');
   auditBtn.textContent = audit ? 'END AUDIT' : suggestionFor.size ? `AUDIT · ${suggestionFor.size}` : 'AUDIT';
   auditBtn.setAttribute('aria-pressed', String(audit));
+  auditBtn.style.display = one ? 'none' : '';
 
   const hideBtn = document.getElementById('shopHideCheckedBtn');
   hideBtn.textContent = state.shoppingHideChecked ? 'SHOW TICKED' : 'HIDE TICKED';
@@ -7536,17 +7590,25 @@ function renderShopping(){
   /* The week label goes in here too (not just the dropdown) so the
      exported PNG — which hides the interactive dropdown — still states
      which week it's for. */
-  const weekLabel = both ? 'THIS WEEK + NEXT WEEK' + (mod ? ' · ' + weekDatesLabel(weekDays) : '') : (weekLabels[state.shoppingWeekIndex] || '');
+  const people = one && state.shoppingRecipe.servings;
+  const weekLabel = one ? `${mod ? 'ONE RECIPE' : 'One recipe'}: ${one.title}${people ? ` · for ${people}` : ''}`
+    : both ? 'THIS WEEK + NEXT WEEK' + (mod ? ' · ' + weekDatesLabel(weekDays) : '') : (weekLabels[state.shoppingWeekIndex] || '');
   const tickedCount = allCategories.reduce((n, cat)=> n + cat.items.filter(it=> checkedForWeek[keyPrefix + it.key]).length, 0);
   document.getElementById('shopMeta').textContent = !totalItems ? weekLabel
+    : one ? (mod ? `${weekLabel} · ${totalItems} ITEM${totalItems===1?'':'S'} · ${tickedCount} TICKED` : `${weekLabel} · ${totalItems} item${totalItems===1?'':'s'}`)
     : mod ? `${weekLabel} · ${totalItems} ITEM${totalItems===1?'':'S'} · ${recipeCount} RECIPE${recipeCount===1?'':'S'} · ${tickedCount} TICKED`
     : `${weekLabel} · ${totalItems} item${totalItems===1?'':'s'} · ${recipeCount} recipe${recipeCount===1?'':'s'}`;
 
   const body = document.getElementById('shopBody');
   body.dataset.weekStart = weekStartIso;
   body.dataset.keyPrefix = keyPrefix;
+  body.dataset.recipeId = one ? one.id : '';
 
   if(!totalItems){
+    if(one){
+      body.innerHTML = `<div class="grid-empty"><p>This recipe has no ingredients to buy.</p></div>`;
+      return;
+    }
     body.innerHTML = `<div class="grid-empty">
       <p>Nothing planned for this week yet.</p>
       <button class="btn" id="shopGoPlanner">GO TO PLANNER</button>
@@ -7576,8 +7638,9 @@ function renderShopping(){
       /* A recipe's own choice sits beside that recipe, not the row: see
          rowAlternatives in core.js. */
       const noteFor = new Map((it.recipeAlts || []).map(r=> [r.recipe, r.alts]));
-      const recipeList = Array.from(it.recipes).map(t=> escapeHtml(t) +
-        (noteFor.has(t) ? ` <span class="shop-item-alt">(${escapeHtml(noteFor.get(t).join('; '))})</span>` : '')).join(', ');
+      /* On a one-recipe list every row would name the same recipe, so only its own choice is left. */
+      const recipeList = Array.from(it.recipes).map(t=> (one ? '' : escapeHtml(t)) +
+        (noteFor.has(t) ? `${one ? '' : ' '}<span class="shop-item-alt">(${escapeHtml(noteFor.get(t).join('; '))})</span>` : '')).join(one ? '' : ', ');
       const sg = suggestionFor.get(it.key);
       const k = escapeHtml(it.key);
       return `<div class="shop-row${isChecked?' checked':''}">
@@ -7704,9 +7767,25 @@ function initShoppingListeners(){
     renderShopping();
   });
 
+  document.getElementById('shopBackToWeekBtn').addEventListener('click', ()=>{
+    state.shoppingRecipe = null;
+    renderShopping();
+  });
+  document.getElementById('shopOpenRecipeBtn').addEventListener('click', ()=>{
+    if(state.shoppingRecipe) openRecipe(state.shoppingRecipe.recipeId, 'recipes');
+  });
+
   document.getElementById('shopClearBtn').addEventListener('click', ()=>{
     const body = document.getElementById('shopBody');
     const weekStart = body.dataset.weekStart;
+    if(body.dataset.recipeId){
+      const held = state.shoppingRecipeTicks[body.dataset.recipeId] || {};
+      const n = Object.keys(held).length;
+      if(!n || !confirm(`Untick all ${n} item${n===1?'':'s'} on this list?`)) return;
+      delete state.shoppingRecipeTicks[body.dataset.recipeId];
+      renderShopping();
+      return;
+    }
     const all = loadShoppingChecked();
     const keys = ticksInMode(all[weekStart], body.dataset.keyPrefix);
     if(!keys.length) return;
@@ -7824,12 +7903,21 @@ function initShoppingListeners(){
     }
     const label = e.target.closest('.shop-item');
     if(!label) return;
-    toggleShoppingChecked(document.getElementById('shopBody').dataset.weekStart, label.dataset.key);
+    const shopBody = document.getElementById('shopBody');
+    if(shopBody.dataset.recipeId){
+      /* Held in this tab only: nothing is written for a one-recipe list. */
+      const held = state.shoppingRecipeTicks[shopBody.dataset.recipeId] = state.shoppingRecipeTicks[shopBody.dataset.recipeId] || {};
+      if(held[label.dataset.key]) delete held[label.dataset.key]; else held[label.dataset.key] = true;
+    } else {
+      toggleShoppingChecked(shopBody.dataset.weekStart, label.dataset.key);
+    }
     renderShopping();
   });
 
   document.getElementById('shopExportBtn').addEventListener('click', ()=>{
-    const labelBit = state.shoppingBothWeeks ? 'both-weeks'
+    const oneRecipe = state.shoppingRecipe && loadRecipes().find(r=> r.id === state.shoppingRecipe.recipeId);
+    const labelBit = oneRecipe ? 'recipe-' + (oneRecipe.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'list')
+      : state.shoppingBothWeeks ? 'both-weeks'
       : state.shoppingWeekIndex===0 ? 'this-week'
       : state.shoppingWeekIndex===1 ? 'next-week' : 'week';
     exportNodeAsPng(
