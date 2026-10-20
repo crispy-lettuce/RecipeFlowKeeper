@@ -23,7 +23,7 @@ first two lines are older, as dated there. Check again before relying on a numbe
 - **Tests:** `node test/core.test.js` 218 checks; `node test/build.js && node test/smoke.js` 713 checks (418 until P3 PR 2, 437 until the
   calendar toggles, both 9 Oct; 447 until the HELP tab, 448 until recipe sharing, 465 until the Drive backup, 472 until PRE-MADE, 487 until fresh or
   freezer, all 10 Oct; 492 until issues #85–#93, 500 until FROZEN, 502 until photo upload, 509 until the version and change log, 11 Oct; 515 until the network guard, 517 until the lost-changes fixes, 530 until the write queue, 537 until several households, 547 until the converter reminder, 12 Oct; 554 until the printed list, 557 until AUDIT, 568 until the INGREDIENTS folds, 576 until PREPARATION, 13 Oct; 606 until READABILITY T, 609 until READABILITY S, 613 until READABILITY H, 14 Oct; 622 until the Modernist style, 15 Oct; 708 until its review's fixes, 18 Oct).
-  `node test/calendar-push.js` 39 checks; `node test/drive-backup.js` 13 checks; `node test/image-integrity.js` 37 checks;
+  `node test/calendar-push.js` 62 checks; `node test/drive-backup.js` 13 checks; `node test/image-integrity.js` 37 checks;
   `node test/source-ingredients.js` 16 checks; `node test/help-guide.js` 7 checks. `offline-harness` runs
   both on every PR and is required on `main`.
 - **Schema:** 16 tables in `public` and 1 in `private`, row-level security on every one (12 Oct). Nothing is waiting:

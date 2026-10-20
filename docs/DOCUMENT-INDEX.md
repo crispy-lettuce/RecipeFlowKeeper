@@ -144,6 +144,13 @@ to undo it. Tested on a scratch local Postgres built to the live shape, not on t
 
 **Use it when:** applying it (the household, before merging the app's side), checking it, or undoing it.
 
+### `docs/migrations/add-calendar-items.md` — a schema change, written 20 Oct 2026, **not yet applied**
+**What:** the first PR of `docs/PLAN-CALENDAR-PUSH.md` §12: `planner_days.calendar_items text[]`, one slot per planned dish
+(`''` / `'in'` / `'remind'`), so a calendar reminder can belong to a meal rather than a whole day. Tested on a scratch Postgres 16.
+Who applies it and when, why it is safe in either order, how to check it and how to undo it. DDL only, no data.
+
+**Use it when:** applying it (the household; job C1 in `docs/HOUSEHOLD-JOBS.md`), checking it, or undoing it.
+
 ### `docs/migrations/add-calendar-auto.md` — a schema change, applied by the household 9 Oct 2026
 **What:** the P3 follow-up (`docs/PLAN-CALENDAR-PUSH.md` §11): `household_settings.calendar_auto` and `calendar_auto_remind`, the
 two automatic calendar toggles, off by default. Who applies it and when, why it is safe in either order, how to check it and how to

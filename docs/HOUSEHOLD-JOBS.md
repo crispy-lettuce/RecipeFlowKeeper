@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 20 Oct 2026 (74a, the denser Planner, added; 73a, the second batch from the tablet review, before it), earlier 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
+**Last brought up to date: 20 Oct 2026 (C1, the calendar reminder per meal, added; 74a, the denser Planner, before it; 73a, the second batch from the tablet review, before that), earlier 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
 households sort out their own converter and need no steps here.
@@ -23,6 +23,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | --- | --- | --- | --- |
 | [L1. Tap DONE on the converter bar](#l1-tap-done-on-the-converter-bar-18-oct) (tests 11 to 14 passed) | app | 1 min | Only the converter's DONE |
 | [Reload the app](#reload-the-app-on-every-device), on any device not opened since 18 Oct | every device | 1 min | No |
+| [C1. The calendar reminder per meal: apply the SQL, deploy the function](#c1-the-calendar-reminder-per-meal-apply-the-sql-deploy-the-function-new-20-oct-docsplan-calendar-pushmd-12) | Supabase dashboard, then the phone | 10 min | One column added to `planner_days`; the calendar's events moved to new ids |
 | [61a–65a: the readability changes](#61a-quieter-text-is-easier-to-read-new-14-oct-docsplan-readabilitymd-change-t), **in Classic** | tablet (62a and 63a end on the phone) | 25 min | Only Appearance, switched to dark and put back (61a, 62a, 64a) |
 | [66a: the Modernist style](#66a-a-second-style-modernist-new-15-oct-revised-18-oct-docsplan-modernistmd) | tablet, landscape | 15 min | Two things, each undone in the next tap (see 66a) |
 | [67a: liquids in spoons or ml](#67a-liquids-in-spoons-or-ml-new-18-oct-docsplan-liquid-measuresmd), in Test Kitchen | tablet | 5 min | No |
@@ -56,6 +57,26 @@ check 68a), then **2026-10-18.5** (#160, the converter's shorter rewrite) and **
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready.**, tap **RELOAD**. Otherwise refresh the page.
 3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-18.6** once the follow-up has merged (**2026-10-18.5** before it).
+
+### C1. The calendar reminder per meal: apply the SQL, deploy the function (new 20 Oct, `docs/PLAN-CALENDAR-PUSH.md` §12)
+
+You chose a calendar reminder per meal, with a group cooked together as one. The first part is built and waiting for you: the
+function that writes the calendar, and the SQL. The Planner's buttons for it come in the next PR, so **nothing changes on the
+tablet yet**, and nothing in the calendar changes until step 4.
+
+1. Open the Supabase dashboard → **SQL Editor** → New query. Paste the statement from `docs/migrations/add-calendar-items.md` (the
+   block under "The statement") and run it. **You should see:** *Success. No rows returned.*
+2. Paste and run the first check query from that page. **You should see:** one row, `planner_days | calendar_items | ARRAY | NO | '{}'::text[]`.
+3. Once the PR that carries this page has merged: **Edge Functions → calendar-sync → Code**, replace the file with the one at
+   `https://raw.githubusercontent.com/crispy-lettuce/RecipeFlowKeeper/main/supabase/functions/calendar-sync/index.ts`, and **Deploy**.
+   Leave JWT verification on. **You should see:** a new version number in the function's list.
+4. In the app: **Settings → App → CALENDAR → SYNC NOW**, once. **You should see:** the time of the last sync change and no error
+   under it.
+5. On the phone, open Google Calendar and look at a day you have switched on. **You should see:** the same single event as before,
+   with the same title; and a day that had REMIND ME still pops up at the same time the evening before. If a day shows the
+   event twice, press SYNC NOW again and tell the next session.
+
+Tell the next session when steps 1 to 4 are done: it records them in `docs/INFRASTRUCTURE.md`.
 
 ---
 
