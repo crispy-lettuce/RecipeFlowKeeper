@@ -381,7 +381,11 @@ every day still reads from its two flags, as the page says it will. The househol
 `calendar_connections` shows `connected` true, `last_sync_at` 19:07:30 UTC (21 seconds after the deploy) and no `last_error`. *Not seen at 19:10:*
 what the sync wrote to Google, or the Planner's new buttons on the tablet. **Seen at about 20:00 UTC, after the household's tablet check (75a):**
 one day, 24 Oct, saved by the new app at 19:42:32 UTC with two dishes, `calendar_items` `{in,remind}` and `calendar`, `calendar_remind` both true (so the
-column and the app's write are seen working together); and `calendar_connections` shows a sync at 19:42:58 UTC with no error. Still not seen: the events in Google.
+column and the app's write are seen working together); and `calendar_connections` shows a sync at 19:42:58 UTC with no error. **Google, seen at about 20:05 UTC** by reading the RecipeWrangler calendar through the Calendar connector (not on a phone): 24 Oct has exactly two all-day
+events, `…24n` (one dish, no reminder at all, "(from the freezer)" in its description) and `…24r` (the other dish, one pop-up 240 minutes before: 20:00 the evening before), both
+created and updated by the 19:42 syncs, transparent, and no plain-id event of this household anywhere. 20 and 23 Oct are single `…r` events. **Not this change's, found on the way:** the calendar still holds
+**thirteen events with Test Kitchen's id** (created 9 to 12 Oct, one for each day from 9 to 22 Oct but the 17th): the household that was connected before the 18 Oct split. The family household's sync only ever touches its own prefix (the one `calendar_connections` row), so nothing will delete them. Three are today or later (20, 21 and 22 Oct); the
+last, for 22 Oct, would pop up at 20:00 on 21 Oct for a dish that is not in anyone's plan. Left in place, as writes to the household's Google account are the household's to decide.
 
 **Waiting to be applied: nothing** (20 Oct 2026; every page in `docs/migrations/` carries its "Applied" line). A PR that adds a
 migration page lists it here as waiting, and the household applies it (first, unless the page says why the order may be

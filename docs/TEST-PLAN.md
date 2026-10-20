@@ -905,7 +905,8 @@ reported one by one.*
     group, REMIND ME, UNGROUP. (6) *UNGROUP:* each dish as it was. (7) *AUTOMATICALLY REMIND ME FOR MAIN MEALS:* a Main's meal gets the reminder, a side beside it does not. Before the SQL: the
     Planner is as before, one REMIND ME a day. Every button 44px to tap. Not verified on the tablet itself, nor against Google or the live database.
 *75a reported done by the household, 20 Oct, with a screenshot. Read-only afterwards: Saturday 24 Oct saved at 19:42:32 UTC with `calendar_items` `{in,remind}`, the day's flags
-true, and a sync at 19:42:58 UTC with no error. Not seen: the events on the phone, and which of (5) to (7) were done.*
+true, and a sync at 19:42:58 UTC with no error. In Google (read through the Calendar connector at about 20:05 UTC): 24 Oct has two events, one without a reminder and one with
+the 20:00 pop-up. Not seen: a reminder arriving on a phone, and which of (5) to (7) were done.*
 
 ## Deferred to the tablet, after merging
 

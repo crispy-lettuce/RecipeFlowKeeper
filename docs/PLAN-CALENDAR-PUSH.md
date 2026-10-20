@@ -465,4 +465,7 @@ that puts a second dish on a day and switches reminders) has left no trace in th
 **Later the same day.** The household reported 75a done, with a screenshot. Read back at about 20:00 UTC: one day, 24 Oct, saved by the new app at 19:42:32 UTC
 with two dishes, `calendar_items` `{in,remind}` and `calendar`, `calendar_remind` both true; `calendar_connections` has a sync at 19:42:58 UTC and no error. The screenshot
 shows what §12.5 describes: a REMIND ME 20:00 on each dish of the two-dish day with the second lit and IN CALENDAR alone beneath; a one-group day with no REMIND ME on
-its dishes; a one-dish day with both buttons. **Still not seen:** the two events in Google on the phone, and which of 75a's steps 5 to 7 were done.
+its dishes; a one-dish day with both buttons. **The events in Google, seen at about 20:05 UTC** (read through the Calendar connector, not on a phone): 24 Oct has exactly two events, `…24n` with no reminder (and "(from the freezer)"
+in its description) and `…24r` with one pop-up 240 minutes before, i.e. 20:00 the evening before: as §12.4 says. The days that were one state are one event, now under the `r` id (20 and 23 Oct), and none
+of this household's plain-id events is left, so SYNC NOW converted the calendar. **Not this change's:** thirteen events with Test Kitchen's old household id remain in the calendar (see `docs/INFRASTRUCTURE.md`);
+this household's sync cannot reach them. **Still not seen:** which of 75a's steps 5 to 7 were done, and the reminder arriving on a phone.
