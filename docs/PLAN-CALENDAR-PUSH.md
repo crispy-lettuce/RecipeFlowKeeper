@@ -275,7 +275,7 @@ and phone step 40b.
 
 ## 12. A reminder per meal, not per day (proposed and agreed 20 Oct 2026)
 
-**Status: agreed (§12.11); built in two PRs (§12.12); the SQL is applied and `calendar-sync` v8 deployed (20 Oct, §12.13); the tablet check is 75a in `docs/HOUSEHOLD-JOBS.md`.** Written from the code as it stands on 20 Oct 2026 (version
+**Status: agreed (§12.11); built in two PRs (§12.12); the SQL is applied and `calendar-sync` v8 deployed (20 Oct, §12.13); the tablet check 75a is reported done (§12.13).** Written from the code as it stands on 20 Oct 2026 (version
 2026-10-20.6), not from §9, which it corrects in one place (§12.1).
 
 ### 12.1 The brief, and what is there now
@@ -461,3 +461,11 @@ updated 19:07:09 UTC, and carries the new code; and `calendar_connections` shows
 Google (the phones are the only place), and the Planner's new buttons. **No planned day has been saved with a setting per dish**: of 44 days none has
 `calendar_items` set and the last plan save was at 17:13:58 UTC, before the app that writes it (2026-10-20.7, merged 18:55 UTC) existed. So 75a (the tablet check
 that puts a second dish on a day and switches reminders) has left no trace in the database, and stays on `docs/HOUSEHOLD-JOBS.md` until the household says it passed.
+
+**Later the same day.** The household reported 75a done, with a screenshot. Read back at about 20:00 UTC: one day, 24 Oct, saved by the new app at 19:42:32 UTC
+with two dishes, `calendar_items` `{in,remind}` and `calendar`, `calendar_remind` both true; `calendar_connections` has a sync at 19:42:58 UTC and no error. The screenshot
+shows what §12.5 describes: a REMIND ME 20:00 on each dish of the two-dish day with the second lit and IN CALENDAR alone beneath; a one-group day with no REMIND ME on
+its dishes; a one-dish day with both buttons. **The events in Google, seen at about 20:05 UTC** (read through the Calendar connector, not on a phone): 24 Oct has exactly two events, `…24n` with no reminder (and "(from the freezer)"
+in its description) and `…24r` with one pop-up 240 minutes before, i.e. 20:00 the evening before: as §12.4 says. The days that were one state are one event, now under the `r` id (20 and 23 Oct), and none
+of this household's plain-id events is left, so SYNC NOW converted the calendar. **Not this change's:** thirteen events with Test Kitchen's old household id remain in the calendar (see `docs/INFRASTRUCTURE.md`);
+this household's sync cannot reach them. **Still not seen:** which of 75a's steps 5 to 7 were done, and the reminder arriving on a phone.

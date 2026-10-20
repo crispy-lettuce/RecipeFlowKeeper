@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 20 Oct 2026 (C1, the calendar SQL and function, done and taken off; 75a, the calendar reminder per meal, added; 74a, the denser Planner, before it; 73a, the second batch from the tablet review, before that), earlier 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
+**Last brought up to date: 20 Oct 2026 (the old calendar events from before the split: decided to leave them; 75a, the calendar reminder per meal, reported done and taken off; C1, the calendar SQL and function, before it; 74a, the denser Planner, before it; 73a, the second batch from the tablet review, before that), earlier 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
 households sort out their own converter and need no steps here.
@@ -33,7 +33,6 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | [72a: the first changes from the tablet review](#72a-the-first-changes-from-the-tablet-review-new-20-oct-version-2026-10-203-docsplan-modernistmd), in Modernist | tablet, landscape | 8 min | No (AUDIT is switched on and off) |
 | [73a: the second batch from the tablet review](#73a-the-second-batch-from-the-tablet-review-new-20-oct-version-2026-10-204-docsplan-modernistmd), in Modernist | tablet, upright then landscape | 10 min | One dish taken off a day and put back (step 5) |
 | [74a: the denser Planner](#74a-the-denser-planner-new-20-oct-version-2026-10-205-docsplan-modernistmd), in Modernist | tablet, landscape | 8 min | One dish taken off and put back (step 5) |
-| [75a: a calendar reminder per meal](#75a-a-calendar-reminder-per-meal-new-20-oct-version-2026-10-207-docsplan-calendar-pushmd-12), in your own household | tablet, then the phone | 12 min | A second dish put on one day and taken off again; reminders switched on and off |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
 **The split is done** (18 Oct, see Recently done), so your own library is empty until you add recipes. Do 61a to 70a signed in as the
@@ -401,30 +400,6 @@ Tell the next session what felt cramped, if anything: the gaps between dishes, a
 the Planner in Classic. A third layout was left out for now (**ADD ANOTHER** and **GROUP SOME TOGETHER** in a column at the right of each day, nine days on the
 screen); say if you want it.
 
-### 75a. A calendar reminder per meal (new 20 Oct, version 2026-10-20.7, `docs/PLAN-CALENDAR-PUSH.md` §12)
-
-On the tablet, in your own household with the calendar connected, after reloading into 2026-10-20.7. The SQL is applied and `calendar-sync` v8 is deployed
-(20 Oct, a session read both back), so the buttons show. It puts a second dish on one day and takes it off at the end. Use a day that is in the calendar with one dish.
-
-1. Open the **PLANNER** and look at that day. **You should see:** **IN CALENDAR** and **REMIND ME … THE EVENING BEFORE** at the right of ADD ANOTHER's line, as before.
-2. Tap **ADD ANOTHER** and put a second dish on the day. **You should see:** both dishes have a **REMIND ME 20:00** button on their line, after their other buttons;
-   the first has a ✓ if the day had its reminder, the new one has not (a dish added to a day that is in the calendar joins it without a reminder). The strip at the
-   end of the day now has **IN CALENDAR** alone.
-3. Tap **REMIND ME 20:00** on the dish that has not got it. **You should see:** it lights with a ✓. After a few seconds, on the phone, look at the day in Google
-   Calendar. **You should see:** one event with both dishes' names, with a reminder at 20:00 the evening before.
-4. Tap **REMIND ME 20:00** off on one dish. **You should see:** two events that day on the phone, one with the dish that still has the reminder (and the pop-up), one with
-   the other dish and no reminder.
-5. Tap **GROUP SOME TOGETHER**, choose both dishes, **GROUP SELECTED**. **You should see:** a single **REMIND ME 20:00** on the **GROUPED** bar, between the dishes'
-   names and **UNGROUP**, lit (the stronger of the two, so the reminder is not lost); the dishes have no REMIND ME of their own; the phone shows one event again.
-   Tap the bar's name: the group opens. Close it.
-6. Tap **UNGROUP**. **You should see:** each dish has its own **REMIND ME 20:00** again, both lit.
-7. *(Only if AUTOMATICALLY REMIND ME FOR MAIN MEALS is on.)* On an empty day put a Main-course recipe, then ADD ANOTHER and put a side beside it. **You should see:** the Main
-   with its REMIND ME lit, the side not.
-8. Put things back: take the extra dish off with its **×**, and switch the day's reminder as it was.
-
-Tell the next session what you see on the phone at steps 3 to 5: the calendar side can only be seen there. Not changed: a day with one dish or one group; the strip's
-**IN CALENDAR** is still the whole day's.
-
 ---
 
 ## Library jobs
@@ -486,10 +461,19 @@ None at the moment.
 
 ## Recently done
 
+- **20 Oct:** **you decided to leave the 13 old Test Kitchen events in the RecipeWrangler calendar as they are** ("leave as is"). They are from the household connected before the 18 Oct split
+  (9 to 22 Oct, not the 17th), and the family household's sync cannot reach them. Three are today or later; the 22 Oct one, for a dish that is in nobody's plan, will pop up at 20:00 on 21 Oct. Nothing
+  was deleted. If one becomes a nuisance, delete it by hand in Google Calendar, or ask a session to (it asks first).
+- **20 Oct:** **tablet step 75a (a calendar reminder per meal) reported done** ("done", with a screenshot of the Planner). A session read the database
+  afterwards: one day, Saturday 24 Oct, was saved by the new app at 19:42:32 UTC with two dishes and `calendar_items` `{in,remind}` (the day's own flags,
+  `calendar` and `calendar_remind`, both true, as "some dish"), and `calendar-sync` finished a sync at 19:42:58 UTC with no error. The screenshot shows that
+  day with a REMIND ME 20:00 on each dish, the second lit, and IN CALENDAR alone at the end of the day; a day with one group showing no REMIND ME on its dishes; and a day
+  with one dish keeping both buttons. *Not seen by a session:* the two events on the phone, and which of steps 5 to 7 (grouping, UNGROUP, the automatic
+  reminder) were done: the database keeps only the end state.
 - **20 Oct:** **job C1 done: the calendar reminder per meal's SQL and function.** `planner_days.calendar_items` is there (`ARRAY`, not null, default
   `'{}'`); `calendar-sync` is v8, deployed at 19:07 UTC; and the sync that followed finished at 19:07:30 UTC with no error. A session read all
   three back at about 19:10 UTC. It also found that **no planned day has been saved with a setting per dish yet** (the last plan save was at
-  17:13 UTC, before version 2026-10-20.7 existed), so 75a, the tablet check that does that, is still on the list.
+  17:13 UTC, before version 2026-10-20.7 existed), so 75a, the tablet check that does that, was still on the list then (reported done later that day, above).
 - **18 Oct:** **converter tests 11 to 14 passed** in your conversion project, with version 2026-10-18.4 (your shorter rewrite and
   your answers): liquids, estimated times, a tin with no weight, and several recipes in one message.
 - **18 Oct:** **the test-household split.** `switch.sql` ran at 18:02:53 UTC. Your account is now in a **new household under your household's name**, empty,
