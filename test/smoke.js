@@ -7888,10 +7888,20 @@ const check = (name, pass, detail) => {
     return { cols: getComputedStyle(g).gridTemplateColumns.split(' ').length, card: Math.round(c.getBoundingClientRect().width) }; });
   check('    Recipes has three columns of cards at least 240px wide (they were 195px with the full sidebar)', grid.cols === 3 && grid.card >= 240, JSON.stringify(grid));
   await tu.evaluate(() => showView('history')); await tu.waitForTimeout(300);
-  const hist = await tu.evaluate(() => { const cal = document.querySelector('.history-calendar'), labels = [...document.querySelectorAll('.history-weekday-labels span')], day = document.querySelector('.history-day:not(.other-month)');
-    return { scrollOver: cal.scrollWidth - cal.clientWidth, labels: labels.length, lastLabelRight: Math.round(labels[labels.length - 1].getBoundingClientRect().right), calRight: Math.round(cal.getBoundingClientRect().right), day: Math.round(day.getBoundingClientRect().width) }; });
+  const histNow = () => tu.evaluate(() => { const cal = document.querySelector('.history-calendar'), labels = [...document.querySelectorAll('.history-weekday-labels span')], day = document.querySelector('.history-day:not(.other-month)'),
+      pv = document.getElementById('historyPrevMonth').getBoundingClientRect(), nx = document.getElementById('historyNextMonth').getBoundingClientRect(), cr = cal.getBoundingClientRect();
+    return { scrollOver: cal.scrollWidth - cal.clientWidth, labels: labels.length, lastLabelRight: Math.round(labels[labels.length - 1].getBoundingClientRect().right), calRight: Math.round(cr.right), day: Math.round(day.getBoundingClientRect().width),
+      sameRow: Math.abs(pv.top - nx.top) < 2, nextInside: Math.round(nx.right) <= Math.round(cr.right) }; });
+  const hist = await histNow();
   check('    History fits: no sideways scroll, all seven weekday labels inside the calendar, days at least 56px wide (34px before)',
         hist.scrollOver <= 1 && hist.labels === 7 && hist.lastLabelRight <= hist.calRight + 1 && hist.day >= 56, JSON.stringify(hist));
+  /* The month's name is wider in some fonts than others (the browser here and CI's do not share one), and the harness has no web font; a name too wide for
+     the room beside the two squares pushed › onto a line of its own, stacked under ‹. So both the month as it is and a name far too long: ‹ and › stay on one row. */
+  await tu.evaluate(() => { document.getElementById('historyMonthLabel').textContent = 'Wednesday September 2026'; });
+  const histLong = await histNow();
+  await tu.evaluate(() => renderHistoryCalendar());
+  check('    and the month\'s name, however wide the font makes it (here a deliberately long one too), has ‹ and › on one row, and › inside the calendar',
+        hist.sameRow && hist.nextInside && histLong.sameRow && histLong.nextInside && histLong.scrollOver <= 1, JSON.stringify([hist, histLong]));
   await tu.evaluate(() => showView('shopping')); await tu.waitForTimeout(300);
   const shop = await tu.evaluate(() => { const bar = document.querySelector('.shop-head-right'), wrap = document.querySelector('.shop-wrap'), b = [...bar.querySelectorAll('button')].filter(e => e.getClientRects().length);
     return { right: Math.round(bar.getBoundingClientRect().right), vw: innerWidth, buttons: b.length, outside: b.filter(e => e.getBoundingClientRect().right > innerWidth + 0.5).length, wrapOver: wrap.scrollWidth - wrap.clientWidth }; });

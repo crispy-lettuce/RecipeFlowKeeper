@@ -362,7 +362,8 @@ Step 5 changes one day of the Planner and puts it back with UNDO. Use a day stil
    cards are in three columns, each wider than before (about 250 px, where they were about 195). Tap the strip: the full menu slides out over the page. Tap
    the **‹** at the top of it, or choose a screen, and it folds back.
 2. Still upright, open **HISTORY**. **You should see:** the whole calendar on the screen, with all seven days named along the top and none cut off
-   at the right, and no sideways scroll.
+   at the right, no sideways scroll, and the month's name with **‹** and **›** either side of it on one line. Tap **›** a few times: the same for
+   every month, including September, November and December.
 3. Open **SHOPPING**. **You should see:** every button along the top on the screen, onto a second row if they don't fit on one.
 4. Open **SETTINGS** and the **PLANNER**. **You should see:** the strip on both and nothing running off to the right.
 5. Turn the tablet sideways. In the **PLANNER**, on a day with a dish, tap the **×** beside the dish. **You should see:** the dish goes, as it did, and a bar

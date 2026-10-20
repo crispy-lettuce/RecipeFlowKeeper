@@ -881,7 +881,7 @@ reported one by one.*
 73a. **The second batch from the tablet review (new 20 Oct; version 2026-10-20.4; `docs/PLAN-MODERNIST.md`, "The tablet review, second batch").**
     Modernist, on the tablet; (1) to (4) held upright, (5) to (7) sideways. (1) *RECIPES:* the sidebar is the 56px rail (it was 228px), the cards are three
     columns of 240px or more (195px before); tapping the rail opens the 228px menu over the page and ‹ or a choice folds it. (2) *HISTORY:* no
-    sideways scroll, all seven weekday labels, days 56px or wider (34px before). (3) *SHOPPING:* every toolbar button on the screen, wrapping to a second row.
+    sideways scroll, all seven weekday labels, days 56px or wider (34px before), ‹ and › on one row beside the month's name (40px upright) for every month. (3) *SHOPPING:* every toolbar button on the screen, wrapping to a second row.
     (4) *SETTINGS and PLANNER:* the rail, nothing off the right edge. (5) *PLANNER, ×:* the dish goes at once, a bar in the day says "Removed “…”" with a
     44px UNDO; UNDO restores the entry exactly (order, people, calendar and reminder switches) and its group, writing one `planner_days` row and one
     `meal_groups` row; the bar goes after ten seconds or on leaving the Planner; if the day was changed meanwhile there is no bar and nothing is
