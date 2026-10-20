@@ -2224,6 +2224,9 @@ NOW. Read-only: `planner_days.calendar_items` is `ARRAY`, not null, default `'{}
 `dayEventIds` and the `meal_groups` read; `calendar_connections` has `last_sync_at` 19:07:30 UTC and no error. Of 44 planned days none has a setting per
 dish and the last plan save was at 17:13 UTC, before 2026-10-20.7: nothing has yet been saved by the new app, so the Planner's buttons and the two-event
 days in Google are **not seen**.
+**Tablet check 75a reported done (20 Oct 2026, read back at about 20:00 UTC).** One day, 24 Oct, was saved by the new app at 19:42:32 UTC with two dishes
+and `calendar_items` `{in,remind}` (flags true, true), and a sync followed at 19:42:58 UTC with no error; the household's screenshot shows the Planner as
+designed on that day, on a one-group day and on a one-dish day. Still **not seen** by a session: the events on the phone.
 
 **Issues #85, #86, #89, #93: parse feedback, seconds, COOKING MODE, Drink (11 Oct 2026).** Raised on GitHub on 11 Oct,
 the first issues from the second household; planned and approved the same day.

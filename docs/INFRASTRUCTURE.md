@@ -378,8 +378,10 @@ that day, and the column was there at about 19:10 UTC). Checked read-only at abo
 query: `planner_days | calendar_items | ARRAY | NO | '{}'::text[]`. Of 44 planned days none has a dish marked yet and the last plan save
 was at 17:13:58 UTC, before the app that writes the column (2026-10-20.7) was merged, so **no day has been saved with a setting per dish**:
 every day still reads from its two flags, as the page says it will. The household ran SYNC NOW after deploying `calendar-sync` v8:
-`calendar_connections` shows `connected` true, `last_sync_at` 19:07:30 UTC (21 seconds after the deploy) and no `last_error`. *Not seen:*
-what the sync wrote to Google, or the Planner's new buttons on the tablet.
+`calendar_connections` shows `connected` true, `last_sync_at` 19:07:30 UTC (21 seconds after the deploy) and no `last_error`. *Not seen at 19:10:*
+what the sync wrote to Google, or the Planner's new buttons on the tablet. **Seen at about 20:00 UTC, after the household's tablet check (75a):**
+one day, 24 Oct, saved by the new app at 19:42:32 UTC with two dishes, `calendar_items` `{in,remind}` and `calendar`, `calendar_remind` both true (so the
+column and the app's write are seen working together); and `calendar_connections` shows a sync at 19:42:58 UTC with no error. Still not seen: the events in Google.
 
 **Waiting to be applied: nothing** (20 Oct 2026; every page in `docs/migrations/` carries its "Applied" line). A PR that adds a
 migration page lists it here as waiting, and the household applies it (first, unless the page says why the order may be
