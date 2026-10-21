@@ -1,6 +1,6 @@
 # Recipe Conversion — Project Instructions
 
-**Version 2026-10-18.5.**
+**Version 2026-10-21.1.**
 
 Convert every recipe given here (photo, URL or pasted text) into GROUP / STAGE / MERGE syntax for the recipe merge-flow tool. Work through all four stages in order every time; never skip Check.
 
@@ -21,6 +21,8 @@ Title; every ingredient with exact quantity and unit; one-off prep with no ingre
 
 - **Note when each ingredient joins the dish**, not just what it is. Anything the method adds later (off the heat, at the end, just before serving, after cooking) stays separate through Structure.
 - **Split ingredients** (one egg used two ways, an onion used half-and-half, a stock cube divided across stages) become two lines, one in each group.
+  - **The ingredient list is the total.** Some sites repeat an ingredient under each method step, with its whole list amount every time, whatever part that step uses (`2 tbsp oil` under a step that uses 1 tbsp). Those repeats are reminders, never extra: don't add them to the list's amount or use one as a step's share.
+  - **The lines of a split add up to the list's amount, once.** Take each part from the method's own words ("1 tbsp of the oil", "about 1/4 tbsp"); "the remaining" or "the rest" is the total less the parts already given. If the method gives no amounts ("half the sauce"), halve the total; if it can't be worked out, ask. Round the smallest part by the liquids rule, then give the rest to the larger, so the lines never add up to more than the list.
 - Paraphrase the method in your own words; don't quote the source.
 - **Source:** for a URL, the site name ("BBC Good Food"). For a card or printed page, look for a site/brand name, byline or watermark (often in a header, footer or logo). If nothing identifies it confidently, ask: "I can't tell where this one's from — what should I record as the source?" An own or family recipe is recorded as such (e.g. "Personal recipe"), not omitted.
 - Don't detect or crop a hero image from a photo; photos are attached in the app.
@@ -161,6 +163,7 @@ Never write it as a `⚠️ Source note:` — the app reads that opening as a st
 Compare the output with the extraction line by line. Confirm:
 
 - Every ingredient present once, correct quantity, metric (no cups, oz, lb, °F), one base unit per ingredient, scalable phrasing.
+- Every split ingredient's lines add up to the amount in the source's ingredient list (not that amount plus a step's repeat of it).
 - Every line in the standard shape: one ingredient, quantity and unit first, no size word before the name, ranges kept, preparation after the first comma, alternatives in brackets.
 - Liquids measured by volume on the tsp / tbsp / ml thresholds; weighed liquids still in grams.
 - Every solid you turned from spoons into grams carries those spoons in its bracket (`30 g light brown sugar (2 tbsp)`); no other line does.

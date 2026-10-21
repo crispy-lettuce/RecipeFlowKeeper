@@ -457,6 +457,12 @@ load the new `converter/conversion-instructions.md` into your conversion project
 in grams with the spoons in brackets, like `45 g butter (3 tbsp)`, and the flour, oats and golden syrup with no bracket. Nothing in
 the library changes. Reload the app on each device and check **SETTINGS → HELP** shows Version **2026-10-18.7**.
 
+**Once the split-ingredient fix has merged (converter 2026-10-21.1, app 2026-10-21.5):** the bar will name 2026-10-21.1, so load the new
+`converter/conversion-instructions.md` into your conversion project, then tap **DONE**. Then run **test 16** in `converter/test-set.md`
+(a made-up noodle recipe whose page repeats each ingredient's whole amount under every step): the soy sauce should come back as
+`1 tbsp` and `2 tbsp`, the oil as `1 tbsp` and `2 tbsp`, never a line of `3 tbsp`. Nothing in the library changes: the recipe
+that showed it still has its extra amount, and fixing it is a one-line edit in the app in the recipe's Edit form, or a recipe-text job if there are many.
+
 ### Otherwise
 
 The master copy of the converter's instructions is `converter/conversion-instructions.md`; when it changes,

@@ -4,6 +4,24 @@ What changed in `conversion-instructions.md`, and why, newest first. Until 18 Oc
 file, so every conversion read them; they say nothing a conversion needs, so they live here, for reference. **This file is
 not loaded into the conversion project.** Each household loads `conversion-instructions.md` alone.
 
+## Revision note (21 Oct 2026, version 2026-10-21.1: a split adds up to the ingredient list)
+
+Raised by the household from a real conversion whose COMPARE WITH SOURCE showed a sauce as "amounts differ": the recipe had a
+small first part and then the source's whole list amount again, so it added up to more than the source asked for.
+
+- **The cause.** The source site prints each ingredient under every method step that uses it, **with its whole list amount each time**
+  (`2 tbsp oil` under a step that uses 1 tbsp). The instructions said a split ingredient becomes one line per group but not
+  where the amounts come from, so a step's repeat of the list was taken as that step's share, on top of an earlier part. Another ingredient in the same
+  recipe came out right, because the method said "the remaining" of it; the sauce did not, because the method gave its last part as an
+  approximation ("about 1 3/4 tbsp").
+- **Two rules, under "Split ingredients".** The ingredient list is the total, and a step's repeat of it is a reminder, never an
+  extra. The lines of a split add up to the list's amount, once: each part from the method's own words, "the remaining" being the total less the
+  parts given, halves where the method says so, a question where it cannot be worked out. The smallest part is rounded by the liquids
+  rule and the larger gets the rest, so the lines never total more than the list.
+- **One line added to Check:** every split's lines add up to the source's list.
+- **Test 16 added**, with made-up amounts.
+- **Reload this file into the conversion project.** Recipes already in the library are not changed (that would be a recipe-text job).
+
 ## Revision note (18 Oct 2026, version 2026-10-18.5: spoons kept in brackets)
 
 Asked for by the household, after seeing spoons of a solid become grams with nothing to say where the figure came from.

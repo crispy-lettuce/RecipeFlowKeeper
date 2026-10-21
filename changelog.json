@@ -1,4 +1,6 @@
 [
+  { "version": "2026-10-21.5", "date": "2026-10-21",
+    "changes": ["Fixed: the recipe converter could add up too much of an ingredient when a recipe's page repeats the whole amount under each step that uses it. A dish could come out with its soy sauce as 1 tsp and then 2 tbsp again, where the page asked for 2 tbsp in all, and COMPARE WITH SOURCE showed it as AMOUNTS DIFFER. The converter's instructions now say the ingredient list is the total and that a split ingredient's lines must add up to it (version 2026-10-21.1), so the CONVERTER bar will ask your household to load the new file. Recipes already in your library are not changed; COMPARE WITH SOURCE on a recipe is how to see whether one has this."] },
   { "version": "2026-10-21.4", "date": "2026-10-21",
     "changes": ["New: a note on the shortlist can go on a day too. Tap the note (it reads SELECTED — TAP A DAY, as a recipe does), then tap the day. It becomes an entry on that day, the same kind + OTHER makes, with the note's own words, and leaves the shortlist. Tap its tag afterwards if you want to give it a meal. Before this, a note could only be read or taken off."] },
   { "version": "2026-10-21.3", "date": "2026-10-21",
