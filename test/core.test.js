@@ -956,6 +956,21 @@ check('    and not when no line is the whole amount, when the recipe is under it
       && checkOf(['4 tbsp oil'], ['1 tbsp oil', '5 tbsp oil']).hint === ''
       && checkOf(['4 tbsp oil'], ['1 tbsp oil', '2 tbsp oil']).hint === '' && checkOf(['2 tbsp oil'], ['3 tbsp oil']).hint === '',
       JSON.stringify([checkOf(['3 tbsp oil'], ['1 tbsp oil', '3 tbsp oil']), checkOf(['4 tbsp oil'], ['1 tbsp oil', '5 tbsp oil']), checkOf(['4 tbsp oil'], ['1 tbsp oil', '2 tbsp oil']), checkOf(['2 tbsp oil'], ['3 tbsp oil'])]));
+/* 21 Oct 2026: the ingredients a recipe writes on several lines, for LIBRARY CHECK. */
+const sp = lines => core.splitIngredients(lines);
+const splitMixed = sp(['1 tsp ponzu', '2 tbsp ponzu', '1 onion']);
+check('an ingredient on two measured lines is a split, with its amounts, and two units for one kind of amount is "mixed" (the converter fault\'s shape)',
+      splitMixed.length === 1 && splitMixed[0].name === 'ponzu' && splitMixed[0].amounts.join('|') === '1 tsp|2 tbsp' && splitMixed[0].mixed === true
+      && sp(['2 tbsp groundnut oil', '1 tbsp groundnut oil'])[0].mixed === false && sp(['100 ml oil', '1 tbsp oil'])[0].mixed === true, JSON.stringify(splitMixed));
+check('    one line, a count, a pinch and "to taste" are not splits (so "salt, to taste" twice never makes a recipe look wrong)',
+      sp(['2 tbsp ponzu', '1 onion', '2 onions']).length === 1 && sp(['1 pinch salt', '1 pinch salt', 'salt, to taste', 'salt, to taste']).length === 0
+      && sp(['1 onion', '1 carrot']).length === 0 && sp(['1 tbsp ponzu']).length === 0, JSON.stringify(sp(['2 tbsp ponzu', '1 onion', '2 onions'])));
+check('    and a weight beside a volume of the same product is not a split: 1/2 tsp butter for the tin and 180 g butter are two uses',
+      sp(['1/2 tsp butter, softened (for greasing)', '180 g butter, softened']).length === 0 && sp(['1/2 tsp butter', '2 tsp butter']).length === 1
+      && sp(['30 g butter', '1 kg butter'])[0].mixed === true && sp(['2 tbsp ponzu, chilled (see note)', '1 tbsp ponzu'])[0].name === 'ponzu');
+check('    and it names the ingredient as the recipe writes it, not as the shopping list files it',
+      sp(['1 tbsp neutral oil (I use avocado)', '1 tbsp neutral oil'])[0].name === 'neutral oil' && core.shoppingKeyForName('neutral oil') !== 'neutral oil', JSON.stringify(sp(['1 tbsp neutral oil', '1 tbsp neutral oil'])));
+
 const reps = core.pastedRepeats(['2 tbsp ponzu', '1 onion', '2 TBSP  ponzu', 'salt, to taste', 'salt, to taste', 'For the sauce']);
 check('a pasted list that repeats a measured line is told so (any case or spacing, first spelling kept); "salt, to taste" twice is not a repeat',
       reps.length === 1 && reps[0].line === '2 tbsp ponzu' && reps[0].n === 2 && core.pastedRepeats(['1 onion', '1 carrot']).length === 0, JSON.stringify(reps));
