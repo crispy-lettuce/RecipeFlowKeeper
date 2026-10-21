@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 20 Oct 2026 (the old calendar events from before the split: decided to leave them; 75a, the calendar reminder per meal, reported done and taken off; C1, the calendar SQL and function, before it; 74a, the denser Planner, before it; 73a, the second batch from the tablet review, before that), earlier 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
+**Last brought up to date: 21 Oct 2026 (76a, a recipe opens at the day's SERVES, added), earlier 20 Oct 2026 (the old calendar events from before the split: decided to leave them; 75a, the calendar reminder per meal, reported done and taken off; C1, the calendar SQL and function, before it; 74a, the denser Planner, before it; 73a, the second batch from the tablet review, before that), earlier 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
 households sort out their own converter and need no steps here.
@@ -33,6 +33,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | [72a: the first changes from the tablet review](#72a-the-first-changes-from-the-tablet-review-new-20-oct-version-2026-10-203-docsplan-modernistmd), in Modernist | tablet, landscape | 8 min | No (AUDIT is switched on and off) |
 | [73a: the second batch from the tablet review](#73a-the-second-batch-from-the-tablet-review-new-20-oct-version-2026-10-204-docsplan-modernistmd), in Modernist | tablet, upright then landscape | 10 min | One dish taken off a day and put back (step 5) |
 | [74a: the denser Planner](#74a-the-denser-planner-new-20-oct-version-2026-10-205-docsplan-modernistmd), in Modernist | tablet, landscape | 8 min | One dish taken off and put back (step 5) |
+| [76a: a recipe opens at the day's SERVES](#76a-a-recipe-opens-at-the-days-serves-new-21-oct-version-2026-10-211), in either style | tablet | 3 min | No |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
 **The split is done** (18 Oct, see Recently done), so your own library is empty until you add recipes. Do 61a to 70a signed in as the
@@ -399,6 +400,19 @@ On the tablet held landscape, in **MODERNIST**, after reloading into 2026-10-20.
 Tell the next session what felt cramped, if anything: the gaps between dishes, a name on two lines, or the smaller **ADD ANOTHER**. Not changed: a phone, and
 the Planner in Classic. A third layout was left out for now (**ADD ANOTHER** and **GROUP SOME TOGETHER** in a column at the right of each day, nine days on the
 screen); say if you want it.
+
+### 76a. A recipe opens at the day's SERVES (new 21 Oct, version 2026-10-21.1)
+
+In Classic or Modernist, in Test Kitchen (it has recipes with SERVINGS), after reloading into 2026-10-21.1. It writes nothing.
+
+1. On the **PLANNER**, tap **SERVES** on a planned dish and set a number that is not the recipe's own (4 to 8, say). Then tap the dish's **name**. **You should see:**
+   the recipe's header reads **SERVES 8 (SCALED FROM 4)** and the ingredient amounts are already doubled, with **← PLANNER** at the top left.
+2. Tap **RESET** on the card. **You should see:** the amounts go back to the recipe as written. Tap **← PLANNER**, then the dish's name again: it opens at 8 again.
+3. Plan the same recipe twice on one day (**ADD ANOTHER**), leave one at its own number and set the other to 8. Tap each name in turn. **You should see:** each opens at
+   its own number, and the one left alone opens as written.
+4. Open the same recipe from **RECIPES**. **You should see:** it opens as written, not at 8.
+
+Tell the next session if you would rather it opened as written and offered the day's number as a button.
 
 ---
 

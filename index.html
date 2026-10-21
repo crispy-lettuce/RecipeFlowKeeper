@@ -1727,7 +1727,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-20.7">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-21.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2441,7 +2441,7 @@ const EXPECTED_CORE_VERSION = '2026-10-19.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-20.7';
+const APP_VERSION = '2026-10-21.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -6139,11 +6139,14 @@ document.querySelectorAll('.saved-view').forEach(btn=>{
 /* =====================================================================
    RECIPE VIEWER
    ===================================================================== */
-function openRecipe(id, returnTo){
+function openRecipe(id, returnTo, planned){
   state.selectedRecipeId = id;
   state.viewerShared = null;
   state.viewerReturnTo = returnTo || 'recipes';
-  state.viewerServes = null; // ad-hoc scaling always starts fresh — never remembered between visits
+  /* Ad-hoc scaling always starts fresh — never remembered between visits. The one thing it starts from is a headcount the
+     household has already chosen and the Planner already stores: a dish opened from a day opens at that day's SERVES
+     (21 Oct 2026), as the shopping list and the Group Viewer already read it. Nothing is written; 0 is "as written". */
+  state.viewerServes = parseInt(planned, 10) > 0 ? parseInt(planned, 10) : null;
   showView('viewer');
   renderViewer();
 }
@@ -7362,9 +7365,9 @@ function initPlannerListeners(){
     if(!actionEl) return;
     const action = actionEl.dataset.action;
     if(action === 'view'){
-      const ids = planRecipeIds(loadPlan()[date]);
-      const id = ids[parseInt(actionEl.dataset.idx, 10)];
-      if(id) openRecipe(id, 'planner');
+      /* The entry tapped, not the first of its recipe on the day: a day can hold one recipe twice at two headcounts. */
+      const ent = planEntries(loadPlan()[date])[parseInt(actionEl.dataset.idx, 10)];
+      if(ent && ent.recipeId) openRecipe(ent.recipeId, 'planner', ent.servings);
     } else if(action === 'setServes'){
       /* prompt() rather than an inline input: #dayList re-renders wholesale
          on every planner change, so an inline field would need focus and

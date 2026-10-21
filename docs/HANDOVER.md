@@ -2230,6 +2230,14 @@ designed on that day, on a one-group day and on a one-dish day. Google, read at 
 and 20 and 23 Oct are single `…r` events; no plain-id event of this household is left. Found on the way, not this change's: thirteen events from Test Kitchen's old household (9 to 22 Oct, not the 17th) remain in
 the calendar and nothing will delete them (`docs/INFRASTRUCTURE.md`); the household decided on 20 Oct to leave them as they are. Still **not seen:** a reminder arriving on a phone.
 
+**A recipe opens at the day's SERVES (21 Oct 2026, app 2026-10-21.1).** The household asked whether the card should inherit the headcount set on the
+Planner, which it did not: `openRecipe` set `state.viewerServes` to null on every open, so a dish planned for 20 opened at the recipe's own 4, while the shopping
+list and the Group Viewer (`plannedServingsLookup`) already used the day's number. The `viewerServes` comment records a 14 Aug decision that the viewer's ad-hoc scaling is
+session-only and never saved; this keeps it, because nothing is written: `openRecipe(id, returnTo, planned)` takes the entry's SERVES when the Planner's name button is
+tapped (0, "as written", leaves it null), and only that route passes it. The entry is the one tapped (`planEntries(...)[idx]`), not the first of its recipe on the day.
+RESET still goes to the recipe's own amounts. Five smoke checks, including that opening wrote nothing; the first three were seen to fail (the old call with no
+headcount fails two; a lookup by recipe fails the second-copy check). The write-nothing check was not mutated. Tablet step 76a. *Not verified:* the tablet.
+
 **Issues #85, #86, #89, #93: parse feedback, seconds, COOKING MODE, Drink (11 Oct 2026).** Raised on GitHub on 11 Oct,
 the first issues from the second household; planned and approved the same day.
 - **#85, parse feedback.** PARSE & PREVIEW, a paste, or WRITE ONE BY HAND now does two things. It says beside the button

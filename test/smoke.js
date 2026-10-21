@@ -2402,6 +2402,38 @@ const check = (name, pass, detail) => {
   });
   check('removing an entry keeps the others in lockstep', lockstep === 'ok', lockstep);
 
+  /* A dish opened from a day opens at that day's SERVES (21 Oct 2026). One day holds Test Pasta twice, at 8 and as written,
+     and Test Soup beside them; each is tapped by its own title, and the second copy must not borrow the first one's
+     headcount. Opened from RECIPES afterwards it starts as written again. Mutations: open from the Planner with no
+     headcount (the old call), or look the headcount up by recipe (the first copy's) instead of by the entry tapped. */
+  const OD_R1 = '11111111-1111-4111-8111-111111111111', OD_R2 = '22222222-2222-4222-8222-222222222222';
+  const odDay = await page.evaluate(() => { const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + 6); return isoLocal(d); });
+  await page.evaluate(([d, r1, r2]) => { addPlanRecipe(d, r1); setPlanServingsAt(d, 0, 8); addPlanRecipe(d, r1); addPlanRecipe(d, r2); setPlanServingsAt(d, 2, 5);
+    showView('planner'); renderPlanner(); }, [odDay, OD_R1, OD_R2]);
+  const odOpen = async idx => {
+    await page.evaluate(() => showView('planner'));
+    await page.click(`.day-row[data-date="${odDay}"] [data-action="view"][data-idx="${idx}"]`);
+    await page.waitForTimeout(200);
+    return page.evaluate(() => ({ view: state.view, serves: state.viewerServes, back: document.getElementById('backToRecipes').textContent,
+      meta: document.getElementById('viewerMeta').textContent.replace(/\s+/g, ' ').trim(),
+      amounts: document.getElementById('flowMount').textContent.replace(/\s+/g, ' ') }));
+  };
+  const odWrites = await page.evaluate(() => { let t; return (async () => { do { t = writeQueue; await t; } while(t !== writeQueue); return window.__WRITES__.length; })(); });
+  const odFirst = await odOpen(0), odSecond = await odOpen(1), odSoup = await odOpen(2);
+  check('a dish opened from a day opens at that day\'s SERVES: the header says so and the amounts are scaled (4 to 8: 300 g is 600 g)',
+        odFirst.view === 'viewer' && odFirst.serves === 8 && /SERVES 8 \(SCALED FROM 4\)/.test(odFirst.meta) && /600\s*g/.test(odFirst.amounts)
+        && /PLANNER/.test(odFirst.back), JSON.stringify([odFirst.serves, odFirst.meta, /600\s*g/.test(odFirst.amounts)]));
+  check('    the second copy of the same recipe on that day, planned as written, opens as written, not at the first copy\'s 8',
+        odSecond.serves === null && /SERVES 4/.test(odSecond.meta) && !/SCALED/.test(odSecond.meta) && /300\s*g/.test(odSecond.amounts),
+        JSON.stringify([odSecond.serves, odSecond.meta]));
+  check('    another recipe at its own planned headcount (2 to 5)', odSoup.serves === 5 && /SERVES 5 \(SCALED FROM 2\)/.test(odSoup.meta), JSON.stringify([odSoup.serves, odSoup.meta]));
+  const odElsewhere = await page.evaluate(r1 => { openRecipe(r1, 'recipes'); return { serves: state.viewerServes, meta: document.getElementById('viewerMeta').textContent.replace(/\s+/g, ' ').trim() }; }, OD_R1);
+  const odWritten = await page.evaluate(n => window.__WRITES__.length - n, odWrites);
+  check('    opened from RECIPES afterwards it starts as written again',
+        odElsewhere.serves === null && !/SCALED/.test(odElsewhere.meta), JSON.stringify(odElsewhere));
+  check('    and opening them wrote nothing: the headcount is shown, never saved to the recipe or the day', odWritten === 0, String(odWritten));
+  await page.evaluate(d => { clearPlanDay(d); showView('planner'); renderPlanner(); }, odDay);
+
   /* SL2, since PR 6b (25 Sep): the names come from the rules and dictionary
      in core.js (tested in Node, test/core.test.js); what is checked here is
      the page around them. No dialogs any more — a likely pair is offered in

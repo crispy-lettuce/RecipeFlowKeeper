@@ -907,6 +907,10 @@ reported one by one.*
 *75a reported done by the household, 20 Oct, with a screenshot. Read-only afterwards: Saturday 24 Oct saved at 19:42:32 UTC with `calendar_items` `{in,remind}`, the day's flags
 true, and a sync at 19:42:58 UTC with no error. In Google (read through the Calendar connector at about 20:05 UTC): 24 Oct has two events, one without a reminder and one with
 the 20:00 pop-up. Not seen: a reminder arriving on a phone, and which of (5) to (7) were done.*
+76a. **A recipe opens at the day's SERVES (new 21 Oct; version 2026-10-21.1).** Either style, Test Kitchen; writes nothing. (1) *SERVES 8 on a recipe written for 4, then
+    its name on the Planner:* the card reads SERVES 8 (SCALED FROM 4), amounts doubled, ← PLANNER. (2) *RESET:* as written; back to the Planner and in again, it opens at 8 again.
+    (3) *The same recipe twice on a day, one at 8 and one left alone:* each opens at its own. (4) *From RECIPES:* as written. Smoke checks cover (1), (3) and (4) and that nothing is
+    written; the tablet is not verified.
 
 ## Deferred to the tablet, after merging
 
