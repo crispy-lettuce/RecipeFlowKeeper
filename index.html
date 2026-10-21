@@ -1751,7 +1751,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-21.7">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-21.8">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2116,6 +2116,7 @@ function loadArchivoFont(){
           <div class="alias-form">
             <button class="btn" id="libraryCheckRunBtn">RUN</button>
             <label class="subtle lc-only"><input type="checkbox" id="libraryCheckOnly"> only those needing attention</label>
+            <label class="subtle lc-only"><input type="checkbox" id="libraryCheckSplits"> only those with an ingredient on several lines to check</label>
           </div>
           <p class="subtle" id="libraryCheckSummary"></p>
           <div id="libraryCheckList" class="sources-list"></div>
@@ -2452,7 +2453,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-21.3"></script>
+<script src="core.js?v=2026-10-21.5"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2460,12 +2461,12 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-21.3';
+const EXPECTED_CORE_VERSION = '2026-10-21.5';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-21.7';
+const APP_VERSION = '2026-10-21.8';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -10417,11 +10418,18 @@ function libraryCheckRows(){
       : /^https:\/\//i.test(r.sourceUrl || '') ? 'none'
       : (r.sourcePhotos || []).length ? 'photo' : 'nolink';
     const rank = LIBRARY_STATUS.findIndex(x=> x.key === key);
+    /* An ingredient written on several lines is what a comparison with the source settles (it totals them), so it is
+       "to check" until the recipe has been compared and found clean, and never for a recipe with no page to compare with
+       (21 Oct 2026; docs/PLAN-SPLIT-TRIAGE.md). Not part of "needing attention": most splits are right, and a list that
+       called every recipe with two lines of oil a fault would bury the ones that are. */
+    const splits = splitIngredients(lines);
+    const splitCheck = splits.length > 0 && !['fresh', 'nolink'].includes(key);
+    const splitScore = !splitCheck ? 0 : splits.some(sp=> sp.mixed) ? 2 : 1;
     const status = key === 'differs' ? differencesWords(st.hard)
       : key === 'validated' && st.route === 'photo' ? 'checked against the photo' : LIBRARY_STATUS[rank].text;
-    return { id: r.id, title: r.title, source: r.source || '', key, rank, status, other,
+    return { id: r.id, title: r.title, source: r.source || '', key, rank, status, other, splits, splitCheck, splitScore,
       attention: LIBRARY_STATUS[rank].attention || other.length > 0 };
-  }).sort((a, b)=> (b.attention - a.attention) || (a.rank - b.rank) || (b.other.length - a.other.length) || a.title.localeCompare(b.title));
+  }).sort((a, b)=> (b.attention - a.attention) || (a.rank - b.rank) || (b.splitScore - a.splitScore) || (b.other.length - a.other.length) || a.title.localeCompare(b.title));
 }
 let libraryCheckResult = null;
 function renderLibraryCheck(){
@@ -10429,18 +10437,23 @@ function renderLibraryCheck(){
   const summary = document.getElementById('libraryCheckSummary');
   if(!libraryCheckResult){ list.innerHTML = ''; summary.textContent = ''; return; }
   const only = document.getElementById('libraryCheckOnly').checked;
-  const rows = libraryCheckResult.filter(x=> !only || x.attention);
+  const onlySplits = document.getElementById('libraryCheckSplits').checked;
+  const rows = libraryCheckResult.filter(x=> (!only || x.attention) && (!onlySplits || x.splitCheck));
   const needing = libraryCheckResult.filter(x=> x.attention).length;
-  summary.textContent = `${libraryCheckResult.length} recipe${libraryCheckResult.length === 1 ? '' : 's'}, ${needing} needing attention.`;
+  const toCheck = libraryCheckResult.filter(x=> x.splitCheck), mixed = toCheck.filter(x=> x.splitScore === 2).length;
+  summary.textContent = `${libraryCheckResult.length} recipe${libraryCheckResult.length === 1 ? '' : 's'}, ${needing} needing attention.` +
+    (toCheck.length ? ` ${toCheck.length} ${toCheck.length === 1 ? 'writes' : 'write'} an ingredient on several lines and ${toCheck.length === 1 ? 'has' : 'have'} not been compared clean${mixed ? `; ${mixed} in two different units` : ''}.` : '');
   list.innerHTML = rows.map(x=> `<div class="source-row lc-row${x.attention ? ' lc-attention' : ''}" data-lc-id="${escapeHtml(x.id)}" data-lc-status="${x.key}">
       <div><div class="source-row-name">${escapeHtml(x.title)}</div>
         <div class="swap-row-detail">${escapeHtml(x.source)}${x.source ? ' · ' : ''}<span class="lc-status lc-${x.key}">${escapeHtml(x.status)}</span>` +
-        (x.other.length ? ` · in Other: ${escapeHtml(x.other.join(', '))}` : '') + `</div></div>
+        (x.other.length ? ` · in Other: ${escapeHtml(x.other.join(', '))}` : '') + `</div>` +
+        (x.splitCheck ? `<div class="swap-row-detail lc-splits">On several lines: ${escapeHtml(x.splits.slice(0, 3).map(sp=> `${sp.name} ${sp.amounts.join(' + ')}${sp.mixed ? ' (different units)' : ''}`).join('; '))}${x.splits.length > 3 ? `; ${x.splits.length - 3} more` : ''}</div>` : '') + `</div>
       <button class="btn" data-lc-open="${escapeHtml(x.id)}">OPEN</button>
     </div>`).join('') || `<p class="empty">Nothing needs attention.</p>`;
 }
 document.getElementById('libraryCheckRunBtn').addEventListener('click', ()=>{ libraryCheckResult = libraryCheckRows(); renderLibraryCheck(); });
 document.getElementById('libraryCheckOnly').addEventListener('change', renderLibraryCheck);
+document.getElementById('libraryCheckSplits').addEventListener('change', renderLibraryCheck);
 document.getElementById('libraryCheckList').addEventListener('click', e=>{
   const open = e.target.closest('[data-lc-open]');
   if(open) openEditModal(open.dataset.lcOpen);

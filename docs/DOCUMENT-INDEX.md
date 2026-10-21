@@ -477,6 +477,15 @@ checks and mutations, and the household's answers to its seven questions (button
 
 ---
 
+### `docs/PLAN-SPLIT-TRIAGE.md` — split ingredients in LIBRARY CHECK (21 Oct 2026; built the same day)
+**What:** a line under a recipe in Settings → Library → LIBRARY CHECK when one ingredient is written on several lines, a box that shows
+only those, and the mixed-unit ones first: the shape a converter fault of that day took. What counts as a split and what does not, why
+it is not "needing attention", what it found on the live library (counts, no text), and what was left out (storing the kind of difference).
+
+**Use it when:** asking why a recipe is or is not listed, or building the stored kinds of difference.
+
+---
+
 ### `docs/PLAN-PREVIEW-SITE.md` — trying a change before it goes live, #100 (13 Oct 2026; **parked**)
 **What:** everything that depends on the site's address, the one-database catch (a preview writes real data), three options
 compared, and the recommendation: GitHub Pages stays live and Cloudflare Pages gives each PR a preview address. Household and

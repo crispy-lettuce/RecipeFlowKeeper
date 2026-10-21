@@ -4461,7 +4461,7 @@ const check = (name, pass, detail) => {
   await page.evaluate(() => {
     const mk = (id, title, lines, extra = {}) => { const syntax = ['TITLE: ' + title, 'SOURCE: Blue Door Bakery', 'SERVINGS: 4', ...(extra.header || []), '', 'GROUP a:', ...lines, '', 'STAGE:', 'MERGE a -> done: Cook [5 min]'].join('\n');
       const hash = linesHash(ingredientLinesOf(parseRecipe(syntax)));
-      const check = extra.check === undefined ? null : { at: '2026-09-29T20:00:00.000Z', route: 'function', hard: extra.check, soft: 0, sourceLines: lines.length, linesHash: extra.stale ? '00000000' : hash };
+      const check = extra.check === undefined ? null : { at: '2026-09-29T20:00:00.000Z', route: 'function', hard: extra.check, soft: 0, sourceLines: lines.length, linesHash: extra.stale ? '00000000' : hash, ...(extra.validated ? { validated: '2026-09-29T20:30:00.000Z' } : {}) };
       loadRecipes().push({ id, title, source: 'Blue Door Bakery', sourceUrl: extra.url === undefined ? 'https://example.test/' + id : extra.url, servings: 4,
         tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-09-06', syntax, sourceCheck: check }); };
     mk('lc-fresh', 'LC Fresh Soup', ['1 onion', '2 carrots'], { check: 0 });
@@ -4472,6 +4472,14 @@ const check = (name, pass, detail) => {
     /* Needs nothing about its source (no link) but has a name in Other, so it needs attention after all,
        and must sort above a recipe that needs nothing: only "attention first" puts it there. */
     mk('lc-nolink-other', 'LC Family Fish Pie', ['1 onion', '300 g smoked mackerel'], { url: '' });
+    /* 21 Oct 2026: an ingredient written on several lines, one recipe for each way it counts or does not. */
+    mk('ls-mixed', 'LS Mixed Units', ['1 tsp ponzu', '2 tbsp ponzu', '1 onion']);
+    mk('ls-same', 'LS Same Unit', ['2 tbsp groundnut oil', '1 tbsp groundnut oil']);
+    mk('ls-valid', 'LS Validated Split', ['1 tbsp olive oil', '2 tbsp olive oil'], { check: 1, validated: true });
+    mk('ls-fresh', 'LS Compared Clean', ['1 tbsp olive oil', '2 tbsp olive oil'], { check: 0 });
+    mk('ls-nolink', 'LS No Link', ['1 tsp ponzu', '2 tbsp ponzu'], { url: '' });
+    mk('ls-cross', 'LS Two Uses', ['1/2 tsp butter, for greasing', '180 g butter']);
+    mk('ls-pinch', 'LS Seasoning', ['1 pinch salt', '1 pinch salt', 'salt, to taste', 'salt, to taste']);
     mk('lc-recon', 'LC Rebuilt Bars', ['1 onion'], { header: ['NOTES:', '⚠️ Source note: reconstructed from memory, the page could not be read'] });
   });
   await page.click('.navlink[data-view="settings"]');
@@ -4500,6 +4508,31 @@ const check = (name, pass, detail) => {
         lcOrder);
   check('    and the names a recipe puts in Other are listed with it',
         /in Other: Smoked mackerel/.test(lcOf('lc-diff').text) && !/in Other/.test(lcOf('lc-fresh').text), JSON.stringify([lcOf('lc-diff'), lcOf('lc-fresh')]));
+  /* An ingredient on several lines: said under the recipe, the mixed-unit shape first, and only for a recipe that has a page
+     to be compared with and has not been compared clean. It is a pointer, not "needing attention". */
+  const lsText = id => lcOf(id).text || '';
+  check('LIBRARY CHECK names an ingredient written on several lines under the recipe, and says when the units differ',
+        /On several lines: ponzu 1 tsp \+ 2 tbsp \(different units\)/.test(lsText('ls-mixed')) && /On several lines: groundnut oil 2 tbsp \+ 1 tbsp(?! \()/.test(lsText('ls-same'))
+        && /On several lines: olive oil 1 tbsp \+ 2 tbsp/.test(lsText('ls-valid')), JSON.stringify([lsText('ls-mixed'), lsText('ls-same'), lsText('ls-valid')]));
+  check('    and says nothing for a recipe compared clean, one with no page to compare with, two different uses, or seasoning twice',
+        ['ls-fresh', 'ls-nolink', 'ls-cross', 'ls-pinch'].every(id => !/On several lines/.test(lsText(id))), JSON.stringify(['ls-fresh', 'ls-nolink', 'ls-cross', 'ls-pinch'].map(lsText)));
+  const lsOrder = lcAll.filter(r => /^l[cs]-/.test(r.id) && ['ls-mixed', 'ls-same', 'lc-none'].includes(r.id)).map(r => r.id).join(',');
+  check('    among recipes not yet compared, the mixed-unit split comes first, then the same-unit one, then a recipe with none',
+        lsOrder === 'ls-mixed,ls-same,lc-none', lsOrder);
+  check('    and a split alone does not make a recipe "need attention": a validated one and a clean one stay as they were',
+        !lcOf('ls-valid').attention && !lcOf('ls-fresh').attention && lcOf('ls-mixed').attention, JSON.stringify([lcOf('ls-valid'), lcOf('ls-fresh')].map(r => r.attention)));
+  const lsSummary = await page.evaluate(() => ({ n: libraryCheckResult.filter(x => x.splitCheck).length, text: document.getElementById('libraryCheckSummary').textContent }));
+  check('    the summary counts them, and the ones in two different units',
+        new RegExp(lsSummary.n + ' write an ingredient on several lines and have not been compared clean; \\d+ in two different units').test(lsSummary.text) && lsSummary.n >= 3, JSON.stringify(lsSummary));
+  await page.check('#libraryCheckSplits');
+  await page.waitForTimeout(100);
+  const lsOnly = await lcRows();
+  check('    "only those with an ingredient on several lines to check" shows those, mixed units first, and not the clean, the unlinked or the seasoning',
+        lsOnly.length > 0 && lsOnly.every(r => /On several lines/.test(r.text)) && ['ls-mixed', 'ls-same', 'ls-valid'].every(id => lsOnly.some(r => r.id === id))
+        && !lsOnly.some(r => ['ls-fresh', 'ls-nolink', 'ls-cross', 'ls-pinch', 'lc-none'].includes(r.id)) && lsOnly.findIndex(r => r.id === 'ls-mixed') < lsOnly.findIndex(r => r.id === 'ls-same'),
+        JSON.stringify(lsOnly.map(r => r.id)));
+  await page.uncheck('#libraryCheckSplits');
+  await page.waitForTimeout(100);
   await page.check('#libraryCheckOnly');
   await page.waitForTimeout(100);
   const lcOnly = await lcRows();
@@ -4515,7 +4548,7 @@ const check = (name, pass, detail) => {
         lcOpened.editing === 'lc-stale' && /Edit recipe/.test(lcOpened.title) && lcOpened.text === 'TITLE: LC Stale Bake' && (await anSince(lcMark)).length === 0,
         JSON.stringify(lcOpened));
   await page.evaluate(() => { closeAddModal();
-    for(let i = loadRecipes().length - 1; i >= 0; i--) if(String(loadRecipes()[i].id).startsWith('lc-')) loadRecipes().splice(i, 1);
+    for(let i = loadRecipes().length - 1; i >= 0; i--) if(/^l[cs]-/.test(String(loadRecipes()[i].id))) loadRecipes().splice(i, 1);
     libraryCheckResult = null; renderLibraryCheck(); showSettingsTab('ingredients'); });
   await page.waitForTimeout(200);
 
