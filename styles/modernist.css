@@ -907,6 +907,8 @@ html[data-style="modernist"] #view-planner .day-main > .day-choose:not(.day-add-
 html[data-style="modernist"] #view-planner .day-main.day-main-empty{ gap:8px 14px; }
 html[data-style="modernist"] #view-planner .day-main.day-main-empty > .day-choose:not(.day-add-more){ flex:1 1 11em; }
 html[data-style="modernist"] #view-planner .day-main.day-main-empty > .day-choose.day-add-more{ flex:none; margin:0 0 0 auto; }
+/* The ad-hoc entry's meal tag is a button (PR 2): the same small red capitals, with the accent on hover like the rest of the day's controls. */
+html[data-style="modernist"] #view-planner .day-adhoc-meal:hover{ color:var(--color-accent); }
 
 
 /* ============================== THE SHORTLIST PANEL ==============================

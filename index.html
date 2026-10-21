@@ -774,6 +774,9 @@ function loadArchivoFont(){
   .day-adhoc-title{ display:flex; align-items:center; cursor:default; white-space:normal; overflow:visible; text-overflow:clip; }
   .day-adhoc-title:hover{ color:var(--ink); }
   .day-recipe-course.adhoc{ color:var(--ink-soft); }
+  /* The tag is a button (tap it to set or change the meal), drawn as the text it was: no box, a dotted line under it, and the usual 44px to tap. */
+  .day-adhoc-meal{ background:none; border:0; padding:0 4px; font-family:inherit; cursor:pointer; text-decoration:underline dotted; text-underline-offset:4px; }
+  .day-adhoc-meal:hover{ color:var(--plum); }
   /* + OTHER shares an empty day's one line with CHOOSE A RECIPE, at the right; too narrow for both, it drops beneath. */
   .day-main-empty{ flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px 16px; }
   .day-main-empty > .day-choose:not(.day-add-more){ flex:1 1 11em; }
@@ -1493,7 +1496,7 @@ function loadArchivoFont(){
      still fits an 800px-tall screen. */
   .btn, .chip, .scale-btn, select.sort, .kw-input,
   .day-recipe-premade, .day-recipe-cooked, .backlink, .toggle-switch,
-  .day-choose, .day-recipe-title, .day-recipe-serves, .day-recipe-remove, .day-side-add, .day-side-hide, .day-cal-btn,
+  .day-choose, .day-recipe-title, .day-recipe-serves, .day-adhoc-meal, .day-recipe-remove, .day-side-add, .day-side-hide, .day-cal-btn,
   .group-badge, .group-badge-view, .group-ungroup, .sl-remove, .saved-view, .data-link, .new-recipe, .serve-with-link,
   .library-switch button, .assign-banner button, .shop-aisle-select, .shop-merge-with,
   .day-undo button{ min-height:44px; }   /* the last five: tablet review F6, F9 and F10, 20 Oct 2026; the GROUPED bar's two controls, §12.5 */
@@ -1736,7 +1739,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-21.2">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-21.3">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2249,7 +2252,7 @@ function loadArchivoFont(){
 <div class="modal-overlay" id="mealTypeOverlay">
   <div class="mini-panel" role="dialog" aria-modal="true" aria-labelledby="mealTypeHeading">
     <h2 id="mealTypeHeading">Which meal was that?</h2>
-    <p class="subtle"><span id="mealTypeWhat"></span> is logged. Tag it, or skip &mdash; it stays logged either way.</p>
+    <p class="subtle" id="mealTypeSub"><span id="mealTypeWhat"></span> is logged. Tag it, or skip &mdash; it stays logged either way.</p>
     <div class="meal-type-row" id="mealTypeChoices"></div>
     <label class="meal-note" id="mealTypeNoteRow" hidden><span>ADD A NOTE (OPTIONAL)</span>
       <textarea id="mealTypeNote" rows="2" placeholder="How did it go? Saved with the recipe, dated today."></textarea></label>
@@ -2450,7 +2453,7 @@ const EXPECTED_CORE_VERSION = '2026-10-19.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-21.2';
+const APP_VERSION = '2026-10-21.3';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -6653,17 +6656,28 @@ function logDuePremade(){
 
    SKIP is not a cancel — the entry is already saved. It says "no meal
    type", which the diary and CSV both render honestly as blank. */
-function promptForMealType(entryId, label, recipeId){
+function promptForMealType(entryId, label, recipeId, opts){
   const overlay = document.getElementById('mealTypeOverlay');
   if(!overlay) return;
+  /* The same prompt changes the meal of an entry that is already on a Planner day (docs/PLAN-ADHOC-PLANNER.md, PR 2): then the entry is
+     not "logged" in the cooked sense and may already have a meal, which is shown as chosen, and tapping it again clears it. The words are
+     set every time, so one opened the ordinary way after a change never keeps the planner's. */
+  const change = !!(opts && opts.change);
+  document.getElementById('mealTypeHeading').textContent = change ? 'Which meal is it?' : 'Which meal was that?';
+  document.getElementById('mealTypeSub').innerHTML = change
+    ? '<span id="mealTypeWhat"></span> is on the Planner. Tap a meal to set it, or tap the one it has to take it off.'
+    : '<span id="mealTypeWhat"></span> is logged. Tag it, or skip &mdash; it stays logged either way.';
+  document.getElementById('mealTypeSkip').textContent = change ? 'CLOSE' : 'SKIP';
   document.getElementById('mealTypeWhat').textContent = label || '';
   overlay.dataset.entryId = entryId;
+  if(change){ overlay.dataset.change = '1'; overlay.dataset.current = (opts && opts.current) || ''; }
+  else { delete overlay.dataset.change; delete overlay.dataset.current; }
   /* R4: a note on how it went, while it is fresh. Only for a recipe, since a note belongs to one. */
   if(recipeId) overlay.dataset.recipeId = recipeId; else delete overlay.dataset.recipeId;
   document.getElementById('mealTypeNote').value = '';
   document.getElementById('mealTypeNoteRow').hidden = !(recipeId && recipeNotesAvailable);
   overlay.classList.add('open');
-  renderMealTypeButtons(document.getElementById('mealTypeChoices'), null);
+  renderMealTypeButtons(document.getElementById('mealTypeChoices'), change ? ((opts && opts.current) || null) : null);
   const first = overlay.querySelector('.meal-type-btn');
   if(first) first.focus();
 }
@@ -6676,7 +6690,7 @@ function closeMealTypePrompt(){
   const noteBox = document.getElementById('mealTypeNote');
   const note = overlay.dataset.recipeId && noteBox.value.trim() ? addRecipeNote(overlay.dataset.recipeId, noteBox.value) : null;
   noteBox.value = '';
-  overlay.classList.remove('open'); delete overlay.dataset.entryId; delete overlay.dataset.recipeId;
+  overlay.classList.remove('open'); delete overlay.dataset.entryId; delete overlay.dataset.recipeId; delete overlay.dataset.change; delete overlay.dataset.current;
   if(note && state.view === 'viewer'){ const r = currentViewerRecipe(); if(r){ renderCookingNotes(r); renderProvenance(r); } }
   return note;
 }
@@ -7082,7 +7096,7 @@ function adHocRowHtml(e){
   return `<div class="day-recipe-row day-adhoc-row">
     <span class="day-recipe-title day-adhoc-title">${escapeHtml(e.title || 'Untitled')}</span>
     <span class="day-recipe-meta">
-      <span class="day-recipe-course adhoc">${escapeHtml(tag)}</span>
+      <button class="day-recipe-course adhoc day-adhoc-meal" data-action="adHocMeal" data-log-id="${escapeHtml(e.id)}" title="Tap to set or change the meal">${escapeHtml(tag)}</button>
       <button class="day-recipe-remove" data-action="removeAdHoc" data-log-id="${escapeHtml(e.id)}" aria-label="Remove ${escapeHtml(e.title || 'this entry')} from this day">×</button>
     </span>
   </div>`;
@@ -7392,7 +7406,7 @@ function initPlannerListeners(){
        on the headcount button, which would otherwise never be reachable
        while something is selected. */
     if(state.selectedShortlistId && state.groupingDate !== date
-       && !e.target.closest('[data-action="setServes"], [data-action="calToggle"], [data-action="calRemind"], [data-action="calMealRemind"], [data-action="premade"], [data-action="cooked"], [data-action="undoRemove"], [data-action="addOther"], [data-action="removeAdHoc"]')){
+       && !e.target.closest('[data-action="setServes"], [data-action="calToggle"], [data-action="calRemind"], [data-action="calMealRemind"], [data-action="premade"], [data-action="cooked"], [data-action="undoRemove"], [data-action="addOther"], [data-action="removeAdHoc"], [data-action="adHocMeal"]')){
       const item = loadShortlist().find(i=>i.id === state.selectedShortlistId);
       if(item && item.recipeId){
         addPlanRecipe(date, item.recipeId);
@@ -7455,6 +7469,9 @@ function initPlannerListeners(){
       renderHome();
     } else if(action === 'addOther'){
       openAdHocEntry({ origin: 'planner', date });
+    } else if(action === 'adHocMeal'){
+      const entry = loadDiary().find(x=> x.id === actionEl.dataset.logId);
+      if(entry) promptForMealType(entry.id, diaryEntryTitle(entry), null, { change: true, current: entry.mealType });
     } else if(action === 'removeAdHoc'){
       const entry = loadDiary().find(x=> x.id === actionEl.dataset.logId);
       if(!entry) return;
@@ -8653,9 +8670,13 @@ document.getElementById('mealTypeChoices').addEventListener('click', e=>{
   if(!btn) return;
   const overlay = document.getElementById('mealTypeOverlay');
   const entryId = overlay.dataset.entryId;
-  if(entryId) updateDiaryEntry(entryId, { mealType: btn.dataset.meal });
+  /* A planned entry's own meal, tapped again, is taken off (a meal is optional there, as in the Add dialog). */
+  const clearing = !!overlay.dataset.change && overlay.dataset.current === btn.dataset.meal;
+  const changing = !!overlay.dataset.change;
+  if(entryId) updateDiaryEntry(entryId, { mealType: clearing ? null : btn.dataset.meal });
   const noted = closeMealTypePrompt();
-  showToast(`Tagged as ${MEAL_TYPE_LABELS[btn.dataset.meal].toLowerCase()}${noted ? ', and the note added' : ''}`);
+  showToast(clearing ? 'Meal taken off' : `Tagged as ${MEAL_TYPE_LABELS[btn.dataset.meal].toLowerCase()}${noted ? ', and the note added' : ''}`);
+  if(changing && state.view === 'planner') renderPlanner();
   if(state.view === 'history') renderHistory();
 });
 document.getElementById('mealTypeSkip').addEventListener('click', ()=>{ if(closeMealTypePrompt()) showToast('Note added'); });

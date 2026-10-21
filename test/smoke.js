@@ -2522,6 +2522,57 @@ const check = (name, pass, detail) => {
   check('    History\'s + ENTRY still words its dialog for the diary and ends on History at the day it added', ahHist2.view === 'history' && ahHist2.hist === ahToday, JSON.stringify(ahHist2));
   await page.evaluate(t => { loadDiary().filter(e => e.title === 'Test History Entry').forEach(e => deleteDiaryEntry(e.id)); state.historySelectedDate = null; showView('planner'); renderPlanner(); }, ahToday);
 
+  /* An entry's meal, changed from the Planner (PR 2 of docs/PLAN-ADHOC-PLANNER.md): the tag is a button that opens the meal prompt, worded for a planned entry, with the entry's meal shown
+     as chosen; tapping another sets it, tapping the chosen one takes it off, closing changes nothing, and the prompt keeps its ordinary words for a dish just cooked. */
+  await page.evaluate(d => { addDiaryEntry({ title: 'Test Takeaway', cookedOn: d, mealType: 'dinner' }); addDiaryEntry({ title: 'Test Leftovers', cookedOn: d, mealType: null }); showView('planner'); renderPlanner(); }, ahDay);
+  const mlTag = name => `.day-row[data-date="${ahDay}"] .day-adhoc-row:has(.day-adhoc-title:text-is("${name}")) [data-action="adHocMeal"]`;
+  const mlTags = await page.evaluate(d => [...document.querySelectorAll(`.day-row[data-date="${d}"] .day-adhoc-row`)].map(r => { const b = r.querySelector('[data-action="adHocMeal"]');
+    return [r.querySelector('.day-adhoc-title').textContent.trim(), b && b.tagName, b && b.textContent.trim(), !!b && Math.round(b.getBoundingClientRect().height) >= 44]; }), ahDay);
+  check('an entry\'s meal tag is a button: DINNER · AD HOC with a meal, AD HOC without, each at least 44px tall',
+        JSON.stringify(mlTags) === JSON.stringify([['Test Leftovers', 'BUTTON', 'AD HOC', true], ['Test Takeaway', 'BUTTON', 'DINNER · AD HOC', true]]), JSON.stringify(mlTags));
+  await ahClick(mlTag('Test Takeaway'));
+  const mlAsk = await page.evaluate(() => ({ open: document.getElementById('mealTypeOverlay').classList.contains('open'), heading: document.getElementById('mealTypeHeading').textContent,
+    sub: document.getElementById('mealTypeSub').textContent.replace(/\s+/g, ' ').trim(), on: [...document.querySelectorAll('#mealTypeChoices .meal-type-btn.on')].map(b => b.dataset.meal),
+    close: document.getElementById('mealTypeSkip').textContent }));
+  check('    tapping it opens the meal prompt worded for the Planner, with the entry\'s own meal shown as chosen',
+        mlAsk.open && mlAsk.heading === 'Which meal is it?' && /^Test Takeaway is on the Planner/.test(mlAsk.sub) && JSON.stringify(mlAsk.on) === '["dinner"]' && mlAsk.close === 'CLOSE', JSON.stringify(mlAsk));
+  const mlM = await page.evaluate(() => window.__WRITES__.length);
+  await ahClick('#mealTypeChoices .meal-type-btn[data-meal="lunch"]');
+  await ahDrain();
+  const mlSet = await page.evaluate(d => ({ tag: [...document.querySelectorAll(`.day-row[data-date="${d}"] .day-adhoc-row`)].map(r => r.querySelector('[data-action="adHocMeal"]').textContent.trim()),
+    open: document.getElementById('mealTypeOverlay').classList.contains('open'), toast: document.querySelector('.toast').textContent }), ahDay);
+  const mlW = await ahRows(mlM, 'recipe_logs');
+  check('    choosing another meal writes one update of that row\'s meal and the day reads LUNCH · AD HOC at once',
+        mlW.length === 1 && mlW[0].op === 'update' && JSON.stringify(mlW[0].patch) === '{"meal_type":"lunch"}' && JSON.stringify(mlSet.tag) === '["AD HOC","LUNCH · AD HOC"]' && !mlSet.open && /Tagged as lunch/.test(mlSet.toast), JSON.stringify([mlW.map(w => [w.op, w.patch]), mlSet]));
+  await ahClick(mlTag('Test Takeaway'));
+  const mlM2 = await page.evaluate(() => window.__WRITES__.length);
+  await ahClick('#mealTypeChoices .meal-type-btn[data-meal="lunch"]');
+  await ahDrain();
+  const mlClr = await page.evaluate(d => ({ tag: [...document.querySelectorAll(`.day-row[data-date="${d}"] .day-adhoc-row`)].find(r => r.querySelector('.day-adhoc-title').textContent.trim() === 'Test Takeaway').querySelector('[data-action="adHocMeal"]').textContent.trim(),
+    toast: document.querySelector('.toast').textContent }), ahDay);
+  const mlClrW = await ahRows(mlM2, 'recipe_logs');
+  check('    tapping the chosen meal again takes it off: the row\'s meal is set to nothing and the tag reads AD HOC',
+        mlClrW.length === 1 && JSON.stringify(mlClrW[0].patch) === '{"meal_type":null}' && mlClr.tag === 'AD HOC' && /Meal taken off/.test(mlClr.toast), JSON.stringify([mlClrW.map(w => w.patch), mlClr]));
+  await ahClick(mlTag('Test Takeaway'));
+  const mlM3 = await page.evaluate(() => window.__WRITES__.length);
+  await ahClick('#mealTypeSkip');
+  await ahDrain();
+  const mlClosed = await page.evaluate(() => document.getElementById('mealTypeOverlay').classList.contains('open'));
+  check('    CLOSE writes nothing and leaves the meal as it was', !mlClosed && (await ahRows(mlM3, 'recipe_logs')).length === 0, String(mlClosed));
+  const mlOrd = await page.evaluate(() => { promptForMealType('no-such-entry', 'Test Pasta', null);
+    const r = { heading: document.getElementById('mealTypeHeading').textContent, sub: document.getElementById('mealTypeSub').textContent.replace(/\s+/g, ' ').trim(),
+      skip: document.getElementById('mealTypeSkip').textContent, on: document.querySelectorAll('#mealTypeChoices .meal-type-btn.on').length }; closeMealTypePrompt(); return r; });
+  check('    the prompt a dish just cooked gets is as it was after a change: "Which meal was that?", SKIP, nothing chosen',
+        mlOrd.heading === 'Which meal was that?' && /^Test Pasta is logged/.test(mlOrd.sub) && mlOrd.skip === 'SKIP' && mlOrd.on === 0, JSON.stringify(mlOrd));
+  const mlSel = await page.evaluate(([r1]) => { cache.shortlist.push({ id: 'sl-meal-test', text: '', recipeId: r1, dateAdded: todayStr() }); state.selectedShortlistId = 'sl-meal-test'; renderPlanner(); return window.__WRITES__.length; }, [OD_R1]);
+  await ahClick(mlTag('Test Takeaway'));
+  await ahDrain();
+  const mlSelAfter = await page.evaluate(([d, m]) => ({ open: document.getElementById('mealTypeOverlay').classList.contains('open'), planned: planRecipeIds(loadPlan()[d]).length,
+    planWrites: window.__WRITES__.slice(m).filter(w => w.table === 'planner_days').length }), [ahDay, mlSel]);
+  check('    with a shortlist recipe selected, tapping the tag opens the prompt and assigns nothing to the day', mlSelAfter.open && mlSelAfter.planned === 0 && mlSelAfter.planWrites === 0, JSON.stringify(mlSelAfter));
+  await page.evaluate(d => { closeMealTypePrompt(); state.selectedShortlistId = null; cache.shortlist = cache.shortlist.filter(i => i.id !== 'sl-meal-test');
+    loadDiary().filter(e => !e.recipeId && e.cookedOn === d).forEach(e => deleteDiaryEntry(e.id)); renderPlanner(); }, ahDay);
+
   /* The two looks, on a tablet and a phone: a week header that counts the entry (Modernist), no sideways scroll, every new button answers a tap
      21px above and below its middle (44px), and an empty day's two buttons share one line. */
   const ahLook = async (look, w, h) => {
@@ -2541,7 +2592,7 @@ const check = (name, pass, detail) => {
       const day = document.querySelector(`.day-row[data-date="${iso(1)}"]`), far = document.querySelector(`.day-row[data-date="${iso(5)}"]`);
       const empty = document.querySelector(`.day-row[data-date="${iso(9)}"]`);
       const ch = empty.querySelector('[data-action="choose"]').getBoundingClientRect(), ot = empty.querySelector('[data-action="addOther"]').getBoundingClientRect();
-      const mine = [day.querySelector('[data-action="addOther"]'), day.querySelector('[data-action="removeAdHoc"]'), far.querySelector('[data-action="removeAdHoc"]'), empty.querySelector('[data-action="addOther"]')];
+      const mine = [day.querySelector('[data-action="addOther"]'), day.querySelector('[data-action="removeAdHoc"]'), day.querySelector('[data-action="adHocMeal"]'), far.querySelector('[data-action="removeAdHoc"]'), far.querySelector('[data-action="adHocMeal"]'), empty.querySelector('[data-action="addOther"]')];
       /* Where each sits across the screen is read before any scrolling: the page clips what is too wide rather than growing a scroll bar of its own
          (so the document's width cannot say), and scrolling a clipped button into view would slide the box and hide it. */
       const inside = mine.every(b => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= window.innerWidth + 1; });
