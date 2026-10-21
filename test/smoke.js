@@ -1266,6 +1266,28 @@ const check = (name, pass, detail) => {
   check('cherry tomatoes for plum tomatoes, which share a word, are shown paired but flagged, not quietly matched',
         wordsDiffer.misses === 1 && /not the same wording: the recipe adds plum; the source has cherry/.test(wordsDiffer.why.join('|')), JSON.stringify(wordsDiffer));
 
+  /* 21 Oct 2026: one ingredient split over several lines is drawn once, with every line of each side and what they come
+     to, not once per pairing ("3 tbsp oil > 1 tbsp oil" and "3 tbsp oil > 2 tbsp oil" read as two lots of 3 tbsp). The
+     recipe has one honey line of 3 tbsp, so the source is the side that splits here. */
+  const splitRows = async lines => {
+    await comparePasted(lines);
+    return page.evaluate(() => ({
+      grp: [...document.querySelectorAll('#sourceCompareOut tr.grp')].map(tr => ({ cls: tr.className, cells: [...tr.children].map(td => [...td.querySelectorAll('div:not(.why)')].map(d => d.textContent)), why: (tr.querySelector('.why') || {}).textContent || '' })),
+      honey: [...document.querySelectorAll('#sourceCompareOut tr')].filter(tr => /honey/.test(tr.textContent)).length
+    }));
+  };
+  const splitAgree = await splitRows(['1 tbsp honey or golden syrup', '2 tbsp honey or golden syrup', '1 (14 oz) can plum tomatoes', '1 large onion', 'grated parmesan', '1 carrot']);
+  check('a source that splits one ingredient shows it once: both lines on the left, the one recipe line on the right, said to add up',
+        splitAgree.honey === 1 && splitAgree.grp.length === 1 && !/miss/.test(splitAgree.grp[0].cls)
+        && splitAgree.grp[0].cells[0].join('|') === '1 tbsp honey or golden syrup|2 tbsp honey or golden syrup'
+        && splitAgree.grp[0].cells[1].join('|') === '3 tbsp honey or golden syrup' && /^Listed on 2 lines in the source · Added up, the two sides match: source 1 tbsp \+ 2 tbsp, recipe 3 tbsp/.test(splitAgree.grp[0].why), JSON.stringify(splitAgree));
+  const splitDiffer = await splitRows(['1 tbsp honey or golden syrup', '1 tbsp honey or golden syrup', '1 (14 oz) can plum tomatoes', '1 large onion', 'grated parmesan', '1 carrot']);
+  check('    and when they do not add up it is one highlighted row that says so, counted once',
+        splitDiffer.honey === 1 && splitDiffer.grp.length === 1 && /miss/.test(splitDiffer.grp[0].cls)
+        && /amounts differ: source 1 tbsp \+ 1 tbsp; recipe 3 tbsp/.test(splitDiffer.grp[0].why) && splitDiffer.grp[0].cells[0].length === 2, JSON.stringify(splitDiffer));
+  const splitHint = await page.evaluate(() => document.querySelector('#sourceCompareOut .hint').textContent.trim());
+  check('    and the count above the table is 1 for it, not one per line', /^1 to look at/.test(splitHint), splitHint);
+
   // Advice, never a gate: the recipe saves with warnings still showing.
   const recipeWritesBefore = await page.evaluate(() => (window.__WRITES__ || []).filter(w => w.table === 'recipes').length);
   await page.click('#saveBtn');

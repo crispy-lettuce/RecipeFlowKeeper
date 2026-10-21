@@ -916,6 +916,20 @@ check('    and a flagged pair says what differs, in words',
       /the recipe adds skimmed/.test(fid(['200 ml whole milk'], ['200 ml skimmed milk']).matched[0].check.why)
       && /amounts differ: source 2 tbsp; recipe 1 tbsp/.test(fid(['2 tbsp olive oil'], ['1 tbsp olive oil']).matched[0].check.why));
 
+/* 21 Oct 2026: the rows of one split share one `group`, so the page draws the ingredient once (and not as two lots of
+   the source's amount). A plain pair has none. */
+const splitFid = fid(['3 tbsp olive oil'], ['1 tbsp olive oil', '2 tbsp olive oil']);
+const splitG = splitFid.matched[0] && splitFid.matched[0].group;
+check('the rows of a split share one group: every line of each side, in the order written, and what each side comes to',
+      splitFid.matched.length === 2 && !!splitG && splitFid.matched[1].group === splitG
+      && splitG.source.join('|') === '3 tbsp olive oil' && splitG.recipe.join('|') === '1 tbsp olive oil|2 tbsp olive oil'
+      && splitG.sourceTotal === '3 tbsp' && splitG.recipeTotal === '1 tbsp + 2 tbsp' && splitG.agree === 'agree', JSON.stringify(splitFid));
+const splitSoy = fid(['2 tbsp dark soy sauce'], ['1 tsp dark soy sauce', '2 tbsp dark soy sauce']);
+check('    a split that adds up to more than the source says "differ", and is one flag (the converter fault of 21 Oct)',
+      splitSoy.matched[0].group && splitSoy.matched[0].group.agree === 'differ' && groupsFlagged(splitSoy) === 1
+      && core.fidelityCounts(splitSoy).hard === 1, JSON.stringify(splitSoy));
+check('    and a plain pair has no group', fid(['3 tbsp olive oil'], ['3 tbsp olive oil']).matched[0].group === null);
+
 /* And none of these is a fault: the converter doing what it is asked, or the
    check declining to compare what it cannot. Unknown never warns. */
 const fine = [

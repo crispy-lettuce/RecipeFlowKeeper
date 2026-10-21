@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-19.1';
+const KITCHEN_CORE_VERSION = '2026-10-21.1';
 
 
 /* ======================= quantity split ======================= */
@@ -2116,7 +2116,20 @@ function sourceFidelity(sourceLines, recipeLines){
       ? { kind: 'amount', why: `amounts differ: source ${say(g.S)}; recipe ${say(g.R)}` } : null;
     const more = new Set(); rows.filter(p => fidelitySpecifies(p.a, p.b)).forEach(p => gone(p.b.words, p.a.all).forEach(w => more.add(w)));
     const note = more.size ? { kind: 'specific', why: `more specific than the source: the recipe adds ${[...more].sort().join(', ')}` } : null;
-    rows.forEach(p => matched.push({ source: p.a.line, recipe: p.b.line, split: g.S.length + g.R.length > 2, check, note }));
+    /* A split (one ingredient on more than two lines between the two sides) is one ingredient to the household, so the
+       page draws it once: the source's lines on the left, the recipe's on the right, and what they come to. Each row
+       of the group shares this object, which is how the page knows they belong together (21 Oct 2026: "3 tbsp oil
+       > 1 tbsp oil" and "3 tbsp oil > 2 tbsp oil" read as if the source had asked for two lots of 3 tbsp). The
+       amounts are listed in the order the lines are written; `agree` is the verdict the check was drawn from. */
+    const split = g.S.length + g.R.length > 2;
+    const listed = items => items.slice().sort((x, y) => x.i - y.i);
+    const sums = items => listed(items).map(x => x.amount && x.amount.text).filter(Boolean).join(' + ');
+    const group = split ? {
+      source: listed(g.S).map(a => a.line), recipe: listed(g.R).map(b => b.line),
+      sourceTotal: sums(g.S), recipeTotal: sums(g.R),
+      agree: fidelityAgree(g.S.map(a => a.amount), g.R.map(b => b.amount))
+    } : null;
+    rows.forEach(p => matched.push({ source: p.a.line, recipe: p.b.line, split, group, check, note }));
   });
 
   /* What has no same-ingredient partner may still be similar to something: it

@@ -628,7 +628,7 @@ and it tolerates 12% between a spoon and a spoon of another size, which is why t
 
 **Runs.**
 
-- None yet. It needs the household's conversion project loaded with version 2026-10-21.1.
+- **21 Oct 2026, the conversion project with version 2026-10-21.1, run by the household: passed** ("Test 16 OK").
 
 ---
 
