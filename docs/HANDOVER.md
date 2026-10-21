@@ -2242,6 +2242,10 @@ Seventeen smoke checks (`+ OTHER on a Planner day`), each seen to fail with its 
 two of the checks to be blind at first: the "runs off the side" measure read the document's width, which the page never grows (it clips), and a layout measure scrolled each button into view
 before reading where it sat; both were mended and re-seen failing. A first draft of the break list also showed that a whole-suite run cannot attribute a failure past the first broken step, hence the
 runner. Tablet step 77a. *Not verified:* the tablet and the phone, and the live app.
+**Tablet step 77a reported done (21 Oct 2026, read back at about 10:05 UTC).** The household said "77a tests OK. Visually its OK", with the version merged at 09:21 UTC; which style, and whether the phone
+step was done, were not said. A session read the Supabase logs and `recipe_logs` (counts only, no names): since the merge there is one insert (09:41:53 UTC) and one delete (09:41:36 UTC), fewer than the
+steps make, and the new ad-hoc row is in the family household and still there, dated today or later, where 77a says Test Kitchen (which has no new row since 18 Oct). So the report is the household's word,
+and a leftover test entry may be in the family's diary. Still **not seen:** the Planner on the phone, and Classic's three stacked buttons on the tablet.
 
 **A recipe opens at the day's SERVES (21 Oct 2026, app 2026-10-21.1).** The household asked whether the card should inherit the headcount set on the
 Planner, which it did not: `openRecipe` set `state.viewerServes` to null on every open, so a dish planned for 20 opened at the recipe's own 4, while the shopping

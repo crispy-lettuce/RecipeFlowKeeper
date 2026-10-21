@@ -917,6 +917,8 @@ the 20:00 pop-up. Not seen: a reminder arriving on a phone, and which of (5) to 
     SERVES, PRE-MADE, COOKED ✓ or calendar button; the shopping list and the sidebar's recipe count unchanged. (4) *History:* the same entry on that day; Modernist's week band
     counts it. (5) *A day of only entries* still offers CHOOSE A RECIPE and + OTHER. (6) *×:* a day to come, no question; today, a question. (7) *The phone:* an empty day's two
     buttons on one line, nothing past the edge. Smoke checks cover (1) to (7) except the feel of it; the tablet and phone are not verified.
+*77a reported done by the household, 21 Oct: "tests OK" and "visually OK" (which look, and whether the phone step was done, not said). Read-only afterwards: one `recipe_logs`
+insert (09:41:53 UTC) and one delete (09:41:36 UTC) since the merge, in the family household, not Test Kitchen; fewer writes than the steps make, so what was done is the household's word.*
 
 ## Deferred to the tablet, after merging
 
