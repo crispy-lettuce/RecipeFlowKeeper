@@ -928,6 +928,10 @@ function loadArchivoFont(){
     border-style:dashed; cursor:default; background:none;
   }
   .sl-item.note:hover{ border-color:var(--line-faint); }
+  /* A note that can go on a day answers a tap as a recipe does: pointer, the hover line, and the selected look. */
+  .sl-item.note[data-note]{ cursor:pointer; }
+  .sl-item.note[data-note]:hover{ border-color:var(--plum); }
+  .sl-item.note.selected{ border-style:solid; border-color:var(--sage); background:var(--sage-wash); }
   .sl-row1{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
   .sl-handle{ color:var(--ink-faint); font-size:13px; flex:none; }
   .sl-title{ font-size:16px; font-weight:400; flex:1; min-width:0; }
@@ -1739,7 +1743,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-21.3">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-21.4">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2453,7 +2457,7 @@ const EXPECTED_CORE_VERSION = '2026-10-19.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-21.3';
+const APP_VERSION = '2026-10-21.4';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -7268,7 +7272,7 @@ function renderAssignBanner(){
   if(!item){ state.selectedShortlistId = null; banner.style.display = 'none'; return; }
   const r = loadRecipes().find(x=>x.id === item.recipeId);
   banner.style.display = 'flex';
-  banner.innerHTML = `<span>Assigning "${escapeHtml(r ? r.title : 'this recipe')}" — tap a day below.</span><button id="cancelAssign">CANCEL</button>`;
+  banner.innerHTML = `<span>Assigning "${escapeHtml(item.recipeId ? (r ? r.title : 'this recipe') : item.text)}" — tap a day below.</span><button id="cancelAssign">CANCEL</button>`;
   document.getElementById('cancelAssign').addEventListener('click', ()=>{
     state.selectedShortlistId = null;
     renderPlanner();
@@ -7308,9 +7312,12 @@ function renderShortlistPanel(){
           <div class="sl-sub">${sub}</div>
         </div>`;
       }
-      return `<div class="sl-item note" data-id="${item.id}">
+      /* A note can go on a day too (docs/PLAN-ADHOC-PLANNER.md, PR 3): tapped, it is selected as a recipe is, and the day tapped next takes it as
+         an entry that is not a recipe (+ OTHER's). data-note marks it as one that can be picked; a "recipe removed" item, above, cannot. */
+      const noteSelected = state.selectedShortlistId === item.id;
+      return `<div class="sl-item note${noteSelected?' selected':''}" data-id="${item.id}" data-note="1">
         <div class="sl-row1"><span class="sl-title quoted">"${escapeHtml(item.text)}"</span><button class="sl-remove" data-remove="${item.id}">×</button></div>
-        <div class="sl-sub">JUST A NOTE · NO RECIPE YET</div>
+        <div class="sl-sub">${noteSelected ? 'SELECTED — TAP A DAY' : 'JUST A NOTE · TAP TO PUT IT ON A DAY'}</div>
       </div>`;
     }).join('');
   }
@@ -7414,6 +7421,15 @@ function initPlannerListeners(){
         state.selectedShortlistId = null;
         updateSidebarCounts();
         renderPlanner();
+      } else if(item && !item.recipeId && String(item.text || '').trim()){
+        /* A note becomes an entry that is not a recipe on that day, as + OTHER makes one (no meal: tap its tag for that), and leaves the shortlist. */
+        const title = String(item.text).trim();
+        addDiaryEntry({ title, cookedOn: date, mealType: null });
+        removeShortlistItem(item.id);
+        state.selectedShortlistId = null;
+        updateSidebarCounts();
+        renderPlanner();
+        showToast(`Put "${title}" on ${formatDate(date)}`);
       }
       return;
     }
@@ -7582,7 +7598,8 @@ function initPlannerListeners(){
       return;
     }
     const item = e.target.closest('.sl-item');
-    if(!item || item.classList.contains('note')) return;
+    /* A note is picked as a recipe is; the "recipe removed" item (also drawn as a note) is not. */
+    if(!item || (item.classList.contains('note') && !item.dataset.note)) return;
     const id = item.dataset.id;
     state.selectedShortlistId = (state.selectedShortlistId === id) ? null : id;
     renderPlanner();

@@ -2573,6 +2573,44 @@ const check = (name, pass, detail) => {
   await page.evaluate(d => { closeMealTypePrompt(); state.selectedShortlistId = null; cache.shortlist = cache.shortlist.filter(i => i.id !== 'sl-meal-test');
     loadDiary().filter(e => !e.recipeId && e.cookedOn === d).forEach(e => deleteDiaryEntry(e.id)); renderPlanner(); }, ahDay);
 
+  /* A shortlist note put on a day (PR 3 of docs/PLAN-ADHOC-PLANNER.md): picked as a recipe is, it becomes the same kind of entry + OTHER makes, with the note's own words, and leaves the
+     shortlist. A "recipe removed" item (also drawn as a note) still cannot be picked. */
+  await page.evaluate(() => { cache.shortlist.push({ id: 'sl-note-test', text: 'Test Idea Dish', recipeId: null, dateAdded: todayStr() });
+    cache.shortlist.push({ id: 'sl-gone-test', text: '', recipeId: '99999999-9999-4999-8999-999999999999', dateAdded: todayStr() }); showView('planner'); renderPlanner(); });
+  await ahClick('.sl-item[data-id="sl-note-test"]');
+  const nsPick = await page.evaluate(() => { const it = document.querySelector('.sl-item[data-id="sl-note-test"]');
+    return { selected: it.classList.contains('selected'), sub: it.querySelector('.sl-sub').textContent.trim(), banner: document.getElementById('assignBanner').textContent.replace(/\s+/g, ' ').trim(),
+      days: document.querySelectorAll('.day-row.assignable').length > 0, picked: state.selectedShortlistId }; });
+  check('a shortlist note can be picked as a recipe can: it reads SELECTED — TAP A DAY, the banner names it, and the days offer themselves',
+        nsPick.selected && nsPick.sub === 'SELECTED — TAP A DAY' && /^Assigning "Test Idea Dish" — tap a day below\./.test(nsPick.banner) && nsPick.days && nsPick.picked === 'sl-note-test', JSON.stringify(nsPick));
+  await ahClick('.sl-item[data-id="sl-note-test"]');
+  const nsLet = await page.evaluate(() => state.selectedShortlistId);
+  check('    tapping the picked note again lets it go', nsLet === null, String(nsLet));
+  await ahClick('.sl-item[data-id="sl-gone-test"]');
+  const nsGone = await page.evaluate(() => state.selectedShortlistId);
+  check('    a "recipe removed" item, drawn as a note too, still cannot be picked', nsGone === null, String(nsGone));
+  await ahClick('.sl-item[data-id="sl-note-test"]');
+  const nsM = await page.evaluate(() => window.__WRITES__.length);
+  await ahClick(`.day-row[data-date="${ahDay}"] .day-num`);
+  await ahDrain();
+  const nsDone = await page.evaluate(d => ({ picked: state.selectedShortlistId, onList: loadShortlist().some(i => i.id === 'sl-note-test'), view: state.view, toast: document.querySelector('.toast').textContent,
+    rows: [...document.querySelectorAll(`.day-row[data-date="${d}"] .day-adhoc-row`)].map(r => [r.querySelector('.day-adhoc-title').textContent.trim(), r.querySelector('[data-action="adHocMeal"]').textContent.trim()]),
+    banner: document.getElementById('assignBanner').style.display }), ahDay);
+  const nsLogs = await ahRows(nsM, 'recipe_logs'), nsPlan = await ahRows(nsM, 'planner_days'), nsList = await ahRows(nsM, 'shortlist_items');
+  const nsRow = (nsLogs[0] && (Array.isArray(nsLogs[0].rows) ? nsLogs[0].rows[0] : nsLogs[0].rows)) || {};
+  check('    a day tapped with the note picked takes it as an entry: one diary row with no recipe, the note\'s words, that day and no meal; the day draws it; and no write to the plan',
+        nsLogs.length === 1 && nsLogs[0].op === 'insert' && nsRow.recipe_id === null && nsRow.title === 'Test Idea Dish' && nsRow.cooked_on === ahDay && nsRow.meal_type === null
+        && nsPlan.length === 0 && JSON.stringify(nsDone.rows) === JSON.stringify([['Test Idea Dish', 'AD HOC']]) && nsDone.view === 'planner' && /Put "Test Idea Dish" on /.test(nsDone.toast), JSON.stringify([nsLogs.map(w => w.op), nsRow, nsPlan.length, nsDone]));
+  check('    and the note has left the shortlist (one delete of its row) and nothing is picked or offered any more',
+        !nsDone.onList && nsList.length === 1 && nsList[0].op === 'delete' && nsDone.picked === null && nsDone.banner === 'none', JSON.stringify([nsDone.onList, nsList.map(w => w.op), nsDone.picked, nsDone.banner]));
+  await page.evaluate(() => { cache.shortlist.push({ id: 'sl-note-test2', text: 'Test Second Idea', recipeId: null, dateAdded: todayStr() }); renderPlanner(); });
+  await ahClick('.sl-item[data-id="sl-note-test2"]');
+  await ahClick('.sl-item[data-id="sl-note-test2"] [data-remove]');
+  const nsRm = await page.evaluate(() => ({ picked: state.selectedShortlistId, there: !!document.querySelector('.sl-item[data-id="sl-note-test2"]') }));
+  check('    × on a picked note takes it off the shortlist and drops the pick', nsRm.picked === null && !nsRm.there, JSON.stringify(nsRm));
+  await page.evaluate(d => { cache.shortlist = cache.shortlist.filter(i => !/^sl-(note|gone)-test/.test(i.id)); state.selectedShortlistId = null;
+    loadDiary().filter(e => !e.recipeId && e.cookedOn === d).forEach(e => deleteDiaryEntry(e.id)); renderPlanner(); }, ahDay);
+
   /* The two looks, on a tablet and a phone: a week header that counts the entry (Modernist), no sideways scroll, every new button answers a tap
      21px above and below its middle (44px), and an empty day's two buttons share one line. */
   const ahLook = async (look, w, h) => {
