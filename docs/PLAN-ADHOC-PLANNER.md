@@ -2,7 +2,7 @@
 
 **Written 21 Oct 2026** (date from `date -u`), in a planning session that changed no code. Checked against `main` at `cd2c8b4` plus
 PR #180 (the recipe card opening at the day's SERVES), by reading the code. **Updated 21 Oct 2026:** the household answered §9 (the
-button reads **+ OTHER**, everything else as recommended) and PR 1 is built on the session branch, with the week's PLANNED count (Q5) in it.
+button reads **+ OTHER**, everything else as recommended); PR 1 is merged (#181) and passed its tablet check 77a; PRs 2 and 3 are built (§7), after the household said to go on.
 Nothing was run against the live app or the live database. The household asked for it: put things on the Planner that are not recipes (a takeaway, eating out, leftovers), **of the
 same type as the "+ ENTRY" button on History adds.**
 
@@ -166,11 +166,16 @@ be a second thing to keep in step with `servings`, `premade` and `calendar_items
   9. With a shortlist item selected, the new button opens the dialog and assigns nothing. *Mutation: leave it off the handler's list.*
   10. Layout at 1280x800 and 412px, Classic and Modernist: no overflow, targets at least 44px.
 
-**PR 2: small things, if wanted.** Tap the meal pill to change the meal (reusing the meal prompt, `updateDiaryEntry`). *(The week's "N PLANNED" in
-Modernist counting ad-hoc rows, §9 Q5, moved into PR 1: a week with only a takeaway would otherwise read "NOTHING PLANNED" beside it.)*
+**PR 2: change an entry's meal** (built 21 Oct, app 2026-10-21.3). The entry's tag (`AD HOC`, or `DINNER · AD HOC`) is a button. It opens the meal prompt
+(`promptForMealType`, with a change mode) worded "Which meal is it?", with the entry's meal marked; another meal sets it (`updateDiaryEntry`), the marked one
+tapped again takes it off, CLOSE changes nothing. The prompt's words are set on every opening, so the one a dish just cooked gets is unchanged. The tag is on the
+shortlist-assign exclusion list and the 44px list. *(The week's "N PLANNED" in Modernist counting ad-hoc rows, §9 Q5, was in PR 1.)*
 
-**PR 3: only if §9 Q6 is yes.** A shortlist **note** (no recipe) tapped onto a day becomes an ad-hoc entry from its text, and leaves
-the shortlist.
+**PR 3: a shortlist note onto a day** (built 21 Oct, app 2026-10-21.4). A note is picked as a recipe is (`data-note` marks the ones that can be; the "recipe removed" item,
+also drawn as a note, cannot), and the day tapped next takes it as the same entry + OTHER makes (`addDiaryEntry`, the note's text, no meal), and the note leaves the
+shortlist. The banner names the note.
+
+Both are in one pull request with PR 1's follow-up docs; `docs/HOUSEHOLD-JOBS.md` step 78a checks them together.
 
 ---
 
@@ -194,7 +199,7 @@ optional, Q5 yes, Q6 later, Q7 not in the calendar). The questions are kept as a
 4. **Ask for the meal when adding?** *Recommended:* as History does, the four buttons shown and optional.
 5. **Should "N PLANNED" in the Modernist week header count them?** *Recommended:* yes, so a week with only a takeaway does not
    read "NOTHING PLANNED" beside one. The sidebar's shopping line stays as it is.
-6. **Should a shortlist note be assignable to a day** (PR 3)? *Recommended:* yes, later, once PR 1 has been used.
+6. **Should a shortlist note be assignable to a day** (PR 3)? *Recommended:* yes, later, once PR 1 has been used. *Answered 21 Oct, after PR 1's tablet check: go on with PR 2 and PR 3.*
 7. **In the Google calendar?** *Recommended:* not now. It would need a `calendar-sync` change you would deploy, and the
    calendar is for meals that need a reminder.
 
