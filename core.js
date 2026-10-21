@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-21.3';
+const KITCHEN_CORE_VERSION = '2026-10-21.5';
 
 
 /* ======================= quantity split ======================= */
@@ -2015,6 +2015,27 @@ function pastedRepeats(lines){
   });
   return [...seen.values()].filter(r => r.n > 1);
 }
+/* The ingredients a recipe writes on two or more lines, for LIBRARY CHECK (21 Oct 2026): the place a converter fault of that
+   day hid (a page printing an ingredient's whole amount under each step, read as the step's share on top of an earlier part),
+   and the one thing COMPARE WITH SOURCE totals rather than pairs. Only lines whose amounts can be added up count: the same
+   product, measured the same kind of way (a weight with a weight, a volume with a volume), because "1/2 tsp butter for the tin"
+   beside "180 g butter" is a different use, not a split, and a pinch or a line with no figure ("salt, to taste") repeats
+   legitimately all the time. `mixed` is the shape that fault took: two units for one kind (a teaspoon and a tablespoon, or
+   millilitres and a tablespoon). Whether a split is wrong cannot be told from the recipe alone; this narrows what to open. */
+function splitIngredients(lines){
+  const by = new Map();
+  (lines || []).forEach(raw => {
+    const amt = fidelityAmount(raw);
+    if(!amt || amt.kind !== 'measured') return;
+    const name = String(splitQty(String(raw).trim()).rest || '').split(',')[0].replace(/\([^)]*\)/g, '').trim();
+    const key = name && shoppingKeyForName(name);
+    if(!key) return;
+    const id = key + '|' + amt.cls;
+    const x = by.get(id) || by.set(id, { name: name.toLowerCase(), cls: amt.cls, lines: [], amounts: [], units: new Set() }).get(id);
+    x.lines.push(String(raw).trim()); x.amounts.push(amt.text); x.units.add(amt.unit);
+  });
+  return [...by.values()].filter(x => x.lines.length > 1).map(x => ({ name: x.name, cls: x.cls, lines: x.lines, amounts: x.amounts, mixed: x.units.size > 1 }));
+}
 /* A line as the check sees it. The recipe's format puts the name before the first
    comma and everything else after it or in brackets (conversion-instructions.md),
    so `words` are the name's words and `all` are every word on the line. "salt and
@@ -2445,7 +2466,7 @@ if(typeof module !== 'undefined' && module.exports){
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,
     NEVER_IGNORE, foldPlural, dictionaryRow, dictionaryPhrases, dictionaryKey, shoppingLine, formatShoppingParts, aggregateShoppingLines,
     shoppingKeyForName, strictMatchSuggestions,
-    ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, fidelityAmount, fidelityAgree, fidelityCompare, fidelityDelta, pastedRepeats, pastedIngredientLines, ingredientMatchMap, aisleOverrideMap,
+    ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, fidelityAmount, fidelityAgree, fidelityCompare, fidelityDelta, pastedRepeats, splitIngredients, pastedIngredientLines, ingredientMatchMap, aisleOverrideMap,
     sourceNoteIn, normalisedSourceUrl, linesHash, fidelityCounts, sourceCheckStatus, newRecipeReview,
     splitRecipeBlocks
   };
