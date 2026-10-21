@@ -924,6 +924,8 @@ insert (09:41:53 UTC) and one delete (09:41:36 UTC) since the merge, in the fami
     meal marked; a meal sets it, the day reads MEAL · AD HOC. (3) *The marked meal again* takes it off; CLOSE changes nothing; the prompt after cooking a dish is still "Which meal was that?" with SKIP (smoke checks cover it; nothing is cooked on the tablet for this step).
     (4) *A shortlist note:* picked, it reads SELECTED — TAP A DAY and the bar names it; tapped again it lets go. (5) *A day tapped:* the note becomes an AD HOC entry there, with its own words and no meal, and
     leaves the shortlist. (6) *×* takes the entries off. (7) *The phone.* Smoke checks cover (1) to (5) in both styles' markup and the tag's tap area at four widths; the look and the phone are not verified.
+*78a reported done by the household, 21 Oct: "Looks good - all OK" (which look, and the phone step, not said). Read-only afterwards: the shortlist note path was seen in the logs (note added, entry written from it, note
+deleted, 11:53 to 11:54 UTC) and no update of an entry's meal, so (2) and (3) were not seen; the entries are in the family household, not Test Kitchen, with three ad-hoc entries dated today or later still there.*
 
 ## Deferred to the tablet, after merging
 

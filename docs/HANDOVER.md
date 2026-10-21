@@ -2249,6 +2249,10 @@ on the shortlist-assign exclusion list and the 44px list. *PR 3:* a shortlist no
 and removes it; the banner names it. The "recipe removed" item, also a `.note`, has no `data-note` and stays unpickable. Thirteen smoke checks (7 + 6), each seen to fail with its own break (sixteen breaks run through
 the same throwaway runner as PR 1). One break turned out to change nothing anyone sees: taking the pick off by hand when a note is removed, because `renderAssignBanner` already drops a pick whose item is gone; the check
 breaks the removal itself instead. Tablet step 78a. *Not verified:* the tablet and the phone, and the live app.
+**Tablet step 78a reported done (21 Oct 2026, read back at about 11:57 UTC).** The household said "Looks good - all OK", minutes after the merge. The Supabase logs (since 11:45 UTC) show a shortlist insert at 11:53:17, a `recipe_logs`
+insert at 11:53:22, a `shortlist_items` delete at 11:53:22, a `recipe_logs` delete at 11:53:31 and two more `recipe_logs` inserts at 11:54:08 and 11:54:18: the note-onto-a-day path as built. No `recipe_logs` update (PATCH)
+appears, which is what changing an entry's meal writes, so that half was not seen (the logs can lag). `recipe_logs` counts (no names): the family household went from 1 to 3 ad-hoc rows dated today or later, so the test was in the
+family household, not Test Kitchen, and some of those entries may be leftovers; Test Kitchen has none new since 18 Oct. Still **not seen:** the meal change, the phone, and Classic.
 
 **Tablet step 77a reported done (21 Oct 2026, read back at about 10:05 UTC).** The household said "77a tests OK. Visually its OK", with the version merged at 09:21 UTC; which style, and whether the phone
 step was done, were not said. A session read the Supabase logs and `recipe_logs` (counts only, no names): since the merge there is one insert (09:41:53 UTC) and one delete (09:41:36 UTC), fewer than the
