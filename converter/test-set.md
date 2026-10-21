@@ -590,35 +590,35 @@ have no brackets, and are not changed.
 
 ## 16. A page that repeats the whole amount under each step
 
-**Why:** added 21 Oct 2026, from a real conversion that came out with too much soy sauce. Some recipe sites (WP Recipe Maker's
+**Why:** added 21 Oct 2026, from a real conversion that came out with too much of one sauce. Some recipe sites (WP Recipe Maker's
 "ingredients under each step") print an ingredient beneath every step that uses it, **with its whole list amount each time**, not
 that step's share. Read as additions, they double the ingredient: 1 tsp early and the list's whole amount again at the end. The
 ingredient list is the total, and a split's lines must add up to it. The source and amounts below are made up.
 
 **Source** (the ingredient list, then the method with what the site prints under each step):
 
-> **Sesame Noodles** — Serves 4.
-> Ingredients: 3 tbsp light soy sauce, 3 tbsp vegetable oil, 300 g egg noodles, 2 spring onions, 1 tsp sesame seeds.
+> **Cold Udon Salad** — Serves 4.
+> Ingredients: 3 tbsp ponzu, 3 tbsp groundnut oil, 300 g udon noodles, 1 tsp poppy seeds.
 >
-> 1. Heat 1 tbsp of the oil in a wok and fry the spring onions for 1 minute. *3 tbsp vegetable oil, 2 spring onions*
-> 2. Add the noodles and about 1 tbsp of the soy sauce and toss for 2 minutes. *300 g egg noodles, 3 tbsp light soy sauce*
-> 3. Add the remaining oil and the remaining soy sauce (about 2 tbsp), toss for 1 minute and scatter with the sesame seeds.
->    *3 tbsp vegetable oil, 3 tbsp light soy sauce, 1 tsp sesame seeds*
+> 1. Heat 1 tbsp of the oil in a wok and fry the noodles for 1 minute. *3 tbsp groundnut oil, 300 g udon noodles*
+> 2. Add about 1 tbsp of the ponzu and toss for 2 minutes. *3 tbsp ponzu*
+> 3. Add the remaining oil and the remaining ponzu (about 2 tbsp), toss for 1 minute and scatter with the poppy seeds.
+>    *3 tbsp groundnut oil, 3 tbsp ponzu, 1 tsp poppy seeds*
 
 **Must produce** (grouping may vary, one line in each group where the ingredient joins):
 
 ```
-1 tbsp vegetable oil          2 tbsp vegetable oil
-1 tbsp light soy sauce        2 tbsp light soy sauce
+1 tbsp groundnut oil          2 tbsp groundnut oil
+1 tbsp ponzu                  2 tbsp ponzu
 ```
 
 The oil's second part is not stated in the method ("the remaining oil"), so it is the list's 3 tbsp less the 1 tbsp used first.
 
 **Fails if:**
 
-- an ingredient's lines add up to more than the list (`1 tbsp light soy sauce` and `3 tbsp light soy sauce`, or `3 tbsp vegetable oil`
+- an ingredient's lines add up to more than the list (`1 tbsp ponzu` and `3 tbsp ponzu`, or `3 tbsp groundnut oil`
   twice): a step's repeat of the list was read as an extra amount;
-- the oil is a single `3 tbsp` line in either group (a split missed), or the soy sauce is `1 tbsp` and `1 tbsp`, as if "about 2 tbsp"
+- the oil is a single `3 tbsp` line in either group (a split missed), or the ponzu is `1 tbsp` and `1 tbsp`, as if "about 2 tbsp"
   had been dropped for a tidier figure;
 - the converter reports no question: nothing here is unclear, so none is needed.
 
@@ -628,7 +628,7 @@ and it tolerates 12% between a spoon and a spoon of another size, which is why t
 
 **Runs.**
 
-- **21 Oct 2026, the conversion project with version 2026-10-21.1, run by the household: passed** ("Test 16 OK").
+- **21 Oct 2026, the conversion project with version 2026-10-21.1, run by the household: passed** ("Test 16 OK"). The ingredients in the source were changed afterwards, the same day, to ones the library does not contain (the first wording used everyday ones that it does); the shape is the same.
 
 ---
 

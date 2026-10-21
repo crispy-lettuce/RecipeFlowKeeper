@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-21.2';
+const KITCHEN_CORE_VERSION = '2026-10-21.3';
 
 
 /* ======================= quantity split ======================= */
@@ -2153,7 +2153,7 @@ function sourceFidelity(sourceLines, recipeLines){
     const cmp = fidelityCompare(g.S.map(a => a.amount), g.R.map(b => b.amount));
     const delta = fidelityDelta(cmp);
     /* The commonest way a recipe comes to ask for more than its source is a line that IS the source's whole amount with
-       others on top: a page that prints "2 tbsp soy sauce" under each step that uses it, read as that step's share (the
+       others on top: a page that prints "2 tbsp ponzu" under each step that uses it, read as that step's share (the
        converter's fault of 21 Oct 2026). Said when the recipe is over and one of its lines alone equals what the source
        asks for in total; it is a pointer, and the person decides. */
     const wholeLine = delta && delta.dir === 'more' && g.R.length > 1 && g.R.find(b => b.amount && b.amount.cls === delta.cls

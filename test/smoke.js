@@ -1326,16 +1326,16 @@ const check = (name, pass, detail) => {
   const allMatch = await compareWith(['2 tbsp olive oil', '2 onions'], ['2 tbsp olive oil', '2 onions']);
   check('with nothing to look at the matches are shown, not folded, and there is no SHOW button',
         !allMatch.folded && allMatch.okShown === 2 && allMatch.toggle === null && allMatch.heads.join('|') === 'MATCHED (2)', JSON.stringify(allMatch));
-  const friedRice = await compareWith(['1 tsp dark soy sauce', '2 tbsp dark soy sauce'], ['2 tbsp dark soy sauce']);
-  check('the converter\'s fault of 21 Oct (a small first part and then the source\'s whole amount) is one row, says 1 tsp more (about 17%), and points at the page repeating it',
+  const friedRice = await compareWith(['1 tsp ponzu', '2 tbsp ponzu'], ['2 tbsp ponzu']);
+  check('the shape of the converter\'s fault of 21 Oct (a small first part and then the source\'s whole amount) is one row, says 1 tsp more (about 17%), and points at the page repeating it',
         friedRice.heads.join('|') === 'MORE THAN THE SOURCE ASKS FOR (1)' && friedRice.order.length === 1 && friedRice.deltas.join('|') === 'This recipe has 1 tsp more than the source asks for (about 17%).'
         && friedRice.pointers.length === 1 && /One of your lines \(2 tbsp\) is the source's whole amount/.test(friedRice.pointers[0]), JSON.stringify(friedRice));
   const lessAndWord = await compareWith(['150 g unsalted butter', '1 (14 oz) can cherry tomatoes'], ['200 g unsalted butter', '1 (14 oz) can plum tomatoes']);
   check('a smaller amount is under LESS with its size, and a different word under its own heading',
         lessAndWord.heads.join('|') === 'LESS THAN THE SOURCE ASKS FOR (1)|A DIFFERENT WORD (1)' && /50 g less .* \(about 25%\)/.test(lessAndWord.deltas[0]), JSON.stringify(lessAndWord));
-  const repeated = await compareWith(['2 tbsp dark soy sauce', '1 onion', 'salt, to taste'], ['2 tbsp dark soy sauce', '1 onion, diced', '2 tbsp dark soy sauce', 'salt, to taste', 'salt, to taste']);
+  const repeated = await compareWith(['2 tbsp ponzu', '1 onion', 'salt, to taste'], ['2 tbsp ponzu', '1 onion, diced', '2 tbsp ponzu', 'salt, to taste', 'salt, to taste']);
   check('a pasted list that repeats a measured line says so, and still compares every line as pasted; salt, to taste twice is not a repeat',
-        repeated.repeats.length === 1 && /2 tbsp dark soy sauce is in the pasted list 2 times/.test(repeated.repeats[0]) && !/salt/.test(repeated.repeats[0]), JSON.stringify(repeated.repeats));
+        repeated.repeats.length === 1 && /2 tbsp ponzu is in the pasted list 2 times/.test(repeated.repeats[0]) && !/salt/.test(repeated.repeats[0]), JSON.stringify(repeated.repeats));
   check('    and a list with no repeat gets no notice', allMatch.repeats.length === 0, JSON.stringify(allMatch.repeats));
 
   // Advice, never a gate: the recipe saves with warnings still showing.

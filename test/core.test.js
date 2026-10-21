@@ -924,8 +924,8 @@ check('the rows of a split share one group: every line of each side, in the orde
       splitFid.matched.length === 2 && !!splitG && splitFid.matched[1].group === splitG
       && splitG.source.join('|') === '3 tbsp olive oil' && splitG.recipe.join('|') === '1 tbsp olive oil|2 tbsp olive oil'
       && splitG.sourceTotal === '3 tbsp' && splitG.recipeTotal === '1 tbsp + 2 tbsp' && splitG.agree === 'agree', JSON.stringify(splitFid));
-const splitSoy = fid(['2 tbsp dark soy sauce'], ['1 tsp dark soy sauce', '2 tbsp dark soy sauce']);
-check('    a split that adds up to more than the source says "differ", and is one flag (the converter fault of 21 Oct)',
+const splitSoy = fid(['2 tbsp ponzu'], ['1 tsp ponzu', '2 tbsp ponzu']);
+check('    a split that adds up to more than the source says "differ", and is one flag (the shape of the converter fault of 21 Oct)',
       splitSoy.matched[0].group && splitSoy.matched[0].group.agree === 'differ' && groupsFlagged(splitSoy) === 1
       && core.fidelityCounts(splitSoy).hard === 1, JSON.stringify(splitSoy));
 check('    and a plain pair has no group', fid(['3 tbsp olive oil'], ['3 tbsp olive oil']).matched[0].group === null);
@@ -934,7 +934,7 @@ check('    and a plain pair has no group', fid(['3 tbsp olive oil'], ['3 tbsp ol
    when one of the recipe's lines is the source's whole amount, and a notice for a pasted list that repeats a measured line. */
 const checkOf = (src, rec) => { const f = fid(src, rec); return (f.matched.find(m => m.check) || {}).check || null; };
 const dOf = (src, rec) => { const c = checkOf(src, rec); return c && c.delta; };
-const dSoy = dOf(['2 tbsp dark soy sauce'], ['1 tsp dark soy sauce', '2 tbsp dark soy sauce']);
+const dSoy = dOf(['2 tbsp ponzu'], ['1 tsp ponzu', '2 tbsp ponzu']);
 check('a difference says which way and by how much, in the unit a cook uses: 1 tsp more than 2 tbsp is about 17%',
       dSoy && dSoy.dir === 'more' && dSoy.amount === '1 tsp' && Math.round(dSoy.pct * 100) === 17, JSON.stringify(dSoy));
 const dLess = dOf(['200 g butter'], ['150 g butter']), dCount = dOf(['2 onions'], ['3 onions']), dMl = dOf(['2 tbsp oil'], ['120 ml oil']);
@@ -948,7 +948,7 @@ check('    a pinch against a weight, and the same middle written as a different 
 check('    and the verdict is the same as before: fidelityAgree is the comparison\'s verdict',
       ['2 tbsp|1 tsp', '2 tbsp|2 tbsp', '200 g|1 pinch', '1 cup|200 g'].every(x => { const [a, b] = x.split('|').map(t => [core.fidelityAmount(t + ' x')]);
         return core.fidelityAgree(a, b) === core.fidelityCompare(a, b).verdict; }));
-const hintSoy = checkOf(['2 tbsp dark soy sauce'], ['1 tsp dark soy sauce', '2 tbsp dark soy sauce']).hint;
+const hintSoy = checkOf(['2 tbsp ponzu'], ['1 tsp ponzu', '2 tbsp ponzu']).hint;
 check('a recipe over its source, with one line that is the source\'s whole amount, is pointed at the page repeating it (the fault of 21 Oct)',
       /One of your lines \(2 tbsp\) is the source's whole amount/.test(hintSoy) && /repeat the full amount under each step/.test(hintSoy), hintSoy);
 check('    and not when no line is the whole amount, when the recipe is under its source, or when it has one line only',
@@ -956,9 +956,9 @@ check('    and not when no line is the whole amount, when the recipe is under it
       && checkOf(['4 tbsp oil'], ['1 tbsp oil', '5 tbsp oil']).hint === ''
       && checkOf(['4 tbsp oil'], ['1 tbsp oil', '2 tbsp oil']).hint === '' && checkOf(['2 tbsp oil'], ['3 tbsp oil']).hint === '',
       JSON.stringify([checkOf(['3 tbsp oil'], ['1 tbsp oil', '3 tbsp oil']), checkOf(['4 tbsp oil'], ['1 tbsp oil', '5 tbsp oil']), checkOf(['4 tbsp oil'], ['1 tbsp oil', '2 tbsp oil']), checkOf(['2 tbsp oil'], ['3 tbsp oil'])]));
-const reps = core.pastedRepeats(['2 tbsp dark soy sauce', '1 onion', '2 TBSP  dark soy sauce', 'salt, to taste', 'salt, to taste', 'For the sauce']);
+const reps = core.pastedRepeats(['2 tbsp ponzu', '1 onion', '2 TBSP  ponzu', 'salt, to taste', 'salt, to taste', 'For the sauce']);
 check('a pasted list that repeats a measured line is told so (any case or spacing, first spelling kept); "salt, to taste" twice is not a repeat',
-      reps.length === 1 && reps[0].line === '2 tbsp dark soy sauce' && reps[0].n === 2 && core.pastedRepeats(['1 onion', '1 carrot']).length === 0, JSON.stringify(reps));
+      reps.length === 1 && reps[0].line === '2 tbsp ponzu' && reps[0].n === 2 && core.pastedRepeats(['1 onion', '1 carrot']).length === 0, JSON.stringify(reps));
 
 /* And none of these is a fault: the converter doing what it is asked, or the
    check declining to compare what it cannot. Unknown never warns. */
