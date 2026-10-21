@@ -2230,6 +2230,19 @@ designed on that day, on a one-group day and on a one-dish day. Google, read at 
 and 20 and 23 Oct are single `…r` events; no plain-id event of this household is left. Found on the way, not this change's: thirteen events from Test Kitchen's old household (9 to 22 Oct, not the 17th) remain in
 the calendar and nothing will delete them (`docs/INFRASTRUCTURE.md`); the household decided on 20 Oct to leave them as they are. Still **not seen:** a reminder arriving on a phone.
 
+**+ OTHER on a Planner day (21 Oct 2026, app 2026-10-21.2; `docs/PLAN-ADHOC-PLANNER.md`, PR 1).** The household answered the plan's questions (button wording **+ OTHER**, the rest
+as recommended) and PR 1 was built. Each day (not one marked away) has **+ OTHER**, which opens History's own dialog (`#adHocOverlay`, now with an origin: `openAdHocEntry({ origin, date })`,
+`adHocOrigin`) worded "Add to the Planner" and set to that day; saving calls the same `addDiaryEntry`, so the row is a `recipe_logs` row with no recipe, a title, the day and an optional
+meal, and the Planner stays on screen (History keeps its own ending). **No schema, Edge Function, core.js or calendar change.** `renderPlannerDays` draws a day's ad-hoc rows after its
+recipes (`plannerAdHocByDay`, `adHocRowHtml`): plain text, `MEAL · AD HOC`, and a ×, with none of SERVES, PRE-MADE, COOKED ✓ or the calendar's buttons; a day of only entries keeps CHOOSE A RECIPE
+(small, beneath them); an away day keeps the entries it has but offers no button. × (`removeAdHoc` → `deleteDiaryEntry`) asks for today or earlier, as History's REMOVE does, and not for a day to come.
+The new actions are on the list of taps that must not assign a selected shortlist item. The Modernist week band's PLANNED counts the entries (§9 Q5). Nothing else reads these rows differently:
+the shopping list, the sidebar's count and `calendar-sync` read the plan and the recipes only.
+Seventeen smoke checks (`+ OTHER on a Planner day`), each seen to fail with its own break: sixteen breaks, run one at a time through a throwaway runner for that block (13 s a run), which showed
+two of the checks to be blind at first: the "runs off the side" measure read the document's width, which the page never grows (it clips), and a layout measure scrolled each button into view
+before reading where it sat; both were mended and re-seen failing. A first draft of the break list also showed that a whole-suite run cannot attribute a failure past the first broken step, hence the
+runner. Tablet step 77a. *Not verified:* the tablet and the phone, and the live app.
+
 **A recipe opens at the day's SERVES (21 Oct 2026, app 2026-10-21.1).** The household asked whether the card should inherit the headcount set on the
 Planner, which it did not: `openRecipe` set `state.viewerServes` to null on every open, so a dish planned for 20 opened at the recipe's own 4, while the shopping
 list and the Group Viewer (`plannedServingsLookup`) already used the day's number. The `viewerServes` comment records a 14 Aug decision that the viewer's ad-hoc scaling is

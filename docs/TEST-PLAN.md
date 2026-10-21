@@ -911,6 +911,12 @@ the 20:00 pop-up. Not seen: a reminder arriving on a phone, and which of (5) to 
     its name on the Planner:* the card reads SERVES 8 (SCALED FROM 4), amounts doubled, ← PLANNER. (2) *RESET:* as written; back to the Planner and in again, it opens at 8 again.
     (3) *The same recipe twice on a day, one at 8 and one left alone:* each opens at its own. (4) *From RECIPES:* as written. Smoke checks cover (1), (3) and (4) and that nothing is
     written; the tablet is not verified.
+77a. **+ OTHER on a Planner day (new 21 Oct; version 2026-10-21.2; `docs/PLAN-ADHOC-PLANNER.md`).** Either style, Test Kitchen; one made-up entry, removed in (6). (1) *The button:* on
+    every day, at the right of CHOOSE A RECIPE on an empty day, beside ADD ANOTHER on a day with dishes, absent on an away day. (2) *The dialog:* "Add to the Planner",
+    that day's date, the names used before, four meals; ADD stays on the Planner, with the entry under the dishes tagged DINNER · AD HOC and a ×. (3) *The row:* plain text, no
+    SERVES, PRE-MADE, COOKED ✓ or calendar button; the shopping list and the sidebar's recipe count unchanged. (4) *History:* the same entry on that day; Modernist's week band
+    counts it. (5) *A day of only entries* still offers CHOOSE A RECIPE and + OTHER. (6) *×:* a day to come, no question; today, a question. (7) *The phone:* an empty day's two
+    buttons on one line, nothing past the edge. Smoke checks cover (1) to (7) except the feel of it; the tablet and phone are not verified.
 
 ## Deferred to the tablet, after merging
 

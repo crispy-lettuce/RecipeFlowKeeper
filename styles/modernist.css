@@ -902,6 +902,12 @@ html[data-style="modernist"] #view-planner .day-main > .day-choose:not(.day-add-
   html[data-style="modernist"] #view-planner .day-main.day-main-empty{ padding-top:0; padding-bottom:0; }
   html[data-style="modernist"] #view-planner .day-main.day-main-empty > .day-choose:not(.day-add-more){ min-height:56px; }
 }
+/* + OTHER at the right of an empty day's one line, phone and tablet alike (docs/PLAN-ADHOC-PLANNER.md): CHOOSE A RECIPE gives up the rest of the
+   width it took, but keeps room for its words, so the pair wraps to two lines only where they truly cannot share one. */
+html[data-style="modernist"] #view-planner .day-main.day-main-empty{ gap:8px 14px; }
+html[data-style="modernist"] #view-planner .day-main.day-main-empty > .day-choose:not(.day-add-more){ flex:1 1 11em; }
+html[data-style="modernist"] #view-planner .day-main.day-main-empty > .day-choose.day-add-more{ flex:none; margin:0 0 0 auto; }
+
 
 /* ============================== THE SHORTLIST PANEL ==============================
    330px with a 2px rule; "Shortlist" at 26px with its count and a › that collapses the panel to a 56px rail (Modernist
