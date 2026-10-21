@@ -907,6 +907,8 @@ html[data-style="modernist"] #view-planner .day-main > .day-choose:not(.day-add-
 html[data-style="modernist"] #view-planner .day-main.day-main-empty{ gap:8px 14px; }
 html[data-style="modernist"] #view-planner .day-main.day-main-empty > .day-choose:not(.day-add-more){ flex:1 1 11em; }
 html[data-style="modernist"] #view-planner .day-main.day-main-empty > .day-choose.day-add-more{ flex:none; margin:0 0 0 auto; }
+/* The ad-hoc entry's meal tag is a button (PR 2): the same small red capitals, with the accent on hover like the rest of the day's controls. */
+html[data-style="modernist"] #view-planner .day-adhoc-meal:hover{ color:var(--color-accent); }
 
 
 /* ============================== THE SHORTLIST PANEL ==============================
@@ -946,6 +948,11 @@ html[data-style="modernist"] #view-planner .sl-remove{ grid-column:3; grid-row:1
 html[data-style="modernist"] #view-planner .sl-remove:hover{ opacity:1; color:var(--color-accent); }
 html[data-style="modernist"] #view-planner .sl-item:hover{ border-color:var(--color-divider); background:var(--color-surface); }
 html[data-style="modernist"] #view-planner .sl-item.note:hover{ background:transparent; }
+/* A note that can go on a day (PR 3) answers a tap like a recipe on the shortlist: the surface on hover, the accent edge when picked. */
+html[data-style="modernist"] #view-planner .sl-item.note[data-note]{ cursor:pointer; }
+html[data-style="modernist"] #view-planner .sl-item.note[data-note]:hover{ background:var(--color-surface); }
+html[data-style="modernist"] #view-planner .sl-item.note.selected,
+html[data-style="modernist"] #view-planner .sl-item.note.selected:hover{ background:var(--color-accent-100); }
 html[data-style="modernist"] #view-planner .sl-item.selected{ padding-left:18px; border-left:4px solid var(--color-accent); background:var(--color-accent-100); }
 html[data-style="modernist"] #view-planner .sl-item.selected .sl-sub{ color:var(--color-accent-700); }
 html[data-style="modernist"] #view-planner .sl-empty{ padding:14px 22px; font-size:14px; line-height:1.45; color:var(--km-ink-72); }

@@ -2242,6 +2242,18 @@ Seventeen smoke checks (`+ OTHER on a Planner day`), each seen to fail with its 
 two of the checks to be blind at first: the "runs off the side" measure read the document's width, which the page never grows (it clips), and a layout measure scrolled each button into view
 before reading where it sat; both were mended and re-seen failing. A first draft of the break list also showed that a whole-suite run cannot attribute a failure past the first broken step, hence the
 runner. Tablet step 77a. *Not verified:* the tablet and the phone, and the live app.
+**PRs 2 and 3 of the ad-hoc plan (21 Oct 2026, apps 2026-10-21.3 and .4), asked for after 77a.** *PR 2:* the tag on an entry (`AD HOC`, `DINNER · AD HOC`) is a button, `data-action="adHocMeal"`, which opens
+`promptForMealType(entryId, label, null, { change: true, current })`: "Which meal is it?", the entry's meal marked, another meal sets it through `updateDiaryEntry`, the marked one tapped again sets `null`
+(toast "Meal taken off"), CLOSE writes nothing; the heading, sub-line and button word are set on every opening (`mealTypeSub` has an id for it), so the prompt a dish just cooked gets is as it was. The tag is
+on the shortlist-assign exclusion list and the 44px list. *PR 3:* a shortlist note (no recipe, `data-note="1"`) is picked as a recipe is; the day-tap handler turns it into `addDiaryEntry({ title, cookedOn, mealType: null })`
+and removes it; the banner names it. The "recipe removed" item, also a `.note`, has no `data-note` and stays unpickable. Thirteen smoke checks (7 + 6), each seen to fail with its own break (sixteen breaks run through
+the same throwaway runner as PR 1). One break turned out to change nothing anyone sees: taking the pick off by hand when a note is removed, because `renderAssignBanner` already drops a pick whose item is gone; the check
+breaks the removal itself instead. Tablet step 78a. *Not verified:* the tablet and the phone, and the live app.
+
+**Tablet step 77a reported done (21 Oct 2026, read back at about 10:05 UTC).** The household said "77a tests OK. Visually its OK", with the version merged at 09:21 UTC; which style, and whether the phone
+step was done, were not said. A session read the Supabase logs and `recipe_logs` (counts only, no names): since the merge there is one insert (09:41:53 UTC) and one delete (09:41:36 UTC), fewer than the
+steps make, and the new ad-hoc row is in the family household and still there, dated today or later, where 77a says Test Kitchen (which has no new row since 18 Oct). So the report is the household's word,
+and a leftover test entry may be in the family's diary. Still **not seen:** the Planner on the phone, and Classic's three stacked buttons on the tablet.
 
 **A recipe opens at the day's SERVES (21 Oct 2026, app 2026-10-21.1).** The household asked whether the card should inherit the headcount set on the
 Planner, which it did not: `openRecipe` set `state.viewerServes` to null on every open, so a dish planned for 20 opened at the recipe's own 4, while the shopping

@@ -1,6 +1,6 @@
 # Household job list
 
-**Last brought up to date: 21 Oct 2026 (77a, + OTHER on a Planner day, added; 76a before it), earlier 20 Oct 2026 (the old calendar events from before the split: decided to leave them; 75a, the calendar reminder per meal, reported done and taken off; C1, the calendar SQL and function, before it; 74a, the denser Planner, before it; 73a, the second batch from the tablet review, before that), earlier 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
+**Last brought up to date: 21 Oct 2026 (78a, an entry's meal and a shortlist note onto a day, added; 77a, + OTHER on a Planner day, reported done and taken off, before it; 76a before that), earlier 20 Oct 2026 (the old calendar events from before the split: decided to leave them; 75a, the calendar reminder per meal, reported done and taken off; C1, the calendar SQL and function, before it; 74a, the denser Planner, before it; 73a, the second batch from the tablet review, before that), earlier 19 Oct 2026 (70a, the filter sheet, added), earlier 18 Oct 2026, checked step by step against the app, with 66a revised for the fixes of 18 Oct; the test-household split and the converter reload put first, and 68a added, the same day. 66a step 3 gained the scroll and upright check on 19 Oct.**
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other
 households sort out their own converter and need no steps here.
@@ -34,7 +34,7 @@ These are the jobs only you can do. A session can't tap the tablet, make decisio
 | [73a: the second batch from the tablet review](#73a-the-second-batch-from-the-tablet-review-new-20-oct-version-2026-10-204-docsplan-modernistmd), in Modernist | tablet, upright then landscape | 10 min | One dish taken off a day and put back (step 5) |
 | [74a: the denser Planner](#74a-the-denser-planner-new-20-oct-version-2026-10-205-docsplan-modernistmd), in Modernist | tablet, landscape | 8 min | One dish taken off and put back (step 5) |
 | [76a: a recipe opens at the day's SERVES](#76a-a-recipe-opens-at-the-days-serves-new-21-oct-version-2026-10-211), in either style | tablet | 3 min | No |
-| [77a: + OTHER on a Planner day](#77a-other-on-a-planner-day-new-21-oct-version-2026-10-212-docsplan-adhoc-planner-md), in Test Kitchen | tablet, then the phone | 8 min | One made-up entry, taken off in step 6 |
+| [78a: an entry's meal, and a shortlist note onto a day](#78a-an-entrys-meal-and-a-shortlist-note-onto-a-day-new-21-oct-versions-2026-10-213-and-4-docsplan-adhoc-plannermd), in Test Kitchen | tablet, then the phone | 8 min | One made-up entry and one made-up note, both taken off in step 6 |
 | [Choose what to build next](#your-own-issues-decided-13-oct) (#100 is parked) | — | — | — |
 
 **The split is done** (18 Oct, see Recently done), so your own library is empty until you add recipes. Do 61a to 70a signed in as the
@@ -415,28 +415,24 @@ In Classic or Modernist, in Test Kitchen (it has recipes with SERVINGS), after r
 
 Tell the next session if you would rather it opened as written and offered the day's number as a button.
 
-### 77a. + OTHER on a Planner day (new 21 Oct, version 2026-10-21.2, `docs/PLAN-ADHOC-PLANNER.md`)
+### 78a. An entry's meal, and a shortlist note onto a day (new 21 Oct, versions 2026-10-21.3 and .4, `docs/PLAN-ADHOC-PLANNER.md`)
 
-In Test Kitchen, in Classic or Modernist, after reloading into 2026-10-21.2. It writes one made-up diary entry, and step 6 takes it off. Use a made-up name
-("Test Takeaway"), not a real meal: the entry is in your diary while it exists.
+In Test Kitchen, in Classic or Modernist, after reloading into 2026-10-21.4 (Settings → HELP shows the version). It writes one made-up diary entry and one made-up note, and step 6
+takes them off. Use made-up names ("Test Takeaway", "Test Idea Dish"), not real meals.
 
-1. Open the **PLANNER**. **You should see:** **+ OTHER** on every day, beside **CHOOSE A RECIPE** on an empty day (at the right, on the same line) and beside
-   **ADD ANOTHER** on a day with dishes. On a day marked away it is not there.
-2. Tap **+ OTHER** on a day later this week. **You should see:** the History dialog, headed "Add to the Planner", with that day's date, a box for the name (names
-   you have used before are offered) and the four meal buttons. Type "Test Takeaway", tap **DINNER**, tap **ADD**. **You should see:** you stay on the Planner, a
-   message says it was added on that day, and under that day's dishes a line "Test Takeaway" with **DINNER · AD HOC** and a **×**.
-3. Look at that line. **You should see:** the name is plain text (tapping it does nothing), and it has no **SERVES**, **PRE-MADE**, **COOKED ✓** or calendar button.
-   The shopping list and the shopping line at the foot of the sidebar are the same as before.
-4. Open **HISTORY** and find that day. **You should see:** "Test Takeaway" there, as an ad-hoc entry, tagged DINNER. In Modernist, look at that week's band on the
-   Planner: its **PLANNED** figure is one higher than the dishes alone.
-5. Back on the Planner, on a day with nothing else planned, add another (**+ OTHER**, name "Test Leftovers", no meal). **You should see:** that day shows the line
-   and, beneath it, **CHOOSE A RECIPE** and **+ OTHER**, so you can still add a recipe.
-6. Tap **×** on "Test Takeaway". **You should see:** it goes at once, with no question (the day has not happened). Take off "Test Leftovers" too. Then add one on
-   **today**, and tap its **×**: **You should see:** a question first, as History's REMOVE asks.
-7. On the phone, look at the same screen. **You should see:** an empty day's **CHOOSE A RECIPE** and **+ OTHER** on one line, and nothing running off the side.
+1. On the **PLANNER**, tap **+ OTHER** on a day later this week, name it "Test Takeaway", leave the meal alone, tap **ADD**. **You should see:** the entry under that day's dishes, tagged
+   **AD HOC** with a dotted line under the tag (it is a button now).
+2. Tap the tag. **You should see:** a box headed "Which meal is it?" saying the entry is on the Planner, with the four meals and **CLOSE**; none is marked. Tap **DINNER**. **You should see:** the box
+   closes and the tag reads **DINNER · AD HOC**.
+3. Tap the tag again. **You should see:** **DINNER** marked. Tap **LUNCH**: it reads **LUNCH · AD HOC**. Tap the tag and then **LUNCH** again, the marked one: it goes back to **AD HOC**. Tap the tag and **CLOSE**:
+   nothing changes. (The box that asks which meal after you cook something is the same one, and keeps its own wording, "Which meal was that?" and **SKIP**; it is not part of this check, so nothing is cooked or logged.)
+4. In the shortlist's box ("Jot down an idea…") type "Test Idea Dish" and press Enter. Tap the new note. **You should see:** it is marked **SELECTED — TAP A DAY** (as a recipe is), and a bar
+   at the top says **Assigning "Test Idea Dish" — tap a day below.** Tap the note again: the pick goes. Pick it once more.
+5. Tap a day. **You should see:** "Test Idea Dish" under that day's dishes, tagged **AD HOC**, a message saying it was put on that day, and the note gone from the shortlist.
+6. Take both entries off with their **×** (a day to come asks nothing).
+7. On the phone, look at an entry's tag and the shortlist note. **You should see:** the tag easy to tap (the line under it), the picked note marked, and nothing running off the side.
 
-Tell the next session how it looks beside the dishes (the stacked buttons in Classic, the line's height on the phone), and whether you want to change an entry's
-meal by tapping it (the plan's second PR).
+Tell the next session how the tag reads as a button (is the dotted line enough?), and whether you would rather a note asked for the meal when it goes on a day.
 
 ---
 
@@ -499,6 +495,10 @@ None at the moment.
 
 ## Recently done
 
+- **21 Oct:** **tablet step 77a (+ OTHER on a Planner day) reported done** ("77a tests OK. Visually its OK"; which looks and which device were not said). Read-only afterwards, from the
+  database and the Supabase logs: since version 2026-10-21.2 merged (09:21 UTC) there is one `recipe_logs` insert (09:41:53 UTC) and one delete (09:41:36 UTC), fewer writes than the
+  steps make, so the logs do not show the whole job and the report stands on your word. The one new ad-hoc row is in the family household (Test Kitchen, where 77a says to do it, has no new
+  row since 18 Oct) and is still there, dated today or later; its name was not read. If it is left over from the test, take it off with the × on its day.
 - **20 Oct:** **you decided to leave the 13 old Test Kitchen events in the RecipeWrangler calendar as they are** ("leave as is"). They are from the household connected before the 18 Oct split
   (9 to 22 Oct, not the 17th), and the family household's sync cannot reach them. Three are today or later; the 22 Oct one, for a dish that is in nobody's plan, will pop up at 20:00 on 21 Oct. Nothing
   was deleted. If one becomes a nuisance, delete it by hand in Google Calendar, or ask a session to (it asks first).

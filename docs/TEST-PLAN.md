@@ -917,6 +917,13 @@ the 20:00 pop-up. Not seen: a reminder arriving on a phone, and which of (5) to 
     SERVES, PRE-MADE, COOKED ✓ or calendar button; the shopping list and the sidebar's recipe count unchanged. (4) *History:* the same entry on that day; Modernist's week band
     counts it. (5) *A day of only entries* still offers CHOOSE A RECIPE and + OTHER. (6) *×:* a day to come, no question; today, a question. (7) *The phone:* an empty day's two
     buttons on one line, nothing past the edge. Smoke checks cover (1) to (7) except the feel of it; the tablet and phone are not verified.
+*77a reported done by the household, 21 Oct: "tests OK" and "visually OK" (which look, and whether the phone step was done, not said). Read-only afterwards: one `recipe_logs`
+insert (09:41:53 UTC) and one delete (09:41:36 UTC) since the merge, in the family household, not Test Kitchen; fewer writes than the steps make, so what was done is the household's word.*
+78a. **An entry's meal, and a shortlist note onto a day (new 21 Oct; versions 2026-10-21.3 and .4; `docs/PLAN-ADHOC-PLANNER.md`, PRs 2 and 3).** Either style, Test Kitchen; one made-up entry and
+    one made-up note, taken off in (6). (1) *The tag:* an entry's AD HOC / DINNER · AD HOC is a button with a dotted line under it. (2) *Tap it:* "Which meal is it?", the four meals and CLOSE, the entry's
+    meal marked; a meal sets it, the day reads MEAL · AD HOC. (3) *The marked meal again* takes it off; CLOSE changes nothing; the prompt after cooking a dish is still "Which meal was that?" with SKIP (smoke checks cover it; nothing is cooked on the tablet for this step).
+    (4) *A shortlist note:* picked, it reads SELECTED — TAP A DAY and the bar names it; tapped again it lets go. (5) *A day tapped:* the note becomes an AD HOC entry there, with its own words and no meal, and
+    leaves the shortlist. (6) *×* takes the entries off. (7) *The phone.* Smoke checks cover (1) to (5) in both styles' markup and the tag's tap area at four widths; the look and the phone are not verified.
 
 ## Deferred to the tablet, after merging
 
