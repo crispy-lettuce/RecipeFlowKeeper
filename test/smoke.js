@@ -1266,6 +1266,78 @@ const check = (name, pass, detail) => {
   check('cherry tomatoes for plum tomatoes, which share a word, are shown paired but flagged, not quietly matched',
         wordsDiffer.misses === 1 && /not the same wording: the recipe adds plum; the source has cherry/.test(wordsDiffer.why.join('|')), JSON.stringify(wordsDiffer));
 
+  /* 21 Oct 2026: one ingredient split over several lines is drawn once, with every line of each side and what they come
+     to, not once per pairing ("3 tbsp oil > 1 tbsp oil" and "3 tbsp oil > 2 tbsp oil" read as two lots of 3 tbsp). The
+     recipe has one honey line of 3 tbsp, so the source is the side that splits here. */
+  const splitRows = async lines => {
+    await comparePasted(lines);
+    return page.evaluate(() => ({
+      grp: [...document.querySelectorAll('#sourceCompareOut tr.grp')].map(tr => ({ cls: tr.className, cells: [...tr.children].map(td => [...td.querySelectorAll('div:not(.why)')].map(d => d.textContent)), why: (tr.querySelector('.why') || {}).textContent || '' })),
+      honey: [...document.querySelectorAll('#sourceCompareOut tr')].filter(tr => /honey/.test(tr.textContent)).length
+    }));
+  };
+  const splitAgree = await splitRows(['1 tbsp honey or golden syrup', '2 tbsp honey or golden syrup', '1 (14 oz) can plum tomatoes', '1 large onion', 'grated parmesan', '1 carrot']);
+  check('a source that splits one ingredient shows it once: both lines on the left, the one recipe line on the right, said to add up',
+        splitAgree.honey === 1 && splitAgree.grp.length === 1 && !/miss/.test(splitAgree.grp[0].cls)
+        && splitAgree.grp[0].cells[0].join('|') === '1 tbsp honey or golden syrup|2 tbsp honey or golden syrup'
+        && splitAgree.grp[0].cells[1].join('|') === '3 tbsp honey or golden syrup' && /^Listed on 2 lines in the source · Added up, the two sides match: source 1 tbsp \+ 2 tbsp, recipe 3 tbsp/.test(splitAgree.grp[0].why), JSON.stringify(splitAgree));
+  const splitDiffer = await splitRows(['1 tbsp honey or golden syrup', '1 tbsp honey or golden syrup', '1 (14 oz) can plum tomatoes', '1 large onion', 'grated parmesan', '1 carrot']);
+  check('    and when they do not add up it is one highlighted row that says so, counted once',
+        splitDiffer.honey === 1 && splitDiffer.grp.length === 1 && /miss/.test(splitDiffer.grp[0].cls)
+        && /amounts differ: source 1 tbsp \+ 1 tbsp; recipe 3 tbsp/.test(splitDiffer.grp[0].why) && splitDiffer.grp[0].cells[0].length === 2, JSON.stringify(splitDiffer));
+  const splitHint = await page.evaluate(() => document.querySelector('#sourceCompareOut .hint').textContent.trim());
+  check('    and the count above the table is 1 for it, not one per line', /^1 to look at/.test(splitHint), splitHint);
+
+  /* 21 Oct 2026: the table under a heading each (missing, extra, more, less, a different word, matched), biggest difference
+     first, how far apart said in words, a pointer when a line of the recipe is the source's whole amount, a notice for a
+     pasted list that repeats a measured line, and the matches folded away while there is anything else to read. The recipe's
+     lines are set by hand here (recipeIngredientLines is the page's own reader of the form), then put back. */
+  const compareWith = async (recipeLines, pasted) => {
+    await page.evaluate(ls => { window.__recipeLinesOrig = window.__recipeLinesOrig || window.recipeIngredientLines; window.recipeIngredientLines = () => ls; }, recipeLines);
+    await page.fill('#sourcePasteInput', pasted.join('\n'));
+    await page.click('#comparePastedBtn');
+    await page.waitForTimeout(300);
+    const read = await page.evaluate(() => {
+      const t = document.querySelector('#sourceCompareOut table.source-compare');
+      const shown = tr => getComputedStyle(tr).display !== 'none';
+      return {
+        heads: [...t.querySelectorAll('tr.sec th')].map(th => th.textContent.replace(/\s*(SHOW|HIDE)$/, '').trim()),
+        order: [...t.querySelectorAll('tr.miss td:first-child')].map(td => td.textContent.trim()),
+        deltas: [...t.querySelectorAll('.delta:not(.pointer)')].map(d => d.textContent),
+        pointers: [...t.querySelectorAll('.delta.pointer')].map(d => d.textContent),
+        repeats: [...document.querySelectorAll('#sourceCompareOut .hint.repeats')].map(d => d.textContent),
+        folded: t.classList.contains('hide-ok'), okShown: [...t.querySelectorAll('tr.okrow')].filter(shown).length, okRows: t.querySelectorAll('tr.okrow').length,
+        toggle: (t.querySelector('[data-cmp-toggle]') || {}).textContent || null
+      };
+    });
+    await page.evaluate(() => { window.recipeIngredientLines = window.__recipeLinesOrig; });
+    return read;
+  };
+  const sized = await compareWith(['3 tbsp olive oil', '30 g butter', '2 onions', '1 carrot'], ['2 tbsp olive oil', '10 g butter', '2 onions', '1 carrot', '1 clove garlic']);
+  check('the table has a heading per kind of difference with its count: missing, then more, with the matches last',
+        sized.heads.join('|') === 'MISSING FROM THIS RECIPE (1)|MORE THAN THE SOURCE ASKS FOR (2)|MATCHED (2)', JSON.stringify(sized.heads));
+  check('    and under MORE the biggest difference is first (butter, three times over, before the oil, half as much again)',
+        sized.order.join('|') === '1 clove garlic|10 g butter|2 tbsp olive oil' && /20 g more .* \(about 200%\)/.test(sized.deltas[0]) && /1 tbsp more .* \(about 50%\)/.test(sized.deltas[1]), JSON.stringify(sized));
+  check('    and the matches are folded away while there is anything else to read, and SHOW brings them back',
+        sized.folded && sized.okShown === 0 && sized.okRows === 2 && sized.toggle === 'SHOW', JSON.stringify(sized));
+  await page.click('[data-cmp-toggle]');
+  const unfolded = await page.evaluate(() => ({ shown: [...document.querySelectorAll('#sourceCompareOut tr.okrow')].filter(tr => getComputedStyle(tr).display !== 'none').length, label: document.querySelector('[data-cmp-toggle]').textContent }));
+  check('    SHOW shows both matched rows and the button reads HIDE', unfolded.shown === 2 && unfolded.label === 'HIDE', JSON.stringify(unfolded));
+  const allMatch = await compareWith(['2 tbsp olive oil', '2 onions'], ['2 tbsp olive oil', '2 onions']);
+  check('with nothing to look at the matches are shown, not folded, and there is no SHOW button',
+        !allMatch.folded && allMatch.okShown === 2 && allMatch.toggle === null && allMatch.heads.join('|') === 'MATCHED (2)', JSON.stringify(allMatch));
+  const friedRice = await compareWith(['1 tsp ponzu', '2 tbsp ponzu'], ['2 tbsp ponzu']);
+  check('the shape of the converter\'s fault of 21 Oct (a small first part and then the source\'s whole amount) is one row, says 1 tsp more (about 17%), and points at the page repeating it',
+        friedRice.heads.join('|') === 'MORE THAN THE SOURCE ASKS FOR (1)' && friedRice.order.length === 1 && friedRice.deltas.join('|') === 'This recipe has 1 tsp more than the source asks for (about 17%).'
+        && friedRice.pointers.length === 1 && /One of your lines \(2 tbsp\) is the source's whole amount/.test(friedRice.pointers[0]), JSON.stringify(friedRice));
+  const lessAndWord = await compareWith(['150 g unsalted butter', '1 (14 oz) can cherry tomatoes'], ['200 g unsalted butter', '1 (14 oz) can plum tomatoes']);
+  check('a smaller amount is under LESS with its size, and a different word under its own heading',
+        lessAndWord.heads.join('|') === 'LESS THAN THE SOURCE ASKS FOR (1)|A DIFFERENT WORD (1)' && /50 g less .* \(about 25%\)/.test(lessAndWord.deltas[0]), JSON.stringify(lessAndWord));
+  const repeated = await compareWith(['2 tbsp ponzu', '1 onion', 'salt, to taste'], ['2 tbsp ponzu', '1 onion, diced', '2 tbsp ponzu', 'salt, to taste', 'salt, to taste']);
+  check('a pasted list that repeats a measured line says so, and still compares every line as pasted; salt, to taste twice is not a repeat',
+        repeated.repeats.length === 1 && /2 tbsp ponzu is in the pasted list 2 times/.test(repeated.repeats[0]) && !/salt/.test(repeated.repeats[0]), JSON.stringify(repeated.repeats));
+  check('    and a list with no repeat gets no notice', allMatch.repeats.length === 0, JSON.stringify(allMatch.repeats));
+
   // Advice, never a gate: the recipe saves with warnings still showing.
   const recipeWritesBefore = await page.evaluate(() => (window.__WRITES__ || []).filter(w => w.table === 'recipes').length);
   await page.click('#saveBtn');

@@ -1402,6 +1402,14 @@ function loadArchivoFont(){
   .source-compare tr.miss td{ background:var(--danger-wash); }
   .source-compare tr.soft td{ background:var(--gold-wash); }
   .source-compare .why{ margin-top:2px; font-size:14px; color:var(--ink-soft); }
+  .source-compare tr.grp td > div + div:not(.why){ margin-top:2px; }
+  .source-compare tr.grp td:last-child{ border-left:3px solid var(--line); }
+  .source-compare tr.sec th{ text-align:left; font-size:14px; letter-spacing:.04em; font-weight:600; padding:10px 6px 4px; border-top:1px solid var(--line); }
+  .source-compare tr.sec.ok button{ margin-left:8px; }
+  .source-compare.hide-ok tr.okrow{ display:none; }
+  .source-compare .delta{ margin-top:2px; font-size:14px; }
+  .source-compare .delta.pointer{ color:var(--ink-soft); font-style:italic; }
+  .hint.repeats{ margin-top:6px; }
   .source-compare th{ text-align:left; font-size:14px; letter-spacing:.04em; color:var(--ink-soft); padding:4px 6px; font-weight:500; }
   #viewerEquipmentWarning{ margin:0; border-radius:0; border-left:none; border-right:none; padding-left:30px; padding-right:30px; }
 
@@ -1743,7 +1751,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-21.4">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-21.7">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2444,7 +2452,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-19.1"></script>
+<script src="core.js?v=2026-10-21.3"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2452,17 +2460,17 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-19.1';
+const EXPECTED_CORE_VERSION = '2026-10-21.3';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-21.4';
+const APP_VERSION = '2026-10-21.7';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
    .converter_ack_version). test/core.test.js fails if the file changes and the two are not moved. */
-const CONVERTER_VERSION = '2026-10-18.5';
+const CONVERTER_VERSION = '2026-10-21.1';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -11478,22 +11486,77 @@ function showSourceComparison(out, sourceLines, heading){
   formValidated = null;
   /* A comparison speaks for the list from here on, so the photo's offer steps aside (SAVE records the comparison). */
   formPhotoChecked = null; refreshPhotoCheckRow();
-  const row = (a, b, cls, why)=> `<tr class="${cls}"><td>${escapeHtml(a || '—')}</td><td>${escapeHtml(b || '—')}${why ? `<div class="why">${escapeHtml(why)}</div>` : ''}</td></tr>`;
+  const row = (a, b, cls, why, extra)=> `<tr class="${cls}"><td>${escapeHtml(a || '—')}</td><td>${escapeHtml(b || '—')}${why ? `<div class="why">${escapeHtml(why)}</div>` : ''}${extra || ''}</td></tr>`;
+  /* How far apart, in words (core's fidelityDelta), and the pointer when the recipe's own line is the source's whole
+     amount. Separate from .why, which keeps saying exactly what the check found. */
+  const deltaHtml = check=>{
+    const d = check && check.delta;
+    const say = !d ? '' : d.dir === 'kind' ? 'A pinch against a measured amount: not the same kind of amount.'
+      : d.dir === 'range' ? 'The same middle, written as a different range.'
+      : `This recipe has ${d.amount} ${d.dir === 'more' ? 'more' : 'less'} than the source asks for${d.pct ? ` (about ${Math.round(d.pct * 100)}%)` : ''}.`;
+    return (say ? `<div class="delta">${escapeHtml(say)}</div>` : '') + (check && check.hint ? `<div class="delta pointer">${escapeHtml(check.hint)}</div>` : '');
+  };
+  /* One ingredient the recipe splits over several lines (or the source does) is drawn once, not once per pairing: every
+     line of each side, and what they come to together, so "3 tbsp oil" is never seen twice beside "1 tbsp" and "2 tbsp"
+     as if the source had asked for two lots (21 Oct 2026). The rows of a split share one `group`. */
+  const drawn = new Set();
+  const matchedRow = (m, cls, why)=>{
+    if(!m.group) return row(m.source, m.recipe, cls, why, deltaHtml(m.check));
+    if(drawn.has(m.group)) return '';
+    drawn.add(m.group);
+    const g = m.group, lines = list => list.map(l=> `<div>${escapeHtml(l)}</div>`).join('');
+    const where = [g.recipe.length > 1 ? `Split over ${g.recipe.length} lines in this recipe` : '', g.source.length > 1 ? `Listed on ${g.source.length} lines in the source` : ''].filter(Boolean).join(' · ');
+    const sum = g.recipeTotal && g.sourceTotal
+      ? (g.agree === 'agree' ? `Added up, the two sides match: source ${g.sourceTotal}, recipe ${g.recipeTotal}.`
+        : g.agree === 'unknown' ? `Source ${g.sourceTotal}; recipe ${g.recipeTotal}. This check can't compare those amounts, so check them by eye.` : '')
+      : '';
+    const said = [where, why || sum].filter(Boolean).join(' · ');
+    return `<tr class="${cls} grp"><td>${lines(g.source)}</td><td>${lines(g.recipe)}<div class="why">${escapeHtml(said)}</div>${deltaHtml(m.check)}</td></tr>`;
+  };
+  /* Under a heading each, biggest difference first (21 Oct 2026): what is missing, what is extra, what is more or less than
+     the source asks for, what is a different word, and the matches last and folded away while there is anything else to
+     read. A count is of ingredients, as the figure above it is: a split counts once. */
+  const kinds = (list, pick)=> list.filter(pick);
+  const bySize = (a, b)=> ((b.check.delta && b.check.delta.pct) || 0) - ((a.check.delta && a.check.delta.pct) || 0);
+  const dirOf = m=> m.check.kind === 'amount' ? ((m.check.delta && m.check.delta.dir) || 'kind') : 'word';
+  const flaggedBy = dir=> flagged.filter(m=> dirOf(m) === dir).sort(bySize);
+  const distinct = list=> new Set(list.map(m=> m.group || m)).size;
+  const plain = f.matched.filter(m=> !m.check && !m.note);
+  const quiet = misses + softCount > 0 && plain.length > 0;
+  const sec = (title, n, body, cls)=> body ? `<tr class="sec ${cls || ''}"><th colspan="2">${title} (${n})</th></tr>${body}` : '';
+  const flagSec = (title, dir)=>{ const rows = flaggedBy(dir); return sec(title, distinct(rows), rows.map(m=> matchedRow(m, 'miss', m.check.why + (m.note ? ' · ' + m.note.why : ''))).join('')); };
+  const repeats = heading === 'PASTED' ? pastedRepeats(sourceLines) : [];
+  const repeatsHtml = repeats.length
+    ? `<div class="hint repeats">${repeats.slice(0, 3).map(r=> `<b>${escapeHtml(r.line)}</b> is in the pasted list ${r.n} times`).join('; ')}${repeats.length > 3 ? `; ${repeats.length - 3} more repeat${repeats.length - 3 === 1 ? '' : 's'}` : ''}. ` +
+      `Some pages print an ingredient again under each step that uses it, with its whole amount, and copying the list from there brings the repeats with it. If this page does, paste only the main ingredient list; if the recipe really uses it that often, carry on. Every line is still compared as pasted.</div>`
+    : '';
   out.innerHTML =
     `<div class="hint">${misses
       ? `${misses} to look at, highlighted: on one side only, or paired but different. A different word can be fine (a US name made British); a different ingredient or a different amount is not.`
       : `Every ingredient found its match, and the amounts that can be compared agree. Amounts this check can't compare (cups against grams, a count against a weight) are still yours to check by eye.`}` +
     `${softCount ? ` ${softCount} ${softCount === 1 ? 'line names its product' : 'lines name their product'} more specifically than the source did (shaded): the app totals them as the same product, so check the source meant it.` : ''}</div>` +
-    `<table class="source-compare"><tr><th>${heading} (${sourceLines.length})</th><th>THIS RECIPE</th></tr>` +
-    f.sourceOnly.map(l=> row(l, '', 'miss')).join('') +
-    f.recipeOnly.map(l=> row('', l, 'miss')).join('') +
-    flagged.map(m=> row(m.source, m.recipe, 'miss', m.check.why + (m.note ? ' · ' + m.note.why : ''))).join('') +
-    soft.map(m=> row(m.source, m.recipe, 'soft', m.note.why)).join('') +
-    f.matched.filter(m=> !m.check && !m.note).map(m=> row(m.source, m.recipe, '')).join('') +
+    repeatsHtml +
+    `<table class="source-compare${quiet ? ' hide-ok' : ''}"><tr><th>${heading} (${sourceLines.length})</th><th>THIS RECIPE</th></tr>` +
+    sec('MISSING FROM THIS RECIPE', f.sourceOnly.length, f.sourceOnly.map(l=> row(l, '', 'miss')).join('')) +
+    sec('NOT IN THE SOURCE', f.recipeOnly.length, f.recipeOnly.map(l=> row('', l, 'miss')).join('')) +
+    flagSec('MORE THAN THE SOURCE ASKS FOR', 'more') +
+    flagSec('LESS THAN THE SOURCE ASKS FOR', 'less') +
+    flagSec('AMOUNT OF A DIFFERENT KIND', 'kind') + flagSec('AMOUNT WRITTEN AS A DIFFERENT RANGE', 'range') +
+    flagSec('A DIFFERENT WORD', 'word') +
+    sec('MORE SPECIFIC THAN THE SOURCE', distinct(soft), soft.map(m=> matchedRow(m, 'soft', m.note.why)).join('')) +
+    (plain.length ? `<tr class="sec ok"><th colspan="2">MATCHED (${distinct(plain)})${quiet ? ` <button type="button" data-cmp-toggle>SHOW</button>` : ''}</th></tr>` + plain.map(m=> matchedRow(m, 'okrow')).join('') : '') +
     `</table><div class="rv-quiet" id="sourceValidateRow">${validateButtonHtml()}</div>`;
   refreshSourceStored();
   renderBeforeSave();
 }
+/* The matched rows are folded away while there is anything else to read; SHOW / HIDE is the only thing it does. */
+document.addEventListener('click', e=>{
+  const b = e.target.closest('[data-cmp-toggle]');
+  if(!b) return;
+  const t = b.closest('table.source-compare');
+  const hidden = t.classList.toggle('hide-ok');
+  b.textContent = hidden ? 'SHOW' : 'HIDE';
+});
 /* The other route, for the sites that refuse the function: no fetch, no
    SOURCE URL needed, nothing sent anywhere. What is in the box is read at the
    click, not trusted from the last keystroke. A line that is a section

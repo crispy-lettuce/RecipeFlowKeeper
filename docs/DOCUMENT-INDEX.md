@@ -639,7 +639,7 @@ recognise, leaving raw bracket text visible in the diagram).
 ---
 
 ### `converter/test-set.md` — the converter's regression tests
-**What:** Fourteen deliberately awkward cases (ten until 18 Oct), each isolating one failure mode — a late addition, a
+**What:** Sixteen deliberately awkward cases (ten until 18 Oct; test 16, 21 Oct, is a page that repeats an ingredient's whole amount under each step), each isolating one failure mode — a late addition, a
 split ingredient, parallel prep, a zero-length step, a missing yield, and (since 23 Sep) the
 shape of ingredient lines, British English without over-specifying, and ingredients no list has seen,
 (since 29 Sep) an address it cannot read, and (since 30 Sep) a page's text pasted in — with what a correct

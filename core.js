@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-19.1';
+const KITCHEN_CORE_VERSION = '2026-10-21.3';
 
 
 /* ======================= quantity split ======================= */
@@ -1957,25 +1957,63 @@ function fidelityAmount(line){
    Compared as TOTALS per kind of amount, so a "3 tbsp" line the converter split
    into 1 + 2, or two lines it merged, still agrees. Where the two sides share no
    kind, only a pinch against a weight or a volume is a difference. */
-function fidelityAgree(xs, ys){
-  if(!xs.length || !ys.length || xs.concat(ys).some(a => !a)) return 'unknown';
-  const total = list => list.reduce((t, a) => {
+function fidelityTotals(list){
+  return list.reduce((t, a) => {
     const c = t[a.cls] || (t[a.cls] = { lo: 0, hi: 0, units: new Set() });
     c.lo += a.lo; c.hi += a.hi; c.units.add(a.unit);
     return t;
   }, {});
-  const X = total(xs), Y = total(ys);
+}
+/* The verdict, and the numbers it was reached from: `off` is the kinds of amount that differ (empty when the difference is
+   a pinch against a weighed amount), `X` and `Y` the totals of each side. One place for the tolerances, so how much a
+   difference is (fidelityDelta) is measured by the same rule that called it one. */
+function fidelityCompare(xs, ys){
+  if(!xs.length || !ys.length || xs.concat(ys).some(a => !a)) return { verdict: 'unknown', off: [] };
+  const X = fidelityTotals(xs), Y = fidelityTotals(ys);
   const shared = Object.keys(X).filter(c => Y[c]);
   const near = (p, q, tol) => Math.abs(p - q) <= tol * Math.max(p, q);
   if(shared.length){
-    return shared.every(c => {
+    const off = shared.filter(c => {
       const same = X[c].units.size === 1 && Y[c].units.size === 1 && [...X[c].units][0] === [...Y[c].units][0];
       const tol = same ? 0.02 : 0.12;
-      return near(X[c].lo, Y[c].lo, tol) && near(X[c].hi, Y[c].hi, tol);
-    }) ? 'agree' : 'differ';
+      return !(near(X[c].lo, Y[c].lo, tol) && near(X[c].hi, Y[c].hi, tol));
+    });
+    return { verdict: off.length ? 'differ' : 'agree', off, X, Y };
   }
   const weighed = o => !!(o.mass || o.volume);
-  return (X.small && !Y.small && weighed(Y)) || (Y.small && !X.small && weighed(X)) ? 'differ' : 'unknown';
+  const pinch = (X.small && !Y.small && weighed(Y)) || (Y.small && !X.small && weighed(X));
+  return { verdict: pinch ? 'differ' : 'unknown', off: [], X, Y };
+}
+function fidelityAgree(xs, ys){ return fidelityCompare(xs, ys).verdict; }
+/* How far apart a 'differ' is, for the table to say it in words and to put the biggest first (21 Oct 2026): which way,
+   by how much in the unit a cook would use, and as a share of the source's. A kind the two sides do not share (a pinch
+   against a weight), or the same middle written as a different range, has a direction of its own and no size. */
+function fidelityDeltaText(cls, n){
+  const halves = x => { const r = Math.max(0.5, Math.round(x * 2) / 2), w = Math.floor(r); return (w ? String(w) : '') + (r % 1 ? (w ? ' ' : '') + '1/2' : ''); };
+  if(cls === 'volume') return n >= 50 ? `${Math.round(n / 5) * 5} ml` : n >= 15 ? `${halves(n / 15)} tbsp` : `${halves(n / 5)} tsp`;
+  if(cls === 'mass') return n >= 1000 ? `${Math.round(n / 100) / 10} kg` : `${Math.max(1, Math.round(n))} g`;
+  return String(Math.max(1, Math.round(n * 2) / 2));
+}
+function fidelityDelta(cmp){
+  if(!cmp || cmp.verdict !== 'differ') return null;
+  const cls = cmp.off[0];
+  if(!cls) return { dir: 'kind' };
+  const mid = t => (t.lo + t.hi) / 2, x = mid(cmp.X[cls]), y = mid(cmp.Y[cls]), diff = y - x;
+  if(!(x > 0) || Math.abs(diff) < 1e-9) return { dir: 'range', cls };
+  return { dir: diff > 0 ? 'more' : 'less', cls, amount: fidelityDeltaText(cls, Math.abs(diff)), pct: Math.abs(diff) / x };
+}
+/* A pasted list that says the same measured line more than once. A page that prints each ingredient under the step that
+   uses it repeats it, with its whole amount, wherever the list was copied from; so does a recipe that really uses
+   2 tbsp of oil twice. The first is the fault the converter once made of it (21 Oct 2026), so the page says so and
+   leaves the decision to the person: nothing is dropped from the comparison. Lines with no figure ("salt, to taste")
+   repeat legitimately all the time and are not counted. */
+function pastedRepeats(lines){
+  const seen = new Map();
+  (lines || []).forEach(l => {
+    const key = String(l).toLowerCase().replace(/\s+/g, ' ').trim();
+    if(/[\d¼½¾⅓⅔⅛⅜⅝⅞]/.test(key)) seen.set(key, { line: seen.has(key) ? seen.get(key).line : String(l).replace(/\s+/g, ' ').trim(), n: (seen.has(key) ? seen.get(key).n : 0) + 1 });
+  });
+  return [...seen.values()].filter(r => r.n > 1);
 }
 /* A line as the check sees it. The recipe's format puts the name before the first
    comma and everything else after it or in brackets (conversion-instructions.md),
@@ -2112,11 +2150,33 @@ function sourceFidelity(sourceLines, recipeLines){
     mine.forEach(p => { if(!taken.has(p.a) && !taken.has(p.b)){ taken.add(p.a); taken.add(p.b); rows.push(p); } });
     mine.forEach(p => { if(!taken.has(p.a)){ taken.add(p.a); rows.push(p); } else if(!taken.has(p.b)){ taken.add(p.b); rows.push(p); } });
     const say = items => items.map(x => x.amount && x.amount.text).filter(Boolean).sort().join(' + ');
-    const check = fidelityAgree(g.S.map(a => a.amount), g.R.map(b => b.amount)) === 'differ'
-      ? { kind: 'amount', why: `amounts differ: source ${say(g.S)}; recipe ${say(g.R)}` } : null;
+    const cmp = fidelityCompare(g.S.map(a => a.amount), g.R.map(b => b.amount));
+    const delta = fidelityDelta(cmp);
+    /* The commonest way a recipe comes to ask for more than its source is a line that IS the source's whole amount with
+       others on top: a page that prints "2 tbsp ponzu" under each step that uses it, read as that step's share (the
+       converter's fault of 21 Oct 2026). Said when the recipe is over and one of its lines alone equals what the source
+       asks for in total; it is a pointer, and the person decides. */
+    const wholeLine = delta && delta.dir === 'more' && g.R.length > 1 && g.R.find(b => b.amount && b.amount.cls === delta.cls
+      && Math.abs((b.amount.lo + b.amount.hi) / 2 - (cmp.X[delta.cls].lo + cmp.X[delta.cls].hi) / 2) <= 0.02 * (cmp.X[delta.cls].hi + cmp.X[delta.cls].lo) / 2);
+    const check = cmp.verdict === 'differ'
+      ? { kind: 'amount', why: `amounts differ: source ${say(g.S)}; recipe ${say(g.R)}`, delta,
+          hint: wholeLine ? `One of your lines (${wholeLine.amount.text}) is the source's whole amount, so your other lines come on top of it. The page may repeat the full amount under each step that uses it.` : '' } : null;
     const more = new Set(); rows.filter(p => fidelitySpecifies(p.a, p.b)).forEach(p => gone(p.b.words, p.a.all).forEach(w => more.add(w)));
     const note = more.size ? { kind: 'specific', why: `more specific than the source: the recipe adds ${[...more].sort().join(', ')}` } : null;
-    rows.forEach(p => matched.push({ source: p.a.line, recipe: p.b.line, split: g.S.length + g.R.length > 2, check, note }));
+    /* A split (one ingredient on more than two lines between the two sides) is one ingredient to the household, so the
+       page draws it once: the source's lines on the left, the recipe's on the right, and what they come to. Each row
+       of the group shares this object, which is how the page knows they belong together (21 Oct 2026: "3 tbsp oil
+       > 1 tbsp oil" and "3 tbsp oil > 2 tbsp oil" read as if the source had asked for two lots of 3 tbsp). The
+       amounts are listed in the order the lines are written; `agree` is the verdict the check was drawn from. */
+    const split = g.S.length + g.R.length > 2;
+    const listed = items => items.slice().sort((x, y) => x.i - y.i);
+    const sums = items => listed(items).map(x => x.amount && x.amount.text).filter(Boolean).join(' + ');
+    const group = split ? {
+      source: listed(g.S).map(a => a.line), recipe: listed(g.R).map(b => b.line),
+      sourceTotal: sums(g.S), recipeTotal: sums(g.R),
+      agree: cmp.verdict
+    } : null;
+    rows.forEach(p => matched.push({ source: p.a.line, recipe: p.b.line, split, group, check, note }));
   });
 
   /* What has no same-ingredient partner may still be similar to something: it
@@ -2385,7 +2445,7 @@ if(typeof module !== 'undefined' && module.exports){
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,
     NEVER_IGNORE, foldPlural, dictionaryRow, dictionaryPhrases, dictionaryKey, shoppingLine, formatShoppingParts, aggregateShoppingLines,
     shoppingKeyForName, strictMatchSuggestions,
-    ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, fidelityAmount, fidelityAgree, pastedIngredientLines, ingredientMatchMap, aisleOverrideMap,
+    ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, fidelityAmount, fidelityAgree, fidelityCompare, fidelityDelta, pastedRepeats, pastedIngredientLines, ingredientMatchMap, aisleOverrideMap,
     sourceNoteIn, normalisedSourceUrl, linesHash, fidelityCounts, sourceCheckStatus, newRecipeReview,
     splitRecipeBlocks
   };

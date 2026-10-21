@@ -1,6 +1,6 @@
 # Converter test set
 
-Fifteen deliberately awkward cases for checking `conversion-instructions.md` still
+Sixteen deliberately awkward cases for checking `conversion-instructions.md` still
 produces the right shape. Run them whenever those instructions change: paste each
 source into a fresh conversion chat and compare the output against the notes here.
 
@@ -14,7 +14,8 @@ nothing is converted. Test 10 is its partner: the same unreadable address with t
 which must convert normally. Test 11 is another of the ingredient-line tests: liquids in spoons under 50 ml
 and in ml from 50 ml. Test 12 is five small cases for the `TIME` line: when it is estimated, when it must not be.
 Test 13 is a tin with no weight, and test 14 several recipes in one message. Test 15 is solids measured in spoons: grams, with the
-spoons kept in brackets (version 2026-10-18.5).
+spoons kept in brackets (version 2026-10-18.5). Test 16 is a page that repeats
+an ingredient's whole amount under each step, and a split that must add up to the list (version 2026-10-21.1).
 
 **A stand-in run of version 2026-10-18.3, 18 Oct 2026** (not the conversion project). A session followed the rewritten file by
 hand for tests 1 to 8, 10, 11, 12a to 12e and 13, and ran all sixteen results through `test/validate-recipes.js`: 16 valid,
@@ -584,6 +585,50 @@ have no brackets, and are not changed.
 - None yet. It needs the household's conversion project loaded with version 2026-10-18.5. The weights above are the converter's own
   best figures, not measured; the test checks the shape and the spoons, not the grams. The source and lines are made up and were not
   checked against the library.
+
+---
+
+## 16. A page that repeats the whole amount under each step
+
+**Why:** added 21 Oct 2026, from a real conversion that came out with too much of one sauce. Some recipe sites (WP Recipe Maker's
+"ingredients under each step") print an ingredient beneath every step that uses it, **with its whole list amount each time**, not
+that step's share. Read as additions, they double the ingredient: 1 tsp early and the list's whole amount again at the end. The
+ingredient list is the total, and a split's lines must add up to it. The source and amounts below are made up.
+
+**Source** (the ingredient list, then the method with what the site prints under each step):
+
+> **Cold Udon Salad** — Serves 4.
+> Ingredients: 3 tbsp ponzu, 3 tbsp groundnut oil, 300 g udon noodles, 1 tsp poppy seeds.
+>
+> 1. Heat 1 tbsp of the oil in a wok and fry the noodles for 1 minute. *3 tbsp groundnut oil, 300 g udon noodles*
+> 2. Add about 1 tbsp of the ponzu and toss for 2 minutes. *3 tbsp ponzu*
+> 3. Add the remaining oil and the remaining ponzu (about 2 tbsp), toss for 1 minute and scatter with the poppy seeds.
+>    *3 tbsp groundnut oil, 3 tbsp ponzu, 1 tsp poppy seeds*
+
+**Must produce** (grouping may vary, one line in each group where the ingredient joins):
+
+```
+1 tbsp groundnut oil          2 tbsp groundnut oil
+1 tbsp ponzu                  2 tbsp ponzu
+```
+
+The oil's second part is not stated in the method ("the remaining oil"), so it is the list's 3 tbsp less the 1 tbsp used first.
+
+**Fails if:**
+
+- an ingredient's lines add up to more than the list (`1 tbsp ponzu` and `3 tbsp ponzu`, or `3 tbsp groundnut oil`
+  twice): a step's repeat of the list was read as an extra amount;
+- the oil is a single `3 tbsp` line in either group (a split missed), or the ponzu is `1 tbsp` and `1 tbsp`, as if "about 2 tbsp"
+  had been dropped for a tidier figure;
+- the converter reports no question: nothing here is unclear, so none is needed.
+
+**Worth knowing:** the app's COMPARE WITH SOURCE totals a split before comparing (`1 tsp + 2 tbsp` against the source's `2 tbsp`
+showed as "amounts differ", which is how the fault was found). Pasting the source's list into it is the check that catches this,
+and it tolerates 12% between a spoon and a spoon of another size, which is why the parts rounded to the liquids rule still agree.
+
+**Runs.**
+
+- **21 Oct 2026, the conversion project with version 2026-10-21.1, run by the household: passed** ("Test 16 OK"). The ingredients in the source were changed afterwards, the same day, to ones the library does not contain (the first wording used everyday ones that it does); the shape is the same.
 
 ---
 
