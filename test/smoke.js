@@ -2434,6 +2434,135 @@ const check = (name, pass, detail) => {
   check('    and opening them wrote nothing: the headcount is shown, never saved to the recipe or the day', odWritten === 0, String(odWritten));
   await page.evaluate(d => { clearPlanDay(d); showView('planner'); renderPlanner(); }, odDay);
 
+  /* + OTHER on a Planner day (21 Oct 2026, docs/PLAN-ADHOC-PLANNER.md): the History + ENTRY row, written from a day. Made-up names only.
+     Mutations, each of which must turn its check red: write the entry to the plan; draw it with the recipe buttons; show the empty branch
+     only when there are no rows; filter future rows out of historyByDate; always ask on ×, or never; show the button on an away day; count
+     the entry in the sidebar's recipes; leave the button off the shortlist-assign list; share History's ending with the Planner's. */
+  /* Fail soft: a click or a fill that finds nothing (a step an earlier break has already spoilt) must show as the check that names it, not as a 30 second crash. */
+  const ahClick = sel => page.click(sel, { timeout: 4000 }).catch(() => {});
+  const ahFill = (sel, v) => page.fill(sel, v, { timeout: 4000 }).catch(() => {});
+  const ahDay = await page.evaluate(() => { const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + 8); return isoLocal(d); });
+  const ahToday = await page.evaluate(() => todayStr());
+  const ahDrain = () => page.evaluate(async () => { let t; do { t = writeQueue; await t; } while(t !== writeQueue); });
+  const ahRows = (m, table) => page.evaluate(([n, tb]) => window.__WRITES__.slice(n).filter(w => w.table === tb), [m, table]);
+  await page.evaluate(() => { state.historySelectedDate = null; showView('planner'); renderPlanner(); });
+  const ahM = await page.evaluate(() => window.__WRITES__.length);
+  await ahClick(`.day-row[data-date="${ahDay}"] [data-action="addOther"]`);
+  const ahOpen = await page.evaluate(() => ({ open: document.getElementById('adHocOverlay').classList.contains('open'),
+    heading: document.getElementById('adHocHeading').textContent, date: document.getElementById('adHocDate').value, view: state.view }));
+  await ahFill('#adHocTitle', 'Test Takeaway');
+  await ahClick('#adHocMealChoices .meal-type-btn[data-meal="dinner"]');
+  await ahClick('#adHocSave');
+  await ahDrain();
+  const ahWrites = await ahRows(ahM, 'recipe_logs'), ahPlanWrites = await ahRows(ahM, 'planner_days');
+  const ahAfter = await page.evaluate(() => ({ view: state.view, hist: state.historySelectedDate, toast: document.querySelector('.toast').textContent,
+    open: document.getElementById('adHocOverlay').classList.contains('open') }));
+  const ahRow = (ahWrites[0] && (Array.isArray(ahWrites[0].rows) ? ahWrites[0].rows[0] : ahWrites[0].rows)) || {};
+  check('+ OTHER on a day opens the History dialog worded for the Planner, set to that day', ahOpen.open && ahOpen.heading === 'Add to the Planner' && ahOpen.date === ahDay && ahOpen.view === 'planner', JSON.stringify(ahOpen));
+  check('    saving writes one diary row with no recipe, the name, that day and the meal, and nothing to the plan; the Planner stays on screen, History untouched',
+        ahWrites.length === 1 && ahWrites[0].op === 'insert' && ahRow.recipe_id === null && ahRow.title === 'Test Takeaway' && ahRow.cooked_on === ahDay && ahRow.meal_type === 'dinner'
+        && ahPlanWrites.length === 0 && ahAfter.view === 'planner' && ahAfter.hist === null && !ahAfter.open && /Added "Test Takeaway"/.test(ahAfter.toast), JSON.stringify([ahWrites, ahPlanWrites.length, ahAfter]));
+  const ahDom = await page.evaluate(d => { const day = document.querySelector(`.day-row[data-date="${d}"]`); const r = day.querySelector('.day-adhoc-row');
+    return { rows: day.querySelectorAll('.day-adhoc-row').length, tag: r && r.querySelector('.day-adhoc-title').tagName, name: r && r.querySelector('.day-adhoc-title').textContent.trim(),
+      kind: r && r.querySelector('.day-recipe-course').textContent.trim(), x: !!(r && r.querySelector('[data-action="removeAdHoc"]')),
+      recipeButtons: r ? r.querySelectorAll('[data-action="setServes"], [data-action="premade"], [data-action="cooked"], [data-action="view"], .day-cal-btn').length : -1,
+      choose: !!day.querySelector('[data-action="choose"]'), other: !!day.querySelector('[data-action="addOther"]') }; }, ahDay);
+  check('    the day draws it as text, not a link, tagged DINNER · AD HOC, with a ×, and none of SERVES, PRE-MADE, COOKED ✓ or the calendar buttons',
+        ahDom.rows === 1 && ahDom.tag === 'SPAN' && ahDom.name === 'Test Takeaway' && ahDom.kind === 'DINNER · AD HOC' && ahDom.x && ahDom.recipeButtons === 0, JSON.stringify(ahDom));
+  check('    a day with only that entry still offers CHOOSE A RECIPE, and + OTHER', ahDom.choose && ahDom.other, JSON.stringify(ahDom));
+  const ahHistory = await page.evaluate(d => { const list = historyByDate(loadRecipes()).get(d) || []; return list.map(e => [e.title, e.adHoc, e.mealType]); }, ahDay);
+  check('    History lists the same entry on that day, as an ad-hoc entry with the meal', JSON.stringify(ahHistory) === JSON.stringify([['Test Takeaway', true, 'dinner']]), JSON.stringify(ahHistory));
+
+  /* Taking it off: nothing is asked for a day still to come; today asks, as History's REMOVE does. */
+  let ahAsked = 0; const ahCount = d => { ahAsked++; d.accept(); }; page.on('dialog', ahCount);
+  const ahM2 = await page.evaluate(() => window.__WRITES__.length);
+  await ahClick(`.day-row[data-date="${ahDay}"] [data-action="removeAdHoc"]`);
+  await ahDrain();
+  const ahGone = await page.evaluate(d => ({ left: loadDiary().filter(e => e.cookedOn === d && !e.recipeId).length, rows: document.querySelectorAll(`.day-row[data-date="${d}"] .day-adhoc-row`).length }), ahDay);
+  const ahDel = await ahRows(ahM2, 'recipe_logs');
+  check('    × on a day still to come removes it with no question, and deletes the row', ahAsked === 0 && ahGone.left === 0 && ahGone.rows === 0 && ahDel.some(w => w.op === 'delete'), JSON.stringify([ahAsked, ahGone, ahDel.map(w => w.op)]));
+  page.off('dialog', ahCount);
+  await page.evaluate(t => { addDiaryEntry({ title: 'Test Late Snack', cookedOn: t, mealType: null }); renderPlanner(); }, ahToday);
+  let ahSaid = '';
+  page.once('dialog', d => { ahSaid = d.message(); d.dismiss(); });
+  await ahClick(`.day-row[data-date="${ahToday}"] [data-action="removeAdHoc"]`);
+  const ahKept = await page.evaluate(t => loadDiary().filter(e => e.cookedOn === t && e.title === 'Test Late Snack').length, ahToday);
+  page.once('dialog', d => d.accept());
+  await ahClick(`.day-row[data-date="${ahToday}"] [data-action="removeAdHoc"]`);
+  const ahDone = await page.evaluate(t => loadDiary().filter(e => e.cookedOn === t && e.title === 'Test Late Snack').length, ahToday);
+  check('    × on today asks first, keeps it on "cancel", and removes it on "ok"', /Remove "Test Late Snack"/.test(ahSaid) && ahKept === 1 && ahDone === 0, JSON.stringify([ahSaid, ahKept, ahDone]));
+
+  /* A day marked away: no button, but an entry it already has is still drawn; and what the shopping list and the sidebar say is unmoved. */
+  const ahShop = () => page.evaluate(() => JSON.stringify(buildShoppingList(groupDaysByWeek(dayList())[0] || []).categories) + '|' + document.getElementById('shoppingPreviewText').textContent);
+  const ahShopBefore = await ahShop();
+  await page.evaluate(d => { setPlanBlank(d); addDiaryEntry({ title: 'Test Away Dinner', cookedOn: d, mealType: 'dinner' }); addDiaryEntry({ title: 'Test Leftovers', cookedOn: ahTomorrow(), mealType: null }); updateSidebarCounts(); renderPlanner(); function ahTomorrow(){ const x = new Date(); x.setHours(0,0,0,0); x.setDate(x.getDate() + 1); return isoLocal(x); } }, ahDay);
+  const ahAway = await page.evaluate(d => { const day = document.querySelector(`.day-row[data-date="${d}"]`); return { away: !!day.querySelector('.day-away'), button: !!day.querySelector('[data-action="addOther"]'), rows: day.querySelectorAll('.day-adhoc-row').length }; }, ahDay);
+  check('    a day marked away has no + OTHER, and still draws an entry it already has', ahAway.away && !ahAway.button && ahAway.rows === 1, JSON.stringify(ahAway));
+  const ahShopAfter = await ahShop();
+  check('    the shopping list and the sidebar\'s recipe count are the same with entries on the plan as without', ahShopBefore === ahShopAfter, ahShopBefore.slice(-60) + ' -> ' + ahShopAfter.slice(-60));
+  await page.evaluate(d => { clearPlanDay(d); loadDiary().filter(e => !e.recipeId && /^Test (Away Dinner|Leftovers)$/.test(e.title) && e.cookedOn >= todayStr()).forEach(e => deleteDiaryEntry(e.id)); renderPlanner(); }, ahDay);
+
+  /* With a shortlist recipe selected, a tap on + OTHER opens the dialog and assigns nothing. */
+  const ahAssign = await page.evaluate(([r1]) => { cache.shortlist.push({ id: 'sl-other-test', text: '', recipeId: r1, dateAdded: todayStr() }); state.selectedShortlistId = 'sl-other-test'; renderPlanner(); return window.__WRITES__.length; }, [OD_R1]);
+  await ahClick(`.day-row[data-date="${ahDay}"] [data-action="addOther"]`);
+  await ahDrain();
+  const ahSel = await page.evaluate(([d, m]) => ({ open: document.getElementById('adHocOverlay').classList.contains('open'), kept: state.selectedShortlistId,
+    planned: planRecipeIds(loadPlan()[d]).length, planWrites: window.__WRITES__.slice(m).filter(w => w.table === 'planner_days').length }), [ahDay, ahAssign]);
+  check('    with a shortlist recipe selected, + OTHER opens the dialog and assigns nothing to the day', ahSel.open && ahSel.kept === 'sl-other-test' && ahSel.planned === 0 && ahSel.planWrites === 0, JSON.stringify(ahSel));
+  await page.evaluate(() => { closeAdHocEntry(); state.selectedShortlistId = null; cache.shortlist = cache.shortlist.filter(i => i.id !== 'sl-other-test'); renderPlanner(); });
+
+  /* History's own + ENTRY still ends on History, in the month it landed in. */
+  await page.evaluate(() => { showView('history'); });
+  await ahClick('#historyAddEntryBtn');
+  await ahFill('#adHocTitle', 'Test History Entry');
+  await ahFill('#adHocDate', ahToday);
+  await ahClick('#adHocSave');
+  await ahDrain();
+  const ahHist2 = await page.evaluate(t => ({ view: state.view, hist: state.historySelectedDate, heading: document.getElementById('adHocHeading').textContent, t }), ahToday);
+  check('    History\'s + ENTRY still words its dialog for the diary and ends on History at the day it added', ahHist2.view === 'history' && ahHist2.hist === ahToday, JSON.stringify(ahHist2));
+  await page.evaluate(t => { loadDiary().filter(e => e.title === 'Test History Entry').forEach(e => deleteDiaryEntry(e.id)); state.historySelectedDate = null; showView('planner'); renderPlanner(); }, ahToday);
+
+  /* The two looks, on a tablet and a phone: a week header that counts the entry (Modernist), no sideways scroll, every new button answers a tap
+     21px above and below its middle (44px), and an empty day's two buttons share one line. */
+  const ahLook = async (look, w, h) => {
+    const p = await browser.newPage({ viewport: { width: w, height: h } });
+    p.__label = 'other-' + look + '-' + w;
+    await p.addInitScript(l => { try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
+    await p.clock.setFixedTime(FIXTURE_NOW);
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1500);
+    const out = await p.evaluate(() => {
+      const iso = n => { const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + n); return isoLocal(d); };
+      addDiaryEntry({ title: 'Test Takeaway', cookedOn: iso(1), mealType: 'dinner' });
+      addDiaryEntry({ title: 'Test Meal Out With A Rather Long Name To See How It Wraps On A Narrow Screen', cookedOn: iso(5), mealType: 'lunch' });
+      showView('planner'); renderPlanner();
+      const answers = b => { const r = b.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        return [-21, 21].every(dy => { const el = document.elementFromPoint(cx, cy + dy); return el && el.closest('button') === b; }); };
+      const day = document.querySelector(`.day-row[data-date="${iso(1)}"]`), far = document.querySelector(`.day-row[data-date="${iso(5)}"]`);
+      const empty = document.querySelector(`.day-row[data-date="${iso(9)}"]`);
+      const ch = empty.querySelector('[data-action="choose"]').getBoundingClientRect(), ot = empty.querySelector('[data-action="addOther"]').getBoundingClientRect();
+      const mine = [day.querySelector('[data-action="addOther"]'), day.querySelector('[data-action="removeAdHoc"]'), far.querySelector('[data-action="removeAdHoc"]'), empty.querySelector('[data-action="addOther"]')];
+      /* Where each sits across the screen is read before any scrolling: the page clips what is too wide rather than growing a scroll bar of its own
+         (so the document's width cannot say), and scrolling a clipped button into view would slide the box and hide it. */
+      const inside = mine.every(b => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= window.innerWidth + 1; });
+      /* Each is brought to the middle of the screen just before it is tried: a point off the screen answers with nothing. */
+      const tried = mine.map(b => { b.scrollIntoView({ block: 'center' }); return answers(b); });
+      return { sideways: document.documentElement.scrollWidth - window.innerWidth, inside, answers: tried,
+        sameLine: Math.abs((ch.top + ch.height / 2) - (ot.top + ot.height / 2)) < 12, emptyH: Math.round(empty.getBoundingClientRect().height),
+        summary: [...document.querySelectorAll('.week-summary')].map(e => e.textContent.trim()).slice(0, 2) };
+    });
+    await p.close();
+    return out;
+  };
+  for (const [look, w, h] of [['classic', 1280, 800], ['classic', 412, 915], ['modernist', 1280, 800], ['modernist', 412, 915]]) {
+    const r = await ahLook(look, w, h);
+    check(`    ${look} at ${w}px: nothing runs off the side of the screen, the new buttons answer a tap 21px above and below their middle, and an empty day's two buttons share a line`,
+          r.sideways <= 1 && r.inside && r.answers.every(Boolean) && r.sameLine, JSON.stringify(r));
+    /* The fixture plans three dishes this week (Fri to Thu); one entry is on Wednesday of it and one on the Sunday after, so 3 + 1 and then 1. */
+    if (look === 'modernist') check(`    modernist at ${w}px: each week's header counts the entries with its dishes (this week 3 dishes + 1 entry, the next week's 1 entry)`,
+                                    JSON.stringify(r.summary) === JSON.stringify(['4 PLANNED', '1 PLANNED']), JSON.stringify(r.summary));
+  }
+
   /* SL2, since PR 6b (25 Sep): the names come from the rules and dictionary
      in core.js (tested in Node, test/core.test.js); what is checked here is
      the page around them. No dialogs any more — a likely pair is offered in

@@ -1,8 +1,9 @@
 # Plan: ad-hoc entries on the Planner
 
 **Written 21 Oct 2026** (date from `date -u`), in a planning session that changed no code. Checked against `main` at `cd2c8b4` plus
-PR #180 (the recipe card opening at the day's SERVES), by reading the code. Nothing was run against the live app or the live
-database. The household asked for it: put things on the Planner that are not recipes (a takeaway, eating out, leftovers), **of the
+PR #180 (the recipe card opening at the day's SERVES), by reading the code. **Updated 21 Oct 2026:** the household answered §9 (the
+button reads **+ OTHER**, everything else as recommended) and PR 1 is built on the session branch, with the week's PLANNED count (Q5) in it.
+Nothing was run against the live app or the live database. The household asked for it: put things on the Planner that are not recipes (a takeaway, eating out, leftovers), **of the
 same type as the "+ ENTRY" button on History adds.**
 
 **Who this is for.** An implementation session taking one PR at a time. Each PR in §7 says what to change, the checks to add and the
@@ -16,7 +17,7 @@ document's choice, open to being overruled. §9 lists what the household still h
 
 ## 0. In one paragraph
 
-Each day on the Planner gets a second button beside **CHOOSE A RECIPE** / **ADD ANOTHER** that adds something that is not a recipe.
+Each day on the Planner gets a second button, **+ OTHER**, beside **CHOOSE A RECIPE** / **ADD ANOTHER**, that adds something that is not a recipe.
 It opens the dialog History's **+ ENTRY** already opens (what it was, the day, an optional meal), set to that day. Saving writes the
 same kind of row History writes: a `recipe_logs` row with no `recipe_id`, a title and a date, here a date ahead. The Planner draws
 the day's ad-hoc rows under its recipes, with the meal and an AD HOC tag, and an **×** to take one off. There is **no schema
@@ -62,8 +63,8 @@ be a second thing to keep in step with `servings`, `premade` and `calendar_items
 
 ## 2. What the household sees
 
-- **A new button on every day that is not marked away.** On an empty day, next to **CHOOSE A RECIPE**; on a day with dishes, next
-  to **ADD ANOTHER**. Wording is §9 Q3; this plan uses **ADD SOMETHING ELSE**.
+- **A new button on every day that is not marked away.** On an empty day, at the right of **CHOOSE A RECIPE** on the same line; on a day
+  with dishes, next to **ADD ANOTHER**. The household chose **+ OTHER** (§9 Q3).
 - **The dialog.** The History one, reused: **WHAT WAS IT** with the names already used, **DATE** set to the tapped day, the four
   meal buttons (optional, tap again to clear), **ADD**. Its heading and sub-line say "Add to the Planner" and "For something on this
   day that has no recipe card", not "diary entry" and "something you ate".
@@ -143,7 +144,7 @@ be a second thing to keep in step with `servings`, `premade` and `calendar_items
 
 ## 7. The PRs
 
-**PR 1: see, add and remove.** `index.html` only (no `core.js`, so no core version bump), `help.html`, docs.
+**PR 1: see, add and remove** (built 21 Oct, with the Q5 count from PR 2). `index.html` and `styles/modernist.css` (no `core.js`, so no core version bump), `help.html`, docs.
 - Split `saveAdHocEntry` into the validation and the write (shared) and a per-caller tail; `openAdHocEntry` takes an origin and a
   date. History passes its own and behaves as today.
 - A button on each day (not away). `renderPlannerDays` draws the day's ad-hoc rows after its recipe rows, and the empty-day branch shows
@@ -165,8 +166,8 @@ be a second thing to keep in step with `servings`, `premade` and `calendar_items
   9. With a shortlist item selected, the new button opens the dialog and assigns nothing. *Mutation: leave it off the handler's list.*
   10. Layout at 1280x800 and 412px, Classic and Modernist: no overflow, targets at least 44px.
 
-**PR 2: small things, if wanted.** Tap the meal pill to change the meal (reusing the meal prompt, `updateDiaryEntry`); the week's
-"N PLANNED" in Modernist counting ad-hoc rows (§9 Q5).
+**PR 2: small things, if wanted.** Tap the meal pill to change the meal (reusing the meal prompt, `updateDiaryEntry`). *(The week's "N PLANNED" in
+Modernist counting ad-hoc rows, §9 Q5, moved into PR 1: a week with only a takeaway would otherwise read "NOTHING PLANNED" beside it.)*
 
 **PR 3: only if §9 Q6 is yes.** A shortlist **note** (no recipe) tapped onto a day becomes an ad-hoc entry from its text, and leaves
 the shortlist.
@@ -182,11 +183,14 @@ live diary holds. §6 risk 4 is a guess until a row is drawn.
 
 ## 9. Questions for the household
 
+**Answered 21 Oct 2026:** Q3 is **+ OTHER**; every other question as recommended (Q1 diary rows dated ahead, Q2 History unchanged, Q4 meal asked and
+optional, Q5 yes, Q6 later, Q7 not in the calendar). The questions are kept as asked.
+
 1. **Where do planned ad-hoc entries live?** *Recommended:* in the diary, as the same row History's + ENTRY makes, dated ahead
    (this plan). *Otherwise:* a table of their own (plan B), which would need SQL from you first and keeps the diary to things eaten.
 2. **Should History mark entries still to come** (say "PLANNED" in its day list) **or leave them as they are?** *Recommended:*
    leave them; they are already allowed there.
-3. **The button's wording:** **ADD SOMETHING ELSE**, **NOT A RECIPE**, **+ OTHER**, or your own?
+3. **The button's wording:** **ADD SOMETHING ELSE**, **NOT A RECIPE**, **+ OTHER**, or your own? *Answered: **+ OTHER**.*
 4. **Ask for the meal when adding?** *Recommended:* as History does, the four buttons shown and optional.
 5. **Should "N PLANNED" in the Modernist week header count them?** *Recommended:* yes, so a week with only a takeaway does not
    read "NOTHING PLANNED" beside one. The sidebar's shopping line stays as it is.

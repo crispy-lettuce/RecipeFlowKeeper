@@ -769,6 +769,15 @@ function loadArchivoFont(){
   }
   .day-recipe-course.dessert{ color:var(--plum); }
   .day-recipe-course.bread{ color:var(--gold); }
+  /* An ad-hoc entry on a day (docs/PLAN-ADHOC-PLANNER.md): the name is plain text, not a button, and its tag is quiet. The name wraps rather than
+     clips, as the second style's does, and sits in the middle of its 44px line as a button's words do. */
+  .day-adhoc-title{ display:flex; align-items:center; cursor:default; white-space:normal; overflow:visible; text-overflow:clip; }
+  .day-adhoc-title:hover{ color:var(--ink); }
+  .day-recipe-course.adhoc{ color:var(--ink-soft); }
+  /* + OTHER shares an empty day's one line with CHOOSE A RECIPE, at the right; too narrow for both, it drops beneath. */
+  .day-main-empty{ flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px 16px; }
+  .day-main-empty > .day-choose:not(.day-add-more){ flex:1 1 11em; }
+  .day-main-empty > .day-choose.day-add-more{ align-self:center; margin:0 0 0 auto; }
   .day-recipe-time{
     flex:none; min-width:60px; text-align:right; white-space:nowrap;
     font-family:'IBM Plex Mono', monospace; font-size:14px; letter-spacing:.03em; color:var(--ink-soft);
@@ -1727,7 +1736,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-21.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-21.2">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2283,7 +2292,7 @@ function loadArchivoFont(){
   <div class="mini-panel" role="dialog" aria-modal="true" aria-labelledby="adHocHeading">
     <button class="modal-close" id="adHocClose" aria-label="Close">&times;</button>
     <h2 id="adHocHeading">Add a diary entry</h2>
-    <p class="subtle">For something you ate that has no recipe card.</p>
+    <p class="subtle" id="adHocSub">For something you ate that has no recipe card.</p>
     <label class="mini-field">
       <span>WHAT WAS IT</span>
       <input type="text" id="adHocTitle" list="adHocVocab" autocomplete="off" placeholder="e.g. Fish and chips">
@@ -2441,7 +2450,7 @@ const EXPECTED_CORE_VERSION = '2026-10-19.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-21.1';
+const APP_VERSION = '2026-10-21.2';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -7054,11 +7063,36 @@ function renderPlanner(){
   renderShortlistPanel();
 }
 
+/* The food diary's ad-hoc rows (no recipe) by day, by name as History lists them: what + OTHER on a day adds, and what + ENTRY on
+   History adds, are the same row (docs/PLAN-ADHOC-PLANNER.md). A recipe's diary rows are the Planner's own business and not here. */
+function plannerAdHocByDay(){
+  const byDay = new Map();
+  loadDiary().forEach(e=>{
+    if(e.recipeId) return;
+    if(!byDay.has(e.cookedOn)) byDay.set(e.cookedOn, []);
+    byDay.get(e.cookedOn).push(e);
+  });
+  byDay.forEach(list=> list.sort((a,b)=> String(a.title).localeCompare(String(b.title))));
+  return byDay;
+}
+/* One such row on a day: its name as text (there is no card to open), the meal and what kind it is, and a ×. None of SERVES,
+   PRE-MADE, COOKED ✓ or the calendar's buttons: it is already in the diary, and has nothing to cook or remind. */
+function adHocRowHtml(e){
+  const tag = (e.mealType ? MEAL_TYPE_LABELS[e.mealType].toUpperCase() + ' · ' : '') + 'AD HOC';
+  return `<div class="day-recipe-row day-adhoc-row">
+    <span class="day-recipe-title day-adhoc-title">${escapeHtml(e.title || 'Untitled')}</span>
+    <span class="day-recipe-meta">
+      <span class="day-recipe-course adhoc">${escapeHtml(tag)}</span>
+      <button class="day-recipe-remove" data-action="removeAdHoc" data-log-id="${escapeHtml(e.id)}" aria-label="Remove ${escapeHtml(e.title || 'this entry')} from this day">×</button>
+    </span>
+  </div>`;
+}
 function renderPlannerDays(){
   const buckets = groupDaysByWeek(dayList());
   const plan = loadPlan();
   const recipes = loadRecipes();
   const todayIso = todayStr();
+  const adHocByDay = plannerAdHocByDay();
 
   const calOn = calendarShown();
   /* Modernist (docs/PLAN-MODERNIST.md) puts the week's dates and how many dishes are planned in it on the week's band, and
@@ -7068,7 +7102,8 @@ function renderPlannerDays(){
   buckets.forEach((bucketDays, i)=>{
     let label = weekBucketLabel(i, bucketDays);
     if(mod && bucketDays.length){
-      const planned = bucketDays.reduce((n, d)=>{ const e = plan[isoLocal(d)]; return n + (e && !e.blank ? planRecipeIds(e).length : 0); }, 0);
+      /* Ad-hoc entries count: a week with a takeaway on one night is not "NOTHING PLANNED" (docs/PLAN-ADHOC-PLANNER.md, §9 Q5). */
+      const planned = bucketDays.reduce((n, d)=>{ const iso = isoLocal(d), e = plan[iso]; return n + (e && !e.blank ? planRecipeIds(e).length : 0) + (adHocByDay.get(iso) || []).length; }, 0);
       label = `<span class="week-name">${modWeekLabel(i, bucketDays)}</span><span class="week-summary">${planned ? `${planned} PLANNED` : 'NOTHING PLANNED'}</span>`;
     }
     /* ADD THE WEEK: the week's planned days that are not yet in the calendar, all in one call. */
@@ -7082,8 +7117,11 @@ function renderPlannerDays(){
       const ids = planRecipeIds(entry);
       let inner;
 
+      const adHocHere = adHocByDay.get(iso) || [];
+      /* + OTHER sits beside the day's other small buttons; a day marked away has none (UNDO that first), but keeps any rows it has. */
+      const otherBtn = `<button class="day-choose day-add-more" data-action="addOther"><span class="circle">+</span>OTHER</button>`;
       if(entry && entry.blank){
-        inner = `<div class="day-main"><span class="day-away">AWAY — LEFT BLANK ON PURPOSE</span></div>
+        inner = `<div class="day-main"><span class="day-away">AWAY — LEFT BLANK ON PURPOSE</span>${adHocHere.map(adHocRowHtml).join('')}</div>
           <button class="day-clear" data-action="clear">UNDO</button>`;
       } else if(ids.length){
         /* Sort for display by each recipe's own course tag — Main, Side,
@@ -7179,12 +7217,17 @@ function renderPlannerDays(){
               ${entry.calendar && !perMeal ? `<button class="day-cal-btn${entry.remind ? ' on' : ''}" data-action="calRemind" aria-pressed="${entry.remind ? 'true' : 'false'}">${entry.remind ? '✓ ' : ''}REMIND ME ${formatRemindAt(remindAtNow())} THE EVENING BEFORE</button>` : ''}
             </div>`
           : '';
-        inner = `<div class="day-main">${groupBadges}${rows}
-          ${isGroupingThisDay ? groupControls : `<button class="day-choose day-add-more" data-action="choose"><span class="circle">+</span>ADD ANOTHER</button>${groupControls}`}
+        inner = `<div class="day-main">${groupBadges}${rows}${isGroupingThisDay ? '' : adHocHere.map(adHocRowHtml).join('')}
+          ${isGroupingThisDay ? groupControls : `<button class="day-choose day-add-more" data-action="choose"><span class="circle">+</span>ADD ANOTHER</button>${otherBtn}${groupControls}`}
           ${calStrip}
         </div>`;
+      } else if(adHocHere.length){
+        /* Only ad-hoc entries: still a day with nothing to cook, so CHOOSE A RECIPE stays, as a small button beneath them. */
+        inner = `<div class="day-main">${adHocHere.map(adHocRowHtml).join('')}
+          <button class="day-choose day-add-more" data-action="choose"><span class="circle">+</span>CHOOSE A RECIPE</button>${otherBtn}
+        </div>`;
       } else {
-        inner = `<div class="day-main day-main-empty"><button class="day-choose" data-action="choose"><span class="circle">+</span>CHOOSE A RECIPE</button></div>`;
+        inner = `<div class="day-main day-main-empty"><button class="day-choose" data-action="choose"><span class="circle">+</span>CHOOSE A RECIPE</button>${otherBtn}</div>`;
       }
 
       /* The bar from the × (tablet review F10): only while the day is still as the removal left it. */
@@ -7349,7 +7392,7 @@ function initPlannerListeners(){
        on the headcount button, which would otherwise never be reachable
        while something is selected. */
     if(state.selectedShortlistId && state.groupingDate !== date
-       && !e.target.closest('[data-action="setServes"], [data-action="calToggle"], [data-action="calRemind"], [data-action="calMealRemind"], [data-action="premade"], [data-action="cooked"], [data-action="undoRemove"]')){
+       && !e.target.closest('[data-action="setServes"], [data-action="calToggle"], [data-action="calRemind"], [data-action="calMealRemind"], [data-action="premade"], [data-action="cooked"], [data-action="undoRemove"], [data-action="addOther"], [data-action="removeAdHoc"]')){
       const item = loadShortlist().find(i=>i.id === state.selectedShortlistId);
       if(item && item.recipeId){
         addPlanRecipe(date, item.recipeId);
@@ -7410,6 +7453,18 @@ function initPlannerListeners(){
       state.pickingForDate = date;
       showView('recipes');
       renderHome();
+    } else if(action === 'addOther'){
+      openAdHocEntry({ origin: 'planner', date });
+    } else if(action === 'removeAdHoc'){
+      const entry = loadDiary().find(x=> x.id === actionEl.dataset.logId);
+      if(!entry) return;
+      const name = diaryEntryTitle(entry);
+      /* A day still to come has had nothing eaten, so nothing is asked. Today or earlier is history by now, and takes the question
+         History's REMOVE asks. */
+      if(entry.cookedOn <= todayStr() && !confirm(`Remove "${name}" from ${formatDate(entry.cookedOn)}?`)) return;
+      deleteDiaryEntry(entry.id);
+      showToast(`Removed "${name}"`);
+      renderPlanner();
     } else if(action === 'removeOne'){
       const idx = parseInt(actionEl.dataset.idx, 10);
       const entry = loadPlan()[date];
@@ -8612,15 +8667,23 @@ document.getElementById('mealTypeOverlay').addEventListener('click', e=>{
 
 /* ---- H2: ad-hoc entries ---- */
 let adHocMeal = null;
+/* Which screen opened the dialog, so saving ends on that screen: 'history' (+ ENTRY) or 'planner' (+ OTHER on a day,
+   docs/PLAN-ADHOC-PLANNER.md). It is the same dialog and the same row either way; only the words and the ending differ. */
+let adHocOrigin = 'history';
 
-function openAdHocEntry(){
+function openAdHocEntry(opts){
   adHocMeal = null;
+  adHocOrigin = opts && opts.origin === 'planner' ? 'planner' : 'history';
   const overlay = document.getElementById('adHocOverlay');
   document.getElementById('adHocTitle').value = '';
+  document.getElementById('adHocHeading').textContent = adHocOrigin === 'planner' ? 'Add to the Planner' : 'Add a diary entry';
+  document.getElementById('adHocSub').textContent = adHocOrigin === 'planner'
+    ? 'For something on this day that has no recipe card.' : 'For something you ate that has no recipe card.';
   /* Defaults to the day you have selected in the calendar, falling back to
      today. Logging yesterday's takeaway is the normal case for this
-     feature, so defaulting to today alone would mean always retyping. */
-  document.getElementById('adHocDate').value = state.historySelectedDate || todayStr();
+     feature, so defaulting to today alone would mean always retyping. From the Planner it is the day whose
+     button was tapped. */
+  document.getElementById('adHocDate').value = (adHocOrigin === 'planner' && opts.date) || state.historySelectedDate || todayStr();
   document.getElementById('adHocError').style.display = 'none';
   document.getElementById('adHocVocab').innerHTML =
     adHocTitleSuggestions().map(t=>`<option value="${escapeHtml(t)}"></option>`).join('');
@@ -8671,6 +8734,12 @@ function saveAdHocEntry(){
   }
   addDiaryEntry({ title, cookedOn: date, mealType: adHocMeal });
   closeAdHocEntry();
+  /* From the Planner: stay on it. The date can have been changed in the dialog, so the toast says which day. */
+  if(adHocOrigin === 'planner'){
+    showToast(`Added "${title}" on ${formatDate(date)}`);
+    renderPlanner();
+    return;
+  }
   showToast(`Added "${title}"`);
   state.historySelectedDate = date;
   /* Jump the calendar to the month the entry landed in, so adding one for

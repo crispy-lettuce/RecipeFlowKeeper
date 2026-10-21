@@ -467,11 +467,11 @@ direct-to-database batch skipped and how each is covered, the exact splitter and
 
 ---
 
-### `docs/PLAN-ADHOC-PLANNER.md` — ad-hoc entries on the Planner, the same type as History's + ENTRY (21 Oct 2026; planned, not built)
+### `docs/PLAN-ADHOC-PLANNER.md` — ad-hoc entries on the Planner, the same type as History's + ENTRY (21 Oct 2026; household answered the same day; PR 1 built, awaiting the household's tablet check 77a)
 **What:** a button on each Planner day that adds something that is not a recipe (a takeaway, eating out) by writing the same
 `recipe_logs` row History's + ENTRY writes, dated ahead, and draws it on the day with an × to take it off. No schema, Edge Function or
 calendar change. Why that and not a parallel array on `planner_days` or a new table, the edge cases, the risks, three PRs with their
-checks and mutations, and seven questions left to the household.
+checks and mutations, and the household's answers to its seven questions (button **+ OTHER**, the rest as recommended).
 
 **Use it when:** building the feature, or answering whether planned ad-hoc entries can go in the diary without SQL.
 
