@@ -1751,7 +1751,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-21.8">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-22.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2466,7 +2466,7 @@ const EXPECTED_CORE_VERSION = '2026-10-21.5';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-21.8';
+const APP_VERSION = '2026-10-22.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -7352,13 +7352,15 @@ function servesPill(recipe, serves, idx){
 }
 
 /* PRE-MADE, once docs/migrations/add-premade.md is in: off, or on with the meal it will be eaten as. */
+/* Off reads TO COOK, not PRE-MADE (22 Oct 2026): the plain word beside SERVES read as the dish's state, and every dish
+   starts off, so a dish to be cooked looked pre-made. The label now says what the dish is; tapping still asks for the meal. */
 function premadePill(premade, idx){
   if(!premadeAvailable) return '';
   return premade
     ? `<button class="day-recipe-premade on" data-action="premade" data-idx="${idx}" aria-pressed="true"
         title="Comes out of the freezer, as ${MEAL_TYPE_LABELS[premade].toLowerCase()}. Tap to make it fresh again.">PRE-MADE · ${MEAL_TYPE_LABELS[premade].toUpperCase()}</button>`
     : `<button class="day-recipe-premade" data-action="premade" data-idx="${idx}" aria-pressed="false"
-        title="Already cooked, coming out of the freezer">PRE-MADE</button>`;
+        title="To be cooked fresh. Tap if it is already made and coming out of the freezer">TO COOK</button>`;
 }
 /* COOKED ✓ on today and past days, for a meal cooked fresh: the same log as finishing the recipe's flow, for this day.
    Once that recipe is logged for that day it says so and does nothing more. A pre-made meal is logged by itself instead,
