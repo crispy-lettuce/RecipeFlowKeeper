@@ -1,7 +1,8 @@
 # Adding a family member — how it's done
 
-**Written 28 Sep 2026, last reviewed 22 Oct 2026.** The app has no sign-up form, only sign-in, and no insert policy on `households`
-or `household_members`, so an account is made and linked by hand, as below. There are four households (`docs/INFRASTRUCTURE.md` §3).
+Last reviewed 22 Oct 2026. The app has no sign-up form, only sign-in, and no insert policy on `households` or `household_members`, so an
+account is made and linked by hand, as below. **The household runs the SQL here from the dashboard; a session only drafts it.**
+`docs/INFRASTRUCTURE.md` §3 lists the households.
 
 ---
 
@@ -10,7 +11,7 @@ or `household_members`, so an account is made and linked by hand, as below. Ther
 ### How do I add someone?
 
 Three steps, all in the Supabase dashboard and SQL editor — nothing in the app does this, because
-nothing in the app *can*: there's no insert policy on `households` or `household_members` (F8),
+nothing in the app *can*: there's no insert policy on `households` or `household_members`,
 so joining a household isn't something the app, or the person joining, can do by themselves.
 
 1. **Create their account.** Dashboard → Authentication → Users → **Add user**. Either send them
@@ -32,14 +33,14 @@ Exactly this, and then they're signed out again:
 
 > Couldn't load your library — This account isn't linked to a household yet.
 
-(`hydrate()`, `index.html:3064`; the "Couldn't load your library" prefix is added at 10546.) That's a real, checked error — not a guess at wording — and it
+(From `hydrate()`; the "Couldn't load your library" prefix is added by the start-up code.) That's a real, checked error — not a guess at wording — and it
 comes back every time they try to sign in until the `household_members` row exists and points at
 the household they should be in. It's not a broken account or a bug; it's exactly the state
 "created but not linked yet" looks like.
 
 ### Can they just sign themselves up through the app?
 
-No. The login screen (`index.html:1500`; the **Sign in** button is at 1509) only has email + password fields and a **Sign in**
+No. The login screen only has email + password fields and a **Sign in**
 button — there has never been a sign-up form. Whether the Supabase Auth *API* would accept a
 direct sign-up request from something other than this app is a separate, project-level setting
 (Authentication → Settings → **Allow new users to sign up**), unrelated to anything the app
@@ -63,7 +64,7 @@ still let each other *browse* their recipes and copy the ones they want
 (`docs/migrations/add-recipe-sharing.md`, applied 10 Oct; §4, last step).
 
 One rule holds either way: **an account belongs to exactly one household.** Since 12 Oct `hydrate()` refuses an account
-in two, with a message, rather than taking the first membership it finds (the October review, F36); the `calendar-auth`,
+in two, with a message, rather than taking the first membership it finds; the `calendar-auth`,
 `calendar-sync` and `drive-backup` functions and the sharing SQL refuse one too.
 
 ---
@@ -76,10 +77,7 @@ Find the household first. There are four (above), so pick yours by its name; the
 select id, name from public.households;
 ```
 
-(As of 28 Sep 2026 that was `286a8a12-c12a-4b83-afbc-0912533f6b1c`, then named "Household". Since 18 Oct 2026 the
-family's is `dfeac187-a044-4f6e-a7a7-d47119930127`, and `286a8a12…` is Test Kitchen; the name is
-whatever the household has set since. `docs/INFRASTRUCTURE.md` §1 has the current value if this ever
-drifts; re-run the query rather than trust either document.)
+(`docs/INFRASTRUCTURE.md` §1 lists the current ids; re-run the query rather than trust any document.)
 
 Find the new person's row, created in the dashboard in step 1 above:
 
@@ -163,12 +161,9 @@ dashboard and the SQL editor; the app has no sign-up.
 
    It returns **one row** when it worked. It does nothing, and returns no row, if the email has no
    account yet (step 1 first) or the account is already in a household, so running it twice is
-   harmless. Tried on a scratch database built to the live shape on 10 Oct: a new email made one
-   household and one owner row; running it again, an unknown email and an email already in a
-   household each made nothing.
-   Since 12 Oct it also makes the household's settings row, with the defaults: without one, the
-   app could not tell whether the calendar toggles' columns exist and hid them (the October
-   review, F23). Tried the same way: one household, one owner, one settings row; run again, nothing.
+   harmless.
+   It also makes the household's settings row, with the defaults: without one, the
+   app could not tell whether the calendar toggles' columns exist and would hide them.
 3. **Send them the app's address**, `https://crispy-lettuce.github.io/RecipeFlowKeeper/`. They sign
    in to an empty app; their settings take the defaults until they change one. Someone joining
    *their* household afterwards uses §1's steps with *their* household's id.

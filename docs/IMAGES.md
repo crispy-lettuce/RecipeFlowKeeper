@@ -31,8 +31,7 @@ which still displays. §2 has the detail.
 Two cases the save cannot cover — a **restore from backup**, and a save made **offline** — so the
 old sweep over every recipe is still there, as a catch-up. It is now a button:
 **Settings → LIBRARY → RECIPE PHOTOS → RE-HOST EXTERNAL IMAGES**. The browser console is no longer needed for
-anything in normal use. *(The LIBRARY tab since 30 Sep; this page said Settings → RECIPE PHOTOS until 12 Oct. Corrected
-12 Oct 2026, the October review's Appendix B.)*
+anything in normal use.
 
 **It cannot be done from the app's own page** because most recipe CDNs send no CORS headers, so
 the browser is not allowed to read the bytes. That is why there is a server-side function at
@@ -162,7 +161,7 @@ store it:
 
 ### Every download is checked for integrity
 
-Since 22 Sep both functions verify that what arrived is a *complete* image before storing it or
+Both functions verify that what arrived is a *complete* image before storing it or
 recommending it. Three independent checks, because they catch different faults:
 
 - **Content-Length against the bytes that arrived.** Catches a transfer that died mid-flight — the
@@ -227,7 +226,7 @@ what stops it re-fetching 29 images every time. You replace a photo by giving th
 external URL, and the save does the rest.
 
 1. Find the image you want: right-click the photo on the source page → **Copy image address**.
-   Or take or pick one of your own with **UPLOAD PHOTO** in the edit form (since 11 Oct 2026).
+   Or take or pick one of your own with **UPLOAD PHOTO** in the edit form .
 2. In the app, open the recipe → **EDIT**.
 3. Paste it into the **IMAGE URL** field, replacing the `supabase.co/...` URL that is there.
 4. **Save.** That is the end of it. The card shows the new external image at once, the save queues
@@ -238,19 +237,14 @@ external URL, and the save does the rest.
 entire condition. It needs nothing remembered and nothing reset: once a recipe has been re-hosted,
 its URL *is* ours, so editing its title or its servings never fires a re-host again.
 
-### Finding the right URL without a browser
+### Finding the right URL
 
-Until 11 Oct 2026 an Edge Function, `find-recipe-image`, read a recipe's source page and ranked
-its candidate hero images. Nothing in the app called it, and it fetched any address a signed-in
-account gave it, so the October review (F3) recommended removing it, and it was: the source left
-the repo and the household deleted the deployed function. Copy the image address in a browser
-instead, or use UPLOAD PHOTO.
+Copy the image address in a browser (right-click the photo → Copy image address), or use UPLOAD PHOTO.
 
 ## 4. How the automatic re-host works
 
-Built 22 Sep 2026. This section used to weigh four options and recommend one; the recommendation
-was taken, so what follows is how the built thing behaves, with the rejected options kept at the
-end because the reasons they were rejected are still the reasons not to revisit them.
+How the built thing behaves, with the rejected options at the end, because the reasons they were rejected are still the reasons
+not to revisit them.
 
 ### The mechanism
 
@@ -290,8 +284,7 @@ The function returns the new public URL, and the app writes it into the cached r
 `applyRehostedUrl`. **This is load-bearing, not polish.** The edit form's save upserts that
 recipe's whole row from the in-memory cache, and nothing refreshes that cache after `hydrate()`
 but a tab return. Leave the cache holding the old external URL and the next edit-save of that
-recipe pushes it back over the row the function just fixed *(until PR 5, any save of any recipe
-did)*. The feature would undo
+recipe pushes it back over the row the function just fixed. The feature would undo
 itself, silently, and nothing would look wrong because the external URL still loads.
 
 So the write-back sets **both** the column and the `IMAGE:` line, for the reason in §3: the text
@@ -357,8 +350,8 @@ re-upload them. (A photo from the household's own device is uploaded by the brow
 | Sweep reports `failed` with `transfer truncated: server declared N bytes, got M` | The download died mid-flight | Usually transient. Re-run the sweep; if it repeats, the host is at fault and needs a different URL |
 | Saved a recipe and the photo is still on the source's server | The queued call failed — most often no connection at the moment of saving | You will have seen a "couldn't save…" toast. If the recipe's own save failed too, save any recipe once you're connected (a favourite tap will do) so the database has the new URL; then **Settings → LIBRARY → RECIPE PHOTOS → RE-HOST EXTERNAL IMAGES** picks it up |
 | Restored a backup and everything is hotlinked again | Correct and expected. A restore does not go through the save path (§4) | Press **RE-HOST EXTERNAL IMAGES** once afterwards |
-| Edited a photo, and after a later edit the old one is back | The `image_url` column and the `IMAGE:` line in the recipe text disagree, so re-parsing reverts the column | Fixed on the save path since 22 Sep (§3). Run the third query in §7; if it is not 0, re-save the recipes it names |
-| Sweep reports `not a public https address` or `redirected somewhere this will not follow` | Since 11 Oct 2026 the sweep fetches only public https addresses, checking every redirect (the October review, F4) | Use the image's https address, or UPLOAD PHOTO |
+| Edited a photo, and after a later edit the old one is back | The `image_url` column and the `IMAGE:` line in the recipe text disagree, so re-parsing reverts the column | Fixed on the save path (§3). Run the third query in §7; if it is not 0, re-save the recipes it names |
+| Sweep reports `not a public https address` or `redirected somewhere this will not follow` | The sweep fetches only public https addresses, checking every redirect | Use the image's https address, or UPLOAD PHOTO |
 
 ---
 
@@ -397,9 +390,8 @@ where image_url is not null and image_url <> '' and syntax like '%IMAGE:%'
 
 All three should be **0**.
 
-The third is the one to run after any change to how images are saved. Until 22 Sep the app's own
-save could put the column and the text out of step (§3), and nothing in the app complained — the
-card reads the column, so it looked right. A count above 0 means some recipe is one parse away
+The third is the one to run after any change to how images are saved. If a save ever put the column and the text out of step (§3), nothing in the app would complain — the
+card reads the column, so it would look right. A count above 0 means some recipe is one parse away
 from silently reverting its photo.
 
 **Do not verify by comparing byte counts between the dry run and the real run.** That check was
@@ -434,7 +426,7 @@ you the threshold is wrong rather than the photo.
 
 | | |
 | --- | --- |
-| Function source | `supabase/functions/rehost-images/index.ts` (the sweep). the old `find-recipe-image` function is gone from the repo and the project |
+| Function source | `supabase/functions/rehost-images/index.ts` (the sweep). |
 | Deployed as | `rehost-images`, `verify_jwt: true`; `docs/INFRASTRUCTURE.md` has its version. **A deploy is a commit**: v8 went live from an uncommitted copy and the repo drifted for a day. Change the file, commit, then deploy |
 | Called from | **The app**, on save (`rehostImageFor`) and from Settings (`runImageSweep`), and by hand from the console. v8 added the optional `recipeId`; a call without it behaves exactly as v7 |
 | Tests | `node test/image-integrity.js` — checks over the integrity checker, `parseRecipeFilter`, the address guard and the capped body reader. The save path is covered by `node test/build.js && node test/smoke.js` |

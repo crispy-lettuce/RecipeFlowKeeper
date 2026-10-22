@@ -2,11 +2,10 @@
 
 Boots the real `index.html` in a headless browser with a fake Supabase behind
 it, walks every screen, and fails on any console error or broken expectation.
-No network, no account, no touching the live database. Since 12 Oct 2026 (the October review, F30) that is enforced
+No network, no account, no touching the live database. That is enforced
 rather than assumed: every page `smoke.js` opens refuses each http(s) request it makes, unless the test answers it
-itself, and the run ends by checking that none reached the network. Until then the fixture's images, which carry the
-live project's Storage address, were fetched from it on every run. Every page also fails the run on a console error,
-not just the main one (F47); a page there to provoke one names it (`__expectConsole`).
+itself, and the run ends by checking that none reached the network. Every page also fails the run on a console error,
+not just the main one; a page there to provoke one names it (`__expectConsole`).
 
 ## Running it
 
@@ -16,10 +15,8 @@ node test/build.js       # bake a runnable copy against the stub
 node test/smoke.js       # walk it; exits non-zero on any failure
 ```
 
-Since 23 Sep these run in GitHub Actions on every pull request and every push to `main`
-(`.github/workflows/tests.yml`), so the gate no longer depends on anyone remembering. CI runs seven steps after the
-install: `core.test.js`, then `build.js` and `smoke.js`, then `image-integrity.js`, `source-ingredients.js`,
-`calendar-push.js`, `drive-backup.js` and `help-guide.js`.
+These run in GitHub Actions on every pull request and every push to `main`, so the gate does not depend on anyone
+remembering. `.github/workflows/tests.yml` lists exactly what CI runs and pins the Playwright version.
 Results print as each check runs; a crash prints `CRASH after N checks` and the last `ok` line
 names where it died.
 
@@ -32,7 +29,7 @@ never the original.
 this repo, and shares the ingredient-line checks with the app's preview (`ingredientLineFaults` in `core.js`), reported through
 `ingredient-lines.js`.
 
-Since 29 Sep (PR 3 of the add-recipe plan) `validate-recipes.js` also takes `--source <file>`: the source
+`validate-recipes.js` also takes `--source <file>`: the source
 pages' own ingredient lists, keyed by `TITLE:` and kept outside the repo, run through the app's own
 `sourceFidelity` and reported per recipe. Its "new to the dictionary" and "totals as" lines now come from
 `core.js` run inside the page, not from a second reading of `converter/ingredient-names.md`, and a
@@ -52,37 +49,36 @@ outside the repo.
 
 `node test/help-guide.js` (no browser) checks the how-to guide, `help.html`, against the app: every
 button it names (marked `<b class="ui">`) is still the whole text of an element or string in `index.html`, comments
-left out (since 12 Oct, F28: it used to accept the label as a substring anywhere, comments included, so renaming GO
-passed), and every link from Settings → HELP and
-from the guide's contents lands on a section that exists. Since 10 Oct it also checks that every link from the guide to a file in this repo (the conversion
+left out (a label that survives only in a comment does not count), and every link from Settings → HELP and
+from the guide's contents lands on a section that exists. It also checks that every link from the guide to a file in this repo (the conversion
 instructions, on GitHub) names a file that exists.
 
 `node test/calendar-push.js` (no browser) tests the calendar push's two Edge Functions,
 `calendar-sync` and `calendar-auth`, lifted from their real source the same way: the event's id,
 its all-day dates, the 20:00 reminder's minutes, which days a sync writes or deletes, what a sync
 request may ask for, the consent link, the way back to the app and the id_token's email. Nothing
-in it talks to Google; the household's first connection is that (`docs/TEST-PLAN.md` 40a).
+in it talks to Google; the household's first connection is the real test.
 
 `node test/drive-backup.js` (no browser) tests the `drive-backup` Edge Function, lifted the same way from the
 section of its source marked "pure": which file it accepts, what it names it, which old backups it removes, and the upload
-it builds. Nothing in it talks to Google either; the household's first SAVE TO DRIVE NOW is that (`docs/TEST-PLAN.md` 44a).
+it builds. Nothing in it talks to Google either; the household's first SAVE TO DRIVE NOW is the real test.
 
 `node test/shots.js` writes a PNG of each main screen, for eyeballing a layout
 change without a browser to hand.
 
-Both scripts use whichever Chromium Playwright installs. Set
+The browser scripts use whichever Chromium Playwright installs. Set
 `PLAYWRIGHT_CHROMIUM` to an executable path if yours lives somewhere else.
 
 ## What it can and can't tell you
 
-**`test/core.test.js` — the pure core, in Node.** Since 25 Sep (PR 6a) the parser, layout,
+**`test/core.test.js` — the pure core, in Node.** The parser, layout,
 quantity, scaling and naming functions live in `core.js`, which loads in Node as well as the page.
 It runs in about two seconds, no browser, and checks the behaviour the app relies on, the shopping list's naming
 and totalling (each check run once against the mutation it names), the dictionary's master
 copy against the generated `converter/ingredient-names.md`, and three rules about the split —
 `core.js` never touches the page, nothing is defined in both files, and the two version stamps
-agree. Since 12 Oct (#127) it also fails when `converter/conversion-instructions.md` changes without its version, `CONVERTER_VERSION` and
-the pinned sha256 moving with it. Since 12 Oct (F47) it also lists every query method `index.html` chains onto `sb.from(…)` and
+agree. It also fails when `converter/conversion-instructions.md` changes without its version, `CONVERTER_VERSION` and
+the pinned sha256 moving with it. It also lists every query method `index.html` chains onto `sb.from(…)` and
 `sb.storage.from(…)` and fails if `stub.js` lacks one, which would otherwise be a TypeError `queueWrite` can swallow.
 Run it first; CI does.
 
@@ -120,7 +116,7 @@ It cannot tell you anything about **Supabase itself** — `stub.js` answers ever
 query from a fixed object and records writes to `window.__WRITES__` rather than
 sending them. Sign-in, row-level security, the write queue and hydration are
 all unexercised, so a green run is not a substitute for opening the real app
-once. **Keep Awake** can't be tested here either; it needs a real tablet.
+once. **COOKING MODE's** screen-wake can't be tested here either; it needs a real tablet.
 
 ## The canned data
 
@@ -131,19 +127,17 @@ this repo is public.
 **The suite runs on one fixed date.** `test/fixture-time.js` holds it (a Tuesday in September
 2026); `build.js` dates every fixture row from it and `smoke.js` pins the page's clock to it, so
 "today", "tomorrow" and "this week" mean the same thing in the data and in the app whatever day
-the suite is run. Until 24 Sep the fixture used the real clock, and two shopping-list checks
-failed every Thursday, when "tomorrow" fell into the next Friday-start week. If you add a
+the suite is run. A fixture on the real clock fails shopping-list checks on days when "tomorrow" falls into the next Friday-start week. If you add a
 fixture row with a date, use `iso(n)`; if you add a check that reasons about days, reason from
 `FIXTURE_NOW`, never from `new Date()`.
 
 **The stub records what an update or a delete was aimed at.** `.eq()`, `.not()` and `.in()` are
 written onto the recorded write (`match` for the last `.eq()`, `eqs` for all of them, `not`,
 `in`), so a check can assert that a favourite toggle updated one row of one household, or that
-the import's delete excluded exactly the rows in the file. Before 24 Sep the filters were
-discarded and the delete step had no test that could see it.
+the import's delete excluded exactly the rows in the file.
 
 **Every stub write can fail.** `__WRITE_FAIL__` and `__WRITE_DELAY__` apply to upserts, inserts,
-updates and deletes alike, and each logs `write-done:<table>`. Since PR 5 an ordinary save is a
+updates and deletes alike, and each logs `write-done:<table>`. An ordinary save is a
 single-row update or delete, so the refresh-rule checks need those to be able to fail too.
 
 **The stub has a pretend storage bucket** (30 Sep 2026, for source photos). `upload`, `remove` and

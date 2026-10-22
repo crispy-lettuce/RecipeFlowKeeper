@@ -24,8 +24,8 @@ phones and a laptop. It does five things:
 It is not a public product: there is no sign-up, no ads, no analytics, and the terms say so (`terms.html`, `privacy.html`).
 
 **Household.** Everything a person sees belongs to their household (their recipes, plan, diary, settings). Accounts are made
-by hand and linked to a household (`docs/ONBOARDING.md`); one account belongs to one household. Three households exist: the
-family's, a second family household, and **Test Kitchen**, used for testing. Households can let each other browse recipes (§6.8).
+by hand and linked to a household (`docs/ONBOARDING.md`); one account belongs to one household. Several households exist
+(`docs/INFRASTRUCTURE.md` §3): the family's, a second family household, and **Test Kitchen** for testing. Households can let each other browse recipes (§6.8).
 Nothing else is shared.
 
 ---
@@ -232,7 +232,7 @@ Each row of a household's data carries `household_id`; row-level security restri
 | `private.calendar_oauth_states` | One-time values for Google's consent step; no API role can read it |
 
 Storage: `recipe-images` (public-read by path, writes by household folder) and `recipe-sources` (private).
-*(16 tables in `public` and 1 in `private` on 12 Oct; recheck `docs/INFRASTRUCTURE.md` before relying on the count.)*
+`docs/ARCHITECTURE.md` §4 has the detail of each table; `docs/INFRASTRUCTURE.md` §3 has the live count.
 
 ---
 
@@ -257,7 +257,6 @@ The household deploys these by hand from the dashboard; a session does not.
 - An ordinary action writes one row. Whole-table replacement exists only for IMPORT DATA.
 - A recipe is changed in place, never deleted and re-inserted (its history would cascade away).
 - `main` is production: nothing merges without green tests, and the household decides when.
-- A schema change is applied by the household first; the app must run without it until then.
 - Text is British English and metric.
 
 ---

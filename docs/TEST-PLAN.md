@@ -142,7 +142,7 @@ this**: the suite stubs Supabase and can only show that the app *asks* for a re-
 42. **Offline.** With the network off, edit a recipe's image address and save: the editor closes and a "Couldn't save" toast appears;
     the change is in this tab only. Go back online **without reloading**, favourite any recipe (any ordinary save re-sends the failed
     write), then run RE-HOST EXTERNAL IMAGES: "1 copied in".
-43. **Leaving the tab while offline** (this used to sign you out): go offline, click another tab and back. Still signed in. Online, the
+43. **Leaving the tab while offline**: go offline, click another tab and back. Still signed in. Online, the
     same.
 44. **Coming back to the recipes by the sidebar** after an edit shows the new photo.
 
@@ -154,5 +154,5 @@ Note the step number, what you saw, and anything red in the console. Your data i
 data or closing the tab loses nothing. **`main` is production:** to roll back, revert the merge commit; Pages redeploys the previous
 build.
 
-**Not covered here:** Keep Awake / COOKING MODE can only be judged on a real tablet (the failure mode is a screen that dims
+**Not covered here:** COOKING MODE's screen-wake can only be judged on a real tablet (the failure mode is a screen that dims
 twenty minutes later), and so can reachability with wet hands at arm's length.

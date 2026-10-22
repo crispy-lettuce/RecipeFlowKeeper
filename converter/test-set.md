@@ -184,7 +184,7 @@ beans, so the test recipe was renamed *Tomato Stew*.
 ## 7. British English, and nothing more specific than the source
 
 **Why:** added 23 Sep 2026 as "Vocabulary", and **reframed later the same day** after
-`docs/REVIEW-ARCHITECTURE-FINDINGS.md` §4. The morning's version required the converter to
+the architecture review. The morning's version required the converter to
 replace every source wording with the name from `ingredient-names.md`; the review showed that
 rule buys nothing the app's own dictionary doesn't, and that a converter told to canonicalise
 will canonicalise the cases the list never meant (it wrote *dried oregano* for *Italian
@@ -287,7 +287,7 @@ ingredient-names.md" line it prints.
 **Why:** added 29 Sep 2026. Every other test gives the converter something to convert. This one
 gives it nothing: an address that does not load. A library recipe was once converted from a page
 the converter could not read, by reconstructing it from another page that seemed to carry the same
-recipe, and nothing in the result showed it (`docs/HANDOVER-CONVERSION-INTEGRITY.md`). The rule
+recipe, and nothing in the result showed it. The rule
 under test is in section 1 of `conversion-instructions.md`.
 
 **Source** (the whole message). The address is on `.invalid`, a top-level domain reserved so that it

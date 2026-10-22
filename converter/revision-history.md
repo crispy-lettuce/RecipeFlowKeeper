@@ -2,7 +2,8 @@
 
 What changed in `conversion-instructions.md`, and why, newest first. Until 18 Oct 2026 these notes sat at the end of that
 file, so every conversion read them; they say nothing a conversion needs, so they live here, for reference. **This file is
-not loaded into the conversion project.** Each household loads `conversion-instructions.md` alone.
+not loaded into the conversion project.** Each household loads `conversion-instructions.md` alone. Documents cited below that no longer exist were removed on 22 Oct 2026; read
+them with `git show 67b552e:docs/<file>` (see the README).
 
 ## Revision note (21 Oct 2026, version 2026-10-21.1: a split adds up to the ingredient list)
 

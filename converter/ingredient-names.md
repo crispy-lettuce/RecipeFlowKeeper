@@ -29,7 +29,7 @@ wording. `validate-recipes.js` prints every name the dictionary doesn't know and
 one will total as, so candidates appear the moment a recipe is added. An ingredient used once
 never needs to total with anything, so a row for it is upkeep with no benefit.
 
-**Where the master copy lives.** Since 25 Sep 2026 (PR 6a) it is `INGREDIENT_DICTIONARY` in
+**Where the master copy lives.** It is `INGREDIENT_DICTIONARY` in
 `core.js`, and this file is generated from it, so there is only ever one list to edit. The
 shopping list totals by it.
 
@@ -50,12 +50,12 @@ other.
   (D8). Keep whichever the source asks for.
 - "soy sauce" on its own means *light soy sauce* (D9).
 
-**Added 29 Sep 2026, US names for British products (PR 7f): 49 rows, and spellings on 15 that were
-there.** The source check stopped treating "shares a word" as "the same product" (PR 7e), so a US
+**Added 29 Sep 2026, US names for British products: 49 rows, and spellings on 15 that were
+there.** The source check stopped treating "shares a word" as "the same product", so a US
 name the dictionary had no row for was flagged against its British one: 58% of 67 US→UK pairs. The
 household chose this file as the remedy. The rows were written from general knowledge of the
-standard US/UK cookery glossaries, not from a survey: none was seen in a second recipe, so the
-survey tool is still how this grows.
+standard US/UK cookery glossaries, not from a survey: none was seen in a second recipe. New rows
+are added when `test/validate-recipes.js` reports a name the dictionary doesn't know.
 
 **The rule for a row is one product on the shelf under two names.** Not a substitute and not a near
 equivalent, because a row also totals the shopping list, and two different products on one row is a

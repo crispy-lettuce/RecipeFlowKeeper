@@ -15,7 +15,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 | Job | Where | Time | Saves anything? |
 | --- | --- | --- | --- |
-| [Reload the app](#reload-the-app-on-every-device), on any device not opened since 22 Oct | every device | 1 min | No |
+| [Reload the app](#reload-the-app-on-every-device), on any device not opened lately | every device | 1 min | No |
 | [Tap DONE on the converter bar](#the-converter-bar), if it shows | app | 1 min | Only the converter's DONE |
 
 Nothing else is waiting. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
@@ -24,15 +24,15 @@ Nothing else is waiting. What to build next is your choice; `docs/STATUS.md` §3
 
 ## Reload the app on every device
 
-The current app is **2026-10-22.1** (`APP_VERSION`).
+The current version is the newest entry in `changelog.json`, shown in Settings → HELP.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready.**, tap **RELOAD**. Otherwise refresh the page.
-3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-22.1** or later.
+3. Open **SETTINGS → HELP**. **You should see:** the newest version, matching the one the last session announced.
 
 ## The converter bar
 
-The master copy of the converter's instructions is `converter/conversion-instructions.md` (version **2026-10-21.1** now). When
+The master copy of the converter's instructions is `converter/conversion-instructions.md` (its `**Version …**` line says which). When
 it changes, a gold **CONVERTER** bar shows in your household until someone taps **DONE**.
 
 1. Tap **OPEN THE INSTRUCTIONS ↗** and download the file.
@@ -48,17 +48,3 @@ a household has confirmed (`household_settings.converter_ack_version`); it did n
 ## Nothing to do: a session checks these
 
 None at the moment.
-
----
-
-## Recently done
-
-- **22 Oct:** you reported every open tablet check complete (the readability changes, the Modernist style, liquids, EST., ADD SEVERAL,
-  the filter sheet, PRE-MADE, the tablet-review batches, the denser Planner, a recipe opening at the day's SERVES, an entry's meal and a
-  shortlist note onto a day, and the converter's DONE). Issues #94 and #95 were closed; the preview site (#100) is ignored.
-- **21 Oct:** the split-ingredient fix is in your conversion project (converter 2026-10-21.1) and its test 16 passed. A recipe already in the
-  library keeps whatever it had: fix one with a one-line edit in its Edit form, then COMPARE WITH SOURCE again.
-- **20 Oct:** the calendar's reminder per meal is live (its SQL applied, `calendar-sync` redeployed, a sync ran with no error). You decided to leave
-  the 13 old Test Kitchen events in the RecipeWrangler calendar as they are; delete one by hand in Google Calendar if it becomes a nuisance.
-- **18 Oct:** the test-household split was done: your account is in a new household under the family's name; the old one is **Test Kitchen**,
-  with the test account and the placeholder library. The record is in `PrivateBackup` (`migrations/test-household-split/README.md`).
