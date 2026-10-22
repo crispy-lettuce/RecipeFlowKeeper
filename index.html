@@ -1751,7 +1751,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-21.8">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-22.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2466,7 +2466,7 @@ const EXPECTED_CORE_VERSION = '2026-10-21.5';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-21.8';
+const APP_VERSION = '2026-10-22.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -11294,19 +11294,31 @@ function reviewFor(lines){
 function reviewListHtml(review){
   const total = review.names.length;
   if(!total) return `<div class="rv-quiet">No ingredients read yet.</div>`;
-  if(!review.newCount) return `<div class="rv-quiet">${total} of ${total} ingredient${total === 1 ? ' is' : 's are'} already on your list.</div>`;
   const pair = new Map(review.sameAs.map(p=> [p.from, p]));
-  const fresh = review.names.filter(n=> n.isNew).sort((a, b)=> (b.other - a.other) || a.name.localeCompare(b.name));
+  const byOtherThenName = (a, b)=> (b.other - a.other) || a.name.localeCompare(b.name);
+  const rowHtml = n=> `<div class="rv-row"><b>${escapeHtml(n.name)}</b> — lands under <b>${escapeHtml(n.aisle)}</b>` +
+    `${n.other ? ` <span class="rv-other">OTHER</span>` : ''}` +
+    (pair.has(n.key) ? sameAsHtml(pair.get(n.key))
+      : (n.isNew ? ` <button type="button" data-rv="same-as" data-from="${escapeHtml(n.key)}" data-from-name="${escapeHtml(n.name)}">SAME AS…</button>` : '') +
+        (n.other && aisleOverridesAvailable ? aisleSelectHtml(n) : '')) +
+    (aisleUndo && aisleUndo.key === n.key && n.aisleWhy === 'override'
+      ? `<div class="rv-undo">Moved to <b>${escapeHtml(n.aisle)}</b> <button type="button" data-rv="aisle-undo">UNDO</button></div>` : '') +
+    `</div>`;
+  /* "Still in Other" (22 Oct 2026): a name that is in the library already, and in Other, was hidden here, so
+     after a bulk add, where an earlier recipe brought the name in, no later recipe offered an aisle for it.
+     Names that are both new and in Other stay in the list above, so nothing shows twice, and a known name
+     with no SAME AS…: it is the library's own name, not one arriving to be matched. The aisle is the
+     household's per name, so a pick here moves the name in every recipe that uses it. A row stays after a
+     pick, as the new rows do, so that "Moved to … UNDO" has somewhere to show; the next pick, or
+     leaving the form, drops it (aisleUndo holds one at a time). */
+  const stillOther = review.names.filter(n=> !n.isNew && (n.other || (aisleUndo && aisleUndo.key === n.key && n.aisleWhy === 'override')))
+    .sort(byOtherThenName);
+  const otherHtml = !stillOther.length ? '' :
+    `<div class="rv-quiet">${stillOther.length === 1 ? 'This one is' : 'These are'} on your list already, but in Other:</div>` + stillOther.map(rowHtml).join('');
+  if(!review.newCount) return `<div class="rv-quiet">${total} of ${total} ingredient${total === 1 ? ' is' : 's are'} already on your list.</div>` + otherHtml;
+  const fresh = review.names.filter(n=> n.isNew).sort(byOtherThenName);
   return `<div class="rv-quiet">${review.knownCount} of ${total} ingredient${total === 1 ? ' is' : 's are'} already on your list. ` +
-    `${review.newCount === 1 ? 'This one is' : 'These are'} new to it:</div>` +
-    fresh.map(n=> `<div class="rv-row"><b>${escapeHtml(n.name)}</b> — lands under <b>${escapeHtml(n.aisle)}</b>` +
-      `${n.other ? ` <span class="rv-other">OTHER</span>` : ''}` +
-      (pair.has(n.key) ? sameAsHtml(pair.get(n.key))
-        : ` <button type="button" data-rv="same-as" data-from="${escapeHtml(n.key)}" data-from-name="${escapeHtml(n.name)}">SAME AS…</button>` +
-          (n.other && aisleOverridesAvailable ? aisleSelectHtml(n) : '')) +
-      (aisleUndo && aisleUndo.key === n.key && n.aisleWhy === 'override'
-        ? `<div class="rv-undo">Moved to <b>${escapeHtml(n.aisle)}</b> <button type="button" data-rv="aisle-undo">UNDO</button></div>` : '') +
-      `</div>`).join('');
+    `${review.newCount === 1 ? 'This one is' : 'These are'} new to it:</div>` + fresh.map(rowHtml).join('') + otherHtml;
 }
 /* The aisle pick (PR 6): on a new name that lands in Other with no "Same as" pending, so a name is
    matched before it is placed (a merged name takes its partner's aisle and leaves the list of new

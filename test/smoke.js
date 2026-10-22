@@ -4030,6 +4030,41 @@ const check = (name, pass, detail) => {
         && aoRowOf(aoR2, 'Smoked mackerel').select && !aoRowOf(aoR2, 'Smoked mackerel').undo && (await page.evaluate(() => loadAisleOverrides().length)) === 0,
         JSON.stringify([aoUndone, aoR2]));
 
+  /* A name the library already has, and in Other (22 Oct 2026): a bulk add brings it in with an earlier
+     recipe, so a later one never saw it as new and never offered an aisle. */
+  await page.evaluate(() => {
+    loadRecipes().push({ id: 'ao-mack', title: 'Aisle Mackerel Earlier', source: 'Blue Door Bakery', sourceUrl: '', servings: 4,
+      tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-09-06',
+      syntax: 'TITLE: Aisle Mackerel Earlier\nSOURCE: Blue Door Bakery\nSERVINGS: 4\n\nGROUP a:\n200 g smoked mackerel\n\nSTAGE:\nMERGE a -> done: Flake [5 min]' });
+  });
+  await rvPaste(anText('Aisle Known Other', 'Blue Door Bakery', ['300 g smoked mackerel', '2 onions, diced']));
+  const aoK0 = await aoRows();
+  const aoKQuiet = () => page.evaluate(() => [...document.querySelectorAll('#reviewList .rv-quiet')].map(q => q.textContent.trim()));
+  const aoKq0 = await aoKQuiet();
+  check('a known name that lands in Other is listed under "on your list already, but in Other", with an aisle pick and no SAME AS…',
+        aoKq0[0] === '2 of 2 ingredients are already on your list.' && /on your list already, but in Other/.test(aoKq0[1] || '')
+        && aoK0.length === 1 && aoRowOf(aoK0, 'Smoked mackerel').select === true && !/SAME AS/.test(aoRowOf(aoK0, 'Smoked mackerel').text), JSON.stringify([aoKq0, aoK0]));
+  const aoMark5 = await anMark();
+  await page.selectOption('#reviewList select[data-rv-aisle="smoked mackerel"]', 'Meat & Fish');
+  await page.waitForTimeout(300);
+  const aoKPicked = await aoWrites(aoMark5);
+  const aoK1 = await aoRows();
+  check('    picking one writes that aisle for the name, and the row says "Moved to Meat & Fish" with UNDO',
+        aoKPicked.length === 1 && aoKPicked[0].op === 'upsert' && aoKPicked[0].rows[0].name === 'smoked mackerel' && aoKPicked[0].rows[0].aisle === 'Meat & Fish'
+        && /Moved to Meat & Fish/.test(aoRowOf(aoK1, 'Smoked mackerel').text) && aoRowOf(aoK1, 'Smoked mackerel').undo, JSON.stringify([aoKPicked, aoK1]));
+  await anClick('[data-rv="aisle-undo"]');
+  await page.waitForTimeout(300);
+  const aoK2 = await aoRows();
+  check('    UNDO puts it back in Other with its pick',
+        aoK2.length === 1 && aoRowOf(aoK2, 'Smoked mackerel').select && !aoRowOf(aoK2, 'Smoked mackerel').undo && (await page.evaluate(() => loadAisleOverrides().length)) === 0, JSON.stringify(aoK2));
+  await rvPaste(anText('Aisle New And Known', 'Blue Door Bakery', ['300 g smoked mackerel', '300 g smoked eel']));
+  const aoK3 = await aoRows();
+  const aoKq3 = await aoKQuiet();
+  check('a name both new and in Other stays in the new list only, and a known one in Other follows it',
+        aoK3.length === 2 && aoK3.filter(r => r.select).length === 2 && /^Smoked eel/.test(aoK3[0].text) && /^Smoked mackerel/.test(aoK3[1].text)
+        && /new to it/.test(aoKq3[0]) && /on your list already, but in Other/.test(aoKq3[1] || ''), JSON.stringify([aoKq3, aoK3]));
+  await page.evaluate(() => { const rs = loadRecipes(); rs.splice(rs.findIndex(r => r.id === 'ao-mack'), 1); });
+
   /* Merged before its migration: the table does not exist yet. The load must not throw (a throw in
      hydrate signs the household out), and nothing may offer a write that would fail. */
   const aoSignouts = await page.evaluate(() => window.__SIGNOUTS__);
