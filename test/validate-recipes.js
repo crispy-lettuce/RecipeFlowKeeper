@@ -75,7 +75,7 @@ function extractBlocks(md){
 }
 
 /* The ingredient-line checks live in test/ingredient-lines.js, shared with
-   test/ingredient-survey.js so the two tools cannot disagree. */
+   the app's preview (ingredientLineFaults in core.js) so they cannot disagree. */
 const { loadVocab, checkLine } = require('./ingredient-lines');
 const VOCAB = loadVocab();
 

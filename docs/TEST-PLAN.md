@@ -1,985 +1,23 @@
-# Kitchen App — Verifying Phases 1 and 2 against the real backend
+# Regression pass against the real backend
 
-> **Looking for what to do next?** `docs/HOUSEHOLD-JOBS.md` has the checks still waiting on the household as numbered steps,
-> easier to follow on the tablet. This page keeps the fuller technical record of every check, under the same numbers.
+The automated suites (`test/`) run the real page against a **stubbed** Supabase. They prove app logic and nothing about the live
+backend: sign-in, hydration, row-level security and the write queue are never exercised there. This is the pass that does, by
+hand, in a browser against the real project. Run it after any change to `hydrate()`, the write queue, row-level security, image
+saving, or the shopping list's naming, or before trusting a restore.
 
-> **This pass was completed on 21 Sep 2026.** All 20 steps passed against the real backend.
-> Two findings came out of it — PNG export truncating to one screenful, and a request that Keep
-> Awake collapse the sidebar — both fixed the same day; see `docs/HANDOVER.md` §7.
->
-> The document stays live as a **regression checklist**: run it again after any change to
-> `hydrate()`, the write queue, or anything the expected counts below depend on. **Re-read those
-> counts from the database before each run** — they go stale every time the library changes, and
-> a stale count reads as a failure.
+**Use Test Kitchen** (`docs/INFRASTRUCTURE.md` §3) unless a step says otherwise. Checks for a new feature are not here: they are
+written for the household in `docs/HOUSEHOLD-JOBS.md` and removed when reported passed. This page keeps only the standing checks.
 
-## Context
-
-Phases 1 and 2 are built and live on `main`; the pass below was run on 21 Sep and the branch
-story that used to open this paragraph is history. 713 automated checks pass, plus 218 in Node (18 Oct 2026, after the Modernist review's fixes; 708 and 216 after the Modernist style, 15 Oct; 622 and 206 after R, 14 Oct; 620 and 205 after F, 617 and 202 after H, 613 and 199 after S, 609 and 194 after T, 606 and 189 on 13 Oct; 102 when this was
-written; until 12 Oct this line said 329 and 133, corrected 12 Oct 2026, the October review's Appendix B). But those checks run against a **stubbed** Supabase: every
-query is answered from a fixed object in `test/stub.js` and every write is recorded rather than sent.
-So the parts most likely to go wrong have never actually run — sign-in, hydration, row-level
-security, and the background write queue.
-
-`main` holds an **older build of the Supabase app** — not the pre-Supabase one this line claimed
-until 21 Sep; see `docs/INFRASTRUCTURE.md` §2. So something *is* deployed, and it shares this
-database. Nothing in this plan writes anything the app itself wouldn't, but "nothing live can
-break" was never quite true.
-This pass is about earning the confidence to merge.
-
-*(Apart from the counts, this section is the context of 21 Sep, kept as history. Since then `main` has held the current build (PR #5,
-22 Sep), and sign-in, hydration, row-level security and the write queue have run against the real backend: in this pass, and
-in the weekly live check in `PrivateBackup` since 28 Sep (`docs/HANDOVER.md` §7). Noted 12 Oct 2026, the October review's
-Appendix B.)*
-
-**Scope of this plan:** run the branch locally, work the checklist below, report what fails.
-The tablet-only checks are listed but explicitly deferred to after the merge.
+Keep the browser console open (F12 → Console). **A red error there is a finding even if the screen looks fine.**
 
 ## Getting it running
 
-```sh
-git clone https://github.com/crispy-lettuce/RecipeFlowKeeper.git kitchen-test
-cd kitchen-test
-python3 -m http.server 8080      # or: npx http-server -p 8080
-```
+Either use the live app, or serve the branch: `python3 -m http.server 8080`, then open `http://localhost:8080` (not the file:
+a real origin makes sign-in and storage behave as in production, and `localhost` is a secure context for the screen-wake API).
 
-Then open **http://localhost:8080** — not the file directly. A real origin makes localStorage and
-sign-in behave exactly as they will in production, and `localhost` counts as a secure context, so
-Keep Awake gets the genuine screen-lock API rather than the video fallback.
+## Expected counts
 
-Keep the browser console open throughout (F12 → Console). A red error there is a finding even if
-the screen looks fine.
-
-## What the database holds right now
-
-Numbers to check against, **re-read from the project on 20 Sep 2026, after the recipe
-ingestion.** The earlier figures in this table described the 40-recipe library that ingestion
-replaced.
-
-| | |
-|---|---|
-| Recipes | 33 |
-| Diary entries (`recipe_logs`) | 115 |
-| Keywords | 47 |
-| Planned days | 18 |
-| Meal groups | 4 |
-| Shortlist items | 3 |
-| Ingredient swaps | 1 |
-| Ticked shopping items | 9 |
-| Word matches (aliases) | 7 |
-| Week starts on | Friday |
-
-**Re-read these from the database before every pass.** They change whenever the library or the
-planner does, and a stale number here turns a correct app into a reported failure. The query is
-at the end of this document.
-
-**The Planner is no longer expected to look empty.** Until 22 Sep this section said every
-stored planner day was in the past and that an empty Planner was therefore the correct result.
-That is now false — the newest planner day and meal group are both **2026-09-23**, in the
-future — so **an empty Planner today would be a genuine bug**. This is exactly the kind of
-prose conclusion that goes stale along with the numbers it was drawn from, while looking like
-settled guidance.
-
-## The things that will look like bugs and aren't
-
-**This section used to say that 23 of 40 recipes had no servings, so most of Phase 2 was
-invisible. That is no longer true** — the 20 Sep ingestion gave every recipe servings and nearly
-every one full step timings. The scaling controls and the timeline strip should now appear
-almost everywhere, so **if either fails to render, that is a real finding**, not the library
-being sparse. Any recipe is now a fair choice for the scaling checks.
-
-Some things that *will* still look wrong and aren't:
-
-1. **Some planner slots and meal-group entries show "Recipe removed"** (8 and 2 on 21 Sep; 7 and 1 on 23 Sep). They point at recipes
-   deleted during ingestion. `planner_days.recipe_ids` and `meal_groups.recipe_ids` are plain
-   `uuid[]` with no foreign key, so nothing cleaned them up. Expected. Clear them from the
-   Planner when convenient — but check they render as placeholders rather than throwing first,
-   because that path has never been exercised with real data.
-2. **One shortlist item has no recipe behind it.** `shortlist_items.recipe_id` is
-   `ON DELETE SET NULL`, so a dropped recipe leaves the entry as plain text. By design.
-3. **Victoria Sandwich has no timeline strip and no source link.** It is the one recipe the
-   ingestion deliberately left untouched — see `docs/HANDOVER.md` §3. Every *other* recipe
-   should show both.
-4. **27 keywords in the vocabulary that nothing is tagged with** — Christmas, Easter, BBQ,
-   Weeknight, Picnic and so on. Not leftovers to tidy away: the conversion instructions
-   deliberately refuse to guess occasion tags, leaving them for you to apply by hand, so these
-   are vocabulary waiting to be used. Leave them.
-
-## A — Phase 1 foundations (passed against the real backend, 21 Sep)
-
-1. **Sign in.** Expect the library to appear, 33 cards, no console errors.
-2. **Hard reload** (Ctrl/Cmd-Shift-R). Expect to stay signed in, still 33.
-3. **Sign out, then back in.** The riskiest single path — any throw during hydration signs you
-   straight back out, which would show as a login screen you cannot get past.
-4. **Check the counts** against the table above: sidebar shortlist count, keywords and sources in
-   Settings, swaps in Settings → Ingredients → Swaps (its own screen until 30 Sep), groups shown on the Planner.
-5. **Make one small change and hard-reload** — favourite a recipe, say. If it survives the reload it
-   reached the database, because the page rebuilds entirely from Supabase on load. This is the only
-   way to see the write queue working.
-6. **Open a second tab** and confirm the change is there too. There is no live sync by design, so a
-   reload is required — that is expected, not a fault. *(Since 22 Sep, coming back to a tab
-   re-reads the library, so a tab switch is usually enough.)*
-
-## B — Phase 2, the nine changes
-
-7. **Week start.** Settings → change it to Sunday. Planner, Shopping List and History should all
-   re-bucket together. Set it back to Friday afterwards.
-8. **History calendar.** Columns start on the chosen day, every date sits under the correct weekday,
-   and "most cooked by day of week" still names the right day.
-9. **Scaling.** Open a recipe with servings → **COOK FOR** → 6. Quantities scale, the meta line reads
-   `SERVES 6 (SCALED FROM n)`, **RESET** returns it. Nothing is saved — reopen and it is back to normal.
-10. **Servings required.** Edit any recipe, clear the servings field, try to save. Expect a refusal,
-    not a silent save.
-11. **Planner servings.** Tap a **SERVES** pill, set 6. The pill lights up, survives a reload, and the
-    Shopping List quantities for that recipe change to match.
-12. **Shopping list totals.** Find an ingredient two planned recipes share. Expect one line, in one
-    unit — 500 g and 1 kg should read as a single 1.5 kg. Since PR 6b one ingredient is always
-    one line, even in two units: *Chicken breast — 2 + 400 g* (section E has the rest).
-13. **Hide ticked / clear ticks.** Tick a few, hide them, show them again, clear them.
-14. **Both Weeks.** Switch to it, tick something, switch back to a single week. That tick must **not**
-    appear there; the two lists keep their ticks separately on purpose.
-15. **Word matches.** Since PR 6b the list never asks in a dialog. A likely pair shows *Same as
-    X? MERGE · KEEP APART* under the rarer row; answer one each way if you get two. Both should
-    appear in Settings → Word Matches, and neither should be offered again. You will probably get
-    none — the rules and the dictionary total most variants without asking — so **MERGE WITH…**
-    on any row exercises the same path: type a few letters to filter (any name in the library, not
-    just this week's rows), pick one, expect *Merge X with Y? MERGE · CANCEL* — CANCEL and it is
-    unchanged; MERGE and the two rows join.
-15a. **Possible swaps** (6d-2). Store a swap in Settings → Swaps for something you've planned this
-     week (say, butter → margarine). Open the Shopping List: a *POSSIBLE SWAPS* panel appears at the
-     bottom naming it, with its ratio and note. Tick that row off and hide ticked items — the panel
-     entry must stay; it lists what's on the list, not what's currently showing. A swap for a
-     general word ("butter") must not also flag a longer name that happens to contain it ("peanut
-     butter") — matched by the list's own name since 6d-2, not a substring on the raw ingredient
-     text, which is also why the recipe Viewer's ⇄ icon and Substitution Recommendations box (same
-     function) should now agree with the list rather than over-firing.
-16. **Viewer ticks.** Tick three steps, then change COOK FOR. The ticks must survive. **RESET TICKS**
-    clears them without moving you off the recipe.
-17. **Sidebar.** Narrow the window to roughly 1000px and open a recipe. The sidebar slides shut, the
-    tab on the left brings it back, and leaving the recipe restores it.
-18. **Group Viewer.** Open one of the two groups from the Planner. Expect Keep Awake, Reset Ticks,
-    Export PNG and Print at the top; Favourite, Edit and **OPEN →** per recipe; the nav highlight
-    still on Planner. **OPEN →** then back should return you to the group with ticks intact.
-
-## B2 — Automatic image re-hosting (new 22 Sep; run on the live app 22 Sep)
-
-**Split into its own document: `docs/TEST-IMAGES.md`.** Eleven steps, about 25 minutes, needs a
-desktop because three of them want devtools or the SQL editor. It is kept separate because it is
-the only pass that can say anything about whether images actually reach Supabase — the smoke suite
-stubs the backend entirely — and because it stands alone: you will want to re-run it after any
-change to how images are saved, without re-running everything else here.
-
-Its step 4 is the one to stop on. If a re-hosted photo reverts after an *unrelated* save, the
-feature is undoing itself silently and nothing on screen looks wrong.
-
-## C — Export and import (Phase 1 task; round-tripped against the real backend 21 Sep)
-
-*(Until 12 Oct this heading said "still open", A's "never yet run against the real backend" and B2's "never run against the real
-backend". The 21 Sep pass ran A to C, export and import round-tripped with every table count intact, and `docs/TEST-IMAGES.md`
-was run on the live app on 22 Sep (`docs/HANDOVER.md` §2e and §7). Corrected 12 Oct 2026, the October review's F13.)*
-
-19. **Export.** Sidebar → EXPORT DATA. Open the file and confirm it has `version: 3`, a `diary`
-    array carrying meal types and any ad-hoc entries, and `settings`
-    and `aliases` alongside the recipes.
-20. **Import it straight back.** Expect the counts above to be unchanged afterwards. This rewrites
-    everything, so do it while you still have the export you just took.
-
-**Keep that export file.** It is your undo for this whole session. The nightly backup in
-`PrivateBackup` is the other one.
-
-## D — Two devices at once (new 24 Sep, PR 5; run by the household 24 Sep, step 25 again 25 Sep)
-
-*(Said "never yet run" until 12 Oct; `docs/HANDOVER.md` §7, PR 5, records the run. Corrected 12 Oct 2026, the October review's F13.)*
-
-Until PR 5 every save pushed the whole cached table and deleted what it didn't hold, so a device
-whose cache was behind could delete another device's new recipe on its next favourite toggle.
-Since PR 5 every ordinary save is one row. These steps are the proof, and they are the first time
-the app has been tested from two devices at all. **Reload the app on both devices before
-starting**: a tab opened before the merge still runs the old code, and its saves are the ones
-this pass exists to rule out. Call them **A** (the desktop) and **B** (the phone or tablet).
-
-21. **A stale device must not delete a new recipe.** On A, add a recipe (any short one; the
-    converter's test set has several). On B, *without switching tabs or reloading*, favourite any
-    recipe. Now reload A: the new recipe must still be there. Then switch to B's tab and back, or
-    reload B: the new recipe appears there too. *Before PR 5 this step deleted the recipe and its
-    cooking history.*
-22. **A stale device must not undo an edit.** On A, edit a recipe's text — add a word to a step —
-    and save. On B, still stale, favourite *that same recipe*. Reload A: the edit must survive and
-    the favourite must show. Check the database if in doubt: the recipe's `updated_at` moves
-    twice, and `syntax` keeps the word.
-23. **A delete tidies up.** On A, plan a recipe on some day, group it with another, and shortlist
-    it. Then delete it. The Planner must show the day without it and without a group; the
-    shortlist must not show "Recipe removed". Reload B: the same.
-24. **Ticks from two devices add up.** Both on the Shopping List for the same week: tick one item
-    on A, a different item on B, then switch tabs on each. Both ticks should show on both. Press
-    UNTICK ALL on A: both go, on both.
-25. **A save made offline is kept and sent.** On B, turn the network off (aeroplane mode, or
-    devtools → Network → Offline), favourite a recipe: expect a gold **OFFLINE** bar across the
-    top of the page (since PR #17; a toast until then), staying there until you are back.
-    Turn the network on: expect "Back online — sending your changes" if the write had failed by
-    then (it may not have — see below). Reload B: the favourite must show.
-    *Do not expect a "Couldn't save" toast.* That one appears only when a write actually fails,
-    and an offline write can wait up to about 30 seconds first: supabase-js retries its session
-    refresh behind a lock that every request waits on. In the 24 Sep run the network was back
-    inside that window, both favourites landed, and no failure was ever reported — which is why
-    the app now announces being offline at the moment of saving instead (PR #16).
-26. **Import still replaces everything.** Optional, and destructive by design — do it only with a
-    fresh export in hand: import that export on A, then reload B. Counts unchanged everywhere.
-
-Then run the header-drift query and the count query below; nothing should have changed but
-what you changed. Record the date and the result in `docs/HANDOVER.md` §7.
-
-## E — The shopping list release (new 25 Sep, PR 6b; run on the Friday it merges)
-
-PR 6b changes how every line on the shopping list is named and totalled, and re-keys every tick.
-**Reload the app on every device first**: a tab opened before the merge runs the old code, and
-Pages can serve the old `core.js` for a few minutes (the gold UPDATE bar says so; reload again).
-Use the week you are about to shop for.
-
-27. **Fewer, fuller rows.** Open the Shopping List. Against the list you had before, expect
-    visibly fewer rows, and an ingredient two recipes share on one row, listing both recipes. A
-    count and a weight share a row: `2 + 400 g`. Spoons of one thing add up: 1 tsp and 1 tbsp read
-    `1 tbsp + 1 tsp` (`4 tsp` until PR #20). A line with no amount says what it is for:
-    `125 g + extra to serve (2 recipes)`.
-28. **Nothing wrongly joined.** Read every row once. Garlic cloves and cloves (the spice),
-    cinnamon sticks and ground cinnamon, coriander and ground coriander, spring onions and
-    onions, butter and unsalted butter must each still be separate. A wrong join is the one fault
-    that costs a missed ingredient at the shop, so note any, with both recipe names.
-29. **Aisles.** Red pepper, onions and garlic under Produce; chicken stock under Pantry; black
-    pepper under Spices. A few things still land in Other — that is known (36 of 189 across the
-    whole library); note any you'd expect elsewhere.
-30. **Ticks start fresh, and stick.** Last week's ticks are gone (they were keyed the old way and
-    are deleted at start-up). Tick three rows, reload: still ticked. Tick one on the tablet and
-    switch tabs on the other device: it shows there too.
-31. **No questions.** Opening the list, changing the week, and planning a recipe must never show
-    a dialog. If a *Same as…?* line appears, KEEP APART on it, reload: not offered again.
-32. **Settings still lists every word match**, including the six "same" answers the rules now make
-    anyway. They are harmless; delete them there when convenient (M4 of the ingredient review).
-
-## F — Checks where recipes come in (new 27 Sep, PR 6c-1)
-
-Deploy `source-ingredients` first (`docs/INFRASTRUCTURE.md`, Edge Functions: dashboard → Edge
-Functions → deploy a new function named exactly `source-ingredients`, paste
-`supabase/functions/source-ingredients/index.ts`, JWT verification **on**). Reload every device.
-
-33. **The source's own list.** Open one recipe from each site the library uses (twelve, per the
-    architecture review; the 14 recipes 6c-2 rewrites are on seven of them), EDIT, then COMPARE
-    WITH SOURCE. Note for each
-    site whether a list comes back at all. *This is the measurement the architecture review could
-    not make: whether these sites carry the Schema.org block.* A site that doesn't gets "no
-    ingredient list the check can read", and that recipe is compared by eye. *Run 27 Sep: two
-    sites refused with a 403 (`docs/HANDOVER.md`, 6c-1).*
-34. **What the comparison shows.** On a recipe that came back: a highlighted row is on one side
-    only, or paired but different, and a paired one says why underneath (*amounts differ*, *the
-    recipe adds X*). A US name made British can show there and is fine; a different ingredient or a
-    different amount is not. Note anything the check pairs wrongly, and any row that is only noise.
-35. **Warnings, never a gate.** Since 6c-2 (27 Sep) no recipe in the library has a line the
-    preview warns about, so this step uses a made-up recipe. Add one with two lines,
-    `400 ml tin plum tomatoes` and `1 lemon or lime`. The preview names both and says what to
-    do; USE THIS rewrites the first to `400 g plum tomatoes (1 tin)`. Save it with the second
-    warning still showing: it saves. Delete it.
-36. **The other choice on the list.** Plan two or three recipes and read the list. A recipe's
-    choice in brackets — anything with "or" in it — shows in grey **beside that recipe's name**
-    on the row, so it reads as that recipe's advice and no other's: a frying recipe's "(or oil)"
-    beside butter must not appear against a cake. Only when every recipe on the row offers the same choice
-    (a row with one recipe, usually) does it show beside the ingredient's name instead. A bracket
-    with no "or" ("(1 tin)", "(rigatoni)") must not show anywhere. Measured on 27 Sep: 4 rows
-    show a choice by the name and 3 beside a recipe today; after 6c-2, 9 and 11.
-36a. **A pasted list, for the sites that refuse (new 28 Sep, PR 7d).** Open a Kitchen Sanctuary
-    recipe (17 of the 34; the function gets a 403 there), EDIT, then COMPARE WITH SOURCE: it names
-    the 403 and points at the box below. On the recipe's own page, select the ingredient list
-    only, copy it, paste it into the box under AGAINST THE SOURCE, and press COMPARE PASTED LIST.
-    Expect the recipe's lines to pair with the page's, and highlighted rows only where there is a
-    real difference — or something the copy brought along that the tidy-up did not know. **Note
-    what a real copy looks like.** `pastedIngredientLines` was written for tick-box glyphs,
-    bullets, blank lines and section headings, from a general idea of what copying a recipe page
-    gives — not from a real page, which no session can reach. A unit toggle, an amount on a line
-    of its own or a note under the list would show as a row here, and is worth telling me about.
-    Then press PARSE: the pasted list is still in the box and the table is cleared. Close the form
-    and open Add: the box is empty. Nothing is saved and no request is made (the offline suite
-    checks that nothing is sent), so with the connection off it should still work — not yet
-    tried on a real device.
-36b. **The comparison that found the fault (new 28 Sep, PR 7e).** Re-run recipe A's
-    comparison with the same pasted list. Expect **one** flagged group: an amount mismatch on the
-    ingredient the source lists in more places than the recipe does, naming the source's amounts and
-    the recipe's. The line whose product had moved into brackets, which used to show as unmatched on
-    both sides, should now be paired, and nothing else should be flagged, hard or shaded. Then read the source's method: is that ingredient used twice? If so the
-    recipe has lost a quantity and the check was right; if the page repeats it by mistake, the recipe
-    is right and the row is the check reading the page faithfully. Repeat on two or three more recipes
-    and **write down every row that is only noise**. Expect little on a UK source and more on a US
-    one, in proportion to the names the dictionary lacks (`docs/HANDOVER.md` §7 measures it: 58% of
-    67 US→UK pairs before PR 7f's rows, 22% after, the rest mostly substitutes). A shaded row is not a fault: the recipe names a product more specifically than
-    the source did, and the dictionary calls them one product; check the source meant it.
-    A recipe scaled to another number of people will flag every amount: compare before scaling.
-36c. **US names, and the list they must not move (new 29 Sep, PR 7f).** Two halves. *The source check:*
-    paste the ingredient list of a recipe from a US site (the library has one from Allrecipes) and compare.
-    A US name for a British product (eggplant for aubergine, zucchini for courgette, ground beef for beef
-    mince, heavy cream for double cream…) should now be quiet. **Write down every row that still flags and
-    say which it is:** a real swap or omission; a substitute the dictionary leaves apart on purpose
-    (granulated for caster sugar, half-and-half for single cream — `docs/HANDOVER.md` §7 lists them, and
-    says if you would rather one of them counted as the same product); or a name the dictionary has
-    simply not heard of, which is the noise to send back. *The shopping list:* plan every recipe at once.
-    Expect **169 rows**, as before, and every tick you had still ticked (no key changed on the live
-    library when this was measured). The one change you should see is **Mangetout and Pak choi under
-    Produce instead of Other**. Anything else that moved is a fault; tell me the row.
-
-36d. **The review band, on the tablet (new 29 Sep, PR 3 of the add-recipe plan).** Nothing in it writes, so
-    it is safe on real recipes. (1) *Add a recipe* and paste a conversion from your chat. It should read at
-    once, with no PARSE tap, and the form should show the diagram first, then the checks, then the fields.
-    Say whether that order is easier or harder to use on the tablet, and whether the page scrolls where you
-    expect. (2) *A link from Kitchen Sanctuary or Allrecipes:* the SOURCE box should say the page refused and
-    point at the paste box; from any other site it should draw the comparison by itself, and never fetch
-    twice for the same link. (3) *Type in the box after a parse:* the "text changed" bar should appear, and
-    RE-CHECK should clear it. (4) *SHOPPING LIST:* the names new to your library are listed with where each
-    lands. Write down any that land under Other and should not: that is what PR 6 is for. (5) *Edit an
-    existing recipe:* it should open with the same bands, list its own one-recipe names as new (it is left
-    out of the library), and fetch nothing. (6) *WRITE ONE BY HAND* on an empty box gives a starter recipe.
-    **The one thing no test can judge is a real paste on the tablet: tell me if pasting does not read at
-    once.**
-
-36e. **Answers in place, on the tablet (new 29 Sep, PR 4 of the add-recipe plan).** Unlike 36d this one
-    **writes**, so use a made-up recipe, and undo what it wrote at the end. (1) *SOURCE:* add a recipe whose
-    SOURCE is a shortened spelling of one you already use. A row should appear under the field saying it looks
-    like the existing one, with USE THAT and KEEP MINE, and **no dialog should appear at any point**, not on
-    parse and not on SAVE. Tap USE THAT and check the field changed; then, with a second made-up recipe, tap
-    KEEP MINE and check the field did not. Leave a third unanswered and save: it should save as typed and ask
-    again next time. (2) *SHOPPING LIST:* a "Same as X?" row appears only where a new name looks like one you
-    already have (today's library has none, so you may need a made-up ingredient named as a longer or shorter
-    version of one you use). SAME should ask once more ("… for every recipe? MERGE · CANCEL") and write nothing
-    until MERGE; KEEP APART should make the row go. (3) *USE THIS,* on a line the list cannot total, should now
-    show an UNDO that puts the line back exactly. (4) *SCALE TO SERVE* should show UNDO SCALE beside APPLY,
-    which puts the text back as it was; typing in the box afterwards should make it go. (5) *BEFORE YOU SAVE*
-    should list only what applies (the header lines that will be rewritten, a photo that will be copied, keywords
-    that are new, and on Edit the ticks that will be reset), and nothing when nothing does. Say whether it is
-    clear, or whether it is noise. **Afterwards:** delete the made-up recipes and, in Settings, Word Matches,
-    FORGET what steps 1 and 2 wrote (they show there as a source match, a kept-apart pair and an ingredient match).
-    **The one thing no test can judge is whether the buttons are easy to hit on the tablet.**
-
-36f. **The comparison recorded on the recipe (new 29 Sep, PR 5 of the add-recipe plan).** **Do this only after the
-    SQL in `docs/migrations/add-recipes-source-check.md` has been applied and the PR merged.** It writes one recipe row
-    per save, so use one recipe you do not mind, and it is replaced by the next comparison. (1) *Open any recipe:* a small
-    chip beside its source link should say NOT COMPARED WITH ITS SOURCE (every one will, to begin with), and the two
-    reconstructed ones (the oat bars, the loaded fries) should also say CARRIES A SOURCE NOTE, in red. **The cards should
-    show nothing of this.** (2) *Edit a recipe that has a source link,* press COMPARE WITH SOURCE (or paste the page's list
-    and press COMPARE PASTED LIST), then look at BEFORE YOU SAVE: it should say "Records: compared with the source today"
-    with the number of differences. Save; the chip should now say COMPARED with today's date and that number. (3) *Edit
-    it again:* the SOURCE section should show that result with RE-CHECK, and **opening Edit should not fetch the page.**
-    (4) *Change an ingredient line and save without comparing:* the chip should say COMPARED BEFORE THE INGREDIENTS
-    CHANGED. Change only a keyword or a method step and save: the chip should not change. (5) *A recipe from a site that
-    refuses the check:* BEFORE YOU SAVE should say "not compared with its source", and the chip after saving should say
-    the same. (6) *Export,* and glance at the file: each compared recipe carries a small `sourceCheck` with counts and a
-    hash, and **no ingredient text from the page**. **The one thing no test can judge is whether the chip reads clearly
-    beside the link on the tablet.**
-
-36g. **Shopping aisles (new 29 Sep, PR 6 of the add-recipe plan).** **Do this only after the SQL in
-    `docs/migrations/add-aisle-overrides.md` has been applied and the PR merged.** It writes one row per aisle set, and
-    each is removed again below. (1) *Settings:* a SHOPPING AISLES block sits under WORD MATCHES with a name box, an
-    aisle list and ADD, and says no aisles are set. (2) *Pick a row the shopping list puts in Other,* type its name as the
-    list shows it, pick an aisle, ADD: the row is listed, and on the shopping list the item has moved to that aisle,
-    **still ticked if it was ticked**. REMOVE it: it goes back to Other. (3) *Add a made-up recipe with a line whose name
-    is new and lands in Other:* the SHOPPING LIST review shows an aisle list beside SAME AS…; pick an aisle and the row
-    says "Moved to …" with UNDO; UNDO puts it back. Close without saving, and check Settings lists nothing left over. **The
-    one thing no test can judge is whether the aisle list is easy to use on the tablet.**
-
-36h. **Settings: ingredient lookup and dictionary (new 29 Sep, PR 7 of the add-recipe plan).** Read-only; nothing to undo.
-    (1) *Settings:* INGREDIENT LOOKUP and DICTIONARY sit above WORD MATCHES, and the dictionary lists every row by aisle.
-    (2) *Type "almond flour":* the lookup says the list calls it ground almonds, in Pantry from the dictionary, and the
-    dictionary narrows to that row. (3) *Type a wording from one of your own word matches:* the match is listed with FORGET
-    (do not press it unless you mean to). (4) *Type the original of one of your swaps:* the swap is listed; EDIT goes to
-    Swaps, whose subtitle now says a swap for "butter" never catches "peanut butter". (5) *Type something the list puts in
-    Other:* it says so and points at Shopping Aisles. **The one thing no test can judge is whether the lookup answers the
-    question you had when you opened it.**
-
-36i. **Settings: library check (new 29 Sep, PR 8 of the add-recipe plan).** Read-only; nothing to undo. (1) *Settings → LIBRARY
-    CHECK → RUN:* every recipe is listed once, with those needing attention first: the two reconstructed ones (the oat bars,
-    the loaded fries) at the top in red, then those not compared. (2) *Tick "only those needing attention":* the rest go.
-    (3) *OPEN one:* its edit form opens; compare it with its source and save, then RUN again: it has moved down and says
-    what the comparison found. **This is the audit: work down the list until it is short.**
-
-36j. *Superseded by 36k the same day:* on the tablet the native list covered the whole screen (reported 30 Sep, 08:03), so
-    the boxes now use the app's own dropdown. Kept for the record. **Autocomplete on the ingredient boxes (new 30 Sep).** Nothing is written by a suggestion; only ADD writes, as before.
-    (1) *Settings → INGREDIENT LOOKUP, type "alm":* the tablet offers names under the box, among them ground almonds and almond
-    meal; pick one and the lookup answers for it. (2) *WORD MATCHES, type in either box:* ingredient names are offered; switch the
-    select to SOURCE and the same boxes offer your sources instead; switch back. (3) *SHOPPING AISLES, type "alm":* only the names
-    your shopping list uses are offered: ground almonds if a recipe uses them, but never almond meal, which the list calls
-    ground almonds. (4) *Swaps, type in ORIGINAL INGREDIENT and
-    REPLACEMENT:* the same ingredient names as the lookup. **The one thing no test can judge is how the tablet shows the list:
-    whether it appears as you type, and whether a picked name fills the box without an extra tap.**
-
-36k. **The ingredient boxes' own dropdown, on the tablet (new 30 Sep).** Replaces 36j. Nothing is written by a suggestion.
-    (1) *Settings → INGREDIENT LOOKUP, tap the box:* nothing opens until you type. (2) *Type "a":* a list opens just under the
-    box, about five names high, and **the rest of the screen stays visible**; drag the list to scroll it without anything
-    being picked. (3) *Type "alm", tap almond meal:* the box says almond meal, the list closes, the keyboard stays up, and the
-    lookup says the list calls it ground almonds. (4) *WORD MATCHES:* either box offers ingredients; pick SOURCE and type
-    the start of one of your sources: the sources are offered; switch back. (5) *SHOPPING AISLES, type "alm":* only names your
-    shopping list uses, never almond meal. (6) *Swaps:* both boxes offer the lookup's names. (7) *On the phone, with the box
-    just above the keyboard:* the list opens above the box, not behind the keyboard. The ▼ at the right of the box, and
-    Chrome's own grey list, mean the old version is still loaded: reload. **What no test can judge: whether
-    a tap on a name is easy to hit, and whether scrolling the list ever picks one by accident.** *Reported "broadly ok"
-    by the household, 30 Sep.*
-
-The 37 series is `docs/PLAN-LAYOUT.md`, the layout changes agreed on 30 Sep. Each is read-only.
-
-37a. **Step words at the foot of their box; the edit dialog near full width (new 30 Sep, C and A).** (1) *Open a recipe with
-    a long group:* each step's words sit at the bottom of its box, level with the last ingredient that goes into it. Tick
-    down a group and read straight across. (2) *PRINT / A4 PDF, then EXPORT PNG:* the same. (3) *EDIT:* the dialog fills the
-    screen less a margin, the recipe box is about half the screen tall, and the preview no longer scrolls sideways (unless
-    the recipe has very many steps). *Close it without saving.* (4) *On the phone:* the dialog still fills the width.
-    **What no test can judge: whether the bottom-aligned words read better in the kitchen than the centred ones did.**
-
-37b. **Shopping Aisles says where a name goes now (new 30 Sep, D).** Writes only if you press ADD or REMOVE. (1) *Settings →
-    SHOPPING AISLES, type a name your recipes use:* a line under the box says what the list calls it and where it goes now,
-    and the aisle picker is already on that aisle, with ADD greyed out. (2) *Pick another aisle:* ADD lights up. *Don't press
-    it* unless you mean to. (3) *Type a name of your own aisles* (one in the list below the box, if any): the line says
-    "your own aisle", with REMOVE and where it would go back to. (4) *Type something no recipe uses:* the line says so.
-    **What no test can judge: whether the line answers the question before you have to ask it.**
-
-37c. **Cooking mode (new 30 Sep, B).** (1) *Open a recipe, scale it to 6, turn KEEP AWAKE on:* the header is one line: ← ALL
-    RECIPES, the recipe's details (saying SERVES 6, SCALED FROM its own), KEEP AWAKE, RESET TICKS and SHOW TIMELINE. Favourite,
-    shortlist, edit, export, print, delete, the source chip and COOK FOR are gone, and so is the timeline. (2) *SHOW TIMELINE:*
-    it appears; leave the recipe, open another and turn KEEP AWAKE on: it is still shown. HIDE TIMELINE hides it again, and the
-    tablet and the laptop each keep their own choice. (3) *On the phone, scroll down the recipe:* the header stays at the top.
-    (4) *Turn KEEP AWAKE off:* everything is back. (5) *A group from the Planner, KEEP AWAKE on:* export, print and ungroup go.
-    **What no test can judge: whether anything you want mid-cook has gone missing.**
-
-*37a, 37b and 37c reported passed by the household, 30 Sep ("happy with tests 37a/b/c").*
-
-37d. **Settings in three tabs (new 30 Sep, E).** Read-only unless you add a swap. (1) *Sidebar:* no SWAPS. (2) *Settings:* three
-    tabs, INGREDIENTS picked, showing Ingredient Lookup, Word Matches, Shopping Aisles, Swaps (your swaps listed, with EDIT and
-    DELETE) and the Dictionary folded to "SHOW ALL 140 ROWS". (3) *LIBRARY:* Library Check, Sources, Keywords, Recipe Photos.
-    *APP:* Week Starts On, Appearance. Leave Settings and come back: the tab you left on is still picked. (4) *Type "almond"
-    in the lookup:* the dictionary opens to the matching rows; clear it and it folds again. (5) *Look up an ingredient you
-    have a swap for, press EDIT:* you land on Swaps in the Ingredients tab. **What no test can judge: whether you can find
-    each thing where you expect it.**
-
-*37d reported "ok" by the household, 30 Sep. Every step of the 37 series has passed.*
-
-38a. **VALIDATE INGREDIENT LIST, and OPEN SOURCE (new 30 Sep).** Writes one recipe row, on SAVE. (1) *Open a recipe you have
-    compared (Easy Pilau Rice, say), EDIT:* beside "Compared 30 Sep · 1 difference" is VALIDATE INGREDIENT LIST. Tap it: it
-    says "Validated when you save" with UNDO, and BEFORE YOU SAVE says so. (2) *SAVE:* the viewer's chip reads VALIDATED and
-    the date; EDIT again says when, with no second offer. (3) *Settings → Library → LIBRARY CHECK → RUN:* that recipe reads
-    "validated" and is not among those needing attention. (4) *EDIT, OPEN SOURCE ↗:* the source page opens in a new tab.
-    **What no test can judge: whether VALIDATED says what you meant by it.** A change to the recipe's ingredient lines takes
-    the validation away until it is compared again.
-
-*38a reported "OK" by the household, 30 Sep.*
-
-38b. **Source photos (new 30 Sep; after `docs/migrations/add-source-photos.md` is applied).** Writes one recipe row and stores
-    files, on SAVE. Use a recipe converted from a photo or screenshot, or any recipe you don't mind giving a photo. (1) *EDIT,
-    SOURCE PHOTOS, ADD PHOTO:* the tablet offers the camera or the gallery. Take a photo of a cookbook page, or pick a screenshot;
-    it appears as PAGE 1 · NEW, and BEFORE YOU SAVE says "Stores the new source photo with the recipe". Add a second. Under
-    AGAINST THE SOURCE, the ingredient lines sit beside the photos. (2) *SAVE:* the viewer shows SOURCE PHOTOS · 2. Tap it: both
-    pages full screen; tap a page to see it at its own size, then OPEN FULL SIZE ↗ and pinch to zoom. Can you read the small
-    print? (3) *On the laptop, the same recipe:* the photos show there too (this is the signed link, not the tablet's copy).
-    (4) *EDIT, REMOVE page 1, SAVE:* the chip says SOURCE PHOTO. (5) *Close the form without saving after ADD PHOTO:* nothing
-    changes. **What no test can judge: whether the camera route is easy, and whether 2000 px is sharp enough for a cookbook's
-    small print.** In the dashboard, Storage → `recipe-sources` → your household's folder should hold one file per page kept.
-
-*38b reported "successful" by the household, 30 Sep. Checked read-only at 17:06 UTC: one file in `recipe-sources` (a JPEG,
-106 KB), under the household's folder and its recipe's; one recipe listing one page; no file that no recipe lists (so the
-removed page was deleted), and no listed page missing.*
-
-38d. **PDF sources (new 30 Sep).** Writes one recipe row and stores a file, on SAVE. (1) *On the laptop, open a recipe
-    page, PRINT, "Save as PDF".* (2) *EDIT a recipe, ADD PHOTO OR PDF, pick the PDF:* it shows as PAGE 1 · PDF · NEW with its
-    file name and OPEN ↗; BEFORE YOU SAVE says "Stores the new source PDF with the recipe". Try a PDF over 10 MB: it is refused
-    and says why. (3) *SAVE:* the viewer's chip reads SOURCE PDF; tap it, then OPEN ↗: the PDF opens in a new tab. (4) *On the
-    tablet, the same recipe:* OPEN ↗ opens it in the tablet's PDF viewer. **What no test can judge: whether opening it outside
-    the app is good enough on the tablet**, or whether pages drawn inside the app are worth adding.
-
-*38d reported passed by the household, 12 Oct: opening the PDF outside the app is fine. (The household asked whether only one page is kept, as the card read PAGE 1: the whole PDF is stored, every page; "PAGE 1" numbers the source files attached to the recipe, not the pages inside one.)*
-
-39a. **Cooking notes (new 30 Sep, R4).** Writes one note row per tap. (1) *Open a recipe:* under the diagram, COOKING NOTES.
-    Type "Needed 10 min longer" and ADD A NOTE: it appears at the top with today's date, and the header shows NOTES · 1. (2)
-    *EDIT it, change the words, SAVE:* the date stays. *DELETE it:* UNDO brings it back. (3) *COOKING MODE on* (the switch called KEEP AWAKE until 11 Oct): the box is still
-    there and the latest note shows; nothing to edit. (4) *Tick the last column:* the "Which meal?" prompt has ADD A NOTE; type
-    one and pick Dinner: it is in the recipe's log, dated today. (5) *FOLD INTO NOTES on a note:* EDIT opens with it dated at the
-    end of NOTES:, and BEFORE YOU SAVE says so; SAVE, and the note is in the recipe's own notes and gone from the log. (6)
-    *PRINT:* no cooking notes on the page. **What no test can judge: whether the box is quick enough to use with wet hands,
-    and whether notes are where you look for them.**
-
-*39a reported passed by the household, 12 Oct.*
-
-38c. **CHECKED AGAINST THE PHOTO (new 30 Sep).** Writes one recipe row, on SAVE. (1) *EDIT the recipe from 38b:* under AGAINST
-    THE SOURCE, beside the photo, is CHECKED AGAINST THE PHOTO. Read the lines against the photo, then tap it: it says
-    "Recorded as checked against the photo when you save" with UNDO, and BEFORE YOU SAVE says so. (2) *SAVE:* the viewer's chip
-    reads VALIDATED and the date. EDIT again: "Checked against the source photo" and the date, and no second offer. (3) *Settings
-    → Library → LIBRARY CHECK → RUN:* it reads "checked against the photo" and is not among those needing attention; a recipe
-    with a photo and no link that has not been checked reads "source photo not checked", and is. **What no test can judge:
-    whether the photo and the lines sit close enough on the tablet to check one against the other.** A change to the
-    ingredient lines takes the check away, as for a web recipe.
-
-*38c reported passed by the household, 12 Oct: checking the lines against an image of the source works as it is.*
-
-40a. **Planned meals in Google Calendar (new 9 Oct, P3 PR 2; only after `docs/migrations/add-calendar-push.md` is applied and
-    both calendar functions are deployed, `docs/PLAN-CALENDAR-PUSH.md` §10).** Writes Planner rows and the household's settings
-    row, and events in the RecipeWrangler calendar. Before the migration, *Settings → App → CALENDAR* reads "Waiting for the
-    database change" and the Planner has no calendar buttons: check that first, on the tablet, before the household's setup.
-    (1) *Connect, on the tablet:* Settings → App → CALENDAR → CONNECT GOOGLE CALENDAR. Google warns "Google hasn't verified this
-    app": Advanced → Go to RecipeWrangler, then allow. Back in the app a toast says it is connected, Settings is open on App, and
-    the block reads "Connected as …, calendar RecipeWrangler" with REMIND AT 20:00. In Google Calendar on the phone a calendar
-    called RecipeWrangler is listed (turn it on there if the phone hides new calendars). (2) *Planner, a planned day:* IN
-    CALENDAR. Within a few seconds the phone shows an all-day event on that day, titled with its recipes joined by " + ", shown as
-    free, the description listing each with its servings and a link to the app. Settings shows the time it was last brought into
-    step. (3) *REMIND ME 20:00 THE EVENING BEFORE on a day two or more days ahead:* the event gains one notification; on the evening
-    before, at 20:00, the phone shows it. A day with REMIND ME off has no notification at all. (4) *Change the day's recipes and its
-    servings:* the event's title and description follow. *Mark it away* (CHOOSE A RECIPE → MARK DAY AWAY, or empty it): the event
-    goes. *ADD THE WEEK* on a week with three planned days: all three appear, and the week's button goes. Switch a day off and on
-    again: its event comes back. Rename a recipe planned on a switched-on day: the event's title follows. (5) *Settings → DISCONNECT:*
-    the question says the calendar stays in Google; say yes. The block offers CONNECT again; the Planner's calendar buttons go; the
-    plan is as it was. RecipeWrangler and its events are still in Google Calendar on the phone. Connect again (step 1) and the same
-    calendar carries on, with no second RecipeWrangler. **What no test can judge: whether Android shows the 20:00 notification for
-    an all-day event, and whether the event reads well on the phone's lock screen.** Undo: switch the days off (their events go),
-    then DISCONNECT; delete the RecipeWrangler calendar in Google if wanted.
-
-*40a reported passed by the household, 12 Oct.*
-
-40b. **The automatic calendar toggles (new 9 Oct, `docs/PLAN-CALENDAR-PUSH.md` §11; only after
-    `docs/migrations/add-calendar-auto.md` is applied).** Writes the household's settings row, Planner rows, and events in the
-    RecipeWrangler calendar. Before the migration, *Settings → App → CALENDAR* shows no toggles under REMIND AT: check that first.
-    (1) *Settings → App → CALENDAR, connected:* under REMIND AT, AUTOMATICALLY ADD TO CALENDAR and AUTOMATICALLY REMIND ME FOR MAIN
-    MEALS, both off, in the COOKING MODE switch style. (2) *Note which upcoming planned days are not IN CALENDAR, then switch AUTOMATICALLY
-    ADD TO CALENDAR on:* a toast says how many days were added; on the Planner each of those days now shows IN CALENDAR; a day marked
-    away and any day before today are as they were. Within a few seconds the phone shows their all-day events. (3) *Plan a recipe on an
-    empty day:* it is IN CALENDAR at once and its event appears. Switch that day off by hand, change its servings: it stays off. Add
-    another recipe to it: it is on again. (4) *Switch AUTOMATICALLY REMIND ME FOR MAIN MEALS on:* a toast says how many main-meal days
-    got a reminder; a day with a Main-course recipe shows REMIND ME on; a day with only a side or a dessert does not. The evening before
-    such a day, at the REMIND AT time, the phone shows the notification. (5) *Switch both off:* the toasts say days already set stay;
-    nothing on the Planner changes. Plan another recipe: the day stays off. (6) *On the phone, open Settings:* the toggles show as set on
-    the tablet (they belong to the household). **What no test can judge: whether "Main" in the course tags matches what the household
-    means by a main meal, recipe by recipe.** Undo: switch the toggles off and the days off by hand; or the page's undo SQL.
-
-*40b reported passed by the household, 12 Oct: "Main" in the course tags matches what the household means by a main meal.*
-
-41a. **PRE-MADE meals and COOKED ✓ (new 10 Oct; `docs/PLAN-FOOD-DIARY.md`; only after `docs/migrations/add-premade.md` is
-    applied and `calendar-sync` redeployed).** (1) *Before:* note the shopping list's amount for one ingredient of today's dish.
-    (2) *PRE-MADE on today's dish:* it asks which meal; choose Dinner. It reads PRE-MADE · DINNER, the toast says it's in the food
-    diary, and the shopping list's amount drops by that dish's share. (3) *HISTORY, today:* the dish is there, Dinner, marked FROM
-    THE FREEZER; its recipe card's "last cooked" has not changed. (4) *Leave the tab and come back*, and on a second device: still
-    one diary entry, not two. (5) *PRE-MADE on tomorrow's dish:* nothing in the diary yet; tomorrow it appears by itself once the app
-    is opened. (6) *COOKED ✓ on another of today's dishes:* the meal question and the note box, then ✓ COOKED; HISTORY shows it
-    without the freezer mark. (7) *Calendar:* with AUTOMATICALLY REMIND ME FOR MAIN MEALS on, a pre-made dish of any course gets
-    the evening-before reminder, and the event's description says "(from the freezer)". **Read-only afterwards:** `recipe_logs` has
-    one row for the pre-made dish with `premade = true` and `meal_type = 'dinner'`. Undo: tap PRE-MADE · DINNER to make it fresh;
-    REMOVE the diary entry in HISTORY.
-
-41b. **Fresh or freezer, and the Planner on a phone (new 10 Oct; 41a found finishing a pre-made dish's recipe logged it twice).**
-    (1) *PRE-MADE on today's dish*, choose Dinner: HISTORY has it once, FROM THE FREEZER. (2) *Open its recipe and tick the last
-    column:* it asks "Cooked fresh, or from the freezer?" Choose FROM THE FREEZER: HISTORY still has it once, and ticking the last
-    column off and on again does not ask again. (3) *Reload the page (the answer is kept until then), open the recipe and tick the
-    last column:* it asks again; choose COOKED FRESH. It asks which meal; HISTORY now has it once, cooked, with no freezer mark; the
-    Planner shows it without PRE-MADE and with ✓ COOKED, and it is back on the shopping list. (4) *A fresh dish of today's,
-    finished in its recipe:* no question, logged as before. (5) *The Planner on a phone:* each dish's name is readable, with
-    its pills on the line below when they don't fit. **Read-only afterwards:** today's `recipe_logs` for the dish is one row,
-    `premade = false`; the day's `planner_days.premade` slot is `''`. Undo: REMOVE the entry in HISTORY.
-
-42a. **The how-to guide (new 10 Oct; `help.html`).** Reads only. (1) *Settings:* a fourth tab, HELP, after APP. It shows HOW-TO
-    GUIDE and QUICK ANSWERS and nothing else; leave Settings and come back, and HELP is still the tab shown. (2) *OPEN THE GUIDE ↗:*
-    the guide opens in a new browser tab, in the same light or dark as the app; the app's tab is where it was. (3) *Two QUICK
-    ANSWERS, e.g. the calendar and the OFFLINE bar:* each opens the guide at that section. (4) *Read a section against the app:* every
-    button it names is on screen as written. (5) *Print it from the browser:* A4, with no heading left alone at the foot of a page.
-    **What no test can judge: whether the wording makes sense to someone who has never used the app.** Undo: nothing to undo.
-
-*42a reported passed by the household, 12 Oct.*
-
-43a. **Sharing recipes between households (new 10 Oct; `docs/PLAN-RECIPE-SHARING.md`; only after
-    `docs/migrations/add-recipe-sharing.md` is applied and the second household made, `docs/ONBOARDING.md` §4).** Two devices,
-    one signed in to each household. (1) *Before:* Settings → APP → RECIPE SHARING shows a name box, SHARE and "Nobody yet";
-    RECIPES has no switch. (2) *Name:* type our household's name, SAVE; the toast repeats it. (3) *SHARE:* type an email that has
-    no account: the toast says so and nothing is listed. Type the other household's email: it is listed under SHARED WITH, with
-    STOP SHARING. (4) *On their device:* leave the tab and come back. Settings says we share with them; RECIPES has OUR RECIPES and
-    〈OUR NAME〉'S RECIPES. Choose ours: our recipes, with photos; their own library and sidebar count are unchanged. (5) *Open one
-    of ours there:* no EDIT, DELETE, FAVOURITE, SHORTLIST or cooking notes; COOK FOR works; tick to the last column: "Not logged",
-    and their diary has nothing new. (6) *ADD TO OUR RECIPES:* their copy opens as theirs, with the photo; back in our library
-    the card says ALREADY IN OUR RECIPES. Plan the copy on a day: it is on their shopping list, not ours. (7) *STOP SHARING* on
-    ours, after the confirmation; on their device, after leaving the tab and coming back, the switch has gone, and their copy
-    stays. **Read-only afterwards:** the copy is a `recipes` row of their household with `copied_from` set; ours is untouched.
-    Undo: STOP SHARING; delete the copy on their side if it is not wanted.
-
-*43a reported passed by the household, 12 Oct.*
-
-44a. **The weekly backup to Google Drive (new 10 Oct; `docs/PLAN-DRIVE-BACKUP.md`; only after its §4 steps 1 to 4).** (1)
-    *Before reconnecting:* Settings → APP → BACKUP TO GOOGLE DRIVE says Google was connected without Drive, and offers CONNECT AGAIN
-    FOR DRIVE. (2) *Tap it:* Google asks again, now for the calendar and Drive files; leave both ticked. Back in the app the calendar
-    is still connected, and within a few seconds a toast says this week's backup is saved. (3) *In Google Drive* (phone or
-    computer): a folder RecipeWrangler backups holding `kitchen-backup-<today>.json`. Download it; it opens as the same kind of file
-    EXPORT DATA gives. (4) *SAVE TO DRIVE NOW:* the toast names the same file; Drive still holds one file for today, not two. (5)
-    *A week later*, no tap needed: opening the app saves the next one. **Read-only afterwards:** `calendar_connections.drive_backup_at`
-    is set and `drive_last_error` empty; `scope` includes `drive.file`. Undo: DISCONNECT stops it; delete the folder in Drive if
-    unwanted. **Do not** IMPORT DATA as a test: it replaces everything.
-
-*44a reported passed by the household, 12 Oct.*
-
-45a. **Parse feedback, seconds, COOKING MODE and Drink (new 11 Oct; issues #85, #86, #89, #93).** Writes nothing unless you save.
-    (1) *NEW RECIPE, then PARSE & PREVIEW with the box empty:* a toast says "Paste a recipe first". (2) *Paste a converted
-    recipe:* under the button, "Read N ingredients and M steps. The preview and the checks are below ↓", and the page scrolls
-    down to WHAT THE APP READ by itself. Close without saving. (3) *Open a recipe with a step under a minute* (or WRITE ONE BY
-    HAND, change a bracket to `[20 sec]`, PARSE & PREVIEW): the box reads 20 SEC, not 0.3 MIN. (4) *Open any recipe:* the
-    switch reads COOKING MODE; switching it on keeps the screen on and tidies the page as KEEP AWAKE did. (5) *EDIT a recipe:*
-    COURSE offers Drink, after Dessert; RECIPES has a DRINK filter. **The other household:** the converter's instructions now
-    list Drink; each household reloads `converter/conversion-instructions.md` into its own conversion project. Undo: nothing
-    to undo.
-
-*45a reported passed by the household, 12 Oct.*
-
-46a. **The FROZEN aisle (new 11 Oct; issue #90).** Writes one Settings row in (3) only. (1) *SHOPPING, a week with a recipe whose
-    ingredient line says frozen planned:* those lines are under FROZEN, the last
-    section before OTHER, where they were under OTHER before; a tick already on one is still there. (2) *PRINT and PNG:* FROZEN
-    is in both. (3) *Settings → INGREDIENTS → SHOPPING AISLES:* the aisle list offers FROZEN; put something there (e.g. ice
-    cream, if you have it) and it moves to FROZEN on the list. **The other household:** one of their lines moves to FROZEN too
-    (counted, not read). Undo: REMOVE the aisle in Settings.
-
-*46a reported passed by the household, 12 Oct.*
-
-47a. **Your own photo as a recipe's picture (new 11 Oct; issue #92).** Writes one recipe row and stores one file, on SAVE.
-    (1) *EDIT a recipe of your own, UPLOAD PHOTO:* the tablet offers the camera or the gallery; take or pick one. It shows
-    small beside the button, IMAGE URL empties, and BEFORE YOU SAVE says "Stores your photo as the recipe's picture".
-    (2) *RE-CHECK:* the photo is still chosen. (3) *SAVE:* the card shows your photo; on the phone, after leaving the tab and
-    coming back, it shows there too. (4) *EDIT again, UPLOAD PHOTO with a different picture, SAVE:* the new one shows, not
-    the old. (5) *EDIT, choose a photo, then type a link in IMAGE URL:* the chosen photo goes. **Read-only afterwards:** the
-    recipe's `image_url` is `…/recipe-images/<our household>/<recipe id>.jpg?v=…`, and that file exists. Undo: paste the
-    old link back into IMAGE URL and SAVE.
-
-*47a reported passed by the household, 12 Oct.*
-
-48a. **The version and what's new (new 11 Oct; issue #91).** Reads only. (1) *The first time the app opens after this
-    merges:* one toast, "Updated to 2026-10-11.4: see what's new in Settings → HELP" (on a device that had the app
-    before; a device opening it for the first time shows nothing). (2) *Settings → HELP:* VERSION AND WHAT'S NEW shows
-    the version and the five newest changes, with links to their issues. THE WHOLE LIST ↗ opens the file on GitHub.
-    (3) *Leave a tab open, and after the next PR merges* (a few minutes for Pages), switch away and back: the UPDATE bar
-    says "A new version is ready"; RELOAD brings it in, and step (1)'s toast names the new version. **The other
-    household** sees the same toast once, and the list. Undo: nothing to undo.
-
-*48a reported passed by the household, 12 Oct.*
-
-49a. **Lost changes, part 1 (new 12 Oct; the October review's PR 4).** Uses a throwaway recipe you add and delete, and one
-    Planner day. (1) *ADD a throwaway recipe (any made-up text). On a day next week, put it on with one other dish, and mark
-    the other dish PRE-MADE · DINNER. Then DELETE the throwaway recipe:* the other dish still reads PRE-MADE · DINNER, and is
-    still off the shopping list. (2) *On yesterday's Planner day, put a dish on and mark it PRE-MADE · LUNCH:* the toast says
-    it's in the food diary. *HISTORY, yesterday, REMOVE that entry:* the question says PRE-MADE comes off it on the Planner
-    too; OK. Leave the tab and come back: the entry has not come back, and yesterday's dish no longer reads PRE-MADE.
-    (3) *Today, mark a dish PRE-MADE · DINNER, tap it again (fresh), then PRE-MADE · LUNCH:* HISTORY shows it once, as lunch.
-    **Read-only afterwards:** that day's `recipe_logs` row has `meal_type = 'lunch'`, and there is one, not two. Undo: take the
-    dishes off the days, and REMOVE the diary entries you made.
-
-*49a reported passed by the household, 12 Oct.*
-
-50a. **Several households (new 12 Oct; the October review's PR 6; only after `docs/migrations/harden-default-privileges.md`).**
-    (1) *Tick one item on the shopping list. Settings → APP, change the day weeks start on:* it asks first, saying the ticks
-    will be cleared. *Cancel:* the day is as it was and the tick is still there. *Change it again and OK:* the tick has gone.
-    Change the day back. (2) *Star a recipe on the phone; then, on the tablet without reloading, EDIT that recipe and SAVE:*
-    reload either device, and the star is still there. (3) *Change APPEARANCE on one device while another has the app open,
-    then change the week's first day on the other:* reload both, and both changes have stuck. **Read-only afterwards:** this
-    household's `household_settings` row holds both changes. Undo: put the settings back as they were.
-
-*50a reported passed by the household, 12 Oct.*
-
-51a. **The parser and scaling (new 12 Oct; the October review's PR 7).** Writes nothing: nothing is saved. (1) *NEW RECIPE,
-    paste this made-up recipe, PARSE & PREVIEW:*
-
-    ```
-    TITLE: Test 51a
-    SOURCE: test
-    SERVINGS: 2
-    GROUP a:
-    1 pint milk
-    1 pinch nutmeg
-    1 L water
-    GROUP a:
-    100 grams oats
-    STAGE:
-    MERGE a -> b: Warm [5 min]
-    NOTES:
-    Merge the two halves before serving
-    ```
-
-    The diagram says GROUP "a" is written more than once. "1 pint milk" is flagged as not metric. The NOTES sentence is
-    **not** listed as a line the app couldn't read. (2) *Change the second `GROUP a:` to `GROUP c:` and the MERGE to
-    `MERGE a, c -> b: Warm [5 min]`, PARSE & PREVIEW:* the error has gone. (3) *SCALE TO SERVE 4, APPLY:* the text reads
-    `2 pinches nutmeg`, `2 L water` and `200 grams oats`. (4) *UNDO SCALE, then SCALE TO SERVE 3, APPLY:* `1 pinch nutmeg`
-    is unchanged, and the water reads `1 1/2 L water`. Leave without saving. **Not on the tablet:** the shopping list showing
-    "tinned" as written is checked in `test/core.test.js` only. Undo: nothing to undo.
-
-*51a reported passed by the household, 12 Oct.*
-
-52a. **The converter reminder (new 12 Oct; #127; only after `docs/migrations/add-converter-ack.md`).** (1) *Open the app on the
-    tablet:* a gold CONVERTER bar under the top bar says the converter's instructions have changed, with version 2026-10-12.1.
-    *Tap PLANNER, then RECIPES:* both work with the bar still there. (2) *LATER:* the bar goes. *Reload:* it is back.
-    (3) *OPEN THE INSTRUCTIONS ↗:* GitHub shows `conversion-instructions.md`, whose first lines include "Version 2026-10-12.1".
-    Load it into this household's conversion project in the Claude app, then *DONE:* the bar goes, and a message says the
-    household has version 2026-10-12.1. *Reload:* it stays gone. (4) *On the phone, signed in to the same household, open or
-    reload the app:* no bar. **Read-only afterwards:** this household's `household_settings.converter_ack_version` is
-    `2026-10-12.1`. The other household sees the bar until someone there does the same. Undo: nothing to undo.
-
-*52a reported passed by the household, 13 Oct: the bar appeared; DONE took it away, and it stayed gone after a reload and on the
-phone. Read back by a session: that household's `converter_ack_version` is `2026-10-12.1`, written 06:19:13 UTC, with its other
-settings unchanged. PLANNER and RECIPES under the bar, LATER and the GitHub link were not reported one by one; the smoke suite
-covers the first two.*
-
-53a. **FILE labels and the printed shopping list (new 13 Oct; #94 and the household's 12 Oct question about PAGE 1).** (1) *EDIT a
-    recipe with a source photo or PDF:* each is captioned FILE 1, FILE 2… (2) *Its source files from the viewer:* FILE 1 OF n.
-    Leave without saving. (3) *SHOPPING, tick one item, PRINT / A4 PDF:* the preview leaves the ticked item off and keeps the
-    rest. (4) *Tick every item in one aisle, PRINT again:* that aisle's heading is gone too. (5) *EXPORT PNG:* the picture
-    matches the print, with no MERGE WITH… links. Undo: untick what was ticked.
-
-54a. **AUDIT on the shopping list (new 13 Oct; #94's second half, `docs/PLAN-SHOPPING-AUDIT.md`).** (1) *SHOPPING:* no MERGE WITH…
-    on any row; AUDIT at the top (AUDIT · n if a Same as …? is waiting). (2) *AUDIT:* the button reads END AUDIT; each row shows
-    MERGE WITH… and its aisle with why. (3) *Tick an item, then move it to another aisle:* it moves, keeps its tick, and says
-    Moved to … · UNDO; *UNDO* puts it back. (4) *Reload:* still in AUDIT; the phone is not. (5) *On the phone, AUDIT:* nothing
-    runs off the side. (6) *PRINT / A4 PDF and EXPORT PNG in AUDIT:* no tools. (7) *END AUDIT.* Writes one aisle row in (3),
-    removed by UNDO; untick the item.
-
-55a. **Folding and searching Settings → INGREDIENTS (new 13 Oct; #95, `docs/PLAN-INGREDIENTS-TAB.md`).** (1) *Settings →
-    INGREDIENTS:* WORD MATCHES, SHOPPING AISLES and SWAPS are open, each with its count; DICTIONARY is one line, (140).
-    (2) *Tap WORD MATCHES:* it folds to one line. Leave Settings and come back: still folded. (3) *Type a word you know is in
-    one swap:* SWAPS opens showing (1 OF …); the others read (0 OF …). (4) *Clear the box:* WORD MATCHES is folded again, as
-    left. Open it again. (5) *Steps 1 and 2 on the phone:* nothing runs off the side. Writes nothing.
-
-56a. **Preparation as steps (new 13 Oct; #88, `docs/PLAN-PREP-STEPS.md`).** (1) *Open a recipe with "sliced" or "diced" lines:*
-    as today. (2) *Settings → APP → PREPARATION: AS STEPS IN THE FLOW; open it again:* each such line has a lighter step of its
-    own (e.g. *Thinly slice the …*) in the column before the step that uses it, and the hint above says PREPARATION SHOWN AS
-    STEPS. The timeline strip is unchanged. (3) *Tap the step that uses them:* the preparation steps tick too. (4) *The shopping
-    list:* unchanged. (5) *On the phone, open the same recipe:* as written (this device only). (6) *Set it back to BEFORE YOU
-    START.* Writes nothing.
-57a. **FINISH TOGETHER (new 13 Oct; #87 PR 3, `docs/PLAN-SIDES.md` §4.4).** (1) *Give one recipe the course Side, put it and a
-    longer timed recipe on one Planner day, group them and tap the GROUPED badge:* FINISH TOGETHER is lit above the timeline;
-    the side's lane ends where the main's does; the last mark reads SERVE; the main's header says START FIRST and the side's
-    START AT +… (ABOUT in front if the main has a step without a bracket time). (2) *Tap START TOGETHER:* both lanes start at
-    the left, the start times go, the last mark is a time again. (3) *Turn on COOKING MODE:* the timeline hides behind SHOW
-    TIMELINE; START AT stays on the side's header. (4) *A group with no Side:* opens in START TOGETHER, as before. (5) *The same
-    on the phone:* the two buttons wrap rather than run off the side. Writes nothing (the course change in (1) is an ordinary
-    edit; put it back if it was only for the test).
-
-*53a, 54a, 55a and 56a reported passed by the household, 13 Oct ("53a OK", "54a OK", "55a OK", "56a OK"). The steps
-within each were not reported one by one.*
-58a. **SERVE WITH in the recipe viewer (new 13 Oct; #87 PR 1, `docs/PLAN-SIDES.md` §4.2–4.3, §4.5).** (1) *Open a main that
-    says to serve it with something you have a Side recipe for (rice, naan, potatoes…):* under the chips, **SERVE WITH:** names
-    that side, or up to three, the one cooked most first. (2) *Tap a name:* that side's recipe opens; ← goes back as before.
-    (3) *A recipe whose only serving words are garnishes ("lime wedges, to serve") or "serve immediately":* no line. (4) *One of
-    another household's recipes (where sharing is on):* no line. (5) *On the phone:* the line wraps. Writes nothing.
-59a. **The Planner's SERVE WITH offer (new 13 Oct; #87 PR 2, `docs/PLAN-SIDES.md` §4.5–4.6).** (1) *Put a main that shows
-    SERVE WITH (58a) on a day from tomorrow on, cooking for a number other than its side is written for:* under it, **SERVE
-    WITH:** **+ <SIDE>** and **×**. (2) *Tap ×:* the offer goes; it stays gone until the app is reloaded. Reload. (3) *Tap
-    + <SIDE>:* a message says it was added, cooking with the main; the side is on the day at the main's number, and a
-    **GROUPED:** badge holds both. The offer has gone. (4) *Open the group:* FINISH TOGETHER (57a). (5) *A day where the main is
-    already grouped with another dish:* the + adds the side to that same group. (6) *GROUP SOME TOGETHER on a day with an
-    offer:* no offer while picking. (7) *×* the side off the day afterwards: the group dissolves, as for any dish. Writes the day
-    and the group, which (7) undoes.
-60a. **OFTEN WITH (new 13 Oct; #142, `docs/PLAN-SIDES.md` §9).** (1) *Open a recipe you have grouped with another dish before:*
-    under the chips (below any SERVE WITH), **OFTEN WITH:** names what it was grouped with, two at most, the most often first;
-    tap one: it opens. (2) *A recipe never grouped:* no line. (3) *Put that recipe on a day from tomorrow on, alone:* under it,
-    **OFTEN WITH:** **+ <RECIPE>** and **×**. (4) *×:* the line goes, until the app is reloaded. Reload. (5) *Tap +:* it joins
-    the day at the dish's number and a **GROUPED:** badge holds both; the line goes. (6) *A Side you have grouped with a main:*
-    on its own on a day, it offers the main. (7) *Take what you added off again with its ×.* Writes the day and the group,
-    which (7) undoes.
-
-*60a reported passed by the household, 14 Oct ("60a works OK"). The steps within it were not reported one by one.*
-
-*57a, 58a and 59a reported passed by the household, 14 Oct ("happy with 57a, 58a, 59a"). The steps within each were not
-reported one by one.*
-
-61a. **Quieter text is easier to read; the dark theme's tints show (new 14 Oct; READABILITY T, `docs/PLAN-READABILITY.md`).**
-    Colours only, nothing moves. (1) *Recipes, light theme:* the small grey words (COURSE and SORT above the filters, the
-    "3 OF 3" count, the dashed chips, the sidebar's SAVED VIEWS and EXPORT DATA and the "N RECIPES SAVED" line) are darker
-    than before and still the quietest text on the page; none is hard to read at the distance you cook from. (2) *Open a
-    recipe:* the line under the title (source, time, serves) and the hint under the grid read clearly; the quantity beside each
-    ingredient is still in its pale plum pill, no heavier than before. (3) *Planner:* the week labels, the day numbers, and
-    SERVES n and × on a planned dish read clearly; today's row has a faint tint, as before. (4) *Settings → APP → Appearance:
-    Dark,* then (1)–(3) again: the quantity pills are now visibly pills (they were not there at all), today's row is tinted, a
-    dish's GROUPED badge and the favourite and shortlist buttons that are on are tinted, and dragging across a few words of a
-    note shows a highlight. (5) *Put Appearance back to what it was.* (6) *If you use them:* PRINT / A4 PDF and EXPORT PNG of a
-    recipe look as the screen does, the small grey words a little darker. **Not changed on purpose:** the small green and gold
-    words (a card's MAIN · VEG tags, a day's course label, the favourite star) are still pale; say if they are hard to read.
-    Writes only the Appearance setting, which (5) returns.
-62a. **Bigger, clearer writing: the type scale (new 14 Oct; READABILITY S, `docs/PLAN-READABILITY.md`).** Sizes, fonts and the tick;
-    nothing is saved. (1) *Recipes:* every label, chip, count and card line is bigger and readable at cooking distance, nothing is
-    squashed, and the COURSE, SOURCE and KEYWORD labels are whole. (2) *Open a recipe:* the ingredients are 16px; each step's words
-    sit flush left at the foot of their box in the page's font, with the duration under them in the typewriter font; the buttons
-    above the recipe may run onto a second or third line. (3) *Tap an ingredient:* it is struck through on a plain tint with a
-    square tick at the right and none of its words under the tick; tap again, it goes back. The same for a step. (4) *COOKING MODE:*
-    the header is tidy. (5) *Planner and Shopping:* every row fits; the day, SERVES n and × are readable. (6) *On the phone:* History's
-    calendar days show a short name on one line; a recipe's buttons wrap and nothing is cut off. (7) *Dark theme:* (2) again.
-    (8) *PRINT / A4 PDF of a recipe:* the same number of sheets as before (a typical one is two). Writes nothing.
-63a. **Bigger tap targets (new 14 Oct; READABILITY H, `docs/PLAN-READABILITY.md`).** Sizes only; nothing is saved. (1) *Recipes:* the filter
-    chips, the SOURCE and SORT boxes and the keyword + ADD chip are taller and easy to hit; the star and + on a card look as before but
-    a tap just outside the circle still works; a tap anywhere along the search bar's height puts the cursor in it. (2) *Open a recipe:*
-    every button above it, COOK FOR's 2, 4, 6, 8, GO and RESET, and the COOKING MODE switch (now larger) are comfortable to press.
-    (3) *COOKING MODE:* the header is tidy, with RESET TICKS and SHOW TIMELINE together on one line. (4) *Planner:* × on a dish, SERVES n,
-    + CHOOSE A RECIPE, + ADD ANOTHER, the GROUPED badge and COOKED ✓ need no aiming; the days sit closer together than a plain 44px
-    row would leave them. (5) *The side menu:* SAVED VIEWS, NEW RECIPE, EXPORT DATA, IMPORT DATA and SIGN OUT are all in view without
-    scrolling, each with room around it (look, don't tap SIGN OUT). (6) *On the phone:* the top bar's links, NEW RECIPE and the
-    Planner's buttons are comfortable to press. Writes nothing.
-64a. **Keyboard focus (new 14 Oct; READABILITY F, `docs/PLAN-READABILITY.md`).** Looks only; nothing is saved. (1) *Recipes:* tap the search
-    bar. A plum outline now shows round the whole bar, and the cursor is in it. (2) Tap **+ ADD** beside the keywords. The keyword box has
-    a plum outline while you type. (3) *Planner:* tap the Shortlist name box. It has the outline too. (4) *The add-recipe screen:* the
-    paste box and the boxes below it each show the outline when tapped. (5) *Settings:* the same for the boxes on the INGREDIENTS and APP
-    tabs. (6) *The side menu:* if a keyboard is attached, press Tab and each link shows its outline wholly inside its row, not cut off at
-    the menu's edges. (7) *Dark theme:* (1) again; the outline is the lighter plum. Writes nothing.
-65a. **One corner (new 14 Oct; READABILITY R, `docs/PLAN-READABILITY.md`).** Looks only; nothing is saved, and nothing moves. (1) *Recipes:*
-    the star and + on each card are small squares with slightly rounded corners, not circles, and a tap just outside one still works.
-    (2) *Open a recipe:* the 2, 4, 6, 8 buttons, GO and RESET, and the COOKING MODE switch, whose thumb is a square, all have the same
-    corners as the other buttons. (3) *Planner:* the + beside CHOOSE A RECIPE and ADD ANOTHER, and the SERVES and COOKED labels, are
-    squares and rectangles too. (4) *Settings and the add-recipe screen:* the boxes share one corner. (5) *Print and EXPORT PNG* of a recipe:
-    the same as the screen. Writes nothing.
-66a. **The Modernist style (new 15 Oct, revised 18 Oct for 2026-10-18.1; `docs/PLAN-MODERNIST.md`).** Mostly looks: the style is in
-    this device's storage (`kitchen.style`); (3) adds a shortlist entry and deletes it, (8) writes a tick and removes it, (11) changes
-    Appearance and puts it back; in (4) tap boxes outside the last column, which would log the recipe as cooked. On the tablet in
-    landscape: (1) *Settings → APP → STYLE → MODERNIST:* the whole app changes at once, "Recipe Wrangler" and numbered links in the
-    side menu. (2) *Reload:* still Modernist, with no flash of Classic. (3) *Recipes:* title and count beside the search, three cards
-    to a row, photos in colour, every card at full height down the whole list (19 Oct: they were strips 20px tall), two to a row when the
-    tablet is turned upright; the card's + then ✓ puts a recipe on the shortlist and takes it off. (4) *A recipe:* the large title
-    with SERVES and the tick count; square flow boxes, the last column red; two ticks raise the count and RESET TICKS clears the boxes
-    and puts the count back to 0 / N; cooking mode shows the red bar and folds the side menu to a strip, which opens and folds again.
-    (5) *EXPORT PNG and PRINT / A4 PDF* of a recipe: as on screen. (6) *Planner:* the menu folded; week bands with dates and counts;
-    the shortlist's › folds it to a strip and the strip opens it; the red SHOPPING LIST block opens the list. (7) *Planner pills:*
-    SERVES and PRE-MADE (each question cancelled) answer the first tap without catching the dish's name. (8) *Shopping:* two columns,
-    square boxes; a tick turns red, fades the row and moves both counts; EXPORT PNG has the squares and leaves ticked rows out.
-    (9) *History:* square arrows, today ringed in red, COOKED and AD HOC under days; a picked day fills with ink; the meal-base mixes
-    are bars with no two meal bases alike (striped after five). (10) *Settings:* tabs as words, the open one underlined in red.
-    (11) *APPEARANCE dark then back:* Modernist in dark. (12) *Only with PREPARATION as steps:* a step that cooks prepared ingredients
-    is grey with a black bar, not a black merge box. (13) *STYLE → CLASSIC:* exactly as before. *Keyboard, optional, either style:*
-    Enter on a card's + adds it to the shortlist without opening the recipe.
-67a. **Liquids in spoons or ml (new 18 Oct; `docs/PLAN-LIQUID-MEASURES.md`).** Looks only; writes nothing. Tick one liquid row on the
-    shopping list before reloading into the new version. (1) *COOK FOR* past 50 ml on a recipe with an oil in tbsp: the line reads in ml;
-    RESET restores the tbsp as written. (2) A spice or paste in spoons, doubled: stays in spoons. (3) Honey or syrup in grams, doubled:
-    stays in grams. (4) *Shopping:* a liquid from 50 ml reads in ml with the spoon lines in brackets, under 50 ml in spoons, and the
-    ticked row is still ticked.
-
-68a. **EST. beside an estimated time (new 18 Oct; version 2026-10-18.4).** Writes one recipe's TIME and restores it (use Test Kitchen).
-    (1) *EDIT, TIME `est. 40 min`, SAVE:* the card shows an EST. tag before 40 MIN and a plain 35 min shows none. (2) *The recipe's line*
-    reads SOURCE · EST. 40 MIN · …; the tag's title says it was estimated from the steps. (3) *Planner and shortlist:* the same tag,
-    the Planner's time on one line and clear of SERVES. (4) *Weeknight, under 30 min* lists a Weeknight recipe with `est. 25 min`.
-    (5) *Type the real time back:* the tag goes with the old figure.
-
-69a. **Add several recipes at once (new 19 Oct; version 2026-10-19.1; `docs/PLAN-BULK-ADD.md`).** Writes three recipes, which step 7 deletes (use Test Kitchen).
-    (1) *ADD SEVERAL* opens a dialog; pasting the three made-up recipes in `docs/HOUSEHOLD-JOBS.md` reads them at once and says "3 read: 2 ready,
-    1 held back", the held one naming SERVINGS and its line. (2) *Nothing is written* by reading: Recipes still has its old count behind the
-    dialog. (3) *Untick one:* the button counts 1 fewer. (4) *SHOW THE RECIPE* draws its table. (5) *ADD:* the recipes are in Recipes at
-    once, the new tags are in the filter row, and the result panel lists them with OPEN. (6) *OPEN* lands in that recipe's edit form.
-    (7) *Paste the same recipe again:* it shows as already in the library (same link), unticked. Delete the three recipes.
-70a. **The Recipes filter sheet (new 19 Oct; version 2026-10-19.3; `docs/PLAN-MODERNIST.md`, "The filter sheet").** Modernist only; writes nothing
-    (filters are in memory). On the tablet in landscape: (1) *Recipes:* one header line (title, count, search, black FILTERS), no filter rows,
-    and with the OUR RECIPES / TEST KITCHEN'S band showing the cards fill at least 75% of the page. (2) *FILTERS:* a 440px panel slides in
-    from the right over the whole app, side menu included, the rest dimmed; COURSE, SOURCE, SORT, every KEYWORD with its count. (3) *A course,
-    then a keyword:* the recipes behind change at once; the red foot button counts what is left (SHOW n RECIPES); the list keeps its scroll.
-    (4) *SORT A – Z:* re-orders. (5) *SHOW:* closes it; chips for each filter and SORT: A – Z, a red count on FILTERS, CLEAR ALL; the ×, a tap
-    on the dim and Esc close it too. (6) *A chip:* removes its filter; CLEAR ALL clears all and the row goes, leaving no gap. (7) *Five filters:*
-    the chips stay on one line with a +N that opens the panel. (8) *The find field (version 2026-10-19.4):* opening the panel raises no keyboard; the keywords are ordered
-    on-first then by use; tapping the box raises it, and typing narrows the pills (any part of a word, any case); a word nothing has says "No
-    keyword matches — Enter to add" and Enter makes it a chip and a pill at the head; + ADD puts the cursor in the box; reopening empties it. (9) *A saved view:* one chip with its name. (10) *STYLE → CLASSIC:* its rows as before.
-71a. **PRE-MADE in a household that started empty (new 20 Oct; version 2026-10-20.1).** In the family's household, after a reload: (1) a
-    dish on a future day shows PRE-MADE beside SERVES, in both styles; (2) PRE-MADE asks the meal and reads PRE-MADE · <MEAL>; tapping it
-    again makes it fresh with no question. *(1) reported by the household on 20 Oct, on the tablet; (2) still to do.* Before 2026-10-20.1 the switch was decided by a `premade` key on a planner or diary row, so a
-    household with neither had none, and its saves left the column out (the edge logs show it, 20 Oct 06:12 UTC).
-72a. **The first changes from the tablet review (new 20 Oct; version 2026-10-20.3; `docs/PLAN-MODERNIST.md`, "The tablet review, first batch").**
-    Modernist, on the tablet in landscape; writes nothing. (1) *A recipe:* the header on two rows (three with a SERVE WITH line), so the pinned header
-    and COOK FOR bar are about a quarter of the screen (21 to 27% on every recipe in the household's library, from 32 to 38%). (2) *EDIT, scroll:* SAVE
-    CHANGES stays at the foot of the screen with a rule above it. (3) *A card:* the star and a list-with-plus picture, not a bare +; tapping it ticks it
-    and the ✓ takes it off. (4) *OUR RECIPES / TEST KITCHEN'S RECIPES:* 44px tall. (5) *An empty day on the Planner:* the whole row answers; the "choosing a
-    recipe" bar's MARK DAY AWAY and CANCEL are 44px. (6) *SHOPPING → AUDIT:* each line's aisle box and MERGE WITH… are 44px. (7) *SETTINGS:* scroll
-    INGREDIENTS down, tap LIBRARY, APP or HELP: each opens at its top. Not verified on the tablet itself. Not changed: a recipe of more than five steps
-    scrolls sideways to its last column (54 of 71 recipes), which `docs/PLAN-PREP-STEPS.md` §8 accepts.
-73a. **The second batch from the tablet review (new 20 Oct; version 2026-10-20.4; `docs/PLAN-MODERNIST.md`, "The tablet review, second batch").**
-    Modernist, on the tablet; (1) to (4) held upright, (5) to (7) sideways. (1) *RECIPES:* the sidebar is the 56px rail (it was 228px), the cards are three
-    columns of 240px or more (195px before); tapping the rail opens the 228px menu over the page and ‹ or a choice folds it. (2) *HISTORY:* no
-    sideways scroll, all seven weekday labels, days 56px or wider (34px before), ‹ and › on one row beside the month's name (40px upright) for every month. (3) *SHOPPING:* every toolbar button on the screen, wrapping to a second row.
-    (4) *SETTINGS and PLANNER:* the rail, nothing off the right edge. (5) *PLANNER, ×:* the dish goes at once, a bar in the day says "Removed “…”" with a
-    44px UNDO; UNDO restores the entry exactly (order, people, calendar and reminder switches) and its group, writing one `planner_days` row and one
-    `meal_groups` row; the bar goes after ten seconds or on leaving the Planner; if the day was changed meanwhile there is no bar and nothing is
-    written over it. (6) *A recipe wider than its pane (more than five steps at this size):* a 32px dark square with an arrow at the table's top right, fixed on screen while the
-    table scrolls, gone at the right end, back at the left; none on a recipe that fits. (7) *EXPORT PNG* (recipe and group) and print leave it out.
-    Not verified on the tablet itself, nor against the live database (the two planner writes are the same ones a save makes).
-74a. **The denser Planner (new 20 Oct; version 2026-10-20.5; `docs/PLAN-MODERNIST.md`, "The Planner, denser").** Modernist, tablet landscape; writes nothing but
-    (5). (1) *A dish is one line:* name, then course, time and pills, then the ×; a long name wraps whole, never "…". (2) *Days on screen:* six or seven of the
-    fortnight (three before); an empty day is a 57px button across its row (85px before); the first day 93px from the top (115), 14px between weeks (24).
-    (3) *ADD ANOTHER / GROUP SOME TOGETHER:* drawn 28px, the tap 44px, 18px under the dish above. (4) *Every button 44px to tap:* 21px above and below its middle
-    answers (the smoke check points at each). (5) *×, then UNDO.* (6) *A narrow window (1100px, shortlist open):* the course, time and pills drop together under
-    the name, as before. A phone and Classic unchanged. (7) *With the calendar connected (version 2026-10-20.6):* IN CALENDAR and REMIND ME on ADD ANOTHER's line at the right (under it, still at the right,
-    when too narrow); ADD ANOTHER, IN CALENDAR, REMIND ME and ADD THE WEEK each 44px to tap. Not verified on the tablet itself, nor against the live database.
-
-75a. **A calendar reminder per meal (new 20 Oct; version 2026-10-20.7; `docs/PLAN-CALENDAR-PUSH.md` §12).** After `add-calendar-items.md` is applied and the new
-    `calendar-sync` deployed (both done 20 Oct; read back by a session, which found no day yet saved with a setting per dish); tablet, calendar connected; writes a second dish and its reminders, undone at the end. (1) *A day with one meal* (one dish or a group
-    alone): the strip as before. (2) *A second dish:* REMIND ME 20:00 on each dish, after its pills, the × the last of its group so never alone on a line; the new dish in the
-    calendar without a reminder; the strip IN CALENDAR alone. (3) *One dish's reminder:* a `planner_days` write with `calendar_items` one per dish, `calendar` and
-    `calendar_remind` as "some"; then `calendar-sync` for that date. (4) *The phone:* one event with both dishes when both are reminded or neither; two events (the pop-up on the
-    reminded one only) when they differ. (5) *GROUP SELECTED:* one REMIND ME on the GROUPED bar, the stronger state, one event. The bar is three controls: its name opens the
-    group, REMIND ME, UNGROUP. (6) *UNGROUP:* each dish as it was. (7) *AUTOMATICALLY REMIND ME FOR MAIN MEALS:* a Main's meal gets the reminder, a side beside it does not. Before the SQL: the
-    Planner is as before, one REMIND ME a day. Every button 44px to tap. Not verified on the tablet itself, nor against Google or the live database.
-*75a reported done by the household, 20 Oct, with a screenshot. Read-only afterwards: Saturday 24 Oct saved at 19:42:32 UTC with `calendar_items` `{in,remind}`, the day's flags
-true, and a sync at 19:42:58 UTC with no error. In Google (read through the Calendar connector at about 20:05 UTC): 24 Oct has two events, one without a reminder and one with
-the 20:00 pop-up. Not seen: a reminder arriving on a phone, and which of (5) to (7) were done.*
-76a. **A recipe opens at the day's SERVES (new 21 Oct; version 2026-10-21.1).** Either style, Test Kitchen; writes nothing. (1) *SERVES 8 on a recipe written for 4, then
-    its name on the Planner:* the card reads SERVES 8 (SCALED FROM 4), amounts doubled, ← PLANNER. (2) *RESET:* as written; back to the Planner and in again, it opens at 8 again.
-    (3) *The same recipe twice on a day, one at 8 and one left alone:* each opens at its own. (4) *From RECIPES:* as written. Smoke checks cover (1), (3) and (4) and that nothing is
-    written; the tablet is not verified.
-77a. **+ OTHER on a Planner day (new 21 Oct; version 2026-10-21.2; `docs/PLAN-ADHOC-PLANNER.md`).** Either style, Test Kitchen; one made-up entry, removed in (6). (1) *The button:* on
-    every day, at the right of CHOOSE A RECIPE on an empty day, beside ADD ANOTHER on a day with dishes, absent on an away day. (2) *The dialog:* "Add to the Planner",
-    that day's date, the names used before, four meals; ADD stays on the Planner, with the entry under the dishes tagged DINNER · AD HOC and a ×. (3) *The row:* plain text, no
-    SERVES, PRE-MADE, COOKED ✓ or calendar button; the shopping list and the sidebar's recipe count unchanged. (4) *History:* the same entry on that day; Modernist's week band
-    counts it. (5) *A day of only entries* still offers CHOOSE A RECIPE and + OTHER. (6) *×:* a day to come, no question; today, a question. (7) *The phone:* an empty day's two
-    buttons on one line, nothing past the edge. Smoke checks cover (1) to (7) except the feel of it; the tablet and phone are not verified.
-*77a reported done by the household, 21 Oct: "tests OK" and "visually OK" (which look, and whether the phone step was done, not said). Read-only afterwards: one `recipe_logs`
-insert (09:41:53 UTC) and one delete (09:41:36 UTC) since the merge, in the family household, not Test Kitchen; fewer writes than the steps make, so what was done is the household's word.*
-78a. **An entry's meal, and a shortlist note onto a day (new 21 Oct; versions 2026-10-21.3 and .4; `docs/PLAN-ADHOC-PLANNER.md`, PRs 2 and 3).** Either style, Test Kitchen; one made-up entry and
-    one made-up note, taken off in (6). (1) *The tag:* an entry's AD HOC / DINNER · AD HOC is a button with a dotted line under it. (2) *Tap it:* "Which meal is it?", the four meals and CLOSE, the entry's
-    meal marked; a meal sets it, the day reads MEAL · AD HOC. (3) *The marked meal again* takes it off; CLOSE changes nothing; the prompt after cooking a dish is still "Which meal was that?" with SKIP (smoke checks cover it; nothing is cooked on the tablet for this step).
-    (4) *A shortlist note:* picked, it reads SELECTED — TAP A DAY and the bar names it; tapped again it lets go. (5) *A day tapped:* the note becomes an AD HOC entry there, with its own words and no meal, and
-    leaves the shortlist. (6) *×* takes the entries off. (7) *The phone.* Smoke checks cover (1) to (5) in both styles' markup and the tag's tap area at four widths; the look and the phone are not verified.
-
-## Deferred to the tablet, after merging
-
-- **Keep Awake** on both the Recipe and Group Viewers. It cannot be tested on a desktop browser in
-  any meaningful way — the failure mode is a screen that dims twenty minutes later. *Reported working on the Android tablet
-  by the household, 30 Sep 2026* (which viewer, and which method the status line named, not stated).
-- The sidebar peek and general reachability with wet hands at arm's length.
-
-## If something fails
-
-Tell me the step number, what you saw, and anything red in the console. Useful to know:
-
-- Your data is in Supabase, not the browser, so clearing site data or closing the tab loses nothing.
-- **`main` IS production.** GitHub Pages serves from it and every merge redeploys the live app
-  within minutes. This line used to say the opposite; it was wrong from PR #1 onwards. To roll
-  back, revert the merge commit on `main` — Pages will redeploy the previous build.
-- If a screen throws, the console error and the step that triggered it is usually enough for me to
-  find it without you digging further.
-
-## After a clean pass
-
-*(History: this section was written for the 21 Sep pass. That pass was clean and the merge it describes is long done;
-`main` is the trunk and production. Noted 12 Oct 2026, the October review's F13.)*
-
-Merging `claude/recipe-app-supabase-0z139o` into `main` is what puts it on the tablet, and is the
-go-live moment for the Supabase migration as a whole.
-
-**The library reprocess that used to come next has already happened** (20 Sep, ahead of this pass
-rather than after it — see `docs/HANDOVER.md` §3). So after a clean pass the next step is the
-merge itself, and then image re-hosting (R7). The two open questions this section used to list
-are both resolved:
-
-1. **~~There is nowhere to record where a recipe came from.~~** Resolved. `SOURCE_URL:` is now
-   read by `parseRecipe` and carried in the syntax, and 32 of the 33 recipes have one, so a
-   future reprocess starts from the actual page rather than a site name. The one gap is
-   Victoria Sandwich.
-2. **~~Order the flagged ones first.~~** Resolved by the 20 Sep ingestion. All four dishes with
-   known-wrong structure — the granola clusters, No-Bake Chocolate Oat Bars, the almond butter
-   oatmeal bars and the chocolate chunk cookies — were restructured, and the three redundant
-   granola versions were deleted. The third scan in `converter/test-set.md` records the
-   before-and-after for each.
-
-   **Worth checking with your own eyes during this pass**, since the fix has only ever been
-   confirmed against the parser, not in a kitchen: open Maple Almond Granola Clusters and
-   confirm the vanilla sits in its own box joining *after* the syrup comes off the heat.
-
-S2 dark mode shipped 22 Sep and is covered by the smoke suite; the thing worth a human eye is
-contrast on the real tablet, which no headless check can judge.
-
----
-
-## Re-reading the expected counts
-
-Run this before every pass and replace the table at the top with what it returns. The counts
-went stale between 21 and 22 Sep and produced a section of confidently wrong guidance, which is
-the failure this query exists to prevent.
+Re-read these from the database **before every run** and write them down; a stale count reads as a failure. The query:
 
 ```sql
 select (select count(*) from recipes)          as recipes,
@@ -996,45 +34,125 @@ select (select count(*) from recipes)          as recipes,
        (select max(date_iso)::text  from meal_groups)          as newest_meal_group;
 ```
 
-**Read the last two.** If `newest_planner_day` is in the past, an empty Planner is correct. If
-it is in the future, an empty Planner is a bug. That one distinction is what the 21 Sep version
-of this document got wrong for a day.
+Run it as the household under test (the dashboard's SQL editor sees every household, so add `where household_id = '…'`).
+The planner may legitimately show "Recipe removed" for a day whose recipe was deleted: `planner_days.recipe_ids` and
+`meal_groups.recipe_ids` are plain `uuid[]` with no foreign key. It must render as a placeholder, not throw. A keyword in the
+vocabulary that nothing is tagged with is expected (the converter never guesses occasion tags).
 
-**Then the header drift.** `docs/ARCHITECTURE.md` §2 makes the recipe text the truth and the
-columns a parse of it, and since 24 Sep (PR 4) the save rewrites every header line from the
-form. This counts the recipes where a line and its column still disagree. Every column should
-be 0; a non-zero count names a recipe that is one PARSE & PREVIEW away from reverting an edit.
-On 23 Sep, before PR 4, it found 3 recipes: a `SOURCE:` line, a missing `SERVINGS:` line, and
-two `TAGS:` lines (one of them on the servings recipe) — the review had counted two, because its
-query never compared `TAGS:`.
+## A. Foundations
 
-```sql
-with h as (
-  select id,
-    substring(syntax from '(?m)^TITLE:[ \t]*(.*)$')              as l_title,
-    substring(syntax from '(?m)^SOURCE:[ \t]*(.*)$')             as l_source,
-    substring(syntax from '(?m)^(?:SOURCE_URL|URL):[ \t]*(.*)$') as l_url,
-    substring(syntax from '(?m)^IMAGE:[ \t]*(.*)$')              as l_image,
-    substring(syntax from '(?m)^TIME:[ \t]*(.*)$')               as l_time,
-    substring(syntax from '(?m)^SERVINGS:[ \t]*(.*)$')           as l_serv,
-    substring(syntax from '(?m)^EQUIPMENT:[ \t]*(.*)$')          as l_equip,
-    substring(syntax from '(?m)^TAGS:[ \t]*(.*)$')               as l_tags,
-    trim(both ', ' from concat_ws(', ',
-      case when coalesce(tags->>'course','') <> '' then 'course=' || (tags->>'course') end,
-      (select string_agg(k, ', ') from jsonb_array_elements_text(coalesce(tags->'keywords','[]'::jsonb)) k)
-    )) as col_tags,
-    title, source, source_url, image_url, time_text, servings, equipment
-  from recipes)
-select count(*) filter (where coalesce(l_title,'')  <> coalesce(title,''))            as title_drift,
-       count(*) filter (where coalesce(l_source,'') <> coalesce(source,''))           as source_drift,
-       count(*) filter (where coalesce(l_url,'')    <> coalesce(source_url,''))       as url_drift,
-       count(*) filter (where coalesce(l_image,'')  <> coalesce(image_url,''))        as image_drift,
-       count(*) filter (where coalesce(l_time,'')   <> coalesce(time_text,''))        as time_drift,
-       count(*) filter (where coalesce(l_serv,'')   <> coalesce(servings::text,''))   as servings_drift,
-       count(*) filter (where coalesce(l_equip,'')  <> coalesce(equipment,''))        as equipment_drift,
-       count(*) filter (where coalesce(l_tags,'')   <> coalesce(col_tags,''))         as tags_drift
-from h;
-```
+1. **Sign in.** The library appears with the expected recipe count and no console errors.
+2. **Hard reload** (Ctrl/Cmd-Shift-R). You stay signed in; same count.
+3. **Sign out, then back in.** The riskiest path: any throw during hydration signs you straight back out, which shows as a login
+   screen you cannot get past.
+4. **Counts** match the table above: shortlist in the sidebar, keywords and sources in Settings, swaps in Settings → INGREDIENTS.
+5. **One small change, then hard reload.** Favourite a recipe. If it survives, it reached the database, because the page rebuilds
+   entirely from Supabase on load. This is the only way to see the write queue working.
+6. **A second tab** shows the change after switching to it and back (coming back to a tab re-reads the library).
 
-A recipe this names is fixed by opening it, pressing EDIT and then SAVE RECIPE with nothing
-changed: the save rewrites its header lines from the form.
+## B. The everyday features
+
+7. **Week start.** Settings → APP → change to Sunday: Planner, Shopping and History re-bucket together. Put it back.
+8. **History calendar.** Columns start on the chosen day; every date sits under the right weekday.
+9. **Scaling.** COOK FOR 6 on a recipe with servings: quantities scale, the line reads `SERVES 6 (SCALED FROM n)`, RESET returns it,
+   nothing is saved.
+10. **Servings required.** Edit a recipe, clear the servings, try to save: refused.
+11. **Planner servings.** SERVES set to 6 lights up, survives a reload, and the shopping list quantities follow.
+12. **Shopping totals.** An ingredient two recipes share is one row in one unit (500 g and 1 kg read 1.5 kg); a count and a weight
+    share a row (`2 + 400 g`).
+13. **Hide ticked, clear ticks.** Tick some, hide them, show them, clear them.
+14. **Both weeks.** Tick something in BOTH WEEKS; it must not appear ticked in a single week (they keep separate ticks).
+15. **Word matches.** The list never asks in a dialog. If a "Same as X?" line appears, MERGE or KEEP APART; both appear in
+    Settings → INGREDIENTS → WORD MATCHES and are not offered again. **MERGE WITH…** on any row exercises the same path.
+16. **Swaps.** Store a swap for something planned; the shopping list's POSSIBLE SWAPS names it, and a swap for "butter" does not flag
+    "peanut butter".
+17. **Viewer ticks.** Tick three steps, change COOK FOR: ticks survive. RESET TICKS clears them without leaving the recipe.
+18. **Sidebar.** At about 1000 px wide, opening a recipe slides the sidebar shut; the tab brings it back.
+19. **Group Viewer.** Open a group from the Planner: START TOGETHER / FINISH TOGETHER, ticks, PNG and print; OPEN → on a dish and
+    back keeps the ticks.
+
+## C. Export and import
+
+20. **EXPORT DATA.** The file has `version: 3`, a `diary` array (meal types and ad-hoc entries), and `settings` and `aliases`.
+21. **IMPORT DATA** straight back: counts unchanged. This rewrites everything, so do it only with that export in hand.
+
+**Keep the export.** It is your undo for the session. The nightly backup in `PrivateBackup` is the other one.
+
+## D. Two devices at once
+
+Reload the app on both first (a tab opened before a merge runs the old code). Call them A (desktop) and B (phone or tablet).
+
+22. **A stale device must not delete a new recipe.** On A add a recipe. On B, without switching tabs, favourite any recipe. Reload A:
+    the new recipe is still there. Reload B: it appears.
+23. **A stale device must not undo an edit.** On A edit a recipe's text and save. On B, still stale, favourite that same recipe.
+    Reload A: the edit survived and the favourite shows (`updated_at` moved twice).
+24. **A delete tidies up.** On A plan, group and shortlist a recipe, then delete it. The Planner shows the day without it and
+    without a group; the shortlist does not say "Recipe removed". Reload B: the same.
+25. **Ticks add up.** Tick different items on A and B for the same week: both show on both.
+26. **A save made offline is kept.** Turn the network off on B and favourite a recipe: the gold OFFLINE bar appears and stays. Turn it on:
+    "Back online — sending your changes" (if the write had failed). Reload B: the favourite shows. Do not expect a "Couldn't save"
+    toast: an offline write can wait about 30 seconds behind supabase-js's session refresh first.
+
+Then run the count query again; nothing should have changed but what you changed.
+
+## E. Shopping list naming (after any change to `shoppingLine` or a dictionary row)
+
+27. **Fewer, fuller rows.** A shared ingredient is one row listing both recipes; spoons of one thing add (`1 tbsp + 1 tsp`); a line
+    with no amount says what it is for.
+28. **Nothing wrongly joined.** Read every row once. Garlic cloves and cloves (the spice), cinnamon sticks and ground cinnamon,
+    coriander and ground coriander, spring onions and onions, butter and unsalted butter each stay separate. A wrong join costs a
+    missed ingredient at the shop.
+29. **Aisles.** Produce, Pantry and Spices land where expected; note anything unexpected under Other.
+30. **Ticks stick.** Tick three rows, reload: still ticked. Tick one on the tablet, switch tabs on the other device: it shows there.
+    **A change to how ingredients are named re-keys every tick**, so run "Re-measuring the live library" (`test/README.md`) first.
+31. **No questions.** Opening the list, changing the week and planning a recipe never show a dialog.
+
+## F. Where recipes come in
+
+32. **The source's own list.** Open a recipe that has a source address, EDIT, COMPARE WITH SOURCE. Note whether a list comes back; a
+    site that refuses gets "no ingredient list the check can read" and is compared by eye (or by pasting its list).
+33. **What the comparison shows.** A highlighted row is on one side only, or paired but different with a reason. A US name made
+    British is fine; a different ingredient or amount is not.
+34. **Warnings, never a gate.** Add a made-up recipe with `400 ml tin plum tomatoes` and `1 lemon or lime`: the preview names both;
+    USE THIS rewrites the first to `400 g plum tomatoes (1 tin)`. It saves with the second warning showing. Delete it.
+
+## G. Images (after any change to how images are saved or the library is loaded and refreshed)
+
+About 25 minutes at a desktop; steps 6 and 7 want devtools or the SQL editor. **Do not take a green `smoke.js` as covering any of
+this**: the suite stubs Supabase and can only show that the app *asks* for a re-host. Take an export first.
+
+35. **Add a recipe with an external photo** (any recipe page with a decent photo; fill in SERVINGS). The card appears with the photo.
+36. **The photo becomes ours.** After about five seconds, EDIT → IMAGE URL now begins
+    `https://mhkayefzrtceesgizkjs.supabase.co/storage/v1/object/public/recipe-images/`. Close without saving.
+37. **It survives a reload.**
+38. **It survives someone else's save. This is the step to stop on.** Favourite an unrelated recipe, hard reload, reopen the test
+    recipe's IMAGE URL: still `supabase.co`. If it has reverted to the source site's address the feature is undoing itself silently,
+    and nothing on screen looks wrong (the photo still displays, because the source still serves it).
+39. **Replacing a photo.** Paste a different external address over it and save: the new photo shows at once; after five seconds the URL is
+    `supabase.co` again, now ending `?v=<digits>`.
+40. **The text agrees with the database** (expect 0):
+    ```sql
+    select count(*) from recipes
+    where image_url is not null and image_url <> '' and syntax like '%IMAGE:%'
+      and position('IMAGE: ' || image_url in syntax) = 0;
+    ```
+    and `objects`, `self_hosted` and `with_image` from `docs/IMAGES.md` §7 agree.
+41. **Settings → LIBRARY → RECIPE PHOTOS → CHECK STORED IMAGES** reports all intact; **RE-HOST EXTERNAL IMAGES** reports
+    "0 copied in" (the save path already did the work: 0 is the pass).
+42. **Offline.** With the network off, edit a recipe's image address and save: the editor closes and a "Couldn't save" toast appears;
+    the change is in this tab only. Go back online **without reloading**, favourite any recipe (any ordinary save re-sends the failed
+    write), then run RE-HOST EXTERNAL IMAGES: "1 copied in".
+43. **Leaving the tab while offline** (this used to sign you out): go offline, click another tab and back. Still signed in. Online, the
+    same.
+44. **Coming back to the recipes by the sidebar** after an edit shows the new photo.
+
+Tidy up the test recipe afterwards.
+
+## If something fails
+
+Note the step number, what you saw, and anything red in the console. Your data is in Supabase, not the browser, so clearing site
+data or closing the tab loses nothing. **`main` is production:** to roll back, revert the merge commit; Pages redeploys the previous
+build.
+
+**Not covered here:** Keep Awake / COOKING MODE can only be judged on a real tablet (the failure mode is a screen that dims
+twenty minutes later), and so can reachability with wet hands at arm's length.

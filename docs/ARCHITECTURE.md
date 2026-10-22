@@ -1,15 +1,13 @@
 # Kitchen App — How it works
 
-For someone who has never seen this project. Explains the shape of the app, the recipe
-format it's built around, and the database behind it. Written and verified against the code on 14 Sep 2026; §4 (the
-database, Storage and the Edge Functions), the line counts in §3 and the test counts in §5 checked again against the code
-and the live project on 12 Oct 2026 (the October review's F12). Other sections carry their own dates.
+For someone who has never seen this project: the shape of the app, the recipe format it is built around, and the database behind
+it. What the app *does*, screen by screen, is `docs/SPEC.md`. Trimmed 22 Oct 2026; §4 (the database) was last checked against the live project on 12 Oct.
 
 ---
 
 ## 1. What the app is
 
-A personal recipe app for one household, used mainly from a tablet propped up in a kitchen.
+A personal recipe app for a few households of one family (each with its own data), used mainly from a tablet propped up in a kitchen.
 It stores recipes, plans meals across a fortnight, builds a shopping list from that plan,
 scales recipes to a number of people, and keeps a history of what was cooked when.
 
@@ -103,14 +101,12 @@ Recipes are written by pasting a source into a conversion prompt; see
 ## 3. The app's shape
 
 Two files, no build step, no framework, no dependencies beyond two CDN scripts (supabase-js and
-html2canvas). **`index.html`** (10,668 lines on 12 Oct 2026) is the page: markup, styles, the data layer and
-every screen. **`core.js`** (1,962 lines on 12 Oct 2026; 850 when it was split out on 25 Sep, about 1,140 after PR 6b) holds the pure functions —
+html2canvas). **`index.html`** is the page: markup, styles, the data layer and
+every screen. **`core.js`** holds the pure functions —
 `parseRecipe`, `computeColumns`, `splitQty`, `scaleRecipeSyntax`, the quantity and naming helpers,
 the header-line writers, and since PR 6b the shopping list's naming and totalling — and the ingredient dictionary. It touches nothing on the page, so it
 loads in Node for testing as well as in the browser. The page loads it first and checks a shared
-version stamp, asking for a reload if the two files ever arrive at different versions. *(Until
-25 Sep this paragraph said "one file"; the split is PR 6a, made because the shopping-list release
-rewrites exactly these functions and their tests should not need a browser.)* Screens are
+version stamp, asking for a reload if the two files ever arrive at different versions. Screens are
 `<section class="view">` elements toggled by `showView(name)`.
 
 **The data pattern is deliberate and worth understanding before changing anything.** The whole
@@ -153,12 +149,36 @@ rather than `.single()` — a household with no settings row must come back as `
 `hydrate(opts)` asks `opts.shouldApply()` once, after every fetch and before any assignment, so a
 refresh lands whole or not at all.
 
+### Coming back to a tab: why the refresh exists, and its four rules
+
+supabase-js emits `SIGNED_IN` **every time the tab goes hidden → visible**, with no network call, so offline too (verified in the
+`@supabase/auth-js` source, `_onVisibilityChanged` → `_recoverAndRefresh`). The app used to answer each one by re-downloading
+everything and signing out if that failed, so leaving the tab while offline and coming back signed you out. It now answers the
+first with `startApp()` and every later one with `refreshLibrary()`.
+
+**That refresh is load-bearing; do not remove it.** Until row-scoped writes, a save pushed the whole cached table and deleted
+what it did not hold, so a tablet left open since the morning would overwrite another device's work and delete its new recipes
+(cascading their cooking history). The refresh is what stopped that. It is now a convenience rather than the last line of defence,
+but it must never lose anything, so:
+
+| It | Because otherwise |
+| --- | --- |
+| waits for the write queue to empty before reading | it reads the server before this tab's own saves arrive, and replaces them |
+| stands down while any save has failed | the tab holds a change the server lacks, and the refresh would silently undo it |
+| discards what it fetched if anything changed mid-fetch | the change is wiped from the cache, then pushed back as a loss |
+| on any failure, does nothing | a refresh is an opportunity, never a reason to sign anyone out |
+
+A failed save clears only when a later save of the whole table or row succeeds (then the server provably matches the tab). The
+labels that can block a refresh are an allowlist, so one added later defaults to blocking. Starting up offline does not sign you out
+either: the gate says the server could not be reached and keeps the session; a non-network failure (an account not linked to a
+household) still signs out. `showView('recipes')` redraws the grid on entry, because a re-hosted photo can arrive while it is hidden.
+
 ### The functions worth knowing
 
 | Function | What it does |
 | --- | --- |
 | `parseRecipe(text)` | Turns recipe syntax into `{title, source, sourceUrl, servings, groups, stages, notes, unread, ...}`. The single source of truth for the format. `unread` lists the lines it read past (a GROUP with a hyphen, a stray line under a STAGE), shown in the preview since 27 Sep; it changes nothing about what is parsed. |
-| `computeColumns(groups, stages)` | Lays the flow out into rows and columns, returning `errors[]` for unknown handles or non-adjacent merges. A group's colour follows `paletteIndex` and `family` when `withPrepSteps` has split it (#88). A box that brings together two or more step outputs (not raw groups) is marked `merge` (15 Oct 2026), which only the Modernist style draws (`docs/PLAN-MODERNIST.md`). A preparation step's output still counts as raw, and the raw set changes only between stages (18 Oct 2026). |
+| `computeColumns(groups, stages)` | Lays the flow out into rows and columns, returning `errors[]` for unknown handles or non-adjacent merges. A group's colour follows `paletteIndex` and `family` when `withPrepSteps` has split it (#88). A box that brings together two or more step outputs (not raw groups) is marked `merge` (15 Oct 2026), which only the Modernist style draws. A preparation step's output still counts as raw, and the raw set changes only between stages (18 Oct 2026). |
 | `prepStepFor(line)` | The step an ingredient line's preparation reads as ("2 leeks, thinly sliced" → *Thinly slice the leeks*), from a fixed table, or `null` (#88, 13 Oct 2026). |
 | `withPrepSteps(parsed)` | The recipe as drawn with preparation as steps: groups split in order, a one-input MERGE marked `prep` beside the step before the one that needs it. Used by the two viewers when the device's PREPARATION setting asks; never by the timeline, the preview or the shopping list. |
 | `computeTimeline(groups, stages)` | Derives each step's start/end from stage order plus durations. Returns `null` if no step has a real duration — which is why the timeline strip auto-hides. |
@@ -180,7 +200,7 @@ refresh lands whole or not at all.
 | `readFormFields(source)`, `sourceAsSaved()`, `beforeSaveLines()`, `evaluateSourceSpelling()` (`index.html`) | The add form's answers in place (PR 4 of the add-recipe plan). `readFormFields` is the one place the form's fields are read, for the save and for BEFORE YOU SAVE alike, so the list cannot disagree with what is written. `sourceAsSaved` is the SOURCE as the save will record it: only a spelling settled before changes it. `evaluateSourceSpelling` is the row under SOURCE (`#sourceSpellRow`): a settled spelling is put in the field and said so, a spelling that looks like an existing source is asked about with USE THAT and KEEP MINE, each writing through `addAlias` at the tap. `beforeSaveLines` builds `#addBeforeSave`, and only the lines that apply. No dialog remains in the add path. |
 | `fidelityCounts(f)`, `sourceCheckStatus(check, lines)` (`core.js`) | The comparison with the source page, recorded on the recipe (PR 5 of the add-recipe plan, 29 Sep 2026). `fidelityCounts` turns what `sourceFidelity` returns into the two numbers the table shows and the recipe records (`hard`, the "N to look at", and `soft`, the shaded notes), so the count drawn and the count recorded cannot differ. `sourceCheckStatus` says whether a recorded comparison is `fresh` (the ingredient lines hash to what they did when it ran), `stale` (they do not) or `none`; the viewer's chip, Edit's SOURCE section and BEFORE YOU SAVE all read that one rule. A keyword or a method step never makes one stale, because only the ingredient lines are hashed (`linesHash`). |
 | `formComparison`, `renderProvenance(recipe)`, `storedSourceHtml()` (`index.html`) | `formComparison` is the comparison run in the open form, set whenever the table is drawn (`showSourceComparison`) and written by SAVE and by nothing else. `renderProvenance` draws the viewer's chips under `#viewerProvenance` (COMPARED … · NO DIFFERENCES / N DIFFERENCES, COMPARED BEFORE THE INGREDIENTS CHANGED, NOT COMPARED WITH ITS SOURCE, CARRIES A SOURCE NOTE); viewer only, never on a card. `storedSourceHtml` is the SOURCE section's line on Edit: the stored result with RE-CHECK, or that it is out of date, or that there is none. `recipeToRow` sends `source_check` only when the recipe has one. |
-| `formPhotos`, `settleFormPhotos(id)`, `uploadSourcePhotos`, `removeSourcePhotoFiles`, `sourcePhotoUrl(path)` (`index.html`) | Source photos (`docs/PLAN-SOURCE-PHOTOS.md`). `formPhotos` is the open form's pages, stored `{path, added}` or new `{added, blob, url}`, each shrunk in the browser to 2000 px (`shrinkSourcePhoto`). SAVE settles them once: uploads queued before the row, deletions after it, nothing if nothing changed. `sourcePhotoUrl` answers from this tab's own copy first, else a link signed for an hour. `sourcePhotosAvailable` is false when a load finds rows without the column, and ADD PHOTO then says so. `deleteRecipe` deletes the recipe's photos after its row. |
+| `formPhotos`, `settleFormPhotos(id)`, `uploadSourcePhotos`, `removeSourcePhotoFiles`, `sourcePhotoUrl(path)` (`index.html`) | Source photos. `formPhotos` is the open form's pages, stored `{path, added}` or new `{added, blob, url}`, each shrunk in the browser to 2000 px (`shrinkSourcePhoto`). SAVE settles them once: uploads queued before the row, deletions after it, nothing if nothing changed. `sourcePhotoUrl` answers from this tab's own copy first, else a link signed for an hour. `sourcePhotosAvailable` is false when a load finds rows without the column, and ADD PHOTO then says so. `deleteRecipe` deletes the recipe's photos after its row. |
 | `libraryCheckRows()`, `renderLibraryCheck()` (`index.html`) | Settings → LIBRARY CHECK (PR 8 of the add-recipe plan, 29 Sep 2026): every recipe with its standing against its source, read by the viewer chip's own rules (`sourceCheckStatus`, `sourceNoteIn`): reconstruction note, not compared, compared before the ingredients changed, *n* differences, no differences, or no source link to compare; and the names it puts in Other with the household's word matches and aisles applied. Those needing attention first, in that order. RUN reads and OPEN calls `openEditModal`; nothing is written from it. |
 | `ingredientLookup(text)`, `renderIngredientLookup()`, `renderDictionaryList(filter)` (`index.html`) | Settings → INGREDIENT LOOKUP and DICTIONARY (PR 7 of the add-recipe plan, 29 Sep 2026). The lookup runs a typed wording through `aggregateShoppingLines` with the household's word matches and aisles, as `buildShoppingList` does, and shows what the list calls it (the dictionary's name, or "your own wording"), its aisle and why (`aisleWhy`), the word matches touching it from either side (with FORGET, the Word Matches removal) and the swaps for its name (`findSwapMatchesForKey`, with EDIT). The dictionary list is every row by aisle with its live wordings, filtered by the same box. Read-only apart from FORGET. |
 | `queueWrite(label, fn)` | Background write queue. Returns `true` synchronously. |
@@ -192,8 +212,7 @@ refresh lands whole or not at all.
 ## 4. The database
 
 Supabase Postgres. **16 tables in `public` and one in `private`**, all with row-level security on (read 12 Oct 2026); the 16
-carry 52 policies between them, at least one each. *(Until 12 Oct this said 14 tables: `calendar_connections`, `recipe_shares`
-and the private table came after it was written.)* RLS is driven by `private.household_ids_for_user()` — kept in a `private`
+carry 52 policies between them, at least one each. RLS is driven by `private.household_ids_for_user()` — kept in a `private`
 schema, granted only to `authenticated`, never to `anon`. `docs/INFRASTRUCTURE.md` §3 is the live card: counts, migrations
 and what was applied when.
 
@@ -206,21 +225,21 @@ joins two of them.
 
 | Table | Holds |
 | --- | --- |
-| `recipes` | The library. `syntax` is the real recipe; other columns are parsed from it. `source_check` (jsonb, nullable; PR 5 of the add-recipe plan) is what a comparison with the source page found: `{at, route, hard, soft, sourceLines, linesHash}`, written by SAVE when a comparison ran in that form session, never the page's text or a pasted list. Since 30 Sep 2026 it may also carry `validated` (an ISO time): the household pressed VALIDATE INGREDIENT LIST, accepting the list as it stands with whatever differences it has; `sourceCheckStatus` reports it only while the lines are the ones compared. A third `route`, `"photo"` (30 Sep, CHECKED AGAINST THE PHOTO), records that the lines were read by eye against the recipe's source photo: `hard` 0, `validated` at the same time as `at`, and the hash of the lines when the button was tapped. It is added by `docs/migrations/add-recipes-source-check.md`, which the household applied from the SQL editor on 29 Sep 2026 (checked read-only that day: `jsonb`, nullable). `source_photos` (jsonb, nullable, a list; `docs/PLAN-SOURCE-PHOTOS.md`) lists the photos the recipe was converted from, `[{path, added}]` in page order (a PDF's entry, since 30 Sep, also carries `type: 'pdf'` and its file `name`); the files are in the private `recipe-sources` bucket under `<household_id>/<recipe_id>/`, shown by links signed for an hour. Sent only when a recipe has a list (an emptied list is sent as null), so an ordinary save is unchanged. Added by `docs/migrations/add-source-photos.md`, which the household applied on 30 Sep 2026. `copied_from` (uuid, nullable, no foreign key; `docs/PLAN-RECIPE-SHARING.md`) is the other household's recipe a copy was made from by ADD TO OUR RECIPES; sent only on such a copy. Added by `docs/migrations/add-recipe-sharing.md`, with `recipe_shares` and the six functions that are the only way to read another household's recipes (the `recipes` policies are not widened). |
+| `recipes` | The library. `syntax` is the real recipe; other columns are parsed from it. `source_check` (jsonb, nullable; PR 5 of the add-recipe plan) is what a comparison with the source page found: `{at, route, hard, soft, sourceLines, linesHash}`, written by SAVE when a comparison ran in that form session, never the page's text or a pasted list. Since 30 Sep 2026 it may also carry `validated` (an ISO time): the household pressed VALIDATE INGREDIENT LIST, accepting the list as it stands with whatever differences it has; `sourceCheckStatus` reports it only while the lines are the ones compared. A third `route`, `"photo"` (30 Sep, CHECKED AGAINST THE PHOTO), records that the lines were read by eye against the recipe's source photo: `hard` 0, `validated` at the same time as `at`, and the hash of the lines when the button was tapped. It is added by `docs/migrations/add-recipes-source-check.md`, which the household applied from the SQL editor on 29 Sep 2026 (checked read-only that day: `jsonb`, nullable). `source_photos` (jsonb, nullable, a list) lists the photos the recipe was converted from, `[{path, added}]` in page order (a PDF's entry, since 30 Sep, also carries `type: 'pdf'` and its file `name`); the files are in the private `recipe-sources` bucket under `<household_id>/<recipe_id>/`, shown by links signed for an hour. Sent only when a recipe has a list (an emptied list is sent as null), so an ordinary save is unchanged. Added by `docs/migrations/add-source-photos.md`, which the household applied on 30 Sep 2026. `copied_from` (uuid, nullable, no foreign key) is the other household's recipe a copy was made from by ADD TO OUR RECIPES; sent only on such a copy. Added by `docs/migrations/add-recipe-sharing.md`, with `recipe_shares` and the six functions that are the only way to read another household's recipes (the `recipes` policies are not widened). |
 | `recipe_logs` | One row per time a recipe was cooked. **`ON DELETE CASCADE`** from `recipes` — deleting a recipe destroys its history. `premade` (boolean, default false; `docs/migrations/add-premade.md`) marks a dish eaten from the freezer rather than cooked: it is in the diary but left out of the recipe's `history`, so "last cooked", times cooked and the streak count only cooking. A pre-made row's id is worked out from the planned day (`premadeLogId`), so two devices write one row. |
 | `keywords` | The tag vocabulary, ordered by `sort_order`. |
-| `planner_days` | One row per planned day. `recipe_ids uuid[]` plus a **parallel `servings smallint[]`** — index *n* in one matches index *n* in the other, `0` meaning "as the recipe is written". Since PRE-MADE (`docs/PLAN-FOOD-DIARY.md`) a third parallel array, `premade text[]`: `''` for fresh, or the meal a dish from the freezer is eaten as; padded like `servings`, and sent only once the column exists. Since P3 (`docs/migrations/add-calendar-push.md`, 9 Oct 2026) two booleans per day, `calendar` and `calendar_remind`: the Planner's switches for putting the day in the Google calendar and the evening-before reminder. Since 20 Oct 2026 (`docs/migrations/add-calendar-items.md`, `docs/PLAN-CALENDAR-PUSH.md` §12) a fourth parallel array, `calendar_items text[]`: `''`, `'in'` or `'remind'` per dish, so the reminder belongs to a meal (a group is one) and not the day; `calendar` and `calendar_remind` stay as "some dish is in" and "some dish has the reminder". Padded like the others, and sent only once the column exists. |
+| `planner_days` | One row per planned day. `recipe_ids uuid[]` plus a **parallel `servings smallint[]`** — index *n* in one matches index *n* in the other, `0` meaning "as the recipe is written". Since PRE-MADE a third parallel array, `premade text[]`: `''` for fresh, or the meal a dish from the freezer is eaten as; padded like `servings`, and sent only once the column exists. Since P3 (`docs/migrations/add-calendar-push.md`, 9 Oct 2026) two booleans per day, `calendar` and `calendar_remind`: the Planner's switches for putting the day in the Google calendar and the evening-before reminder. Since 20 Oct 2026 (`docs/migrations/add-calendar-items.md`) a fourth parallel array, `calendar_items text[]`: `''`, `'in'` or `'remind'` per dish, so the reminder belongs to a meal (a group is one) and not the day; `calendar` and `calendar_remind` stay as "some dish is in" and "some dish has the reminder". Padded like the others, and sent only once the column exists. |
 | `meal_groups` | Recipes cooked together on a day. `recipe_ids uuid[]`, no foreign key. |
 | `shortlist_items` | Ideas not yet planned. `recipe_id` is `ON DELETE SET NULL`. |
 | `ingredient_swaps` | Personal substitutions with a scaling ratio. |
 | `shopping_checked` | Ticked items, keyed by `week_start` + `item_key`. **`item_key` is the row's key**, the ingredient's name alone since PR 6b (with a `both\|` prefix for the both-weeks list), so a recipe changing its unit keeps the tick but anything that changes how items are *named* re-keys them. Until 25 Sep it was `name\|unit`; those rows are deleted at start-up by `purgeOldFormatTicks`. |
 | `aliases` | Word matches. `kind` is `source`, `ingredient`, `source_distinct` or `ingredient_distinct` — the `_distinct` kinds record "these are *not* the same" so the app stops asking. Ingredient matches are re-normalised through `shoppingKeyForName` as they load, so a match stored in the old normaliser's words still applies; the stored rows are never rewritten. |
 | `aisle_overrides` | The household's aisle for an ingredient (PR 6 of the add-recipe plan, 29 Sep 2026): `name` is the shopping list's key for it (`shoppingKeyForName`), `aisle` one of `INGREDIENT_AISLES`, unique on `(household_id, name)`. Set in Settings → Shopping Aisles or from the add form's review; applied by `aggregateShoppingLines` after the key is final. Created by `docs/migrations/add-aisle-overrides.md`, which the household applied on 29 Sep 2026. **`hydrate()` reads it apart from the other tables and does not throw when it is missing**: the feature is then unavailable and says so. |
-| `recipe_notes` | Dated cooking notes (R4, `docs/PLAN-COOKING-NOTES.md`, 30 Sep 2026): `body`, and `created_at` as the note's date, sent by the app and never changed; one row per note, written by ADD, EDIT (the text only), DELETE and UNDO, and by the meal prompt's ADD A NOTE (`addRecipeNote`), and deleted by FOLD INTO NOTES once the recipe's text carrying it is saved. Cascades on recipe delete. Made in Phase 1 and unused until R4. Read apart like `aisle_overrides`: a failure leaves the notes unavailable and signs nobody out. In the JSON export as `recipeNotes`. |
-| `household_settings` | One row per household (every household has one since 12 Oct 2026, `docs/migrations/harden-default-privileges.md`; read with `.maybeSingle()` all the same). `week_start_day` (0=Sunday, default 5=Friday), `dark_mode`, and for P3 `calendar_remind_at` (minutes after midnight, default 1200), `calendar_auto` and `calendar_auto_remind` (both off by default), and `converter_ack_version` (#127: the version of the converter instructions the household last confirmed with DONE; empty until then; `docs/migrations/add-converter-ack.md`, applied 13 Oct 2026; the app shows no reminder where the column is missing). *(Until 12 Oct this row said "One row. `week_start_day`".)* |
-| `households`, `household_members` | Identity. `hydrate()` reads the signed-in user's `household_members` row to set `HOUSEHOLD_ID`, so the app carries no household constant, and since 12 Oct refuses an account in two households rather than guess. *(Corrected 23 Sep; this row said it was a constant.)* `households.name` is the name other households see, set from Settings → APP → RECIPE SHARING through `set_household_name` since 10 Oct 2026. |
-| `recipe_shares` | Who may browse whose recipes (`docs/PLAN-RECIPE-SHARING.md`, 10 Oct 2026): `(owner_household, viewer_household)`, one row per direction. The app has one select policy and `SELECT` alone on it; every change, and every read of another household's recipes, goes through the six `security definer` functions in `docs/migrations/add-recipe-sharing.md`, so the `recipes` policies are never widened. |
-| `calendar_connections` | One row per household connected to Google (P3, `docs/PLAN-CALENDAR-PUSH.md`, 9 Oct 2026): whether it is connected, the account, the calendar, the scope, the last sync and error, and since 10 Oct the Drive backup's folder, last backup and last error. **Never the token**, which is in Vault. The app has one select policy and `SELECT` alone: only the Edge Functions, as the service role, write it. |
+| `recipe_notes` | Dated cooking notes (R4, 30 Sep 2026): `body`, and `created_at` as the note's date, sent by the app and never changed; one row per note, written by ADD, EDIT (the text only), DELETE and UNDO, and by the meal prompt's ADD A NOTE (`addRecipeNote`), and deleted by FOLD INTO NOTES once the recipe's text carrying it is saved. Cascades on recipe delete. Made in Phase 1 and unused until R4. Read apart like `aisle_overrides`: a failure leaves the notes unavailable and signs nobody out. In the JSON export as `recipeNotes`. |
+| `household_settings` | One row per household (every household has one since 12 Oct 2026, `docs/migrations/harden-default-privileges.md`; read with `.maybeSingle()` all the same). `week_start_day` (0=Sunday, default 5=Friday), `dark_mode`, and for P3 `calendar_remind_at` (minutes after midnight, default 1200), `calendar_auto` and `calendar_auto_remind` (both off by default), and `converter_ack_version` (#127: the version of the converter instructions the household last confirmed with DONE; empty until then; `docs/migrations/add-converter-ack.md`, applied 13 Oct 2026; the app shows no reminder where the column is missing). |
+| `households`, `household_members` | Identity. `hydrate()` reads the signed-in user's `household_members` row to set `HOUSEHOLD_ID`, so the app carries no household constant, and since 12 Oct refuses an account in two households rather than guess. `households.name` is the name other households see, set from Settings → APP → RECIPE SHARING through `set_household_name` since 10 Oct 2026. |
+| `recipe_shares` | Who may browse whose recipes (10 Oct 2026): `(owner_household, viewer_household)`, one row per direction. The app has one select policy and `SELECT` alone on it; every change, and every read of another household's recipes, goes through the six `security definer` functions in `docs/migrations/add-recipe-sharing.md`, so the `recipes` policies are never widened. |
+| `calendar_connections` | One row per household connected to Google (P3, 9 Oct 2026): whether it is connected, the account, the calendar, the scope, the last sync and error, and since 10 Oct the Drive backup's folder, last backup and last error. **Never the token**, which is in Vault. The app has one select policy and `SELECT` alone: only the Edge Functions, as the service role, write it. |
 | `private.calendar_oauth_states` | The one-time values for Google's consent step, ten minutes each (9 Oct 2026). RLS on and no policy, and no grant to any API role, the service role included: the Edge Functions reach it only through the `calendar_*` functions, which only the service role may run. |
 
 ### Schema that exists but nothing uses yet
@@ -246,7 +265,7 @@ deletes and lists only under its own household's folder:
 
 - `recipe-images` — **public, 35 objects.** Public affects only the `/object/public/` read endpoint, so it is
   readable-if-you-know-the-path rather than browsable. A recipe's photo, at `<household_id>/<recipe_id>.<ext>`.
-- `recipe-sources` — **private, 4 objects** (`docs/PLAN-SOURCE-PHOTOS.md`, 30 Sep 2026). The photos and PDFs a recipe was
+- `recipe-sources` — **private, 4 objects** (30 Sep 2026). The photos and PDFs a recipe was
   converted from, under `<household_id>/<recipe_id>/`.
 
 **The app reads and writes Storage directly** — this section said it did not until 12 Oct 2026 (the October review, F12):
@@ -275,7 +294,7 @@ project (12 Oct 2026). `index.html` makes **seven `functions.invoke` calls to th
 | `calendar-sync` | `queueCalendarSync`, queued after a Planner change to a day in the calendar; every day from today on connecting and on SYNC NOW |
 | `drive-backup` | `saveToDrive`: the weekly backup the app sends by itself on a load, and SAVE TO DRIVE NOW |
 
-*(Until 12 Oct this section said `rehost-images` was "the only Edge Function call in `index.html`".)* Both `rehost-images`
+Both `rehost-images`
 callers write the returned URL back into `cache.recipes`, which is not optional: the next save of that recipe from the edit
 form upserts its whole row from the cache, so a cache left holding the old URL would push it back over the row *(until PR 5
 any favourite toggle rewrote every recipe and was enough to do it)*. See `docs/IMAGES.md` §5, and `docs/INFRASTRUCTURE.md` §3
@@ -287,14 +306,14 @@ for what is deployed and how to deploy.
 (`test/stub.js`) and walks every screen.
 
 ```sh
-node test/core.test.js   # 218 checks on core.js in Node, about two seconds, no browser
+node test/core.test.js                    # the pure core in Node, about two seconds, no browser
 npm install --no-save playwright@1.63.0   # once; the version CI pins
-node test/build.js       # bake index.html (with core.js inlined) against the stub
-node test/smoke.js       # 713 checks; exits non-zero on failure
+node test/build.js                        # bake index.html (with core.js inlined) against the stub
+node test/smoke.js                        # the browser suite; exits non-zero on failure; slow (many minutes)
 ```
 
-*(The counts are those of 18 Oct 2026: 216 and 708 on 15 Oct, 206 and 622 on 14 Oct, and 143 and 418 until 12 Oct. Until 18 Oct this note said "12 Oct" under the 15 Oct counts. `CLAUDE.md` lists the five smaller suites
-that run in Node beside these, for the Edge Functions and the help guide.)*
+`CLAUDE.md` lists the smaller suites that run in Node beside these (the Edge Functions' and the help guide's). Read the exit
+code, not the number of `ok` lines.
 
 **`test/build.js` is not optional and not cached.** `smoke.js` loads `test/app-under-test.html`,
 which `build.js` writes from `index.html`. Run `smoke.js` without rebuilding and you are testing
@@ -314,9 +333,9 @@ Keep Awake can only be tested on a real tablet.
 | `core.js` | The pure functions and the ingredient dictionary's master copy, loaded by `index.html` (since 25 Sep 2026). |
 | `tools/generate-ingredient-names.js` | Writes `converter/ingredient-names.md` from the dictionary in `core.js`; `--check` fails if they differ. |
 | `tools/remeasure.js` | Totals an app export (kept **outside** the repo) with the app's own `core.js` and reports rows, likely splits, "Other" rows, lines the list can't total and lines the parser reads past. Refuses a file inside the repo. Run every ten or so new recipes (27 Sep). |
-| `supabase/functions/` | Edge Functions, five directories (12 Oct 2026). `rehost-images` is the image re-hosting sweep (R7); `source-ingredients` (27 Sep) returns a source page's own ingredient list, read-only, for the preview's source check; `calendar-auth` and `calendar-sync` (P3, 9 Oct) connect the household's Google calendar and write the planned days to it; `drive-backup` (10 Oct) saves the backup file to the household's Google Drive. All need a signed-in caller but Google's callback into `calendar-auth`, which carries a one-time value instead. `find-recipe-image` was removed on 11 Oct (#102, the October review's F3). See `docs/IMAGES.md`, `docs/PLAN-CALENDAR-PUSH.md` and `docs/INFRASTRUCTURE.md`. |
+| `supabase/functions/` | Edge Functions, five directories (12 Oct 2026). `rehost-images` is the image re-hosting sweep (R7); `source-ingredients` (27 Sep) returns a source page's own ingredient list, read-only, for the preview's source check; `calendar-auth` and `calendar-sync` (P3, 9 Oct) connect the household's Google calendar and write the planned days to it; `drive-backup` (10 Oct) saves the backup file to the household's Google Drive. All need a signed-in caller but Google's callback into `calendar-auth`, which carries a one-time value instead. `find-recipe-image` was removed on 11 Oct (#102, the October review's F3). See `docs/IMAGES.md` and `docs/INFRASTRUCTURE.md`. |
 | ~~`index-old.html`~~ | **Removed 12 Oct 2026** (the October review, F9). The pre-Supabase version, renamed from `index.html` on 17 Aug. It was not "not served", as this row used to say: Pages served it at the app's address with `index-old.html` appended, with no sign-in, and its seed data carried complete recipes. It is still in git history (`git show c19020f:index-old.html`); the household chose not to rewrite history for it. |
 | `converter/` | Conversion instructions and the standing test set for writing recipes. |
 | `test/` | Offline test harness. |
-| `docs/` | Everything listed in `docs/DOCUMENT-INDEX.md` under "The documents". |
+| `docs/` | The reference documents: `STATUS.md` (read first), `SPEC.md`, this file, `INFRASTRUCTURE.md`, `IMAGES.md`, `ONBOARDING.md`, `TEST-PLAN.md`, `HOUSEHOLD-JOBS.md`, `BUILD-BRIEF.md`, and `migrations/`. |
 | `.mcp.json` | Wires the Supabase connector for Claude Code automatically. |
