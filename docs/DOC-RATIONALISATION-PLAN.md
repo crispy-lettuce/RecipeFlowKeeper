@@ -142,10 +142,10 @@ takes over. **Remove** = delete after the extraction in the last column (to the 
 | `BUILD-BRIEF.md` | 10 KB | 10 KB | **Keep, frozen.** The reference codes (`R4`, `P3`, `H1` …) are cited in code comments, and this is the only place they are defined |
 | `INFRASTRUCTURE.md` | 38 KB | ~28 KB | **Trim + extend.** Condense the 100-line migration-history block to one line per migration pointing to its page; remove the 11 correction notes; delete the part of §2 that duplicates `PrivateBackup`'s own README (link to it); add the Google set-up runbook lifted from `PLAN-CALENDAR-PUSH.md` §10 and `PLAN-DRIVE-BACKUP.md` §4. §5 "Picking this up" points at `STATUS.md` |
 | `ONBOARDING.md` | 12 KB | ~9 KB | **Trim.** Runbook; drop correction notes only |
-| `IMAGES.md` | 34 KB | ~14 KB | **Trim.** Keep "Answers first", the sweep, integrity checks, "what can go wrong" and "verifying". Remove §4 (why it was manual until 22 Sep) and §5's "options not taken" (B, C, D), which become three lines in `FEATURES.md` |
+| `IMAGES.md` | 34 KB | ~14 KB | **Trim.** Keep "Answers first", the sweep, integrity checks, "what can go wrong" and "verifying". Remove §4 (why it was manual until 22 Sep) and §5's "options not taken" (B, C, D), which become three lines in `SPEC.md` §6.4 |
 | `TEST-PLAN.md` | 95 KB | ~25 KB | **Trim hard.** Keep sections A–F (sign-in, hydration, write queue, export/import, two devices, shopping list, recipes coming in), the "things that look like bugs", "if something fails" and the expected-counts query; fold in `TEST-IMAGES.md` as a 10-line section. **Delete steps 37a–78a (lines ~259–928):** the open ones already live in `HOUSEHOLD-JOBS.md`; the passed ones are history. Delete "After a clean pass" (self-described history, written for the 21 Sep pass) |
 | `HOUSEHOLD-JOBS.md` | 47 KB | ~20 KB | **Trim.** Keep "At a glance", the quick jobs and the open checks. Keep "Recently done" for the last 7 days only (it now runs back to 12 Oct, several entries of a hundred words or more). Becomes the single place for a tablet step |
-| `FEATURES.md` | new | ~40 KB | **Replace** the 26 plans/proposals. One short entry per shipped feature (§6) |
+| `SPEC.md` | new, **written 22 Oct** | ~16 KB | **Replace** the 22 plans/proposals as the answer to "what does the app do". Already in this branch (§6) |
 | `STATUS.md` | new | ~12 KB | **Replace** `HANDOVER.md` + `NEXT-SESSION.md` + `DOCUMENT-INDEX.md` (§6) |
 | `migrations/*.md` (11) | 63 KB | 63 KB | **Keep.** All applied; the SQL and the how-to-check live nowhere else (`*.sql` is git-ignored on purpose). Code comments cite them 37 times. Low value in the "tried first on a scratch Postgres" prose, but not worth a risk |
 
@@ -163,8 +163,8 @@ takes over. **Remove** = delete after the extraction in the last column (to the 
 | `REVIEW-ARCHITECTURE-FINDINGS.md` | 60 KB | **Remove** | All findings closed by the seven-PR plan. Cited by number (`F1`, `F5` …) in code: the archive tag covers it |
 | `REVIEW-INGREDIENT-MATCHING-FINDINGS.md` | 46 KB | **Remove** | Steps 1–7 all built. Lift: "ticks key on the name alone, so a naming change re-keys them" (already in `CLAUDE.md`) and the re-measure routine (already in `test/README.md`) |
 | `REVIEW-2026-10-FINDINGS.md` | 93 KB | **Remove** | All 8 PRs merged 11–12 Oct (the document says so). Cited by number (`F23` … `F50`) in code; those numbers collide with the September series, which the convention in §2.3 mentions |
-| `PROPOSAL-AISLE-OVERRIDES.md`, `PROPOSAL-NEW-RECIPE-REVIEW.md` | 29 KB | **Remove (PR 3)** | Both superseded by `PLAN-NEW-RECIPE-FLOW.md`, which was built. Lift: the "one key and one home per fact held about an ingredient" rule → `FEATURES.md` |
-| `PLAN-NEW-RECIPE-FLOW.md` | 67 KB | **Remove** | Eight PRs built. → `FEATURES.md` "Adding a recipe" |
+| `PROPOSAL-AISLE-OVERRIDES.md`, `PROPOSAL-NEW-RECIPE-REVIEW.md` | 29 KB | **Remove (PR 3)** | Both superseded by `PLAN-NEW-RECIPE-FLOW.md`, which was built. Lift: the "one key and one home per fact held about an ingredient" rule → `SPEC.md` §6.2 |
+| `PLAN-NEW-RECIPE-FLOW.md` | 67 KB | **Remove** | Eight PRs built. → `SPEC.md` §5.3 |
 | `PLAN-MODERNIST.md` | 73 KB | **Remove after tablet check 66a passes** | Largest plan; the decision log D1–D69 is the one part with standing rules. Lift ~20 lines of them. Until 66a is reported, the "questions in the Decision log" are open |
 | `PLAN-READABILITY.md` | 25 KB | **Remove after 61a–65a** | All five changes built. Lift the type scale, the 44 px rule and the colour-token rule |
 | `PLAN-CALENDAR-PUSH.md` | 42 KB | **Remove** (lift §9 design, §10 set-up) | Built and connected. §12 (reminder per meal) is built and checked (75a) |
@@ -183,24 +183,26 @@ not reported. If the household would rather not wait, §9 question 4 closes them
 
 ---
 
-## 6. The two new documents
+## 6. The two new documents (`SPEC.md` first)
 
 **`docs/STATUS.md` (~12 KB, one page to read first).** Replaces three. Sections:
 
 1. **Where things stand**: versions (`APP_VERSION`, `KITCHEN_CORE_VERSION`), households, schema nothing waiting on, Edge Functions deployed. *Each line says how and when it was checked.* No test counts.
-2. **Build Brief requirements → status**, one row per code (from `HANDOVER.md` §1: S, P, R, C, H, A series), pointing to the `FEATURES.md` entry.
+2. **Build Brief requirements → status**, one row per code (from `HANDOVER.md` §1: S, P, R, C, H, A series), pointing to the `SPEC.md` section.
 3. **Open**: tablet checks waiting (link to `HOUSEHOLD-JOBS.md`), parked work (#100), the household's choices.
 4. **Not to undo**: the `PrivateBackup` default branch and the two backup-workflow fixes; `main` is production.
 5. **Starting a session**: the prompt from `NEXT-SESSION.md`, shortened.
 
-**`docs/FEATURES.md` (~40 KB).** One entry per feature, about 12 lines each, in a fixed shape so it can be grep'd:
+**`docs/SPEC.md` (~16 KB, written 22 Oct and already in this branch).** What the app is and does: purpose and users, the system,
+the recipe format, each screen, the behaviours that cut across screens, the data model, the Edge Functions, the rules the app
+keeps, and what is deliberately not built. It is written from `help.html`, `changelog.json`, `ARCHITECTURE.md` and the code's
+sidebar and views, so it describes the app as it stands rather than as each plan imagined it. It is the "what", `ARCHITECTURE.md`
+is the "how", `help.html` is the household's "how to".
 
-> **Name** (issue/PR, version) · *What it does* in two lines · *Where*: functions or files · *Needs*: migration page, Edge Function, setting · *Standing decisions*: the "do not relitigate" lines, each with the reason · *Checked*: tablet step and date, or "by use".
-
-About 30 entries from the 22 plans/proposals: new-recipe flow (review band, source check, aisle overrides, LIBRARY CHECK), source photos, cooking notes, food diary/PRE-MADE, calendar push, Drive backup, recipe sharing, liquids, prep steps,
-sides/OFTEN WITH, shopping AUDIT, ingredients tab, layout, readability, Modernist, ad-hoc entries, bulk add, split triage,
-test household, image re-hosting, dark mode, diary. This is the "new reference document" the task allows for: it is written
-from the plans, not copied from them, so each plan is read once, by the session that deletes it.
+**Still to do for the plans' lasting content.** A plan also carries *why* a feature works as it does. When each plan is deleted
+(PR 3), a session reads it once and lifts only the standing decisions that are not obvious from the code (for example "a meal from
+the freezer is eaten, not cooked, so it does not count towards last cooked") into the matching SPEC section as one line each,
+or into `ARCHITECTURE.md` if it is about code. No separate per-feature file: that would rebuild the plans in miniature.
 
 ---
 
@@ -215,7 +217,7 @@ dictionary) and `build.js && smoke.js`, reads `echo $?`, and reads its own `git 
 | **0** | Archive tag (§4). No file change | `git show docs-archive-2026-10-22:docs/HANDOVER.md \| wc -l` prints 3232 |
 | **1** | Scrub the real titles from `converter/test-set.md`; trim its three library audits (lines 635–753, dated 13 to 20 Sep; the index itself calls the first two history) | `git grep -il '<the title>'` returns only files due for removal; the 16 tests still read correctly. **Make it fail once:** put the title back and see the grep find it |
 | **2** | Remove the four files with nothing to lift: `HANDOVER-2026-09-29-SESSION`, `HANDOVER-CONVERSION-INTEGRITY`, `REVIEW-ARCHITECTURE`, `REVIEW-INGREDIENT-MATCHING` | Re-run the §3 path scan: no new dead references appear in a *kept* file |
-| **3** | Write `STATUS.md` and `FEATURES.md`; lift `HANDOVER.md` §2e/§8 into `ARCHITECTURE.md` and the Google runbooks into `INFRASTRUCTURE.md`; **then** remove `HANDOVER.md`, `NEXT-SESSION.md`, `DOCUMENT-INDEX.md`, and every `PLAN-*` and `REVIEW-*` whose tablet check has passed. Fix `index.html:14` and `CLAUDE.md`'s §2e citations (comments only, so no changelog) | Scan again. Every state in `STATUS.md` has a "checked how, when". Spot-check five `FEATURES.md` entries against the code |
+| **3** | Write `STATUS.md` (`SPEC.md` is already written; re-check it against the code first); lift `HANDOVER.md` §2e/§8 into `ARCHITECTURE.md` and the Google runbooks into `INFRASTRUCTURE.md`; **then** remove `HANDOVER.md`, `NEXT-SESSION.md`, `DOCUMENT-INDEX.md`, and every `PLAN-*` and `REVIEW-*` whose tablet check has passed. Fix `index.html:14` and `CLAUDE.md`'s §2e citations (comments only, so no changelog) | Scan again. Every state in `STATUS.md` has a "checked how, when". Spot-check five `SPEC.md` sections against the code |
 | **4** | Trim `IMAGES.md`, `INFRASTRUCTURE.md`, `TEST-PLAN.md` (+ `TEST-IMAGES.md`), `HOUSEHOLD-JOBS.md`, `ONBOARDING.md`, `ARCHITECTURE.md`, `test/README.md` | `test/help-guide.js` still passes; `TEST-PLAN.md` still has the expected-counts query; no `docs/` file over ~40 KB |
 | **5** | `README.md` and `CLAUDE.md` amended (§8 rules, new reading list, no counts). If `tools/ingredient-names-preamble.md` still cites removed documents, edit it **and** run `node tools/generate-ingredient-names.js`, commit both | `core.test.js` green (it fails on a stale `ingredient-names.md`). Final scan: nothing in `README.md`, `CLAUDE.md`, `docs/` points at a removed file. **This PR deletes this plan** |
 
@@ -235,13 +237,14 @@ rule 3 it must be seen failing once (add a dead path; see it named). It costs on
 1. **The PR description is the verification record.** A PR no longer adds a paragraph to a handover document. What was checked
    and what was not goes in the PR body (`CLAUDE.md` 6 already asks for this).
 2. **A plan is a working file with an end.** It lives in `docs/PLAN-<name>.md` only while the feature is unbuilt or unchecked. When the
-   last PR merges and the tablet check passes, the same PR that closes it adds the feature's `FEATURES.md` entry and deletes the plan.
+   last PR merges and the tablet check passes, the same PR that closes it updates the matching section of `SPEC.md` and deletes the plan.
    A parked plan goes to its issue.
 3. **Correct in place, no "Corrected on …" notes.** `git log` is the correction history. (`CLAUDE.md` keeps its one rule, "verify rather than trust".)
 4. **No counts of checks in prose.** CI and the command's own output are the count.
 5. **A tablet step lives once, in `HOUSEHOLD-JOBS.md`**, in plain words with "You should see". It is removed when reported passed. `TEST-PLAN.md` holds only the standing regression pass.
 6. **One index.** `README.md`'s table. Nothing else lists the documents.
 7. **State a date and a source for every status line** (`date -u`, `git log`, a query), and drop the line when it can't be checked.
+8. **A change the household will notice updates three things in the same PR:** `changelog.json`, `help.html` and the matching section of `docs/SPEC.md` (SPEC §11 says so). `CLAUDE.md` 2a gains the third.
 
 ---
 
