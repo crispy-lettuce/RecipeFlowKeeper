@@ -5954,6 +5954,11 @@ const check = (name, pass, detail) => {
   await pmPage.evaluate(() => showView('planner'));
   const pmShopBefore = await pmShop();
   pmM = await pmPage.evaluate(() => window.__WRITES__.length);
+  /* Read before the tap: a dish not yet switched on says TO COOK, not PRE-MADE (22 Oct 2026), which read as its state. */
+  const pmOffPill = await pmPage.evaluate(d => { const b = document.querySelector(`.day-row[data-date="${d}"] .day-recipe-premade`);
+    return b ? { text: b.textContent.trim(), pressed: b.getAttribute('aria-pressed') } : null; }, PM_TODAY);
+  check('    a dish not yet switched on reads TO COOK (not PRE-MADE), and is not pressed',
+        !!pmOffPill && pmOffPill.text === 'TO COOK' && pmOffPill.pressed === 'false', JSON.stringify(pmOffPill));
   await pmPage.click(`.day-row[data-date="${PM_TODAY}"] [data-action="premade"]`);
   await pmPage.waitForTimeout(200);
   const pmAsk = await pmPage.evaluate(() => ({ open: document.getElementById('premadeOverlay').classList.contains('open'),

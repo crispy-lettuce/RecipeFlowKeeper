@@ -1,4 +1,6 @@
 [
+  { "version": "2026-10-22.1", "date": "2026-10-22",
+    "changes": ["Changed: on the Planner, a dish that is going to be cooked now reads TO COOK instead of PRE-MADE. It used to say PRE-MADE on every dish until you tapped it, which made a dish to be cooked look as if it were already made. Tapping it still asks which meal it is from the freezer, and then it reads PRE-MADE with the meal, as before."] },
   { "version": "2026-10-21.8", "date": "2026-10-21",
     "changes": ["New: in Settings, Library, LIBRARY CHECK, a recipe that writes one ingredient on several lines now says so under its name (for example \"On several lines: oil 1 tbsp + 2 tbsp\"), when it has a source page to compare with and has not yet been compared clean. Ones in two different units, like a teaspoon and then a tablespoon of the same thing, come first among the recipes not yet compared, and say so, because that is the shape a converter fault of today took. A new box shows only these. It is a pointer, not a fault: most such recipes are right, so it does not count them as needing attention. Open one and press COMPARE WITH SOURCE to see whether its lines add up to what the page asks for."] },
   { "version": "2026-10-21.7", "date": "2026-10-21",
