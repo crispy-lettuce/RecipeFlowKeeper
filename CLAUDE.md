@@ -1,7 +1,8 @@
 # Working on this project
 
-Read `docs/DOCUMENT-INDEX.md` first — it maps every document. `docs/ARCHITECTURE.md` explains
-the app and its recipe format; `docs/HANDOVER.md` is the verified status.
+Read `docs/STATUS.md` first: where things stand and what is open. `docs/SPEC.md` says what the app does,
+`docs/ARCHITECTURE.md` how it is built and its recipe format, `docs/INFRASTRUCTURE.md` where everything lives. The README
+lists the rest. Anything removed from `docs/` on 22 Oct 2026 is at commit `67b552e` (`git show 67b552e:docs/<file>`).
 
 ## Every session, before you push
 
@@ -21,7 +22,8 @@ Nobody else checks these. Each one is here because it went wrong at least once.
    new `version` (today's date from `date -u` plus the next number), the date, the issue numbers, and what changed
    in plain words with no recipe names. Set `APP_VERSION` in `index.html` to it; `core.test.js` fails if they
    differ. The household reads it in Settings → HELP, and an open tab learns a new version is out from it, so a
-   change left out of it reaches both households unannounced. Documentation-only PRs add nothing.
+   change left out of it reaches both households unannounced. Documentation-only PRs add nothing. **The same change updates `help.html` (how to use it) and the
+   matching section of `docs/SPEC.md` (what the app now does).**
 3. **Make every new check fail once.** Break the code it guards, see the check fail by name, then
    restore the code (`git diff` shows nothing). A check you have never seen fail proves nothing.
 4. **Take dates from `git log`, the database's timestamps or `date -u`**, never from memory or the
@@ -54,7 +56,8 @@ Nobody else checks these. Each one is here because it went wrong at least once.
   or a dictionary row. Re-measure the library first ("Re-measuring the live library" in
   `test/README.md`), then ask before shipping.
 - **The household's jobs live in `docs/HOUSEHOLD-JOBS.md`**, as numbered steps with what each should show. A new tablet
-  step goes there as well as into `docs/TEST-PLAN.md`, and one reported passed comes off it, in the same PR.
+  step goes there and nowhere else, and one reported passed comes off it, in the same PR. `docs/TEST-PLAN.md` is only the
+  standing regression pass.
 - **The only production writes a session makes** are single rows the household asks for, and
   recipe text changed as described below. Anything else, ask. A smaller PR is always fine.
 
@@ -82,6 +85,18 @@ Change recipe text only this way, with the household present:
 Never delete and re-insert a recipe: its cooking history cascades with it.
 `migrations/6c-2-line-rewrite/` in `PrivateBackup` is the worked example.
 
+## How the documents are kept
+
+Fewer, and true, beats many. The set is `README.md`, this file, and in `docs/`: `STATUS.md`, `SPEC.md`, `ARCHITECTURE.md`,
+`INFRASTRUCTURE.md`, `IMAGES.md`, `ONBOARDING.md`, `TEST-PLAN.md`, `HOUSEHOLD-JOBS.md`, `BUILD-BRIEF.md` and `migrations/`.
+
+- **The PR description is the record of what was verified**, and `git log` the history. Don't add a paragraph per PR to a handover
+  document, and don't annotate a document with "Corrected on …": correct it in place.
+- **A plan is a working file with an end.** `docs/PLAN-<name>.md` exists while a feature is unbuilt or unchecked. The PR that closes it
+  updates `docs/SPEC.md` and deletes the plan; a parked idea belongs in its issue.
+- **No counts of checks in prose.** CI and the command's own output are the count.
+- **One index:** the README's table. Say what you checked and when for any status line, and drop a line you can't check.
+
 ## Ground rules
 
 **This repo is public.** Recipe, planner and diary data must never be committed here. Backups go
@@ -100,9 +115,9 @@ node test/core.test.js
 node test/build.js && node test/smoke.js
 ```
 
-`core.test.js` is 263 checks in Node, in about two seconds: the pure functions, the dictionary, the
+`core.test.js` runs in Node in about two seconds: the pure functions, the dictionary, the
 shopping list's naming rules, and the rules that keep `core.js` and `index.html` apart. The smoke
-suite is 921 checks. **Run both,
+suite is slow (many minutes in a container). **Run both,
 always** — `smoke.js` loads what `build.js` wrote, so skipping the build
 tests your previous edit and reports a pass or a failure that belongs to code you have changed.
 
@@ -115,13 +130,13 @@ queue — never claim the app works end to end on the strength of a green run.
 node test/image-integrity.js
 ```
 
-37 checks over the integrity checker, `parseRecipeFilter`, the address guard and the capped body reader in `supabase/functions/*/index.ts`.
+It checks the integrity checker, `parseRecipeFilter`, the address guard and the capped body reader in `supabase/functions/*/index.ts`.
 It lifts the code out of the real source rather than copying it, so a signature change makes it
 throw rather than pass vacuously. After a change to `source-ingredients`, or to `sourceFidelity`
-in `core.js`, run `node test/source-ingredients.js` (16 checks, lifted the same way). After a change to
-`calendar-auth` or `calendar-sync`, run `node test/calendar-push.js` (62 checks, lifted the same way); after a change to
-`drive-backup`, `node test/drive-backup.js` (13 checks). After changing
-an on-screen label, or `help.html`, run `node test/help-guide.js` (7 checks).
+in `core.js`, run `node test/source-ingredients.js` (lifted the same way). After a change to
+`calendar-auth` or `calendar-sync`, run `node test/calendar-push.js` (lifted the same way); after a change to
+`drive-backup`, `node test/drive-backup.js`. After changing
+an on-screen label, or `help.html`, run `node test/help-guide.js`.
 
 ## Things that will bite
 
@@ -137,7 +152,7 @@ an on-screen label, or `help.html`, run `node test/help-guide.js` (7 checks).
   visible change, offline too; the app turns the second and later ones into `refreshLibrary()`.
   That refresh is load-bearing — it is what stops a long-open tab pushing a stale library over
   another device's work — so don't remove it. It must never replace the cache while the cache
-  holds something the server doesn't; `docs/HANDOVER.md` §2e has the four rules it follows.
+  holds something the server doesn't; `docs/ARCHITECTURE.md` §3 has the four rules it follows.
 - **`buildShoppingList()` must stay side-effect free** — it runs on every planner mutation via
   `updateSidebarCounts()`. Never put a prompt or a write in it. Since PR 6b it only *returns*
   suggestions; `renderShopping` shows them in place and the buttons do the writing.

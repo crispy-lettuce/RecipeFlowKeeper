@@ -198,6 +198,13 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
 9. **Versions.** The app has a date version; a new one is announced by an UPDATE bar (RELOAD). When the converter instructions change,
    each household sees a CONVERTER bar until someone taps DONE.
 10. **Help.** `help.html` names every button exactly as it reads and is checked against the app by a test.
+11. **Look and feel rules that stand.** Everything pressed with a thumb is at least 44 px tall; text meets 4.5:1 contrast on the surface
+    it sits on; there is one type scale and one corner radius per style; step text is flush left; keyboard focus is always visible.
+    Colours come from tokens, per theme, so light, dark, Classic and Modernist all work.
+12. **Eaten is not cooked.** A meal from the freezer is logged in the diary on its day but does not change "last cooked", times cooked
+    or the streak, and a PRE-MADE dish is not on the shopping list.
+13. **One key, one home, per fact held about an ingredient.** Word matches, aisle overrides, swaps and the dictionary row each have one
+    key and one place in Settings; only the naming facts re-key ticks.
 
 ---
 

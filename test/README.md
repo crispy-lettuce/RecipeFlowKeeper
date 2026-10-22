@@ -19,8 +19,7 @@ node test/smoke.js       # walk it; exits non-zero on any failure
 Since 23 Sep these run in GitHub Actions on every pull request and every push to `main`
 (`.github/workflows/tests.yml`), so the gate no longer depends on anyone remembering. CI runs seven steps after the
 install: `core.test.js`, then `build.js` and `smoke.js`, then `image-integrity.js`, `source-ingredients.js`,
-`calendar-push.js`, `drive-backup.js` and `help-guide.js`. *(Corrected 12 Oct 2026, the October review's Appendix B:
-this said "the same three commands", and the page did not name `image-integrity.js` or `drive-backup.js`.)*
+`calendar-push.js`, `drive-backup.js` and `help-guide.js`.
 Results print as each check runs; a crash prints `CRASH after N checks` and the last `ok` line
 names where it died.
 
@@ -29,11 +28,8 @@ CDN `<script>` tags swapped for `stub.js` and a set of canned rows injected.
 Re-run it after every change to `index.html`; `smoke.js` reads only that copy,
 never the original.
 
-`node test/validate-recipes.js <file>` checks a converted batch against the app's own parser (fenced blocks or an unfenced file with a `TITLE:` line per recipe; since 19 Oct the blocks are found by `splitRecipeBlocks` in `core.js`, the function the planned ADD SEVERAL uses),
-and `node test/ingredient-survey.js <files> [--out report.md]` surveys bulk ingredient
-extractions (`converter/ingredient-extraction-prompt.md`). Both read their input from outside
-this repo, and share the ingredient-line checks, which since 27 Sep live in `core.js`
-(`ingredientLineFaults`, the same copy the app's preview uses) and are reported through
+`node test/validate-recipes.js <file>` checks a converted batch against the app's own parser (fenced blocks or an unfenced file with a `TITLE:` line per recipe; the blocks are found by `splitRecipeBlocks` in `core.js`, the function ADD SEVERAL uses). It reads its input from outside
+this repo, and shares the ingredient-line checks with the app's preview (`ingredientLineFaults` in `core.js`), reported through
 `ingredient-lines.js`.
 
 Since 29 Sep (PR 3 of the add-recipe plan) `validate-recipes.js` also takes `--source <file>`: the source
@@ -42,32 +38,32 @@ pages' own ingredient lists, keyed by `TITLE:` and kept outside the repo, run th
 `core.js` run inside the page, not from a second reading of `converter/ingredient-names.md`, and a
 recipe whose text carries a `Source note` saying it was not read from its own page is a warning.
 
-`node test/image-integrity.js` (37 checks, no browser) tests the `rehost-images` Edge Function's image integrity checker
+`node test/image-integrity.js` (no browser) tests the `rehost-images` Edge Function's image integrity checker
 (a JPEG whose scan data runs out early must fail, not pass on its end marker), its `parseRecipeFilter` and its address guard
 (`safePageUrl`), lifted from the real source rather than copied, so a changed signature throws instead of passing. Run it
 after any change to the image function.
 
-`node test/source-ingredients.js` (16 checks, no browser) tests the `source-ingredients` Edge
+`node test/source-ingredients.js` (no browser) tests the `source-ingredients` Edge
 Function's page reading — which addresses it refuses, and what it makes of a recipe page's
 Schema.org block — lifted from the real function source, and the source check in `core.js` it
 feeds. Every page in it is made up; it proves nothing about whether a real site carries the
 block. `node tools/remeasure.js <export>` re-measures the whole library from an export kept
 outside the repo.
 
-`node test/help-guide.js` (7 checks, no browser) checks the how-to guide, `help.html`, against the app: every
+`node test/help-guide.js` (no browser) checks the how-to guide, `help.html`, against the app: every
 button it names (marked `<b class="ui">`) is still the whole text of an element or string in `index.html`, comments
 left out (since 12 Oct, F28: it used to accept the label as a substring anywhere, comments included, so renaming GO
 passed), and every link from Settings → HELP and
 from the guide's contents lands on a section that exists. Since 10 Oct it also checks that every link from the guide to a file in this repo (the conversion
 instructions, on GitHub) names a file that exists.
 
-`node test/calendar-push.js` (62 checks, no browser) tests the calendar push's two Edge Functions,
+`node test/calendar-push.js` (no browser) tests the calendar push's two Edge Functions,
 `calendar-sync` and `calendar-auth`, lifted from their real source the same way: the event's id,
 its all-day dates, the 20:00 reminder's minutes, which days a sync writes or deletes, what a sync
 request may ask for, the consent link, the way back to the app and the id_token's email. Nothing
 in it talks to Google; the household's first connection is that (`docs/TEST-PLAN.md` 40a).
 
-`node test/drive-backup.js` (13 checks, no browser) tests the `drive-backup` Edge Function, lifted the same way from the
+`node test/drive-backup.js` (no browser) tests the `drive-backup` Edge Function, lifted the same way from the
 section of its source marked "pure": which file it accepts, what it names it, which old backups it removes, and the upload
 it builds. Nothing in it talks to Google either; the household's first SAVE TO DRIVE NOW is that (`docs/TEST-PLAN.md` 44a).
 
@@ -81,9 +77,8 @@ Both scripts use whichever Chromium Playwright installs. Set
 
 **`test/core.test.js` — the pure core, in Node.** Since 25 Sep (PR 6a) the parser, layout,
 quantity, scaling and naming functions live in `core.js`, which loads in Node as well as the page.
-218 checks, about two seconds, no browser: the behaviour the app relies on, the shopping list's naming
-and totalling (since PR 6b: the ingredient review's §6 checks, numbered as they are there, each run
-once against the mutation it names), the dictionary's master
+It runs in about two seconds, no browser, and checks the behaviour the app relies on, the shopping list's naming
+and totalling (each check run once against the mutation it names), the dictionary's master
 copy against the generated `converter/ingredient-names.md`, and three rules about the split —
 `core.js` never touches the page, nothing is defined in both files, and the two version stamps
 agree. Since 12 Oct (#127) it also fails when `converter/conversion-instructions.md` changes without its version, `CONVERTER_VERSION` and
@@ -98,7 +93,7 @@ node test/core.test.js
 `build.js` inlines the real `core.js` into the built page, so the smoke suite below tests exactly
 what Pages serves.
 
-**868 checks** (20 Oct 2026; 838 before the calendar reminder per meal, 713 on 18 Oct, 708 on 15 Oct and 622 before the Modernist style, whose 86 checks and the 5 for its review's fixes are at the end of `smoke.js`). It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
+**`test/smoke.js` — the browser suite.** It is slow (many minutes). It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, the automatic image
 re-host on save, what happens when you come back to the tab (online, offline, mid-save, after a

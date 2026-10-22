@@ -5,12 +5,9 @@
 > The prose above the tables lives in `tools/ingredient-names-preamble.md`. `test/core.test.js`
 > fails if this file and `core.js` differ.
 
-*Created 23 Sep 2026, from `docs/REVIEW-INGREDIENT-MATCHING-FINDINGS.md` §4.2. Reframed the same
-day, after `docs/REVIEW-ARCHITECTURE-FINDINGS.md` §4.*
-
-**This file is not for the converter.** It is the seed of the dictionary the app will use to
-total the shopping list, and until that release it is read only by `test/validate-recipes.js`
-and `test/ingredient-survey.js`, to report. Do not add it to the conversion project.
+**This file is not for the converter.** It is the dictionary the app uses to
+total the shopping list, written out to be read, and `test/validate-recipes.js` reads it to report.
+Do not add it to the conversion project.
 
 ## What it is for
 
@@ -34,9 +31,7 @@ never needs to total with anything, so a row for it is upkeep with no benefit.
 
 **Where the master copy lives.** Since 25 Sep 2026 (PR 6a) it is `INGREDIENT_DICTIONARY` in
 `core.js`, and this file is generated from it, so there is only ever one list to edit. The
-shopping list starts totalling by it in the release that follows (PR 6b in
-`docs/NEXT-SESSION.md`). *(Until 25 Sep this paragraph said the move was still to come, and this
-file was the only copy.)*
+shopping list totals by it.
 
 **Where the rows came from.** 78 rows are the 79 ingredients the review found shared by two or
 more recipes in September 2026, which covered 80% of all ingredient lines. (The review scored 79;

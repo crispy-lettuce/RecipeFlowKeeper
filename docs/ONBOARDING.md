@@ -1,18 +1,7 @@
 # Adding a family member — how it's done
 
-**Written 28 Sep 2026**, verified against the running app and the live database: one account,
-one household, one membership row today; no insert policy on `households` or
-`household_members`; the app itself has no sign-up form, only sign-in. Part of PR 7 (Sharing),
-`docs/NEXT-SESSION.md`.
-
-*(Corrected 18 Oct 2026: there are four households now, four accounts and four membership rows. On 18 Oct the family's
-account moved to a new household under the same name, and its first household became Test Kitchen, with a test account of
-its own (`docs/PLAN-TEST-HOUSEHOLD.md`).)*
-
-*(Corrected 12 Oct 2026, the October review's Appendix B. There were three households then, three accounts and three
-membership rows: the households are the family's, the weekly live test's, and the family's second, made by §4. Each has a name of its own,
-set from Settings since 10 Oct. The line numbers below, the "one household" statements and what `hydrate()` does with an
-account in two are brought up to date in place.)*
+**Written 28 Sep 2026, last reviewed 22 Oct 2026.** The app has no sign-up form, only sign-in, and no insert policy on `households`
+or `household_members`, so an account is made and linked by hand, as below. There are four households (`docs/INFRASTRUCTURE.md` §3).
 
 ---
 
@@ -145,8 +134,7 @@ This should list everyone in every household (the first column says which), the 
 
 - **One account in two households.** Each account belongs to one household (above).
 - **A model-backed converter** so a family member can add a recipe without your account —
-  deliberately deferred until someone actually wants to add one this way
-  (`docs/NEXT-SESSION.md`).
+  deliberately deferred until someone actually wants to add one this way.
 - **Anything about *how much* they can do once signed in.** Everyone in a household has the same
   access to everything in it — there's no read-only or partial-access member today, and `role`
   (above) isn't wired to anything that would make one.

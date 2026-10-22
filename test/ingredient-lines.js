@@ -1,5 +1,5 @@
 /* The ingredient-line checks, shared by test/validate-recipes.js (one converted
-   batch) and test/ingredient-survey.js (many extracted recipes), so the two can
+   batch) and the tests, so they can
    never disagree about what a good line is.
 
    The rules are the ones in converter/conversion-instructions.md §1 ("Write every
