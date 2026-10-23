@@ -9390,6 +9390,165 @@ const check = (name, pass, detail) => {
   check('Classic: Enter on a card\'s + puts it on the shortlist and leaves the recipe closed', fxc1.on === 1 && fxc1.view === 'recipes', JSON.stringify(fxc1));
   await fxc.close();
 
+  /* TL-BEGIN */
+  /* ---- The timeline (run sheet PR 1, 23 Oct 2026, docs/PLAN-RUN-SHEET.md §7) ----
+     The 22 Oct review's fixes and the ticks driving the bars, each at a tablet and a phone width in both looks, in the single viewer and in the
+     Group Viewer. Made-up dishes: the main has a step of no length in the middle ([instant]) and a box carried across a column (.passthrough),
+     the side a step of ten seconds; both use the same handle names, so a lookup that is not scoped to its dish fails. */
+  console.log('\nThe timeline');
+  const tlRun = async (look, w) => {
+    const p = await browser.newPage({ viewport: { width: w, height: 900 } });
+    p.__label = `timeline ${look} ${w}`;
+    await p.addInitScript(l => { try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
+    await p.clock.setFixedTime(FIXTURE_NOW);
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1200);
+    const out = await p.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const rc = e => e.getBoundingClientRect();
+      loadRecipes().push(
+        { id: 'tl-main', title: 'Test Long Dish', source: 'Test', servings: 2, tags: { course: 'Main', keywords: [] }, history: [],
+          syntax: 'TITLE: Test Long Dish\nSERVINGS: 2\n\nGROUP a:\n1 swede\nGROUP z:\n1 lemon\nGROUP y:\n1 lemon\n\nSTAGE:\nMERGE a -> b: Roast [60 min]\nMERGE y -> e: Slice [5 min]\n\nSTAGE:\nMERGE b, z -> c: Stir in the lemon [instant]\n\nSTAGE:\nMERGE c, e -> d: Rest [20 min]' },
+        { id: 'tl-side', title: 'Test Short Dish', source: 'Test', servings: 2, tags: { course: 'Side', keywords: [] }, history: [],
+          syntax: 'TITLE: Test Short Dish\nSERVINGS: 2\n\nGROUP a:\n1 swede\nGROUP z:\n1 lemon\n\nSTAGE:\nMERGE a -> b: Bubble gently [15 min]\n\nSTAGE:\nMERGE b, z -> c: Season [10 sec]\n\nSTAGE:\nMERGE c -> d: Serve [instant]' });
+      const day = isoLocal(new Date());
+      addPlanRecipe(day, 'tl-main'); addPlanRecipe(day, 'tl-side'); createGroup(day, ['tl-main', 'tl-side']);
+      const gid = loadGroups().find(g => g.recipeIds.includes('tl-side')).id;
+      /* The setup's own saves are queued in the background: let them land first, so only what the walk does is counted. */
+      const drain = async () => { let t; do { t = writeQueue; await t; } while (t !== writeQueue); };
+      await drain();
+      const writes0 = window.__WRITES__.length;
+
+      /* What a strip looks like: its ticks, bars, markers and header, measured on screen. */
+      const strip = root => {
+        const st = root.querySelector('.timeline-strip'), tr = rc(st.querySelector('.timeline-track'));
+        const ticks = [...st.querySelectorAll('.timeline-tick')], shown = ticks.filter(t => !t.classList.contains('off')).sort((a, b) => rc(a).left - rc(b).left);
+        let overlap = 0; shown.forEach((t, i) => { if (i && rc(t).left < rc(shown[i - 1]).right) overlap++; });
+        const lanes = [...st.querySelectorAll('.timeline-lane-abs')];
+        const bars = lanes.filter(l => !l.classList.contains('timeline-marker')), marks = lanes.filter(l => l.classList.contains('timeline-marker'));
+        const head = [...st.querySelectorAll('.timeline-strip-head > *')], sr = rc(st);
+        const clash = (a, b) => rc(a).left < rc(b).right - 0.5 && rc(b).left < rc(a).right - 0.5 && rc(a).top < rc(b).bottom && rc(b).top < rc(a).bottom;
+        let headOverlap = 0; head.forEach((a, i) => head.forEach((b, j) => { if (i < j && clash(a, b)) headOverlap++; }));
+        return {
+          lastRightOver: Math.round((rc(ticks[ticks.length - 1]).right - tr.right) * 10) / 10, shownFirst: shown[0].textContent, shownLast: shown[shown.length - 1].textContent,
+          lastText: ticks[ticks.length - 1].textContent, ticksOverlap: overlap, ticksShown: shown.length,
+          narrowest: Math.round(Math.min(...lanes.map(l => rc(l).width))), outside: lanes.filter(l => rc(l).left < tr.left - 14.5 || rc(l).right > tr.right + 14.5).length,
+          barsOutside: bars.filter(l => rc(l).left < tr.left - 0.5 || rc(l).right > tr.right + 0.5).length,
+          markers: marks.map(m => {
+            const lab = m.querySelector('span'), lr = rc(lab), hidden = m.classList.contains('no-label');
+            const sib = [...m.parentNode.children].filter(c => c !== m).filter(c => !hidden && lr.left < rc(c).right - 0.5 && rc(c).left < lr.right - 0.5);
+            return { hidden, flip: m.classList.contains('flip'), inside: lr.left >= tr.left - 0.5 && lr.right <= tr.right + 0.5, collides: sib.length, i: !!m.querySelector('i'), shown: getComputedStyle(lab).visibility !== 'hidden' };
+          }),
+          names: [...st.querySelectorAll('.timeline-lane-name')].map(n => ({ text: n.textContent.trim(), w: Math.round(rc(n).width), inside: rc(n).left >= sr.left && rc(n).right <= sr.right })),
+          headH: Math.round(rc(st.querySelector('.timeline-strip-head')).height), headOverlap, labelH: Math.round(rc(head[0]).height),
+          headInside: head.every(h => rc(h).left >= sr.left - 0.5 && rc(h).right <= sr.right + 0.5) };
+      };
+      /* Which bars are ticked, by handle (and dish), and which are flashing. */
+      const bars = root => [...root.querySelectorAll('.timeline-lane-abs')].map(b => ({ id: (b.dataset.recipeId || '') + ':' + b.dataset.handle, ticked: b.classList.contains('ticked'), flash: b.classList.contains('timeline-flash') }));
+      const tickedIds = root => bars(root).filter(b => b.ticked).map(b => b.id).sort();
+      const flashIds = root => bars(root).filter(b => b.flash).map(b => b.id);
+      const boxOf = (root, recipe, handle, carried) => (recipe ? root.querySelector(`.stacked-recipe[data-recipe-id="${recipe}"]`) : root).querySelector(`.box-cell${carried ? '.passthrough' : ':not(.passthrough)'}[data-handle="${handle}"]`);
+      const scrolls = () => [window.scrollY, ...[...document.querySelectorAll('.viewer-body')].map(e => e.scrollTop)].join(',');
+      const paint = (root, id) => { const b = [...root.querySelectorAll('.timeline-lane-abs')].find(x => (x.dataset.recipeId || '') + ':' + x.dataset.handle === id);
+        const probe = document.createElement('i'); probe.style.background = 'var(--well)'; document.body.appendChild(probe); const well = getComputedStyle(probe).backgroundColor; probe.remove();
+        const lab = b.querySelector('span'); return { bg: getComputedStyle(b).backgroundColor, well, tick: getComputedStyle(lab, '::before').content }; };
+
+      /* The same walk in both viewers: tick the instant step's box (which ticks what fed it), tick the carried box, untick the first, redraw, reset. */
+      const walk = async (root, recipe, resetBtn, redraw) => {
+        const r = {};
+        r.start = tickedIds(root);
+        const c = boxOf(root, recipe, 'c'), sc0 = scrolls();
+        c.click();
+        r.afterC = tickedIds(root); r.flashC = flashIds(root); r.scrollMoved = scrolls() !== sc0;
+        r.paintTicked = paint(root, (recipe ? recipe + ':' : ':') + 'b'); r.paintOpen = paint(root, (recipe ? recipe + ':' : ':') + 'd');
+        await wait(1000);
+        r.flashGone = flashIds(root).length === 0;
+        boxOf(root, recipe, 'e', true).click();
+        r.flashCarried = flashIds(root); r.afterCarried = tickedIds(root);
+        c.click();
+        r.afterUntick = tickedIds(root);
+        redraw();
+        await wait(300);
+        const root2 = recipe ? document.getElementById('groupFlowMount') : document.getElementById('flowMount');
+        r.afterRedraw = tickedIds(root2);
+        document.getElementById(resetBtn).click();
+        r.afterReset = tickedIds(root2);
+        return r;
+      };
+
+      const res = { writes0 };
+      openRecipe('tl-main', 'recipes'); await wait(350);
+      const flow = document.getElementById('flowMount');
+      res.single = strip(flow);
+      const wrap = flow.querySelector('.tablewrap'), cue = flow.querySelector('.flow-more');
+      res.cue = { over: wrap.scrollWidth - wrap.clientWidth, display: cue ? getComputedStyle(cue).display : 'none' };
+      wrap.scrollLeft = wrap.scrollWidth; wrap.dispatchEvent(new Event('scroll')); res.cue.atEnd = cue ? getComputedStyle(cue).display : 'none';
+      wrap.scrollLeft = 0; wrap.dispatchEvent(new Event('scroll'));
+      res.singleWalk = await walk(flow, '', 'resetTicksBtn', () => renderViewer());
+      res.singleJump = (() => { const lane = [...document.querySelectorAll('#flowMount .timeline-lane-abs')].find(b => b.dataset.handle === 'b'); lane.click();
+        return document.querySelectorAll('#flowMount .box-cell.timeline-flash').length; })();
+
+      openGroup(gid, 'planner'); await wait(350);
+      const gm = document.getElementById('groupFlowMount');
+      res.group = strip(gm);
+      res.groupWalk = await walk(gm, 'tl-main', 'groupResetTicksBtn', () => renderGroupViewer());
+      const sideBar = [...gm.querySelectorAll('.timeline-lane-abs')].find(b => b.dataset.recipeId === 'tl-side' && b.dataset.handle === 'b');
+      sideBar.click();
+      res.groupJump = { side: gm.querySelectorAll('.stacked-recipe[data-recipe-id="tl-side"] .box-cell.timeline-flash').length, main: gm.querySelectorAll('.stacked-recipe[data-recipe-id="tl-main"] .box-cell.timeline-flash').length };
+      await drain();
+      res.writes1 = window.__WRITES__.length;
+      return res;
+    });
+    /* The arrow in print: the page is asked for its print styles. */
+    await p.evaluate(() => { openRecipe('tl-main', 'recipes'); });
+    await p.waitForTimeout(250);
+    await p.emulateMedia({ media: 'print' });
+    out.cuePrint = await p.evaluate(() => { const c = document.querySelector('#flowMount .flow-more'); return c ? getComputedStyle(c).display : 'none'; });
+    await p.close();
+    return out;
+  };
+  const tl = {};
+  for (const look of ['classic', 'modernist']) for (const w of [1280, 412]) tl[`${look} ${w}`] = await tlRun(look, w);
+  const tlAll = (name, pass, detail) => {   // one check over the four looks and widths: it fails if any one does, and says which
+    const bad = Object.keys(tl).filter(k => !pass(tl[k], k));
+    check(name, bad.length === 0, bad.length ? 'fails at ' + bad.map(k => k + ': ' + JSON.stringify(detail(tl[k]))).join(' | ').slice(0, 600) : '');
+  };
+  const J = JSON.stringify, sameSet = (a, b) => J(a) === J(b);
+  tlAll('timeline: the last mark ends inside the strip, in the single viewer and the Group Viewer, and the Group Viewer\'s still reads SERVE',
+        t => t.single.lastRightOver <= 0.5 && t.group.lastRightOver <= 0.5 && t.group.lastText === 'SERVE', t => [t.single.lastRightOver, t.group.lastRightOver, t.group.lastText]);
+  tlAll('    marks that would run into each other are left out: none overlaps, START and the last always show',
+        t => [t.single, t.group].every(s => s.ticksOverlap === 0 && s.shownFirst === 'START' && s.ticksShown >= 2), t => [t.single, t.group].map(s => [s.ticksOverlap, s.shownFirst, s.ticksShown]));
+  tlAll('timeline: every bar and marker is at least 28px wide, and bars stay inside the strip',
+        t => [t.single, t.group].every(s => s.narrowest >= 28 && s.outside === 0 && s.barsOutside === 0), t => [t.single, t.group].map(s => [s.narrowest, s.outside, s.barsOutside]));
+  tlAll('timeline: an [instant] step is a marker with its name beside it, clear of the bars (in the Group Viewer the name is dropped where a bar is in the way)',
+        t => t.single.markers.length === 1 && t.single.markers.every(m => m.i && m.shown && m.inside && m.collides === 0)
+          && t.group.markers.length === 2 && t.group.markers.every(m => m.i && m.collides === 0 && (m.hidden || (m.shown && m.inside))), t => [t.single.markers, t.group.markers]);
+  tlAll('Group Viewer: each lane starts with its dish\'s name, in view',
+        t => sameSet(t.group.names.map(n => n.text), ['Test Long Dish', 'Test Short Dish']) && t.group.names.every(n => n.w > 40 && n.inside), t => t.group.names);
+  tlAll('the strip\'s header wraps instead of squeezing: nothing overlaps, everything is inside, and the label stays on one line',
+        t => [t.single, t.group].every(s => s.headOverlap === 0 && s.headInside && s.labelH <= 24), t => [t.single, t.group].map(s => [s.headOverlap, s.headInside, s.labelH]));
+  tlAll('ticking a box greys its bar with a ✓: the box and what fed it, each dish on its own; the carried box ticks its step\'s bar; unticking undoes only that box',
+        t => sameSet(t.singleWalk.start, []) && sameSet(t.singleWalk.afterC, [':b', ':c'])
+          && sameSet(t.singleWalk.afterCarried, [':b', ':c', ':e']) && sameSet(t.singleWalk.afterUntick, [':b', ':e'])
+          && sameSet(t.groupWalk.afterC, ['tl-main:b', 'tl-main:c']) && sameSet(t.groupWalk.afterCarried, ['tl-main:b', 'tl-main:c', 'tl-main:e']) && sameSet(t.groupWalk.afterUntick, ['tl-main:b', 'tl-main:e']),
+        t => [t.singleWalk.afterC, t.singleWalk.afterCarried, t.singleWalk.afterUntick, t.groupWalk.afterC, t.groupWalk.afterCarried, t.groupWalk.afterUntick]);
+  tlAll('    a ticked bar is the surface grey with a ✓, an open one is not',
+        t => [t.singleWalk, t.groupWalk].every(w => w.paintTicked.bg === w.paintTicked.well && w.paintTicked.tick === '"✓ "' && w.paintOpen.bg !== w.paintOpen.well && w.paintOpen.tick !== '"✓ "'), t => [t.singleWalk, t.groupWalk].map(w => [w.paintTicked, w.paintOpen]));
+  tlAll('    the bars stay ticked when the viewer is redrawn (as a refresh does), and RESET TICKS clears them',
+        t => sameSet(t.singleWalk.afterRedraw, [':b', ':e']) && sameSet(t.singleWalk.afterReset, []) && sameSet(t.groupWalk.afterRedraw, ['tl-main:b', 'tl-main:e']) && sameSet(t.groupWalk.afterReset, []),
+        t => [t.singleWalk.afterRedraw, t.singleWalk.afterReset, t.groupWalk.afterRedraw, t.groupWalk.afterReset]);
+  tlAll('tapping a box flashes its bar (a carried box, its step\'s bar; in a group, its own dish\'s), and does not scroll anything',
+        t => sameSet(t.singleWalk.flashC, [':c']) && sameSet(t.singleWalk.flashCarried, [':e']) && sameSet(t.groupWalk.flashC, ['tl-main:c']) && sameSet(t.groupWalk.flashCarried, ['tl-main:e'])
+          && t.singleWalk.flashGone && !t.singleWalk.scrollMoved && !t.groupWalk.scrollMoved, t => [t.singleWalk.flashC, t.singleWalk.flashCarried, t.groupWalk.flashC, t.groupWalk.flashCarried, t.singleWalk.scrollMoved, t.groupWalk.scrollMoved]);
+  tlAll('tapping a bar jumps to its box, in the Group Viewer too and in its own dish (it did nothing there before)',
+        t => t.singleJump === 1 && t.groupJump.side === 1 && t.groupJump.main === 0, t => [t.singleJump, t.groupJump]);
+  tlAll('Classic and Modernist both draw the arrow when the table runs on to the right, not when it fits, not at its end, and not in print',
+        (t, k) => t.cue.over > 2 ? t.cue.display === 'block' && t.cue.atEnd === 'none' && t.cuePrint === 'none' : t.cue.display === 'none' && t.cuePrint === 'none', t => [t.cue, t.cuePrint]);
+  check('    and the arrow is wanted at a phone\'s width and not at a tablet\'s (the made-up dishes\' table is wider than 412px, narrower than 1280px)',
+        tl['classic 412'].cue.over > 2 && tl['modernist 412'].cue.over > 2 && tl['classic 1280'].cue.over <= 2 && tl['modernist 1280'].cue.over <= 2, J(Object.keys(tl).map(k => [k, tl[k].cue.over])));
+  tlAll('none of it wrote anything: no tick, tap or redraw reached the stub', t => t.writes1 === t.writes0, t => [t.writes0, t.writes1]);
+  /* TL-END */
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:

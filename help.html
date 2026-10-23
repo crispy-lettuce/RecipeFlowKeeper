@@ -126,6 +126,10 @@
   <ul>
     <li>Tap any box to tick it off. Ticking a step also ticks everything that went into it.</li>
     <li>Ticks last until you reload. <b class="ui">RESET TICKS</b> clears them.</li>
+    <li id="timeline-follows">The timeline bar above the diagram follows your ticks. A step you tick turns grey with a ✓ on its bar, and goes back
+      to colour if you untick it or press <b class="ui">RESET TICKS</b>. Tapping a box also flashes its bar, when the bar is on the screen.
+      Tapping a bar does the reverse: it takes you to that step's box. A step that takes no time (<i>INSTANT</i>) is a small diamond with its
+      name beside it, and every other bar is wide enough to tap, however short the step.</li>
     <li><b>Ticking the whole last column logs the recipe as cooked today.</b> A box asks <i>Which meal was that?</i>
       (Breakfast, Lunch, Dinner, Snack), with room for a note on how it went. <b class="ui">SKIP</b> keeps the log without a meal.</li>
   </ul>
@@ -163,8 +167,8 @@
   <h2>4. Cooking several dishes together</h2>
   <p>When a day has two or more recipes (a main and a side, say), <b class="ui">GROUP SOME TOGETHER</b> on the Planner lets
     you tick the ones you're cooking at once, then <b class="ui">GROUP SELECTED</b>. Tap the <b>GROUPED: …</b> badge to see them
-    together: one timeline with a lane for each dish, and each recipe's diagram below. <b class="ui">UNGROUP</b> separates them
-    again; they stay on the day.</p>
+    together: one timeline with a lane for each dish, each headed by the dish's name and colour, and each recipe's diagram below.
+    Ticking greys a dish's own bars only. <b class="ui">UNGROUP</b> separates them again; they stay on the day.</p>
   <p id="finish-together">Above the timeline, <b class="ui">START TOGETHER</b> starts every dish at once, and
     <b class="ui">FINISH TOGETHER</b> lines them up to be ready at the same moment: the longest dish reads <b>START FIRST</b>, and
     each shorter one says when to begin it, for example <b>START AT +45 min</b>. The timeline's last mark reads <b>SERVE</b>.
@@ -399,7 +403,7 @@
     <li>On the Planner, on a recipe in cooking mode, and on every screen when the window is narrower than 1100 pixels (the tablet held
       upright), the side menu folds to a narrow strip down the left. Tap the strip to open the
       menu; the ‹ at its top folds it again, and so does choosing a screen.</li>
-    <li>When a recipe's table of steps is wider than the screen, a small dark square with an arrow sits at its top right corner. It stays there
+    <li>When a recipe's table of steps is wider than the screen, a small square with an arrow (plum in Classic, dark in Modernist) sits at its top right corner. It stays there
       while you scroll the table sideways, and goes when you reach the end. It is left out of <b class="ui">EXPORT PNG</b> and of printing.</li>
     <li>The Planner's shortlist folds to a strip down the right with its › button, to give the days more room. Tap the strip, or
       <b class="ui">SHORTLIST</b> in the side menu, to open it again. It opens again by itself next time you start the app.</li>

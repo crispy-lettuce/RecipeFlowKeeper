@@ -590,27 +590,68 @@ function loadArchivoFont(){
     background:var(--card); border:1px solid var(--line); border-radius:var(--r);
     padding:14px 16px 12px; margin:0 0 20px;
   }
+  /* Wraps rather than squeezing: at phone width the label, START/FINISH TOGETHER and the total each take a row of their own, where
+     the label used to be pressed into a column four lines tall (the 22 Oct review). The total keeps the right edge. */
   .timeline-strip-head{
-    display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;
+    display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px 12px; margin-bottom:10px;
     font-size:13px; letter-spacing:.04em; color:var(--ink-faint);
   }
+  .timeline-strip-head > *{ min-width:0; }
+  .timeline-strip-head > :last-child{ margin-left:auto; }
   .timeline-track{ position:relative; }
   .timeline-ruler{
     position:relative; height:16px; font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--ink-faint);
   }
   .timeline-tick{ position:absolute; top:0; border-left:1px solid var(--line-soft); padding-left:3px; white-space:nowrap; }
+  /* The last tick ends at the strip's right edge instead of starting there, so its label is never cut off; fitTimelineStrip hides a
+     middle tick that would run into it. */
+  .timeline-tick.timeline-tick-end{ transform:translateX(-100%); border-left:0; border-right:1px solid var(--line-soft); padding:0 3px 0 0; }
+  .timeline-tick.off{ visibility:hidden; }
   .timeline-lanes{ position:relative; }
   .timeline-lane-row{ position:relative; height:20px; margin-bottom:3px; }
+  /* The dish's name above its lane in the Group Viewer: the bars carry its colour, and until now its name only in a tooltip. */
+  .timeline-lane-name{ display:flex; align-items:center; gap:6px; margin:8px 0 3px; font-size:13px; color:var(--ink-soft); }
+  .timeline-lane-name:first-child{ margin-top:0; }
+  .timeline-lane-name .recipe-swatch{ width:10px; height:10px; border-radius:var(--r); flex:none; }
+  .timeline-lane-name span:last-child{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* 28px is the least a thumb can find; a bar shorter than that is drawn that wide from its start and raised above its neighbour
+     (fitTimelineStrip marks it .short), so its whole width answers a tap. */
   .timeline-lane-abs{
-    position:absolute; top:0; height:20px; border-radius:var(--r); cursor:pointer;
+    position:absolute; top:0; height:20px; min-width:28px; border-radius:var(--r); cursor:pointer;
     display:flex; align-items:center; overflow:hidden; transition:filter .15s ease;
   }
+  .timeline-lane-abs.short{ z-index:1; }
+  .timeline-lane-abs.edge{ left:auto !important; right:0; }   /* a bar widened to 28px at the very end keeps its end on the strip's edge */
   .timeline-lane-abs:hover{ filter:brightness(1.12); }
   .timeline-lane-abs span{
-    font-size:13px; color:var(--on-accent); padding:0 6px;   /* a step's name, in words: Plex Sans fits more of it in a short bar than mono */
+    font-size:13px; color:var(--on-accent); padding:0 6px; min-width:0; overflow:hidden; text-overflow:ellipsis;   /* a step's name, in words: Plex Sans fits more of it in a short bar than mono */
     white-space:nowrap; letter-spacing:.02em;
   }
   .timeline-lane-abs.open-ended{ background-image:repeating-linear-gradient(135deg, var(--lane-stripe) 0 4px, transparent 4px 8px); }
+  /* An [instant] step takes no time, so it is a mark at its moment with its name beside it, not a sliver with the name clipped inside.
+     The element is the tap area (28px, centred on the moment); fitTimelineStrip puts the name on the side with room, or drops it
+     where a neighbouring bar is in the way (the tooltip and the tap remain). */
+  .timeline-lane-abs.timeline-marker{ width:28px; margin-left:-14px; overflow:visible; background:none; z-index:2; }
+  .timeline-lane-abs.timeline-marker:hover{ filter:none; }
+  .timeline-marker i{ display:block; width:10px; height:10px; margin:0 auto; transform:rotate(45deg); background:var(--lane, var(--plum)); box-shadow:0 0 0 2px var(--card); }   /* the ring keeps it apart from a bar of its own colour beside it */
+  .timeline-lane-abs.timeline-marker span{
+    position:absolute; top:50%; left:calc(50% + 11px); transform:translateY(-50%); padding:0; overflow:visible;
+    color:var(--ink-soft);
+  }
+  .timeline-marker.flip span{ left:auto; right:calc(50% + 11px); }
+  .timeline-marker.no-label span{ visibility:hidden; }
+  /* A ticked box greys its bar, with a ✓ so it does not rest on colour alone. !important because a group's bars carry their colour inline,
+     as .box-cell.done does for the same reason. Not .done: the tests and the reset buttons count that class in the viewers. */
+  .timeline-lane-abs.ticked{ background:var(--well) !important; background-image:none !important; box-shadow:inset 0 0 0 1px var(--line); }
+  .timeline-lane-abs.ticked span{ color:var(--ink-soft); }
+  .timeline-lane-abs.ticked span::before{ content:'✓ '; }
+  .timeline-lane-abs.timeline-marker.ticked{ background:none !important; box-shadow:none; }
+  .timeline-marker.ticked i{ background:var(--ink-faint); }
+  .timeline-lane-abs.timeline-flash{ animation:barFlash .9s ease; }
+  @keyframes barFlash{
+    0%{ box-shadow:0 0 0 3px var(--plum); }
+    100%{ box-shadow:0 0 0 3px transparent; }
+  }
   .timeline-missing-note{
     margin-top:10px; padding-top:8px; border-top:1px solid var(--line-soft);
     font-size:14px; color:var(--ink-soft); line-height:1.5;
@@ -830,8 +871,11 @@ function loadArchivoFont(){
     flex:none; background:none; border:none; padding:0 10px; cursor:pointer; color:var(--plum);
     font-size:14px; letter-spacing:.04em; text-decoration:underline; font-weight:500;
   }
-  /* The arrow that says the flow table goes on to the right: the second style's own stylesheet draws it (tablet review F2). */
+  /* The arrow that says the flow table goes on to the right (tablet review F2). Off until attachFlowCues shows it. Print and PNG leave it out. */
   .flow-more{ display:none; }
+  .flow-more:not([hidden]){ display:block; position:relative; height:0; z-index:5; pointer-events:none; }
+  .flow-more span{ position:absolute; top:10px; right:10px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; background:var(--plum); color:var(--on-accent); border-radius:var(--r); }
+  .flow-more svg{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2.5; stroke-linecap:round; }
   .day-choose{
     display:inline-flex; align-items:center; gap:8px; background:none; border:none; padding:0; cursor:pointer;
     font-size:14px; letter-spacing:.04em; color:var(--plum); font-weight:500;
@@ -1751,7 +1795,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-22.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-23.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2466,7 +2510,7 @@ const EXPECTED_CORE_VERSION = '2026-10-21.5';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-22.1';
+const APP_VERSION = '2026-10-23.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -2691,6 +2735,37 @@ function durationBadge(d){
   return `<span class="step-duration${d.openEnded?' open-ended':''}">${escapeHtml(text)}</span>`;
 }
 
+/* The ruler's six marks, START to the end. The last is drawn ending at the strip's right edge (it used to start there and ran past it,
+   "+20 mi"); `endLabel` is what it says, SERVE in a group finishing together. */
+function timelineTicksHTML(totalSpan, endLabel){
+  const TICK_COUNT = 5;
+  let ticksHtml = '';
+  for(let i=0;i<=TICK_COUNT;i++){
+    /* Whole minutes, except on a strip shorter than five, where rounding made every tick "+0". */
+    const raw = (totalSpan / TICK_COUNT) * i, t = totalSpan < TICK_COUNT ? raw : Math.round(raw);
+    const pct = (t / totalSpan) * 100;
+    const end = i === TICK_COUNT;
+    ticksHtml += `<div class="timeline-tick${end?' timeline-tick-end':''}" style="left:${pct}%;">${i===0?'START':end && endLabel?endLabel:'+'+formatMinutesForDisplay(t)}</div>`;
+  }
+  return ticksHtml;
+}
+
+/* One step's bar, or its marker when it is [instant]. `tip` is the tooltip, `maxLabel` the longest label drawn, `extra` the attributes
+   that say whose it is (the Group Viewer adds the recipe), `style` the colour. */
+function timelineLaneHTML(s, totalSpan, { tip, maxLabel, extra, style }){
+  const left = (s.start / totalSpan) * 100;
+  const label = escapeHtml(s.label.length>maxLabel ? s.label.slice(0,maxLabel-2)+'…' : s.label);
+  const handle = `data-handle="${escapeHtml(s.output||'')}"`;
+  if(s.duration && s.duration.instant){
+    return `<div class="timeline-lane-abs timeline-marker" ${extra}${handle} style="left:${left}%;${style}" title="${tip}"><i></i><span>${label}</span></div>`;
+  }
+  const width = Math.max(((s.end - s.start) / totalSpan) * 100, 1.5);
+  const isOpenEnded = s.duration && s.duration.openEnded;
+  return `<div class="timeline-lane-abs${isOpenEnded?' open-ended':''}" ${extra}${handle} style="left:${left}%; width:${width}%;${style}" title="${tip}">
+      <span>${label}</span>
+    </div>`;
+}
+
 /* Single colour for a single-recipe timeline (no group context to
    distinguish between). Matches the plum accent used elsewhere for
    single-recipe UI, rather than reusing a PALETTE colour that would
@@ -2699,25 +2774,16 @@ function buildTimelineHTML(timeline){
   const {steps, totalSpan} = timeline;
   if(!steps.length || totalSpan <= 0) return '';
 
-  const TICK_COUNT = 5;
-  let ticksHtml = '';
-  for(let i=0;i<=TICK_COUNT;i++){
-    /* Whole minutes, except on a strip shorter than five, where rounding made every tick "+0". */
-    const raw = (totalSpan / TICK_COUNT) * i, t = totalSpan < TICK_COUNT ? raw : Math.round(raw);
-    const pct = (t / totalSpan) * 100;
-    ticksHtml += `<div class="timeline-tick" style="left:${pct}%;">${i===0?'START':'+'+formatMinutesForDisplay(t)}</div>`;
-  }
+  const ticksHtml = timelineTicksHTML(totalSpan);
 
   const lanesHtml = steps.map(s=>{
-    const left = (s.start / totalSpan) * 100;
-    const width = Math.max(((s.end - s.start) / totalSpan) * 100, 1.5);
-    const isOpenEnded = s.duration && s.duration.openEnded;
-    const title = escapeHtml(s.label) + (s.duration ? ' — ' + escapeHtml(formatDuration(s.duration)) : '');
+    const tip = escapeHtml(s.label) + (s.duration ? ' — ' + escapeHtml(formatDuration(s.duration)) : '');
     /* Modernist draws the lanes in ink and the last step in the accent (docs/PLAN-MODERNIST.md), from its stylesheet. */
     const colour = currentStyle() === 'modernist' ? '' : ` background:${SINGLE_RECIPE_TIMELINE_COLOUR};`;
-    return `<div class="timeline-lane-row"><div class="timeline-lane-abs${isOpenEnded?' open-ended':''}" data-handle="${escapeHtml(s.output||'')}" style="left:${left}%; width:${width}%;${colour}" title="${title}">
-      <span>${escapeHtml(s.label.length>32 ? s.label.slice(0,30)+'…' : s.label)}</span>
-    </div></div>`;
+    const marker = s.duration && s.duration.instant;
+    /* A marker's colour is its diamond's, a custom property, since the marker itself has no fill. */
+    const style = marker ? (colour ? ` --lane:${SINGLE_RECIPE_TIMELINE_COLOUR};` : '') : colour;
+    return `<div class="timeline-lane-row">${timelineLaneHTML(s, totalSpan, { tip, maxLabel: 32, extra: '', style })}</div>`;
   }).join('');
 
   return `<div class="timeline-strip">
@@ -2737,18 +2803,96 @@ function buildTimelineHTML(timeline){
    on both sides) rather than by column/row position, since the timeline
    and the flow table are two independent renderings of the same
    underlying steps and shouldn't need to agree on layout, only on which
-   step they're both talking about. */
+   step they're both talking about. The Group Viewer's bars go through the
+   same function, scoped to their dish by timelineBoxFor. (They used to take
+   the first element carrying the recipe's id, which is the bar itself, the
+   strip coming first, so no bar in the Group Viewer ever jumped.) */
 function wireTimelineInteractions(container){
   container.querySelectorAll('.timeline-lane-abs[data-handle]').forEach(lane=>{
     lane.addEventListener('click', ()=>{
-      const handle = lane.dataset.handle;
-      if(!handle) return;
-      const target = container.querySelector(`.box-cell[data-handle="${CSS.escape(handle)}"]`);
+      const target = timelineBoxFor(container, lane);
       if(!target) return;
       target.scrollIntoView({behavior:'smooth', block:'center'});
       target.classList.add('timeline-flash');
       setTimeout(()=> target.classList.remove('timeline-flash'), 900);
     });
+  });
+}
+
+/* The box a bar stands for, and the other way round, both by handle (and, in a group, by recipe: two dishes can each have a handle
+   called "dry", so every lookup is scoped to one dish's own cards). A box carried across a later column (.passthrough) repeats its
+   step's handle, but sits after the step's own box in the same row, so the first match is the step's own. `root` holds the strip and
+   the flow(s) it belongs to. */
+function timelineBoxFor(root, lane){
+  const handle = lane.dataset.handle;
+  if(!handle) return null;
+  const scope = lane.dataset.recipeId ? root.querySelector(`.stacked-recipe[data-recipe-id="${CSS.escape(lane.dataset.recipeId)}"]`) : root;
+  return scope ? scope.querySelector(`.box-cell[data-handle="${CSS.escape(handle)}"]`) : null;
+}
+/* A bar is grey with a ✓ exactly when its box is ticked. Read from the boxes as they stand, so a tap, a cascade, RESET TICKS and a
+   redraw that restores the ticks all come out the same. Draws only; nothing is stored. */
+function syncTimelineTicks(root){
+  root.querySelectorAll('.timeline-lane-abs[data-handle]').forEach(lane=>{
+    const box = timelineBoxFor(root, lane);
+    lane.classList.toggle('ticked', !!box && box.classList.contains('done'));
+  });
+}
+/* Tapping a box flashes its bar (the reverse of a bar's jump). It does not scroll to it: ticking steps must not move the page. */
+function flashTimelineBar(root, cell){
+  const handle = cell.dataset.handle;
+  if(!handle) return;
+  const stacked = cell.closest('.stacked-recipe');
+  const bar = root.querySelector(`.timeline-lane-abs[data-handle="${CSS.escape(handle)}"]` + (stacked ? `[data-recipe-id="${CSS.escape(stacked.dataset.recipeId)}"]` : ''));
+  if(!bar) return;
+  bar.classList.remove('timeline-flash');
+  void bar.offsetWidth; // a second tap in quick succession restarts the animation
+  bar.classList.add('timeline-flash');
+  setTimeout(()=> bar.classList.remove('timeline-flash'), 900);
+}
+
+/* What can only be settled once the strip has a width: a middle tick that would run into its neighbour or the last tick is hidden
+   (START and the last always stay); a bar the minimum width has widened is raised above its neighbour; a marker's name goes to the
+   side with room, right first, or is dropped where a bar or another name is in the way. Redone when the strip changes width (turning
+   the tablet, the sidebar's peek, SHOW TIMELINE), as attachFlowCues does for its arrow. */
+function fitTimelineStrip(root){
+  root.querySelectorAll('.timeline-strip').forEach(strip=>{
+    const track = strip.querySelector('.timeline-track');
+    if(!track) return;
+    const fit = ()=>{
+      const box = track.getBoundingClientRect();
+      if(!box.width) return; // not on screen (a hidden view, cooking mode's folded timeline): the observer calls again when it is
+      const ticks = [...strip.querySelectorAll('.timeline-tick')];
+      ticks.forEach(t=> t.classList.remove('off'));
+      let reach = -Infinity;
+      const lastLeft = ticks[ticks.length - 1].getBoundingClientRect().left;
+      ticks.forEach((t, i)=>{
+        if(i === ticks.length - 1) return;
+        const r = t.getBoundingClientRect();
+        if(i === 0 || (r.left >= reach + 8 && r.right <= lastLeft - 8)) reach = r.right;
+        else t.classList.add('off');
+      });
+      strip.querySelectorAll('.timeline-lane-abs:not(.timeline-marker)').forEach(b=>{
+        b.classList.remove('short', 'edge');
+        const r = b.getBoundingClientRect();
+        b.classList.toggle('short', r.width <= 28.5);
+        if(r.right > box.right + 0.5) b.classList.add('edge');
+      });
+      strip.querySelectorAll('.timeline-lane-row').forEach(row=>{
+        const taken = [...row.children].filter(c=> !c.classList.contains('timeline-marker')).map(c=>{ const r = c.getBoundingClientRect(); return [r.left, r.right]; });
+        row.querySelectorAll('.timeline-marker').forEach(m=>{
+          m.classList.remove('flip', 'no-label');
+          const label = m.querySelector('span'), mr = m.getBoundingClientRect(), w = label.getBoundingClientRect().width;
+          const mid = mr.left + mr.width / 2, gap = 11;
+          const free = (a, b)=> a >= box.left && b <= box.right && taken.every(([l, r])=> b <= l || a >= r);
+          if(free(mid + gap, mid + gap + w)) taken.push([mid + gap, mid + gap + w]);
+          else if(free(mid - gap - w, mid - gap)){ m.classList.add('flip'); taken.push([mid - gap - w, mid - gap]); }
+          else m.classList.add('no-label');
+          taken.push([mr.left, mr.right]);
+        });
+      });
+    };
+    fit();
+    if(typeof ResizeObserver === 'function') new ResizeObserver(fit).observe(track);
   });
 }
 
@@ -2793,25 +2937,18 @@ function buildGroupTimelineHTML(groupTimeline){
   if(totalSpan <= 0) return '';
   const finishing = mode === 'finish';
 
-  const TICK_COUNT = 5;
-  let ticksHtml = '';
-  for(let i=0;i<=TICK_COUNT;i++){
-    /* Whole minutes, except on a strip shorter than five, where rounding made every tick "+0". */
-    const raw = (totalSpan / TICK_COUNT) * i, t = totalSpan < TICK_COUNT ? raw : Math.round(raw);
-    const pct = (t / totalSpan) * 100;
-    ticksHtml += `<div class="timeline-tick" style="left:${pct}%;">${i===0?'START':finishing && i===TICK_COUNT?'SERVE':'+'+formatMinutesForDisplay(t)}</div>`;
-  }
+  const ticksHtml = timelineTicksHTML(totalSpan, finishing ? 'SERVE' : '');
 
+  /* Each lane is headed by its dish's name and colour square: the bars carry the colour, and the name was only in a tooltip, which a
+     tablet cannot show. The heading is a sibling before its row, so the row stays the last child of its dish. */
   const lanesHtml = perRecipe.map(({recipe, timeline, colour})=>{
     if(!timeline) return ''; // this recipe has no timing data of its own — no lane, rather than a misleading empty one
-    return `<div class="timeline-lane-row">` + timeline.steps.map(s=>{
-      const left = (s.start / totalSpan) * 100;
-      const width = Math.max(((s.end - s.start) / totalSpan) * 100, 1.5);
-      const isOpenEnded = s.duration && s.duration.openEnded;
-      const title = escapeHtml(recipe.title) + ': ' + escapeHtml(s.label) + (s.duration ? ' — ' + escapeHtml(formatDuration(s.duration)) : '');
-      return `<div class="timeline-lane-abs${isOpenEnded?' open-ended':''}" data-recipe-id="${escapeHtml(recipe.id)}" data-handle="${escapeHtml(s.output||'')}" style="left:${left}%; width:${width}%; background:${colour};" title="${title}">
-        <span>${escapeHtml(s.label.length>22 ? s.label.slice(0,20)+'…' : s.label)}</span>
-      </div>`;
+    return `<div class="timeline-lane-name"><span class="recipe-swatch" style="background:${colour};"></span><span>${escapeHtml(recipe.title)}</span></div>`
+      + `<div class="timeline-lane-row">` + timeline.steps.map(s=>{
+      const tip = escapeHtml(recipe.title) + ': ' + escapeHtml(s.label) + (s.duration ? ' — ' + escapeHtml(formatDuration(s.duration)) : '');
+      const marker = s.duration && s.duration.instant;
+      return timelineLaneHTML(s, totalSpan, { tip, maxLabel: 22, extra: `data-recipe-id="${escapeHtml(recipe.id)}" `,
+        style: marker ? ` --lane:${colour};` : ` background:${colour};` });
     }).join('') + `</div>`;
   }).join('');
 
@@ -2846,23 +2983,6 @@ function buildGroupTimelineHTML(groupTimeline){
   </div>`;
 }
 
-function wireGroupTimelineInteractions(container){
-  container.querySelectorAll('.timeline-lane-abs[data-handle]').forEach(lane=>{
-    lane.addEventListener('click', ()=>{
-      const recipeId = lane.dataset.recipeId;
-      const handle = lane.dataset.handle;
-      if(!recipeId || !handle) return;
-      // scoped to this specific recipe's table wrapper, never a bare screen-wide match
-      const recipeWrap = container.querySelector(`[data-recipe-id="${CSS.escape(recipeId)}"]`);
-      if(!recipeWrap) return;
-      const target = recipeWrap.querySelector(`.box-cell[data-handle="${CSS.escape(handle)}"]`);
-      if(!target) return;
-      target.scrollIntoView({behavior:'smooth', block:'center'});
-      target.classList.add('timeline-flash');
-      setTimeout(()=> target.classList.remove('timeline-flash'), 900);
-    });
-  });
-}
 
 /* Parser, header lines, scaling, layout, timeline: moved to core.js on 25 Sep 2026 (PR 6a). */
 
@@ -3060,7 +3180,10 @@ function mountFlow(container, parsed, opts){
   /* The two viewers only, as with prepSteps: the Add/Edit preview is not cooked from. */
   if(opts.prepSteps) attachFlowCues(container);
 
-  if(timelineHtml) wireTimelineInteractions(container);
+  if(timelineHtml){ wireTimelineInteractions(container); fitTimelineStrip(container); }
+  /* Where the strip is: in this container for the single viewer, above all the dishes' containers in the Group Viewer (opts.timelineRoot).
+     The Add/Edit preview has no strip, and these then find nothing. */
+  const tlRoot = opts.timelineRoot || container;
 
   const cells = Array.from(container.querySelectorAll('.ing-cell, .box-cell'));
   const colOf = cell => cell.classList.contains('ing-cell') ? -1 : parseInt(cell.dataset.col, 10);
@@ -3077,6 +3200,7 @@ function mountFlow(container, parsed, opts){
   const ticks = opts.tickKey ? viewerTickSet(opts.tickKey + (withPrep ? '|prep' : '')) : null;
   if(ticks) cells.forEach(cell=>{ if(ticks.has(cellKey(cell))) cell.classList.add('done'); });
   showTickedCount(container);
+  syncTimelineTicks(tlRoot);
 
   cells.forEach(cell=>{
     cell.addEventListener('click', ()=>{
@@ -3095,6 +3219,8 @@ function mountFlow(container, parsed, opts){
         cell.classList.remove('done');
       }
       showTickedCount(container);
+      syncTimelineTicks(tlRoot);
+      flashTimelineBar(tlRoot, cell);
       /* Recorded before onToggle, which is free to re-render. */
       if(ticks){
         ticks.clear();
@@ -6281,6 +6407,7 @@ function renderGroupViewer(){
          your place either way. */
       tickKey: recipe.id,
       prepSteps: true,
+      timelineRoot: mount,
       onComplete: ()=> finishRecipe(recipe.id)
       // showTimeline deliberately omitted — the group's own combined
       // timeline strip above already covers this recipe's steps; a
@@ -6288,7 +6415,13 @@ function renderGroupViewer(){
     });
   });
 
-  if(timelineHtml) wireGroupTimelineInteractions(mount);
+  if(timelineHtml){
+    /* Each dish's flow restored its own ticks when it was mounted, and the first ones before the later flows existed: once all are
+       there, the bars are brought into line with every dish. */
+    syncTimelineTicks(mount);
+    wireTimelineInteractions(mount);
+    fitTimelineStrip(mount);
+  }
   mount.querySelectorAll('[data-group-lineup]').forEach(btn=> btn.addEventListener('click', ()=>{
     state.groupLineUp = { id: group.id, mode: btn.dataset.groupLineup };
     renderGroupViewer();
@@ -6335,6 +6468,7 @@ document.getElementById('groupResetTicksBtn').addEventListener('click', ()=>{
   (group ? group.recipeIds : []).forEach(clearViewerTicks);
   document.querySelectorAll('#groupFlowMount .done').forEach(c=> c.classList.remove('done'));
   document.querySelectorAll('#groupFlowMount .stacked-recipe-flow').forEach(showTickedCount);
+  syncTimelineTicks(document.getElementById('groupFlowMount'));
   showToast('Ticks cleared');
 });
 
@@ -9486,6 +9620,7 @@ document.getElementById('resetTicksBtn').addEventListener('click', ()=>{
   if(state.selectedRecipeId) clearViewerTicks(state.selectedRecipeId);
   document.querySelectorAll('#flowMount .done').forEach(c=> c.classList.remove('done'));
   showTickedCount(document.getElementById('flowMount'));
+  syncTimelineTicks(document.getElementById('flowMount'));
   showToast('Ticks cleared');
 });
 document.getElementById('closeAddModal').addEventListener('click', closeAddModal);

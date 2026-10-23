@@ -602,6 +602,26 @@ html[data-style="modernist"] .timeline-lane-abs span{ font-size:12px; font-weigh
 html[data-style="modernist"] .timeline-lane-row:last-child .timeline-lane-abs{ background:var(--km-fill); }
 html[data-style="modernist"] .timeline-lane-row:last-child .timeline-lane-abs span{ font-weight:800; color:var(--km-on-accent); }
 html[data-style="modernist"] .timeline-missing-note{ border-top:1px solid var(--color-divider); color:var(--color-text); }
+/* The run-sheet PR 1 additions to the strip (index.html has the shared rules; these are Modernist's colours over them). The end tick, as the
+   others, is ruled in ink; a dish's name is a small bold label above its lane; an [instant] step is a diamond (ink, and the accent when it
+   is the last step, as the bars are) with its name beside it in ink; a ticked bar is the surface colour with a ✓ and ink text. */
+html[data-style="modernist"] .timeline-tick.timeline-tick-end{ border-left:0; border-right:1px solid currentColor; }
+html[data-style="modernist"] .timeline-lane-name{ font-size:12px; font-weight:700; letter-spacing:.02em; color:var(--color-text); }
+html[data-style="modernist"] .timeline-lane-abs.timeline-marker,
+html[data-style="modernist"] .timeline-lane-row:last-child .timeline-lane-abs.timeline-marker{ background:none; }
+html[data-style="modernist"] .timeline-marker i{ background:var(--lane, var(--color-text)); }
+html[data-style="modernist"] .timeline-lane-row:last-child .timeline-marker i{ background:var(--lane, var(--km-fill)); }
+html[data-style="modernist"] .timeline-lane-abs.timeline-marker span,
+html[data-style="modernist"] .timeline-lane-row:last-child .timeline-lane-abs.timeline-marker span,
+html[data-style="modernist"] .timeline-lane-abs.timeline-marker[data-recipe-id] span{ color:var(--color-text); font-weight:700; }
+html[data-style="modernist"] .timeline-lane-abs.ticked,
+html[data-style="modernist"] .timeline-lane-row:last-child .timeline-lane-abs.ticked{ box-shadow:inset 0 0 0 2px var(--color-divider); }
+html[data-style="modernist"] .timeline-lane-abs.ticked span,
+html[data-style="modernist"] .timeline-lane-row:last-child .timeline-lane-abs.ticked span,
+html[data-style="modernist"] .timeline-lane-abs.ticked[data-recipe-id] span{ color:var(--color-text); font-weight:600; }
+html[data-style="modernist"] .timeline-lane-abs.timeline-marker.ticked{ box-shadow:none; }
+html[data-style="modernist"] .timeline-marker.ticked i,
+html[data-style="modernist"] .timeline-lane-row:last-child .timeline-marker.ticked i{ background:var(--km-ink-45); }
 
 html[data-style="modernist"] #flowMount > p.hint, html[data-style="modernist"] #groupFlowMount p.hint{
   margin-bottom:10px; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--km-ink-72);
