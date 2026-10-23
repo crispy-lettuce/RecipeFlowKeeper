@@ -48,8 +48,9 @@ the Modernist style, + OTHER on the Planner, the converter reminder, the version
    four PRs and a pass over the library's recipe text, in that order. Its proof of concept (§5, step 0) is done (23 Oct): 53 of 54
    steps agree with a session's reading, the converter's marks match the household's on 20 of 20, and the roast dinner showed the
    run sheet needs to know about ovens. Every decision in its §10 was made on 23 Oct:
-   PR 1 (timeline fixes, ticks drive the bars) was merged on 23 Oct (#189). PR 2 (the marker: parser, converter, display, the proposal tool) is built and
-   waits for the household's merge; after it, every device reloads and the converter's DONE is tapped, then the data job.
+   PR 1 (timeline fixes, ticks drive the bars) was merged on 23 Oct (#189). PR 2 (the marker: parser, converter, display, the proposal tool) was merged on 23 Oct (#190). PR 3 is split: **3a**, the planning half (EAT AT,
+   the clock ruler, your hands, AVOID THE CLASH, ovens), is built and waits for the household's merge; **3b**, the running half (START COOKING, ticks and
+   starts driving the times, re-planning, the Now line), is next; then PR 4, the timers. The data job (marking the library) can happen any time after the converter's DONE.
 2. **#100, a preview site.** Parked and now ignored; close the issue if it is not wanted. The reasoning (GitHub Pages stays live,
    Cloudflare Pages gives each PR a preview, one database means a preview writes real data) is in the archive at
    `docs/PLAN-PREVIEW-SITE.md`.

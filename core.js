@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-23.1';
+const KITCHEN_CORE_VERSION = '2026-10-23.2';
 
 
 /* ======================= quantity split ======================= */
@@ -886,6 +886,170 @@ function lineUpTimelines(timelines, mode){
     return { offset, totalSpan: t.totalSpan, steps: t.steps.map(s=> ({ ...s, start: s.start + offset, end: s.end + offset })) };
   });
   return { lanes, totalSpan, about };
+}
+
+/* ======================= the run sheet, planning half (docs/PLAN-RUN-SHEET.md §4, 23 Oct 2026) =======================
+   A plan is a timeline put on a clock. Times here are minutes on one axis the caller chooses (the page uses minutes since local
+   midnight), so nothing in this section reads the clock or the page; the page passes "now" and "eat at" in. */
+
+/* "17:50" for a time on that axis, rounded to the minute, wrapping at midnight. */
+function formatClock(min){
+  let m = Math.round(min) % 1440;
+  if(m < 0) m += 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+
+/* EAT AT with nobody having chosen one (decided 23 Oct): now plus the longest dish, up to the next five minutes, so the cook can start
+   now and eat when it is ready. A time already on the five-minute line is kept. */
+function defaultServeAt(nowMin, longestMin, step){
+  const q = step || 5;
+  return Math.ceil((nowMin + longestMin) / q - 1e-9) * q;
+}
+
+/* Every dish's timeline on the clock, ready to eat at `serveAt` (opts.mode 'finish', the default: each dish ends at serveAt, as FINISH
+   TOGETHER) or all started together (opts.mode 'start': they begin at serveAt less the longest, as START TOGETHER). The arithmetic is
+   lineUpTimelines's; this puts it on the clock and returns the steps flat, each with its dish and place in it. Each dish keeps today's
+   shape: dishes are shifted whole, so the strip matches the diagram (decided 23 Oct).
+
+   opts.avoidClash moves hands-on steps that overlap, until none do (AVOID THE CLASH): of two that overlap, the later is moved earlier so
+   it ends where the other starts, and whatever feeds it is moved earlier too, if it would not be done by then. Nothing moves later, so
+   the steps only ever fall further from the meal, the dish that was moved is ready early, and the meal's start can come earlier. `cleared`
+   is false if it gave up (it cannot, with finite steps, but a bound keeps a bad input from hanging the page). */
+function planToServe(timelines, serveAt, opts){
+  opts = opts || {};
+  const mode = opts.mode === 'start' ? 'start' : 'finish';
+  const lined = lineUpTimelines(timelines, mode);
+  const base = serveAt - lined.totalSpan;
+  const steps = [];
+  lined.lanes.forEach((lane, dish)=>{
+    if(!lane) return;
+    lane.steps.forEach((st, index)=> steps.push({ ...st, dish, index, start: base + st.start, end: base + st.end, moved: 0 }));
+  });
+  const cleared = opts.avoidClash ? avoidClash(steps) : true;
+  const lanes = lined.lanes.map((lane, dish)=>{
+    if(!lane) return null;
+    const mine = steps.filter(st=> st.dish === dish);
+    const startAt = Math.min(...mine.map(st=> st.start)), endAt = Math.max(...mine.map(st=> st.end));
+    return { dish, steps: mine, startAt, endAt, early: serveAt - endAt };
+  });
+  const startAt = steps.length ? Math.min(...steps.map(st=> st.start)) : serveAt;
+  const readyAt = steps.length ? Math.max(...steps.map(st=> st.end)) : serveAt;
+  return { serveAt, mode, base, totalSpan: lined.totalSpan, about: lined.about, startAt, readyAt, lanes, steps,
+           moved: steps.filter(st=> st.moved > 0).length, cleared };
+}
+/* A step that needs the cook: hands on, and with some length (an [instant] step is a moment, not a stretch of time). */
+function needsHands(st){ return !st.handsOff && st.end - st.start > 1e-9; }
+function avoidClash(steps){
+  const EPS = 1e-9;
+  const feeders = st=> (st.inputs || []).map(h=> steps.find(p=> p.dish === st.dish && p.output === h)).filter(Boolean);
+  const earlier = (st, by)=>{
+    st.start -= by; st.end -= by; st.moved += by;
+    feeders(st).forEach(f=>{ const late = f.end - st.start; if(late > EPS) earlier(f, late); });
+  };
+  for(let round = 0; round < 1000; round++){
+    const hands = steps.filter(needsHands).sort((a, b)=> a.start - b.start || a.end - b.end || a.dish - b.dish || a.index - b.index);
+    let pair = null;
+    for(let i = 0; i < hands.length && !pair; i++)
+      for(let j = i + 1; j < hands.length; j++){
+        if(hands[j].start >= hands[i].end - EPS) break;   // sorted by start: nothing later reaches back to this one
+        pair = [hands[i], hands[j]]; break;
+      }
+    if(!pair) return true;
+    earlier(pair[1], pair[1].end - pair[0].start);
+  }
+  return false;
+}
+
+/* When the cook's hands are busy, where they are wanted twice at once, and where they are free: from a plan's flat steps. `busy` is where
+   at least one hands-on step is running, `clash` where two or more are, `free` the gaps between busy stretches that are `minFree` minutes
+   or more (six by default, decided 23 Oct): a long wait inside the cook, not the minutes before the first step or after the last. All
+   three are [from, to] pairs on the plan's clock. */
+function handsWindows(steps, opts){
+  const minFree = opts && opts.minFree !== undefined ? opts.minFree : 6;
+  const hands = (steps || []).filter(needsHands);
+  const marks = [...new Set(hands.flatMap(st=> [st.start, st.end]))].sort((a, b)=> a - b);
+  const busy = [], clash = [];
+  const grow = (list, a, b)=>{ const last = list[list.length - 1]; if(last && Math.abs(last[1] - a) < 1e-9) last[1] = b; else list.push([a, b]); };
+  for(let i = 0; i + 1 < marks.length; i++){
+    const a = marks[i], b = marks[i + 1];
+    const n = hands.filter(st=> st.start <= a + 1e-9 && st.end >= b - 1e-9).length;
+    if(n >= 1) grow(busy, a, b);
+    if(n >= 2) grow(clash, a, b);
+  }
+  const free = [];
+  for(let i = 0; i + 1 < busy.length; i++){
+    const a = busy[i][1], b = busy[i + 1][0];
+    if(b - a >= minFree - 1e-9) free.push([a, b]);
+  }
+  const total = list=> list.reduce((n, w)=> n + (w[1] - w[0]), 0);
+  return { busy, clash, free, busyMinutes: total(busy), clashMinutes: total(clash) };
+}
+
+/* The oven a recipe asks for, read from its preheat line (the STEPS section, where the converter writes "Preheat the oven to 195°C
+   (fan)"): { temp, fan }, or { why } when it cannot be read, so that recipe is left out of the check and says why. One temperature
+   only: a range, or two lines at different temperatures, is not guessed at; neither is gas mark or °F. Measured from the text, not
+   marked in it (decided 23 Oct), so it will miss a recipe worded another way, and says so rather than guess. */
+function preheatOf(setup){
+  const settings = [];
+  let sawLine = false, sawRange = false;
+  (setup || []).forEach(line=>{
+    String(line).split(/[.;]/).filter(seg=> /\bpreheat/i.test(seg) && /\boven\b/i.test(seg)).forEach(seg=>{
+      sawLine = true;
+      if(/\d{2,3}\s*(?:-|–|—|to)\s*\d{2,3}\s*(?:°|degrees|C\b)/i.test(seg)) sawRange = true;
+      const fan = /\bfan\b/i.test(seg);
+      [...seg.matchAll(/(\d{2,3})\s*(?:°\s*C|degrees\s*C|C)\b/gi)].forEach(m=> settings.push({ temp: parseInt(m[1], 10), fan }));
+    });
+  });
+  if(!sawLine) return { why: 'no preheat line' };
+  if(sawRange) return { why: 'a range of temperatures on the preheat line' };
+  const unique = settings.filter((a, i)=> settings.findIndex(b=> b.temp === a.temp && b.fan === a.fan) === i);
+  if(unique.length === 0) return { why: 'no temperature in °C on the preheat line' };
+  if(unique.length > 1) return { why: 'more than one temperature on the preheat line' };
+  return unique[0];
+}
+
+/* Which steps want an oven, at what setting, and where that is more settings at once than the kitchen has ovens. `dishes` is
+   [{ index, title, setup, steps }] with the plan's steps (planToServe's, on the clock); `ovens` is how many this kitchen has (1 if
+   unsaid). A step wants an oven when its label says oven, roast or bake; its setting is its recipe's preheat line. Two dishes at the same
+   setting share one oven, so what is "wanted at once" is the number of different settings at a moment. `lanes` is where each step sits,
+   one per oven (a setting keeps its oven while it overlaps itself), with any beyond `ovens` marked over; `conflicts` are the stretches
+   with too many settings; `omitted` are the recipes with an oven step and no readable preheat. */
+const OVEN_STEP = /\b(oven|roast(?:s|ed|ing)?|bak(?:e|es|ed|ing))\b/i;
+function ovenUse(dishes, ovens){
+  const have = Math.max(1, Math.floor(ovens) || 1);
+  const omitted = [], uses = [];
+  (dishes || []).forEach(d=>{
+    const mine = (d.steps || []).filter(st=> OVEN_STEP.test(st.label || ''));
+    if(!mine.length) return;
+    const p = preheatOf(d.setup);
+    if(p.why){ omitted.push({ index: d.index, title: d.title, why: p.why }); return; }
+    mine.forEach(st=> uses.push({ dish: d.index, title: d.title, label: st.label, start: st.start, end: st.end, temp: p.temp, fan: p.fan, key: `${p.temp}${p.fan ? 'f' : ''}` }));
+  });
+  uses.sort((a, b)=> a.start - b.start || a.end - b.end);
+  const settings = [...new Set(uses.map(u=> u.key))].sort((a, b)=> parseInt(a, 10) - parseInt(b, 10) || a.localeCompare(b));
+  uses.forEach(u=> { u.setting = settings.indexOf(u.key); });
+  const marks = [...new Set(uses.flatMap(u=> [u.start, u.end]))].sort((a, b)=> a - b);
+  const conflicts = [];
+  for(let i = 0; i + 1 < marks.length; i++){
+    const a = marks[i], b = marks[i + 1];
+    const here = uses.filter(u=> u.start <= a + 1e-9 && u.end >= b - 1e-9);
+    const keys = [...new Set(here.map(u=> u.key))].sort();
+    if(keys.length <= have) continue;
+    const last = conflicts[conflicts.length - 1];
+    if(last && Math.abs(last.to - a) < 1e-9 && last.keys.join() === keys.join()) last.to = b;
+    else conflicts.push({ from: a, to: b, wanted: keys.length, have, keys, dishes: [...new Set(here.map(u=> u.title))] });
+  }
+  const lanes = [];
+  uses.forEach(u=>{
+    const meets = o=> o.start < u.end - 1e-9 && u.start < o.end - 1e-9;
+    /* An oven already holding this setting at this moment takes it; else any oven nothing else is in at this moment; else another oven. */
+    let lane = lanes.find(l=> l.uses.some(o=> meets(o) && o.key === u.key) && !l.uses.some(o=> meets(o) && o.key !== u.key));
+    if(!lane) lane = lanes.find(l=> !l.uses.some(meets));
+    if(!lane){ lane = { slot: lanes.length, over: lanes.length >= have, uses: [] }; lanes.push(lane); }
+    lane.uses.push(u);
+  });
+  while(lanes.length < have) lanes.push({ slot: lanes.length, over: false, uses: [] });
+  return { ovens: have, lanes, conflicts, omitted, settings: settings.map(k=> ({ key: k, temp: parseInt(k, 10), fan: /f$/.test(k) })) };
 }
 
 /* Durations are minutes inside (see extractStepDuration), and read back in whichever unit reads best: whole seconds under
@@ -2488,7 +2652,7 @@ if(typeof module !== 'undefined' && module.exports){
     KITCHEN_CORE_VERSION, INGREDIENT_AISLES, INGREDIENT_DICTIONARY,
     splitQty, parseTags, extractStepDuration, parseRecipe,
     withUpdatedHeaderLine, withUpdatedHeaderLines, changedHeaderKeys, splitTimeText, tagsToLine, withUpdatedTitleLine, withUpdatedImageLine,
-    scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, lineUpTimelines, servingCalls, matchSides, groupedWith, formatMinutesForDisplay, formatDuration,
+    scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, lineUpTimelines, formatClock, defaultServeAt, planToServe, handsWindows, preheatOf, ovenUse, servingCalls, matchSides, groupedWith, formatMinutesForDisplay, formatDuration,
     parseFraction, normalizeUnit, toBaseUnit, formatShoppingQty, parseIngredientAmount,
     formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,

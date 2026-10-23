@@ -7315,9 +7315,9 @@ const check = (name, pass, detail) => {
     openGroup(g.id, 'planner');
   });
   const ftFinish = await ftView();
-  check('FINISH TOGETHER: a group with a Side opens finishing together; the short dish says when to start it, and the last tick reads SERVE',
-        JSON.stringify(ftFinish.pressed) === '["finish"]' && JSON.stringify(ftFinish.starts) === '["START FIRST","START AT +45 min"]'
-        && ftFinish.ticks[ftFinish.ticks.length - 1] === 'SERVE', JSON.stringify(ftFinish));
+  check('FINISH TOGETHER: a group with a Side opens finishing together; the short dish says when to start it (a time of day), and the last tick is EAT AT',
+        JSON.stringify(ftFinish.pressed) === '["finish"]' && JSON.stringify(ftFinish.starts) === '["START FIRST","START AT 09:45"]'
+        && ftFinish.ticks[ftFinish.ticks.length - 1] === '10:00', JSON.stringify(ftFinish));
   await ft.click('#view-group-viewer [data-group-lineup="start"]');
   const ftStart = await ftView();
   check('    START TOGETHER puts both dishes at the start, with no start times and no SERVE',
@@ -7347,7 +7347,7 @@ const check = (name, pass, detail) => {
     return r;
   });
   check('    in cooking mode the switch waits behind SHOW TIMELINE, and the start times stay on each dish',
-        !ftCook.switchShown && ftCook.afterShow && JSON.stringify(ftCook.starts) === '["START FIRST","START AT +45 min"]', JSON.stringify(ftCook));
+        !ftCook.switchShown && ftCook.afterShow && JSON.stringify(ftCook.starts) === '["START FIRST","START AT 09:45"]', JSON.stringify(ftCook));
   await ft.close();
 
   // #87 SERVE WITH: a recipe that says "serve with freekeh" names the library's Side of that name, read-only.
@@ -9542,10 +9542,10 @@ const check = (name, pass, detail) => {
     check(name, bad.length === 0, bad.length ? 'fails at ' + bad.map(k => k + ': ' + JSON.stringify(detail(tl[k]))).join(' | ').slice(0, 600) : '');
   };
   const J = JSON.stringify, sameSet = (a, b) => J(a) === J(b);
-  tlAll('timeline: the last mark ends inside the strip, in the single viewer and the Group Viewer, and the Group Viewer\'s still reads SERVE',
-        t => t.single.lastRightOver <= 0.5 && t.group.lastRightOver <= 0.5 && t.group.lastText === 'SERVE', t => [t.single.lastRightOver, t.group.lastRightOver, t.group.lastText]);
+  tlAll('timeline: the last mark ends inside the strip, in the single viewer and the Group Viewer, and the Group Viewer\'s is EAT AT as a time of day',
+        t => t.single.lastRightOver <= 0.5 && t.group.lastRightOver <= 0.5 && /^\d\d:\d\d$/.test(t.group.lastText), t => [t.single.lastRightOver, t.group.lastRightOver, t.group.lastText]);
   tlAll('    marks that would run into each other are left out: none overlaps, START and the last always show',
-        t => [t.single, t.group].every(s => s.ticksOverlap === 0 && s.shownFirst === 'START' && s.ticksShown >= 2), t => [t.single, t.group].map(s => [s.ticksOverlap, s.shownFirst, s.ticksShown]));
+        t => [t.single, t.group].every(s => s.ticksOverlap === 0 && /^\d\d:\d\d$/.test(s.shownFirst) && s.ticksShown >= 2), t => [t.single, t.group].map(s => [s.ticksOverlap, s.shownFirst, s.ticksShown]));
   tlAll('timeline: every bar and marker is at least 28px wide, and bars stay inside the strip',
         t => [t.single, t.group].every(s => s.narrowest >= 28 && s.outside === 0 && s.barsOutside === 0), t => [t.single, t.group].map(s => [s.narrowest, s.outside, s.barsOutside]));
   tlAll('timeline: an [instant] step is a marker with its name beside it, clear of the bars (in the Group Viewer the name is dropped where a bar is in the way)',
@@ -9656,6 +9656,136 @@ const check = (name, pass, detail) => {
         h => [h.parsed, h.single.gLabel, h.single.gBadge]);
   hoAll('none of it wrote anything', h => h.writes1 === h.writes0, h => [h.writes0, h.writes1]);
   /* HO-END */
+
+  /* RS-BEGIN */
+  /* ---- The run sheet, planning half (run sheet PR 3a, 23 Oct 2026, docs/PLAN-RUN-SHEET.md §4) ----
+     EAT AT, the clock ruler, a start time on every box, your hands, AVOID THE CLASH and the ovens, in the Group Viewer and the single viewer,
+     at a tablet and a phone width in both looks. The page's clock is FIXTURE_NOW (09:00), so the default EAT AT is 09:00 plus the longest dish.
+     Three made-up dishes of 71, 34 and 12 minutes (71, so that rounding EAT AT up to the next five minutes shows: 10:15, not 10:11): the greens' chopping and
+     the side's mash want the hands from 10:03 to 10:07. */
+  console.log('\nThe run sheet');
+  const rsRun = async (look, w) => {
+    const p = await browser.newPage({ viewport: { width: w, height: 1000 } });
+    p.__label = `run sheet ${look} ${w}`;
+    await p.addInitScript(l => { try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
+    await p.clock.setFixedTime(FIXTURE_NOW);
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1200);
+    const out = await p.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const dish = (id, title, pre, steps, course) => loadRecipes().push({ id, title, source: 'Test', servings: 2, tags: { course: course || 'Main', keywords: [] }, history: [],
+        syntax: `TITLE: ${title}\nSERVINGS: 2\n${pre}\nGROUP a:\n1 swede\n\n` + steps.map((st, i) => `STAGE:\nMERGE ${i ? 'o' + (i - 1) : 'a'} -> o${i}: ${st}`).join('\n\n') });
+      dish('rs-main', 'Test Roast Dish', 'STEPS:\nPreheat the oven to 195°C (fan).\n', ['Prep the roots [10 min]', 'Roast the roots [50 min, hands off]', 'Rest [11 min, hands off]']);
+      dish('rs-side', 'Test Side Dish', 'STEPS:\nPreheat the oven to 225°C (fan).\n', ['Boil [20 min, hands off]', 'Mash [6 min]', 'Bake the topping [8 min, hands off]'], 'Side');
+      dish('rs-green', 'Test Greens', '', ['Wash and chop [8 min]', 'Steam [4 min]']);
+      dish('rs-o1', 'Test Oven One', 'STEPS:\nPreheat the oven to 195°C (fan).\n', ['Roast the tray [50 min, hands off]']);
+      dish('rs-o2', 'Test Oven Two', 'STEPS:\nPreheat the oven to 225°C (fan).\n', ['Bake the tray [30 min, hands off]']);
+      dish('rs-o3', 'Test Oven Three', '', ['Bake the buns [20 min, hands off]']);
+      const day = isoLocal(new Date()), tomorrow = isoLocal(new Date(Date.now() + 86400000));
+      ['rs-main', 'rs-side', 'rs-green'].forEach(id => addPlanRecipe(day, id)); createGroup(day, ['rs-main', 'rs-side', 'rs-green']);
+      ['rs-o1', 'rs-o2', 'rs-o3'].forEach(id => addPlanRecipe(tomorrow, id)); createGroup(tomorrow, ['rs-o1', 'rs-o2', 'rs-o3']);
+      const gid = id => loadGroups().find(g => g.recipeIds.includes(id)).id;
+      const drain = async () => { let t; do { t = writeQueue; await t; } while (t !== writeQueue); };
+      await drain();
+      const writes0 = window.__WRITES__.length;
+      const txt = (root, sel) => { const e = root.querySelector(sel); return e ? e.textContent.trim().replace(/\s+/g, ' ') : null; };
+      const snap = mountId => {
+        const root = document.getElementById(mountId), st = root.querySelector('.timeline-strip');
+        const rc = e => e.getBoundingClientRect(), sr = rc(st);
+        const btns = [...st.querySelectorAll('.timeline-eat .btn')];
+        return { eat: txt(root, '.eat-time'), start: txt(root, '.eat-start'), now: !!root.querySelector('[data-eat-now]'), avoid: (b => b ? b.getAttribute('aria-pressed') : null)(root.querySelector('[data-avoid-clash]')),
+          ticks: [...st.querySelectorAll('.timeline-tick')].filter(t => !t.classList.contains('off')).map(t => t.textContent.trim()),
+          hands: txt(root, '.hands-row') === null ? null : { caption: [...st.querySelectorAll('.timeline-lane-name')].map(e => e.textContent.trim()).find(t => /^YOUR HANDS/.test(t)),
+            busy: st.querySelectorAll('.hands-busy').length, clash: st.querySelectorAll('.hands-clash').length, free: [...st.querySelectorAll('.hands-free')].map(e => e.textContent.trim()) },
+          ovenRows: st.querySelectorAll('.oven-row').length, ovenOver: st.querySelectorAll('.oven-over').length, ovenUses: [...st.querySelectorAll('.oven-use span')].map(e => e.textContent.trim()),
+          warn: txt(root, '.timeline-oven-note'),
+          boxAt: [...root.querySelectorAll('.box-cell .step-at')].map(e => e.textContent.trim()),
+          heads: [...root.querySelectorAll('.stacked-recipe-start')].map(e => e.textContent.trim()),
+          /* A tap 21px above and below each button's middle lands on it (44px of hit area: Modernist draws the button shorter and adds the rest around it). */
+          taps: btns.every(b => { b.scrollIntoView({ block: 'center' }); const r = rc(b), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+            return [-21, 21].every(dy => { const e = document.elementFromPoint(cx, cy + dy); return e && e.closest('button') === b; }); }), inside: btns.every(b => rc(b).left >= sr.left - 0.5 && rc(b).right <= sr.right + 0.5),
+          sideways: document.documentElement.scrollWidth - window.innerWidth, ctl: (e => e ? getComputedStyle(e).display : null)(root.querySelector('.timeline-eat')) };
+      };
+      const click = (mountId, sel) => document.getElementById(mountId).querySelector(sel).click();
+      const res = { writes0, keys0: Object.keys(localStorage).filter(k => /^kitchen\.(eat|avoid)/.test(k)) };
+      openGroup(gid('rs-green'), 'planner'); await wait(350);
+      res.s0 = snap('groupFlowMount');
+      click('groupFlowMount', '[data-eat-step="15"]'); res.plus15 = snap('groupFlowMount');
+      click('groupFlowMount', '[data-eat-step="-5"]'); click('groupFlowMount', '[data-eat-step="-5"]'); res.minus10 = snap('groupFlowMount');
+      click('groupFlowMount', '[data-eat-now]'); res.now = snap('groupFlowMount');
+      click('groupFlowMount', '[data-avoid-clash]'); res.avoided = snap('groupFlowMount');
+      click('groupFlowMount', '[data-avoid-clash]'); res.back = snap('groupFlowMount');
+      click('groupFlowMount', '[data-eat-step="5"]'); renderGroupViewer(); res.redrawn = snap('groupFlowMount');
+      state.groupLineUp = { id: gid('rs-green'), mode: 'start' }; renderGroupViewer(); res.together = snap('groupFlowMount'); state.groupLineUp = null;
+      openRecipe('rs-main', 'recipes'); await wait(350);
+      res.single = snap('flowMount');
+      click('flowMount', '[data-eat-step="5"]'); res.singlePlus = snap('flowMount');
+      openGroup(gid('rs-green'), 'planner'); await wait(350);
+      res.afterOther = snap('groupFlowMount');
+      /* The ovens: one oven (the default), then two through the setting. */
+      openGroup(gid('rs-o1'), 'planner'); await wait(350);
+      res.ovens1 = snap('groupFlowMount');
+      const sel = document.getElementById('setOvens'); sel.value = '2'; sel.dispatchEvent(new Event('change'));
+      res.stored2 = localStorage.getItem('kitchen.ovens');
+      renderGroupViewer(); res.ovens2 = snap('groupFlowMount');
+      sel.value = '1'; sel.dispatchEvent(new Event('change'));
+      res.stored1 = localStorage.getItem('kitchen.ovens');
+      await drain(); res.writes1 = window.__WRITES__.length;
+      res.keys1 = Object.keys(localStorage).filter(k => /^kitchen\.(eat|avoid)/.test(k));
+      return res;
+    });
+    await p.evaluate(() => { openGroup(loadGroups().find(g => g.recipeIds.includes('rs-green')).id, 'planner'); });
+    await p.waitForTimeout(300);
+    await p.emulateMedia({ media: 'print' });
+    out.print = await p.evaluate(() => ({ controls: getComputedStyle(document.querySelector('#groupFlowMount .timeline-eat')).display,
+      tick: document.querySelector('#groupFlowMount .timeline-tick').textContent.trim() }));
+    await p.close();
+    /* Storage blocked: one oven, and no error. */
+    const b = await browser.newPage({ viewport: { width: w, height: 1000 } });
+    b.__label = `run sheet blocked ${look} ${w}`;
+    await b.addInitScript(() => { const real = Storage.prototype.getItem; Storage.prototype.getItem = function (k, ...r) { if (k === 'kitchen.ovens') throw new Error('blocked'); return real.call(this, k, ...r); }; });
+    await b.clock.setFixedTime(FIXTURE_NOW);
+    await b.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await b.waitForTimeout(1200);
+    out.blocked = await b.evaluate(() => ovenCount());
+    await b.close();
+    return out;
+  };
+  const rs = {};
+  for (const look of ['classic', 'modernist']) for (const w of [1280, 412]) rs[`${look} ${w}`] = await rsRun(look, w);
+  const rsAll = (name, pass, detail) => {
+    const bad = Object.keys(rs).filter(k => !pass(rs[k], k));
+    check(name, bad.length === 0, bad.length ? 'fails at ' + bad.map(k => k + ': ' + JSON.stringify(detail(rs[k]))).join(' | ').slice(0, 900) : '');
+  };
+  const J2 = JSON.stringify;
+  rsAll('EAT AT starts as now plus the longest dish up to the next five minutes (09:00 and 71 minutes: 10:15); the plan starts a few minutes after now, and the ruler reads times of day from the first start to EAT AT',
+        r => r.s0.eat === '10:15' && r.s0.start === 'START AT 09:04' && r.s0.ticks[0] === '09:04' && r.s0.ticks[r.s0.ticks.length - 1] === '10:15' && r.s0.ticks.every(t => /^\d\d:\d\d$/.test(t)) && !r.s0.now,
+        r => [r.s0.eat, r.s0.start, r.s0.ticks, r.s0.now]);
+  rsAll('every box says when its step starts, and each dish says when to begin it: the first START FIRST, the others a time of day',
+        r => r.s0.boxAt.length === 8 && r.s0.boxAt[0] === 'AT 09:04' && r.s0.boxAt.includes('AT 09:41') && J2(r.s0.heads) === '["START FIRST","START AT 09:41","START AT 10:03"]', r => [r.s0.boxAt, r.s0.heads]);
+  rsAll('the stepper moves EAT AT and the whole plan with it (+15 is 10:30 and a 09:19 start; then −5 twice is 10:20), and NOW comes back to the default and goes',
+        r => r.plus15.eat === '10:30' && r.plus15.start === 'START AT 09:19' && r.plus15.now && r.plus15.ticks[0] === '09:19' && r.plus15.ticks[r.plus15.ticks.length - 1] === '10:30' && r.plus15.boxAt[0] === 'AT 09:19'
+          && r.minus10.eat === '10:20' && r.minus10.start === 'START AT 09:09' && r.now.eat === '10:15' && !r.now.now, r => [r.plus15.eat, r.plus15.start, r.minus10.eat, r.now.eat, r.now.now]);
+  rsAll('your hands: 24 minutes busy, 4 of them a clash, one clash and one long gap of 47 minutes free',
+        r => r.s0.hands.caption === 'YOUR HANDS · BUSY 24 min · CLASH 4 min' && r.s0.hands.busy === 2 && r.s0.hands.clash === 1 && J2(r.s0.hands.free) === '["free 47 min"]', r => r.s0.hands);
+  rsAll('AVOID THE CLASH is there only while there is a clash (and no hands row at all when no step needs the hands), clears it when pressed (greens move to 09:53, EAT AT and the first start stay), stays pressed so it can be undone, and the clash comes back when it is',
+        r => r.s0.avoid === 'false' && r.avoided.avoid === 'true' && r.avoided.hands.clash === 0 && r.avoided.hands.caption === 'YOUR HANDS · BUSY 28 min' && r.avoided.eat === '10:15' && r.avoided.start === 'START AT 09:04'
+          && r.avoided.heads[2] === 'START AT 09:53' && r.back.avoid === 'false' && r.back.hands.clash === 1 && r.back.heads[2] === 'START AT 10:03'
+          && r.ovens1.avoid === null && r.ovens1.hands === null, r => [r.avoided.avoid, r.avoided.hands, r.avoided.heads, r.back.avoid, r.back.hands.clash, r.ovens1.avoid, r.ovens1.hands]);
+  rsAll('a redraw (as a refresh does) keeps the EAT AT the cook chose, and START TOGETHER puts every dish at the start with EAT AT where the longest ends',
+        r => r.redrawn.eat === '10:20' && r.together.eat === '10:20' && r.together.start === 'START AT 09:09' && r.together.heads.length === 0, r => [r.redrawn.eat, r.together.eat, r.together.start, r.together.heads]);
+  rsAll('the single viewer has the same: EAT AT, a clock ruler, your hands, a start time on each box and the stepper; what was chosen for the group is not carried to it, nor back',
+        r => r.single.eat === '10:15' && r.single.start === 'START AT 09:04' && r.single.boxAt.length >= 3 && r.single.boxAt[0] === 'AT 09:04' && r.single.hands && r.single.ovenRows >= 1 && r.singlePlus.eat === '10:20' && r.singlePlus.start === 'START AT 09:09'
+          && r.afterOther.eat === '10:15', r => [r.single, r.singlePlus.eat, r.afterOther.eat]);
+  rsAll('the ovens: with one oven two settings at once are a warning in words and a lane over the number; with two ovens, via the setting, there is none; a recipe with no preheat is left out and says so',
+        r => r.ovens1.ovenRows === 2 && r.ovens1.ovenOver === 1 && /More ovens wanted at once than this kitchen has: 195°C fan and 225°C fan/.test(r.ovens1.warn) && /This device has 1/.test(r.ovens1.warn) && /Left out of the oven check: Test Oven Three \(no preheat line\)/.test(r.ovens1.warn)
+          && r.ovens2.ovenRows === 2 && r.ovens2.ovenOver === 0 && !/More ovens/.test(r.ovens2.warn) && /Left out of the oven check/.test(r.ovens2.warn) && r.ovens2.ovenUses.length === 2, r => [r.ovens1.warn, r.ovens1.ovenRows, r.ovens1.ovenOver, r.ovens2.warn, r.ovens2.ovenUses]);
+  rsAll('the number of ovens is kept on this device (2 is stored, 1 is not), one when storage is blocked, and no EAT AT or AVOID THE CLASH is ever stored',
+        r => r.stored2 === '2' && r.stored1 === null && r.blocked === 1 && r.keys0.length === 0 && r.keys1.length === 0, r => [r.stored2, r.stored1, r.blocked, r.keys1]);
+  rsAll('the controls leave print, the ruler keeps its times; at either width every button answers a tap 21px above and below its middle and is inside the strip, and the page does not scroll sideways',
+        r => r.print.controls === 'none' && /^\d\d:\d\d$/.test(r.print.tick) && r.s0.taps && r.s0.inside && r.plus15.inside && r.s0.sideways <= 0, r => [r.print, r.s0.taps, r.s0.inside, r.s0.sideways]);
+  rsAll('none of it wrote anything', r => r.writes1 === r.writes0, r => [r.writes0, r.writes1]);
+  /* RS-END */
 
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to

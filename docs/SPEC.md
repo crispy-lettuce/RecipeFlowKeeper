@@ -111,6 +111,15 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
   (drawn from the boxes as they stand, so it survives a redraw and RESET TICKS clears it), tapping a box flashes its bar, tapping a bar jumps
   to its box. Drawing only: nothing is stored. When the table is wider than the screen, an arrow at its top right says so (both styles; not
   in print or PNG).
+- **The run sheet** (planning half, 23 Oct 2026; the playhead, timers and re-planning are not built): the strip is on the clock. **EAT AT**
+  (with −15, −5, +5, +15 and NOW) is by default now plus the longest dish up to the next five minutes, and is held for the recipe or group open in this tab only,
+  never stored; the ruler reads times of day, every box says `AT 17:20` when its step starts, and START AT gives when the meal begins. **YOUR HANDS**
+  is a row above the lanes: solid where a hands-on step runs, red hatched where two do at once (a clash), an outline `free 16 min` where nothing
+  needs the cook for six minutes or more (between busy stretches only). **AVOID THE CLASH** (shown only while there is a clash, or once pressed, to undo
+  it) moves the later hands-on step, and what feeds it, earlier until none overlap, so that dish is ready early. Ovens: a thin lane per oven, each step
+  that says oven, roast or bake in the setting its recipe's preheat line gives (one °C figure, fan or not; a recipe with none, a range or two is left out
+  and named); two dishes at one setting share an oven; a sentence says when more settings are wanted at once than **OVENS** (Settings → APP,
+  this device only, 1 when unset) allows. Until recipes carry `, hands off`, every step counts as hands on. The controls are left out of print.
 - **COOK FOR** rescales for this time only (2, 4, 6, 8 or any number); nothing is saved. Tin sizes never scale. Liquids change unit
   as they scale (teaspoons under 15 ml, tablespoons under 50 ml, ml from 50 ml); weighed liquids stay in grams.
 - **COOKING MODE** keeps the screen awake, hides what is not needed at the hob and folds the sidebar. **SHOW TIMELINE** brings the
@@ -138,7 +147,7 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
 ### 5.4 Cooking several dishes together
 On the Planner, **GROUP SOME TOGETHER** → **GROUP SELECTED** makes dishes of one day a group, opened as one **Group Viewer**: a
 timeline with a lane per dish and each diagram below. **START TOGETHER** starts everything at once; **FINISH TOGETHER** lines
-dishes up to be ready together, each saying when to start (START AT +45 min). A group with a Side opens in FINISH TOGETHER. Each dish's lane is headed by its name and colour, its bars are matched to its own diagram
+dishes up to be ready together, each saying when to start (START AT 17:35, as a time of day since the run sheet). A group with a Side opens in FINISH TOGETHER. Each dish's lane is headed by its name and colour, its bars are matched to its own diagram
 only (two dishes can share a handle name), and the strip's heading wraps at phone width.
 - **SERVE WITH:** a recipe that says "serve with rice or naan" (or an ingredient "…, to serve") is matched to Side recipes whose
   title or keyword has that word; the viewer and the Planner offer them, and a tap adds the side to the day and groups it.
@@ -180,8 +189,8 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
   ingredient); **SHOPPING AISLES** (move an ingredient's aisle); **SWAPS**; the DICTIONARY. Lists fold and remember it per device.
 - **LIBRARY:** **LIBRARY CHECK** (recipes not yet compared with their source, and recipes writing one ingredient on several lines);
   tidy SOURCES and KEYWORDS; **RECIPE PHOTOS** (RE-HOST EXTERNAL IMAGES, CHECK STORED IMAGES).
-- **APP:** week start day (default Friday), APPEARANCE, STYLE, PREPARATION, Google Calendar (§6.6), BACKUP TO GOOGLE DRIVE, RECIPE
-  SHARING.
+- **APP:** week start day (default Friday), APPEARANCE, STYLE, PREPARATION, OVENS (how many this kitchen has, per device), Google Calendar (§6.6),
+  BACKUP TO GOOGLE DRIVE, RECIPE SHARING.
 - **HELP:** the guide (`help.html`), the app's version and what changed lately.
 
 ---

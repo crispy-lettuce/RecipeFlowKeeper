@@ -137,7 +137,8 @@ PR 1    timeline fixes + ticks drive the bars                  no format change;
 PR 2    the marker: parser, converter, display                 core.js and converter versions move
         ── household merges PR 2, reloads every device, taps DONE on the converter bar ──
 DATA    hands-off pass over the library                        CLAUDE.md's recipe-text procedure, household present
-PR 3    EAT AT, START COOKING, hands row, ovens, re-planning
+PR 3a   EAT AT, clock ruler, hands row, AVOID THE CLASH, ovens   (split from PR 3 on 23 Oct)
+PR 3b   START COOKING, ticks and starts driving the times, re-planning, the Now line
 PR 4    timers
 ```
 
@@ -276,14 +277,17 @@ verified and what was not. Each PR that the household will notice adds a `change
 - Tests: the parser's cases, including `[instant, hands off]` and `[hands off]` left unrecognised; the converter pin; a smoke
   check that a hands-off fixture step is hatched and badged.
 
-### PR 3: the run sheet
+### PR 3: the run sheet (split on 23 Oct into 3a, the planning half, and 3b, the running half)
+
+3a is `planToServe`, `handsWindows` and `ovenUse` with EAT AT, the clock ruler, the hands row, the ovens and AVOID THE CLASH; 3b is `projectRun`,
+START COOKING, the playhead, START and DONE, the ready flag and the Now line. The list below is the two together.
 
 - `core.js`, pure and tested:
   - `planToServe(lanes, serveAt, { avoidClash })`: today's FINISH TOGETHER offsets turned into clock times, then, with
     `avoidClash`, hands-on steps moved earlier (with what feeds them) until no two overlap. Each dish keeps today's shape
     (§10, 4).
   - `projectRun(plan, run, now)`: done steps as recorded (a step ticked without START by §4's rule); a running step ends at the later of its planned end and now; every
-    other step at the earliest of: its planned start, now, the end of what feeds it, and the end of any hands-on step in its way
+    other step at the latest of: its planned start, now, the end of what feeds it, and the end of any hands-on step in its way
     if it is hands on. Returns each step's projected start and end, the ready time and minutes late.
   - `handsWindows(steps)`: busy, clash and free intervals.
   - **Ovens** (step 0's roast): `ovenUse(lanes, recipes)` reads each recipe's preheat temperature (fan or not) and treats its
