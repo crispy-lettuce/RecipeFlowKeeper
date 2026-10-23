@@ -247,7 +247,9 @@ const VOCAB = loadVocab();
        above); the names alone stay in `newNames` for anything reading --json, and the ones that
        land in Other are listed apart. */
     results.push({ line: b.line, ...r, blockers, warnings, newNames: r.newNames.map(n => n.name), newInOther: r.newNames.filter(n => n.other).map(n => n.name),
-      bareMerges: bare.length, mergeCount: r.merges.length });
+      bareMerges: bare.length, mergeCount: r.merges.length,
+      /* Steps marked as looking after themselves (`, hands off` in the bracket; [overnight] counts), from the app's own reading. */
+      handsOffMerges: r.merges.filter(m => m.duration && m.duration.handsOff).length });
   }
 
   await browser.close();
@@ -260,7 +262,7 @@ const VOCAB = loadVocab();
   for(const r of results){
     const mark = r.blockers.length ? 'HELD' : 'ok  ';
     console.log(`${mark}  ${r.title || '(untitled)'}  [line ${r.line}]`);
-    console.log(`        serves ${r.servings || '—'} · ${r.groups.length} groups · ${r.stageCount} stages · ${r.mergeCount} merges (${r.bareMerges} untimed) · ${r.rowCount} rows`);
+    console.log(`        serves ${r.servings || '—'} · ${r.groups.length} groups · ${r.stageCount} stages · ${r.mergeCount} merges (${r.bareMerges} untimed, ${r.handsOffMerges} hands off) · ${r.rowCount} rows`);
     r.blockers.forEach(x => console.log(`        BLOCKER: ${x}`));
     r.warnings.forEach(x => console.log(`        warn:    ${x}`));
     if(r.newNames.length) console.log(`        new to the dictionary (add one if it turns up in a second recipe): ${r.newNames.map(n => n + (r.newInOther.includes(n) ? ' (Other)' : '')).join(', ')}`);

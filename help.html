@@ -121,7 +121,9 @@
   <h2>3. Cooking from a recipe</h2>
   <h3>Reading the diagram</h3>
   <p>Ingredients are on the left. Each column is a moment in time, read left to right: boxes join together as things are
-    combined, with a time on each step (<i>8 MIN</i>, <i>OVERNIGHT</i>, <i>~ UNTIL DONE</i>).</p>
+    combined, with a time on each step (<i>8 MIN</i>, <i>OVERNIGHT</i>, <i>~ UNTIL DONE</i>). A step that looks after itself once it is
+    going (simmering, baking, resting, chilling) says so after its time, <i>25 MIN · HANDS OFF</i>, and its bar in the timeline is hatched
+    instead of solid. A step with no such word is one you are busy with, as it always was. Overnight steps are hands off by themselves.</p>
   <h3>Ticking as you go</h3>
   <ul>
     <li>Tap any box to tick it off. Ticking a step also ticks everything that went into it.</li>
@@ -452,7 +454,8 @@
   <h3 id="converter-bar">The CONVERTER bar</h3>
   <p>"The recipe converter's instructions have changed": a change to the app also changed the instructions your household's
     conversion project follows (<a href="#converter">section 9</a>). Nothing in the app stops working, and you can carry on under it.
-    When you have a minute:</p>
+    When the change is a new rule for the converter to follow, such as marking the steps that look after themselves, reload the app on every
+    device first, then do this, so that a recipe converted with the new rule reads correctly wherever you open it. When you have a minute:</p>
   <ol>
     <li>Tap <b class="ui">OPEN THE INSTRUCTIONS ↗</b> and download the file.</li>
     <li>In the Claude app, open your household's conversion project and replace its copy of the file with the new one.</li>
@@ -485,7 +488,9 @@
   </ul>
   <h3>The recipe text, in brief</h3>
   <p>Recipes are plain text. Header lines first, then groups of ingredients that go in together, then stages: each stage is one
-    column of the diagram, and <b>MERGE</b> joins groups into the next box, with a time in square brackets.</p>
+    column of the diagram, and <b>MERGE</b> joins groups into the next box, with a time in square brackets. A step that looks after itself
+    adds <code>, hands off</code> inside the brackets: <code>[25 min, hands off]</code>. It goes after a time or <code>until …</code>, never
+    after <code>[instant]</code> and never on its own.</p>
 <pre>TITLE: My recipe
 SOURCE: Personal recipe
 SERVINGS: 4
@@ -508,7 +513,7 @@ MERGE cooked, finish -> dish: stir in the lemon and serve [instant]</pre>
 </section>
 
 <footer>
-  Last updated 10 October 2026 · <a href="./">Open the app</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a>
+  Last updated 23 October 2026 · <a href="./">Open the app</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a>
 </footer>
 </main>
 </body>

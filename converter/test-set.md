@@ -1,6 +1,6 @@
 # Converter test set
 
-Sixteen deliberately awkward cases for checking `conversion-instructions.md` still
+Seventeen deliberately awkward cases for checking `conversion-instructions.md` still
 produces the right shape. Run them whenever those instructions change: paste each
 source into a fresh conversion chat and compare the output against the notes here.
 
@@ -15,7 +15,8 @@ which must convert normally. Test 11 is another of the ingredient-line tests: li
 and in ml from 50 ml. Test 12 is five small cases for the `TIME` line: when it is estimated, when it must not be.
 Test 13 is a tin with no weight, and test 14 several recipes in one message. Test 15 is solids measured in spoons: grams, with the
 spoons kept in brackets (version 2026-10-18.5). Test 16 is a page that repeats
-an ingredient's whole amount under each step, and a split that must add up to the list (version 2026-10-21.1).
+an ingredient's whole amount under each step, and a split that must add up to the list (version 2026-10-21.1). Test 17 is the step marker: which
+timed steps look after themselves and are written `, hands off`, and which never are (version 2026-10-23.1).
 
 **A stand-in run of version 2026-10-18.3, 18 Oct 2026** (not the conversion project). A session followed the rewritten file by
 hand for tests 1 to 8, 10, 11, 12a to 12e and 13, and ran all sixteen results through `test/validate-recipes.js`: 16 valid,
@@ -629,3 +630,54 @@ and it tolerates 12% between a spoon and a spoon of another size, which is why t
 **Runs.**
 
 - **21 Oct 2026, the conversion project with version 2026-10-21.1, run by the household: passed** ("Test 16 OK"). The ingredients in the source were changed afterwards, the same day, to ones the library does not contain (the first wording used everyday ones that it does); the shape is the same.
+
+---
+
+## 17. Hands-off steps
+
+**Why:** added 23 Oct 2026, with the converter's hands-off rule (version 2026-10-23.1). The run sheet needs to know when a cook's hands are
+free, and only the method can say: a step that is waited for looks after itself, one that is stirred, watched or hurried does not. The
+rule was tried on three real conversions on 23 Oct (every mark matched the household's, 20 of 20); this test is the same shape with a
+made-up source, so each line of the rule has one step that exercises it. The source and amounts below are made up.
+
+**Source** (the method):
+
+> **Smoky Barley Pot** — Serves 4.
+> 1. Soften the onion in the oil for 8 minutes, stirring often.
+> 2. Add the barley and stock, cover and simmer for 40 minutes, stirring once or twice.
+> 3. Meanwhile cook the leeks gently for 15 minutes, stirring now and then, until very soft.
+> 4. Bring the dressing to a simmer, then turn it off and leave it for 3 minutes.
+> 5. Heat the tray with the oil in the oven for 6 minutes until it smokes.
+> 6. Marinate the mushrooms for at least 30 minutes.
+> 7. Stir the leeks and herbs through the barley.
+> 8. Leave the pot to cool, then chill it overnight.
+
+**Must produce** (the brackets; wording and grouping may vary, and each step's length is the source's):
+
+| Step | Bracket | Why |
+| --- | --- | --- |
+| 1 | `[8 min]` | under 10 minutes, stirred often: hands on |
+| 2 | `[40 min, hands off]` | waiting 5 minutes or more; stirring once or twice is occasional |
+| 3 | `[15 min, hands off]` | occasional stirring, 10 minutes or more |
+| 4 | `[3 min]` | under 5 minutes, and the cook watches for the simmer: hands on |
+| 5 | `[6 min, hands off]` | timing matters, nobody needed |
+| 6 | `[30 min, hands off]` | waiting; "at least" is counted at the stated figure |
+| 7 | `[instant]` | no time, so never marked |
+| 8 | `[overnight]` | always hands off, and needs no marker |
+
+**Fails if:**
+
+- a step under 5 minutes, step 7 or step 1 is marked (`[instant, hands off]` is not read by the app at all);
+- a marker is written without a duration (`[hands off]`) or the marker replaces the duration;
+- step 2, 3, 5 or 6 is left unmarked, or step 8 is given a marker as well;
+- the converter marks by the verb alone, so that "simmer" is always hands off whatever it is stirred with and for how long.
+
+**Worth knowing:** `node test/validate-recipes.js` reports how many steps each recipe has as hands off (five here: the four marked, and the overnight step, which is
+hands off by itself), and reports any marker the app cannot read as a bracket NOT read as a duration. A copy of the app from
+before version 2026-10-23.1 of the page shows a marker as text and loses the step's time, so the households reload their devices before they
+tap DONE on the converter bar.
+
+**Runs.**
+
+- Not yet run in the conversion project. The rule it tests was tried there on 23 Oct 2026, pasted in for the test only, with three
+  re-conversions of real recipes: every timed step's mark matched the household's, 20 of 20.

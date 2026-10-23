@@ -70,7 +70,10 @@ MERGE cooked, finish -> dish: stir in the lemon and serve [instant]
   with no ingredient go under `STEPS:`; `NOTES:`, `VARIATIONS:`, `STORING:`, `FREEZING:` and `TIPS:` can follow.
 - **Rules that matter.** Groups that merge must sit on adjacent rows (order of `GROUP` lines is load-bearing). Anything
   added late gets its own group. Every MERGE ends in a duration: `[8 min]`, `[10-13 min]`, `[1 hr]`, `[instant]`, `[overnight]`.
-  An unrecognised bracket is left as label text on purpose.
+  An unrecognised bracket is left as label text on purpose. A step that looks after itself once it is going adds `, hands off`
+  inside the bracket (`[25 min, hands off]`); hands on is the default, `[overnight]` is hands off by itself, and the mark is not read after
+  `[instant]` or without a duration. The box reads `25 MIN · HANDS OFF` and the timeline hatches its bar. The converter writes the mark
+  by a rule (waiting 5 minutes or more; occasional stirring from 10 minutes up; never under 5 minutes or on an instant step).
 - **Courses** are a tag, `course=Breakfast | Main | Side | Dessert | Drink | Bread | Baking | Snack`. Side matters (§5.4).
 - **Time.** `TIME:` is free text; one beginning `est.` was worked out by the converter from the steps, and shows **EST.**
 - **Ingredient lines** have a standard shape (quantity, unit, name, then a comma and preparation), in British English and
@@ -103,7 +106,7 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
 - The diagram; **tick** a box to tick everything that went into it; ticks last until reload; **RESET TICKS** clears them.
   **Ticking the last column logs the recipe as cooked** and asks which meal (with a note); SKIP logs without one.
 - **The timeline strip** above the diagram (hidden in cooking mode until SHOW TIMELINE) draws each step as a bar from the MERGE durations.
-  A bar is at least 28 px wide, and an `[instant]` step is a diamond with its name beside it. The ruler's last mark ends at the strip's right
+  A bar is at least 28 px wide, and an `[instant]` step is a diamond with its name beside it. A hands-off step's bar is hatched, a hands-on one solid. The ruler's last mark ends at the strip's right
   edge, and a middle mark that would collide with its neighbour is left out. **It follows the ticks:** a ticked box greys its bar with a ✓
   (drawn from the boxes as they stand, so it survives a redraw and RESET TICKS clears it), tapping a box flashes its bar, tapping a bar jumps
   to its box. Drawing only: nothing is stored. When the table is wider than the screen, an arrow at its top right says so (both styles; not

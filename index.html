@@ -125,6 +125,9 @@ function loadArchivoFont(){
     /* Diagonal stripes on an open-ended timeline lane: the lane is a dark plum here and a light one in the dark theme, so
        the stripe is the colour that sits on an accent (--on-accent) in each. */
     --lane-stripe:rgba(255,255,255,.18);
+    /* Hatching on a hands-off bar (a step that looks after itself, docs/PLAN-RUN-SHEET.md): stronger than the open-ended stripe and at
+       the other slope, so a step that is both shows both. Same colours as the stripe, one step bolder. */
+    --lane-hatch:rgba(255,255,255,.34);
     /* READABILITY R: this is the only corner in the stylesheet. Circles and pills (50%, 20px, 999px) are gone; the toggle's thumb is
        square too (the household, 14 Oct). Two rules keep a square edge because it sits against another edge, where a round corner would
        leave a notch: the Equipment warning (a full-width strip) and the peek tab (attached to the window's edge). */
@@ -188,6 +191,7 @@ function loadArchivoFont(){
     --scrim:rgba(0,0,0,.6);
     --photo-bar:rgba(20,18,16,.96);
     --lane-stripe:rgba(28,25,21,.18);
+    --lane-hatch:rgba(28,25,21,.34);
     color-scheme:dark;
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
@@ -628,6 +632,9 @@ function loadArchivoFont(){
     white-space:nowrap; letter-spacing:.02em;
   }
   .timeline-lane-abs.open-ended{ background-image:repeating-linear-gradient(135deg, var(--lane-stripe) 0 4px, transparent 4px 8px); }
+  /* A hands-off step (it looks after itself once it is going) is hatched in its own colour; a hands-on one is solid. */
+  .timeline-lane-abs.hands-off{ background-image:repeating-linear-gradient(45deg, var(--lane-hatch) 0 3px, transparent 3px 7px); }
+  .timeline-lane-abs.hands-off.open-ended{ background-image:repeating-linear-gradient(45deg, var(--lane-hatch) 0 3px, transparent 3px 7px), repeating-linear-gradient(135deg, var(--lane-stripe) 0 4px, transparent 4px 8px); }
   /* An [instant] step takes no time, so it is a mark at its moment with its name beside it, not a sliver with the name clipped inside.
      The element is the tap area (28px, centred on the moment); fitTimelineStrip puts the name on the side with room, or drops it
      where a neighbouring bar is in the way (the tooltip and the tap remain). */
@@ -1795,7 +1802,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-23.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-23.2">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2497,7 +2504,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-21.5"></script>
+<script src="core.js?v=2026-10-23.1"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2505,17 +2512,17 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-21.5';
+const EXPECTED_CORE_VERSION = '2026-10-23.1';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-23.1';
+const APP_VERSION = '2026-10-23.2';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
    .converter_ack_version). test/core.test.js fails if the file changes and the two are not moved. */
-const CONVERTER_VERSION = '2026-10-21.1';
+const CONVERTER_VERSION = '2026-10-23.1';
 function coreMismatch(){
   return typeof KITCHEN_CORE_VERSION === 'undefined' || KITCHEN_CORE_VERSION !== EXPECTED_CORE_VERSION;
 }
@@ -2725,14 +2732,21 @@ function hexToRgba(hex, a){
    the underlying data. */
 function durationBadge(d){
   if(!d) return '';
-  const text = d.instant ? 'INSTANT'
+  const text = (d.instant ? 'INSTANT'
     : d.overnight ? 'OVERNIGHT'
     : d.openEnded ? '~ UNTIL DONE'
-    : formatDuration(d).toUpperCase();
+    : formatDuration(d).toUpperCase())
+    /* Overnight is hands off by itself, so it says nothing more. */
+    + (d.handsOff && !d.overnight ? ' · HANDS OFF' : '');
   // overnight carries openEnded too, so it already gets the same faded,
   // approximate styling as "until done" — instant stays plain: it's a
   // precise fact, not a fuzzy one.
   return `<span class="step-duration${d.openEnded?' open-ended':''}">${escapeHtml(text)}</span>`;
+}
+
+/* A bar's tooltip says it looks after itself (overnight is hands off by itself, so it says nothing more). */
+function handsOffTip(s){
+  return s.handsOff && !(s.duration && s.duration.overnight) ? ' · hands off' : '';
 }
 
 /* The ruler's six marks, START to the end. The last is drawn ending at the strip's right edge (it used to start there and ran past it,
@@ -2761,7 +2775,7 @@ function timelineLaneHTML(s, totalSpan, { tip, maxLabel, extra, style }){
   }
   const width = Math.max(((s.end - s.start) / totalSpan) * 100, 1.5);
   const isOpenEnded = s.duration && s.duration.openEnded;
-  return `<div class="timeline-lane-abs${isOpenEnded?' open-ended':''}" ${extra}${handle} style="left:${left}%; width:${width}%;${style}" title="${tip}">
+  return `<div class="timeline-lane-abs${isOpenEnded?' open-ended':''}${s.handsOff?' hands-off':''}" ${extra}${handle} style="left:${left}%; width:${width}%;${style}" title="${tip}">
       <span>${label}</span>
     </div>`;
 }
@@ -2777,9 +2791,10 @@ function buildTimelineHTML(timeline){
   const ticksHtml = timelineTicksHTML(totalSpan);
 
   const lanesHtml = steps.map(s=>{
-    const tip = escapeHtml(s.label) + (s.duration ? ' — ' + escapeHtml(formatDuration(s.duration)) : '');
+    const tip = escapeHtml(s.label) + (s.duration ? ' — ' + escapeHtml(formatDuration(s.duration)) + handsOffTip(s) : '');
     /* Modernist draws the lanes in ink and the last step in the accent (docs/PLAN-MODERNIST.md), from its stylesheet. */
-    const colour = currentStyle() === 'modernist' ? '' : ` background:${SINGLE_RECIPE_TIMELINE_COLOUR};`;
+    /* background-color, not the shorthand: the shorthand also sets background-image: none inline, which beats the stripe and the hatch. */
+    const colour = currentStyle() === 'modernist' ? '' : ` background-color:${SINGLE_RECIPE_TIMELINE_COLOUR};`;
     const marker = s.duration && s.duration.instant;
     /* A marker's colour is its diamond's, a custom property, since the marker itself has no fill. */
     const style = marker ? (colour ? ` --lane:${SINGLE_RECIPE_TIMELINE_COLOUR};` : '') : colour;
@@ -2945,10 +2960,10 @@ function buildGroupTimelineHTML(groupTimeline){
     if(!timeline) return ''; // this recipe has no timing data of its own — no lane, rather than a misleading empty one
     return `<div class="timeline-lane-name"><span class="recipe-swatch" style="background:${colour};"></span><span>${escapeHtml(recipe.title)}</span></div>`
       + `<div class="timeline-lane-row">` + timeline.steps.map(s=>{
-      const tip = escapeHtml(recipe.title) + ': ' + escapeHtml(s.label) + (s.duration ? ' — ' + escapeHtml(formatDuration(s.duration)) : '');
+      const tip = escapeHtml(recipe.title) + ': ' + escapeHtml(s.label) + (s.duration ? ' — ' + escapeHtml(formatDuration(s.duration)) + handsOffTip(s) : '');
       const marker = s.duration && s.duration.instant;
       return timelineLaneHTML(s, totalSpan, { tip, maxLabel: 22, extra: `data-recipe-id="${escapeHtml(recipe.id)}" `,
-        style: marker ? ` --lane:${colour};` : ` background:${colour};` });
+        style: marker ? ` --lane:${colour};` : ` background-color:${colour};` });
     }).join('') + `</div>`;
   }).join('');
 
