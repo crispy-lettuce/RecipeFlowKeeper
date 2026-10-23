@@ -161,25 +161,34 @@ Everything with recipe lines in it, the sheet, the steps with both proposals and
 means the data job (§6) can approve those as a batch; much lower means every step is reviewed by hand, or the library is left
 alone and only new recipes carry the marker. The converter rule in PR 2 is the draft as the test leaves it.
 
-**Marked by the household on 23 Oct 2026. Provisional: nine marks wait to be confirmed.**
+**Marked by the household on 23 Oct 2026, revised and confirmed the same day.**
 
 | | Agrees with the household |
 | --- | --- |
-| A session following the draft rule | 45 of 54 (83%) |
+| A session following the first draft rule | 53 of 54 (98%) |
+| The refined rule below, read the same way | 54 of 54 |
 | The word lists, where they decided | 29 of 34 (85%); they could not decide 20 of the 54 |
 
-- **Below the 90% line as marked.** Eight of the nine differences are steps the household called hands off whose wording says
-  the cook is busy (browning, stirring often, whisking, heating milk "but not boiling"); one is a step whose timing is critical
-  but needs nobody. If they are slips, the session's reading matches on all 54 and the draft rule stands. If they are meant,
-  "hands off" means "I can do something nearby", not "I can leave the kitchen", and the rule changes before PR 2 (§10, 8).
-- **The household calls more steps hands off than either proposal** (28 of 54, against 21 and 12). The word lists are too
-  timid to propose on their own; in the data job they can only sort steps for the household, not decide them.
-- **A step can matter without needing hands:** heating a tin's fat to be smoking hot exactly when the batter is ready. The
-  run sheet's timers (PR 4) are what that step wants, not a hands-on mark.
+- **Above the 90% line.** The household's first marks differed from the session's on nine steps; asked, it revised eight of them
+  as slips. The ninth (onions cooked, stirring occasionally, for 15-20 min) it kept as hands off, and asked whether occasional
+  stirring over a longer step should count as hands off. Its marks say yes, and the rule now says so.
+- **The rule, refined from the marks** (the converter's draft in `PrivateBackup` carries it):
+  1. Waiting for **5 minutes or more** is hands off: simmering, baking, roasting, soaking, resting, chilling, a slow cooker,
+     something heating in the oven. Under 5 minutes is hands on, however it is worded.
+  2. Stirring or turning **occasionally, now and then, once or twice or halfway** is still hands off **from 10 minutes up**;
+     under 10 minutes, any stirring makes it hands on. Nothing in the sample sat between 5 and 15 minutes with occasional
+     stirring, so 10 is the household's figure, not a measured one.
+  3. Stirring often, constantly or all the time, whisking, frying, browning, and watching for a moment ("bring to a simmer,
+     then turn off") are hands on.
+  4. A step whose timing matters but needs nobody (fat heating in the oven to be ready with the batter) is hands off; the
+     timers (PR 4) look after it.
+- **The word lists can sort, not decide.** 85% where they answer, and no answer on a third of the steps (11 of those 20 were
+  hands off). In the data job (§6) they order the household's review; a session reading each step by the rule above makes the
+  proposal.
 - **The oven, not the cook's hands, limits a roast dinner.** Asked about the three-recipe roast, the household said the oven
   would be the limit, and that the kitchen has two. Its dishes want 200°C and 220°C (fan): two ovens can hold both
   temperatures, one cannot. A hands row alone would have shown that meal as relaxed. See §7, PR 3, and §10, 9.
-- **The converter run** has not been done; it waits until the nine marks are settled, so it tests the rule that will ship.
+- **The converter run** has not been done yet; it is the last part of step 0, now with the refined rule.
 
 ## 6. The data job: marking the library
 
@@ -193,9 +202,11 @@ its ticks cannot move; the re-measure in step 8 proves it.
 3. **Propose.** `tools/propose-hands-off.js <export> <out.json>` (built in PR 2, its own small commit): reads the export with
    the app's own `core.js`, and for every timed MERGE step that is not already marked writes recipe id, title, the md5 of the
    recipe's `syntax`, the line, its bracket, a proposal (`off`, `on`, `ask`) and why (the words it matched, the minutes). It
-   refuses a path inside this repo, as `tools/remeasure.js` does, and writes nothing to the database. Its rules are §2's word
-   lists; `ask` for mixed wording and for a waiting word under 10 minutes. It is tested here on a **made-up** export.
-4. **The household decides,** step by step, in a session: the likely ones in a batch, every `ask` one by one. The result, with
+   refuses a path inside this repo, as `tools/remeasure.js` does, and writes nothing to the database. It applies step 0's
+   refined rule as far as words and minutes allow (the waiting words, the 5- and 10-minute lines, "occasionally" against
+   "often") and says `ask` where they do not settle it; step 0 showed plain word lists are right 85% of the time and silent on
+   a third of steps, so a session then reads every `ask` by the rule and proposes. It is tested here on a **made-up** export.
+4. **The household decides,** in a session: the proposals in batches by recipe, every step the session was unsure of one by one. The result, with
    each recipe's before and after text and both md5s, is saved in `PrivateBackup` as `migrations/<date>-hands-off/`
    (`approved.json`, `before-after.json`, a `README.md` like 6c-2's). Never in this repo.
 5. **Validate every after text** with `node test/validate-recipes.js`: no "present but NOT read" warning, every flagged step
@@ -299,8 +310,8 @@ its own issue if the household picks it up; none depends on this plan.
 - **A reload mid-cook** loses the run if it lives only in the tab, as ticks do today (§10).
 - **False precision.** A ready time to the minute from midpoints of ranges and 2-minute stand-ins; "about" is the guard, and
   the re-planning corrects it as the cook ticks.
-- **The proposal script's word lists** will be wrong on some steps; that is why every `ask` is the household's call and the
-  script never writes.
+- **The proposals** will be wrong on some steps (step 0: 53 of 54 right on a sample chosen to be awkward); that is why the
+  household approves every recipe's marks and the script never writes.
 - **Background tabs and screen lock.** A timer is only as audible as the tablet is awake; cooking mode keeps it awake, and
   without it a chime may come late. Push notifications are out of scope.
 
@@ -308,7 +319,7 @@ its own issue if the household picks it up; none depends on this plan.
 
 Each has a recommendation; the build waits for the answer, and the PR that builds it records it.
 
-1. **The marker:** `[25 min, hands off]` inside the bracket (recommended), or another word. Step 0 tests it as written.
+1. **The marker:** `[25 min, hands off]` inside the bracket (recommended), or another word. Step 0 used it as written.
 2. **Default EAT AT:** the next five minutes after now plus the longest dish (recommended: start now, eat when it is ready), or
    a fixed household time such as 18:30.
 3. **AVOID THE CLASH:** a button, off until pressed (recommended), or done automatically, or a warning only.
@@ -319,9 +330,8 @@ Each has a recommendation; the build waits for the answer, and the PR that build
 6. **Chime and vibration:** on (recommended), or a per-device setting.
 7. **Which households' recipes** the data job marks: the family's, after a Test Kitchen rehearsal (recommended); the
    relatives' only with them.
-8. **What "hands off" means** (step 0): "once it is going I could walk away until it is done" (the draft rule, recommended if
-   the nine differences were slips), or "I only need to glance at it or stir it now and then" (if they were meant; more steps
-   marked, and the free windows mean "free to do something nearby").
+8. **What "hands off" means:** decided by step 0 (23 Oct): the refined rule above, with occasional stirring hands off from
+   10 minutes.
 9. **The number of ovens:** a setting, two for this kitchen. Kept on the device (recommended: no schema change, and the tablet
    is where the cooking happens) or for the household, which needs a `household_settings` column, so a migration page applied
    first (`CLAUDE.md`).
