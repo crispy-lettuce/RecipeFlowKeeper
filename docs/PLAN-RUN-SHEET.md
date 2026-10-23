@@ -61,13 +61,13 @@ size the job, not to decide it.
 | Mixed wording: a waiting word and a doing word (stir, whisk, fry, brown, toss, turn…) | 122 |
 | A waiting word under 10 min | 52 |
 
-So about 250 steps want a look, and well under half of the library changes at all.
+So about 250 steps want a look, and well under half of the library changes at all. **No bracket contains a comma today,** so
+`, hands off` cannot collide with anything already written. The 8 MERGE lines with no bracket break the converter's own rule;
+they are outside this plan, and worth a look in the data job (§6) since it reads every recipe anyway.
 
 **Ovens, in the family's 76 recipes** (read 23 Oct): 34 have a "Preheat the oven…" line, 33 of them with a °C figure and 18
 saying fan; one gives two temperatures. 39 have a MERGE step that says oven, roast or bake (63 timed steps). A recipe's oven
-temperature is free text on its preheat line, not on a step. **No bracket contains a comma today,** so
-`, hands off` cannot collide with anything already written. The 8 MERGE lines with no bracket break the converter's own rule;
-they are outside this plan, and worth a look in the data job (§6) since it reads every recipe anyway.
+temperature is free text on its preheat line, not on a step.
 
 ## 3. The marker
 
@@ -108,6 +108,8 @@ finishes the last column still logs the recipe as cooked.
   (`17:50`, `18:00`) and every box says when it starts; without it, the strip is as today.
 - **Your hands row**, above the lanes: solid where you are busy, hatched red where two hands-on steps overlap (a clash), an
   outline saying `free 16 min` where you are not needed for six minutes or more.
+- **Ovens**, a thin lane per oven under the hands row: which dish is in which oven at what temperature, and a warning when a
+  meal wants more ovens, or more temperatures at once, than the kitchen has (two here).
 - **AVOID THE CLASH** (shown only when there is one): moves the later hands-on step, and what feeds it, earlier until nothing
   overlaps. The dish it moves is then ready a few minutes before serving.
 - **START COOKING** starts a playhead at the real time. From then:
@@ -124,13 +126,13 @@ finishes the last column still logs the recipe as cooked.
 ## 5. The order, and why
 
 ```
-POC   can steps be marked reliably?               no app change; household marks a sheet
-PR 1  timeline fixes + ticks drive the bars          no format change; can ship now
-PR 2  the marker: parser, converter, display          core.js and converter versions move
-      ── household merges PR 2, reloads every device, taps DONE on the converter bar ──
-DATA  hands-off pass over the library                 CLAUDE.md's recipe-text procedure, household present
-PR 3  EAT AT, START COOKING, hands row, re-planning
-PR 4  timers
+STEP 0  can steps be marked reliably?                          done 23 Oct: yes (below)
+PR 1    timeline fixes + ticks drive the bars                  no format change; can ship now
+PR 2    the marker: parser, converter, display                 core.js and converter versions move
+        ── household merges PR 2, reloads every device, taps DONE on the converter bar ──
+DATA    hands-off pass over the library                        CLAUDE.md's recipe-text procedure, household present
+PR 3    EAT AT, START COOKING, hands row, ovens, re-planning
+PR 4    timers
 ```
 
 PR 2 must be **merged and every device reloaded before the data job writes a single bracket**: a copy of the app from before
@@ -213,9 +215,9 @@ its ticks cannot move; the re-measure in step 8 proves it.
    refined rule as far as words and minutes allow (the waiting words, the 5- and 10-minute lines, "occasionally" against
    "often") and says `ask` where they do not settle it; step 0 showed plain word lists are right 85% of the time and silent on
    a third of steps, so a session then reads every `ask` by the rule and proposes. It is tested here on a **made-up** export.
-4. **The household decides,** in a session: the proposals in batches by recipe, every step the session was unsure of one by one. The result, with
-   each recipe's before and after text and both md5s, is saved in `PrivateBackup` as `migrations/<date>-hands-off/`
-   (`approved.json`, `before-after.json`, a `README.md` like 6c-2's). Never in this repo.
+4. **The household decides,** in a session: the proposals in batches by recipe, every step the session was unsure of one by
+   one. The result, with each recipe's before and after text and both md5s, is saved in `PrivateBackup` as
+   `migrations/<date>-hands-off/` (`approved.json`, `before-after.json`, a `README.md` like 6c-2's). Never in this repo.
 5. **Validate every after text** with `node test/validate-recipes.js`: no "present but NOT read" warning, every flagged step
    reads `handsOff`, no other change to what it reports.
 6. **Write one recipe**, by a statement generated from the saved file, guarded both ways:
@@ -319,6 +321,9 @@ its own issue if the household picks it up; none depends on this plan.
   the re-planning corrects it as the cook ticks.
 - **The proposals** will be wrong on some steps (step 0: 53 of 54 right on a sample chosen to be awkward); that is why the
   household approves every recipe's marks and the script never writes.
+- **The oven check reads free text:** a recipe's preheat line and the words in its steps. It will miss an oven step worded
+  another way, and it cannot see a dish that changes temperature part-way; it says when it has left a recipe out, and an
+  explicit marker is the later fix (§7, PR 3).
 - **Background tabs and screen lock.** A timer is only as audible as the tablet is awake; cooking mode keeps it awake, and
   without it a chime may come late. Push notifications are out of scope.
 
