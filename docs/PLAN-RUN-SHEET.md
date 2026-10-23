@@ -120,6 +120,7 @@ finishes the last column still logs the recipe as cooked.
 ## 5. The order, and why
 
 ```
+POC   can steps be marked reliably?               no app change; household marks a sheet
 PR 1  timeline fixes + ticks drive the bars          no format change; can ship now
 PR 2  the marker: parser, converter, display          core.js and converter versions move
       ── household merges PR 2, reloads every device, taps DONE on the converter bar ──
@@ -133,6 +134,28 @@ PR 2 shows `[25 min, hands off]` as text and loses that step's time (§1). The a
 changes, but a tab left open is the risk; `docs/HOUSEHOLD-JOBS.md` carries the reload step. **PR 2 is never reverted after the
 data job** for the same reason. PR 3 can be built before the data job finishes, and would treat every step as hands on until
 recipes carry the marker; it is most useful after.
+
+### Step 0: the proof of concept (set up 23 Oct 2026)
+
+The parser and the drawing are the easy part. The risk is the marking: if the household, the word rules and the converter do not
+agree on which steps are hands off, the hands row and its free windows mislead, and the rest is not worth building. So, before
+PR 2, with no change to the app and nothing written to the database:
+
+1. **A blind sheet.** 54 timed steps from 11 of the family's recipes, chosen for coverage, not popularity: a long simmer with
+   "stirring occasionally", an oven dish with a hob gravy alongside, a slow cooker, a curry with few timings, short waiting
+   steps, a pudding that bakes, the library's one `[overnight]` step, a stir fry as a control, and a three-recipe roast dinner.
+   The household marks which steps are hands off without seeing any proposal.
+2. **Two proposals for the same steps,** kept off the sheet: §2's word lists, and a session following a draft converter rule.
+   Before any marks, they already disagree on 24 of the 54 (the word lists cannot decide 20).
+3. **The real converter.** The draft rule pasted into the conversion project for the test only, and three of the recipes
+   re-converted from their source pages; only the `hands off` marks are compared.
+4. **The roast** also asks whether, for a meal like that, the oven rather than the cook's hands is the real limit. If it is,
+   PR 3 needs an oven lane, or must say it does not model one.
+
+Everything with recipe lines in it, the sheet, the steps with both proposals and the draft rule, is in `PrivateBackup` at
+`migrations/2026-10-23-hands-off-poc/`. The results come back here as counts. **About 90% agreement or better on the clear cases**
+means the data job (§6) can approve those as a batch; much lower means every step is reviewed by hand, or the library is left
+alone and only new recipes carry the marker. The converter rule in PR 2 is the draft as the test leaves it.
 
 ## 6. The data job: marking the library
 
@@ -196,8 +219,7 @@ verified and what was not. Each PR that the household will notice adds a `change
 - `index.html`: `durationBadge` adds `· hands off`; hands-off lanes hatched in both styles and both themes, from tokens (the
   stylesheet test refuses an `rgba()` outside `:root`); the preview shows it too.
 - `test/validate-recipes.js`: reports how many steps are marked; the existing unread-bracket warning covers mistakes.
-- Converter: a rule ("Mark a step `hands off` when it needs nobody: simmering, baking, resting, proving, chilling, marinating.
-  Not when the source says to stir often, baste or watch it."), a new test in `converter/test-set.md`, and the version moved in
+- Converter: the rule drafted and tried in step 0 (§5), a new test in `converter/test-set.md`, and the version moved in
   all three places (the file's **Version** line, `CONVERTER_VERSION`, `CONVERTER_PINNED`), which brings back the converter bar.
 - `tools/propose-hands-off.js` (§6.3) and its made-up fixture.
 - `docs/ARCHITECTURE.md` §2 (the durations paragraph), `docs/SPEC.md` §3.
@@ -255,7 +277,7 @@ its own issue if the household picks it up; none depends on this plan.
 
 Each has a recommendation; the build waits for the answer, and the PR that builds it records it.
 
-1. **The marker:** `[25 min, hands off]` inside the bracket (recommended), or another word.
+1. **The marker:** `[25 min, hands off]` inside the bracket (recommended), or another word. Step 0 tests it as written.
 2. **Default EAT AT:** the next five minutes after now plus the longest dish (recommended: start now, eat when it is ready), or
    a fixed household time such as 18:30.
 3. **AVOID THE CLASH:** a button, off until pressed (recommended), or done automatically, or a warning only.
