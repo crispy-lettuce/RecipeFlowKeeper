@@ -7316,12 +7316,12 @@ const check = (name, pass, detail) => {
   });
   const ftFinish = await ftView();
   check('FINISH TOGETHER: a group with a Side opens finishing together; the short dish says when to start it (a time of day), and the last tick is EAT AT',
-        JSON.stringify(ftFinish.pressed) === '["finish"]' && JSON.stringify(ftFinish.starts) === '["START FIRST","START AT 09:45"]'
+        JSON.stringify(ftFinish.pressed) === '["finish"]' && JSON.stringify(ftFinish.starts) === '["START FIRST · READY AT 10:00","START AT 09:45 · READY AT 10:00"]'
         && ftFinish.ticks[ftFinish.ticks.length - 1] === '10:00', JSON.stringify(ftFinish));
   await ft.click('#view-group-viewer [data-group-lineup="start"]');
   const ftStart = await ftView();
-  check('    START TOGETHER puts both dishes at the start, with no start times and no SERVE',
-        JSON.stringify(ftStart.pressed) === '["start"]' && ftStart.starts.length === 0 && !ftStart.ticks.includes('SERVE')
+  check('    START TOGETHER puts both dishes at the start, each saying only when it is ready, and no SERVE',
+        JSON.stringify(ftStart.pressed) === '["start"]' && JSON.stringify(ftStart.starts) === '["READY AT 10:00","READY AT 09:15"]' && !ftStart.ticks.includes('SERVE')
         && JSON.stringify(ftStart.lanes) !== JSON.stringify(ftFinish.lanes), JSON.stringify({ ftStart, ftFinish: ftFinish.lanes }));
   const ftPlain = await ft.evaluate(() => {
     state.groupLineUp = null;
@@ -7347,7 +7347,7 @@ const check = (name, pass, detail) => {
     return r;
   });
   check('    in cooking mode the switch waits behind SHOW TIMELINE, and the start times stay on each dish',
-        !ftCook.switchShown && ftCook.afterShow && JSON.stringify(ftCook.starts) === '["START FIRST","START AT 09:45"]', JSON.stringify(ftCook));
+        !ftCook.switchShown && ftCook.afterShow && JSON.stringify(ftCook.starts) === '["START FIRST · READY AT 10:00","START AT 09:45 · READY AT 10:00"]', JSON.stringify(ftCook));
   await ft.close();
 
   // #87 SERVE WITH: a recipe that says "serve with freekeh" names the library's Side of that name, read-only.
@@ -9677,14 +9677,19 @@ const check = (name, pass, detail) => {
         syntax: `TITLE: ${title}\nSERVINGS: 2\n${pre}\nGROUP a:\n1 swede\n\n` + steps.map((st, i) => `STAGE:\nMERGE ${i ? 'o' + (i - 1) : 'a'} -> o${i}: ${st}`).join('\n\n') });
       dish('rs-main', 'Test Roast Dish', 'STEPS:\nPreheat the oven to 195°C (fan).\n', ['Prep the roots [10 min]', 'Roast the roots [50 min, hands off]', 'Rest [11 min, hands off]']);
       dish('rs-side', 'Test Side Dish', 'STEPS:\nPreheat the oven to 225°C (fan).\n', ['Boil [20 min, hands off]', 'Mash [6 min]', 'Bake the topping [8 min, hands off]'], 'Side');
-      dish('rs-green', 'Test Greens', '', ['Wash and chop [8 min]', 'Steam [4 min]']);
-      dish('rs-o1', 'Test Oven One', 'STEPS:\nPreheat the oven to 195°C (fan).\n', ['Roast the tray [50 min, hands off]']);
+      dish('rs-green', 'Test Greens', '', ['Wash and chop [8 min]', 'Steam [4 min, hands off]']);
+      dish('rs-o1', 'Test Oven One', 'STEPS:\nPreheat the oven to 195°C (fan).\n', ['Roast the tray [50 min, hands off]', 'Take the tray out of the oven [instant]']);
+      dish('rs-u1', 'Test Unmarked One', '', ['Chop the roots [8 min]', 'Simmer [20 min]']);
+      dish('rs-u2', 'Test Unmarked Two', '', ['Whisk [5 min]', 'Rest [10 min]']);
       dish('rs-o2', 'Test Oven Two', 'STEPS:\nPreheat the oven to 225°C (fan).\n', ['Bake the tray [30 min, hands off]']);
       dish('rs-o3', 'Test Oven Three', '', ['Bake the buns [20 min, hands off]']);
       const day = isoLocal(new Date()), tomorrow = isoLocal(new Date(Date.now() + 86400000));
       ['rs-main', 'rs-side', 'rs-green'].forEach(id => addPlanRecipe(day, id)); createGroup(day, ['rs-main', 'rs-side', 'rs-green']);
       ['rs-o1', 'rs-o2', 'rs-o3'].forEach(id => addPlanRecipe(tomorrow, id)); createGroup(tomorrow, ['rs-o1', 'rs-o2', 'rs-o3']);
-      const gid = id => loadGroups().find(g => g.recipeIds.includes(id)).id;
+      const later = n => isoLocal(new Date(Date.now() + n * 86400000));
+      ['rs-u1', 'rs-u2'].forEach(id => addPlanRecipe(later(2), id)); createGroup(later(2), ['rs-u1', 'rs-u2']);
+      ['rs-main', 'rs-u1'].forEach(id => addPlanRecipe(later(3), id)); createGroup(later(3), ['rs-main', 'rs-u1']);
+      const gid = (id, other) => loadGroups().find(g => g.recipeIds.includes(id) && (!other || g.recipeIds.includes(other))).id;
       const drain = async () => { let t; do { t = writeQueue; await t; } while (t !== writeQueue); };
       await drain();
       const writes0 = window.__WRITES__.length;
@@ -9693,7 +9698,10 @@ const check = (name, pass, detail) => {
         const root = document.getElementById(mountId), st = root.querySelector('.timeline-strip');
         const rc = e => e.getBoundingClientRect(), sr = rc(st);
         const btns = [...st.querySelectorAll('.timeline-eat .btn')];
-        return { eat: txt(root, '.eat-time'), start: txt(root, '.eat-start'), now: !!root.querySelector('[data-eat-now]'), avoid: (b => b ? b.getAttribute('aria-pressed') : null)(root.querySelector('[data-avoid-clash]')),
+        const ab = root.querySelector('[data-avoid-clash]');
+        return { eat: txt(root, '.eat-time'), start: txt(root, '.eat-start'), now: !!root.querySelector('[data-eat-now]'), avoid: (b => b ? b.getAttribute('aria-pressed') : null)(ab),
+          avoidText: ab ? ab.textContent.trim() : null, avoidBg: ab ? getComputedStyle(ab).backgroundColor : null, avoidFg: ab ? getComputedStyle(ab).color : null,
+          modeNote: txt(root, '.timeline-mode-note'), late: txt(root, '.eat-late'), ovenWidths: [...st.querySelectorAll('.oven-use')].map(e => Math.round(rc(e).width)), handsRow: !!st.querySelector('.hands-row'),
           ticks: [...st.querySelectorAll('.timeline-tick')].filter(t => !t.classList.contains('off')).map(t => t.textContent.trim()),
           hands: txt(root, '.hands-row') === null ? null : { caption: [...st.querySelectorAll('.timeline-row-name')].map(e => e.textContent.trim()).find(t => /^YOUR HANDS/.test(t)),
             busy: st.querySelectorAll('.hands-busy').length, clash: st.querySelectorAll('.hands-clash').length, free: [...st.querySelectorAll('.hands-free')].map(e => e.textContent.trim()) },
@@ -9722,6 +9730,18 @@ const check = (name, pass, detail) => {
       click('flowMount', '[data-eat-step="5"]'); res.singlePlus = snap('flowMount');
       openGroup(gid('rs-green'), 'planner'); await wait(350);
       res.afterOther = snap('groupFlowMount');
+      /* "That time has passed" is for a meal planned for today: EAT AT 15 minutes earlier puts the start before now. Not for tomorrow's. */
+      openGroup(gid('rs-green'), 'planner'); await wait(350);
+      click('groupFlowMount', '[data-eat-step="-15"]'); click('groupFlowMount', '[data-eat-step="-15"]'); res.passedToday = snap('groupFlowMount');
+      click('groupFlowMount', '[data-eat-now]'); res.passedCleared = snap('groupFlowMount');
+      openGroup(gid('rs-o1'), 'planner'); await wait(350);
+      click('groupFlowMount', '[data-eat-step="-15"]'); click('groupFlowMount', '[data-eat-step="-15"]'); res.passedTomorrow = snap('groupFlowMount');
+      click('groupFlowMount', '[data-eat-now]');
+      /* Recipes with no step marked hands off are left out of YOUR HANDS, and the group says so. */
+      openGroup(gid('rs-u1', 'rs-u2'), 'planner'); await wait(350);
+      res.unmarked = snap('groupFlowMount');
+      openGroup(gid('rs-main', 'rs-u1'), 'planner'); await wait(350);
+      res.partly = snap('groupFlowMount');
       /* The ovens: one oven (the default), then two through the setting. */
       openGroup(gid('rs-o1'), 'planner'); await wait(350);
       res.ovens1 = snap('groupFlowMount');
@@ -9761,19 +9781,19 @@ const check = (name, pass, detail) => {
   rsAll('EAT AT starts as now plus the longest dish up to the next five minutes (09:00 and 71 minutes: 10:15); the plan starts a few minutes after now, and the ruler reads times of day from the first start to EAT AT',
         r => r.s0.eat === '10:15' && r.s0.start === 'START AT 09:04' && r.s0.ticks[0] === '09:04' && r.s0.ticks[r.s0.ticks.length - 1] === '10:15' && r.s0.ticks.every(t => /^\d\d:\d\d$/.test(t)) && !r.s0.now,
         r => [r.s0.eat, r.s0.start, r.s0.ticks, r.s0.now]);
-  rsAll('every box says when its step starts, and each dish says when to begin it: the first START FIRST, the others a time of day',
-        r => r.s0.boxAt.length === 8 && r.s0.boxAt[0] === 'AT 09:04' && r.s0.boxAt.includes('AT 09:41') && J2(r.s0.heads) === '["START FIRST","START AT 09:41","START AT 10:03"]', r => [r.s0.boxAt, r.s0.heads]);
+  rsAll('every box says when its step starts, and each dish says when to begin it (the first START FIRST, the others a time of day) and when it is ready',
+        r => r.s0.boxAt.length === 8 && r.s0.boxAt[0] === 'AT 09:04' && r.s0.boxAt.includes('AT 09:41') && J2(r.s0.heads) === '["START FIRST · READY AT 10:15","START AT 09:41 · READY AT 10:15","START AT 10:03 · READY AT 10:15"]', r => [r.s0.boxAt, r.s0.heads]);
   rsAll('the stepper moves EAT AT and the whole plan with it (+15 is 10:30 and a 09:19 start; then −5 twice is 10:20), and NOW comes back to the default and goes',
         r => r.plus15.eat === '10:30' && r.plus15.start === 'START AT 09:19' && r.plus15.now && r.plus15.ticks[0] === '09:19' && r.plus15.ticks[r.plus15.ticks.length - 1] === '10:30' && r.plus15.boxAt[0] === 'AT 09:19'
           && r.minus10.eat === '10:20' && r.minus10.start === 'START AT 09:09' && r.now.eat === '10:15' && !r.now.now, r => [r.plus15.eat, r.plus15.start, r.minus10.eat, r.now.eat, r.now.now]);
-  rsAll('your hands: 24 minutes busy, 4 of them a clash, one clash and one long gap of 47 minutes free',
-        r => r.s0.hands.caption === 'YOUR HANDS · BUSY 24 min · CLASH 4 min' && r.s0.hands.busy === 2 && r.s0.hands.clash === 1 && J2(r.s0.hands.free) === '["free 47 min"]', r => r.s0.hands);
+  rsAll('your hands: 20 minutes busy, 4 of them a clash, one clash and one long gap of 47 minutes free',
+        r => r.s0.hands.caption === 'YOUR HANDS · BUSY 20 min · CLASH 4 min' && r.s0.hands.busy === 2 && r.s0.hands.clash === 1 && J2(r.s0.hands.free) === '["free 47 min"]', r => r.s0.hands);
   rsAll('AVOID THE CLASH is there only while there is a clash (and no hands row at all when no step needs the hands), clears it when pressed (greens move to 09:53, EAT AT and the first start stay), stays pressed so it can be undone, and the clash comes back when it is',
-        r => r.s0.avoid === 'false' && r.avoided.avoid === 'true' && r.avoided.hands.clash === 0 && r.avoided.hands.caption === 'YOUR HANDS · BUSY 28 min' && r.avoided.eat === '10:15' && r.avoided.start === 'START AT 09:04'
-          && r.avoided.heads[2] === 'START AT 09:53' && r.back.avoid === 'false' && r.back.hands.clash === 1 && r.back.heads[2] === 'START AT 10:03'
+        r => r.s0.avoid === 'false' && r.avoided.avoid === 'true' && r.avoided.hands.clash === 0 && r.avoided.hands.caption === 'YOUR HANDS · BUSY 24 min' && r.avoided.eat === '10:15' && r.avoided.start === 'START AT 09:04'
+          && r.avoided.heads[2] === 'START AT 09:53 · READY AT 10:15' && r.back.avoid === 'false' && r.back.hands.clash === 1 && r.back.heads[2] === 'START AT 10:03 · READY AT 10:15'
           && r.ovens1.avoid === null && r.ovens1.hands === null, r => [r.avoided.avoid, r.avoided.hands, r.avoided.heads, r.back.avoid, r.back.hands.clash, r.ovens1.avoid, r.ovens1.hands]);
-  rsAll('a redraw (as a refresh does) keeps the EAT AT the cook chose, and START TOGETHER puts every dish at the start with EAT AT where the longest ends',
-        r => r.redrawn.eat === '10:20' && r.together.eat === '10:20' && r.together.start === 'START AT 09:09' && r.together.heads.length === 0, r => [r.redrawn.eat, r.together.eat, r.together.start, r.together.heads]);
+  rsAll('a redraw (as a refresh does) keeps the EAT AT the cook chose, and START TOGETHER puts every dish at the start with EAT AT where the longest ends, and each dish says when it is ready',
+        r => r.redrawn.eat === '10:20' && r.together.eat === '10:20' && r.together.start === 'START AT 09:09' && J2(r.together.heads) === '["READY AT 10:20","READY AT 09:43","READY AT 09:21"]', r => [r.redrawn.eat, r.together.eat, r.together.start, r.together.heads]);
   rsAll('the single viewer has the same: EAT AT, a clock ruler, your hands, a start time on each box and the stepper; what was chosen for the group is not carried to it, nor back',
         r => r.single.eat === '10:15' && r.single.start === 'START AT 09:04' && r.single.boxAt.length >= 3 && r.single.boxAt[0] === 'AT 09:04' && r.single.hands && r.single.ovenRows >= 1 && r.singlePlus.eat === '10:20' && r.singlePlus.start === 'START AT 09:09'
           && r.afterOther.eat === '10:15', r => [r.single, r.singlePlus.eat, r.afterOther.eat]);
@@ -9782,6 +9802,22 @@ const check = (name, pass, detail) => {
           && r.ovens2.ovenRows === 2 && r.ovens2.ovenOver === 0 && !/More ovens/.test(r.ovens2.warn) && /Left out of the oven check/.test(r.ovens2.warn) && r.ovens2.ovenUses.length === 2, r => [r.ovens1.warn, r.ovens1.ovenRows, r.ovens1.ovenOver, r.ovens2.warn, r.ovens2.ovenUses]);
   rsAll('the number of ovens is kept on this device (2 is stored, 1 is not), one when storage is blocked, and no EAT AT or AVOID THE CLASH is ever stored',
         r => r.stored2 === '2' && r.stored1 === null && r.blocked === 1 && r.keys0.length === 0 && r.keys1.length === 0, r => [r.stored2, r.stored1, r.blocked, r.keys1]);
+  rsAll('AVOID THE CLASH, once pressed, is a filled button that says so and how to undo it ("✓ CLASH AVOIDED · TAP TO UNDO"), clearly not the unpressed one; and the heading says what it moved',
+        r => r.s0.avoidText === 'AVOID THE CLASH' && r.avoided.avoidText === '✓ CLASH AVOIDED · TAP TO UNDO' && r.avoided.avoidBg !== r.s0.avoidBg && r.avoided.avoidBg !== 'rgba(0, 0, 0, 0)' && r.avoided.avoidFg !== r.s0.avoidFg
+          && /AVOID THE CLASH has moved 1 step earlier, so your hands are never wanted twice at once\.$/.test(r.avoided.modeNote) && r.back.avoidText === 'AVOID THE CLASH',
+        r => [r.s0.avoidText, r.avoided.avoidText, r.s0.avoidBg, r.avoided.avoidBg, r.avoided.modeNote]);
+  rsAll('the heading says in words what the way of lining up does: FINISH TOGETHER, every dish ready at EAT AT and the shorter ones starting later; START TOGETHER, every dish starting at once and the shorter ones ready earlier; one dish on its own has none',
+        r => r.s0.modeNote === 'Every dish is timed to be ready at 10:15; the shorter ones start later.' && r.together.modeNote === 'Every dish starts at 09:09; the shorter ones are ready earlier.' && r.single.modeNote === null,
+        r => [r.s0.modeNote, r.together.modeNote, r.single.modeNote]);
+  rsAll('a start time already past is said once and only for a meal planned for today ("THAT TIME HAS PASSED: TAP NOW", gone when NOW is tapped); tomorrow\'s meal, set the same way, says nothing',
+        r => r.passedToday.late === 'THAT TIME HAS PASSED: TAP NOW' && r.passedToday.now && r.passedToday.eat === '09:45' && r.passedCleared.late === null && r.passedTomorrow.late === null && r.passedTomorrow.now && !/AGO/.test(r.passedToday.start),
+        r => [r.passedToday.late, r.passedToday.eat, r.passedToday.start, r.passedCleared.late, r.passedTomorrow.late]);
+  rsAll('recipes with no step marked hands off are left out of YOUR HANDS and the group says so: all of them, no row and no AVOID THE CLASH; some of them, the row for the rest and the others named',
+        r => r.unmarked.handsRow === false && r.unmarked.avoid === null && /YOUR HANDS is not shown: none of these recipes has a step marked hands off yet\./.test(r.unmarked.warn)
+          && r.partly.handsRow === true && /Not counted in YOUR HANDS: Test Unmarked One \(no step marked hands off yet\)\./.test(r.partly.warn) && !/not shown/.test(r.partly.warn),
+        r => [r.unmarked.handsRow, r.unmarked.avoid, r.unmarked.warn, r.partly.handsRow, r.partly.warn]);
+  rsAll('an [instant] step that says oven ("take the tray out of the oven") is not drawn in an oven lane: no stray tick, every chip has width',
+        r => r.ovens1.ovenWidths.length === 2 && r.ovens1.ovenWidths.every(w => w >= 6) && r.ovens2.ovenWidths.length === 2 && r.ovens2.ovenWidths.every(w => w >= 6), r => [r.ovens1.ovenWidths, r.ovens2.ovenWidths]);
   rsAll('the controls leave print, the ruler keeps its times; at either width every button answers a tap 21px above and below its middle and is inside the strip, and the page does not scroll sideways',
         r => r.print.controls === 'none' && /^\d\d:\d\d$/.test(r.print.tick) && r.s0.taps && r.s0.inside && r.plus15.inside && r.s0.sideways <= 0, r => [r.print, r.s0.taps, r.s0.inside, r.s0.sideways]);
   rsAll('none of it wrote anything', r => r.writes1 === r.writes0, r => [r.writes0, r.writes1]);

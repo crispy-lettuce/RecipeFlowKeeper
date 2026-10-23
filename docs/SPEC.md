@@ -116,10 +116,14 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
   never stored; the ruler reads times of day, every box says `AT 17:20` when its step starts, and START AT gives when the meal begins. **YOUR HANDS**
   is a row above the lanes: solid where a hands-on step runs, red hatched where two do at once (a clash), an outline `free 16 min` where nothing
   needs the cook for six minutes or more (between busy stretches only). **AVOID THE CLASH** (shown only while there is a clash, or once pressed, to undo
-  it) moves the later hands-on step, and what feeds it, earlier until none overlap, so that dish is ready early. Ovens: a thin lane per oven, each step
+  it) moves the later hands-on step, and what feeds it, earlier until none overlap, so that dish is ready early; once pressed it is a filled button
+  reading `✓ CLASH AVOIDED · TAP TO UNDO` and the heading says what moved. A one-sentence note under the heading says what the lining-up does (FINISH
+  TOGETHER: every dish ready at EAT AT, the shorter ones starting later; START TOGETHER: every dish starting at once, the shorter ones ready earlier),
+  and each dish says START AT and READY AT. `THAT TIME HAS PASSED: TAP NOW` shows only for a meal planned for today whose start has gone. Ovens: a thin lane per oven, each step
   that says oven, roast or bake in the setting its recipe's preheat line gives (one °C figure, fan or not; a recipe with none, a range or two is left out
   and named); two dishes at one setting share an oven; a sentence says when more settings are wanted at once than **OVENS** (Settings → APP,
-  this device only, 1 when unset) allows. Until recipes carry `, hands off`, every step counts as hands on. The controls are left out of print.
+  this device only, 1 when unset) allows. A recipe with no step marked `, hands off` (or `[overnight]`) is left out of YOUR HANDS and AVOID THE CLASH, since every step would count as
+  hands on and the clashes would be false; a group names the dishes left out, and a group of only such dishes shows no hands row. An `[instant]` step is never drawn in an oven lane. The controls are left out of print.
 - **COOK FOR** rescales for this time only (2, 4, 6, 8 or any number); nothing is saved. Tin sizes never scale. Liquids change unit
   as they scale (teaspoons under 15 ml, tablespoons under 50 ml, ml from 50 ml); weighed liquids stay in grams.
 - **COOKING MODE** keeps the screen awake, hides what is not needed at the hob and folds the sidebar. **SHOW TIMELINE** brings the

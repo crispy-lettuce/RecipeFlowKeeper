@@ -1492,7 +1492,7 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
   const tlOf = steps => { const q = core.parseRecipe(dishText(steps)); return core.computeTimeline(q.groups, q.stages); };
   const roast = tlOf(['Prep the roots [10 min]', 'Roast [50 min, hands off]', 'Rest [10 min, hands off]']);    // 70 min
   const side = tlOf(['Boil [20 min, hands off]', 'Mash [6 min]']);                                               // 26 min
-  const greens = tlOf(['Wash and chop [8 min]', 'Steam [4 min]']);                                               // 12 min
+  const greens = tlOf(['Wash and chop [8 min]', 'Steam [4 min, hands off]']);                                     // 12 min
   const EAT = 18 * 60 + 30;
   const clk = core.formatClock;
 
@@ -1516,9 +1516,9 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
         JSON.stringify(core.planToServe([roast, null, greens], EAT).lanes.map(l => l && l.dish)) === '[0,null,2]' && core.planToServe([null, null], EAT).steps.length === 0);
 
   const hw = core.handsWindows(plan.steps);
-  check('handsWindows finds where the hands are busy, where they are wanted twice, and the long gap between: 6 of 28 minutes clash, one gap of 48',
-        hw.busyMinutes === 22 && hw.clashMinutes === 6 && JSON.stringify(hw.busy.map(w => w.map(clk))) === '[["17:20","17:30"],["18:18","18:30"]]'
-        && JSON.stringify(hw.clash.map(w => w.map(clk))) === '[["18:24","18:30"]]' && JSON.stringify(hw.free.map(w => w.map(clk))) === '[["17:30","18:18"]]', JSON.stringify(hw));
+  check('handsWindows finds where the hands are busy, where they are wanted twice, and the long gap between: 2 of 22 minutes clash, one gap of 48',
+        hw.busyMinutes === 22 && hw.clashMinutes === 2 && JSON.stringify(hw.busy.map(w => w.map(clk))) === '[["17:20","17:30"],["18:18","18:30"]]'
+        && JSON.stringify(hw.clash.map(w => w.map(clk))) === '[["18:24","18:26"]]' && JSON.stringify(hw.free.map(w => w.map(clk))) === '[["17:30","18:18"]]', JSON.stringify(hw));
   const tl6 = (a, b) => [{ start: 0, end: 10, handsOff: false }, { start: 10 + a, end: 20 + a, handsOff: false }, { start: 20 + a + b, end: 22 + a + b, handsOff: false }];
   check('a gap is free from six minutes up (a gap of 5.9 is not, exactly 6 is), and the minutes before the first step and after the last are not counted',
         core.handsWindows(tl6(6, 6)).free.length === 2 && core.handsWindows(tl6(5.9, 6)).free.length === 1 && core.handsWindows(tl6(5.9, 5.9)).free.length === 0
@@ -1581,6 +1581,28 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
   const left = core.ovenUse(dishes([[], ['Preheat the oven to 185-195°C.'], []]), 1);
   check('a recipe with an oven step and no readable preheat is left out of the check, with its reason; one with no oven step is not mentioned',
         left.omitted.length === 2 && left.omitted[0].title === 'Dish 1' && /no preheat/.test(left.omitted[0].why) && /range/.test(left.omitted[1].why) && !left.omitted.some(o => o.title === 'Dish 3') && left.conflicts.length === 0 && left.lanes.length === 1 && left.lanes[0].uses.length === 0);
+
+  /* A recipe with no step marked hands off says nothing about what needs the cook, so it is left out of the hands row and of AVOID THE
+     CLASH (the household's first try, 23 Oct: two unmarked recipes read as hands on from end to end, a 30-minute clash, and AVOID THE CLASH
+     moved a dish an hour earlier with half an hour of waiting in it). */
+  const plain = tlOf(['Bake in the oven [25 min]', 'Take out of the oven [instant]', 'Sprinkle and bake [5 min]']);                     // 30 min, no mark
+  const plainToo = tlOf(['Boil [9 min]', 'Roast [32 min]']);                                                                          // 41 min, no mark
+  const bothPlain = core.planToServe([plain, plainToo], EAT);
+  const hwPlain = core.handsWindows(bothPlain.steps);
+  check('a dish with no step marked hands off is not counted as needing the cook: two such dishes show no busy time and no clash, and the plan names them',
+        hwPlain.busyMinutes === 0 && hwPlain.clashMinutes === 0 && hwPlain.busy.length === 0 && JSON.stringify(bothPlain.unmarked) === '[0,1]' && bothPlain.steps.every(st => st.handsKnown === false));
+  const mixed = core.planToServe([roast, plain, side], EAT, { avoidClash: true });
+  check('    a marked dish beside an unmarked one is counted and the unmarked one is not; AVOID THE CLASH does not move the unmarked one for a clash it cannot see',
+        JSON.stringify(mixed.unmarked) === '[1]' && mixed.steps.filter(st => st.dish === 1).every(st => st.moved === 0 && st.handsKnown === false) && mixed.steps.filter(st => st.dish !== 1).every(st => st.handsKnown === true)
+        && core.handsWindows(mixed.steps).clashMinutes === 0);
+  check('    one step marked is enough (overnight is hands off by itself), and a hand-made list with no such flag is taken as known',
+        core.planToServe([tlOf(['Chill overnight [overnight]', 'Plate [5 min]'])], EAT).unmarked.length === 0
+        && core.handsWindows([{ start: 0, end: 10, handsOff: false }, { start: 5, end: 15, handsOff: false }]).clashMinutes === 5
+        && core.handsWindows([{ start: 0, end: 10, handsOff: false, handsKnown: false }, { start: 5, end: 15, handsOff: false }]).clashMinutes === 0);
+  const oven = core.ovenUse([{ index: 0, title: 'Dish A', setup: ['Preheat the oven to 195°C (fan).'], steps: core.planToServe([plain], EAT).lanes[0].steps }], 1);
+  check('an [instant] step that says oven ("take the dish out of the oven") is a moment, not time in the oven: it is not drawn, not counted, and does not make the recipe left out',
+        oven.lanes[0].uses.length === 2 && oven.lanes[0].uses.every(u => u.end - u.start > 0) && oven.omitted.length === 0
+        && core.ovenUse([{ index: 0, title: 'Dish B', setup: [], steps: core.planToServe([tlOf(['Take it out of the oven [instant]', 'Serve [instant]'])], EAT).lanes[0].steps }], 1).omitted.length === 0);
 }
 
 /* ---- tools/propose-hands-off.js (run sheet PR 2, §6.3) ----

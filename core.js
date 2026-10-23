@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-23.2';
+const KITCHEN_CORE_VERSION = '2026-10-23.3';
 
 
 /* ======================= quantity split ======================= */
@@ -923,7 +923,11 @@ function planToServe(timelines, serveAt, opts){
   const steps = [];
   lined.lanes.forEach((lane, dish)=>{
     if(!lane) return;
-    lane.steps.forEach((st, index)=> steps.push({ ...st, dish, index, start: base + st.start, end: base + st.end, moved: 0 }));
+    /* Whether the cook's hands can be told from this dish at all: only once some step of it is marked hands off. A recipe with no mark
+       says nothing about what needs the cook (every step would read as hands on, "bake 25 min" included), so it is left out of the hands
+       row and of AVOID THE CLASH until it is marked (decided 23 Oct, on the household's first try). */
+    const handsKnown = lane.steps.some(st=> st.handsOff);
+    lane.steps.forEach((st, index)=> steps.push({ ...st, dish, index, start: base + st.start, end: base + st.end, moved: 0, handsKnown }));
   });
   const cleared = opts.avoidClash ? avoidClash(steps) : true;
   const lanes = lined.lanes.map((lane, dish)=>{
@@ -934,11 +938,13 @@ function planToServe(timelines, serveAt, opts){
   });
   const startAt = steps.length ? Math.min(...steps.map(st=> st.start)) : serveAt;
   const readyAt = steps.length ? Math.max(...steps.map(st=> st.end)) : serveAt;
+  const unmarked = lined.lanes.map((lane, dish)=> lane && !steps.some(st=> st.dish === dish && st.handsKnown) ? dish : -1).filter(d=> d >= 0);
   return { serveAt, mode, base, totalSpan: lined.totalSpan, about: lined.about, startAt, readyAt, lanes, steps,
-           moved: steps.filter(st=> st.moved > 0).length, cleared };
+           moved: steps.filter(st=> st.moved > 0).length, cleared, unmarked };
 }
-/* A step that needs the cook: hands on, and with some length (an [instant] step is a moment, not a stretch of time). */
-function needsHands(st){ return !st.handsOff && st.end - st.start > 1e-9; }
+/* A step that needs the cook: hands on, with some length (an [instant] step is a moment, not a stretch of time), and in a dish whose
+   hands can be told (planToServe's handsKnown: a step with no such flag, as in a hand-made list, is taken as known). */
+function needsHands(st){ return st.handsKnown !== false && !st.handsOff && st.end - st.start > 1e-9; }
 function avoidClash(steps){
   const EPS = 1e-9;
   const feeders = st=> (st.inputs || []).map(h=> steps.find(p=> p.dish === st.dish && p.output === h)).filter(Boolean);
@@ -1019,7 +1025,8 @@ function ovenUse(dishes, ovens){
   const have = Math.max(1, Math.floor(ovens) || 1);
   const omitted = [], uses = [];
   (dishes || []).forEach(d=>{
-    const mine = (d.steps || []).filter(st=> OVEN_STEP.test(st.label || ''));
+    /* A step with no length ("take the dish out of the oven [instant]") is a moment, not time in the oven: it is neither drawn nor counted. */
+    const mine = (d.steps || []).filter(st=> OVEN_STEP.test(st.label || '') && st.end - st.start > 1e-9);
     if(!mine.length) return;
     const p = preheatOf(d.setup);
     if(p.why){ omitted.push({ index: d.index, title: d.title, why: p.why }); return; }

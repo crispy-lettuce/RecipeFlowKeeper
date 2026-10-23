@@ -665,7 +665,10 @@ function loadArchivoFont(){
   /* Rows of buttons 14px apart: the second style draws a button 34px tall with the rest of its 44px around it, so rows closer than 12px would share a tap. */
   .timeline-eat{ display:flex; flex-wrap:wrap; align-items:center; gap:14px 8px; margin:0 0 10px; font-size:13px; letter-spacing:.04em; color:var(--ink-soft); }
   .timeline-eat .btn{ padding:6px 10px; font-size:14px; }
-  .timeline-eat .btn[aria-pressed="true"]{ border-color:var(--ink); color:var(--ink); }
+  /* Pressed is a filled button, so it cannot be mistaken for one not yet pressed (the household's first try: the border alone was too faint). */
+  .timeline-eat .btn[aria-pressed="true"]{ background:var(--ink); border-color:var(--ink); color:var(--card); }
+  .timeline-eat .eat-late{ color:var(--danger); font-weight:500; }
+  .timeline-mode-note{ margin:0 0 10px; font-size:14px; line-height:1.5; color:var(--ink-soft); }
   .timeline-eat .eat-time{ font-family:'IBM Plex Mono', monospace; font-size:19px; letter-spacing:0; color:var(--ink); padding:0 4px; }
   .step-at{ display:block; font-size:13px; letter-spacing:.06em; opacity:.72; margin-top:3px; font-family:'IBM Plex Mono', monospace; }
   .hands-row, .oven-row{ position:relative; height:20px; margin-bottom:3px; }
@@ -1824,7 +1827,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-23.3">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-23.4">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2537,7 +2540,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-23.2"></script>
+<script src="core.js?v=2026-10-23.3"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2545,12 +2548,12 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-23.2';
+const EXPECTED_CORE_VERSION = '2026-10-23.3';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-23.3';
+const APP_VERSION = '2026-10-23.4';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -2799,7 +2802,7 @@ function ovenCount(){
 /* The plan for what is open. `key` names it (a recipe, or a group) so EAT AT and AVOID THE CLASH are kept for it and for nothing else;
    `items` are its dishes, [{ title, timeline, setup }], a timeline null where a recipe has no timing. EAT AT is the cook's, or by default
    now plus the longest dish up to the next five minutes (decided 23 Oct: start now, eat when it is ready). */
-function buildRun(key, mode, items){
+function buildRun(key, mode, items, day){
   if(state.eatAt.key !== key) state.eatAt = { key, mins: null, avoid: false };
   const timelines = items.map(it=> it.timeline);
   const longest = Math.max(0, ...timelines.filter(Boolean).map(t=> t.totalSpan));
@@ -2808,8 +2811,11 @@ function buildRun(key, mode, items){
   const plan = planToServe(timelines, serveAt, { mode, avoidClash: state.eatAt.avoid });
   const hands = handsWindows(plan.steps);
   const oven = ovenUse(items.map((it, i)=> ({ index: i, title: it.title, setup: it.setup, steps: plan.lanes[i] ? plan.lanes[i].steps : [] })), ovenCount());
+  /* `today`: whether "that time has passed" means anything: a group planned for another day (`day`) has no "now" to be late for. The recipes
+     whose hands cannot be told yet (no step marked hands off) are named, for the note under the strip. */
   return { key, mode, plan, hands, oven, now, serveAt, isDefault: state.eatAt.mins === null, avoid: state.eatAt.avoid,
-    axisStart: plan.startAt, span: serveAt - plan.startAt, items };
+    axisStart: plan.startAt, span: serveAt - plan.startAt, items, today: !day || day === todayStr(), single: items.length === 1,
+    unmarked: plan.unmarked.map(i=> items[i].title), timed: items.filter(it=> it.timeline).length };
 }
 /* A dish's steps on the strip's own axis (0 at the first start), which is what the bars' positions are measured from. */
 function runLaneSteps(run, dish){
@@ -2827,16 +2833,26 @@ function settingLabel(key){ return `${parseInt(key, 10)}°C${/f$/.test(key) ? ' 
 
 /* EAT AT, its stepper, when to start, and AVOID THE CLASH (only while there is a clash to avoid, or it is pressed, so it can be undone). */
 function runControlsHTML(run){
-  const late = run.now - run.plan.startAt;
+  const late = run.today ? run.now - run.plan.startAt : 0;
   const button = ([n, words])=> `<button type="button" class="btn" data-eat-step="${n}" aria-label="${n < 0 ? 'Earlier' : 'Later'} by ${Math.abs(n)} minutes">${words}</button>`;
   const clash = run.hands.clashMinutes > 1e-9 || run.avoid;
   return `<div class="timeline-eat" data-serve="${run.serveAt}">
     <span class="eat-label">EAT AT</span>
     ${EAT_STEPS.filter(e=> e[0] < 0).map(button).join('')}<b class="eat-time">${formatClock(run.serveAt)}</b>${EAT_STEPS.filter(e=> e[0] > 0).map(button).join('')}
     ${run.isDefault ? '' : '<button type="button" class="btn" data-eat-now>NOW</button>'}
-    <span class="eat-start">${run.plan.about ? 'ABOUT ' : ''}START AT ${formatClock(run.plan.startAt)}${late > 1 ? ` (${Math.round(late)} MIN AGO)` : ''}</span>
-    ${clash ? `<button type="button" class="btn" data-avoid-clash aria-pressed="${run.avoid}">AVOID THE CLASH</button>` : ''}
-  </div>`;
+    <span class="eat-start">${run.plan.about ? 'ABOUT ' : ''}START AT ${formatClock(run.plan.startAt)}</span>
+    ${late > 1 ? '<span class="eat-late">THAT TIME HAS PASSED: TAP NOW</span>' : ''}
+    ${clash ? `<button type="button" class="btn" data-avoid-clash aria-pressed="${run.avoid}">${run.avoid ? '✓ CLASH AVOIDED · TAP TO UNDO' : 'AVOID THE CLASH'}</button>` : ''}
+  </div>${modeNoteHTML(run)}`;
+}
+/* What the chosen way of lining dishes up does, in words, for a group (one dish has nothing to line up): START TOGETHER and FINISH TOGETHER
+   changed nothing the household could see when two dishes are about as long (their first try, 23 Oct), so the heading says what each does. */
+function modeNoteHTML(run){
+  if(run.single || run.timed < 2) return '';
+  const moved = run.avoid && run.plan.moved > 0 ? ` AVOID THE CLASH has moved ${run.plan.moved} step${run.plan.moved === 1 ? '' : 's'} earlier, so your hands are never wanted twice at once.` : '';
+  const text = run.mode === 'start' ? `Every dish starts at ${formatClock(run.plan.startAt)}; the shorter ones are ready earlier.`
+    : `Every dish is timed to be ready at ${formatClock(run.serveAt)}; the shorter ones start later.`;
+  return `<p class="timeline-mode-note">${escapeHtml(text + moved)}</p>`;
 }
 /* Your hands, then the ovens, above the lanes and on the same axis. */
 function runRowsHTML(run){
@@ -2868,6 +2884,12 @@ function runWarningsHTML(run){
   const o = run.oven;
   const lines = o.conflicts.map(c=> `More ovens wanted at once than this kitchen has: ${escapeHtml(c.keys.map(settingLabel).join(' and '))}, ${escapeHtml(formatClock(c.from))}–${escapeHtml(formatClock(c.to))} (${escapeHtml(c.dishes.join(', '))}). This device has ${c.have}; Settings → APP sets it.`);
   if(o.omitted.length) lines.push(`Left out of the oven check: ${escapeHtml(o.omitted.map(x=> `${x.title} (${x.why})`).join('; '))}.`);
+  /* A recipe with no step marked hands off cannot say what needs the cook, so it is left out of YOUR HANDS until it is marked. One recipe on
+     its own just has no row; a group says so, or the missing row looks like a fault. */
+  if(!run.single && run.unmarked.length){
+    lines.push(run.unmarked.length === run.timed ? 'YOUR HANDS is not shown: none of these recipes has a step marked hands off yet.'
+      : `Not counted in YOUR HANDS: ${escapeHtml(run.unmarked.join(', '))} (no step marked hands off yet).`);
+  }
   return lines.length ? `<div class="timeline-missing-note timeline-oven-note">${lines.join('<br>')}</div>` : '';
 }
 /* EAT AT's buttons, wired after the strip is drawn; each redraws the viewer through `rerender`, the way START TOGETHER does. */
@@ -3079,12 +3101,12 @@ function fitTimelineStrip(root){
 function groupColour(i){
   return currentStyle() === 'modernist' ? `var(--km-group-${i % 4 + 1})` : PALETTE[i % PALETTE.length];
 }
-function computeGroupTimeline(recipesWithParsed, mode, key){
+function computeGroupTimeline(recipesWithParsed, mode, key, day){
   const own = recipesWithParsed.map(rp=> computeTimeline(rp.parsed.groups, rp.parsed.stages));
   if(!own.some(Boolean)) return null; // nothing in the whole group has timing data — auto-hide, same rule as single-recipe
   /* START TOGETHER or FINISH TOGETHER (#87): the arithmetic is lineUpTimelines in core.js, where it has tests; planToServe puts it on the
      clock (the run sheet), so the lanes are where the plan puts them and the strip's span is from the first start to EAT AT. */
-  const run = buildRun(key || 'group', mode, recipesWithParsed.map((rp, i)=> ({ title: rp.recipe.title, timeline: own[i], setup: rp.parsed.setup })));
+  const run = buildRun(key || 'group', mode, recipesWithParsed.map((rp, i)=> ({ title: rp.recipe.title, timeline: own[i], setup: rp.parsed.setup })), day);
   const perRecipe = recipesWithParsed.map((rp, i)=> ({ recipe: rp.recipe, parsed: rp.parsed, timeline: run.plan.lanes[i] ? { steps: runLaneSteps(run, i), lane: run.plan.lanes[i] } : null,
     colour: groupColour(i) }));
   return { perRecipe, totalSpan: run.span, about: run.plan.about, mode, run };
@@ -6529,15 +6551,18 @@ function renderGroupViewer(){
   meta.textContent = recipesWithParsed.map(rp=>rp.recipe.title).join('  ·  ').toUpperCase();
 
   const lineUp = groupLineUpMode(group, recipesWithParsed.map(rp=> rp.recipe));
-  const groupTimeline = computeGroupTimeline(recipesWithParsed, lineUp, 'group:' + group.id);
+  const groupTimeline = computeGroupTimeline(recipesWithParsed, lineUp, 'group:' + group.id, group.dateIso);
   const timelineHtml = groupTimeline ? buildGroupTimelineHTML(groupTimeline) : '';
   /* In FINISH TOGETHER each dish says when to start it. ABOUT when the longest dish has a step with no fixed time. */
   const startAt = recipe=>{
-    if(!groupTimeline || groupTimeline.mode !== 'finish') return '';
+    if(!groupTimeline) return '';
     const lane = groupTimeline.perRecipe.find(p=> p.recipe.id === recipe.id);
     if(!lane || !lane.timeline) return '';
-    /* The time of day to begin this dish, or START FIRST for the one that starts the meal (the run sheet; it said +45 min before). */
-    const text = lane.timeline.lane.startAt - groupTimeline.run.plan.startAt > 0.5 ? `START AT ${formatClock(lane.timeline.lane.startAt)}` : 'START FIRST';
+    /* When to begin this dish (a time of day, or START FIRST for the one that starts the meal) and when it is ready: with START TOGETHER every
+       dish begins at once, so its ready time is the whole difference between them. */
+    const l = lane.timeline.lane, run = groupTimeline.run;
+    const start = run.mode === 'start' ? '' : l.startAt - run.plan.startAt > 0.5 ? `START AT ${formatClock(l.startAt)}` : 'START FIRST';
+    const text = [start, `READY AT ${formatClock(l.endAt)}`].filter(Boolean).join(' · ');
     return `<span class="stacked-recipe-start">${groupTimeline.about ? 'ABOUT ' : ''}${escapeHtml(text)}</span>`;
   };
 
