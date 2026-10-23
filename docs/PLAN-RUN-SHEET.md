@@ -113,7 +113,13 @@ finishes the last column still logs the recipe as cooked.
 - **AVOID THE CLASH** (shown only when there is one): moves the later hands-on step, and what feeds it, earlier until nothing
   overlaps. The dish it moves is then ready a few minutes before serving.
 - **START COOKING** starts a playhead at the real time. From then:
-  - a box ticked is done at that moment; a box ticked without START is drawn as having ended then and lasted its time;
+  - a box ticked is done at that moment. **A box ticked without START** is drawn from its planned start to the tick, so a
+    step that ran late shows as longer than planned; one ticked before its planned start (done early) is drawn as its own
+    length counted back from the tick. Steps ticked along with a later one keep their planned times, cut short at the tick if
+    the plan had them ending later. Decided 23 Oct, from three ways compared in a second mock
+    (https://claude.ai/artifact/SKWGwVWSBd2Ae7PAkf4nw1); the others counted every step back from the tick (which invents a
+    start time) or drew only a tick mark (which leaves the hands row blank for time the cook was busy). None of this changes
+    the plan ahead, which runs from when each step ended;
   - in cooking mode each box has START (or START TIMER on a hands-off step) and, once started, DONE, which is the same tick;
   - every step not yet done is re-planned: no earlier than planned, no earlier than now, after what feeds it, and never on top
     of another hands-on step. A faint mark shows where the plan had it;
@@ -276,7 +282,7 @@ verified and what was not. Each PR that the household will notice adds a `change
   - `planToServe(lanes, serveAt, { avoidClash })`: today's FINISH TOGETHER offsets turned into clock times, then, with
     `avoidClash`, hands-on steps moved earlier (with what feeds them) until no two overlap. Each dish keeps today's shape
     (a decision, §10).
-  - `projectRun(plan, run, now)`: done steps as recorded; a running step ends at the later of its planned end and now; every
+  - `projectRun(plan, run, now)`: done steps as recorded (a step ticked without START by §4's rule); a running step ends at the later of its planned end and now; every
     other step at the earliest of: its planned start, now, the end of what feeds it, and the end of any hands-on step in its way
     if it is hands on. Returns each step's projected start and end, the ready time and minutes late.
   - `handsWindows(steps)`: busy, clash and free intervals.
