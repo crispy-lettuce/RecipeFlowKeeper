@@ -140,10 +140,10 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
   const MONO_OK = ['.mono', '.qty', '.step-duration', '.day-recipe-time', '.day-num', '.scale-btn', '.history-day-num', '.side-count',
     '.result-count', '.shortlist-count', '.ingr-count', '.source-row-count', 'ol.setup li::before', 'textarea#importInput',
     'textarea#sourcePasteInput', 'textarea#bulkText', '.rv-row code', '.line-check code', '.rv-undo code', '.hstat-legend-value', '.swap-row-ratio',
-    '.timeline-ruler', '.cn-date', '.stacked-recipe-start', '.stacked-recipe-serves', '.photo-overlay-head', '.pdf-card-mark'];
+    '.timeline-ruler', '.cn-date', '.stacked-recipe-start', '.stacked-recipe-serves', '.photo-overlay-head', '.pdf-card-mark', '.step-at', '.timeline-eat .eat-time'];
   const mono = rules.filter(r => /IBM Plex Mono/.test(r.body)).map(r => r.sel);
   const stray = mono.filter(sel => !MONO_OK.includes(sel)), unused = MONO_OK.filter(sel => !mono.includes(sel));
-  check('IBM Plex Mono is on exactly the rules for numbers, times and code (27), and nowhere else',
+  check('IBM Plex Mono is on exactly the rules for numbers, times and code (29), and nowhere else',
         mono.length > 0 && stray.length === 0 && unused.length === 0, [stray.length ? 'mono but not listed: ' + stray.join(' | ') : '', unused.length ? 'listed but not mono: ' + unused.join(' | ') : ''].filter(Boolean).join('; '));
 
   /* Weight 300 is thin on the tablet. Titles of 19px and up keep it; body text is 400. */
@@ -1483,6 +1483,104 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
   check('scaling a recipe leaves a MERGE line, marker and all, as it was',
         JSON.stringify(mergeLines(core.scaleRecipeSyntax(body(true), 2))) === JSON.stringify(mergeLines(body(true))));
   check('formatDuration says nothing of hands-off (the box draws that itself)', core.formatDuration(ex('25 min, hands off').duration) === core.formatDuration(ex('25 min').duration));
+}
+
+/* ---- The run sheet, planning half (run sheet PR 3a, 23 Oct 2026, docs/PLAN-RUN-SHEET.md §4) ----
+   A meal of three made-up dishes. Times are minutes on a clock axis (here minutes since midnight). */
+{
+  const dishText = steps => 'TITLE: Test\nSERVINGS: 2\n\nGROUP a:\n1 swede\n\n' + steps.map((st, i) => `STAGE:\nMERGE ${i ? 'o' + (i - 1) : 'a'} -> o${i}: ${st}`).join('\n\n');
+  const tlOf = steps => { const q = core.parseRecipe(dishText(steps)); return core.computeTimeline(q.groups, q.stages); };
+  const roast = tlOf(['Prep the roots [10 min]', 'Roast [50 min, hands off]', 'Rest [10 min, hands off]']);    // 70 min
+  const side = tlOf(['Boil [20 min, hands off]', 'Mash [6 min]']);                                               // 26 min
+  const greens = tlOf(['Wash and chop [8 min]', 'Steam [4 min]']);                                               // 12 min
+  const EAT = 18 * 60 + 30;
+  const clk = core.formatClock;
+
+  check('formatClock reads a time on the axis as HH:MM, to the minute, wrapping at midnight either way',
+        [core.formatClock(0), core.formatClock(17 * 60 + 20), core.formatClock(17 * 60 + 20.5), core.formatClock(1440 + 5), core.formatClock(-30), core.formatClock(23 * 60 + 59.6)].join(' ') === '00:00 17:20 17:21 00:05 23:30 00:00');
+  check('the default EAT AT is now plus the longest dish, up to the next five minutes, and a time already on the line stays',
+        [core.defaultServeAt(17 * 60 + 23, 70.5), core.defaultServeAt(17 * 60, 70), core.defaultServeAt(17 * 60 + 1, 70), core.defaultServeAt(0, 0.1)].join() === `${18 * 60 + 35},${18 * 60 + 10},${18 * 60 + 15},5`);
+
+  const plan = core.planToServe([roast, side, greens], EAT);
+  check('planToServe puts FINISH TOGETHER on the clock: everything ends at EAT AT and the longest dish starts the longest span before it',
+        plan.serveAt === EAT && clk(plan.startAt) === '17:20' && clk(plan.readyAt) === '18:30' && plan.totalSpan === 70 && plan.moved === 0 && plan.cleared
+        && JSON.stringify(plan.lanes.map(l => [clk(l.startAt), clk(l.endAt), l.early])) === '[["17:20","18:30",0],["18:04","18:30",0],["18:18","18:30",0]]',
+        JSON.stringify(plan.lanes.map(l => [clk(l.startAt), clk(l.endAt), l.early])));
+  check('    its steps come flat with their dish, their place in it, what they wait for and whether they look after themselves',
+        plan.steps.length === 7 && plan.steps[1].dish === 0 && plan.steps[1].index === 1 && plan.steps[1].handsOff === true && JSON.stringify(plan.steps[1].inputs) === '["o0"]'
+        && clk(plan.steps[0].start) === '17:20' && clk(plan.steps[0].end) === '17:30' && clk(plan.steps[3].start) === '18:04');
+  const together = core.planToServe([roast, side, greens], EAT, { mode: 'start' });
+  check('START TOGETHER puts every dish at the start, the longest ending at EAT AT and the others earlier',
+        JSON.stringify(together.lanes.map(l => [clk(l.startAt), clk(l.endAt)])) === '[["17:20","18:30"],["17:20","17:46"],["17:20","17:32"]]' && together.mode === 'start');
+  check('a dish with no timing has no lane and no steps in the plan',
+        JSON.stringify(core.planToServe([roast, null, greens], EAT).lanes.map(l => l && l.dish)) === '[0,null,2]' && core.planToServe([null, null], EAT).steps.length === 0);
+
+  const hw = core.handsWindows(plan.steps);
+  check('handsWindows finds where the hands are busy, where they are wanted twice, and the long gap between: 6 of 28 minutes clash, one gap of 48',
+        hw.busyMinutes === 22 && hw.clashMinutes === 6 && JSON.stringify(hw.busy.map(w => w.map(clk))) === '[["17:20","17:30"],["18:18","18:30"]]'
+        && JSON.stringify(hw.clash.map(w => w.map(clk))) === '[["18:24","18:30"]]' && JSON.stringify(hw.free.map(w => w.map(clk))) === '[["17:30","18:18"]]', JSON.stringify(hw));
+  const tl6 = (a, b) => [{ start: 0, end: 10, handsOff: false }, { start: 10 + a, end: 20 + a, handsOff: false }, { start: 20 + a + b, end: 22 + a + b, handsOff: false }];
+  check('a gap is free from six minutes up (a gap of 5.9 is not, exactly 6 is), and the minutes before the first step and after the last are not counted',
+        core.handsWindows(tl6(6, 6)).free.length === 2 && core.handsWindows(tl6(5.9, 6)).free.length === 1 && core.handsWindows(tl6(5.9, 5.9)).free.length === 0
+        && core.handsWindows([{ start: 0, end: 60, handsOff: true }, { start: 60, end: 70, handsOff: false }]).free.length === 0
+        && core.handsWindows(tl6(6, 6), { minFree: 7 }).free.length === 0);
+  check('steps that touch do not clash, a hands-off step is never busy, and a step with no length (instant) is not a stretch of time',
+        core.handsWindows([{ start: 0, end: 10, handsOff: false }, { start: 10, end: 20, handsOff: false }]).clashMinutes === 0
+        && core.handsWindows([{ start: 0, end: 10, handsOff: true }, { start: 0, end: 10, handsOff: false }]).clashMinutes === 0
+        && core.handsWindows([{ start: 5, end: 5, handsOff: false }]).busy.length === 0);
+
+  const clear = core.planToServe([roast, side, greens], EAT, { avoidClash: true });
+  const hwc = core.handsWindows(clear.steps);
+  check('AVOID THE CLASH leaves no minute of clash: the later of two overlapping hands-on steps moves before the other, and what feeds it moves with it',
+        hwc.clashMinutes === 0 && clear.cleared && clear.moved === 2 && JSON.stringify(clear.lanes.map(l => [clk(l.startAt), clk(l.endAt), l.early])) === '[["17:20","18:30",0],["17:52","18:18",12],["18:18","18:30",0]]', JSON.stringify(clear.lanes.map(l => [clk(l.startAt), clk(l.endAt), l.early])));
+  check('    the dish it moved is ready 12 minutes before serving, the meal still starts at 17:20, and no step has changed length or moved later',
+        clear.steps.every((st, i) => Math.abs((st.end - st.start) - (plan.steps[i].end - plan.steps[i].start)) < 1e-9 && st.start <= plan.steps[i].start + 1e-9) && clk(clear.startAt) === '17:20');
+  const again = core.planToServe([roast, side, greens], EAT, { avoidClash: true });
+  check('    and the same plan is the same plan, asked twice', JSON.stringify(again.steps.map(st => [st.start, st.end])) === JSON.stringify(clear.steps.map(st => [st.start, st.end])));
+
+  /* The same promises over a spread of made-up meals (a fixed seed, so a failure is the same failure next time): after AVOID THE CLASH no two
+     hands-on steps overlap, every step waits for what feeds it, nothing moved later, lengths are what they were, and it stopped. */
+  let seed = 7; const rnd = n => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+  const word = ['Chop [6 min]', 'Stir fry [4 min]', 'Simmer [30 min, hands off]', 'Rest [10 min, hands off]', 'Whisk [3 min]', 'Bake [25 min, hands off]', 'Plate up [instant]', 'Mash [7 min]', 'Slice [5 min]'];
+  let bad = [], cases = 0;
+  for (let c = 0; c < 200; c++) {
+    const dishes = Array.from({ length: 2 + rnd(3) }, () => tlOf(Array.from({ length: 2 + rnd(4) }, () => word[rnd(word.length)])));
+    const p0 = core.planToServe(dishes, EAT), p1 = core.planToServe(dishes, EAT, { avoidClash: true });
+    cases++;
+    const overlaps = core.handsWindows(p1.steps).clashMinutes;
+    const waits = p1.steps.every(st => (st.inputs || []).every(h => { const f = p1.steps.find(o => o.dish === st.dish && o.output === h); return !f || f.end <= st.start + 1e-6; }));
+    const same = p1.steps.every((st, i) => Math.abs((st.end - st.start) - (p0.steps[i].end - p0.steps[i].start)) < 1e-6 && st.start <= p0.steps[i].start + 1e-6);
+    if (overlaps > 1e-6 || !waits || !same || !p1.cleared) bad.push({ c, overlaps, waits, same, cleared: p1.cleared });
+  }
+  check('over 200 made-up meals, AVOID THE CLASH always clears the clash, keeps every step after what feeds it, moves nothing later and changes no length',
+        bad.length === 0 && cases === 200, JSON.stringify(bad.slice(0, 3)));
+
+  /* The oven. */
+  const preheat = l => core.preheatOf([l]);
+  check('preheatOf reads one temperature in °C and whether it is fan; a range, two temperatures, gas mark, °F or no line is left out with a reason',
+        JSON.stringify([preheat('Preheat the oven to 195°C (fan). Line the tin.'), preheat('Preheat oven to 185°C.'), preheat('Preheat the oven to 225 °C fan')]) === '[{"temp":195,"fan":true},{"temp":185,"fan":false},{"temp":225,"fan":true}]'
+        && /range/.test(preheat('Preheat the oven to 185-195°C').why) && /more than one/.test(core.preheatOf(['Preheat the oven to 195°C.', 'Preheat the oven to 185°C.']).why)
+        && /no temperature/.test(preheat('Preheat the oven to gas mark 6').why) && /no temperature/.test(preheat('Preheat the oven to 400°F').why) && /no preheat/.test(core.preheatOf(['Line the tin.']).why)
+        && core.preheatOf(['Preheat the oven to 195°C.', 'Preheat the oven to 195°C.']).temp === 195, JSON.stringify([preheat('Preheat oven to 185°C.'), preheat('Preheat the oven to 400°F')]));
+  const bakeText = steps => dishText(steps);
+  const ovenPlan = core.planToServe([tlOf(['Prep [10 min]', 'Roast the roots [50 min, hands off]']), tlOf(['Mix [5 min]', 'Bake the tray [30 min, hands off]']), tlOf(['Boil [20 min, hands off]'])], EAT);
+  const dishes = (setups) => ovenPlan.lanes.map((l, i) => ({ index: i, title: 'Dish ' + (i + 1), setup: setups[i], steps: l.steps }));
+  const two = dishes([['Preheat the oven to 195°C (fan).'], ['Preheat the oven to 225°C (fan).'], []]);
+  const one1 = core.ovenUse(two, 1), two2 = core.ovenUse(two, 2);
+  check('ovenUse: two different settings at once want two ovens: a warning with one oven, none with two, and the kitchen is taken as one oven when unsaid',
+        one1.conflicts.length === 1 && one1.conflicts[0].wanted === 2 && one1.conflicts[0].have === 1 && one1.conflicts[0].keys.join() === '195f,225f' && one1.conflicts[0].dishes.join() === 'Dish 1,Dish 2'
+        && clk(one1.conflicts[0].from) === '18:00' && clk(one1.conflicts[0].to) === '18:30' && two2.conflicts.length === 0
+        && core.ovenUse(two, undefined).ovens === 1 && core.ovenUse(two, 0).ovens === 1 && core.ovenUse(two, NaN).ovens === 1, JSON.stringify(one1.conflicts));
+  check('    each oven is a lane of its steps: the second setting is in the second oven, and with one oven it is over the kitchen\'s number',
+        two2.lanes.length === 2 && two2.lanes.every(l => !l.over) && two2.lanes[0].uses.length === 1 && two2.lanes[1].uses.length === 1 && one1.lanes.length === 2 && one1.lanes[1].over === true && one1.lanes[0].over === false);
+  const same = core.ovenUse(dishes([['Preheat the oven to 195°C (fan).'], ['Preheat the oven to 195°C (fan).'], []]), 1);
+  check('two dishes at the same setting share one oven: no warning, and one lane',
+        same.conflicts.length === 0 && same.lanes.length === 1 && same.lanes[0].uses.length === 2);
+  check('the same temperature, fan and not, is two settings',
+        core.ovenUse(dishes([['Preheat the oven to 195°C (fan).'], ['Preheat the oven to 195°C.'], []]), 1).conflicts.length === 1);
+  const left = core.ovenUse(dishes([[], ['Preheat the oven to 185-195°C.'], []]), 1);
+  check('a recipe with an oven step and no readable preheat is left out of the check, with its reason; one with no oven step is not mentioned',
+        left.omitted.length === 2 && left.omitted[0].title === 'Dish 1' && /no preheat/.test(left.omitted[0].why) && /range/.test(left.omitted[1].why) && !left.omitted.some(o => o.title === 'Dish 3') && left.conflicts.length === 0 && left.lanes.length === 1 && left.lanes[0].uses.length === 0);
 }
 
 /* ---- tools/propose-hands-off.js (run sheet PR 2, §6.3) ----

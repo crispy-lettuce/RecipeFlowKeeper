@@ -606,7 +606,7 @@ html[data-style="modernist"] .timeline-missing-note{ border-top:1px solid var(--
    others, is ruled in ink; a dish's name is a small bold label above its lane; an [instant] step is a diamond (ink, and the accent when it
    is the last step, as the bars are) with its name beside it in ink; a ticked bar is the surface colour with a ✓ and ink text. */
 html[data-style="modernist"] .timeline-tick.timeline-tick-end{ border-left:0; border-right:1px solid currentColor; }
-html[data-style="modernist"] .timeline-lane-name{ font-size:12px; font-weight:700; letter-spacing:.02em; color:var(--color-text); }
+html[data-style="modernist"] :is(.timeline-lane-name, .timeline-row-name){ font-size:12px; font-weight:700; letter-spacing:.02em; color:var(--color-text); }
 html[data-style="modernist"] .timeline-lane-abs.timeline-marker,
 html[data-style="modernist"] .timeline-lane-row:last-child .timeline-lane-abs.timeline-marker{ background:none; }
 html[data-style="modernist"] .timeline-marker i{ background:var(--lane, var(--color-text)); }
@@ -624,6 +624,12 @@ html[data-style="modernist"] .timeline-lane-abs.timeline-marker.ticked{ box-shad
    of lower weight, so the hatch is restated at the same weight as the last-step rule above and after it. */
 html[data-style="modernist"] .timeline-lane-row .timeline-lane-abs.hands-off{ background-image:repeating-linear-gradient(45deg, var(--lane-hatch) 0 3px, transparent 3px 7px); }
 html[data-style="modernist"] .timeline-lane-row .timeline-lane-abs.hands-off.open-ended{ background-image:repeating-linear-gradient(45deg, var(--lane-hatch) 0 3px, transparent 3px 7px), repeating-linear-gradient(135deg, var(--lane-stripe) 0 4px, transparent 4px 8px); }
+/* The run sheet's rows (EAT AT, your hands, the ovens): small bold capitals like the strip's own heading, ink for busy, the chips' words in ink. */
+html[data-style="modernist"] .timeline-eat{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] .timeline-eat .eat-time{ font-size:19px; font-weight:800; letter-spacing:0; }
+html[data-style="modernist"] .step-at{ font-size:12px; font-weight:800; letter-spacing:.08em; opacity:1; }
+html[data-style="modernist"] .hands-busy{ background:var(--color-text); }
+html[data-style="modernist"] :is(.hands-free, .oven-use) span{ font-size:12px; font-weight:600; color:var(--color-text); }
 html[data-style="modernist"] .timeline-marker.ticked i,
 html[data-style="modernist"] .timeline-lane-row:last-child .timeline-marker.ticked i{ background:var(--km-ink-45); }
 
