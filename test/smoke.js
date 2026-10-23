@@ -8395,7 +8395,8 @@ const check = (name, pass, detail) => {
   const t2c = await t2Page({ width: 1389, height: 868 }, 'classic');
   await t2c.evaluate(() => openRecipe('t2-wide', 'recipes')); await t2c.waitForTimeout(400);
   const f5 = await t2c.evaluate(() => { const cue = document.querySelector('#flowMount .flow-more'); return { cue: !!cue, display: cue && getComputedStyle(cue).display, over: document.querySelector('#flowMount .tablewrap').scrollWidth - document.querySelector('#flowMount .tablewrap').clientWidth }; });
-  check('    Classic is as it was: nothing is drawn for the arrow, though its table overflows too', f5.cue && f5.display === 'none' && f5.over > 0, JSON.stringify(f5));
+  /* Classic drew nothing here until the run-sheet PR 1 (23 Oct 2026); the plan has it draw the same arrow, in its own colours. */
+  check('    Classic draws the arrow too, since its table overflows as well', f5.cue && f5.display === 'block' && f5.over > 0, JSON.stringify(f5));
   await t2c.close();
   }
 
@@ -8424,7 +8425,8 @@ const check = (name, pass, detail) => {
       groupTops: [...m.querySelectorAll('.ing-cell')].map((c, i) => c.classList.contains('group-top') ? i : -1).filter(i => i >= 0),
       groupRule: (c => c && cs(c).borderTopWidth + ' ' + cs(c).borderTopColor)(m.querySelector('.ing-cell.group-top')),
       firstCol: Math.round(m.querySelector('.ing-cell').getBoundingClientRect().width),
-      lastLane: (l => l && { inline: /background/.test(l.getAttribute('style')), bg: cs(l).backgroundColor })(m.querySelector('.timeline-lane-row:last-child .timeline-lane-abs')) };
+      /* A last step that is [instant] is a diamond (run-sheet PR 1), whose colour is the diamond's own; any other, the bar's. */
+      lastLane: (l => l && { inline: /background/.test(l.getAttribute('style')), bg: cs(l.classList.contains('timeline-marker') ? l.querySelector('i') : l).backgroundColor })(m.querySelector('.timeline-lane-row:last-child .timeline-lane-abs')) };
   });
 
   const vc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
@@ -9204,8 +9206,10 @@ const check = (name, pass, detail) => {
   const groupLook = pg => pg.evaluate(() => {
     const cs = el => getComputedStyle(el);
     return { swatches: [...document.querySelectorAll('.stacked-recipe .recipe-swatch')].map(e => cs(e).backgroundColor),
-      lanes: [...new Set([...document.querySelectorAll('.timeline-lane-abs[data-recipe-id]')].map(e => cs(e).backgroundColor))],
-      laneText: (e => e && cs(e).color)(document.querySelector('.timeline-lane-abs[data-recipe-id] span')) };
+      lanes: [...new Set([...document.querySelectorAll('.timeline-lane-abs[data-recipe-id]:not(.timeline-marker)')].map(e => cs(e).backgroundColor))],
+      /* An [instant] step is a diamond in its dish's colour (run-sheet PR 1): the marker itself has no fill. */
+      marks: [...new Set([...document.querySelectorAll('.timeline-marker[data-recipe-id] i')].map(e => cs(e).backgroundColor))],
+      laneText: (e => e && cs(e).color)(document.querySelector('.timeline-lane-abs[data-recipe-id]:not(.timeline-marker) span')) };
   });
   const openGroup = async pg => { await pg.evaluate(() => showView('planner')); await pg.waitForTimeout(300);
     await pg.locator('.group-badge').first().click({ position: { x: 20, y: 10 } }); await pg.waitForTimeout(500); };
@@ -9217,7 +9221,8 @@ const check = (name, pass, detail) => {
   await openGroup(ec);
   const e0 = await groupLook(ec);
   check('Classic\'s Group Viewer keeps its own colours: gold and sage for the two dishes',
-        e0.swatches.join() === 'rgb(176, 138, 46),rgb(124, 148, 115)' && e0.lanes.length === 2 && e0.lanes[0] === 'rgb(176, 138, 46)', JSON.stringify(e0));
+        e0.swatches.join() === 'rgb(176, 138, 46),rgb(124, 148, 115)' && e0.lanes.length === 2 && e0.lanes[0] === 'rgb(176, 138, 46)'
+        && e0.marks.length > 0 && e0.marks.every(c => e0.lanes.includes(c)), JSON.stringify(e0));
   await ec.close();
 
   const em = await browser.newPage({ viewport: { width: 1280, height: 800 } });
@@ -9232,7 +9237,7 @@ const check = (name, pass, detail) => {
   const e2 = await groupLook(em);
   await em.evaluate(() => { applyTheme('light'); rerenderForTheme(); }); await em.waitForTimeout(200);
   check('Modernist\'s Group Viewer draws the dishes in ink and red, white words on the lanes; in dark, light ink and red with dark words',
-        e1.swatches.join() === 'rgb(32, 30, 29),rgb(221, 43, 15)' && e1.lanes.join() === 'rgb(32, 30, 29),rgb(221, 43, 15)' && e1.laneText === 'rgb(255, 255, 255)' &&
+        e1.swatches.join() === 'rgb(32, 30, 29),rgb(221, 43, 15)' && e1.lanes.join() === 'rgb(32, 30, 29),rgb(221, 43, 15)' && e1.laneText === 'rgb(255, 255, 255)' && e1.marks.length > 0 && e1.marks.every(c => e1.lanes.includes(c)) &&
         e2.swatches.join() === 'rgb(241, 238, 236),rgb(255, 86, 60)' && e2.laneText === 'rgb(22, 21, 20)', JSON.stringify([e1, e2]));
   await em.evaluate(() => applyStyle('classic')); await em.waitForTimeout(300);
   const e3 = await groupLook(em);
