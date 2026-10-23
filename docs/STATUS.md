@@ -44,7 +44,9 @@ the Modernist style, + OTHER on the Planner, the converter reminder, the version
 
 ## 3. What is open
 
-1. **Nothing is planned.** The household picks the next piece of work.
+1. **One plan, unbuilt: `docs/PLAN-RUN-SHEET.md`** (drafted 23 Oct). Hands-off steps in the recipe format and a live timeline:
+   four PRs and a pass over the library's recipe text, in that order. It waits on the household's answers to its §10; PR 1
+   (timeline fixes) needs none of them.
 2. **#100, a preview site.** Parked and now ignored; close the issue if it is not wanted. The reasoning (GitHub Pages stays live,
    Cloudflare Pages gives each PR a preview, one database means a preview writes real data) is in the archive at
    `docs/PLAN-PREVIEW-SITE.md`.
