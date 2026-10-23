@@ -1,4 +1,9 @@
 [
+  { "version": "2026-10-23.1", "date": "2026-10-23",
+    "changes": ["Changed: the timeline above a recipe, and above a group of dishes cooked together, is easier to read and to use. The last time mark is no longer cut off at the right edge, and a mark that would run into its neighbour on a narrow screen is left out. A short step is drawn wide enough to tap, and a step that takes no time (instant) is a small diamond with its name beside it instead of a sliver with the name clipped. In a group, each dish's lane now starts with the dish's name and colour. At phone width the heading wraps (the label, then START TOGETHER and FINISH TOGETHER, then the total) instead of squeezing the label into a column.",
+                "New: the timeline follows your ticks. When you tick a box in the recipe, that step's bar turns grey with a ✓, and it goes back to colour if you untick it or press RESET TICKS. Tapping a box also flashes its bar, if the timeline is on screen. In a group, a tick only greys the bar of its own dish.",
+                "Fixed: in a group of dishes, tapping a bar in the timeline did nothing. It now jumps to that step in the right dish, as it does for a single recipe.",
+                "New: the recipe table in Classic now shows the arrow that says it goes on to the right, as the Modernist style already did, when part of it is off the screen."] },
   { "version": "2026-10-22.1", "date": "2026-10-22",
     "changes": ["Changed: on the Planner, a dish that is going to be cooked now reads TO COOK instead of PRE-MADE. It used to say PRE-MADE on every dish until you tapped it, which made a dish to be cooked look as if it were already made. Tapping it still asks which meal it is from the freezer, and then it reads PRE-MADE with the meal, as before."] },
   { "version": "2026-10-21.8", "date": "2026-10-21",

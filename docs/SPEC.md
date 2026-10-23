@@ -102,6 +102,12 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
 ### 5.2 Recipe viewer
 - The diagram; **tick** a box to tick everything that went into it; ticks last until reload; **RESET TICKS** clears them.
   **Ticking the last column logs the recipe as cooked** and asks which meal (with a note); SKIP logs without one.
+- **The timeline strip** above the diagram (hidden in cooking mode until SHOW TIMELINE) draws each step as a bar from the MERGE durations.
+  A bar is at least 28 px wide, and an `[instant]` step is a diamond with its name beside it. The ruler's last mark ends at the strip's right
+  edge, and a middle mark that would collide with its neighbour is left out. **It follows the ticks:** a ticked box greys its bar with a ✓
+  (drawn from the boxes as they stand, so it survives a redraw and RESET TICKS clears it), tapping a box flashes its bar, tapping a bar jumps
+  to its box. Drawing only: nothing is stored. When the table is wider than the screen, an arrow at its top right says so (both styles; not
+  in print or PNG).
 - **COOK FOR** rescales for this time only (2, 4, 6, 8 or any number); nothing is saved. Tin sizes never scale. Liquids change unit
   as they scale (teaspoons under 15 ml, tablespoons under 50 ml, ml from 50 ml); weighed liquids stay in grams.
 - **COOKING MODE** keeps the screen awake, hides what is not needed at the hob and folds the sidebar. **SHOW TIMELINE** brings the
@@ -129,7 +135,8 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
 ### 5.4 Cooking several dishes together
 On the Planner, **GROUP SOME TOGETHER** → **GROUP SELECTED** makes dishes of one day a group, opened as one **Group Viewer**: a
 timeline with a lane per dish and each diagram below. **START TOGETHER** starts everything at once; **FINISH TOGETHER** lines
-dishes up to be ready together, each saying when to start (START AT +45 min). A group with a Side opens in FINISH TOGETHER.
+dishes up to be ready together, each saying when to start (START AT +45 min). A group with a Side opens in FINISH TOGETHER. Each dish's lane is headed by its name and colour, its bars are matched to its own diagram
+only (two dishes can share a handle name), and the strip's heading wraps at phone width.
 - **SERVE WITH:** a recipe that says "serve with rice or naan" (or an ingredient "…, to serve") is matched to Side recipes whose
   title or keyword has that word; the viewer and the Planner offer them, and a tap adds the side to the day and groups it.
 - **OFTEN WITH:** recipes previously grouped with this dish, any course, offered the same way.
