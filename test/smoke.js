@@ -7316,12 +7316,12 @@ const check = (name, pass, detail) => {
   });
   const ftFinish = await ftView();
   check('FINISH TOGETHER: a group with a Side opens finishing together; the short dish says when to start it (a time of day), and the last tick is EAT AT',
-        JSON.stringify(ftFinish.pressed) === '["finish"]' && JSON.stringify(ftFinish.starts) === '["START FIRST","START AT 09:45"]'
+        JSON.stringify(ftFinish.pressed) === '["finish"]' && JSON.stringify(ftFinish.starts) === '["START FIRST · READY AT 10:00","START AT 09:45 · READY AT 10:00"]'
         && ftFinish.ticks[ftFinish.ticks.length - 1] === '10:00', JSON.stringify(ftFinish));
   await ft.click('#view-group-viewer [data-group-lineup="start"]');
   const ftStart = await ftView();
-  check('    START TOGETHER puts both dishes at the start, with no start times and no SERVE',
-        JSON.stringify(ftStart.pressed) === '["start"]' && ftStart.starts.length === 0 && !ftStart.ticks.includes('SERVE')
+  check('    START TOGETHER puts both dishes at the start, each saying only when it is ready, and no SERVE',
+        JSON.stringify(ftStart.pressed) === '["start"]' && JSON.stringify(ftStart.starts) === '["READY AT 10:00","READY AT 09:15"]' && !ftStart.ticks.includes('SERVE')
         && JSON.stringify(ftStart.lanes) !== JSON.stringify(ftFinish.lanes), JSON.stringify({ ftStart, ftFinish: ftFinish.lanes }));
   const ftPlain = await ft.evaluate(() => {
     state.groupLineUp = null;
@@ -7347,7 +7347,7 @@ const check = (name, pass, detail) => {
     return r;
   });
   check('    in cooking mode the switch waits behind SHOW TIMELINE, and the start times stay on each dish',
-        !ftCook.switchShown && ftCook.afterShow && JSON.stringify(ftCook.starts) === '["START FIRST","START AT 09:45"]', JSON.stringify(ftCook));
+        !ftCook.switchShown && ftCook.afterShow && JSON.stringify(ftCook.starts) === '["START FIRST · READY AT 10:00","START AT 09:45 · READY AT 10:00"]', JSON.stringify(ftCook));
   await ft.close();
 
   // #87 SERVE WITH: a recipe that says "serve with freekeh" names the library's Side of that name, read-only.
