@@ -17,7 +17,8 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 | --- | --- | --- | --- |
 | [Reload the app](#reload-the-app-on-every-device), on any device not opened since 22 Oct | every device | 1 min | No |
 | [Try the timeline](#try-the-timeline-after-the-23-oct-reload), once the app is **2026-10-23.1** | tablet and phone | 5 min | No |
-| [Tap DONE on the converter bar](#the-converter-bar), if it shows | app | 1 min | Only the converter's DONE |
+| [Try a hands-off step](#try-a-hands-off-step-in-test-kitchen), once the app is **2026-10-23.2** | Test Kitchen | 5 min | One test recipe, which you delete |
+| [Tap DONE on the converter bar](#the-converter-bar), **after** the reload above | app | 1 min | Only the converter's DONE |
 
 Nothing else is waiting. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
@@ -25,11 +26,12 @@ Nothing else is waiting. What to build next is your choice; `docs/STATUS.md` §3
 
 ## Reload the app on every device
 
-The current app is **2026-10-22.1** (`APP_VERSION`); **2026-10-23.1** once the timeline PR is merged.
+The current app is **2026-10-23.1** (`APP_VERSION`); **2026-10-23.2** once the hands-off PR is merged. **Reload every device before the converter bar's DONE below**,
+and before any recipe is converted with the new converter: a device that has not reloaded shows `[25 min, hands off]` as plain text in the step.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready.**, tap **RELOAD**. Otherwise refresh the page.
-3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-22.1** or later.
+3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-23.2** or later.
 
 ## Try the timeline after the 23 Oct reload
 
@@ -49,10 +51,45 @@ Needs a recipe with times on its steps, and a group of two dishes on the Planner
 
 Tell the next session which step did not do what it said; it takes the job off this page when you report it passed.
 
+## Try a hands-off step in Test Kitchen
+
+A step that looks after itself is written `, hands off` inside its time. Nothing in the library is marked yet; this proves the app reads the mark.
+Do it in **Test Kitchen**, and delete the recipe afterwards.
+
+1. **NEW RECIPE → WRITE ONE BY HAND**, and paste this made-up text (do not save yet):
+
+   ```
+   TITLE: Test Hands Off
+   SOURCE: Personal recipe
+   SERVINGS: 2
+   TAGS: course=Main
+
+   GROUP base:
+   1 onion, sliced
+
+   GROUP finish:
+   1 lemon, juiced
+
+   STAGE:
+   MERGE base -> soft: cook gently, stirring now and then [25 min, hands off]
+
+   STAGE:
+   MERGE soft, finish -> dish: stir in the lemon [instant, hands off]
+   ```
+
+   **You should see:** the first box reads **25 MIN · HANDS OFF**. The second box shows `[instant, hands off]` as text in its words and no time
+   (the app does not read a mark on an instant step), and WHAT THE APP READ says a bracket was not read as a time.
+2. Change the second line to end `[instant]` and **SAVE**. Open the recipe. **You should see:** in the timeline strip, the first step's bar is
+   **hatched** and the second is a diamond; every other recipe's bars are solid.
+3. **DELETE** the recipe. (Deleting a recipe deletes its cooking history, and this one has none.)
+
+Tell the next session which step did not do what it said; it takes the job off this page when you report it passed.
+
 ## The converter bar
 
-The master copy of the converter's instructions is `converter/conversion-instructions.md` (version **2026-10-21.1** now). When
-it changes, a gold **CONVERTER** bar shows in your household until someone taps **DONE**.
+The master copy of the converter's instructions is `converter/conversion-instructions.md` (version **2026-10-23.1** once the hands-off PR is
+merged; **2026-10-21.1** before). When it changes, a gold **CONVERTER** bar shows in your household until someone taps **DONE**. This change adds a rule
+that marks the steps that look after themselves, so **reload every device first**, then do the steps below.
 
 1. Tap **OPEN THE INSTRUCTIONS ↗** and download the file.
 2. In the Claude app, open your conversion project and replace its copy of the file with the new one.

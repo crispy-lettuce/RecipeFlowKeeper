@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-21.5';
+const KITCHEN_CORE_VERSION = '2026-10-23.1';
 
 
 /* ======================= quantity split ======================= */
@@ -115,8 +115,11 @@ function parseTags(tagsRaw){
    isn't recognisable as a number/range/"until", it's left alone — the whole
    original label just keeps whatever text was in the brackets, and duration
    stays null. A recipe author fumbling the format shouldn't lose their step
-   label over it. */
-function extractStepDuration(rawLabel){
+   label over it.
+
+   readBracketDuration below is this reading and nothing else; extractStepDuration, after it, adds the one thing a bracket can say
+   besides how long (that the step looks after itself). */
+function readBracketDuration(rawLabel){
   const m = rawLabel.match(/^(.*?)\s*\[([^\]]+)\]\s*$/);
   if(!m) return { label: rawLabel, duration: null };
 
@@ -151,7 +154,7 @@ function extractStepDuration(rawLabel){
      useless — so this rides the same DEFAULT_STEP_MINUTES filler as
      open-ended below, badged distinctly rather than measured. */
   if(bracket === 'overnight'){
-    return { label: before, duration: { min:null, max:null, openEnded:true, overnight:true } };
+    return { label: before, duration: { min:null, max:null, openEnded:true, overnight:true, handsOff:true } };
   }
   /* Everything below is "a number with a unit", so the unit vocabulary and
      the dash live in one place rather than being restated per pattern.
@@ -196,6 +199,30 @@ function extractStepDuration(rawLabel){
   // and bracket exactly as written rather than silently dropping content
   // the author may have meant as something else (an aside, a brand name).
   return { label: rawLabel, duration: null };
+}
+
+/* HANDS OFF (docs/PLAN-RUN-SHEET.md §3, 23 Oct 2026): a step that looks after itself once it is going says so inside its duration
+   bracket, after a comma: `[25 min, hands off]`, `[40-50 min, hands off]`, `[until set, hands off]`. Hands on is the default and
+   is written as nothing, so a recipe that never says it reads exactly as it did. What this accepts, in order:
+     - a trailing `, hands off` (any case, `hands-off` too, spacing free) is split off first, and what is left is read exactly as
+       it always was, by readBracketDuration; the result is that duration with `handsOff: true`, nothing else changed (so scaling,
+       the timeline's sums and formatDuration are untouched);
+     - after a number, a range, a compound (`1 hr 30`), `until …` and `overnight`;
+     - NOT after `instant`: a step that takes no time has nothing to look after, so `[instant, hands off]` is left unrecognised,
+       and the bracket shows as text and is reported by test/validate-recipes.js, as any other mistake is;
+     - `[hands off]` with no duration is not a duration either: every MERGE still needs a time;
+     - `[overnight]` is hands off by itself (readBracketDuration), so `[overnight, hands off]` says the same thing twice.
+   No bracket in the library had a comma when this was written, so nothing already written can mean something else. A copy of the
+   app from before this reads such a bracket as unrecognised and loses the step's time, which is why the app moves first and
+   recipes are marked only after every device has reloaded. */
+const HANDS_OFF_TAIL = /^(.+?)\s*,\s*hands(?:\s+|\s*-\s*)off$/i;
+function extractStepDuration(rawLabel){
+  const m = rawLabel.match(/^(.*?)\s*\[([^\]]+)\]\s*$/);
+  const off = m && m[2].trim().match(HANDS_OFF_TAIL);
+  if(!off) return readBracketDuration(rawLabel);
+  const read = readBracketDuration(`${m[1]} [${off[1]}]`);
+  if(!read.duration || read.duration.instant) return { label: rawLabel, duration: null };
+  return { label: read.label, duration: { ...read.duration, handsOff: true } };
 }
 
 
@@ -832,7 +859,8 @@ function computeTimeline(groups, stages){
       else if(d && d.openEnded){ durationMin = DEFAULT_STEP_MINUTES; anyRealDuration = true; } // open-ended still proves timing was considered, just not a fixed figure
       else { durationMin = DEFAULT_STEP_MINUTES; }
       const endTime = startTime + durationMin;
-      steps.push({ label: op.label, duration: d||null, start: startTime, end: endTime, output: op.output });
+      /* `inputs` (the handles it waits for) and `handsOff` are for the run sheet (docs/PLAN-RUN-SHEET.md); nothing reads them yet. */
+      steps.push({ label: op.label, duration: d||null, start: startTime, end: endTime, output: op.output, inputs: op.inputs.slice(), handsOff: !!(d && d.handsOff) });
       nextActive[op.output] = endTime;
     });
     active = nextActive;

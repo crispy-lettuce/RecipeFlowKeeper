@@ -95,6 +95,17 @@ for a genuinely zero-length step, `[overnight]`. `until`/`till` phrases are read
 Any *other* bracket (`[to taste]`) is deliberately left alone as label text — the parser
 under-detects on purpose rather than mistake a seasoning note for a timing.
 
+**Hands off.** A step that looks after itself once it is going says so inside its bracket, after a comma: `[25 min, hands off]`,
+`[40-50 min, hands off]`, `[until set, hands off]` (23 Oct 2026, `docs/SPEC.md` §3). Hands on is the default and is written as nothing.
+`extractStepDuration` splits a trailing `, hands off` (any case, `hands-off` too) off first, reads what is left exactly as before
+(`readBracketDuration`), and returns that duration with `handsOff: true` and nothing else changed, so scaling, the timeline's sums and
+`formatDuration` do not know it exists. It is accepted after a number, a range, a compound and `until …`; **not after `instant`** and not
+with no duration (`[hands off]`), which stay unrecognised and are reported by `test/validate-recipes.js` like any other unread bracket;
+`[overnight]` is hands off by itself. `computeTimeline` carries `handsOff` and `inputs` (the handles a step waits for) on each step; the box
+badge reads `25 MIN · HANDS OFF` and the timeline hatches the bar (`--lane-hatch`). A copy of the app from before this reads such a bracket as
+unrecognised and loses the step's time, which is why a recipe is marked only after every device has reloaded.
+`tools/propose-hands-off.js` sorts a library export into `off`, `on` and `ask` for the household's review and writes nothing.
+
 Recipes are written by pasting a source into a conversion prompt; see
 `converter/conversion-instructions.md`.
 
@@ -181,7 +192,7 @@ household) still signs out. `showView('recipes')` redraws the grid on entry, bec
 | `computeColumns(groups, stages)` | Lays the flow out into rows and columns, returning `errors[]` for unknown handles or non-adjacent merges. A group's colour follows `paletteIndex` and `family` when `withPrepSteps` has split it (#88). A box that brings together two or more step outputs (not raw groups) is marked `merge` (15 Oct 2026), which only the Modernist style draws. A preparation step's output still counts as raw, and the raw set changes only between stages (18 Oct 2026). |
 | `prepStepFor(line)` | The step an ingredient line's preparation reads as ("2 leeks, thinly sliced" → *Thinly slice the leeks*), from a fixed table, or `null` (#88, 13 Oct 2026). |
 | `withPrepSteps(parsed)` | The recipe as drawn with preparation as steps: groups split in order, a one-input MERGE marked `prep` beside the step before the one that needs it. Used by the two viewers when the device's PREPARATION setting asks; never by the timeline, the preview or the shopping list. |
-| `computeTimeline(groups, stages)` | Derives each step's start/end from stage order plus durations. Returns `null` if no step has a real duration — which is why the timeline strip auto-hides. |
+| `computeTimeline(groups, stages)` | Derives each step's start/end from stage order plus durations. Returns `null` if no step has a real duration — which is why the timeline strip auto-hides. Each step also carries `inputs` (the handles it waits for) and `handsOff` (23 Oct 2026); nothing in the arithmetic reads them. |
 | `lineUpTimelines(timelines, mode)` (`core.js`) | Lines a group's timelines up for the Group Viewer: `'start'` starts every dish at 0; `'finish'` offsets each by the longest span less its own, so all end together (#87, 13 Oct 2026). `about` says the longest dish has an untimed or open-ended step. |
 | `servingCalls(parsed)` and `matchSides(calls, sides, selfId)` (`core.js`) | What a recipe asks to be served with (an ingredient ending "to serve", "serve with rice or naan" in a step or note), and which Side recipes fit: 3 for the title or a keyword, 2 for every word, 1 for the head noun; two per phrase, three per dish. Advice only, drawn as the viewer's SERVE WITH line (#87, 13 Oct 2026). Never touches `TAIL_NOTES`, so no tick is re-keyed. |
 | `groupedWith(recipeId, groups)` (`core.js`) | The recipes grouped with this one before, by distinct days then the latest; drawn as OFTEN WITH in the viewer and on the Planner, any course, two at most, never repeating SERVE WITH (#142, 13 Oct 2026). |

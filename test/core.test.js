@@ -329,7 +329,7 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
    The file's fingerprint is pinned here against its version: change the file, and this fails until the "Version" line
    in the file and CONVERTER_VERSION in index.html are both moved on, and the new fingerprint (printed below) is put
    here beside the new version. */
-const CONVERTER_PINNED = { version: '2026-10-21.1', sha256: '09b3fb05ba664f6c23aa800f33a8116a4b86005d4cdaf4c48518d5dd3ffe602b' };
+const CONVERTER_PINNED = { version: '2026-10-23.1', sha256: '8a4fd0452727841efede7ac5017f8a04e1aba4c9120bd6131531e266894b1e5c' };
 {
   const convSrc = fs.readFileSync(path.join(ROOT, 'converter', 'conversion-instructions.md'), 'utf8');
   const convSha = require('crypto').createHash('sha256').update(convSrc).digest('hex');
@@ -1435,6 +1435,94 @@ check('durations read in seconds under a minute, minutes under an hour, and hour
 const mins = [1/3, 0.999, 59.97, 119.6, 60, 0].map(core.formatMinutesForDisplay);
 check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minutes is an hour',
       JSON.stringify(mins) === JSON.stringify(['20 sec', '1 min', '1h', '2h', '1h', '0 sec']), JSON.stringify(mins));
+
+/* ---- Hands-off steps (run sheet PR 2, 23 Oct 2026, docs/PLAN-RUN-SHEET.md §3) ----
+   `, hands off` inside the duration bracket. Every form below is made up. */
+{
+  const ex = b => core.extractStepDuration(`Simmer gently [${b}]`);
+  const fixed = (min, max, more) => ({ min, max, openEnded: false, ...more });
+  const open = more => ({ min: null, max: null, openEnded: true, ...more });
+  const accepted = [
+    ['25 min, hands off', fixed(25, 25, { handsOff: true })], ['40-50 min, hands off', fixed(40, 50, { handsOff: true })],
+    ['4–5 min, hands off', fixed(4, 5, { handsOff: true })], ['1 hr 30, hands off', fixed(90, 90, { handsOff: true })],
+    ['30 sec, hands off', fixed(0.5, 0.5, { handsOff: true })], ['~20 min, hands off', fixed(20, 20, { handsOff: true })],
+    ['until set, hands off', open({ handsOff: true })], ['overnight, hands off', open({ overnight: true, handsOff: true })],
+    ['25 MIN, Hands-Off', fixed(25, 25, { handsOff: true })], ['25 min ,hands  off', fixed(25, 25, { handsOff: true })], ['25 min, hands - off', fixed(25, 25, { handsOff: true })]];
+  const badAccepted = accepted.filter(([b, want]) => JSON.stringify(ex(b).duration) !== JSON.stringify(want) || ex(b).label !== 'Simmer gently');
+  check('a trailing ", hands off" after a number, a range, a compound, until and overnight is read, in any case, as hands-off, and the duration is otherwise what it was',
+        badAccepted.length === 0, badAccepted.map(([b]) => b + ' -> ' + JSON.stringify(ex(b))).join(' | '));
+  const rejected = ['instant, hands off', 'hands off', ', hands off', '25 min, hands on', '25 min, hands off, extra', '25 min, extra, hands off', 'to taste, hands off', '25 min hands off', 'hands-off'];
+  const badRejected = rejected.filter(b => ex(b).duration !== null || ex(b).label !== `Simmer gently [${b}]`);
+  check('[instant, hands off], [hands off] alone and anything else that is not a duration and the marker stay unrecognised, the bracket left in the label (so the unread-bracket warning reports them)',
+        badRejected.length === 0, badRejected.map(b => b + ' -> ' + JSON.stringify(ex(b))).join(' | '));
+  /* What the parser said for these before the marker existed, taken from the previous core.js, not retyped: none of it moves, except
+     [overnight], which is now hands off by itself. */
+  const golden = {"8 min":{"min":8,"max":8,"openEnded":false},"10-13 min":{"min":10,"max":13,"openEnded":false},"4–5 min":{"min":4,"max":5,"openEnded":false},"1 hr 30":{"min":90,"max":90,"openEnded":false},"2 hr":{"min":120,"max":120,"openEnded":false},"30 sec":{"min":0.5,"max":0.5,"openEnded":false},"30-45 sec":{"min":0.5,"max":0.75,"openEnded":false},"90 sec":{"min":1.5,"max":1.5,"openEnded":false},"~20 min":{"min":20,"max":20,"openEnded":false},"4-5 mins":{"min":4,"max":5,"openEnded":false},"1.5 hrs":{"min":90,"max":90,"openEnded":false},"1h 30":{"min":90,"max":90,"openEnded":false},"instant":{"min":0,"max":0,"openEnded":false,"instant":true},"until done":{"min":null,"max":null,"openEnded":true},"till reduced":{"min":null,"max":null,"openEnded":true},"until the sauce thickens":{"min":null,"max":null,"openEnded":true},"to taste":null,"overnight":{"min":null,"max":null,"openEnded":true,"overnight":true},"hands off":null,"25 min extra":null};
+  const moved = Object.keys(golden).filter(b => JSON.stringify(ex(b).duration) !== JSON.stringify(golden[b]) && b !== 'overnight');
+  check('every other bracket reads exactly as it did before: numbers, ranges, compounds, until, instant, and the brackets that are not durations',
+        moved.length === 0 && Object.keys(golden).length >= 15, moved.map(b => b + ' -> ' + JSON.stringify(ex(b).duration)).join(' | '));
+  check('[overnight] is hands off by itself, and is otherwise as it was (open-ended, overnight)',
+        JSON.stringify(ex('overnight').duration) === JSON.stringify({ min: null, max: null, openEnded: true, overnight: true, handsOff: true }));
+
+  /* The timeline: the same recipe with and without the marker has the same arithmetic; the steps now also say what they wait for and
+     whether they look after themselves. */
+  const body = m => `TITLE: Test\nSERVINGS: 2\n\nGROUP a:\n1 swede\nGROUP b:\n1 lemon\n\nSTAGE:\nMERGE a -> c: Roast [45 min${m ? ', hands off' : ''}]\n\nSTAGE:\nMERGE c, b -> d: Stir in the lemon [instant]\n\nSTAGE:\nMERGE d -> e: Rest [10-20 min${m ? ', hands off' : ''}]`;
+  const tl = m => { const p = core.parseRecipe(body(m)); return core.computeTimeline(p.groups, p.stages); };
+  const arith = t => JSON.stringify([t.totalSpan, t.steps.map(s => [s.label, s.start, s.end, s.output])]);
+  const marked = tl(true), plain = tl(false);
+  check('marking steps does not move the timeline: every start, end and the total are the same as unmarked',
+        arith(marked) === arith(plain) && marked.totalSpan === 60, arith(marked) + ' / ' + arith(plain));
+  check('computeTimeline says what each step waits for and whether it looks after itself, and nothing else about it changed',
+        JSON.stringify(marked.steps.map(s => [s.inputs, s.handsOff])) === '[[["a"],true],[["c","b"],false],[["d"],true]]'
+        && JSON.stringify(plain.steps.map(s => s.handsOff)) === '[false,false,false]'
+        && JSON.stringify(Object.keys(plain.steps[0]).sort()) === JSON.stringify(['duration', 'end', 'handsOff', 'inputs', 'label', 'output', 'start']), JSON.stringify(marked.steps));
+  const lined = core.lineUpTimelines([marked, plain], 'finish');
+  check('FINISH TOGETHER carries the marker through (each step is copied and moved, not rebuilt)',
+        lined.lanes[0].steps.every((s, i) => s.handsOff === marked.steps[i].handsOff && JSON.stringify(s.inputs) === JSON.stringify(marked.steps[i].inputs)));
+  const mergeLines = t => t.split('\n').filter(l => /^MERGE/.test(l));
+  check('scaling a recipe leaves a MERGE line, marker and all, as it was',
+        JSON.stringify(mergeLines(core.scaleRecipeSyntax(body(true), 2))) === JSON.stringify(mergeLines(body(true))));
+  check('formatDuration says nothing of hands-off (the box draws that itself)', core.formatDuration(ex('25 min, hands off').duration) === core.formatDuration(ex('25 min').duration));
+}
+
+/* ---- tools/propose-hands-off.js (run sheet PR 2, §6.3) ----
+   Run on a made-up export of twelve timed steps, five of each proposal's kind by design, and the steps it must leave alone. */
+{
+  const { propose } = require(path.join(ROOT, 'tools', 'propose-hands-off.js'));
+  const step = l => `MERGE a -> b: ${l}`;
+  const lines = [
+    ['cover and simmer gently [40 min]', 'off'], ['bake until golden [25-30 min]', 'off'], ['chill until firm [until firm]', 'off'],
+    ['cook gently, stirring now and then, until very soft [15 min]', 'off'], ['leave to rest [10 min]', 'off'],
+    ['fry the onion, stirring often, until golden [8-10 min]', 'on'], ['rest the dough [3 min]', 'on'], ['whisk until smooth [6 min]', 'on'], ['toss the leaves in the dressing [2 min]', 'on'],
+    ['cook the rice [12 min]', 'ask'], ['simmer, stirring, until thick [20 min]', 'ask'], ['heat the sauce [4-8 min]', 'ask']];
+  const left = ['pour into a dish [instant]', 'chill overnight [overnight]', 'cover and simmer [30 min, hands off]', 'serve at once', 'season [to taste]'];
+  const syntax = 'TITLE: Test\nGROUP a:\n1 swede\nSTAGE:\n' + lines.map(l => step(l[0])).concat(left.map(step)).join('\n');
+  const exp = { recipes: [{ id: 'r-1', title: 'Test', syntax }] };
+  const before = JSON.stringify(exp);
+  const res = propose(exp);
+  check('propose-hands-off sorts a made-up export: every timed, unmarked step is proposed once, and the answers are the ones the rule gives',
+        res.steps.length === 12 && JSON.stringify(res.counts) === '{"off":5,"on":4,"ask":3}'
+        && res.steps.every((s, i) => s.proposal === lines[i][1] && s.why.length > 0 && s.line.startsWith('MERGE') && /^\[.*\]$/.test(s.bracket)), JSON.stringify(res.counts) + ' ' + res.steps.map(s => s.proposal).join(','));
+  check('    it leaves alone an instant step, an overnight step, a step already marked, one with no time and one with a bracket that is not a time, and counts them',
+        JSON.stringify(res.skipped) === '{"instant":1,"alreadyMarked":2,"untimed":2}', JSON.stringify(res.skipped));
+  check('    each proposal carries the recipe and the md5 of its text, for a later write to be guarded by, and the export is not changed',
+        res.steps.every(s => s.recipeId === 'r-1' && s.md5 === require('crypto').createHash('md5').update(syntax).digest('hex')) && JSON.stringify(exp) === before);
+  const os = require('os');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hands-off-'));
+  const inFile = path.join(dir, 'export.json'), outFile = path.join(dir, 'proposals.json');
+  fs.writeFileSync(inFile, JSON.stringify(exp));
+  const tool = path.join(ROOT, 'tools', 'propose-hands-off.js');
+  const run = args => require('child_process').spawnSync(process.execPath, [tool, ...args], { encoding: 'utf8' });
+  const ok = run([inFile, outFile]);
+  check('    the command writes the proposals outside the repo and prints counts only: no recipe text reaches the terminal',
+        ok.status === 0 && /12 timed steps not yet marked: 5 off, 4 on, 3 ask/.test(ok.stdout) && JSON.parse(fs.readFileSync(outFile, 'utf8')).steps.length === 12
+        && !lines.map(l => l[0]).concat(left).some(t => ok.stdout.includes(t.split(' [')[0])), ok.stdout + ok.stderr);
+  const inRepo = path.join(ROOT, 'proposals-should-not-exist.json');
+  const refusedOut = run([inFile, inRepo]), refusedIn = run([path.join(ROOT, 'package.json'), outFile + '2']);
+  check('    it refuses a path inside the repo, for the export and for the output, and writes nothing there',
+        refusedOut.status === 2 && refusedIn.status === 2 && !fs.existsSync(inRepo) && !fs.existsSync(outFile + '2'), refusedOut.stderr + refusedIn.stderr);
+  fs.rmSync(dir, { recursive: true, force: true });
+}
 
 /* ---- FROZEN (issue #90, 11 Oct 2026) ----
    A line that says frozen goes to Frozen, before any other keyword can claim it, and keeps its name, so its tick stays.

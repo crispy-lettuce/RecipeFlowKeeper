@@ -9580,6 +9580,83 @@ const check = (name, pass, detail) => {
   tlAll('none of it wrote anything: no tick, tap or redraw reached the stub', t => t.writes1 === t.writes0, t => [t.writes0, t.writes1]);
   /* TL-END */
 
+  /* HO-BEGIN */
+  /* ---- Hands-off steps (run sheet PR 2, 23 Oct 2026, docs/PLAN-RUN-SHEET.md §3 and §7) ----
+     A step marked `, hands off` reads "25 MIN · HANDS OFF" in its box and its bar is hatched, over the bar's own colour, in both styles
+     and both themes; an unmarked step is solid; overnight is hatched and says OVERNIGHT; a mark on an instant step is not read.
+     Made-up dish. */
+  console.log('\nHands-off steps');
+  const hoRun = async (look, w) => {
+    const p = await browser.newPage({ viewport: { width: w, height: 900 } });
+    p.__label = `hands off ${look} ${w}`;
+    await p.addInitScript(l => { try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
+    await p.clock.setFixedTime(FIXTURE_NOW);
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1200);
+    const out = await p.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      loadRecipes().push(
+        { id: 'ho-main', title: 'Test Hands Off', source: 'Test', servings: 2, tags: { course: 'Main', keywords: [] }, history: [],
+          syntax: 'TITLE: Test Hands Off\nSERVINGS: 2\n\nGROUP a:\n1 swede\nGROUP z:\n1 lemon\nGROUP y:\n1 lemon\n\nSTAGE:\nMERGE a -> b: Simmer, stirring now and then [25 min, hands off]\nMERGE y -> e: Marinate [overnight]\n\nSTAGE:\nMERGE b, z -> c: Stir in the lemon [instant]\n\nSTAGE:\nMERGE c, e -> d: Leave to set [until firm, hands off]\n\nSTAGE:\nMERGE d -> f: Plate up [8 min]\n\nSTAGE:\nMERGE f -> g: Season [instant, hands off]' },
+        { id: 'ho-side', title: 'Test Plain Side', source: 'Test', servings: 2, tags: { course: 'Side', keywords: [] }, history: [],
+          syntax: 'TITLE: Test Plain Side\nSERVINGS: 2\n\nGROUP a:\n1 swede\n\nSTAGE:\nMERGE a -> b: Bubble gently [12 min]' });
+      const day = isoLocal(new Date());
+      addPlanRecipe(day, 'ho-main'); addPlanRecipe(day, 'ho-side'); createGroup(day, ['ho-main', 'ho-side']);
+      const gid = loadGroups().find(g => g.recipeIds.includes('ho-side')).id;
+      const drawn = root => {
+        const bar = h => [...root.querySelectorAll('.timeline-lane-abs')].find(b => b.dataset.handle === h && (!b.dataset.recipeId || b.dataset.recipeId === 'ho-main'));
+        const look = b => b && { off: b.classList.contains('hands-off'), open: b.classList.contains('open-ended'), image: getComputedStyle(b).backgroundImage,
+          color: getComputedStyle(b).backgroundColor, tip: b.title, marker: b.classList.contains('timeline-marker') };
+        const badge = h => { const e = root.querySelector(`.box-cell:not(.passthrough)[data-handle="${h}"] .step-duration`); return e ? e.textContent.trim() : null; };
+        const label = h => { const c = root.querySelector(`.box-cell:not(.passthrough)[data-handle="${h}"]`); return c ? c.textContent : null; };
+        return { b: look(bar('b')), d: look(bar('d')), e: look(bar('e')), f: look(bar('f')), c: look(bar('c')), g: look(bar('g')),
+          badges: { b: badge('b'), c: badge('c'), d: badge('d'), e: badge('e'), f: badge('f') }, gLabel: label('g'), gBadge: badge('g') };
+      };
+      const token = () => getComputedStyle(document.documentElement).getPropertyValue('--lane-hatch').trim();
+      const res = {};
+      await (async () => { let t; do { t = writeQueue; await t; } while (t !== writeQueue); })();
+      res.writes0 = window.__WRITES__.length;
+      openRecipe('ho-main', 'recipes'); await wait(350);
+      res.single = drawn(document.getElementById('flowMount')); res.tokenLight = token();
+      applyTheme('dark'); rerenderForTheme(); await wait(300);
+      res.singleDark = drawn(document.getElementById('flowMount')); res.tokenDark = token();
+      applyTheme('light'); rerenderForTheme(); await wait(200);
+      openGroup(gid, 'planner'); await wait(350);
+      res.group = drawn(document.getElementById('groupFlowMount'));
+      await (async () => { let t; do { t = writeQueue; await t; } while (t !== writeQueue); })();
+      res.writes1 = window.__WRITES__.length;
+      res.parsed = (() => { const q = parseRecipe('TITLE: T\nGROUP a:\n1 swede\nSTAGE:\nMERGE a -> b: Fold in the chives [instant, hands off]'); return { duration: q.stages[0][0].duration, label: q.stages[0][0].label }; })();
+      return res;
+    });
+    await p.close();
+    return out;
+  };
+  const ho = {};
+  for (const look of ['classic', 'modernist']) for (const w of [1280, 412]) ho[`${look} ${w}`] = await hoRun(look, w);
+  const hoAll = (name, pass, detail) => {
+    const bad = Object.keys(ho).filter(k => !pass(ho[k], k));
+    check(name, bad.length === 0, bad.length ? 'fails at ' + bad.map(k => k + ': ' + JSON.stringify(detail(ho[k]))).join(' | ').slice(0, 900) : '');
+  };
+  const hatched = (b, deg) => b && b.off && b.image.includes('repeating-linear-gradient') && b.image.includes(deg);
+  hoAll('a marked step\'s box reads "25 MIN · HANDS OFF", an open-ended one "~ UNTIL DONE · HANDS OFF", overnight just "OVERNIGHT", and an unmarked one as before',
+        h => [h.single, h.group].every(s => s.badges.b === '25 MIN · HANDS OFF' && s.badges.d === '~ UNTIL DONE · HANDS OFF' && s.badges.e === 'OVERNIGHT' && s.badges.f === '8 MIN' && s.badges.c === 'INSTANT'),
+        h => [h.single.badges, h.group.badges]);
+  hoAll('a hands-off bar is hatched over its own colour (the marked, the open-ended one with both patterns, and overnight); a hands-on bar and an instant step are not',
+        h => [h.single, h.group].every(s => hatched(s.b, '45deg') && !s.b.image.includes('135deg') && hatched(s.d, '45deg') && s.d.image.includes('135deg') && hatched(s.e, '45deg')
+          && s.f && !s.f.off && !s.f.image.includes('repeating') && s.c && s.c.marker && !s.c.off && s.b.color !== 'rgba(0, 0, 0, 0)'),
+        h => [h.single.b, h.single.f, h.single.d && h.single.d.image]);
+  hoAll('the hatch is the theme\'s token: light stripes in the light theme, dark ones in the dark theme, and the bar is hatched in both',
+        h => h.tokenLight !== h.tokenDark && hatched(h.single.b, '45deg') && hatched(h.singleDark.b, '45deg')
+          && /255,\s*255,\s*255/.test(h.single.b.image) && !/28,\s*25,\s*21/.test(h.single.b.image)
+          && /28,\s*25,\s*21/.test(h.singleDark.b.image) && !/255,\s*255,\s*255/.test(h.singleDark.b.image), h => [h.tokenLight, h.tokenDark, h.single.b.image, h.singleDark.b.image]);
+  hoAll('a bar\'s tooltip says "hands off" (overnight, which is hands off by itself, says nothing more)',
+        h => /· hands off$/.test(h.single.b.tip) && !/hands off/.test(h.single.e.tip) && !/hands off/.test(h.single.f.tip), h => [h.single.b.tip, h.single.e.tip, h.single.f.tip]);
+  hoAll('[instant, hands off] is not read: its step has no time of its own, shows the bracket as text, and is not hatched',
+        h => h.parsed.duration === null && /\[instant, hands off\]$/.test(h.parsed.label) && /\[instant, hands off\]/.test(h.single.gLabel) && h.single.gBadge === null && !(h.single.g && h.single.g.off),
+        h => [h.parsed, h.single.gLabel, h.single.gBadge]);
+  hoAll('none of it wrote anything', h => h.writes1 === h.writes0, h => [h.writes0, h.writes1]);
+  /* HO-END */
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:

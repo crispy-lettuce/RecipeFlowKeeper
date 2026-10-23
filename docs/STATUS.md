@@ -44,11 +44,12 @@ the Modernist style, + OTHER on the Planner, the converter reminder, the version
 
 ## 3. What is open
 
-1. **One plan, unbuilt: `docs/PLAN-RUN-SHEET.md`** (drafted 23 Oct). Hands-off steps in the recipe format and a live timeline:
+1. **One plan, partly built: `docs/PLAN-RUN-SHEET.md`** (drafted 23 Oct). Hands-off steps in the recipe format and a live timeline:
    four PRs and a pass over the library's recipe text, in that order. Its proof of concept (§5, step 0) is done (23 Oct): 53 of 54
    steps agree with a session's reading, the converter's marks match the household's on 20 of 20, and the roast dinner showed the
    run sheet needs to know about ovens. Every decision in its §10 was made on 23 Oct:
-   PR 1 (timeline fixes, ticks drive the bars) is built (23 Oct) and waits for the household's merge. PR 2 is next.
+   PR 1 (timeline fixes, ticks drive the bars) was merged on 23 Oct (#189). PR 2 (the marker: parser, converter, display, the proposal tool) is built and
+   waits for the household's merge; after it, every device reloads and the converter's DONE is tapped, then the data job.
 2. **#100, a preview site.** Parked and now ignored; close the issue if it is not wanted. The reasoning (GitHub Pages stays live,
    Cloudflare Pages gives each PR a preview, one database means a preview writes real data) is in the archive at
    `docs/PLAN-PREVIEW-SITE.md`.
