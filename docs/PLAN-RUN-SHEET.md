@@ -139,7 +139,7 @@ changes, but a tab left open is the risk; `docs/HOUSEHOLD-JOBS.md` carries the r
 data job** for the same reason. PR 3 can be built before the data job finishes, and would treat every step as hands on until
 recipes carry the marker; it is most useful after.
 
-### Step 0: the proof of concept (set up 23 Oct 2026)
+### Step 0: the proof of concept (done 23 Oct 2026)
 
 The parser and the drawing are the easy part. The risk is the marking: if the household, the word rules and the converter do not
 agree on which steps are hands off, the hands row and its free windows mislead, and the rest is not worth building. So, before
@@ -188,7 +188,14 @@ alone and only new recipes carry the marker. The converter rule in PR 2 is the d
 - **The oven, not the cook's hands, limits a roast dinner.** Asked about the three-recipe roast, the household said the oven
   would be the limit, and that the kitchen has two. Its dishes want 200°C and 220°C (fan): two ovens can hold both
   temperatures, one cannot. A hands row alone would have shown that meal as relaxed. See §7, PR 3, and §10, 9.
-- **The converter run** has not been done yet; it is the last part of step 0, now with the refined rule.
+- **The converter run (23 Oct):** the refined rule pasted into the conversion project for the test only, three recipes
+  re-converted from their source pages. **Every timed step's mark matched the household's: 20 of 20**; no marker on an
+  `[instant]` step or under 5 minutes, no duration dropped. Today's `test/validate-recipes.js` reports exactly the marked
+  brackets as unread and the recipes otherwise valid, which is §5's reason for shipping the parser first. One re-conversion
+  left some amounts without a unit, as re-conversions can: the data job adds markers to the library's own text and never
+  replaces a recipe with a re-conversion.
+
+**Step 0 is complete.** The marker, the rule and the order stand; PR 2 can be built once §10's open decisions are answered.
 
 ## 6. The data job: marking the library
 
