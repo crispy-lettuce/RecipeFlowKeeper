@@ -41,13 +41,14 @@ stays on the device you set it on.
 2. Open a group of dishes. **You should see:** under the heading, **EAT AT** with a time (now plus the longest dish, up to the next five minutes),
    four buttons **−15 −5 +5 +15**, and **START AT** a time. The ruler reads times of day, each box says **AT 17:20** (its own time), and each dish
    says when to begin it (**START AT 17:35**, the first one **START FIRST**).
+   Under the heading a sentence says what FINISH TOGETHER or START TOGETHER is doing, and each dish says **READY AT** as well as its start.
 3. Tap **+15**. **You should see:** EAT AT, START AT, the ruler and every box's time all move 15 minutes later, and a **NOW** button appears. Tap
    **NOW**: it goes back to the default.
 4. Look at the row **YOUR HANDS**. **You should see:** solid where you are busy, an outline **free N min** where nothing needs you for six
-   minutes or more, and red hatching, with CLASH in its heading, where two hands-on steps overlap. (Until recipes carry the hands-off mark, every
-   step counts as hands on, so expect a lot of clash.)
-5. If there is a clash, tap **AVOID THE CLASH**. **You should see:** the clash gone, one dish told to start earlier, and EAT AT unchanged. Tap it again:
-   the clash comes back.
+   minutes or more, and red hatching, with CLASH in its heading, where two hands-on steps overlap. (A recipe with no hands-off mark yet is left out
+   of the row, and a note under the dishes names it. With none marked there is no row and no clash to avoid; mark a step in Test Kitchen to try it.)
+5. If there is a clash, tap **AVOID THE CLASH**. **You should see:** the clash gone, one dish told to start earlier, EAT AT unchanged, and the button filled, reading
+   **✓ CLASH AVOIDED · TAP TO UNDO**. Tap it again: the clash comes back and the button is plain.
 6. A dish whose recipe says "Preheat the oven to 195°C" on its steps: **You should see:** an **OVENS** row with chips such as "195°C fan · the
    dish's name". With one oven and two different settings at once, a sentence under the strip says more ovens are wanted than this kitchen has; with
    **2 OVENS** it does not.

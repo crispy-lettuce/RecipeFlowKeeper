@@ -627,6 +627,9 @@ html[data-style="modernist"] .timeline-lane-row .timeline-lane-abs.hands-off.ope
 /* The run sheet's rows (EAT AT, your hands, the ovens): small bold capitals like the strip's own heading, ink for busy, the chips' words in ink. */
 html[data-style="modernist"] .timeline-eat{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
 html[data-style="modernist"] .timeline-eat .eat-time{ font-size:19px; font-weight:800; letter-spacing:0; }
+html[data-style="modernist"] .timeline-eat .btn[aria-pressed="true"]{ background:var(--color-text); border-color:var(--color-text); color:var(--color-bg); }
+html[data-style="modernist"] .timeline-eat .eat-late{ color:var(--color-accent-700); font-weight:800; }
+html[data-style="modernist"] .timeline-mode-note{ font-size:13px; font-weight:600; color:var(--color-text); }
 html[data-style="modernist"] .step-at{ font-size:12px; font-weight:800; letter-spacing:.08em; opacity:1; }
 html[data-style="modernist"] .hands-busy{ background:var(--color-text); }
 html[data-style="modernist"] :is(.hands-free, .oven-use) span{ font-size:12px; font-weight:600; color:var(--color-text); }
