@@ -104,7 +104,7 @@ finishes the last column still logs the recipe as cooked.
 
 - **Hands on and hands off.** A hands-on bar is solid; a hands-off bar is hatched in the dish's colour. A box's duration reads
   `25 min · hands off`.
-- **EAT AT.** A time the cook sets in the strip's header (default: a decision, §10). With it, the ruler reads clock times
+- **EAT AT.** A time the cook sets in the strip's header (by default now plus the longest dish, §10). With it, the ruler reads clock times
   (`17:50`, `18:00`) and every box says when it starts; without it, the strip is as today.
 - **Your hands row**, above the lanes: solid where you are busy, hatched red where two hands-on steps overlap (a clash), an
   outline saying `free 16 min` where you are not needed for six minutes or more.
@@ -203,7 +203,7 @@ alone and only new recipes carry the marker. The converter rule in PR 2 is the d
   left some amounts without a unit, as re-conversions can: the data job adds markers to the library's own text and never
   replaces a recipe with a re-conversion.
 
-**Step 0 is complete.** The marker, the rule and the order stand; PR 2 can be built once §10's open decisions are answered.
+**Step 0 is complete.** The marker, the rule and the order stand, and §10 is decided: PR 2 can be built.
 
 ## 6. The data job: marking the library
 
@@ -281,13 +281,13 @@ verified and what was not. Each PR that the household will notice adds a `change
 - `core.js`, pure and tested:
   - `planToServe(lanes, serveAt, { avoidClash })`: today's FINISH TOGETHER offsets turned into clock times, then, with
     `avoidClash`, hands-on steps moved earlier (with what feeds them) until no two overlap. Each dish keeps today's shape
-    (a decision, §10).
+    (§10, 4).
   - `projectRun(plan, run, now)`: done steps as recorded (a step ticked without START by §4's rule); a running step ends at the later of its planned end and now; every
     other step at the earliest of: its planned start, now, the end of what feeds it, and the end of any hands-on step in its way
     if it is hands on. Returns each step's projected start and end, the ready time and minutes late.
   - `handsWindows(steps)`: busy, clash and free intervals.
   - **Ovens** (step 0's roast): `ovenUse(lanes, recipes)` reads each recipe's preheat temperature (fan or not) and treats its
-    steps that say oven, roast or bake as using an oven at that temperature. With the household's number of ovens (§10, 9),
+    steps that say oven, roast or bake as using an oven at that temperature. With the device's number of ovens (§10, 9),
     it reports when more ovens, or more temperatures, are wanted at once than the kitchen has. Drawn as one thin lane per oven
     under the hands row, coloured by temperature; a clash says which steps want which temperature. A recipe with no
     temperature on its preheat line, or two, is left out of the check and says so. Measured from the text, not marked in
@@ -300,7 +300,8 @@ verified and what was not. Each PR that the household will notice adds a `change
   - **Updated in place once a second, redrawn only when a projection changes**, so a tap is never lost to a redraw (the mock's
     pattern).
   - Run state (start time, each step's start and done) lives with the ticks and is keyed the same way, so it survives
-    `refreshLibrary()`'s redraw. How long it lasts is a decision (§10).
+    `refreshLibrary()`'s redraw, and lasts as they do, until reload (§10, 5).
+  - The number of ovens in Settings → APP, per device (§10, 9), with its line in `help.html`.
   - Hidden from print and PNG through `hideSelectors`.
   - `buildShoppingList()` is not touched; no `load*`/`save*` is added.
 - Smoke: driven by Playwright's clock (`p.clock`, as `FIXTURE_NOW` already is): a late tick moves the ready time; a clash
@@ -310,7 +311,7 @@ verified and what was not. Each PR that the household will notice adds a `change
 
 - START TIMER on a timed step; the countdown on its bar and box; at zero a chime (Web Audio, unlocked by the START tap), a
   vibration where supported, DONE pulsing (still under `prefers-reduced-motion`).
-- Per-device sound setting if the household wants one (§10).
+- No sound setting: chime and vibration are always on (§10, 6).
 - Smoke: a timer reaching zero under Playwright's clock shows ready and pulses; no write.
 
 ## 8. Not in this plan
@@ -322,7 +323,7 @@ its own issue if the household picks it up; none depends on this plan.
 ## 9. Risks
 
 - **A stale tab during the data job** shows brackets as text: §5's order, and the reload step, are the guard.
-- **A reload mid-cook** loses the run if it lives only in the tab, as ticks do today (§10).
+- **A reload mid-cook** loses the run, as it loses the ticks today: accepted for now (§10, 5).
 - **False precision.** A ready time to the minute from midpoints of ranges and 2-minute stand-ins; "about" is the guard, and
   the re-planning corrects it as the cook ticks.
 - **The proposals** will be wrong on some steps (step 0: 53 of 54 right on a sample chosen to be awkward); that is why the
@@ -333,26 +334,25 @@ its own issue if the household picks it up; none depends on this plan.
 - **Background tabs and screen lock.** A timer is only as audible as the tablet is awake; cooking mode keeps it awake, and
   without it a chime may come late. Push notifications are out of scope.
 
-## 10. Decisions for the household
+## 10. Decisions (all made 23 Oct 2026)
 
-Each has a recommendation; the build waits for the answer, and the PR that builds it records it.
+The household took the recommendation on each one still open, on 23 Oct; 1, 8 and the drawing of a step ticked without START
+(§4) were settled the same day by step 0 and the second mock. The PR that builds each one records it again in its description.
 
-1. **The marker:** `[25 min, hands off]` inside the bracket (recommended), or another word. Step 0 used it as written.
-2. **Default EAT AT:** the next five minutes after now plus the longest dish (recommended: start now, eat when it is ready), or
-   a fixed household time such as 18:30.
-3. **AVOID THE CLASH:** a button, off until pressed (recommended), or done automatically, or a warning only.
-4. **Each dish's shape:** keep today's (dishes shifted whole, recommended: the strip matches the diagram), or plan every step as
-   late as it can go (side branches move nearer serving).
-5. **How long a run lasts:** with the ticks, until reload (recommended for PR 3: one rule for both), or kept on the device for
-   12 hours so a reload mid-cook keeps the timers (ticks would then last that long too).
-6. **Chime and vibration:** on (recommended), or a per-device setting.
-7. **Which households' recipes** the data job marks: the family's, after a Test Kitchen rehearsal (recommended); the
-   relatives' only with them.
-8. **What "hands off" means:** decided by step 0 (23 Oct): the refined rule above, with occasional stirring hands off from
-   10 minutes.
-9. **The number of ovens:** a setting, two for this kitchen. Kept on the device (recommended: no schema change, and the tablet
-   is where the cooking happens) or for the household, which needs a `household_settings` column, so a migration page applied
-   first (`CLAUDE.md`).
+1. **The marker:** `[25 min, hands off]` inside the duration bracket, as step 0 used it.
+2. **Default EAT AT:** now plus the longest dish, rounded up to the next five minutes: start now, eat when it is ready. The cook
+   changes it with the stepper; it is not stored.
+3. **AVOID THE CLASH:** a button, shown only when there is a clash, off until pressed. Nothing moves by itself.
+4. **Each dish's shape:** today's. Dishes are shifted whole, so the strip matches the diagram; steps are not each planned as
+   late as they can go.
+5. **How long a run lasts:** with the ticks, until reload. A reload mid-cook loses the run, as it loses the ticks today (§9);
+   keeping both on the device is a later change if it is missed.
+6. **Chime and vibration:** on, with no setting.
+7. **Which households' recipes the data job marks:** the family's, after a rehearsal on Test Kitchen; the relatives' only with
+   them.
+8. **What "hands off" means:** step 0's refined rule (§5), with occasional stirring hands off from 10 minutes.
+9. **The number of ovens:** kept on each device (`localStorage['kitchen.ovens']`, read in `try/catch`, 1 when unset or
+   blocked), set in Settings → APP. No schema change. The family's tablet is set to 2 as a household job when PR 3 ships.
 
 **When this plan is done** (PR 4 merged and checked on the tablet), the PR that closes it updates `docs/SPEC.md` and deletes
 this file.
