@@ -4413,8 +4413,8 @@ const check = (name, pass, detail) => {
         stIng.join('|') === 'INGREDIENT LOOKUP|WORD MATCHES|SHOPPING AISLES|SWAPS|DICTIONARY' && !stNav.includes('swaps') && stNav.includes('settings'),
         JSON.stringify([stIng, stNav]));
   /* CALENDAR joined App on 9 Oct 2026 (P3 PR 2), RECIPE SHARING and BACKUP TO GOOGLE DRIVE on 10 Oct; before their migrations each only says it is waiting. */
-  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, style, preparation, calendar, sharing and Drive backup; the last tab is remembered',
-        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|STYLE|PREPARATION|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
+  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, style, preparation, ovens, calendar, sharing and Drive backup; the last tab is remembered',
+        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|STYLE|PREPARATION|OVENS|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
         JSON.stringify([stLib, stApp, stKept]));
   /* Since #95 (13 Oct) the dictionary's fold is its heading, DICTIONARY (n), like every list on the tab. */
   const stDict = () => page.evaluate(() => ({ list: document.getElementById('dictionaryList').offsetParent !== null,
@@ -9695,7 +9695,7 @@ const check = (name, pass, detail) => {
         const btns = [...st.querySelectorAll('.timeline-eat .btn')];
         return { eat: txt(root, '.eat-time'), start: txt(root, '.eat-start'), now: !!root.querySelector('[data-eat-now]'), avoid: (b => b ? b.getAttribute('aria-pressed') : null)(root.querySelector('[data-avoid-clash]')),
           ticks: [...st.querySelectorAll('.timeline-tick')].filter(t => !t.classList.contains('off')).map(t => t.textContent.trim()),
-          hands: txt(root, '.hands-row') === null ? null : { caption: [...st.querySelectorAll('.timeline-lane-name')].map(e => e.textContent.trim()).find(t => /^YOUR HANDS/.test(t)),
+          hands: txt(root, '.hands-row') === null ? null : { caption: [...st.querySelectorAll('.timeline-row-name')].map(e => e.textContent.trim()).find(t => /^YOUR HANDS/.test(t)),
             busy: st.querySelectorAll('.hands-busy').length, clash: st.querySelectorAll('.hands-clash').length, free: [...st.querySelectorAll('.hands-free')].map(e => e.textContent.trim()) },
           ovenRows: st.querySelectorAll('.oven-row').length, ovenOver: st.querySelectorAll('.oven-over').length, ovenUses: [...st.querySelectorAll('.oven-use span')].map(e => e.textContent.trim()),
           warn: txt(root, '.timeline-oven-note'),

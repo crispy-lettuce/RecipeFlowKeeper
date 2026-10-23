@@ -606,7 +606,7 @@ html[data-style="modernist"] .timeline-missing-note{ border-top:1px solid var(--
    others, is ruled in ink; a dish's name is a small bold label above its lane; an [instant] step is a diamond (ink, and the accent when it
    is the last step, as the bars are) with its name beside it in ink; a ticked bar is the surface colour with a ✓ and ink text. */
 html[data-style="modernist"] .timeline-tick.timeline-tick-end{ border-left:0; border-right:1px solid currentColor; }
-html[data-style="modernist"] .timeline-lane-name{ font-size:12px; font-weight:700; letter-spacing:.02em; color:var(--color-text); }
+html[data-style="modernist"] :is(.timeline-lane-name, .timeline-row-name){ font-size:12px; font-weight:700; letter-spacing:.02em; color:var(--color-text); }
 html[data-style="modernist"] .timeline-lane-abs.timeline-marker,
 html[data-style="modernist"] .timeline-lane-row:last-child .timeline-lane-abs.timeline-marker{ background:none; }
 html[data-style="modernist"] .timeline-marker i{ background:var(--lane, var(--color-text)); }

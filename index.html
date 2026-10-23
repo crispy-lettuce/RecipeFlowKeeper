@@ -614,10 +614,10 @@ function loadArchivoFont(){
   .timeline-lanes{ position:relative; }
   .timeline-lane-row{ position:relative; height:20px; margin-bottom:3px; }
   /* The dish's name above its lane in the Group Viewer: the bars carry its colour, and until now its name only in a tooltip. */
-  .timeline-lane-name{ display:flex; align-items:center; gap:6px; margin:8px 0 3px; font-size:13px; color:var(--ink-soft); }
+  .timeline-lane-name, .timeline-row-name{ display:flex; align-items:center; gap:6px; margin:8px 0 3px; font-size:13px; color:var(--ink-soft); }
   .timeline-lane-name:first-child{ margin-top:0; }
   .timeline-lane-name .recipe-swatch{ width:10px; height:10px; border-radius:var(--r); flex:none; }
-  .timeline-lane-name span:last-child{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .timeline-lane-name span:last-child, .timeline-row-name span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   /* 28px is the least a thumb can find; a bar shorter than that is drawn that wide from its start and raised above its neighbour
      (fitTimelineStrip marks it .short), so its whole width answers a tap. */
   .timeline-lane-abs{
@@ -2847,7 +2847,7 @@ function runRowsHTML(run){
   let html = '';
   if(run.plan.steps.some(needsHands)){
     const h = run.hands;
-    html += `<div class="timeline-lane-name"><span>YOUR HANDS · BUSY ${escapeHtml(mins(h.busyMinutes))}${h.clashMinutes > 1e-9 ? ` · CLASH ${escapeHtml(mins(h.clashMinutes))}` : ''}</span></div>`
+    html += `<div class="timeline-row-name"><span>YOUR HANDS · BUSY ${escapeHtml(mins(h.busyMinutes))}${h.clashMinutes > 1e-9 ? ` · CLASH ${escapeHtml(mins(h.clashMinutes))}` : ''}</span></div>`
       + `<div class="hands-row">`
       + h.free.map(w=> `<i class="hands-free" style="${place(w[0], w[1])}" title="Free ${at(w)}"><span>free ${escapeHtml(mins(w[1] - w[0]))}</span></i>`).join('')
       + h.busy.map(w=> `<i class="hands-busy" style="${place(w[0], w[1])}" title="Your hands are busy ${at(w)}"></i>`).join('')
@@ -2856,7 +2856,7 @@ function runRowsHTML(run){
   }
   const o = run.oven;
   if(o.lanes.some(l=> l.uses.length)){
-    html += `<div class="timeline-lane-name"><span>OVENS · ${o.ovens} ON THIS DEVICE</span></div>`
+    html += `<div class="timeline-row-name"><span>OVENS · ${o.ovens} ON THIS DEVICE</span></div>`
       + o.lanes.map(l=> `<div class="oven-row${l.over ? ' oven-over' : ''}">`
         + l.uses.map(u=> `<i class="oven-use oven-s${u.setting % 3}" style="${place(u.start, u.end)}" title="${escapeHtml(u.title)}: ${escapeHtml(u.label)}, ${settingLabel(u.key)}, ${at([u.start, u.end])}"><span>${settingLabel(u.key)} · ${escapeHtml(u.title)}</span></i>`).join('')
         + `</div>`).join('');
