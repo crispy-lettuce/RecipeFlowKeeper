@@ -9504,6 +9504,29 @@ const check = (name, pass, detail) => {
       res.writes1 = window.__WRITES__.length;
       return res;
     });
+    /* Each diamond is its dish's colour, which is the dish's square beside its name. Four dishes, because Modernist has four dish colours and a
+       diamond with no colour of its own falls back to ink, or to the accent as a last row: in a group of two that is exactly the two dishes'
+       colours (ink and red), so a missing colour went unseen. Modernist's colours are tokens per theme, so it is looked at in dark as well. */
+    await p.evaluate(async () => {
+      const ids = ['tl-d1', 'tl-d2', 'tl-d3', 'tl-d4'];
+      ids.forEach((id, i) => loadRecipes().push({ id, title: 'Test Dish ' + (i + 1), source: 'Test', servings: 2, tags: { course: 'Main', keywords: [] }, history: [],
+        syntax: 'TITLE: Test Dish ' + (i + 1) + '\nSERVINGS: 2\n\nGROUP a:\n1 swede\n\nSTAGE:\nMERGE a -> b: Bubble gently [10 min]\n\nSTAGE:\nMERGE b -> c: Serve [instant]' }));
+      const d = new Date(); d.setDate(d.getDate() + 1); const day = isoLocal(d);
+      ids.forEach(id => addPlanRecipe(day, id)); createGroup(day, ids);
+      openGroup(loadGroups().find(g => g.recipeIds.includes('tl-d1')).id, 'planner');
+      await new Promise(r => setTimeout(r, 350));
+    });
+    const diamonds = () => p.evaluate(() => [...document.querySelectorAll('#groupFlowMount .timeline-marker[data-recipe-id]')].map(m => ({ id: m.dataset.recipeId,
+      mark: getComputedStyle(m.querySelector('i')).backgroundColor,
+      swatch: getComputedStyle(document.querySelector(`#groupFlowMount .stacked-recipe[data-recipe-id="${m.dataset.recipeId}"] .recipe-swatch`)).backgroundColor })));
+    out.diamonds = await diamonds();
+    if (look === 'modernist') {
+      await p.evaluate(() => { applyTheme('dark'); rerenderForTheme(); });
+      await p.waitForTimeout(300);
+      out.diamondsDark = await diamonds();
+      await p.evaluate(() => { applyTheme('light'); rerenderForTheme(); });
+      await p.waitForTimeout(200);
+    }
     /* The arrow in print: the page is asked for its print styles. */
     await p.evaluate(() => { openRecipe('tl-main', 'recipes'); });
     await p.waitForTimeout(250);
@@ -9547,6 +9570,9 @@ const check = (name, pass, detail) => {
           && t.singleWalk.flashGone && !t.singleWalk.scrollMoved && !t.groupWalk.scrollMoved, t => [t.singleWalk.flashC, t.singleWalk.flashCarried, t.groupWalk.flashC, t.groupWalk.flashCarried, t.singleWalk.scrollMoved, t.groupWalk.scrollMoved]);
   tlAll('tapping a bar jumps to its box, in the Group Viewer too and in its own dish (it did nothing there before)',
         t => t.singleJump === 1 && t.groupJump.side === 1 && t.groupJump.main === 0, t => [t.singleJump, t.groupJump]);
+  const dishColours = d => d && d.length === 4 && sameSet(d.map(x => x.id).sort(), ['tl-d1', 'tl-d2', 'tl-d3', 'tl-d4']) && d.every(x => x.mark === x.swatch) && new Set(d.map(x => x.swatch)).size === 4;
+  tlAll('Group Viewer: each dish\'s [instant] diamond is its own dish\'s colour (Modernist in dark too), in a group of four',
+        t => dishColours(t.diamonds) && (t.diamondsDark === undefined || dishColours(t.diamondsDark)), t => [t.diamonds, t.diamondsDark]);
   tlAll('Classic and Modernist both draw the arrow when the table runs on to the right, not when it fits, not at its end, and not in print',
         (t, k) => t.cue.over > 2 ? t.cue.display === 'block' && t.cue.atEnd === 'none' && t.cuePrint === 'none' : t.cue.display === 'none' && t.cuePrint === 'none', t => [t.cue, t.cuePrint]);
   check('    and the arrow is wanted at a phone\'s width and not at a tablet\'s (the made-up dishes\' table is wider than 412px, narrower than 1280px)',
