@@ -61,7 +61,11 @@ size the job, not to decide it.
 | Mixed wording: a waiting word and a doing word (stir, whisk, fry, brown, toss, turn…) | 122 |
 | A waiting word under 10 min | 52 |
 
-So about 250 steps want a look, and well under half of the library changes at all. **No bracket contains a comma today,** so
+So about 250 steps want a look, and well under half of the library changes at all.
+
+**Ovens, in the family's 76 recipes** (read 23 Oct): 34 have a "Preheat the oven…" line, 33 of them with a °C figure and 18
+saying fan; one gives two temperatures. 39 have a MERGE step that says oven, roast or bake (63 timed steps). A recipe's oven
+temperature is free text on its preheat line, not on a step. **No bracket contains a comma today,** so
 `, hands off` cannot collide with anything already written. The 8 MERGE lines with no bracket break the converter's own rule;
 they are outside this plan, and worth a look in the data job (§6) since it reads every recipe anyway.
 
@@ -157,6 +161,26 @@ Everything with recipe lines in it, the sheet, the steps with both proposals and
 means the data job (§6) can approve those as a batch; much lower means every step is reviewed by hand, or the library is left
 alone and only new recipes carry the marker. The converter rule in PR 2 is the draft as the test leaves it.
 
+**Marked by the household on 23 Oct 2026. Provisional: nine marks wait to be confirmed.**
+
+| | Agrees with the household |
+| --- | --- |
+| A session following the draft rule | 45 of 54 (83%) |
+| The word lists, where they decided | 29 of 34 (85%); they could not decide 20 of the 54 |
+
+- **Below the 90% line as marked.** Eight of the nine differences are steps the household called hands off whose wording says
+  the cook is busy (browning, stirring often, whisking, heating milk "but not boiling"); one is a step whose timing is critical
+  but needs nobody. If they are slips, the session's reading matches on all 54 and the draft rule stands. If they are meant,
+  "hands off" means "I can do something nearby", not "I can leave the kitchen", and the rule changes before PR 2 (§10, 8).
+- **The household calls more steps hands off than either proposal** (28 of 54, against 21 and 12). The word lists are too
+  timid to propose on their own; in the data job they can only sort steps for the household, not decide them.
+- **A step can matter without needing hands:** heating a tin's fat to be smoking hot exactly when the batter is ready. The
+  run sheet's timers (PR 4) are what that step wants, not a hands-on mark.
+- **The oven, not the cook's hands, limits a roast dinner.** Asked about the three-recipe roast, the household said the oven
+  would be the limit, and that the kitchen has two. Its dishes want 200°C and 220°C (fan): two ovens can hold both
+  temperatures, one cannot. A hands row alone would have shown that meal as relaxed. See §7, PR 3, and §10, 9.
+- **The converter run** has not been done; it waits until the nine marks are settled, so it tests the rule that will ship.
+
 ## 6. The data job: marking the library
 
 Recipe text, so `CLAUDE.md` § "Changing recipe text in the live database" applies to the letter, with
@@ -236,6 +260,13 @@ verified and what was not. Each PR that the household will notice adds a `change
     other step at the earliest of: its planned start, now, the end of what feeds it, and the end of any hands-on step in its way
     if it is hands on. Returns each step's projected start and end, the ready time and minutes late.
   - `handsWindows(steps)`: busy, clash and free intervals.
+  - **Ovens** (step 0's roast): `ovenUse(lanes, recipes)` reads each recipe's preheat temperature (fan or not) and treats its
+    steps that say oven, roast or bake as using an oven at that temperature. With the household's number of ovens (§10, 9),
+    it reports when more ovens, or more temperatures, are wanted at once than the kitchen has. Drawn as one thin lane per oven
+    under the hands row, coloured by temperature; a clash says which steps want which temperature. A recipe with no
+    temperature on its preheat line, or two, is left out of the check and says so. Measured from the text, not marked in
+    it: no format change, and the converter already writes the preheat line. If step 0 or the first real cooks show this
+    reading is wrong too often, an explicit marker is a later change.
   - An open-ended step keeps the 2-minute stand-in, so a projection through it is a guess; the header says "about" whenever
     `lineUpTimelines`' `about` would.
 - `index.html`: EAT AT and START COOKING in the strip header of both viewers; the clock ruler, playhead, hands row, planned
@@ -288,6 +319,12 @@ Each has a recommendation; the build waits for the answer, and the PR that build
 6. **Chime and vibration:** on (recommended), or a per-device setting.
 7. **Which households' recipes** the data job marks: the family's, after a Test Kitchen rehearsal (recommended); the
    relatives' only with them.
+8. **What "hands off" means** (step 0): "once it is going I could walk away until it is done" (the draft rule, recommended if
+   the nine differences were slips), or "I only need to glance at it or stir it now and then" (if they were meant; more steps
+   marked, and the free windows mean "free to do something nearby").
+9. **The number of ovens:** a setting, two for this kitchen. Kept on the device (recommended: no schema change, and the tablet
+   is where the cooking happens) or for the household, which needs a `household_settings` column, so a migration page applied
+   first (`CLAUDE.md`).
 
 **When this plan is done** (PR 4 merged and checked on the tablet), the PR that closes it updates `docs/SPEC.md` and deletes
 this file.

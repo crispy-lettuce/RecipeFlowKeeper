@@ -45,8 +45,8 @@ the Modernist style, + OTHER on the Planner, the converter reminder, the version
 ## 3. What is open
 
 1. **One plan, unbuilt: `docs/PLAN-RUN-SHEET.md`** (drafted 23 Oct). Hands-off steps in the recipe format and a live timeline:
-   four PRs and a pass over the library's recipe text, in that order. First a proof of concept (its §5, step 0): the household
-   marks a sheet of 54 steps, kept in `PrivateBackup`; nothing is built until the marks are in. It also waits on the household's
+   four PRs and a pass over the library's recipe text, in that order. First a proof of concept (its §5, step 0), marked by the
+   household on 23 Oct: nine marks wait to be confirmed, and the roast dinner showed the run sheet needs to know about ovens. It also waits on the household's
    answers to its §10; PR 1 (timeline fixes) needs neither.
 2. **#100, a preview site.** Parked and now ignored; close the issue if it is not wanted. The reasoning (GitHub Pages stays live,
    Cloudflare Pages gives each PR a preview, one database means a preview writes real data) is in the archive at
