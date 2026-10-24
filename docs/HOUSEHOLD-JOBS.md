@@ -17,7 +17,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 | --- | --- | --- | --- |
 | [Reload the app](#reload-the-app-on-every-device), on every device | every device | 1 min | No |
 | [Set the ovens and try the run sheet](#set-the-ovens-and-try-the-run-sheet), once the app is **2026-10-23.3** | tablet | 5 min | The number of ovens, on that device only |
-| [Try START COOKING](#try-start-cooking), once the app is **2026-10-24.2** | tablet | 8 min | No |
+| [Try START COOKING and its timers](#try-start-cooking), once the app is **2026-10-24.5** | tablet | 12 min | No |
 | [Tap DONE on the converter bar](#the-converter-bar), if it shows | app | 1 min | Only the converter's DONE |
 
 Nothing else is waiting. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
@@ -26,11 +26,11 @@ Nothing else is waiting. What to build next is your choice; `docs/STATUS.md` §3
 
 ## Reload the app on every device
 
-The current app is **2026-10-24.3** (`APP_VERSION`) once the converter-rule PR is merged.
+The current app is **2026-10-24.5** (`APP_VERSION`) once the timers PR is merged.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready.**, tap **RELOAD**. Otherwise refresh the page.
-3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-24.3** or later.
+3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-24.5** or later.
 
 ## Set the ovens and try the run sheet
 
@@ -78,8 +78,17 @@ Kitchen, with a step or two marked `, hands off` (see the converter bar below fo
 8. Press **DONE**. **You should see:** the box ticked, and the bar drawn from when you started to now. Tap the ticked box to un-tick it: it goes back to **STARTED**.
 9. Press **START** on a step before the one before it is done. **You should see:** it is running from then.
 10. Tap **STOP COOKING**. **You should see:** the plan as it was before, with no red line, no Now line, no dotted marks and no START buttons.
+11. Start the run again. A step marked hands off with a time reads **START TIMER**; press it. **You should see:** the box reads **STARTED hh:mm** and, beside it, a countdown such as
+    **8:34 LEFT** that goes down each second. (A step with no time to count, such as "until done", has no countdown.)
+12. Let a short timer reach zero (start the shortest timed step, and watch the box). **You should see:** one chime and, on a device that can, one buzz; the box reads **TIME'S UP**; **DONE** pulses;
+    the Now line begins **Time's up:** and the step's name; and a message at the foot of the screen names it. **If you hear nothing:** check the tablet is not on silent and its volume is up,
+    then tell the next session; the buzz, the pulse and the words do not depend on sound.
+13. Leave it a minute. **You should see:** it does not ring again. Press **DONE**: the box is ticked and the pulsing stops.
+14. For a step given as a range (for example 10-13 minutes), start it. **You should see:** it counts down to the short end and then reads **CHECK IT**, not TIME'S UP.
+15. Turn on **COOKING MODE**, start a timer of a few minutes and leave the tablet alone. **You should see:** the screen stays on and it chimes on time. (Without cooking mode a tablet that
+    goes to sleep may chime late, when you wake it.)
 
-Not in this version: timers (a countdown and a chime). Tell the next session which step did not do what it said.
+Tell the next session which step did not do what it said. When you report the timers passed, the plan (`docs/PLAN-RUN-SHEET.md`) is closed and deleted in a docs-only PR.
 
 ## The converter bar
 

@@ -9823,6 +9823,142 @@ const check = (name, pass, detail) => {
   rsAll('none of it wrote anything', r => r.writes1 === r.writes0, r => [r.writes0, r.writes1]);
   /* RS-END */
 
+  /* OT-BEGIN */
+  /* ---- Timers (run sheet PR 4, 24 Oct 2026, docs/PLAN-RUN-SHEET.md §7) ----
+     A started step with a length counts down on its box; at zero (the SHORT end of a range) it chimes once, vibrates once, reads TIME'S UP or CHECK IT and DONE
+     pulses. The chime is Web Audio and the vibration navigator.vibrate: both are stubbed here to count calls. The page's clock is FIXTURE_NOW (09:00) moved with
+     setFixedTime, as in the START and DONE block. The dish: simmer 10 min (hands off), bake 10-13 min (hands off), boil until tender (open-ended), serve (instant). */
+  console.log('\nTimers');
+  const otRun = async (look, reduced) => {
+    const p = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+    p.__label = `timers ${look}${reduced ? ' reduced motion' : ''}`;
+    await p.addInitScript(l => {
+      try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {}
+      window.__chime = { made: 0, resumed: 0, starts: 0 }; window.__vib = [];
+      class FakeAudio {
+        constructor() { window.__chime.made++; this.state = 'suspended'; this.currentTime = 0; this.destination = {}; }
+        resume() { window.__chime.resumed++; this.state = 'running'; return Promise.resolve(); }
+        createOscillator() { return { type: '', frequency: { setValueAtTime() {} }, connect() {}, start() { window.__chime.starts++; }, stop() {} }; }
+        createGain() { return { gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} }; }
+      }
+      window.AudioContext = FakeAudio; window.webkitAudioContext = FakeAudio;
+      Object.defineProperty(navigator, 'vibrate', { value: pattern => { window.__vib.push(pattern); return true; }, configurable: true });
+    }, look);
+    if (reduced) await p.emulateMedia({ reducedMotion: 'reduce' });
+    const at = m => new Date(+FIXTURE_NOW + m * 60000);
+    await p.clock.setFixedTime(at(0));
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1200);
+    const out = {};
+    out.setup = await p.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const dish = (id, title, steps) => loadRecipes().push({ id, title, source: 'Test', servings: 2, tags: { course: 'Main', keywords: [] }, history: [],
+        syntax: `TITLE: ${title}\nSERVINGS: 2\n\nGROUP a:\n1 swede\n\n` + steps.map((st, i) => `STAGE:\nMERGE ${i ? 'o' + (i - 1) : 'a'} -> o${i}: ${st}`).join('\n\n') });
+      dish('ot-main', 'Test Timer Dish', ['Simmer the stock [10 min, hands off]', 'Bake until golden [10-13 min, hands off]', 'Boil until tender [until done]', 'Serve [instant]']);
+      dish('ot-side', 'Test Timer Side', ['Steam the greens [6 min, hands off]', 'Plate up [instant]']);
+      const day = isoLocal(new Date());
+      ['ot-main', 'ot-side'].forEach(id => addPlanRecipe(day, id)); createGroup(day, ['ot-main', 'ot-side']);
+      const drain = async () => { let t; do { t = writeQueue; await t; } while (t !== writeQueue); };
+      await drain();
+      window.__ot = { writes0: window.__WRITES__.length, keys0: Object.keys(localStorage).length, drain, wait };
+      window.__ots = (mountId, scope) => {
+        const root = document.getElementById(mountId), sc = scope ? root.querySelector(scope) : root;
+        const runs = [...sc.querySelectorAll('.box-cell')].filter(c => !c.classList.contains('passthrough')).map(c => { const r = c.querySelector('.box-run'); return r ? r.textContent.trim().replace(/\s+/g, ' ') : null; });
+        const strip = root.querySelector('.timeline-strip'), now = strip && strip.querySelector('[data-run-now]');
+        return { runs, nowLine: now ? now.textContent.trim().replace(/\s+/g, ' ') : null, chimes: window.__chime.starts, vibes: window.__vib.length, vibPattern: window.__vib[0] || null,
+          toast: (document.querySelector('.toast') || {}).textContent || '' };
+      };
+      window.__otb = (mountId, handle, recipe) => document.getElementById(mountId).querySelector((recipe ? `.stacked-recipe[data-recipe-id="${recipe}"] ` : '') + `.box-cell:not(.passthrough)[data-handle="${handle}"]`);
+      openRecipe('ot-main', 'recipes'); await wait(350);
+      const before = { made: window.__chime.made, resumed: window.__chime.resumed };
+      document.querySelector('#flowMount [data-cook-toggle]').click();
+      return { before, afterCook: { made: window.__chime.made, resumed: window.__chime.resumed }, ...__ots('flowMount') };
+    });
+    const step = async (min, fn) => { await p.clock.setFixedTime(at(min)); return p.evaluate(async ([src]) => { try { runClockTick(); return await (new Function('return ' + src))()(); } catch (e) { return { error: String(e.message || e) }; } }, [fn.toString()]); };
+    const looked = async () => {
+      const b = __otb('flowMount', 'o0').querySelector('[data-step-done]');
+      const left = __otb('flowMount', 'o0').querySelector('[data-timer-left]');
+      const cs = b ? getComputedStyle(b) : null;
+      return { ...__ots('flowMount'), due: !!b && b.classList.contains('due'), leftDue: !!left && left.classList.contains('due'), anim: cs && cs.animationName, bg: cs && cs.backgroundColor, border: cs && cs.borderTopColor };
+    };
+    out.labels = await step(0, async () => ({ ...__ots('flowMount') }));
+    out.started = await step(0, async () => { __otb('flowMount', 'o0').querySelector('[data-step-start]').click(); return { ...__ots('flowMount') }; });
+    out.mid = await step(5.5, looked);
+    out.near = await step(9 + 59 / 60, looked);
+    out.due = await step(10, looked);
+    out.later = await step(20, looked);
+    out.done = await step(21, async () => { __otb('flowMount', 'o0').querySelector('[data-step-done]').click(); return __ots('flowMount'); });
+    out.rangeStarted = await step(22, async () => { __otb('flowMount', 'o1').querySelector('[data-step-start]').click(); return __ots('flowMount'); });
+    out.rangeShort = await step(32, async () => ({ ...__ots('flowMount'), btn: __otb('flowMount', 'o1').querySelector('[data-step-done]').classList.contains('due') }));
+    out.rangeLong = await step(35, async () => __ots('flowMount'));
+    out.openStarted = await step(36, async () => { __otb('flowMount', 'o2').querySelector('[data-step-start]').click(); return { ...__ots('flowMount'), spans: __otb('flowMount', 'o2').querySelectorAll('[data-timer-left]').length }; });
+    out.openLate = await step(600, async () => ({ ...__ots('flowMount'), spans: __otb('flowMount', 'o2').querySelectorAll('[data-timer-left]').length }));
+    out.restart = await step(601, async () => { document.getElementById('resetTicksBtn').click(); return __ots('flowMount'); });
+    out.restarted = await step(602, async () => { __otb('flowMount', 'o0').querySelector('[data-step-start]').click(); return __ots('flowMount'); });
+    out.asleep = await step(660, async () => __ots('flowMount'));
+    await p.emulateMedia({ media: 'print' });
+    out.print = await p.evaluate(() => [...document.querySelectorAll('#flowMount .box-run')].map(e => getComputedStyle(e).display));
+    await p.emulateMedia({ media: 'screen' });
+    /* The Group Viewer: the message and the Now line name the dish. */
+    out.group = await step(0, async () => {
+      const gid = loadGroups().find(g => g.recipeIds.includes('ot-main')).id;
+      clearViewerTicks('ot-main'); clearViewerTicks('ot-side');
+      openGroup(gid, 'planner'); await __ot.wait(350);
+      document.querySelector('#groupFlowMount [data-cook-toggle]').click();
+      __otb('groupFlowMount', 'o0', 'ot-side').querySelector('[data-step-start]').click();
+      return __ots('groupFlowMount', '.stacked-recipe[data-recipe-id="ot-side"]');
+    });
+    out.groupDue = await step(6, async () => __ots('groupFlowMount', '.stacked-recipe[data-recipe-id="ot-side"]'));
+    out.end = await p.evaluate(async () => { await __ot.drain(); return { writes: window.__WRITES__.length - __ot.writes0, keys: Object.keys(localStorage).length - __ot.keys0 }; });
+    await p.close();
+    return out;
+  };
+  const ots = {};
+  for (const look of ['classic', 'modernist']) ots[look] = await otRun(look, false);
+  ots['classic reduced'] = await otRun('classic', true);
+  ots['modernist reduced'] = await otRun('modernist', true);
+  const otAll = (name, pass, detail) => {
+    const ok = k => { try { return pass(ots[k], k); } catch (e) { return false; } };
+    const bad = Object.keys(ots).filter(k => !ok(k));
+    check(name, bad.length === 0, bad.length ? 'fails at ' + bad.map(k => k + ': ' + JSON.stringify((() => { try { return detail(ots[k], k); } catch (e) { return ots[k]; } })())).join(' | ').slice(0, 900) : '');
+  };
+  otAll('a step that looks after itself and has a length reads START TIMER, one with none to count reads START, and the chime is made and unlocked in the tap that starts the cook, before any timer',
+        r => JSON.stringify(r.labels.runs) === '["START TIMER","START TIMER","START",""]' && r.setup.before.made === 0 && r.setup.afterCook.made === 1 && r.setup.afterCook.resumed === 1,
+        r => [r.labels.runs, r.setup.before, r.setup.afterCook]);
+  otAll('START TIMER starts it: STARTED 09:00 and 10:00 LEFT beside DONE, and nothing has rung',
+        r => r.started.runs[0] === 'STARTED 09:0010:00 LEFTDONE' && r.started.chimes === 0 && r.started.vibes === 0, r => [r.started.runs, r.started.chimes, r.started.vibes]);
+  otAll('the countdown follows the clock: 4:30 at 09:05:30 and 0:01 at 09:09:59, DONE not yet pulsing, and still nothing has rung',
+        r => r.mid.runs[0] === 'STARTED 09:004:30 LEFTDONE' && r.near.runs[0] === 'STARTED 09:000:01 LEFTDONE' && !r.mid.due && !r.near.due && !r.near.leftDue && r.near.chimes === 0 && r.near.vibes === 0,
+        r => [r.mid.runs, r.near.runs, r.near.due, r.near.chimes, r.near.vibes]);
+  otAll('at 09:10:00 it is up: the box reads TIME\'S UP, DONE and the words are marked due, one chime and one vibration, the Now line says which step, and a message names it',
+        r => r.due.runs[0] === 'STARTED 09:00TIME\'S UPDONE' && r.due.due && r.due.leftDue && r.due.chimes === 1 && r.due.vibes === 1 && Array.isArray(r.due.vibPattern) && r.due.vibPattern.length >= 3
+          && /^Time's up: Simmer the stock\. Now:/.test(r.due.nowLine) && r.due.toast === "Time's up: Simmer the stock",
+        r => [r.due.runs, r.due.due, r.due.chimes, r.due.vibes, r.due.vibPattern, r.due.nowLine, r.due.toast]);
+  otAll('it rings once: ten minutes later it is still up and nothing more has rung',
+        r => r.later.due && r.later.chimes === 1 && r.later.vibes === 1, r => [r.later.due, r.later.chimes, r.later.vibes]);
+  otAll('DONE pulses (the animation runs), and under reduced motion there is no animation and DONE is a solid colour instead',
+        (r, k) => /reduced/.test(k) ? (r.due.anim === 'none' && r.due.bg !== 'rgba(0, 0, 0, 0)' && r.due.bg === r.due.border) : (r.due.anim === 'timerDue' && r.due.bg === r.due.border),
+        (r, k) => [k, r.due.anim, r.due.bg, r.due.border]);
+  otAll('DONE is the tick: pressed, the box has no buttons, no TIME\'S UP in the Now line, and nothing rang again',
+        r => r.done.runs[0] === '' && !/Time's up/.test(r.done.nowLine || '') && r.done.chimes === 1 && r.done.vibes === 1, r => [r.done.runs, r.done.nowLine, r.done.chimes, r.done.vibes]);
+  otAll('a range counts down to its short end and says CHECK IT: [10-13 min] started at 09:22 reads 10:00 LEFT, and at 09:32 CHECK IT, rung once more; at 09:35, the long end, nothing more',
+        r => r.rangeStarted.runs[1] === 'STARTED 09:2210:00 LEFTDONE' && r.rangeShort.runs[1] === 'STARTED 09:22CHECK ITDONE' && r.rangeShort.btn && r.rangeShort.chimes === 2 && r.rangeShort.vibes === 2
+          && /^Check: Bake until golden\./.test(r.rangeShort.nowLine) && r.rangeShort.toast === 'Check: Bake until golden' && r.rangeLong.chimes === 2 && r.rangeLong.vibes === 2,
+        r => [r.rangeStarted.runs, r.rangeShort.runs, r.rangeShort.chimes, r.rangeShort.nowLine, r.rangeShort.toast, r.rangeLong.chimes]);
+  otAll('a step with no length to count (until done) can be started but has no countdown, and ten hours later nothing has rung for it',
+        r => r.openStarted.runs[2] === 'STARTED 09:36DONE' && r.openStarted.spans === 0 && r.openLate.spans === 0 && r.openLate.chimes === 2 && r.openLate.vibes === 2,
+        r => [r.openStarted.runs, r.openStarted.spans, r.openLate.chimes, r.openLate.vibes]);
+  otAll('a step started again rings again, and a tablet that was asleep for an hour rings once when it wakes, not once for each missed second',
+        r => r.restart.runs[0] === 'START TIMER' && r.restarted.runs[0] === 'STARTED 19:0210:00 LEFTDONE' && r.restarted.chimes === 2 && r.asleep.chimes === 3 && r.asleep.vibes === 3,
+        r => [r.restart.runs, r.restarted.runs, r.restarted.chimes, r.asleep.chimes, r.asleep.vibes]);
+  otAll('in the Group Viewer the message and the Now line name the dish, and the countdown is on that dish\'s own box',
+        r => r.group.runs[0] === 'STARTED 09:006:00 LEFTDONE' && r.groupDue.runs[0] === "STARTED 09:00TIME'S UPDONE" && r.groupDue.toast === "Time's up: Steam the greens (Test Timer Side)"
+          && /^Time's up: Steam the greens \(Test Timer Side\)\./.test(r.groupDue.nowLine),
+        r => [r.group.runs, r.groupDue.runs, r.groupDue.toast, r.groupDue.nowLine]);
+  otAll('the countdown is left out of print with the rest of the box, and none of it wrote anything or stored anything: no write reached the stub, no key reached localStorage',
+        r => r.print.length === 4 && r.print.every(d => d === 'none') && r.end.writes === 0 && r.end.keys === 0, r => [r.print, r.end]);
+  /* OT-END */
+
   /* RC-BEGIN */
   /* ---- The run sheet, running half (run sheet PR 3b-1, 24 Oct 2026, docs/PLAN-RUN-SHEET.md §4) ----
      START COOKING, the plan re-drawn from the ticks, the ready flag, the Now line and the playhead, in the single viewer and the Group Viewer, at a tablet
@@ -10041,23 +10177,23 @@ const check = (name, pass, detail) => {
     const bad = Object.keys(rds).filter(k => !ok(k));
     check(name, bad.length === 0, bad.length ? 'fails at ' + bad.map(k => k + ': ' + JSON.stringify((() => { try { return detail(rds[k]); } catch (e) { return rds[k]; } })())).join(' | ').slice(0, 900) : '');
   };
-  rdAll('a box has a START button only while the run is going: none before START COOKING, then one on each step of the plan (three here), each a 44px tap target, and none on the ticks of a recipe not being cooked',
-        r => r.before.holders === 0 && r.holders === 3 && JSON.stringify(r.cooking.runs) === '["START","START","START"]' && r.cookingHit === true && r.stopped.holders === 0 && r.stopped.startBtn === 0,
+  rdAll('a box has a START button only while the run is going: none before START COOKING, then one on each step of the plan (three here; START TIMER on the two that look after themselves), each a 44px tap target, and none on the ticks of a recipe not being cooked',
+        r => r.before.holders === 0 && r.holders === 3 && JSON.stringify(r.cooking.runs) === '["START","START TIMER","START TIMER"]' && r.cookingHit === true && r.stopped.holders === 0 && r.stopped.startBtn === 0,
         r => [r.before.holders, r.holders, r.cooking.runs, r.cookingHit, r.stopped]);
   rdAll('START records when the step was started and shows it with DONE, without ticking the box and without redrawing the flow table: at 09:06 the prep reads STARTED 09:06, the box is not done, and the Now line has it going with its 10 minutes left and the meal 2 minutes late',
-        r => r.started.runs[0] === 'STARTED 09:06DONE' && r.started.runs[1] === 'START' && r.started.done === 0 && r.started.ticked === 0 && r.started.keep === true
+        r => r.started.runs[0] === 'STARTED 09:0610:00 LEFTDONE' && r.started.runs[1] === 'START TIMER' && r.started.done === 0 && r.started.ticked === 0 && r.started.keep === true
           && r.started.nowLine === 'Now: Prep the roots, 10 min left. Your hands are busy until 09:16.' && r.started.status === 'Ready at 10:17, 2 min after 10:15',
         r => [r.started.runs, r.started.done, r.started.nowLine, r.started.status]);
   rdAll('DONE is the tick: pressed at 09:17 the prep is drawn from the start to the tick (YOUR HANDS counts 11 minutes), the box is done and has no buttons, the roast now starts and the meal reads Ready at 10:18, 3 minutes after 10:15',
-        r => r.done.runs[0] === '' && r.done.done === 1 && r.done.hands === 'YOUR HANDS · BUSY 11 min' && r.done.status === 'Ready at 10:18, 3 min after 10:15' && r.done.runs[1] === 'START' && r.done.keep === true,
+        r => r.done.runs[0] === '' && r.done.done === 1 && r.done.hands === 'YOUR HANDS · BUSY 11 min' && r.done.status === 'Ready at 10:18, 3 min after 10:15' && r.done.runs[1] === 'START TIMER' && r.done.keep === true,
         r => [r.done.runs, r.done.done, r.done.hands, r.done.status]);
   rdAll('a step can be started before what feeds it is done (the cook\'s word): the roast started at 09:19 reads STARTED, is running, and the meal is ready 5 minutes after EAT AT; un-ticking the prep puts it back as started and going',
-        r => r.roastStarted.runs[1] === 'STARTED 09:19DONE' && r.roastStarted.status === 'Ready at 10:20, 5 min after 10:15' && r.untick.runs[0] === 'STARTED 09:06DONE' && r.untick.done === 0 && r.untick.runs[1] === 'STARTED 09:19DONE',
+        r => r.roastStarted.runs[1] === 'STARTED 09:1950:00 LEFTDONE' && r.roastStarted.status === 'Ready at 10:20, 5 min after 10:15' && r.untick.runs[0] === "STARTED 09:06TIME'S UPDONE" && r.untick.done === 0 && r.untick.runs[1] === 'STARTED 09:1949:00 LEFTDONE',
         r => [r.roastStarted.runs, r.roastStarted.status, r.untick.runs, r.untick.done]);
-  rdAll('RESET TICKS clears the starts with the ticks (every box reads START again), and the buttons are left out of print',
-        r => JSON.stringify(r.reset.runs) === '["START","START","START"]' && r.reset.done === 0 && r.print.length === 3 && r.print.every(d => d === 'none'), r => [r.reset.runs, r.reset.done, r.print]);
+  rdAll('RESET TICKS clears the starts with the ticks (every box reads START, or START TIMER, again), and the buttons are left out of print',
+        r => JSON.stringify(r.reset.runs) === '["START","START TIMER","START TIMER"]' && r.reset.done === 0 && r.print.length === 3 && r.print.every(d => d === 'none'), r => [r.reset.runs, r.reset.done, r.print]);
   rdAll('in the Group Viewer a start belongs to its own dish: the other dish\'s boxes stay at START, the step with no length ([instant]) has no button, the dish\'s heading reads the new ready time, the flow table is not redrawn, and every button is a 44px tap target',
-        r => JSON.stringify(r.group.cooking.runs) === '["START","START",""]' && r.group.hit === true && r.groupStarted.main.runs[0] === 'STARTED 09:06DONE' && JSON.stringify(r.groupStarted.side.runs) === '["START","START",""]'
+        r => JSON.stringify(r.group.cooking.runs) === '["START TIMER","START",""]' && r.group.hit === true && r.groupStarted.main.runs[0] === 'STARTED 09:0610:00 LEFTDONE' && JSON.stringify(r.groupStarted.side.runs) === '["START TIMER","START",""]'
           && r.groupStarted.keep === true && /READY AT 10:17$/.test(r.groupStarted.main.heads[0]) && r.groupStarted.main.done === 0,
         r => [r.group.cooking.runs, r.group.hit, r.groupStarted.main.runs, r.groupStarted.side.runs, r.groupStarted.main.heads, r.groupStarted.keep]);
   rdAll('none of it wrote anything, and nothing was stored: no write reached the stub, no key reached localStorage',

@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-24.2';
+const KITCHEN_CORE_VERSION = '2026-10-24.3';
 
 
 /* ======================= quantity split ======================= */
@@ -1100,6 +1100,27 @@ function runStatus(proj, now){
     freeFor: !busyNow.length && next ? next.start - now : null,
     next: next ? { dish: next.dish, label: next.label, at: next.start } : null,
   };
+}
+
+/* TIMERS (run sheet PR 4, 24 Oct 2026): what a started step's timer says at `now`, from the step (a projectRun step: started, startedAt, duration,
+   state). Counted from the minute START was pressed and the clock, never by adding up ticks, so a tab that was asleep is right on waking; calling
+   it twice, or in any order, gives the same answer. The timer runs to the SHORT end of a range ("10-13 min" is due at 10): an early look costs a
+   glance, a late one costs the dish (decided 24 Oct). Null where there is nothing to count: not started, done, instant, or open-ended (until done,
+   overnight). `now` is a time on the clock in minutes since midnight, so a start more than 12 hours ahead of it means midnight has passed. */
+function stepTimer(st, now){
+  if(!st || !st.started || st.state === 'done' || typeof st.startedAt !== 'number') return null;
+  const d = st.duration;
+  if(!d || d.instant || d.openEnded || !(d.min > 0)) return null;
+  const n = st.startedAt - now > 720 ? now + 1440 : now;
+  const left = st.startedAt + d.min - n;
+  return { left: Math.max(0, left), due: left <= 1e-9, range: d.max > d.min + 1e-9, dueAt: st.startedAt + d.min };
+}
+/* A countdown as a cook reads it: 8:34, or 1:05:00 from an hour up. Whole seconds, rounded UP so it never reads 0:00 before it is due. */
+function formatCountdown(minutes){
+  const total = Math.max(0, Math.ceil(minutes * 60 - 1e-6));
+  const h = Math.floor(total / 3600), m = Math.floor(total % 3600 / 60), s = total % 60;
+  const two = n=> String(n).padStart(2, '0');
+  return h ? `${h}:${two(m)}:${two(s)}` : `${m}:${two(s)}`;
 }
 
 /* The oven a recipe asks for, read from its preheat line (the STEPS section, where the converter writes "Preheat the oven to 195°C
@@ -2770,7 +2791,7 @@ if(typeof module !== 'undefined' && module.exports){
     KITCHEN_CORE_VERSION, INGREDIENT_AISLES, INGREDIENT_DICTIONARY,
     splitQty, parseTags, extractStepDuration, parseRecipe,
     withUpdatedHeaderLine, withUpdatedHeaderLines, changedHeaderKeys, splitTimeText, tagsToLine, withUpdatedTitleLine, withUpdatedImageLine,
-    scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, lineUpTimelines, formatClock, defaultServeAt, planToServe, needsHands, handsWindows, projectRun, runStatus, preheatOf, ovenUse, servingCalls, matchSides, groupedWith, formatMinutesForDisplay, formatDuration,
+    scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, lineUpTimelines, formatClock, defaultServeAt, planToServe, needsHands, handsWindows, projectRun, runStatus, stepTimer, formatCountdown, preheatOf, ovenUse, servingCalls, matchSides, groupedWith, formatMinutesForDisplay, formatDuration,
     parseFraction, normalizeUnit, toBaseUnit, formatShoppingQty, parseIngredientAmount,
     formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,

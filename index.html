@@ -677,6 +677,12 @@ function loadArchivoFont(){
   .box-run:empty{ display:none; }
   .box-run .box-run-btn{ min-height:44px; padding:6px 14px; font-size:14px; }
   .box-run-at{ font-size:13px; font-weight:500; letter-spacing:.04em; color:var(--ink-soft); }
+  /* The timer (run sheet PR 4): the countdown, then TIME'S UP / CHECK IT; DONE pulses once due, and under reduced motion is a solid colour instead. */
+  .box-run-left{ font-size:13px; font-weight:700; letter-spacing:.04em; font-variant-numeric:tabular-nums; color:var(--plum); }
+  .box-run-left.due{ text-transform:uppercase; }
+  .box-run .box-run-btn.due{ --due-ring:var(--plum); background:var(--plum); border-color:var(--plum); color:#fff; animation:timerDue 1.1s ease-in-out infinite; }
+  @keyframes timerDue{ 0%, 100%{ box-shadow:0 0 0 0 var(--due-ring); } 50%{ box-shadow:0 0 0 8px transparent; } }
+  @media (prefers-reduced-motion: reduce){ .box-run .box-run-btn.due{ animation:none; } }
   .timeline-playhead{ position:absolute; top:0; bottom:0; width:2px; margin-left:-1px; background:var(--danger); pointer-events:none; z-index:6; }
   .planned-mark{ position:absolute; top:2px; height:16px; width:0; border-left:2px dotted var(--ink-faint); pointer-events:none; }
   .timeline-mode-note{ margin:0 0 10px; font-size:14px; line-height:1.5; color:var(--ink-soft); }
@@ -1838,7 +1844,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-24.4">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-24.5">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2551,7 +2557,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-24.2"></script>
+<script src="core.js?v=2026-10-24.3"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2559,12 +2565,12 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-24.2';
+const EXPECTED_CORE_VERSION = '2026-10-24.3';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-24.4';
+const APP_VERSION = '2026-10-24.5';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -2889,7 +2895,10 @@ function nowLineText(run){
   const trim = l=> l.length > 40 ? l.slice(0, 38) + '…' : l;
   const name = i=> run.single ? '' : ` (${run.items[i].title})`;
   const going = s.going.slice(0, 3).map(g=> `${trim(g.label)}${name(g.dish)}, ${g.left >= 1 ? formatMinutesForDisplay(Math.ceil(g.left)) + ' left' : 'due now'}`);
-  let text = going.length ? `Now: ${going.join('; ')}.` : 'Now: nothing is running.';
+  /* A started step whose timer is due is said first, until it is done (run sheet PR 4). */
+  const up = run.plan.steps.map(st=> [st, stepTimer(st, run.now)]).filter(([, t])=> t && t.due).slice(0, 2)
+    .map(([st, t])=> `${t.range ? 'Check' : "Time's up"}: ${trim(st.label)}${name(st.dish)}.`).join(' ');
+  let text = (up ? up + ' ' : '') + (going.length ? `Now: ${going.join('; ')}.` : 'Now: nothing is running.');
   if(s.handsBusy) text += ` Your hands are busy until ${formatClock(s.busyUntil)}.`;
   else if(s.freeFor !== null && s.freeFor >= 1) text += ` Hands free for ${formatMinutesForDisplay(Math.round(s.freeFor))}, then: ${trim(s.next.label)}${name(s.next.dish)} at ${formatClock(s.next.at)}.`;
   else if(s.next) text += ` Next for your hands: ${trim(s.next.label)}${name(s.next.dish)} at ${formatClock(s.next.at)}.`;
@@ -2966,6 +2975,7 @@ function wireEatAt(root, rerender, cookId){
      as it is at this moment); boxes already ticked count as done now. STOP COOKING puts the plan back as it was. */
   const cook = bar.querySelector('[data-cook-toggle]');
   if(cook) cook.addEventListener('click', ()=>{
+    unlockChime();
     if(state.cook.startedAt !== null){ state.cook = { key: state.cook.key, startedAt: null, marks: {}, starts: {} }; rerender(); return; }
     const now = nowMinutes();
     if(state.eatAt.mins === null) state.eatAt.mins = defaultServeAt(now, parseFloat(bar.dataset.span) || 0);
@@ -2996,9 +3006,13 @@ function runBoxSteps(run, dish){
 }
 function boxRunHTML(st){
   if(!st || st.state === 'done' || (st.duration && st.duration.instant)) return '';
+  /* A started step with a length counts down (run sheet PR 4). The countdown is a span the clock rewrites in place every second (paintBoxTimers), so the words
+     here never change from second to second and a tap on DONE is never lost to a redraw. A step that looks after itself is the one the cook sets and walks
+     away from, so its button says what it is: START TIMER. */
+  const timed = !!st.duration && !st.duration.openEnded && st.duration.min > 0;
   return st.started
-    ? `<span class="box-run-at">STARTED ${formatClock(st.startedAt)}</span><button type="button" class="btn box-run-btn" data-step-done>DONE</button>`
-    : `<button type="button" class="btn box-run-btn" data-step-start>START</button>`;
+    ? `<span class="box-run-at">STARTED ${formatClock(st.startedAt)}</span>${timed ? '<span class="box-run-left" data-timer-left role="timer"></span>' : ''}<button type="button" class="btn box-run-btn" data-step-done>DONE</button>`
+    : `<button type="button" class="btn box-run-btn" data-step-start>${timed && st.handsOff ? 'START TIMER' : 'START'}</button>`;
 }
 function boxRunHolder(live, box){
   if(!live || box.passthrough || box.prep || !box.outputHandle || !live[box.outputHandle]) return '';
@@ -3010,6 +3024,70 @@ function updateBoxRun(scope, run, dish){
   scope.querySelectorAll('.box-cell .box-run').forEach(el=>{
     const cell = el.closest('.box-cell'), html = by ? boxRunHTML(by[cell.dataset.handle]) : '';
     if(el.innerHTML !== html) el.innerHTML = html;
+  });
+  paintBoxTimers(scope, run, dish);
+}
+/* TIMERS (run sheet PR 4, 24 Oct 2026). What each started step with a length says, from the clock each time (stepTimer, core.js): the time left, then
+   TIME'S UP, or CHECK IT where the step was a range and this is its short end (decided 24 Oct). DONE pulses once it is due, and under reduced motion shows a
+   solid colour instead (the signal stays, the movement goes). Written in place: the holder's own words are never touched. */
+function timerWords(t){ return t.due ? (t.range ? 'CHECK IT' : "TIME'S UP") : `${formatCountdown(t.left)} LEFT`; }
+function paintBoxTimers(scope, run, dish){
+  const by = runBoxSteps(run, dish);
+  scope.querySelectorAll('.box-cell .box-run').forEach(el=>{
+    const st = by && by[el.closest('.box-cell').dataset.handle], t = st ? stepTimer(st, run.now) : null;
+    const left = el.querySelector('[data-timer-left]'), done = el.querySelector('[data-step-done]');
+    if(left){ const words = t ? timerWords(t) : ''; if(left.textContent !== words) left.textContent = words; left.classList.toggle('due', !!(t && t.due)); }
+    if(done) done.classList.toggle('due', !!(t && t.due));
+  });
+}
+function paintAllTimers(mount, run){
+  if(!run.cooking) return;
+  run.items.forEach((it, i)=>{
+    const scope = run.single ? mount : mount.querySelector(`.stacked-recipe[data-recipe-id="${CSS.escape(it.id)}"]`);
+    if(scope) paintBoxTimers(scope, run, i);
+  });
+}
+/* The chime is Web Audio (no file, no library), made and resumed in the tap that starts a step or the cook: a browser will not play a sound that no tap
+   has asked for. If it is still locked when a timer is due the sound is lost and the vibration, the pulse and the words are not. One oscillator, so
+   one chime is one start; it is two rising notes, three times. */
+let chimeCtx = null;
+function unlockChime(){
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    if(!chimeCtx) chimeCtx = new AC();
+    if(chimeCtx.state === 'suspended' && chimeCtx.resume) chimeCtx.resume();
+  } catch(e){}
+}
+function playChime(){
+  try {
+    unlockChime();
+    const c = chimeCtx;
+    if(!c) return;
+    const t0 = c.currentTime, osc = c.createOscillator(), gain = c.createGain();
+    osc.type = 'sine';
+    [0, 0.5, 1].forEach(at=>{
+      osc.frequency.setValueAtTime(880, t0 + at); osc.frequency.setValueAtTime(1175, t0 + at + 0.22);
+      gain.gain.setValueAtTime(0.0001, t0 + at); gain.gain.exponentialRampToValueAtTime(0.35, t0 + at + 0.03); gain.gain.exponentialRampToValueAtTime(0.0001, t0 + at + 0.44);
+    });
+    osc.connect(gain); gain.connect(c.destination);
+    osc.start(t0); osc.stop(t0 + 1.6);
+  } catch(e){}
+}
+/* A timer rings once for each start of each step (the key has the minute it was started, so a step started again rings again). Nothing is stored: the set
+   is this tab's, like the run. Looked at by the clock every second while the recipe or group is open; a tab asleep rings when it wakes. */
+const rungTimers = new Set();
+function ringDueTimers(run){
+  if(!run.cooking) return;
+  run.plan.steps.forEach(st=>{
+    const t = stepTimer(st, run.now);
+    if(!t || !t.due) return;
+    const id = `${run.key}|${st.dish}|${st.output}|${st.startedAt}`;
+    if(rungTimers.has(id)) return;
+    rungTimers.add(id);
+    playChime();
+    try { if(navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400]); } catch(e){}
+    showToast(`${t.range ? 'Check' : "Time's up"}: ${st.label}${run.single ? '' : ` (${run.items[st.dish].title})`}`);
   });
 }
 /* START pressed on a step while cooking: the time it was started, so the plan can be re-drawn from it. True when something was recorded. */
@@ -3059,7 +3137,9 @@ function runClockTick(){
   const strip = ui.mount.querySelector('.timeline-strip');
   if(!strip) return;
   const run = buildRun(...ui.args);
+  ringDueTimers(run);
   if(runSignature(run) !== ui.sig){ refreshRunStrip(); return; }
+  paintAllTimers(ui.mount, run);
   const head = strip.querySelector('.timeline-playhead');
   if(head && run.span > 0) head.style.left = `${(run.now - run.axisStart) / run.span * 100}%`;
   const now = strip.querySelector('[data-run-now]'), text = nowLineText(run);
@@ -3551,6 +3631,7 @@ function mountFlow(container, parsed, opts){
     const b = e.target.closest('[data-step-start]');
     if(!b) return;
     e.stopPropagation();
+    unlockChime();
     const cell = b.closest('.box-cell');
     if(cell) opts.onStart(cell.dataset.handle);
   }, true);

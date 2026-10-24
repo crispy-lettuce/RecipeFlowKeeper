@@ -184,6 +184,13 @@
     <i>STARTED 09:14</i> and has a <b class="ui">DONE</b> button, which does what tapping the box does. A step you started is drawn from when you started it,
     so the plan, your hands and the ready time follow what you actually did, and a step can be started before the one that feeds it is done. A step with no
     length (an instant one) has no button, and a step already ticked has none either. Un-ticking a step you started puts it back as started.</p>
+  <p id="timers">A step with a time that looks after itself says <b class="ui">START TIMER</b> instead. Once you have started a step that has a time it counts
+    down on its box: <i>STARTED 09:14 · 8:34 LEFT</i>. At zero the tablet chimes once and vibrates where it can, the box reads <i>TIME'S UP</i>,
+    <b class="ui">DONE</b> pulses (it turns solid if your device is set to reduce motion), the Now line says which step it is, and a message names it. A step given as a
+    range, such as 10-13 minutes, counts down to the <i>short</i> end and then reads <i>CHECK IT</i>, so you look early rather than late; it stays until you press
+    <b class="ui">DONE</b>. A step with no time to count (until done, overnight) has no countdown. The countdown is worked out from the clock, so a tablet that was asleep is right
+    when it wakes, but it chimes only while that recipe or group is open on the screen, and a screen that has gone to sleep may chime late: <b class="ui">COOKING MODE</b> keeps
+    it on. Nothing is saved.</p>
   <h3>Also on the recipe page</h3>
   <ul>
     <li><b class="ui">⇄ SUBSTITUTION RECOMMENDATIONS</b> lists your swaps that apply, with amounts worked out.</li>

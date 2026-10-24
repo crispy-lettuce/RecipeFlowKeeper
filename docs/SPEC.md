@@ -142,6 +142,12 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
   what feeds it (the cook's word); once ticked it is drawn from the start to the tick; un-ticking it puts it back as running; RESET TICKS and STOP COOKING clear
   the starts. The buttons are left out of print and PNG. A run belongs to the recipe or group open (opening
   another ends it) and lasts until reload.
+  **Timers** (24 Oct 2026): a started step with a fixed length counts down on its box (`STARTED 09:14 · 8:34 LEFT`), from the minute START was pressed and the
+  clock (`stepTimer`, core.js; never by adding up ticks, so a tab that was asleep is right on waking). A step that looks after itself and has a length reads
+  START TIMER instead of START. At zero, once for each start of each step: one Web Audio chime (made and resumed in the START or START COOKING tap), one vibration where
+  the device has it, the box reads TIME'S UP, DONE pulses (a solid colour under reduced motion), the Now line begins `Time's up: <step>.` and a message names the step
+  (and the dish, in a group). A range is due at its **short** end and reads CHECK IT, DONE staying until pressed. A step with no length to count (until done,
+  overnight) has no countdown. Rung while the recipe or group is open on screen; nothing is stored or written; no sound setting.
 - **COOK FOR** rescales for this time only (2, 4, 6, 8 or any number); nothing is saved. Tin sizes never scale. Liquids change unit
   as they scale (teaspoons under 15 ml, tablespoons under 50 ml, ml from 50 ml); weighed liquids stay in grams.
 - **COOKING MODE** keeps the screen awake, hides what is not needed at the hob and folds the sidebar. **SHOW TIMELINE** brings the

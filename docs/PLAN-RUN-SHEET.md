@@ -139,7 +139,7 @@ PR 2    the marker: parser, converter, display                 core.js and conve
 DATA    hands-off pass over the library                        CLAUDE.md's recipe-text procedure, household present
 PR 3a   EAT AT, clock ruler, hands row, AVOID THE CLASH, ovens   (split from PR 3 on 23 Oct)
 PR 3b   START COOKING, ticks and starts driving the times, re-planning, the Now line   (split on 24 Oct: 3b-1 the live plan, built; 3b-2 START and DONE on each box)
-PR 4    timers
+PR 4    timers                                                 built 24 Oct; waits for the household's merge and the tablet check
 ```
 
 PR 2 must be **merged and every device reloaded before the data job writes a single bracket**: a copy of the app from before
