@@ -163,8 +163,10 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
   **UPLOAD PHOTO** gives the card a picture from the device. A web photo is copied into our own storage on save.
 - **ADD SEVERAL** takes a whole converted batch in one file or message: each is ticked, held back (no source, servings or steps),
   or flagged as a likely duplicate; only new recipes are added, never changes to existing ones.
-- Reviewing as you add: a section shows ingredient names new to the library, the aisle each will land in, near matches already in
-  the library, and a duplicate check on the source link.
+- Reviewing as you add or edit: a section shows ingredient names new to the library, the aisle each will land in, near matches already in
+  the library, and a duplicate check on the source link. A name that lands in Other gets an aisle pick, whether it is new or already in
+  the library (a recipe opened to edit is left out of the library, so a name another recipe also uses counts as known): the pick is
+  saved at once with UNDO. Known names that are placed stay a count. (Issue #203, 24 Oct 2026.)
 
 ### 5.4 Cooking several dishes together
 On the Planner, **GROUP SOME TOGETHER** → **GROUP SELECTED** makes dishes of one day a group, opened as one **Group Viewer**: a
