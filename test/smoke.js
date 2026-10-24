@@ -9962,6 +9962,108 @@ const check = (name, pass, detail) => {
         r => r.end.writes === 0 && r.end.keys === 0 && r.end.stored.length === 0, r => [r.end]);
   /* RC-END */
 
+  /* RD-BEGIN */
+  /* ---- The run sheet, START and DONE on a box (run sheet PR 3b-2, 24 Oct 2026, docs/PLAN-RUN-SHEET.md §4) ----
+     While the run is going each box that is a step of the plan has a START button; once pressed it reads STARTED hh:mm and has DONE (the tick); nothing once done.
+     The page's clock is FIXTURE_NOW (09:00) moved with setFixedTime. The roast dish (71 minutes): prep 09:04 to 09:14, roast to 10:04, rest to 10:15; EAT AT 10:15. */
+  console.log('\nThe run sheet, START and DONE');
+  const rdRun = async (look, w) => {
+    const p = await browser.newPage({ viewport: { width: w, height: 1000 } });
+    p.__label = `start and done ${look} ${w}`;
+    await p.addInitScript(l => { try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
+    const at = m => new Date(+FIXTURE_NOW + m * 60000);
+    await p.clock.setFixedTime(at(0));
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1200);
+    const out = await p.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const dish = (id, title, pre, steps, course) => loadRecipes().push({ id, title, source: 'Test', servings: 2, tags: { course: course || 'Main', keywords: [] }, history: [],
+        syntax: `TITLE: ${title}\nSERVINGS: 2\n${pre}\nGROUP a:\n1 swede\n\n` + steps.map((st, i) => `STAGE:\nMERGE ${i ? 'o' + (i - 1) : 'a'} -> o${i}: ${st}`).join('\n\n') });
+      dish('rd-main', 'Test Start Roast', '', ['Prep the roots [10 min]', 'Roast the roots [50 min, hands off]', 'Rest [11 min, hands off]']);
+      dish('rd-side', 'Test Start Side', '', ['Boil [20 min, hands off]', 'Mash [6 min]', 'Plate up [instant]'], 'Side');
+      const day = isoLocal(new Date());
+      ['rd-main', 'rd-side'].forEach(id => addPlanRecipe(day, id)); createGroup(day, ['rd-main', 'rd-side']);
+      const drain = async () => { let t; do { t = writeQueue; await t; } while (t !== writeQueue); };
+      await drain();
+      window.__rd = { writes0: window.__WRITES__.length, keys0: Object.keys(localStorage).length, drain, wait };
+      window.__snap = (mountId, scope) => {
+        const root = document.getElementById(mountId), st = root.querySelector('.timeline-strip'), sc = scope ? root.querySelector(scope) : root;
+        const t = sel => { const e = st.querySelector(sel); return e ? e.textContent.trim().replace(/\s+/g, ' ') : null; };
+        const runs = [...sc.querySelectorAll('.box-cell')].filter(c => !c.classList.contains('passthrough')).map(c => { const r = c.querySelector('.box-run'); return r ? r.textContent.trim().replace(/\s+/g, ' ') : null; });
+        return { status: t('[data-run-status]'), nowLine: t('[data-run-now]'), hands: [...st.querySelectorAll('.timeline-row-name')].map(e => e.textContent.trim()).find(x => /^YOUR HANDS/.test(x)) || null,
+          runs, done: sc.querySelectorAll('.box-cell.done').length, ticked: st.querySelectorAll('.timeline-lane-abs.ticked').length, firstTick: t('.timeline-tick'),
+          heads: [...root.querySelectorAll('.stacked-recipe-start')].map(e => e.textContent.trim()), boxAt: [...sc.querySelectorAll('.box-cell .step-at')].map(e => e.textContent.trim()) };
+      };
+      window.__box = (mountId, handle, recipe) => document.getElementById(mountId).querySelector((recipe ? `.stacked-recipe[data-recipe-id="${recipe}"] ` : '') + `.box-cell:not(.passthrough)[data-handle="${handle}"]`);
+      /* A tap 21px above and below a button's middle lands on it: 44px of hit area (Modernist draws the button shorter and adds the rest around it). */
+      window.__hit = mountId => [...document.getElementById(mountId).querySelectorAll('.box-run-btn')].every(b => { b.scrollIntoView({ block: 'center' }); const r = b.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        return [-21, 21].every(dy => { const e = document.elementFromPoint(cx, cy + dy); return e && e.closest('button') === b; }); });
+      const res = {};
+      openRecipe('rd-main', 'recipes'); await wait(350);
+      res.before = { holders: document.querySelectorAll('#flowMount .box-run').length };
+      document.querySelector('#flowMount [data-cook-toggle]').click();
+      res.cooking = __snap('flowMount'); res.cookingHit = __hit('flowMount'); res.holders = document.querySelectorAll('#flowMount .box-run').length;
+      __box('flowMount', 'o0').__keep = 1;
+      return res;
+    });
+    const step = async (min, fn) => { await p.clock.setFixedTime(at(min)); return p.evaluate(async ([src]) => { try { runClockTick(); return await (new Function('return ' + src))()(); } catch (e) { return { error: String(e.message || e) }; } }, [fn.toString()]); };
+    out.started = await step(6, async () => { __box('flowMount', 'o0').querySelector('[data-step-start]').click(); return { ...__snap('flowMount'), keep: __box('flowMount', 'o0').__keep === 1 }; });
+    out.done = await step(17, async () => { __box('flowMount', 'o0').querySelector('[data-step-done]').click(); return { ...__snap('flowMount'), keep: __box('flowMount', 'o0').__keep === 1 }; });
+    out.roastStarted = await step(19, async () => { __box('flowMount', 'o1').querySelector('[data-step-start]').click(); return __snap('flowMount'); });
+    out.untick = await step(20, async () => { __box('flowMount', 'o0').click(); return __snap('flowMount'); });
+    await p.emulateMedia({ media: 'print' });
+    out.print = await p.evaluate(() => [...document.querySelectorAll('#flowMount .box-run')].map(e => getComputedStyle(e).display));
+    await p.emulateMedia({ media: 'screen' });
+    out.reset = await step(21, async () => { document.getElementById('resetTicksBtn').click(); return __snap('flowMount'); });
+    out.stopped = await step(22, async () => { document.querySelector('#flowMount [data-cook-toggle]').click(); return { holders: document.querySelectorAll('#flowMount .box-run').length, startBtn: document.querySelectorAll('#flowMount [data-step-start]').length }; });
+    /* The Group Viewer: a start in one dish, the other left alone; an [instant] step has no button. */
+    out.group = await step(0, async () => {
+      const wait = __rd.wait, gid = loadGroups().find(g => g.recipeIds.includes('rd-main')).id;
+      clearViewerTicks('rd-main'); clearViewerTicks('rd-side');
+      openGroup(gid, 'planner'); await wait(350);
+      document.querySelector('#groupFlowMount [data-cook-toggle]').click();
+      const res = { cooking: __snap('groupFlowMount', '.stacked-recipe[data-recipe-id="rd-side"]'), hit: __hit('groupFlowMount') };
+      __box('groupFlowMount', 'o0', 'rd-main').__keep = 1;
+      return res;
+    });
+    out.groupStarted = await step(6, async () => {
+      __box('groupFlowMount', 'o0', 'rd-main').querySelector('[data-step-start]').click();
+      return { main: __snap('groupFlowMount', '.stacked-recipe[data-recipe-id="rd-main"]'), side: __snap('groupFlowMount', '.stacked-recipe[data-recipe-id="rd-side"]'), keep: __box('groupFlowMount', 'o0', 'rd-main').__keep === 1 };
+    });
+    out.end = await p.evaluate(async () => { await __rd.drain(); return { writes: window.__WRITES__.length - __rd.writes0, keys: Object.keys(localStorage).length - __rd.keys0 }; });
+    await p.close();
+    return out;
+  };
+  const rds = {};
+  for (const look of ['classic', 'modernist']) for (const w of [1280, 412]) rds[`${look} ${w}`] = await rdRun(look, w);
+  const rdAll = (name, pass, detail) => {
+    const ok = k => { try { return pass(rds[k], k); } catch (e) { return false; } };
+    const bad = Object.keys(rds).filter(k => !ok(k));
+    check(name, bad.length === 0, bad.length ? 'fails at ' + bad.map(k => k + ': ' + JSON.stringify((() => { try { return detail(rds[k]); } catch (e) { return rds[k]; } })())).join(' | ').slice(0, 900) : '');
+  };
+  rdAll('a box has a START button only while the run is going: none before START COOKING, then one on each step of the plan (three here), each a 44px tap target, and none on the ticks of a recipe not being cooked',
+        r => r.before.holders === 0 && r.holders === 3 && JSON.stringify(r.cooking.runs) === '["START","START","START"]' && r.cookingHit === true && r.stopped.holders === 0 && r.stopped.startBtn === 0,
+        r => [r.before.holders, r.holders, r.cooking.runs, r.cookingHit, r.stopped]);
+  rdAll('START records when the step was started and shows it with DONE, without ticking the box and without redrawing the flow table: at 09:06 the prep reads STARTED 09:06, the box is not done, and the Now line has it going with its 10 minutes left and the meal 2 minutes late',
+        r => r.started.runs[0] === 'STARTED 09:06DONE' && r.started.runs[1] === 'START' && r.started.done === 0 && r.started.ticked === 0 && r.started.keep === true
+          && r.started.nowLine === 'Now: Prep the roots, 10 min left. Your hands are busy until 09:16.' && r.started.status === 'Ready at 10:17, 2 min after 10:15',
+        r => [r.started.runs, r.started.done, r.started.nowLine, r.started.status]);
+  rdAll('DONE is the tick: pressed at 09:17 the prep is drawn from the start to the tick (YOUR HANDS counts 11 minutes), the box is done and has no buttons, the roast now starts and the meal reads Ready at 10:18, 3 minutes after 10:15',
+        r => r.done.runs[0] === '' && r.done.done === 1 && r.done.hands === 'YOUR HANDS · BUSY 11 min' && r.done.status === 'Ready at 10:18, 3 min after 10:15' && r.done.runs[1] === 'START' && r.done.keep === true,
+        r => [r.done.runs, r.done.done, r.done.hands, r.done.status]);
+  rdAll('a step can be started before what feeds it is done (the cook\'s word): the roast started at 09:19 reads STARTED, is running, and the meal is ready 5 minutes after EAT AT; un-ticking the prep puts it back as started and going',
+        r => r.roastStarted.runs[1] === 'STARTED 09:19DONE' && r.roastStarted.status === 'Ready at 10:20, 5 min after 10:15' && r.untick.runs[0] === 'STARTED 09:06DONE' && r.untick.done === 0 && r.untick.runs[1] === 'STARTED 09:19DONE',
+        r => [r.roastStarted.runs, r.roastStarted.status, r.untick.runs, r.untick.done]);
+  rdAll('RESET TICKS clears the starts with the ticks (every box reads START again), and the buttons are left out of print',
+        r => JSON.stringify(r.reset.runs) === '["START","START","START"]' && r.reset.done === 0 && r.print.length === 3 && r.print.every(d => d === 'none'), r => [r.reset.runs, r.reset.done, r.print]);
+  rdAll('in the Group Viewer a start belongs to its own dish: the other dish\'s boxes stay at START, the step with no length ([instant]) has no button, the dish\'s heading reads the new ready time, the flow table is not redrawn, and every button is a 44px tap target',
+        r => JSON.stringify(r.group.cooking.runs) === '["START","START",""]' && r.group.hit === true && r.groupStarted.main.runs[0] === 'STARTED 09:06DONE' && JSON.stringify(r.groupStarted.side.runs) === '["START","START",""]'
+          && r.groupStarted.keep === true && /READY AT 10:17$/.test(r.groupStarted.main.heads[0]) && r.groupStarted.main.done === 0,
+        r => [r.group.cooking.runs, r.group.hit, r.groupStarted.main.runs, r.groupStarted.side.runs, r.groupStarted.main.heads, r.groupStarted.keep]);
+  rdAll('none of it wrote anything, and nothing was stored: no write reached the stub, no key reached localStorage',
+        r => r.end.writes === 0 && r.end.keys === 0, r => [r.end]);
+  /* RD-END */
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:

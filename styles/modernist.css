@@ -635,6 +635,8 @@ html[data-style="modernist"] .timeline-run-status{ font-size:16px; font-weight:8
 html[data-style="modernist"] .timeline-now{ font-size:13px; font-weight:600; color:var(--color-text); }
 html[data-style="modernist"] .timeline-playhead{ background:var(--color-accent); }
 html[data-style="modernist"] .planned-mark{ border-left-color:var(--color-text); }
+/* START and DONE on a box while cooking. */
+html[data-style="modernist"] .box-run-at{ font-size:12px; font-weight:800; letter-spacing:.08em; color:var(--color-text); }
 html[data-style="modernist"] .step-at{ font-size:12px; font-weight:800; letter-spacing:.08em; opacity:1; }
 html[data-style="modernist"] .hands-busy{ background:var(--color-text); }
 html[data-style="modernist"] :is(.hands-free, .oven-use) span{ font-size:12px; font-weight:600; color:var(--color-text); }

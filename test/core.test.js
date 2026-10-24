@@ -1642,6 +1642,28 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
   const moment = core.projectRun(core.planToServe([tlOf(['Prep [10 min]', 'Plate up [instant]'])], EAT), mk([0, 'o0', T(18, 30), true]), T(18, 40));
   check('a step with no length that has not been ticked is a moment still to come: it is placed at now and never in the past, so the meal is ready when the cook gets to it',
         span(moment, 0, 1) === '18:40-18:40 waiting' && clk(moment.readyAt) === '18:40' && Math.round(moment.lateBy) === 10);
+  /* START pressed on a step (3b-2): { [dish]: { [handle]: at } } as the fourth argument. */
+  const sk = (...rows) => { const o = {}; rows.forEach(([d, h, at]) => { (o[d] = o[d] || {})[h] = at; }); return o; };
+  const late7 = core.projectRun(clear, mk([0, 'o0', T(17, 41), true]), T(17, 41), sk([0, 'o0', T(17, 26)]));
+  check('a step started at 17:26 and ticked at 17:41 is drawn from the start to the tick, 15 minutes, not from its planned start (17:20): YOUR HANDS counts 15 minutes of it',
+        span(late7, 0, 0) === '17:26-17:41 done' && core.handsWindows(late7.steps.filter(st => st.dish === 0)).busyMinutes === 15
+        && span(core.projectRun(clear, mk([0, 'o0', T(17, 41), true]), T(17, 41)), 0, 0) === '17:20-17:41 done', span(late7, 0, 0));
+  const early7 = core.projectRun(clear, {}, T(17, 25), sk([1, 'o0', T(17, 24)]));
+  check('a step started before its planned start is running from the start: the boil, planned for 17:52, started at 17:24 runs to 17:44 with 19 minutes left, and nothing planned after it moves',
+        span(early7, 1, 0) === '17:24-17:44 running' && span(early7, 1, 1) === '18:12-18:18 waiting' && early7.steps.find(st => st.dish === 1 && st.index === 0).started === true
+        && Math.round(core.runStatus(early7, T(17, 25)).going.find(g => g.dish === 1).left) === 19, span(early7, 1, 0));
+  const beforeFeeder = core.projectRun(clear, {}, T(17, 25), sk([0, 'o1', T(17, 25)]));
+  check('    and it is running even before what feeds it is done (the cook\'s word): the roast started at 17:25 while the prep is still going runs 17:25 to 18:15, and the rest still waits for it',
+        span(beforeFeeder, 0, 1) === '17:25-18:15 running' && span(beforeFeeder, 0, 2) === '18:20-18:30 waiting', span(beforeFeeder, 0, 1));
+  const squeeze = core.projectRun(clear, mk([0, 'o0', T(17, 30), true], [1, 'o0', T(18, 12), true]), T(18, 15), sk([1, 'o1', T(18, 15)]));
+  check('a step started now is in the way of the hands-on steps after it: the mash started at 18:15 runs to 18:21, so the washing planned for 18:18 waits until 18:21 and the meal is ready at 18:33',
+        span(squeeze, 1, 1) === '18:15-18:21 running' && span(squeeze, 2, 0) === '18:21-18:29 waiting' && span(squeeze, 2, 1) === '18:29-18:33 waiting' && clk(squeeze.readyAt) === '18:33', span(squeeze, 2, 0));
+  const along7 = core.projectRun(clear, mk([0, 'o0', T(17, 45), false], [0, 'o1', T(17, 45), true]), T(17, 45), sk([0, 'o0', T(17, 22)]));
+  check('a step started and then ticked along with a later one is drawn from its start, to its planned end or its own length after the start, whichever is later, no later than the tick',
+        span(along7, 0, 0) === '17:22-17:32 done', span(along7, 0, 0));
+  const inst = core.projectRun(core.planToServe([tlOf(['Prep [10 min]', 'Plate up [instant]'])], EAT), mk([0, 'o0', T(18, 30), true]), T(18, 31), sk([0, 'o1', T(18, 0)]));
+  check('a step with no length has nothing to start: a start recorded against it changes nothing',
+        span(inst, 0, 1) === '18:31-18:31 waiting' && inst.steps[1].started !== true);
   const all = core.projectRun(clear, mk(...clear.steps.map(st => [st.dish, st.output, T(18, 40), true])), T(18, 40));
   check('with every step ticked the run is over: all done, ready when the last was ticked, nothing running or waiting',
         all.allDone === true && all.done === 7 && all.steps.every(st => st.state === 'done') && core.runStatus(all, T(18, 40)).remaining === 0 && core.runStatus(all, T(18, 40)).going.length === 0);
@@ -1657,7 +1679,9 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
     const now = base.startAt + rnd2(120);
     const marks = {};
     base.lanes.forEach(l => { if (!l) return; const k = rnd2(l.steps.length + 1); for (let i = 0; i < k; i++) { const st = l.steps[i]; (marks[l.dish] = marks[l.dish] || {})[st.output] = { at: Math.min(now, st.start + rnd2(60) - 10), direct: rnd2(2) === 0 }; } });
-    const pr = core.projectRun(base, marks, now);
+    const began = {};
+    base.lanes.forEach(l => { if (!l) return; l.steps.forEach(st => { if (!(marks[l.dish] && marks[l.dish][st.output]) && st.end - st.start > 1e-9 && rnd2(4) === 0) (began[l.dish] = began[l.dish] || {})[st.output] = now - rnd2(40); }); });
+    const pr = core.projectRun(base, marks, now, began);
     cases2++;
     const feeds = st => (st.inputs || []).map(h => pr.steps.find(o => o.dish === st.dish && o.output === h)).filter(Boolean);
     const open = pr.steps.filter(st => st.state !== 'done');
@@ -1665,10 +1689,11 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
     pr.steps.forEach(st => {
       const len = st.plannedEnd - st.plannedStart;
       if (st.state === 'done') { const m = marks[st.dish][st.output]; if (Math.abs(st.doneAt - m.at) > 1e-9) problems.push('doneAt'); }
+      else if (st.started) { if (st.state !== 'running' || Math.abs(st.start - began[st.dish][st.output]) > 1e-9 || st.end < st.start + len - 1e-6) problems.push('started'); }
       else {
         if (st.start < st.plannedStart - 1e-6) problems.push('before plan');
         if (st.state === 'waiting' && st.start < now - 1e-6) problems.push('before now');
-        if (feeds(st).some(f => f.end > st.start + 1e-6)) problems.push('before feeder');
+        if (feeds(st).some(f => f.end > st.start + 1e-6 && !f.started)) problems.push('before feeder');
         if (st.state === 'waiting' && Math.abs((st.end - st.start) - len) > 1e-6) problems.push('length');
       }
     });
@@ -1677,7 +1702,7 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
     }));
     if (problems.length) bad2.push({ c, problems: [...new Set(problems)] });
   }
-  check('over 200 made-up meals and cooks, projectRun keeps what is done as it was ticked, starts nothing before its plan, before now or before what feeds it, never puts two hands-on steps on top of each other, and changes no length',
+  check('over 200 made-up meals and cooks, projectRun keeps what is done as it was ticked, starts nothing before its plan, before now or before what feeds it (a step the cook started excepted: it runs from the start), never puts two hands-on steps on top of each other, and changes no length',
         bad2.length === 0 && cases2 === 200, JSON.stringify(bad2.slice(0, 3)));
 
   /* What the cook is doing now, and what is next. */
