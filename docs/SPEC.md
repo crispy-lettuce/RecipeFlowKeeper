@@ -111,7 +111,7 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
   (drawn from the boxes as they stand, so it survives a redraw and RESET TICKS clears it), tapping a box flashes its bar, tapping a bar jumps
   to its box. Drawing only: nothing is stored. When the table is wider than the screen, an arrow at its top right says so (both styles; not
   in print or PNG).
-- **The run sheet** (planning half 23 Oct 2026, running half in part 24 Oct; per-box START and DONE and the timers are not built): the strip is on the clock. **EAT AT**
+- **The run sheet** (planning half 23 Oct 2026, running half 24 Oct; the timers are not built): the strip is on the clock. **EAT AT**
   (with −15, −5, +5, +15 and NOW) is by default now plus the longest dish up to the next five minutes, and is held for the recipe or group open in this tab only,
   never stored; the ruler reads times of day, every box says `AT 17:20` when its step starts, and START AT gives when the meal begins. **YOUR HANDS**
   is a row above the lanes: solid where a hands-on step runs, red hatched where two do at once (a clash), an outline `free 16 min` where nothing
@@ -134,7 +134,12 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
   The strip says `On time for 18:30` or `Ready at 18:43, 13 min after 18:30`, a Now line says what is going with its time left and the hands' next step
   (`Hands free for 9 min, then: …`), and a red line is the real time. A clock looks once a second, from the real time each time; it moves the line and the Now
   line in place and redraws only the strip (never the flow table) when the plan has moved a minute. AVOID THE CLASH stays on offer while the planned meal has a
-  clash. STOP COOKING puts the plan back. The status, Now line, line and marks are left out of print and PNG. A run belongs to the recipe or group open (opening
+  clash. STOP COOKING puts the plan back. The status, Now line, line and marks are left out of print and PNG.
+  **START and DONE on a box** (24 Oct 2026): while the run is going each box that is a step of the plan has a START button (a 44px target; none on a step with no
+  length, a step already done, a prep box or a carried-across box). Pressing it notes the time (`state.cook.starts[recipeId][handle]`, this tab only) and the box
+  reads `STARTED 09:14` with DONE, which is the tick (tapping the box does the same). A step with a start is running from it, even before its planned start or before
+  what feeds it (the cook's word); once ticked it is drawn from the start to the tick; un-ticking it puts it back as running; RESET TICKS and STOP COOKING clear
+  the starts. The buttons are left out of print and PNG. A run belongs to the recipe or group open (opening
   another ends it) and lasts until reload.
 - **COOK FOR** rescales for this time only (2, 4, 6, 8 or any number); nothing is saved. Tin sizes never scale. Liquids change unit
   as they scale (teaspoons under 15 ml, tablespoons under 50 ml, ml from 50 ml); weighed liquids stay in grams.

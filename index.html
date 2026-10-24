@@ -672,6 +672,11 @@ function loadArchivoFont(){
      when it is no longer there. */
   .timeline-run-status{ margin:0 0 4px; font-size:16px; font-weight:500; color:var(--ink); }
   .timeline-now{ margin:0 0 10px; font-size:14px; line-height:1.5; color:var(--ink-soft); }
+  /* START and DONE on a box while cooking: a 44px button, and when it was started. */
+  .box-run{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin-top:8px; }
+  .box-run:empty{ display:none; }
+  .box-run .box-run-btn{ min-height:44px; padding:6px 14px; font-size:14px; }
+  .box-run-at{ font-size:13px; font-weight:500; letter-spacing:.04em; color:var(--ink-soft); }
   .timeline-playhead{ position:absolute; top:0; bottom:0; width:2px; margin-left:-1px; background:var(--danger); pointer-events:none; z-index:6; }
   .planned-mark{ position:absolute; top:2px; height:16px; width:0; border-left:2px dotted var(--ink-faint); pointer-events:none; }
   .timeline-mode-note{ margin:0 0 10px; font-size:14px; line-height:1.5; color:var(--ink-soft); }
@@ -1768,7 +1773,7 @@ function loadArchivoFont(){
     body{ overflow:visible !important; }
     .sidebar, .navlink, .btn, .backlink, .toggle-switch,
     .keep-awake-status, #keepAwakeVideo,
-    .filter-head, .assign-banner, .offline-bar, .flow-more, .timeline-eat, .timeline-run-status, .timeline-now, .timeline-playhead, .planned-mark,
+    .filter-head, .assign-banner, .offline-bar, .flow-more, .timeline-eat, .timeline-run-status, .timeline-now, .timeline-playhead, .planned-mark, .box-run,
     .shop-head-right, #shopWeekSelect,
     #shopHideCheckedBtn, #shopClearBtn,
     .sidebar-peek-btn, .cooking-notes{ display:none !important; }
@@ -1833,7 +1838,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-24.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-24.2">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2546,7 +2551,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-24.1"></script>
+<script src="core.js?v=2026-10-24.2"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2554,12 +2559,12 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-24.1';
+const EXPECTED_CORE_VERSION = '2026-10-24.2';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-24.1';
+const APP_VERSION = '2026-10-24.2';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -2810,7 +2815,7 @@ function ovenCount(){
    now plus the longest dish up to the next five minutes (decided 23 Oct: start now, eat when it is ready). */
 function buildRun(key, mode, items, day){
   if(state.eatAt.key !== key) state.eatAt = { key, mins: null, avoid: false };
-  if(state.cook.key !== key) state.cook = { key, startedAt: null, marks: {} };
+  if(state.cook.key !== key) state.cook = { key, startedAt: null, marks: {}, starts: {} };
   const timelines = items.map(it=> it.timeline);
   const longest = Math.max(0, ...timelines.filter(Boolean).map(t=> t.totalSpan));
   const now = nowMinutes();
@@ -2821,7 +2826,9 @@ function buildRun(key, mode, items, day){
   const cooking = state.cook.startedAt !== null;
   const marks = {};
   items.forEach((it, i)=> { if(it.id && state.cook.marks[it.id]) marks[i] = state.cook.marks[it.id]; });
-  const plan = cooking ? projectRun(planned, marks, now) : planned;
+  const began = {};
+  items.forEach((it, i)=> { if(it.id && state.cook.starts[it.id]) began[i] = state.cook.starts[it.id]; });
+  const plan = cooking ? projectRun(planned, marks, now, began) : planned;
   const hands = handsWindows(plan.steps);
   /* While cooking the re-plan has already put one hands-on step after the other, so `hands` shows no clash; AVOID THE CLASH is still on offer for
      the one the plan had, as it moves the step earlier instead of making the meal late. */
@@ -2959,10 +2966,10 @@ function wireEatAt(root, rerender, cookId){
      as it is at this moment); boxes already ticked count as done now. STOP COOKING puts the plan back as it was. */
   const cook = bar.querySelector('[data-cook-toggle]');
   if(cook) cook.addEventListener('click', ()=>{
-    if(state.cook.startedAt !== null){ state.cook = { key: state.cook.key, startedAt: null, marks: {} }; rerender(); return; }
+    if(state.cook.startedAt !== null){ state.cook = { key: state.cook.key, startedAt: null, marks: {}, starts: {} }; rerender(); return; }
     const now = nowMinutes();
     if(state.eatAt.mins === null) state.eatAt.mins = defaultServeAt(now, parseFloat(bar.dataset.span) || 0);
-    state.cook.startedAt = now; state.cook.marks = {};
+    state.cook.startedAt = now; state.cook.marks = {}; state.cook.starts = {};
     root.querySelectorAll('.box-cell.done').forEach(cell=>{
       const stacked = cell.closest('.stacked-recipe'), id = stacked ? stacked.dataset.recipeId : cookId;
       if(id && cell.dataset.handle) (state.cook.marks[id] = state.cook.marks[id] || {})[cell.dataset.handle] = { at: now, direct: false };
@@ -2974,6 +2981,42 @@ function wireEatAt(root, rerender, cookId){
 function startBadge(starts, box){
   if(!starts || box.passthrough || box.prep || starts[box.outputHandle] === undefined) return '';
   return `<span class="step-at">AT ${formatClock(starts[box.outputHandle])}</span>`;
+}
+
+/* ---- START and DONE on a box (run sheet 3b-2), while the run is going ----
+   A box that is a step of the plan carries a holder, `.box-run`, and what is in it follows the step: START until the cook presses it, then the time it
+   was started and DONE (which is the tick: tapping the box does the same), and nothing once the step is done. `live` maps a step's output handle to the
+   plan's step for it (runBoxSteps); it is absent when no run is going, and then no box has a holder. A step with no length has nothing to start. */
+function runBoxSteps(run, dish){
+  const lane = run && run.cooking && run.plan.lanes[dish];
+  if(!lane) return undefined;
+  const by = {};
+  lane.steps.forEach(st=> { if(st.output) by[st.output] = st; });
+  return by;
+}
+function boxRunHTML(st){
+  if(!st || st.state === 'done' || (st.duration && st.duration.instant)) return '';
+  return st.started
+    ? `<span class="box-run-at">STARTED ${formatClock(st.startedAt)}</span><button type="button" class="btn box-run-btn" data-step-done>DONE</button>`
+    : `<button type="button" class="btn box-run-btn" data-step-start>START</button>`;
+}
+function boxRunHolder(live, box){
+  if(!live || box.passthrough || box.prep || !box.outputHandle || !live[box.outputHandle]) return '';
+  return `<span class="box-run">${boxRunHTML(live[box.outputHandle])}</span>`;
+}
+/* Brought up to date for the dish whose boxes are in `scope`; a holder whose words have not changed is left alone, so a tap is never lost to it. */
+function updateBoxRun(scope, run, dish){
+  const by = runBoxSteps(run, dish);
+  scope.querySelectorAll('.box-cell .box-run').forEach(el=>{
+    const cell = el.closest('.box-cell'), html = by ? boxRunHTML(by[cell.dataset.handle]) : '';
+    if(el.innerHTML !== html) el.innerHTML = html;
+  });
+}
+/* START pressed on a step while cooking: the time it was started, so the plan can be re-drawn from it. True when something was recorded. */
+function recordStart(recipeId, runKey, handle){
+  if(!runKey || state.cook.key !== runKey || state.cook.startedAt === null || !handle) return false;
+  (state.cook.starts[recipeId] = state.cook.starts[recipeId] || {})[handle] = nowMinutes();
+  return true;
 }
 
 /* ---- The running half: keeping the strip up to date once cooking has started ----
@@ -3304,7 +3347,7 @@ function buildGroupTimelineHTML(groupTimeline){
 /* Parser, header lines, scaling, layout, timeline: moved to core.js on 25 Sep 2026 (PR 6a). */
 
 /* ============================= FLOW RENDER ============================= */
-function buildFlowHTML(parsed, starts){
+function buildFlowHTML(parsed, starts, live){
   const {title, setup, groups, stages, notes} = parsed;
   /* Modernist (docs/PLAN-MODERNIST.md) draws the table by kind rather than by the group colours, so in that style the cells
      carry what they are (merge, final, where a group starts) instead of inline colours, and the title has the servings and
@@ -3361,12 +3404,12 @@ function buildFlowHTML(parsed, starts){
         html += `<td class="blank-cell${edge}" data-col="${c}" rowspan="${box.rowSpan}"></td>`;
       } else if(mod){
         const kind = box.passthrough ? '' : c === columns.length - 1 ? ' box-final' : box.merge ? ' box-merge' : '';
-        html += `<td class="box-cell${box.passthrough?' passthrough':''}${box.prep?' prep':''}${kind}${edge}" data-col="${c}" data-row-start="${box.rowStart}" data-row-span="${box.rowSpan}" data-handle="${escapeHtml(box.outputHandle||'')}" rowspan="${box.rowSpan}">${escapeHtml(box.label)}${startBadge(starts, box)}${durationBadge(box.duration)}</td>`;
+        html += `<td class="box-cell${box.passthrough?' passthrough':''}${box.prep?' prep':''}${kind}${edge}" data-col="${c}" data-row-start="${box.rowStart}" data-row-span="${box.rowSpan}" data-handle="${escapeHtml(box.outputHandle||'')}" rowspan="${box.rowSpan}">${escapeHtml(box.label)}${startBadge(starts, box)}${durationBadge(box.duration)}${boxRunHolder(live, box)}</td>`;
       } else {
         /* A preparation step (#88) is a shade lighter than a cooking step, so the eye goes to the cooking first. */
         const bg = hexToRgba(box.color, box.passthrough ? 0.05 : box.prep ? 0.06 : 0.10);
         const style = `background:${bg}; border-left:${box.passthrough?'3px dashed':'3px solid'} ${box.color}; color:${box.color};`;
-        html += `<td class="box-cell${box.passthrough?' passthrough':''}${box.prep?' prep':''}" data-col="${c}" data-row-start="${box.rowStart}" data-row-span="${box.rowSpan}" data-handle="${escapeHtml(box.outputHandle||'')}" rowspan="${box.rowSpan}" style="${style}">${escapeHtml(box.label)}${startBadge(starts, box)}${durationBadge(box.duration)}</td>`;
+        html += `<td class="box-cell${box.passthrough?' passthrough':''}${box.prep?' prep':''}" data-col="${c}" data-row-start="${box.rowStart}" data-row-span="${box.rowSpan}" data-handle="${escapeHtml(box.outputHandle||'')}" rowspan="${box.rowSpan}" style="${style}">${escapeHtml(box.label)}${startBadge(starts, box)}${durationBadge(box.duration)}${boxRunHolder(live, box)}</td>`;
       }
     }
     html += `</tr>`;
@@ -3432,7 +3475,7 @@ function viewerTickSet(key){
   if(!state.viewerTicks[key]) state.viewerTicks[key] = new Set();
   return state.viewerTicks[key];
 }
-function clearViewerTicks(key){ delete state.viewerTicks[key]; delete state.cook.marks[key]; }   // the times the ticks were made go with them
+function clearViewerTicks(key){ delete state.viewerTicks[key]; delete state.cook.marks[key]; delete state.cook.starts[key]; }   // the times the ticks were made, and the starts, go with them
 /* Modernist's "3 / 19 TICKED" beside a recipe's title (only its markup has the place for it), read from the cells as they
    stand, so whatever ticks or unticks in place brings it up to date: a tap, and RESET TICKS, which until 18 Oct cleared
    the cells and left the old count showing. */
@@ -3476,7 +3519,7 @@ function mountFlow(container, parsed, opts){
   const drawn = opts.prepSteps && prepStepsOn() ? withPrepSteps(parsed) : parsed;
   const withPrep = drawn !== parsed;
   /* The run sheet's plan for this flow (opts.run, the single viewer's) or this dish's start times (opts.starts, a dish in the Group Viewer). */
-  const {html: flowHtml, colCount} = buildFlowHTML(drawn, opts.run ? runStarts(opts.run, 0) : opts.starts);
+  const {html: flowHtml, colCount} = buildFlowHTML(drawn, opts.run ? runStarts(opts.run, 0) : opts.starts, opts.run ? runBoxSteps(opts.run, 0) : opts.live);
   const html = withPrep ? flowHtml.replace('<p class="hint">', '<p class="hint">PREPARATION SHOWN AS STEPS (SETTINGS → APP) — ') : flowHtml;
 
   /* Timeline strip — only requested by the real Viewer (not the Add/Edit
@@ -3503,6 +3546,14 @@ function mountFlow(container, parsed, opts){
      The Add/Edit preview has no strip, and these then find nothing. */
   const tlRoot = opts.timelineRoot || container;
 
+  /* START on a box, caught on the way down so that the tap does not also tick the box (a box is ticked by tapping it; DONE is that tap). */
+  if(opts.onStart) container.addEventListener('click', e=>{
+    const b = e.target.closest('[data-step-start]');
+    if(!b) return;
+    e.stopPropagation();
+    const cell = b.closest('.box-cell');
+    if(cell) opts.onStart(cell.dataset.handle);
+  }, true);
   const cells = Array.from(container.querySelectorAll('.ing-cell, .box-cell'));
   const colOf = cell => cell.classList.contains('ing-cell') ? -1 : parseInt(cell.dataset.col, 10);
 
@@ -5787,7 +5838,7 @@ const state = {
   groupViewerReturnTo: null,   // where "← PLANNER" in the Group Viewer should navigate back to
   groupLineUp: null,           // START/FINISH TOGETHER chosen for one group in this tab (#87); never stored
   eatAt: { key: null, mins: null, avoid: false },  // the run sheet: EAT AT chosen for the recipe or group open (null: the default, now plus the longest dish), and AVOID THE CLASH pressed; this tab only, never stored
-  cook: { key: null, startedAt: null, marks: {} },  // the run sheet's running half: START COOKING pressed for the recipe or group open (startedAt, a time on the plan's clock) and when each ticked step was ticked (marks[recipeId][handle] = { at, direct }); this tab only, never stored, and gone with the ticks
+  cook: { key: null, startedAt: null, marks: {}, starts: {} },  // the run sheet's running half: START COOKING pressed for the recipe or group open (startedAt, a time on the plan's clock), when each ticked step was ticked (marks[recipeId][handle] = { at, direct }) and when START was pressed on a step (starts[recipeId][handle] = at); this tab only, never stored, and gone with the ticks
   shortlistCollapsed: false,   // Modernist only: the Planner's shortlist panel folded to its rail, for this visit only
   sideOffersHidden: new Set(), // 'date|recipeId' whose SERVE WITH offer was dismissed with ×, in this tab only (#87); never stored
   oftenHidden: new Set(),      // the same for OFTEN WITH (#142)
@@ -6740,6 +6791,8 @@ function renderGroupViewer(){
       starts: groupTimeline ? runStarts(groupTimeline.run, i) : undefined,
       timelineRoot: mount,
       onTick: groupTimeline ? change=> { if(recordTick(recipe.id, groupTimeline.run.key, change)) refreshRunStrip(); } : undefined,
+      onStart: groupTimeline ? handle=> { if(recordStart(recipe.id, groupTimeline.run.key, handle)) refreshRunStrip(); } : undefined,
+      live: groupTimeline ? runBoxSteps(groupTimeline.run, i) : undefined,
       onComplete: ()=> finishRecipe(recipe.id)
       // showTimeline deliberately omitted — the group's own combined
       // timeline strip above already covers this recipe's steps; a
@@ -6764,6 +6817,7 @@ function renderGroupViewer(){
           const card = mount.querySelector(`.stacked-recipe[data-recipe-id="${CSS.escape(recipe.id)}"]`);
           if(!card) return;
           updateBoxStarts(card, runStarts(gt.run, i));
+          updateBoxRun(card, gt.run, i);
           const head = card.querySelector('.stacked-recipe-start'), text = startText(gt, recipe);
           if(head && text) head.textContent = text;
         });
@@ -6834,7 +6888,7 @@ document.getElementById('groupExportPngBtn').addEventListener('click', ()=>{
   exportNodeAsPng(
     document.querySelector('#view-group-viewer .viewer-body'),
     (names || 'meal-group').toLowerCase().replace(/[^a-z0-9]+/g,'-'),
-    { scrollFixSelectors: ['#view-group-viewer .viewer-body', '.tablewrap'], dropStickySelectors: ['.ing-cell'], hideSelectors: ['.flow-more', '.timeline-eat', '.timeline-run-status', '.timeline-now', '.timeline-playhead', '.planned-mark'] }
+    { scrollFixSelectors: ['#view-group-viewer .viewer-body', '.tablewrap'], dropStickySelectors: ['.ing-cell'], hideSelectors: ['.flow-more', '.timeline-eat', '.timeline-run-status', '.timeline-now', '.timeline-playhead', '.planned-mark', '.box-run'] }
   );
 });
 
@@ -7001,12 +7055,13 @@ function renderViewer(){
     prepSteps: true,
     run, onEat: renderViewer, cookId: recipe.id,
     onTick: run ? change=> { if(recordTick(recipe.id, run.key, change)) refreshRunStrip(); } : undefined,
+    onStart: run ? handle=> { if(recordStart(recipe.id, run.key, handle)) refreshRunStrip(); } : undefined,
     /* Nothing is logged for one of theirs: our diary is of our recipes, and theirs is not in our library to log. */
     onComplete: theirs ? ()=> showToast('Not logged: add it to our recipes to plan, shop for or log it') : ()=> finishRecipe(recipe.id),
     showTimeline: true
   });
   runUI = run ? { key: run.key, mount, rerender: renderViewer, cookId: recipe.id, args: run.args, sig: runSignature(run),
-    build: ()=>{ const r = buildRun(...run.args); return { run: r, html: buildTimelineHTML(viewTimeline, r), after: ()=> updateBoxStarts(mount, runStarts(r, 0)) }; } } : null;
+    build: ()=>{ const r = buildRun(...run.args); return { run: r, html: buildTimelineHTML(viewTimeline, r), after: ()=>{ updateBoxStarts(mount, runStarts(r, 0)); updateBoxRun(mount, r, 0); } }; } } : null;
   /* Modernist's servings beside the title, as the meta line says them. */
   const servesEl = mount.querySelector('.recipe-serves');
   if(servesEl && targetServings) servesEl.textContent = `SERVES ${targetServings}${scale !== 1 ? ` (SCALED FROM ${baseServings})` : ''}`;
@@ -7451,7 +7506,7 @@ document.getElementById('exportPngBtn').addEventListener('click', ()=>{
   exportNodeAsPng(
     document.getElementById('flowMount'),
     (recipe.title||'recipe').toLowerCase().replace(/[^a-z0-9]+/g,'-'),
-    { scrollFixSelectors: ['.tablewrap'], dropStickySelectors: ['.ing-cell'], hideSelectors: ['.flow-more', '.timeline-eat', '.timeline-run-status', '.timeline-now', '.timeline-playhead', '.planned-mark'] }
+    { scrollFixSelectors: ['.tablewrap'], dropStickySelectors: ['.ing-cell'], hideSelectors: ['.flow-more', '.timeline-eat', '.timeline-run-status', '.timeline-now', '.timeline-playhead', '.planned-mark', '.box-run'] }
   );
 });
 

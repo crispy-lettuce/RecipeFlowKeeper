@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-24.1';
+const KITCHEN_CORE_VERSION = '2026-10-24.2';
 
 
 /* ======================= quantity split ======================= */
@@ -1001,23 +1001,33 @@ function handsWindows(steps, opts){
    later one keeps its planned times, cut short at the tick if the plan had it ending later. Every step not yet done is re-planned: no earlier
    than planned, no earlier than now, after what feeds it, and a hands-on step never on top of another hands-on step. A step whose planned start
    has passed and whose feeders are all done is running: it keeps its start and ends at the later of its planned end and now. The plan ahead
-   runs from when each step ended; nothing done is ever moved. Returns the plan's own shape (steps, lanes, startAt, readyAt), so the rows
+   runs from when each step ended; nothing done is ever moved.
+
+   `starts` (optional) is the same shape as `marks` but holds when the cook pressed START on a step: { [dish]: { [output handle]: at } }. A step
+   with a start is running from it, even before its planned start or before what feeds it (the cook's word), and if it is then ticked it is drawn from
+   the start to the tick, as long as it really took. A step with no length has nothing to start. Returns the plan's own shape (steps, lanes, startAt, readyAt), so the rows
    and bars that read a plan read this, plus what each step was planned as and where the meal now stands (`lateBy` minutes after EAT AT). */
-function projectRun(plan, marks, now){
+function projectRun(plan, marks, now, starts){
   const EPS = 1e-9;
   const src = plan.steps;
   const steps = src.map(st=> ({ ...st, plannedStart: st.start, plannedEnd: st.end, state: 'waiting' }));
   const markOf = st=> marks && marks[st.dish] && marks[st.dish][st.output];
+  const startOf = st=> { const a = starts && starts[st.dish] && starts[st.dish][st.output]; return a === undefined || st.end - st.start <= EPS ? undefined : a; };
   const feedersOf = st=> (st.inputs || []).map(h=> steps.find(p=> p.dish === st.dish && p.output === h)).filter(Boolean);
   const order = steps.slice().sort((a, b)=> a.plannedStart - b.plannedStart || a.dish - b.dish || a.index - b.index);
   const placed = [];                       // hands-on steps with a place, not yet done: [start, end]
   const fixed = new Set();
   /* Pass 1: what has happened (done), and what must be happening now (running). Neither is ever moved. */
   order.forEach(st=>{
-    const len = st.plannedEnd - st.plannedStart, m = markOf(st);
+    const len = st.plannedEnd - st.plannedStart, m = markOf(st), began = startOf(st);
+    if(began !== undefined){ st.started = true; st.startedAt = began; }
     if(m){
       st.state = 'done'; st.doneAt = m.at;
-      if(m.direct){
+      if(began !== undefined){
+        /* Started by the cook: as long as it took from then (a step ticked along with a later one ends at its planned end or its length, whichever is later, and no later than the tick). */
+        st.start = Math.min(began, m.at);
+        st.end = m.direct ? m.at : Math.min(m.at, Math.max(st.plannedEnd, st.start + len));
+      } else if(m.direct){
         if(m.at <= st.plannedStart + EPS){ st.start = m.at - len; st.end = m.at; }
         else { st.start = st.plannedStart; st.end = m.at; }
       } else { st.start = Math.min(st.plannedStart, m.at); st.end = Math.min(st.plannedEnd, m.at); }
@@ -1028,7 +1038,13 @@ function projectRun(plan, marks, now){
     if(fixed.has(st)) return;
     const len = st.plannedEnd - st.plannedStart;
     const feeders = feedersOf(st);
-    if(len > EPS && st.plannedStart <= now + EPS && feeders.every(f=> f.state === 'done')){
+    if(st.started){
+      st.state = 'running';
+      st.start = st.startedAt;
+      st.end = Math.max(st.start + len, now);
+      fixed.add(st);
+      if(needsHands(st)) placed.push([st.start, st.end]);
+    } else if(len > EPS && st.plannedStart <= now + EPS && feeders.every(f=> f.state === 'done')){
       st.state = 'running';
       st.start = Math.max(st.plannedStart, ...feeders.map(f=> f.end));
       st.end = Math.max(st.start + len, now);

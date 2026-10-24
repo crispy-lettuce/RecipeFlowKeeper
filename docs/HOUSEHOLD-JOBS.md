@@ -17,7 +17,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 | --- | --- | --- | --- |
 | [Reload the app](#reload-the-app-on-every-device), on every device | every device | 1 min | No |
 | [Set the ovens and try the run sheet](#set-the-ovens-and-try-the-run-sheet), once the app is **2026-10-23.3** | tablet | 5 min | The number of ovens, on that device only |
-| [Try START COOKING](#try-start-cooking), once the app is **2026-10-24.1** | tablet | 5 min | No |
+| [Try START COOKING](#try-start-cooking), once the app is **2026-10-24.2** | tablet | 8 min | No |
 | [Tap DONE on the converter bar](#the-converter-bar), if it shows | app | 1 min | Only the converter's DONE |
 
 Nothing else is waiting. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
@@ -26,11 +26,11 @@ Nothing else is waiting. What to build next is your choice; `docs/STATUS.md` §3
 
 ## Reload the app on every device
 
-The current app is **2026-10-24.1** (`APP_VERSION`) once the START COOKING PR is merged.
+The current app is **2026-10-24.2** (`APP_VERSION`) once the START and DONE PR is merged.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready.**, tap **RELOAD**. Otherwise refresh the page.
-3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-24.1** or later.
+3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-24.2** or later.
 
 ## Set the ovens and try the run sheet
 
@@ -72,9 +72,14 @@ Kitchen, with a step or two marked `, hands off` (see the converter bar below fo
 5. Tap **RESET TICKS**. **You should see:** the plan back to where it would be with nothing ticked, at once.
 6. Open a group of dishes and tap **START COOKING**. **You should see:** the same; and if two steps want your hands at once, the later one waits, so the meal reads
    late, while **AVOID THE CLASH** is still there to move it earlier instead.
-7. Tap **STOP COOKING**. **You should see:** the plan as it was before, with no red line, no Now line and no dotted marks.
+7. With a run going, look at the flow table. **You should see:** a **START** button on each step (not on a step with no time, and not on one already ticked). Press **START**
+   on a step as you begin it. **You should see:** the box reads **STARTED hh:mm** with a **DONE** button, the box is **not** ticked, and the bar, the hands row and the ready line
+   follow the time you pressed it.
+8. Press **DONE**. **You should see:** the box ticked, and the bar drawn from when you started to now. Tap the ticked box to un-tick it: it goes back to **STARTED**.
+9. Press **START** on a step before the one before it is done. **You should see:** it is running from then.
+10. Tap **STOP COOKING**. **You should see:** the plan as it was before, with no red line, no Now line, no dotted marks and no START buttons.
 
-Not in this version: a START and a DONE on each box, and timers. Tell the next session which step did not do what it said.
+Not in this version: timers (a countdown and a chime). Tell the next session which step did not do what it said.
 
 ## The converter bar
 
