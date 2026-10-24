@@ -168,10 +168,16 @@ this repo**. `tools/remeasure.js` refuses a file inside the repo.
 
    ```sql
    select json_build_object(
-     'recipes', (select json_agg(json_build_object('title', title, 'syntax', syntax) order by title) from public.recipes),
-     'aliases', (select json_agg(to_json(a)) from public.aliases a)
+     'recipes', (select json_agg(json_build_object('title', title, 'syntax', syntax) order by title) from public.recipes where household_id = '<household id>'),
+     'aliases', (select json_agg(to_json(a)) from public.aliases a where a.household_id = '<household id>'),
+     'aisleOverrides', (select json_agg(json_build_object('name', o.name, 'aisle', o.aisle)) from public.aisle_overrides o where o.household_id = '<household id>')
    )::text as exp;
    ```
+
+   **One household.** The tool the query runs through sees every household, so each select is scoped to one (take the id from
+   `select id, name from public.households`); without that the numbers mix libraries, and an override is keyed by household and name.
+   The overrides are the household's own aisles: leave them out and "Other" counts names the list shows placed (issue #206). The
+   sidebar's EXPORT DATA is the same thing for the household that is signed in, overrides included, and needs no query.
 
    The result is too large to show, so the tool saves it to a file and prints the path.
 2. **Unwrap it into scratch.** `$S` is the session's scratchpad directory and `$F` is the path the
@@ -189,7 +195,7 @@ this repo**. `tools/remeasure.js` refuses a file inside the repo.
 3. **Measure:** `node tools/remeasure.js "$S/export.json"`. It prints:
    - how many rows the list comes to with every recipe planned;
    - pairs the list would offer to merge;
-   - rows filed under "Other";
+   - rows filed under "Other", after the household's own aisles (`In "Other" (51 after 55 aisle overrides; 96 without)`);
    - lines the list can't total;
    - lines the parser reads past.
 
