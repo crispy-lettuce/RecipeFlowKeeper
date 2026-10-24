@@ -50,8 +50,7 @@ the Modernist style, + OTHER on the Planner, the converter reminder, the version
    run sheet needs to know about ovens. Every decision in its §10 was made on 23 Oct:
    PR 1 (timeline fixes, ticks drive the bars) was merged on 23 Oct (#189). PR 2 (the marker: parser, converter, display, the proposal tool) was merged on 23 Oct (#190). PR 3 is split: **3a**, the planning half (EAT AT,
    the clock ruler, your hands, AVOID THE CLASH, ovens), was merged on 23 Oct (#191); **3a.1**, the first fixes from using it (a clearer AVOID THE CLASH,
-   a sentence on what START/FINISH TOGETHER does, READY AT, recipes with no hands-off mark left out of YOUR HANDS, the oven-lane tick), is built and waits for the household's merge; **3b**, the running half (START COOKING, ticks and
-   starts driving the times, re-planning, the Now line), is next; then PR 4, the timers. The data job (marking the library) can happen any time after the converter's DONE.
+   a sentence on what START/FINISH TOGETHER does, READY AT, recipes with no hands-off mark left out of YOUR HANDS, the oven-lane tick), was merged on 23 Oct (#193); **3b** is split too: **3b-1**, the live plan (START COOKING, ticks noted with their time and the plan re-drawn from them, the ready flag, the Now line, the playhead), is built and waits for the household's merge; **3b-2**, a START and a DONE on each box in cooking mode, is next; then PR 4, the timers. The data job (marking the library) can happen any time after the converter's DONE.
 2. **#100, a preview site.** Parked and now ignored; close the issue if it is not wanted. The reasoning (GitHub Pages stays live,
    Cloudflare Pages gives each PR a preview, one database means a preview writes real data) is in the archive at
    `docs/PLAN-PREVIEW-SITE.md`.

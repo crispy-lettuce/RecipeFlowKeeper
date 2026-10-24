@@ -9823,6 +9823,145 @@ const check = (name, pass, detail) => {
   rsAll('none of it wrote anything', r => r.writes1 === r.writes0, r => [r.writes0, r.writes1]);
   /* RS-END */
 
+  /* RC-BEGIN */
+  /* ---- The run sheet, running half (run sheet PR 3b-1, 24 Oct 2026, docs/PLAN-RUN-SHEET.md §4) ----
+     START COOKING, the plan re-drawn from the ticks, the ready flag, the Now line and the playhead, in the single viewer and the Group Viewer, at a tablet
+     and a phone width in both looks. The page's clock is FIXTURE_NOW (09:00) and is moved with setFixedTime between steps: the default EAT AT is 10:15 and the
+     roast dish (71 minutes) starts at 09:04 (prep 09:04 to 09:14, roast to 10:04, rest to 10:15). The page's own one-second timer runs for real; every step
+     also calls runClockTick itself, so a step does not wait for it. */
+  console.log('\nThe run sheet, running');
+  const rcRun = async (look, w) => {
+    const p = await browser.newPage({ viewport: { width: w, height: 1000 } });
+    p.__label = `cooking ${look} ${w}`;
+    await p.addInitScript(l => { try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
+    const at = m => new Date(+FIXTURE_NOW + m * 60000);
+    await p.clock.setFixedTime(at(0));
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1200);
+    const out = await p.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const dish = (id, title, pre, steps, course) => loadRecipes().push({ id, title, source: 'Test', servings: 2, tags: { course: course || 'Main', keywords: [] }, history: [],
+        syntax: `TITLE: ${title}\nSERVINGS: 2\n${pre}\nGROUP a:\n1 swede\n\n` + steps.map((st, i) => `STAGE:\nMERGE ${i ? 'o' + (i - 1) : 'a'} -> o${i}: ${st}`).join('\n\n') });
+      dish('rc-main', 'Test Cook Roast', '', ['Prep the roots [10 min]', 'Roast the roots [50 min, hands off]', 'Rest [11 min, hands off]']);
+      dish('rc-side', 'Test Cook Side', '', ['Boil [20 min, hands off]', 'Mash [6 min]', 'Bake the topping [8 min, hands off]'], 'Side');
+      dish('rc-green', 'Test Cook Greens', '', ['Wash and chop [8 min]', 'Steam [4 min, hands off]']);
+      const day = isoLocal(new Date());
+      ['rc-main', 'rc-side', 'rc-green'].forEach(id => addPlanRecipe(day, id)); createGroup(day, ['rc-main', 'rc-side', 'rc-green']);
+      const drain = async () => { let t; do { t = writeQueue; await t; } while (t !== writeQueue); };
+      await drain();
+      window.__rc = { writes0: window.__WRITES__.length, keys0: Object.keys(localStorage).length, drain, wait };
+      window.__snap = mountId => {
+        const root = document.getElementById(mountId), st = root.querySelector('.timeline-strip');
+        const t = sel => { const e = st.querySelector(sel); return e ? e.textContent.trim().replace(/\s+/g, ' ') : null; };
+        const btn = st.querySelector('[data-cook-toggle]'), ph = st.querySelector('.timeline-playhead');
+        return { btn: btn.textContent.trim(), pressed: btn.getAttribute('aria-pressed'), status: t('[data-run-status]'), nowLine: t('[data-run-now]'), eat: t('.eat-time'),
+          playhead: ph ? parseFloat(ph.style.left) : null, handsCaption: [...st.querySelectorAll('.timeline-row-name')].map(e => e.textContent.trim()).find(x => /^YOUR HANDS/.test(x)) || null,
+          planned: st.querySelectorAll('.planned-mark').length, boxAt: [...root.querySelectorAll('.box-cell .step-at')].map(e => e.textContent.trim()),
+          heads: [...root.querySelectorAll('.stacked-recipe-start')].map(e => e.textContent.trim()), now: !!root.querySelector('[data-eat-now]'),
+          bars: [...st.querySelectorAll('.timeline-lane-abs:not(.timeline-marker)')].map(b => Math.round(parseFloat(b.style.left) * 10) / 10 + '+' + Math.round(parseFloat(b.style.width) * 10) / 10),
+          ticked: [...st.querySelectorAll('.timeline-lane-abs.ticked')].length };
+      };
+      window.__box = (mountId, handle, recipe) => document.getElementById(mountId).querySelector((recipe ? `.stacked-recipe[data-recipe-id="${recipe}"] ` : '') + `.box-cell:not(.passthrough)[data-handle="${handle}"]`);
+      const res = {};
+      openRecipe('rc-main', 'recipes'); await wait(350);
+      res.before = __snap('flowMount');
+      document.querySelector('#flowMount [data-cook-toggle]').click();
+      res.started = __snap('flowMount');
+      return res;
+    });
+    const step = async (min, fn) => { await p.clock.setFixedTime(at(min)); return p.evaluate(async ([src]) => { try { runClockTick(); return await (new Function('return ' + src))()(); } catch (e) { return { error: String(e.message || e) }; } }, [fn.toString()]); };
+    out.t05 = await step(5, async () => { const r = __snap('flowMount'); document.querySelector('#flowMount .timeline-strip').__same = 1; __box('flowMount', 'o0').__keep = 1; return { ...r, keep: true }; });
+    out.t07 = await step(7, async () => { const st = document.querySelector('#flowMount .timeline-strip'); return { ...__snap('flowMount'), sameStrip: st.__same === 1, keep: __box('flowMount', 'o0').__keep === 1 }; });
+    out.t14 = await step(14.5, async () => ({ ...__snap('flowMount'), sameStrip: document.querySelector('#flowMount .timeline-strip').__same === 1, keep: __box('flowMount', 'o0').__keep === 1 }));
+    out.late = await step(21, async () => { __box('flowMount', 'o0').click(); return { ...__snap('flowMount'), keep: __box('flowMount', 'o0').__keep === 1 }; });
+    await p.emulateMedia({ media: 'print' });
+    out.print = await p.evaluate(() => ({ status: getComputedStyle(document.querySelector('#flowMount [data-run-status]')).display, nowLine: getComputedStyle(document.querySelector('#flowMount [data-run-now]')).display,
+      playhead: getComputedStyle(document.querySelector('#flowMount .timeline-playhead')).display, marks: [...document.querySelectorAll('#flowMount .planned-mark')].map(e => getComputedStyle(e).display) }));
+    await p.emulateMedia({ media: 'screen' });
+    out.t40 = await step(40, async () => __snap('flowMount'));
+    out.roastDone = await step(71, async () => { __box('flowMount', 'o1').click(); return __snap('flowMount'); });
+    out.roastUndone = await step(72, async () => { __box('flowMount', 'o1').click(); return __snap('flowMount'); });
+    out.reset = await step(73, async () => { document.getElementById('resetTicksBtn').click(); return __snap('flowMount'); });
+    /* The Group Viewer, the clock back at 09:00. */
+    out.group = await step(0, async () => {
+      const wait = __rc.wait, gid = loadGroups().find(g => g.recipeIds.includes('rc-main')).id;
+      clearViewerTicks('rc-main');   // the single viewer's ticks are the group's too (one tick set per recipe)
+      openGroup(gid, 'planner'); await wait(350);
+      const res = { before: __snap('groupFlowMount') };
+      __box('groupFlowMount', 'o0', 'rc-side').click();   // ticked before START COOKING: counts as done at the moment of starting
+      res.preTicked = __snap('groupFlowMount').ticked;
+      document.querySelector('#groupFlowMount [data-cook-toggle]').click();
+      res.started = __snap('groupFlowMount');
+      res.startedDone = [...document.querySelectorAll('#groupFlowMount .box-cell.done')].length;
+      document.querySelector('#groupFlowMount [data-avoid-clash]').click();
+      res.avoided = __snap('groupFlowMount');
+      document.querySelector('#groupFlowMount [data-avoid-clash]').click();
+      __box('groupFlowMount', 'o0', 'rc-main').__keep = 1;
+      res.cookKept = state.cook.key;
+      return res;
+    });
+    out.groupLate = await step(21, async () => {
+      __box('groupFlowMount', 'o0', 'rc-main').click();
+      return { ...__snap('groupFlowMount'), keep: __box('groupFlowMount', 'o0', 'rc-main').__keep === 1, ticked: [...document.querySelectorAll('#groupFlowMount .box-cell.done')].length };
+    });
+    out.stopped = await step(22, async () => { document.querySelector('#groupFlowMount [data-cook-toggle]').click(); return { ...__snap('groupFlowMount'), cookKey: state.cook.startedAt }; });
+    /* A step ticked before START COOKING, on a recipe of its own: the plan counts it as done, so at 09:20 nothing is going (the boil, ticked, is not still running). */
+    out.preStart = await step(0, async () => {
+      clearViewerTicks('rc-side');
+      openRecipe('rc-side', 'recipes'); await __rc.wait(350);
+      __box('flowMount', 'o0').click();
+      document.querySelector('#flowMount [data-cook-toggle]').click();
+      return __snap('flowMount');
+    });
+    out.preMid = await step(20, async () => __snap('flowMount'));
+    out.end = await p.evaluate(async () => { await __rc.drain(); return { writes: window.__WRITES__.length - __rc.writes0, keys: Object.keys(localStorage).length - __rc.keys0, stored: Object.keys(localStorage).filter(k => /cook/i.test(k)) }; });
+    await p.close();
+    return out;
+  };
+  const rcs = {};
+  for (const look of ['classic', 'modernist']) for (const w of [1280, 412]) rcs[`${look} ${w}`] = await rcRun(look, w);
+  const rcAll = (name, pass, detail) => {
+    const ok = k => { try { return pass(rcs[k], k); } catch (e) { return false; } };
+    const bad = Object.keys(rcs).filter(k => !ok(k));
+    check(name, bad.length === 0, bad.length ? 'fails at ' + bad.map(k => k + ': ' + JSON.stringify((() => { try { return detail(rcs[k]); } catch (e) { return rcs[k]; } })())).join(' | ').slice(0, 900) : '');
+  };
+  rcAll('before START COOKING the strip is as it was (a START COOKING button, no ready flag, no Now line, no playhead); START COOKING fixes EAT AT at 10:15, says the meal is on time, and says what is next for the hands',
+        r => r.before.btn === 'START COOKING' && r.before.pressed === 'false' && r.before.status === null && r.before.nowLine === null && r.before.playhead === null && r.before.planned === 0
+          && r.started.btn === 'STOP COOKING' && r.started.pressed === 'true' && r.started.status === 'On time for 10:15' && r.started.eat === '10:15' && r.started.now === true
+          && r.started.nowLine === 'Now: nothing is running. Hands free for 4 min, then: Prep the roots at 09:04.' && r.started.playhead === null && r.t05.playhead !== null,
+        r => [r.before.btn, r.before.status, r.started.btn, r.started.status, r.started.nowLine, r.started.playhead, r.t05.playhead]);
+  rcAll('the Now line says what is going and how long it has left, and that the hands are busy; the playhead is drawn at the time and moves; and a second later in the same state is done in place: the strip is not redrawn, the flow table never is',
+        r => r.t05.nowLine === 'Now: Prep the roots, 9 min left. Your hands are busy until 09:14.' && r.t07.nowLine === 'Now: Prep the roots, 7 min left. Your hands are busy until 09:14.'
+          && r.t07.sameStrip === true && r.t07.playhead > r.t05.playhead && r.t05.keep && r.t07.keep && r.t14.keep && r.t05.status === 'On time for 10:15',
+        r => [r.t05.nowLine, r.t07.nowLine, r.t07.sameStrip, r.t05.playhead, r.t07.playhead]);
+  rcAll('a step ticked 7 minutes late draws from its start to the tick (YOUR HANDS counts 17 minutes busy), the roast starts when it was ticked, a faint mark shows where the plan had it, and the meal reads Ready at 10:22, 7 min after 10:15',
+        r => r.late.status === 'Ready at 10:22, 7 min after 10:15' && r.late.handsCaption === 'YOUR HANDS · BUSY 17 min' && r.late.boxAt[1] === 'AT 09:21' && r.late.planned >= 1 && r.late.ticked === 1 && r.late.keep
+          && r.late.nowLine === 'Now: Roast the roots, 50 min left. Nothing more needs your hands.' && r.late.eat === '10:15',
+        r => [r.late.status, r.late.handsCaption, r.late.boxAt, r.late.planned, r.late.nowLine]);
+  rcAll('the boxes\' start times follow the projection while the clock runs (the rest at 10:11 once the roast is late), a late hour later still says the same, and un-ticking a box puts the roast back to running',
+        r => r.t40.boxAt[2] === 'AT 10:11' && r.t40.status === 'Ready at 10:22, 7 min after 10:15' && r.roastDone.ticked === 2 && r.roastDone.status === 'Ready at 10:22, 7 min after 10:15'
+          && r.roastUndone.ticked === 1 && r.roastUndone.status === 'Ready at 10:23, 8 min after 10:15' && /^Now: Roast the roots/.test(r.roastUndone.nowLine || '') === true,
+        r => [r.t40.boxAt, r.t40.status, r.roastDone.ticked, r.roastDone.status, r.roastUndone.ticked, r.roastUndone.status, r.roastUndone.nowLine]);
+  rcAll('RESET TICKS clears the times the ticks were made with them, and the strip is drawn again at once: with nothing ticked at 10:13 the first step is still going, and the meal is 59 minutes late',
+        r => r.reset.ticked === 0 && r.reset.status === 'Ready at 11:14, 59 min after 10:15' && /^Now: Prep the roots/.test(r.reset.nowLine || ''), r => [r.reset.ticked, r.reset.status, r.reset.nowLine]);
+  rcAll('what is being cooked is what is open: a run started on a recipe is not carried to a group, and STOP COOKING puts the plan back as it was planned (no ready flag, no playhead, no Now line, no marks, the run gone)',
+        r => r.group.before.btn === 'START COOKING' && r.group.before.pressed === 'false' && r.group.before.status === null && r.group.cookKept === 'group:' + r.group.cookKept.slice(6)
+          && r.stopped.btn === 'START COOKING' && r.stopped.status === null && r.stopped.playhead === null && r.stopped.planned === 0 && r.stopped.nowLine === null && r.stopped.cookKey === null,
+        r => [r.group.before.btn, r.group.cookKept, r.stopped.btn, r.stopped.status, r.stopped.playhead, r.stopped.cookKey]);
+  rcAll('in the Group Viewer: START COOKING shows the clash as it will be lived (the later hands-on step waits for the earlier: 4 minutes late), AVOID THE CLASH makes it on time, and a late tick moves that dish\'s own ready time in its heading, in place',
+        r => /^Ready at 10:19, 4 min after 10:15$/.test(r.group.started.status) && r.group.avoided.status === 'On time for 10:15' && r.group.before.status === null
+          && /READY AT 10:22$/.test(r.groupLate.heads[0]) && r.groupLate.keep && r.groupLate.ticked >= 1,
+        r => [r.group.error || [r.group.started.status, r.group.avoided.status], r.groupLate.error || [r.groupLate.heads, r.groupLate.keep, r.groupLate.ticked, r.groupLate.status]]);
+  rcAll('a box ticked before START COOKING counts as done from the moment of starting: still ticked, its bar greyed, and the plan after it unchanged',
+        r => r.group.preTicked === 1 && r.group.startedDone >= 1 && r.group.started.ticked === 1 && /^Ready at 10:19, 4 min after 10:15$/.test(r.group.started.status)
+          && r.preStart.ticked === 1 && r.preMid.nowLine === 'Now: nothing is running. Hands free for 1 min, then: Mash at 09:21.' && r.preMid.status === 'On time for 09:35',
+        r => [r.group.preTicked, r.group.startedDone, r.group.started.ticked, r.group.started.status, r.preStart.ticked, r.preMid.nowLine, r.preMid.status]);
+  rcAll('the controls, the ready flag, the Now line, the playhead and the planned marks are left out of print',
+        r => r.print.status === 'none' && r.print.nowLine === 'none' && r.print.playhead === 'none' && r.print.marks.length >= 1 && r.print.marks.every(m => m === 'none'), r => [r.print]);
+  rcAll('none of it wrote anything, and nothing was stored: no write reached the stub, no key reached localStorage',
+        r => r.end.writes === 0 && r.end.keys === 0 && r.end.stored.length === 0, r => [r.end]);
+  /* RC-END */
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:

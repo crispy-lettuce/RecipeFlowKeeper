@@ -630,6 +630,11 @@ html[data-style="modernist"] .timeline-eat .eat-time{ font-size:19px; font-weigh
 html[data-style="modernist"] .timeline-eat .btn[aria-pressed="true"]{ background:var(--color-text); border-color:var(--color-text); color:var(--color-bg); }
 html[data-style="modernist"] .timeline-eat .eat-late{ color:var(--color-accent-700); font-weight:800; }
 html[data-style="modernist"] .timeline-mode-note{ font-size:13px; font-weight:600; color:var(--color-text); }
+/* The running half: the meal on time or not, what is going now, the line at the real time, and where a step was planned. */
+html[data-style="modernist"] .timeline-run-status{ font-size:16px; font-weight:800; letter-spacing:.02em; color:var(--color-text); }
+html[data-style="modernist"] .timeline-now{ font-size:13px; font-weight:600; color:var(--color-text); }
+html[data-style="modernist"] .timeline-playhead{ background:var(--color-accent); }
+html[data-style="modernist"] .planned-mark{ border-left-color:var(--color-text); }
 html[data-style="modernist"] .step-at{ font-size:12px; font-weight:800; letter-spacing:.08em; opacity:1; }
 html[data-style="modernist"] .hands-busy{ background:var(--color-text); }
 html[data-style="modernist"] :is(.hands-free, .oven-use) span{ font-size:12px; font-weight:600; color:var(--color-text); }

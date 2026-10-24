@@ -111,7 +111,7 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
   (drawn from the boxes as they stand, so it survives a redraw and RESET TICKS clears it), tapping a box flashes its bar, tapping a bar jumps
   to its box. Drawing only: nothing is stored. When the table is wider than the screen, an arrow at its top right says so (both styles; not
   in print or PNG).
-- **The run sheet** (planning half, 23 Oct 2026; the playhead, timers and re-planning are not built): the strip is on the clock. **EAT AT**
+- **The run sheet** (planning half 23 Oct 2026, running half in part 24 Oct; per-box START and DONE and the timers are not built): the strip is on the clock. **EAT AT**
   (with −15, −5, +5, +15 and NOW) is by default now plus the longest dish up to the next five minutes, and is held for the recipe or group open in this tab only,
   never stored; the ruler reads times of day, every box says `AT 17:20` when its step starts, and START AT gives when the meal begins. **YOUR HANDS**
   is a row above the lanes: solid where a hands-on step runs, red hatched where two do at once (a clash), an outline `free 16 min` where nothing
@@ -124,6 +124,18 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
   and named); two dishes at one setting share an oven; a sentence says when more settings are wanted at once than **OVENS** (Settings → APP,
   this device only, 1 when unset) allows. A recipe with no step marked `, hands off` (or `[overnight]`) is left out of YOUR HANDS and AVOID THE CLASH, since every step would count as
   hands on and the clashes would be false; a group names the dishes left out, and a group of only such dishes shows no hands row. An `[instant]` step is never drawn in an oven lane. The controls are left out of print.
+  **START COOKING** (24 Oct 2026) starts the run at the real time and fixes EAT AT (a default one at now plus the longest dish at that moment). From then
+  each tick of a box is noted with its time (this tab only, never stored; a box ticked before START counts as done at that moment; un-ticking and RESET TICKS
+  drop it) and the plan is re-drawn from them (`projectRun`): a step ticked late runs from its planned start to the tick, one ticked before its planned start
+  is its own length counted back from the tick, and one ticked along with a later one keeps its planned times, cut short at the tick. Every step not yet done is
+  no earlier than planned, no earlier than now, after what feeds it, and never on top of another hands-on step (so an un-avoided clash reads as lateness);
+  a step whose planned start has passed and whose feeders are done is running and ends at the later of its planned end and now. The bars, YOUR HANDS, the oven
+  rows, each box's `AT` and each dish's START AT and READY AT all read the re-drawn plan; a faint dotted mark shows a step's planned start where it has moved.
+  The strip says `On time for 18:30` or `Ready at 18:43, 13 min after 18:30`, a Now line says what is going with its time left and the hands' next step
+  (`Hands free for 9 min, then: …`), and a red line is the real time. A clock looks once a second, from the real time each time; it moves the line and the Now
+  line in place and redraws only the strip (never the flow table) when the plan has moved a minute. AVOID THE CLASH stays on offer while the planned meal has a
+  clash. STOP COOKING puts the plan back. The status, Now line, line and marks are left out of print and PNG. A run belongs to the recipe or group open (opening
+  another ends it) and lasts until reload.
 - **COOK FOR** rescales for this time only (2, 4, 6, 8 or any number); nothing is saved. Tin sizes never scale. Liquids change unit
   as they scale (teaspoons under 15 ml, tablespoons under 50 ml, ml from 50 ml); weighed liquids stay in grams.
 - **COOKING MODE** keeps the screen awake, hides what is not needed at the hob and folds the sidebar. **SHOW TIMELINE** brings the
