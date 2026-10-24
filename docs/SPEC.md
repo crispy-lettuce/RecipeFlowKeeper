@@ -73,7 +73,8 @@ MERGE cooked, finish -> dish: stir in the lemon and serve [instant]
   An unrecognised bracket is left as label text on purpose. A step that looks after itself once it is going adds `, hands off`
   inside the bracket (`[25 min, hands off]`); hands on is the default, `[overnight]` is hands off by itself, and the mark is not read after
   `[instant]` or without a duration. The box reads `25 MIN · HANDS OFF` and the timeline hatches its bar. The converter writes the mark
-  by a rule (waiting 5 minutes or more; occasional stirring from 10 minutes up; never under 5 minutes or on an instant step).
+  by a rule (waiting 5 minutes or more; occasional stirring from 10 minutes up; never under 5 minutes or on an instant step; a step that is
+  prepared and then waits is judged by the wait; and when unsure it writes nothing, so hands on is what a doubtful step gets).
 - **Courses** are a tag, `course=Breakfast | Main | Side | Dessert | Drink | Bread | Baking | Snack`. Side matters (§5.4).
 - **Time.** `TIME:` is free text; one beginning `est.` was worked out by the converter from the steps, and shows **EST.**
 - **Ingredient lines** have a standard shape (quantity, unit, name, then a comma and preparation), in British English and

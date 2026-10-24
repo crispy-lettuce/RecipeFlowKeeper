@@ -1,6 +1,6 @@
 # Converter test set
 
-Seventeen deliberately awkward cases for checking `conversion-instructions.md` still
+Eighteen deliberately awkward cases for checking `conversion-instructions.md` still
 produces the right shape. Run them whenever those instructions change: paste each
 source into a fresh conversion chat and compare the output against the notes here.
 
@@ -16,7 +16,8 @@ and in ml from 50 ml. Test 12 is five small cases for the `TIME` line: when it i
 Test 13 is a tin with no weight, and test 14 several recipes in one message. Test 15 is solids measured in spoons: grams, with the
 spoons kept in brackets (version 2026-10-18.5). Test 16 is a page that repeats
 an ingredient's whole amount under each step, and a split that must add up to the list (version 2026-10-21.1). Test 17 is the step marker: which
-timed steps look after themselves and are written `, hands off`, and which never are (version 2026-10-23.1).
+timed steps look after themselves and are written `, hands off`, and which never are (version 2026-10-23.1). Test 18 is the finer points of the same
+marker, from the household's own marks on the library: what a prepare-then-wait step is, a range, a short wait, pasta, and when to write nothing (version 2026-10-24.1).
 
 **A stand-in run of version 2026-10-18.3, 18 Oct 2026** (not the conversion project). A session followed the rewritten file by
 hand for tests 1 to 8, 10, 11, 12a to 12e and 13, and ran all sixteen results through `test/validate-recipes.js`: 16 valid,
@@ -681,3 +682,64 @@ tap DONE on the converter bar.
 
 - Not yet run in the conversion project. The rule it tests was tried there on 23 Oct 2026, pasted in for the test only, with three
   re-conversions of real recipes: every timed step's mark matched the household's, 20 of 20.
+
+---
+
+## 18. Hands-off steps, the finer points
+
+**Why:** added 24 Oct 2026, with version 2026-10-24.1. The household went through every timed step of its library with the first rule (test 17)
+and settled the cases the rule left open. Each step below exercises one of them. The source and amounts are made up.
+
+**Source** (the method):
+
+> **Autumn Freekeh Tray** — Serves 4.
+> 1. Toss the squash cubes with oil and spices, then roast them for 30 minutes.
+> 2. Boil the noodles for 8 minutes.
+> 3. Simmer the freekeh in the stock for 25 minutes, stirring from time to time.
+> 4. Fry the mushrooms for 12 minutes, stirring occasionally, until golden.
+> 5. Grill the aubergine slices for 10 minutes, turning occasionally.
+> 6. Soften the shallots in a pan for 3-6 minutes.
+> 7. Bring the stock to the boil, then simmer it for 8 minutes.
+> 8. Spread the freekeh on a tray and leave it to cool for 15 minutes.
+> 9. Freeze the yoghurt topping for 20 minutes to firm it up.
+> 10. Return the tray to the oven for 5 minutes to melt the cheese.
+> 11. Boil the beetroot until tender.
+> 12. Boil the spaghetti to the packet instructions, then drain.
+
+**Must produce** (the brackets; wording and grouping may vary, and each step's length is the source's):
+
+| Step | Bracket | Why |
+| --- | --- | --- |
+| 1 | `[30 min, hands off]` | prepared, then it waits: judged by the waiting part, not by the tossing |
+| 2 | `[8 min, hands off]` | noodles boiling for a stated time of 5 minutes or more (so not "bring to the boil, then simmer") |
+| 3 | `[25 min, hands off]` | a long simmer, stirred only from time to time |
+| 4 | `[12 min]` | frying is the work of the step, so "occasionally" does not free the hands |
+| 5 | `[10 min]` | the same for grilling |
+| 6 | `[3-6 min]` | a range counts from its low end, which is under 5 minutes |
+| 7 | `[8 min]` | bring to the boil, then simmer, under 10 minutes: the cook is watching |
+| 8 | `[15 min, hands off]` | cooling for 5 minutes or more |
+| 9 | `[20 min, hands off]` | freezing for 5 minutes or more |
+| 10 | `[5 min]` | a wait of only 5-6 minutes in the oven (or resting, or cooling): when unsure, write nothing |
+| 11 | `[until done]` | a boil with no stated time: when unsure, write nothing |
+| 12 | `[until done, hands off]` | pasta boiling to the packet time, though no time is stated |
+
+**Fails if:**
+
+- step 4, 5, 6, 7, 10 or 11 is marked;
+- step 1, 2, 3, 8, 9 or 12 is left unmarked;
+- step 1 is left hands on because it begins with tossing, or step 4 or 5 is freed by the word "occasionally";
+- a marker is written without a duration (`[hands off]`) or in place of one, or step 11's `[until done]` is given a marker.
+
+**Worth knowing:** `node test/validate-recipes.js` reports six steps hands off here. `node test/core.test.js` reads the table above and checks that the app
+reads each bracket as the table says, so the test cannot ask for a bracket the app does not understand. A few of the household's marks on its library sit in the
+"when unsure" cases (steps like 10), so converting those recipes again leaves them hands on; the household can add the mark by hand.
+
+**Runs.**
+
+- **A stand-in run of version 2026-10-24.1, 24 Oct 2026** (not the conversion project). A session followed the file by hand, blind to the household's marks,
+  over the 297 timed steps in the household's library (92 hands off by the file, 205 hands on). 288 matched the household's marks. Of the 9 that did not,
+  5 are the 5-6 minute waits (resting, cooling, in the oven) that the file leaves hands on on purpose; 3 the file marks hands off and the library has hands on (a
+  pasta or noodle boil with other work in the same step, twice, and a slowly cooked onion step); and 1 the file leaves unclear (an 8-minute bake basted once
+  halfway), read as hands on. The file's clauses were drawn from the same library, so this shows the wording says what the household decided; it is not an
+  independent test; the household's re-conversion of three recipes (docs/HOUSEHOLD-JOBS.md, the converter bar, step 4) is.
+- Not yet run in the conversion project.

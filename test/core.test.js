@@ -329,7 +329,7 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
    The file's fingerprint is pinned here against its version: change the file, and this fails until the "Version" line
    in the file and CONVERTER_VERSION in index.html are both moved on, and the new fingerprint (printed below) is put
    here beside the new version. */
-const CONVERTER_PINNED = { version: '2026-10-23.1', sha256: '8a4fd0452727841efede7ac5017f8a04e1aba4c9120bd6131531e266894b1e5c' };
+const CONVERTER_PINNED = { version: '2026-10-24.1', sha256: '2ea8d7d0f40dc1c84bff5fc7cb83ea0cce9788fd1b03a634385b74fca5b655ef' };
 {
   const convSrc = fs.readFileSync(path.join(ROOT, 'converter', 'conversion-instructions.md'), 'utf8');
   const convSha = require('crypto').createHash('sha256').update(convSrc).digest('hex');
@@ -1483,6 +1483,17 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
   check('scaling a recipe leaves a MERGE line, marker and all, as it was',
         JSON.stringify(mergeLines(core.scaleRecipeSyntax(body(true), 2))) === JSON.stringify(mergeLines(body(true))));
   check('formatDuration says nothing of hands-off (the box draws that itself)', core.formatDuration(ex('25 min, hands off').duration) === core.formatDuration(ex('25 min').duration));
+
+  /* The converter's test 18 (converter/test-set.md) asks for these brackets. Read through the app's own parser, so the test set can
+     never ask the converter for a bracket the app does not understand, or mark a step the table says is hands on. The steps are
+     listed here by number, written once beside the table: a change to either fails the check. */
+  const ts = fs.readFileSync(path.join(ROOT, 'converter', 'test-set.md'), 'utf8');
+  const t18 = ts.slice(ts.indexOf('\n## 18. '));
+  const t18rows = [...t18.matchAll(/^\| (\d+) \| `(\[[^`]+\])` \|/gm)].map(m => [Number(m[1]), core.extractStepDuration('Step ' + m[1] + ' ' + m[2]).duration]);
+  const t18off = t18rows.filter(([, d]) => d && d.handsOff).map(([n]) => n).join();
+  const t18unread = t18rows.filter(([, d]) => !d).map(([n]) => n).join();
+  check('converter test 18: every bracket it asks for is one the app reads as a duration, and the steps read as hands off are 1, 2, 3, 8, 9 and 12',
+        t18rows.length === 12 && t18unread === '' && t18off === '1,2,3,8,9,12', `rows ${t18rows.length}, unread [${t18unread}], hands off [${t18off}]`);
 }
 
 /* ---- The run sheet, planning half (run sheet PR 3a, 23 Oct 2026, docs/PLAN-RUN-SHEET.md §4) ----

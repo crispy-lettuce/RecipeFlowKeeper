@@ -4,6 +4,25 @@ What changed in `conversion-instructions.md`, and why, newest first. Until 18 Oc
 file, so every conversion read them; they say nothing a conversion needs, so they live here, for reference. **This file is
 not loaded into the conversion project.** Each household loads `conversion-instructions.md` alone.
 
+## Revision note (24 Oct 2026, version 2026-10-24.1: the hands-off rule, settled on the library)
+
+Raised by the household's pass over its own library (docs/PLAN-RUN-SHEET.md §6). Version 2026-10-23.1 introduced the `, hands off` mark
+(test 17; it had no note here). The household then went through every timed step of its library, and the marks it settled showed where
+the first rule left a step open or read it the wrong way.
+
+- **Six clarifications, in the "Hands-off steps" bullets and the matching Check line.** A step that is prepared and then waits ("toss with
+  oil and roast for 30 minutes") is judged by the waiting part, where the first rule read the tossing. Pasta or noodles boiling to the packet
+  time, stated or not, are hands off. A long simmer or stew stirred only from time to time is hands off (the list of "occasionally" words gains "from time
+  to time"). A range counts from its low end, and "bring to the boil, then simmer" under 10 minutes stays hands on. Frying, browning, searing,
+  grilling, whisking and tossing as the work of the step are hands on whatever "occasionally" says (searing and grilling are new to the list).
+  Cooling and freezing join the waiting steps.
+- **Two cases left hands on on purpose:** a wait of only 5-6 minutes in the oven, while resting or while cooling, and a boil with no stated time (pasta apart). The
+  household's reading of these varied step by step, and a missing mark only costs a little precision in the plan, where a wrong one says the
+  cook's hands are free when they are not. So the file now says **when unsure, write nothing.** A few marks the household put on its library
+  sit in these cases, so converting those recipes again leaves them hands on.
+- **Test 18 added**, with a made-up source and one step for each clause. `test/core.test.js` reads its table.
+- **Reload this file into the conversion project.** Recipes already in the library are not changed.
+
 ## Revision note (21 Oct 2026, version 2026-10-21.1: a split adds up to the ingredient list)
 
 Raised by the household from a real conversion whose COMPARE WITH SOURCE showed a sauce as "amounts differ": the recipe had a

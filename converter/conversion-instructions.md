@@ -1,6 +1,6 @@
 # Recipe Conversion — Project Instructions
 
-**Version 2026-10-23.1.**
+**Version 2026-10-24.1.**
 
 Convert every recipe given here (photo, URL or pasted text) into GROUP / STAGE / MERGE syntax for the recipe merge-flow tool. Work through all four stages in order every time; never skip Check.
 
@@ -138,10 +138,12 @@ TIPS:
 - STAGE = one column = one moment in time. Independent parallel actions are separate MERGE lines in the same stage.
 - A single-input MERGE relabels a box; use it for every step after the final combine (pour, bake, cool, cut, serve).
 - **Every MERGE ends with a bracketed duration:** `[8 min]`, `[10-13 min]` (hyphen or en dash), `[1 hr]`, `[1 hr 30]`, `[30 sec]`, `[overnight]`. `[until done]` and `[till reduced]` are read as open-ended. `[instant]` for steps taking no meaningful time (plating, a final stir, garnish). Never omit it: one missing duration makes the shared cooking timeline wrong.
-- **Hands-off steps:** add `, hands off` inside the bracket of a step that looks after itself once it is going: `[25 min, hands off]`, `[40-50 min, hands off]`, `[until set, hands off]`. Hands on is the default and is written as nothing.
-  - It is hands off when it is **waiting for 5 minutes or more**: simmering, baking, roasting, soaking, resting, chilling, proving, marinating, a slow cooker, something heating in the oven.
-  - Stirring or turning **occasionally, now and then, once or twice or halfway** still counts as hands off **from 10 minutes up**.
-  - It is **hands on** (write nothing) when it is under 5 minutes; when the source says to stir often, constantly or all the time, whisk, fry, brown or toss; when the cook watches for a moment ("bring to a simmer, then turn off", "hot but not boiling"); and when it is under 10 minutes with any stirring.
+- **Hands-off steps:** add `, hands off` inside the bracket of a step that looks after itself once it is going: `[25 min, hands off]`, `[40-50 min, hands off]`, `[until set, hands off]`. Hands on is the default and is written as nothing; **when unsure, write nothing.**
+  - It is hands off when it is **waiting for 5 minutes or more**: simmering, baking, roasting, soaking, resting, cooling, chilling, freezing, proving, marinating, a slow cooker, something heating in the oven, pasta or noodles boiling to the packet time, stated or not (`[until done, hands off]` when none is stated).
+  - Stirring or turning **occasionally, now and then, once or twice, from time to time or halfway** still counts as hands off **from 10 minutes up**, a long simmer or stew included.
+  - A step that gets the food ready and then waits ("toss with oil and roast for 30 minutes") is judged by the waiting part.
+  - It is **hands on** (write nothing) when it is under 5 minutes (a range counts from its low end, so `[3-6 min]` is under 5); when the source says to stir often, constantly or all the time; when the work of the step is to whisk, fry, brown, sear, grill or toss, whatever else it says ("occasionally" does not change that); when the cook watches for a moment ("bring to a simmer, then turn off", "hot but not boiling", "bring to the boil, then simmer" for under 10 minutes); and when it is under 10 minutes with any stirring.
+  - Two cases stay hands on unless the source says to leave it alone: a wait of only 5-6 minutes in the oven, while resting or while cooling; and a boil with no stated time (`[until done]`), pasta and noodles apart.
   - A step whose timing matters but needs nobody (fat heating in the oven, timed to be ready with the batter) is hands off.
   - `[overnight]` is always hands off and needs no marker. Never add the marker to `[instant]` or write it without a duration (`[hands off]`): the app does not read either as a time.
   ```
@@ -182,7 +184,7 @@ Compare the output with the extraction line by line. Confirm:
 - Every ingredient joins where the method adds it; late additions have their own group.
 - Every method step is in STEPS, a STAGE or NOTES; every temperature, time, doneness cue and caution retained.
 - Every MERGE has a bracketed duration, `[instant]` included.
-- Every step that waits 5 minutes or more carries `, hands off` by the rules above, and no step under 5 minutes, no `[instant]` and no step that is stirred often does.
+- Every step that waits 5 minutes or more carries `, hands off` by the rules above (a step that is prepared and then waits is judged by the wait; a doubt means no marker), and no step under 5 minutes (a range counts from its low end), no `[instant]` and no step that is fried, whisked or stirred often does.
 - SOURCE determined or confirmed; SOURCE_URL present only for a webpage; the page itself was read or pasted, nothing reconstructed, no source note added only because text was pasted.
 - TIME from the source (no marker, no note), or `est.` from MERGE durations with the Time note, or omitted with a reason.
 - SERVINGS from the source or the person; EQUIPMENT present where a size matters.

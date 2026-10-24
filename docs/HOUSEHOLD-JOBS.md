@@ -26,11 +26,11 @@ Nothing else is waiting. What to build next is your choice; `docs/STATUS.md` §3
 
 ## Reload the app on every device
 
-The current app is **2026-10-24.2** (`APP_VERSION`) once the START and DONE PR is merged.
+The current app is **2026-10-24.3** (`APP_VERSION`) once the converter-rule PR is merged.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready.**, tap **RELOAD**. Otherwise refresh the page.
-3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-24.2** or later.
+3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-24.3** or later.
 
 ## Set the ovens and try the run sheet
 
@@ -83,13 +83,16 @@ Not in this version: timers (a countdown and a chime). Tell the next session whi
 
 ## The converter bar
 
-The master copy of the converter's instructions is `converter/conversion-instructions.md` (version **2026-10-23.1** now). When it changes, a gold
-**CONVERTER** bar shows in your household until someone taps **DONE**. The 23 Oct change adds a rule that marks the steps that look after
-themselves, so reload every device first (above), then do the steps below.
+The master copy of the converter's instructions is `converter/conversion-instructions.md` (version **2026-10-24.1** now). When it changes, a gold
+**CONVERTER** bar shows in your household until someone taps **DONE**. The 24 Oct change settles the rule that marks the steps that look after
+themselves (a step that is prepared and then waits, pasta, long simmers, ranges, and "when unsure, write nothing"), so reload every device first (above), then do the steps below.
 
 1. Tap **OPEN THE INSTRUCTIONS ↗** and download the file.
 2. In the Claude app, open your conversion project and replace its copy of the file with the new one.
 3. Back in the app, tap **DONE**. **You should see:** the bar goes, on every device in the household.
+4. To prove the new file, convert three recipes you have the page for, in the conversion project, and compare each timed step's `, hands off` with the same step in your
+   library. **You should see:** the same marks, except that a step which only waits 5 or 6 minutes (in the oven, resting or cooling), a boil with no time that is not pasta, and a step
+   the page leaves unclear come out with no mark. That is the rule on purpose; add the mark by hand if you want it. Do not paste these into the app; the recipes are already there.
 
 The test account in Test Kitchen has its own DONE, so it shows the bar too until it is tapped there. A session can see which version
 a household has confirmed (`household_settings.converter_ack_version`); it did not look today, so whether the bar is showing now is
