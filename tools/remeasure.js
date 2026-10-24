@@ -9,11 +9,15 @@
    costs a command rather than an afternoon. Added 28 Sep 2026, PR 6c-1.
 
    It reads the file the app's sidebar EXPORT DATA writes, and totals it
-   with the same core.js the app runs, the household's word matches applied
-   as the list applies them. It reports, and changes nothing:
+   with the same core.js the app runs, the household's word matches and aisle
+   overrides applied as the list applies them. It reports, and changes nothing:
      - rows: every recipe planned at once, one row per thing to buy
      - likely splits: pairs the list itself would offer to merge
-     - rows in "Other", which want an aisle
+     - rows in "Other", which want an aisle: after the household's own aisles,
+       which is what the list shows (issue #206, 24 Oct 2026: until then the
+       overrides were left out, and on the household's library 96 names read as
+       Other where the list showed 51). A row's aisle is applied after its key
+       is final, so overrides never change a row, a split or a tick key.
      - lines the shopping list cannot total properly, by recipe
      - lines the parser reads past
 
@@ -33,6 +37,7 @@ function remeasure(exp){
   const recipes = (exp && exp.recipes) || [];
   const aliases = (exp && exp.aliases) || [];
   const matches = core.ingredientMatchMap(aliases);
+  const placed = core.aisleOverrideMap(exp && exp.aisleOverrides);
   const distinct = new Set(aliases.filter(a => a.kind === 'ingredient_distinct').map(a => {
     const [x, y] = String(a.alias).split(' || ');
     return [core.shoppingKeyForName(x || ''), core.shoppingKeyForName(y || '')].sort().join(' || ');
@@ -49,7 +54,9 @@ function remeasure(exp){
       if(faults.length) shape.push({ recipe: r.title, line: raw, faults: faults.map(f => f.text), suggestion: core.suggestIngredientLine(raw) });
     }));
   });
-  const items = core.aggregateShoppingLines(lines, k => matches.get(k) || k);
+  const alias = k => matches.get(k) || k;
+  const items = core.aggregateShoppingLines(lines, alias, k => placed.get(k) || null);
+  const without = placed.size ? core.aggregateShoppingLines(lines, alias) : items;
   const splits = core.strictMatchSuggestions(items, (a, b) => distinct.has([a, b].sort().join(' || ')));
   return {
     recipes: recipes.length,
@@ -58,6 +65,8 @@ function remeasure(exp){
     wordMatches: matches.size,
     splits,
     other: items.filter(i => i.category === 'Other').map(i => i.name).sort(),
+    otherBeforeOverrides: without.filter(i => i.category === 'Other').map(i => i.name).sort(),
+    overrides: placed.size,
     shape,
     unread
   };
@@ -76,7 +85,8 @@ if(require.main === module){
   console.log(`${rep.recipes} recipes, ${rep.lines} ingredient lines -> ${rep.rows} rows (${rep.wordMatches} word matches applied)`);
   console.log(`\nLikely splits (${rep.splits.length}) — the pairs the list offers to merge:`);
   rep.splits.forEach(s => console.log(`  ${s.from}  ~  ${s.to}`));
-  console.log(`\nIn "Other" (${rep.other.length}): ${rep.other.join('; ')}`);
+  const aisles = rep.overrides ? ` after ${rep.overrides} aisle override${rep.overrides === 1 ? '' : 's'}; ${rep.otherBeforeOverrides.length} without` : '';
+  console.log(`\nIn "Other" (${rep.other.length}${aisles}): ${rep.other.join('; ')}`);
   console.log(`\nLines the list cannot total (${rep.shape.length}):`);
   rep.shape.forEach(s => console.log(`  ${s.recipe}: "${s.line}" — ${s.faults.join('; ')}${s.suggestion ? `  → "${s.suggestion}"` : ''}`));
   console.log(`\nLines the parser reads past (${rep.unread.length}):`);

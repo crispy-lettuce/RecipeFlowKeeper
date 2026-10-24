@@ -1423,6 +1423,32 @@ check('tools/remeasure.js totals an export as the list does, and reports what to
       rm.recipes === 2 && rm.rows === 6 && rm.wordMatches === 0 && JSON.stringify(rm.splits) === '[{"from":"curly kale","to":"kale"}]'
       && rm.shape.length === 1 && rm.shape[0].line === '3 tbsp honey or golden syrup' && rm.unread.map(u => u.line).join('|') === 'GROUP x-y:'
       && rm.other.includes("Za'atar"), JSON.stringify(rm));
+/* Issue #206 (24 Oct 2026): the household's aisle overrides are applied, so "Other" is what the list shows. Made-up export. */
+const rmData = { recipes: [
+  { title: 'A', syntax: 'TITLE: A\nGROUP a:\n200 g curly kale\n3 tbsp honey or golden syrup\n1 tsp za\'atar\nSTAGE:\nMERGE a -> b: Cook [5 min]' },
+  { title: 'B', syntax: 'TITLE: B\nGROUP a:\n100 g kale\n2 onions\nGROUP x-y:\n1 leek\nSTAGE:\nMERGE a -> b: Cook [5 min]' }],
+  aliases: [{ kind: 'ingredient', alias: 'large onions', canonical: 'onion' }] };
+const rmPlaced = remeasure({ ...rmData, aisleOverrides: [{ name: "za'atar", aisle: 'Pantry' }] });
+check('tools/remeasure.js applies the household\'s aisle overrides: a name they placed leaves "Other" and stays in the list from before, which says how many overrides there were',
+      !rmPlaced.other.includes("Za'atar") && rmPlaced.otherBeforeOverrides.includes("Za'atar") && rmPlaced.other.length === rmPlaced.otherBeforeOverrides.length - 1 && rmPlaced.overrides === 1,
+      JSON.stringify([rmPlaced.other, rmPlaced.otherBeforeOverrides, rmPlaced.overrides]));
+check('    and nothing else moves: the rows, the likely splits, the lines it cannot total and the lines it reads past are the same with and without them',
+      rmPlaced.rows === rm.rows && JSON.stringify(rmPlaced.splits) === JSON.stringify(rm.splits) && JSON.stringify(rmPlaced.shape) === JSON.stringify(rm.shape) && JSON.stringify(rmPlaced.unread) === JSON.stringify(rm.unread),
+      JSON.stringify([rmPlaced.rows, rm.rows]));
+const rmNone = remeasure({ ...rmData, aisleOverrides: null }), rmOdd = remeasure({ ...rmData, aisleOverrides: [{ name: "za'atar", aisle: 'Not An Aisle' }, { name: 'dragon fruit', aisle: 'Pantry' }] });
+check('    an export with no overrides (or null, as the live query gives for none) reports as it did, and an override for an aisle that does not exist, or for a name nothing uses, changes nothing',
+      JSON.stringify(rmNone.other) === JSON.stringify(rm.other) && rmNone.overrides === 0 && JSON.stringify(rmNone.otherBeforeOverrides) === JSON.stringify(rm.other)
+      && JSON.stringify(rmOdd.other) === JSON.stringify(rm.other) && rmOdd.overrides === 1, JSON.stringify([rmNone.overrides, rmOdd.other, rmOdd.overrides]));
+{
+  const os = require('os'), dir = fs.mkdtempSync(path.join(os.tmpdir(), 'remeasure-'));
+  const withFile = path.join(dir, 'with.json'), withoutFile = path.join(dir, 'without.json');
+  fs.writeFileSync(withFile, JSON.stringify({ ...rmData, aisleOverrides: [{ name: "za'atar", aisle: 'Pantry' }] })); fs.writeFileSync(withoutFile, JSON.stringify(rmData));
+  const out = f => require('child_process').spawnSync(process.execPath, [path.join(ROOT, 'tools', 'remeasure.js'), f], { encoding: 'utf8' });
+  const a = out(withFile), b = out(withoutFile);
+  check('the command says what it counted: "In Other (N after 1 aisle override; M without)" with overrides, and the old "In Other (N)" without',
+        a.status === 0 && /In "Other" \(\d+ after 1 aisle override; \d+ without\):/.test(a.stdout) && b.status === 0 && /In "Other" \(\d+\):/.test(b.stdout) && !/aisle override/.test(b.stdout), a.stdout.split('\n').filter(l => /Other/.test(l)).join(' | ') + ' || ' + b.stdout.split('\n').filter(l => /Other/.test(l)).join(' | '));
+  fs.rmSync(dir, { recursive: true, force: true });
+}
 
 check('stock files under Pantry before chicken can claim it', only('500 ml chicken stock').category === 'Pantry', only('500 ml chicken stock').category);
 
