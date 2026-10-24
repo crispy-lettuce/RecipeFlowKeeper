@@ -17,6 +17,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 | --- | --- | --- | --- |
 | [Reload the app](#reload-the-app-on-every-device), on every device | every device | 1 min | No |
 | [Set the ovens and try the run sheet](#set-the-ovens-and-try-the-run-sheet), once the app is **2026-10-23.3** | tablet | 5 min | The number of ovens, on that device only |
+| [Try START COOKING](#try-start-cooking), once the app is **2026-10-24.1** | tablet | 5 min | No |
 | [Tap DONE on the converter bar](#the-converter-bar), if it shows | app | 1 min | Only the converter's DONE |
 
 Nothing else is waiting. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
@@ -25,11 +26,11 @@ Nothing else is waiting. What to build next is your choice; `docs/STATUS.md` §3
 
 ## Reload the app on every device
 
-The current app is **2026-10-23.2** (`APP_VERSION`); **2026-10-23.3** once the run-sheet PR is merged.
+The current app is **2026-10-24.1** (`APP_VERSION`) once the START COOKING PR is merged.
 
 1. On the tablet, the phone and the laptop, open the app.
 2. If a bar says **A new version is ready.**, tap **RELOAD**. Otherwise refresh the page.
-3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-23.3** or later.
+3. Open **SETTINGS → HELP**. **You should see:** Version **2026-10-24.1** or later.
 
 ## Set the ovens and try the run sheet
 
@@ -55,6 +56,25 @@ stays on the device you set it on.
 7. Open one dish on its own. **You should see:** the same EAT AT, ruler and hands row.
 
 Tell the next session which step did not do what it said; it takes the job off this page when you report it passed.
+
+## Try START COOKING
+
+Needs a recipe with times on its steps, or a group, open in the app. Nothing here is saved: a reload ends the run, as it ends the ticks. Best tried in Test
+Kitchen, with a step or two marked `, hands off` (see the converter bar below for the mark).
+
+1. Open a recipe with times on its steps. Under the heading, tap **START COOKING**. **You should see:** the button becomes **STOP COOKING**, EAT AT stops
+   following the clock, a line reads **On time for HH:MM** (your EAT AT), and a **Now** line says what is going or what is next for your hands.
+2. Wait for the first step's time. **You should see:** a red line down the strip at the real time, moving; the Now line saying what is going and how
+   long it has left, and whether your hands are busy.
+3. Tick a step a few minutes after it was planned to end. **You should see:** its bar drawn out to the tick, everything after it moving later, a faint dotted
+   mark where it had been planned, each later box's **AT** time changed, and the line reading **Ready at HH:MM, N min after HH:MM**.
+4. Tick a step before its planned start. **You should see:** nothing after it moves earlier than planned.
+5. Tap **RESET TICKS**. **You should see:** the plan back to where it would be with nothing ticked, at once.
+6. Open a group of dishes and tap **START COOKING**. **You should see:** the same; and if two steps want your hands at once, the later one waits, so the meal reads
+   late, while **AVOID THE CLASH** is still there to move it earlier instead.
+7. Tap **STOP COOKING**. **You should see:** the plan as it was before, with no red line, no Now line and no dotted marks.
+
+Not in this version: a START and a DONE on each box, and timers. Tell the next session which step did not do what it said.
 
 ## The converter bar
 

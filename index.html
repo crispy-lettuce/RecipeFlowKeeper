@@ -668,6 +668,12 @@ function loadArchivoFont(){
   /* Pressed is a filled button, so it cannot be mistaken for one not yet pressed (the household's first try: the border alone was too faint). */
   .timeline-eat .btn[aria-pressed="true"]{ background:var(--ink); border-color:var(--ink); color:var(--card); }
   .timeline-eat .eat-late{ color:var(--danger); font-weight:500; }
+  /* The running half: whether the meal is on time, what is going now, a line at the real time down the strip, and where a step was planned
+     when it is no longer there. */
+  .timeline-run-status{ margin:0 0 4px; font-size:16px; font-weight:500; color:var(--ink); }
+  .timeline-now{ margin:0 0 10px; font-size:14px; line-height:1.5; color:var(--ink-soft); }
+  .timeline-playhead{ position:absolute; top:0; bottom:0; width:2px; margin-left:-1px; background:var(--danger); pointer-events:none; z-index:6; }
+  .planned-mark{ position:absolute; top:2px; height:16px; width:0; border-left:2px dotted var(--ink-faint); pointer-events:none; }
   .timeline-mode-note{ margin:0 0 10px; font-size:14px; line-height:1.5; color:var(--ink-soft); }
   .timeline-eat .eat-time{ font-family:'IBM Plex Mono', monospace; font-size:19px; letter-spacing:0; color:var(--ink); padding:0 4px; }
   .step-at{ display:block; font-size:13px; letter-spacing:.06em; opacity:.72; margin-top:3px; font-family:'IBM Plex Mono', monospace; }
@@ -1762,7 +1768,7 @@ function loadArchivoFont(){
     body{ overflow:visible !important; }
     .sidebar, .navlink, .btn, .backlink, .toggle-switch,
     .keep-awake-status, #keepAwakeVideo,
-    .filter-head, .assign-banner, .offline-bar, .flow-more, .timeline-eat,
+    .filter-head, .assign-banner, .offline-bar, .flow-more, .timeline-eat, .timeline-run-status, .timeline-now, .timeline-playhead, .planned-mark,
     .shop-head-right, #shopWeekSelect,
     #shopHideCheckedBtn, #shopClearBtn,
     .sidebar-peek-btn, .cooking-notes{ display:none !important; }
@@ -1827,7 +1833,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-23.4">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-24.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2540,7 +2546,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-23.3"></script>
+<script src="core.js?v=2026-10-24.1"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2548,12 +2554,12 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-23.3';
+const EXPECTED_CORE_VERSION = '2026-10-24.1';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-23.4';
+const APP_VERSION = '2026-10-24.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -2804,23 +2810,35 @@ function ovenCount(){
    now plus the longest dish up to the next five minutes (decided 23 Oct: start now, eat when it is ready). */
 function buildRun(key, mode, items, day){
   if(state.eatAt.key !== key) state.eatAt = { key, mins: null, avoid: false };
+  if(state.cook.key !== key) state.cook = { key, startedAt: null, marks: {} };
   const timelines = items.map(it=> it.timeline);
   const longest = Math.max(0, ...timelines.filter(Boolean).map(t=> t.totalSpan));
   const now = nowMinutes();
   const serveAt = state.eatAt.mins !== null ? state.eatAt.mins : defaultServeAt(now, longest);
-  const plan = planToServe(timelines, serveAt, { mode, avoidClash: state.eatAt.avoid });
+  const planned = planToServe(timelines, serveAt, { mode, avoidClash: state.eatAt.avoid });
+  /* Once the cook has pressed START COOKING the plan is re-drawn from what has happened (projectRun, core.js): every row and bar below
+     reads `plan`, so they follow with no other change. `planned` is what it was before, for the faint marks. */
+  const cooking = state.cook.startedAt !== null;
+  const marks = {};
+  items.forEach((it, i)=> { if(it.id && state.cook.marks[it.id]) marks[i] = state.cook.marks[it.id]; });
+  const plan = cooking ? projectRun(planned, marks, now) : planned;
   const hands = handsWindows(plan.steps);
+  /* While cooking the re-plan has already put one hands-on step after the other, so `hands` shows no clash; AVOID THE CLASH is still on offer for
+     the one the plan had, as it moves the step earlier instead of making the meal late. */
+  const plannedClash = cooking ? handsWindows(planned.steps).clashMinutes : hands.clashMinutes;
   const oven = ovenUse(items.map((it, i)=> ({ index: i, title: it.title, setup: it.setup, steps: plan.lanes[i] ? plan.lanes[i].steps : [] })), ovenCount());
   /* `today`: whether "that time has passed" means anything: a group planned for another day (`day`) has no "now" to be late for. The recipes
      whose hands cannot be told yet (no step marked hands off) are named, for the note under the strip. */
-  return { key, mode, plan, hands, oven, now, serveAt, isDefault: state.eatAt.mins === null, avoid: state.eatAt.avoid,
-    axisStart: plan.startAt, span: serveAt - plan.startAt, items, today: !day || day === todayStr(), single: items.length === 1,
+  return { key, mode, plan, planned, cooking, plannedClash, status: cooking ? runStatus(plan, now) : null, args: [key, mode, items, day],
+    hands, oven, now, serveAt, isDefault: state.eatAt.mins === null, avoid: state.eatAt.avoid,
+    axisStart: plan.startAt, span: Math.max(serveAt, cooking ? plan.readyAt : serveAt) - plan.startAt, items, today: !day || day === todayStr(), single: items.length === 1,
     unmarked: plan.unmarked.map(i=> items[i].title), timed: items.filter(it=> it.timeline).length };
 }
 /* A dish's steps on the strip's own axis (0 at the first start), which is what the bars' positions are measured from. */
 function runLaneSteps(run, dish){
   const lane = run.plan.lanes[dish];
-  return lane ? lane.steps.map(st=> ({ ...st, start: st.start - run.axisStart, end: st.end - run.axisStart })) : null;
+  return lane ? lane.steps.map(st=> ({ ...st, start: st.start - run.axisStart, end: st.end - run.axisStart,
+    plannedStart: st.plannedStart === undefined ? undefined : st.plannedStart - run.axisStart })) : null;
 }
 /* When each step of a dish starts, by its handle: what every box says it starts at. */
 function runStarts(run, dish){
@@ -2833,17 +2851,49 @@ function settingLabel(key){ return `${parseInt(key, 10)}°C${/f$/.test(key) ? ' 
 
 /* EAT AT, its stepper, when to start, and AVOID THE CLASH (only while there is a clash to avoid, or it is pressed, so it can be undone). */
 function runControlsHTML(run){
-  const late = run.today ? run.now - run.plan.startAt : 0;
+  const late = run.today && !run.cooking ? run.now - run.plan.startAt : 0;
   const button = ([n, words])=> `<button type="button" class="btn" data-eat-step="${n}" aria-label="${n < 0 ? 'Earlier' : 'Later'} by ${Math.abs(n)} minutes">${words}</button>`;
-  const clash = run.hands.clashMinutes > 1e-9 || run.avoid;
-  return `<div class="timeline-eat" data-serve="${run.serveAt}">
+  const clash = run.plannedClash > 1e-9 || run.avoid;
+  return `<div class="timeline-eat" data-serve="${run.serveAt}" data-span="${run.plan.totalSpan}">
     <span class="eat-label">EAT AT</span>
     ${EAT_STEPS.filter(e=> e[0] < 0).map(button).join('')}<b class="eat-time">${formatClock(run.serveAt)}</b>${EAT_STEPS.filter(e=> e[0] > 0).map(button).join('')}
     ${run.isDefault ? '' : '<button type="button" class="btn" data-eat-now>NOW</button>'}
     <span class="eat-start">${run.plan.about ? 'ABOUT ' : ''}START AT ${formatClock(run.plan.startAt)}</span>
     ${late > 1 ? '<span class="eat-late">THAT TIME HAS PASSED: TAP NOW</span>' : ''}
     ${clash ? `<button type="button" class="btn" data-avoid-clash aria-pressed="${run.avoid}">${run.avoid ? '✓ CLASH AVOIDED · TAP TO UNDO' : 'AVOID THE CLASH'}</button>` : ''}
-  </div>${modeNoteHTML(run)}`;
+    <button type="button" class="btn" data-cook-toggle aria-pressed="${run.cooking}">${run.cooking ? 'STOP COOKING' : 'START COOKING'}</button>
+  </div>${modeNoteHTML(run)}${runStatusHTML(run)}`;
+}
+/* Once cooking has started: whether the meal is on time (the plan re-drawn from what has happened, projectRun), and what is going now and
+   what is next for the cook's hands (runStatus). The second is rewritten in place every second by runClockTick; the first only changes
+   with the projection, which redraws the strip. */
+function runStatusHTML(run){
+  if(!run.cooking) return '';
+  const p = run.plan, late = Math.round(p.lateBy);
+  const head = p.allDone ? `All done at ${formatClock(p.readyAt)}.`
+    : late <= 0 ? `On time for ${formatClock(run.serveAt)}`
+    : `Ready at ${formatClock(p.readyAt)}, ${formatMinutesForDisplay(late)} after ${formatClock(run.serveAt)}`;
+  const guess = p.about && !p.allDone ? ' (a guess: a step has no fixed time)' : '';
+  return `<p class="timeline-run-status" data-run-status>${escapeHtml(head + guess)}</p><p class="timeline-now" data-run-now>${escapeHtml(nowLineText(run))}</p>`;
+}
+function nowLineText(run){
+  if(!run.cooking || run.plan.allDone) return '';
+  const s = run.status;
+  const trim = l=> l.length > 40 ? l.slice(0, 38) + '…' : l;
+  const name = i=> run.single ? '' : ` (${run.items[i].title})`;
+  const going = s.going.slice(0, 3).map(g=> `${trim(g.label)}${name(g.dish)}, ${g.left >= 1 ? formatMinutesForDisplay(Math.ceil(g.left)) + ' left' : 'due now'}`);
+  let text = going.length ? `Now: ${going.join('; ')}.` : 'Now: nothing is running.';
+  if(s.handsBusy) text += ` Your hands are busy until ${formatClock(s.busyUntil)}.`;
+  else if(s.freeFor !== null && s.freeFor >= 1) text += ` Hands free for ${formatMinutesForDisplay(Math.round(s.freeFor))}, then: ${trim(s.next.label)}${name(s.next.dish)} at ${formatClock(s.next.at)}.`;
+  else if(s.next) text += ` Next for your hands: ${trim(s.next.label)}${name(s.next.dish)} at ${formatClock(s.next.at)}.`;
+  else if(s.remaining) text += ' Nothing more needs your hands.';
+  return text;
+}
+/* A line down the strip at the real time, while cooking. */
+function playheadHTML(run){
+  if(!run.cooking || run.plan.allDone || run.span <= 0) return '';
+  const pct = (run.now - run.axisStart) / run.span * 100;
+  return pct < 0 || pct > 100 ? '' : `<i class="timeline-playhead" style="left:${pct}%" title="Now, ${formatClock(run.now)}"></i>`;
 }
 /* What the chosen way of lining dishes up does, in words, for a group (one dish has nothing to line up): START TOGETHER and FINISH TOGETHER
    changed nothing the household could see when two dishes are about as long (their first try, 23 Oct), so the heading says what each does. */
@@ -2893,7 +2943,7 @@ function runWarningsHTML(run){
   return lines.length ? `<div class="timeline-missing-note timeline-oven-note">${lines.join('<br>')}</div>` : '';
 }
 /* EAT AT's buttons, wired after the strip is drawn; each redraws the viewer through `rerender`, the way START TOGETHER does. */
-function wireEatAt(root, rerender){
+function wireEatAt(root, rerender, cookId){
   const bar = root.querySelector('.timeline-eat');
   if(!bar) return;
   const serve = parseFloat(bar.dataset.serve);
@@ -2905,11 +2955,83 @@ function wireEatAt(root, rerender){
   if(now) now.addEventListener('click', ()=>{ state.eatAt.mins = null; state.eatAt.avoid = false; rerender(); });
   const avoid = bar.querySelector('[data-avoid-clash]');
   if(avoid) avoid.addEventListener('click', ()=>{ state.eatAt.avoid = !state.eatAt.avoid; rerender(); });
+  /* START COOKING: the run starts at the real time and EAT AT stops following the clock (a default one is fixed at now plus the longest dish,
+     as it is at this moment); boxes already ticked count as done now. STOP COOKING puts the plan back as it was. */
+  const cook = bar.querySelector('[data-cook-toggle]');
+  if(cook) cook.addEventListener('click', ()=>{
+    if(state.cook.startedAt !== null){ state.cook = { key: state.cook.key, startedAt: null, marks: {} }; rerender(); return; }
+    const now = nowMinutes();
+    if(state.eatAt.mins === null) state.eatAt.mins = defaultServeAt(now, parseFloat(bar.dataset.span) || 0);
+    state.cook.startedAt = now; state.cook.marks = {};
+    root.querySelectorAll('.box-cell.done').forEach(cell=>{
+      const stacked = cell.closest('.stacked-recipe'), id = stacked ? stacked.dataset.recipeId : cookId;
+      if(id && cell.dataset.handle) (state.cook.marks[id] = state.cook.marks[id] || {})[cell.dataset.handle] = { at: now, direct: false };
+    });
+    rerender();
+  });
 }
 /* What a box says about when its step starts: its time on the plan (the run sheet), or nothing where the box has no step of the plan. */
 function startBadge(starts, box){
   if(!starts || box.passthrough || box.prep || starts[box.outputHandle] === undefined) return '';
   return `<span class="step-at">AT ${formatClock(starts[box.outputHandle])}</span>`;
+}
+
+/* ---- The running half: keeping the strip up to date once cooking has started ----
+   The open viewer's strip is described in `runUI` (set each time a viewer draws): `build()` returns a fresh run, the strip's markup and what
+   else to bring up to date. Two things keep it right, neither of which redraws the flow table (which would send it back to its left edge):
+   a tick of a box (recordTick, then refreshRunStrip) and a clock that looks once a second (runClockTick). The clock redraws the strip only
+   when the projection has moved a minute, and otherwise moves the playhead and rewrites the Now line in place, so a tap on the strip is
+   not lost to a redraw. Times come from the clock each time and are never added up, so a tab put to sleep is still right. */
+let runUI = null;
+function runSignature(run){
+  const p = run.plan;
+  return JSON.stringify([run.cooking, Math.round(p.readyAt), Math.round(p.lateBy), p.allDone, p.steps.map(st=> [st.state, Math.round(st.start), Math.round(st.end)])]);
+}
+/* A box's "AT 17:20", brought up to date for the dish whose boxes are in `scope`. */
+function updateBoxStarts(scope, starts){
+  scope.querySelectorAll('.box-cell[data-handle]').forEach(cell=>{
+    const badge = cell.querySelector('.step-at'), t = starts[cell.dataset.handle];
+    if(badge && t !== undefined) badge.textContent = `AT ${formatClock(t)}`;
+  });
+}
+function refreshRunStrip(){
+  const ui = runUI;
+  if(!ui || !ui.mount.isConnected) return;
+  const strip = ui.mount.querySelector('.timeline-strip');
+  if(!strip) return;
+  const next = ui.build();
+  const holder = document.createElement('div');
+  holder.innerHTML = next.html;
+  strip.replaceWith(holder.firstElementChild);
+  wireTimelineInteractions(ui.mount);
+  fitTimelineStrip(ui.mount);
+  wireEatAt(ui.mount, ui.rerender, ui.cookId);
+  syncTimelineTicks(ui.mount);
+  if(next.after) next.after();
+  ui.sig = runSignature(next.run);
+}
+function runClockTick(){
+  const ui = runUI;
+  if(!ui || state.cook.startedAt === null || state.cook.key !== ui.key || !ui.mount.isConnected) return;
+  const strip = ui.mount.querySelector('.timeline-strip');
+  if(!strip) return;
+  const run = buildRun(...ui.args);
+  if(runSignature(run) !== ui.sig){ refreshRunStrip(); return; }
+  const head = strip.querySelector('.timeline-playhead');
+  if(head && run.span > 0) head.style.left = `${(run.now - run.axisStart) / run.span * 100}%`;
+  const now = strip.querySelector('[data-run-now]'), text = nowLineText(run);
+  if(now && now.textContent !== text) now.textContent = text;
+}
+setInterval(runClockTick, 1000);
+/* A tick of a box while cooking: when it was made, so the plan can be re-drawn from it. True when something was recorded. */
+function recordTick(recipeId, runKey, change){
+  if(!runKey || state.cook.key !== runKey || state.cook.startedAt === null) return false;
+  const now = nowMinutes(), marks = state.cook.marks[recipeId] = state.cook.marks[recipeId] || {};
+  if(change.turningOn){
+    if(change.handle) marks[change.handle] = { at: now, direct: true };
+    change.newly.forEach(h=> { marks[h] = { at: now, direct: false }; });
+  } else if(change.handle) delete marks[change.handle];
+  return true;
 }
 
 /* The ruler's six marks, START to the end. The last is drawn ending at the strip's right edge (it used to start there and ran past it,
@@ -2936,13 +3058,16 @@ function timelineLaneHTML(s, totalSpan, { tip, maxLabel, extra, style }){
   const label = escapeHtml(s.label.length>maxLabel ? s.label.slice(0,maxLabel-2)+'…' : s.label);
   const handle = `data-handle="${escapeHtml(s.output||'')}"`;
   if(s.duration && s.duration.instant){
-    return `<div class="timeline-lane-abs timeline-marker" ${extra}${handle} style="left:${left}%;${style}" title="${tip}"><i></i><span>${label}</span></div>`;
+    const wasM = s.plannedStart !== undefined && Math.abs(s.plannedStart - s.start) > 1 ? `<i class="planned-mark" style="left:${(s.plannedStart / totalSpan) * 100}%" title="Planned for this time"></i>` : '';
+    return `<div class="timeline-lane-abs timeline-marker" ${extra}${handle} style="left:${left}%;${style}" title="${tip}"><i></i><span>${label}</span></div>${wasM}`;
   }
   const width = Math.max(((s.end - s.start) / totalSpan) * 100, 1.5);
   const isOpenEnded = s.duration && s.duration.openEnded;
+  /* While cooking, a faint mark where the plan had this step, when the step is not where it was planned. */
+  const was = s.plannedStart !== undefined && Math.abs(s.plannedStart - s.start) > 1 ? `<i class="planned-mark" style="left:${(s.plannedStart / totalSpan) * 100}%" title="Planned for this time"></i>` : '';
   return `<div class="timeline-lane-abs${isOpenEnded?' open-ended':''}${s.handsOff?' hands-off':''}" ${extra}${handle} style="left:${left}%; width:${width}%;${style}" title="${tip}">
       <span>${label}</span>
-    </div>`;
+    </div>${was}`;
 }
 
 /* Single colour for a single-recipe timeline (no group context to
@@ -2978,6 +3103,7 @@ function buildTimelineHTML(timeline, run){
       <div class="timeline-ruler">${ticksHtml}</div>
       ${run ? runRowsHTML(run) : ''}
       <div class="timeline-lanes">${lanesHtml}</div>
+      ${run ? playheadHTML(run) : ''}
     </div>
     ${run ? runWarningsHTML(run) : ''}
   </div>`;
@@ -3063,7 +3189,7 @@ function fitTimelineStrip(root){
         if(r.right > box.right + 0.5) b.classList.add('edge');
       });
       strip.querySelectorAll('.timeline-lane-row').forEach(row=>{
-        const taken = [...row.children].filter(c=> !c.classList.contains('timeline-marker')).map(c=>{ const r = c.getBoundingClientRect(); return [r.left, r.right]; });
+        const taken = [...row.children].filter(c=> !c.classList.contains('timeline-marker') && !c.classList.contains('planned-mark')).map(c=>{ const r = c.getBoundingClientRect(); return [r.left, r.right]; });
         row.querySelectorAll('.timeline-marker').forEach(m=>{
           m.classList.remove('flip', 'no-label');
           const label = m.querySelector('span'), mr = m.getBoundingClientRect(), w = label.getBoundingClientRect().width;
@@ -3106,7 +3232,7 @@ function computeGroupTimeline(recipesWithParsed, mode, key, day){
   if(!own.some(Boolean)) return null; // nothing in the whole group has timing data — auto-hide, same rule as single-recipe
   /* START TOGETHER or FINISH TOGETHER (#87): the arithmetic is lineUpTimelines in core.js, where it has tests; planToServe puts it on the
      clock (the run sheet), so the lanes are where the plan puts them and the strip's span is from the first start to EAT AT. */
-  const run = buildRun(key || 'group', mode, recipesWithParsed.map((rp, i)=> ({ title: rp.recipe.title, timeline: own[i], setup: rp.parsed.setup })), day);
+  const run = buildRun(key || 'group', mode, recipesWithParsed.map((rp, i)=> ({ id: rp.recipe.id, title: rp.recipe.title, timeline: own[i], setup: rp.parsed.setup })), day);
   const perRecipe = recipesWithParsed.map((rp, i)=> ({ recipe: rp.recipe, parsed: rp.parsed, timeline: run.plan.lanes[i] ? { steps: runLaneSteps(run, i), lane: run.plan.lanes[i] } : null,
     colour: groupColour(i) }));
   return { perRecipe, totalSpan: run.span, about: run.plan.about, mode, run };
@@ -3167,6 +3293,7 @@ function buildGroupTimelineHTML(groupTimeline){
       <div class="timeline-ruler">${ticksHtml}</div>
       ${runRowsHTML(run)}
       <div class="timeline-lanes">${lanesHtml}</div>
+      ${playheadHTML(run)}
     </div>
     ${runWarningsHTML(run)}
     ${missingNote}
@@ -3305,7 +3432,7 @@ function viewerTickSet(key){
   if(!state.viewerTicks[key]) state.viewerTicks[key] = new Set();
   return state.viewerTicks[key];
 }
-function clearViewerTicks(key){ delete state.viewerTicks[key]; }
+function clearViewerTicks(key){ delete state.viewerTicks[key]; delete state.cook.marks[key]; }   // the times the ticks were made go with them
 /* Modernist's "3 / 19 TICKED" beside a recipe's title (only its markup has the place for it), read from the cells as they
    stand, so whatever ticks or unticks in place brings it up to date: a tap, and RESET TICKS, which until 18 Oct cleared
    the cells and left the old count showing. */
@@ -3371,7 +3498,7 @@ function mountFlow(container, parsed, opts){
   /* The two viewers only, as with prepSteps: the Add/Edit preview is not cooked from. */
   if(opts.prepSteps) attachFlowCues(container);
 
-  if(timelineHtml){ wireTimelineInteractions(container); fitTimelineStrip(container); if(opts.run && opts.onEat) wireEatAt(container, opts.onEat); }
+  if(timelineHtml){ wireTimelineInteractions(container); fitTimelineStrip(container); if(opts.run && opts.onEat) wireEatAt(container, opts.onEat, opts.cookId); }
   /* Where the strip is: in this container for the single viewer, above all the dishes' containers in the Group Viewer (opts.timelineRoot).
      The Add/Edit preview has no strip, and these then find nothing. */
   const tlRoot = opts.timelineRoot || container;
@@ -3396,6 +3523,7 @@ function mountFlow(container, parsed, opts){
   cells.forEach(cell=>{
     cell.addEventListener('click', ()=>{
       const turningOn = !cell.classList.contains('done');
+      const wasDone = new Set(cells.filter(c=> c.classList.contains('done')));
       if(turningOn){
         const clickedCol = colOf(cell);
         const rStart = parseInt(cell.dataset.rowStart, 10);
@@ -3417,6 +3545,8 @@ function mountFlow(container, parsed, opts){
         ticks.clear();
         cells.forEach(c=>{ if(c.classList.contains('done')) ticks.add(cellKey(c)); });
       }
+      /* While cooking, when each step was ticked (the run sheet re-plans from it): the box tapped, and what was ticked along with it. */
+      if(opts.onTick) opts.onTick({ turningOn, handle: cell.dataset.handle || '', newly: [...new Set(cells.filter(c=> c.classList.contains('done') && !wasDone.has(c)).map(c=> c.dataset.handle).filter(h=> h && h !== cell.dataset.handle))] });
       if(opts.onToggle) opts.onToggle();
       const finalCells = container.querySelectorAll(`.box-cell[data-col="${colCount-1}"]`);
       if(finalCells.length && Array.from(finalCells).every(c=>c.classList.contains('done'))){
@@ -5657,6 +5787,7 @@ const state = {
   groupViewerReturnTo: null,   // where "← PLANNER" in the Group Viewer should navigate back to
   groupLineUp: null,           // START/FINISH TOGETHER chosen for one group in this tab (#87); never stored
   eatAt: { key: null, mins: null, avoid: false },  // the run sheet: EAT AT chosen for the recipe or group open (null: the default, now plus the longest dish), and AVOID THE CLASH pressed; this tab only, never stored
+  cook: { key: null, startedAt: null, marks: {} },  // the run sheet's running half: START COOKING pressed for the recipe or group open (startedAt, a time on the plan's clock) and when each ticked step was ticked (marks[recipeId][handle] = { at, direct }); this tab only, never stored, and gone with the ticks
   shortlistCollapsed: false,   // Modernist only: the Planner's shortlist panel folded to its rail, for this visit only
   sideOffersHidden: new Set(), // 'date|recipeId' whose SERVE WITH offer was dismissed with ×, in this tab only (#87); never stored
   oftenHidden: new Set(),      // the same for OFTEN WITH (#142)
@@ -6554,16 +6685,19 @@ function renderGroupViewer(){
   const groupTimeline = computeGroupTimeline(recipesWithParsed, lineUp, 'group:' + group.id, group.dateIso);
   const timelineHtml = groupTimeline ? buildGroupTimelineHTML(groupTimeline) : '';
   /* In FINISH TOGETHER each dish says when to start it. ABOUT when the longest dish has a step with no fixed time. */
-  const startAt = recipe=>{
-    if(!groupTimeline) return '';
-    const lane = groupTimeline.perRecipe.find(p=> p.recipe.id === recipe.id);
+  const startText = (gt, recipe)=>{
+    if(!gt) return '';
+    const lane = gt.perRecipe.find(p=> p.recipe.id === recipe.id);
     if(!lane || !lane.timeline) return '';
     /* When to begin this dish (a time of day, or START FIRST for the one that starts the meal) and when it is ready: with START TOGETHER every
        dish begins at once, so its ready time is the whole difference between them. */
-    const l = lane.timeline.lane, run = groupTimeline.run;
+    const l = lane.timeline.lane, run = gt.run;
     const start = run.mode === 'start' ? '' : l.startAt - run.plan.startAt > 0.5 ? `START AT ${formatClock(l.startAt)}` : 'START FIRST';
-    const text = [start, `READY AT ${formatClock(l.endAt)}`].filter(Boolean).join(' · ');
-    return `<span class="stacked-recipe-start">${groupTimeline.about ? 'ABOUT ' : ''}${escapeHtml(text)}</span>`;
+    return (gt.about ? 'ABOUT ' : '') + [start, `READY AT ${formatClock(l.endAt)}`].filter(Boolean).join(' · ');
+  };
+  const startAt = recipe=> {
+    const text = startText(groupTimeline, recipe);
+    return text ? `<span class="stacked-recipe-start">${escapeHtml(text)}</span>` : '';
   };
 
   /* Each recipe gets its own sub-container so mountFlow can be reused
@@ -6605,6 +6739,7 @@ function renderGroupViewer(){
       prepSteps: true,
       starts: groupTimeline ? runStarts(groupTimeline.run, i) : undefined,
       timelineRoot: mount,
+      onTick: groupTimeline ? change=> { if(recordTick(recipe.id, groupTimeline.run.key, change)) refreshRunStrip(); } : undefined,
       onComplete: ()=> finishRecipe(recipe.id)
       // showTimeline deliberately omitted — the group's own combined
       // timeline strip above already covers this recipe's steps; a
@@ -6620,6 +6755,24 @@ function renderGroupViewer(){
     fitTimelineStrip(mount);
     wireEatAt(mount, renderGroupViewer);
   }
+  wireGroupLineup(mount, group);
+  runUI = groupTimeline ? { key: groupTimeline.run.key, mount, rerender: renderGroupViewer, args: groupTimeline.run.args, sig: runSignature(groupTimeline.run),
+    build: ()=>{
+      const gt = computeGroupTimeline(recipesWithParsed, lineUp, 'group:' + group.id, group.dateIso);
+      return { run: gt.run, html: buildGroupTimelineHTML(gt), after: ()=>{
+        recipesWithParsed.forEach(({recipe}, i)=>{
+          const card = mount.querySelector(`.stacked-recipe[data-recipe-id="${CSS.escape(recipe.id)}"]`);
+          if(!card) return;
+          updateBoxStarts(card, runStarts(gt.run, i));
+          const head = card.querySelector('.stacked-recipe-start'), text = startText(gt, recipe);
+          if(head && text) head.textContent = text;
+        });
+        wireGroupLineup(mount, group);
+      } };
+    } } : null;
+}
+/* START TOGETHER and FINISH TOGETHER, wired each time the strip is drawn. */
+function wireGroupLineup(mount, group){
   mount.querySelectorAll('[data-group-lineup]').forEach(btn=> btn.addEventListener('click', ()=>{
     state.groupLineUp = { id: group.id, mode: btn.dataset.groupLineup };
     renderGroupViewer();
@@ -6667,6 +6820,7 @@ document.getElementById('groupResetTicksBtn').addEventListener('click', ()=>{
   document.querySelectorAll('#groupFlowMount .done').forEach(c=> c.classList.remove('done'));
   document.querySelectorAll('#groupFlowMount .stacked-recipe-flow').forEach(showTickedCount);
   syncTimelineTicks(document.getElementById('groupFlowMount'));
+  if(state.cook.startedAt !== null) refreshRunStrip();
   showToast('Ticks cleared');
 });
 
@@ -6680,7 +6834,7 @@ document.getElementById('groupExportPngBtn').addEventListener('click', ()=>{
   exportNodeAsPng(
     document.querySelector('#view-group-viewer .viewer-body'),
     (names || 'meal-group').toLowerCase().replace(/[^a-z0-9]+/g,'-'),
-    { scrollFixSelectors: ['#view-group-viewer .viewer-body', '.tablewrap'], dropStickySelectors: ['.ing-cell'], hideSelectors: ['.flow-more', '.timeline-eat'] }
+    { scrollFixSelectors: ['#view-group-viewer .viewer-body', '.tablewrap'], dropStickySelectors: ['.ing-cell'], hideSelectors: ['.flow-more', '.timeline-eat', '.timeline-run-status', '.timeline-now', '.timeline-playhead', '.planned-mark'] }
   );
 });
 
@@ -6841,15 +6995,18 @@ function renderViewer(){
 
   /* The run sheet: this recipe's timeline on the clock (null when it has no timing, and then there is no strip). */
   const viewTimeline = computeTimeline(parsedForView.groups, parsedForView.stages);
-  const run = viewTimeline ? buildRun('recipe:' + recipe.id, 'finish', [{ title: recipe.title, timeline: viewTimeline, setup: parsedForView.setup }]) : null;
+  const run = viewTimeline ? buildRun('recipe:' + recipe.id, 'finish', [{ id: recipe.id, title: recipe.title, timeline: viewTimeline, setup: parsedForView.setup }]) : null;
   mountFlow(mount, parsedForView, {
     tickKey: recipe.id,
     prepSteps: true,
-    run, onEat: renderViewer,
+    run, onEat: renderViewer, cookId: recipe.id,
+    onTick: run ? change=> { if(recordTick(recipe.id, run.key, change)) refreshRunStrip(); } : undefined,
     /* Nothing is logged for one of theirs: our diary is of our recipes, and theirs is not in our library to log. */
     onComplete: theirs ? ()=> showToast('Not logged: add it to our recipes to plan, shop for or log it') : ()=> finishRecipe(recipe.id),
     showTimeline: true
   });
+  runUI = run ? { key: run.key, mount, rerender: renderViewer, cookId: recipe.id, args: run.args, sig: runSignature(run),
+    build: ()=>{ const r = buildRun(...run.args); return { run: r, html: buildTimelineHTML(viewTimeline, r), after: ()=> updateBoxStarts(mount, runStarts(r, 0)) }; } } : null;
   /* Modernist's servings beside the title, as the meta line says them. */
   const servesEl = mount.querySelector('.recipe-serves');
   if(servesEl && targetServings) servesEl.textContent = `SERVES ${targetServings}${scale !== 1 ? ` (SCALED FROM ${baseServings})` : ''}`;
@@ -7294,7 +7451,7 @@ document.getElementById('exportPngBtn').addEventListener('click', ()=>{
   exportNodeAsPng(
     document.getElementById('flowMount'),
     (recipe.title||'recipe').toLowerCase().replace(/[^a-z0-9]+/g,'-'),
-    { scrollFixSelectors: ['.tablewrap'], dropStickySelectors: ['.ing-cell'], hideSelectors: ['.flow-more', '.timeline-eat'] }
+    { scrollFixSelectors: ['.tablewrap'], dropStickySelectors: ['.ing-cell'], hideSelectors: ['.flow-more', '.timeline-eat', '.timeline-run-status', '.timeline-now', '.timeline-playhead', '.planned-mark'] }
   );
 });
 
@@ -9823,6 +9980,7 @@ document.getElementById('resetTicksBtn').addEventListener('click', ()=>{
   document.querySelectorAll('#flowMount .done').forEach(c=> c.classList.remove('done'));
   showTickedCount(document.getElementById('flowMount'));
   syncTimelineTicks(document.getElementById('flowMount'));
+  if(state.cook.startedAt !== null) refreshRunStrip();   // the times the ticks were made go with them, so the plan is drawn again at once
   showToast('Ticks cleared');
 });
 document.getElementById('closeAddModal').addEventListener('click', closeAddModal);

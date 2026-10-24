@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-23.3';
+const KITCHEN_CORE_VERSION = '2026-10-24.1';
 
 
 /* ======================= quantity split ======================= */
@@ -989,6 +989,101 @@ function handsWindows(steps, opts){
   }
   const total = list=> list.reduce((n, w)=> n + (w[1] - w[0]), 0);
   return { busy, clash, free, busyMinutes: total(busy), clashMinutes: total(clash) };
+}
+
+/* ======================= the run sheet, running half (docs/PLAN-RUN-SHEET.md §4, 24 Oct 2026) =======================
+   Once the cook has started, the plan is re-drawn from what has happened. `marks` says which steps are done and when: { [dish]: { [output
+   handle]: { at, direct } } }, `at` a time on the plan's clock, `direct` true for the box the cook tapped and false for one ticked along with a
+   later one (ticking a step also ticks what fed into it). `now` is on the same clock. Nothing here reads the clock or stores anything.
+
+   How a done step is drawn (decided 23 Oct, the second mock): a step ticked late runs from its planned start to the tick, so it shows as long
+   as it took; one ticked before its planned start was done early and is its own length counted back from the tick; one ticked along with a
+   later one keeps its planned times, cut short at the tick if the plan had it ending later. Every step not yet done is re-planned: no earlier
+   than planned, no earlier than now, after what feeds it, and a hands-on step never on top of another hands-on step. A step whose planned start
+   has passed and whose feeders are all done is running: it keeps its start and ends at the later of its planned end and now. The plan ahead
+   runs from when each step ended; nothing done is ever moved. Returns the plan's own shape (steps, lanes, startAt, readyAt), so the rows
+   and bars that read a plan read this, plus what each step was planned as and where the meal now stands (`lateBy` minutes after EAT AT). */
+function projectRun(plan, marks, now){
+  const EPS = 1e-9;
+  const src = plan.steps;
+  const steps = src.map(st=> ({ ...st, plannedStart: st.start, plannedEnd: st.end, state: 'waiting' }));
+  const markOf = st=> marks && marks[st.dish] && marks[st.dish][st.output];
+  const feedersOf = st=> (st.inputs || []).map(h=> steps.find(p=> p.dish === st.dish && p.output === h)).filter(Boolean);
+  const order = steps.slice().sort((a, b)=> a.plannedStart - b.plannedStart || a.dish - b.dish || a.index - b.index);
+  const placed = [];                       // hands-on steps with a place, not yet done: [start, end]
+  const fixed = new Set();
+  /* Pass 1: what has happened (done), and what must be happening now (running). Neither is ever moved. */
+  order.forEach(st=>{
+    const len = st.plannedEnd - st.plannedStart, m = markOf(st);
+    if(m){
+      st.state = 'done'; st.doneAt = m.at;
+      if(m.direct){
+        if(m.at <= st.plannedStart + EPS){ st.start = m.at - len; st.end = m.at; }
+        else { st.start = st.plannedStart; st.end = m.at; }
+      } else { st.start = Math.min(st.plannedStart, m.at); st.end = Math.min(st.plannedEnd, m.at); }
+      fixed.add(st);
+    }
+  });
+  order.forEach(st=>{
+    if(fixed.has(st)) return;
+    const len = st.plannedEnd - st.plannedStart;
+    const feeders = feedersOf(st);
+    if(len > EPS && st.plannedStart <= now + EPS && feeders.every(f=> f.state === 'done')){
+      st.state = 'running';
+      st.start = Math.max(st.plannedStart, ...feeders.map(f=> f.end));
+      st.end = Math.max(st.start + len, now);
+      fixed.add(st);
+      if(needsHands(st)) placed.push([st.start, st.end]);
+    }
+  });
+  /* Pass 2: everything else, after what feeds it. */
+  const settle = st=>{
+    if(fixed.has(st)) return;
+    fixed.add(st);   // before the feeders, so a malformed loop cannot recurse for ever
+    const len = st.plannedEnd - st.plannedStart;
+    const feeders = feedersOf(st);
+    feeders.forEach(settle);
+    let start = Math.max(st.plannedStart, now, ...feeders.map(f=> f.end));
+    if(len > EPS && needsHands(st)){
+      for(let guard = 0; guard < 1000; guard++){
+        const hit = placed.filter(([a, b])=> a < start + len - EPS && b > start + EPS);
+        if(!hit.length) break;
+        start = Math.max(...hit.map(([, b])=> b));
+      }
+      placed.push([start, start + len]);
+    }
+    st.start = start; st.end = start + len;
+  };
+  order.forEach(settle);
+  const lanes = (plan.lanes || []).map(lane=>{
+    if(!lane) return null;
+    const mine = steps.filter(st=> st.dish === lane.dish);
+    const startAt = Math.min(...mine.map(st=> st.start)), endAt = Math.max(...mine.map(st=> st.end));
+    return { ...lane, steps: mine, startAt, endAt, early: plan.serveAt - endAt };
+  });
+  const startAt = steps.length ? Math.min(...steps.map(st=> st.start)) : plan.serveAt;
+  const readyAt = steps.length ? Math.max(...steps.map(st=> st.end)) : plan.serveAt;
+  const allDone = steps.length > 0 && steps.every(st=> st.state === 'done');
+  return { ...plan, steps, lanes, startAt, readyAt, projected: true, now, allDone, lateBy: readyAt - plan.serveAt,
+           done: steps.filter(st=> st.state === 'done').length };
+}
+/* What the cook is doing and what comes next, from a projection at `now`: the steps going (with how long each has left), whether their hands
+   are wanted, and when they are free and what then needs them. A step with no length is a moment, never "going". */
+function runStatus(proj, now){
+  const open = proj.steps.filter(st=> st.state !== 'done');
+  const going = open.filter(st=> st.state === 'running' || (st.end - st.start > 1e-9 && st.start <= now + 1e-9 && st.end > now + 1e-9))
+    .sort((a, b)=> a.end - b.end || a.dish - b.dish || a.index - b.index);
+  const busyNow = going.filter(needsHands);
+  const upcoming = open.filter(st=> needsHands(st) && st.start > now + 1e-9).sort((a, b)=> a.start - b.start || a.dish - b.dish || a.index - b.index);
+  const next = upcoming[0] || null;
+  const busyUntil = busyNow.length ? Math.max(...busyNow.map(st=> st.end)) : null;
+  return {
+    remaining: open.length,
+    going: going.map(st=> ({ dish: st.dish, label: st.label, left: Math.max(0, st.end - now), handsOff: !!st.handsOff })),
+    handsBusy: busyNow.length > 0, busyUntil,
+    freeFor: !busyNow.length && next ? next.start - now : null,
+    next: next ? { dish: next.dish, label: next.label, at: next.start } : null,
+  };
 }
 
 /* The oven a recipe asks for, read from its preheat line (the STEPS section, where the converter writes "Preheat the oven to 195°C
@@ -2659,7 +2754,7 @@ if(typeof module !== 'undefined' && module.exports){
     KITCHEN_CORE_VERSION, INGREDIENT_AISLES, INGREDIENT_DICTIONARY,
     splitQty, parseTags, extractStepDuration, parseRecipe,
     withUpdatedHeaderLine, withUpdatedHeaderLines, changedHeaderKeys, splitTimeText, tagsToLine, withUpdatedTitleLine, withUpdatedImageLine,
-    scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, lineUpTimelines, formatClock, defaultServeAt, planToServe, handsWindows, preheatOf, ovenUse, servingCalls, matchSides, groupedWith, formatMinutesForDisplay, formatDuration,
+    scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, lineUpTimelines, formatClock, defaultServeAt, planToServe, needsHands, handsWindows, projectRun, runStatus, preheatOf, ovenUse, servingCalls, matchSides, groupedWith, formatMinutesForDisplay, formatDuration,
     parseFraction, normalizeUnit, toBaseUnit, formatShoppingQty, parseIngredientAmount,
     formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,

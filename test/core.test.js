@@ -1603,6 +1603,94 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
   check('an [instant] step that says oven ("take the dish out of the oven") is a moment, not time in the oven: it is not drawn, not counted, and does not make the recipe left out',
         oven.lanes[0].uses.length === 2 && oven.lanes[0].uses.every(u => u.end - u.start > 0) && oven.omitted.length === 0
         && core.ovenUse([{ index: 0, title: 'Dish B', setup: [], steps: core.planToServe([tlOf(['Take it out of the oven [instant]', 'Serve [instant]'])], EAT).lanes[0].steps }], 1).omitted.length === 0);
+
+  /* ---- The run sheet, running half (run sheet PR 3b-1, 24 Oct 2026): projectRun and runStatus ----
+     The same meal. With AVOID THE CLASH the plan is clean (every dish ready at 18:30, hands never wanted twice): `clear`. Marks are
+     { [dish]: { [handle]: { at, direct } } }; the chain's handles are o0, o1, ... in each dish. */
+  const T = (h, m) => h * 60 + m;
+  const mk = (...rows) => { const o = {}; rows.forEach(([d, h, at, direct]) => { (o[d] = o[d] || {})[h] = { at, direct }; }); return o; };
+  const span = (proj, dish, i) => { const st = proj.steps.find(x => x.dish === dish && x.index === i); return `${clk(st.start)}-${clk(st.end)} ${st.state}`; };
+  const run0 = core.projectRun(clear, {}, T(17, 20));
+  check('projectRun with nothing done and the meal starting on time changes nothing: every step is where the plan had it, the first (and only that one, the others not yet due) is running, the meal is on time',
+        run0.projected === true && run0.steps.length === 7 && run0.steps.every((st, i) => Math.abs(st.start - clear.steps[i].start) < 1e-9 && Math.abs(st.end - clear.steps[i].end) < 1e-9)
+        && run0.steps.filter(st => st.state === 'running').length === 1 && run0.steps[0].state === 'running' && run0.lateBy === 0 && clk(run0.readyAt) === '18:30' && run0.allDone === false && run0.done === 0
+        && run0.serveAt === clear.serveAt && run0.about === clear.about, JSON.stringify(run0.steps.map(st => [clk(st.start), clk(st.end), st.state])));
+  const lateTick = core.projectRun(clear, mk([0, 'o0', T(17, 37), true]), T(17, 37));
+  check('a step ticked 7 minutes late is drawn from its planned start to the tick, and everything after it moves 7 minutes later: the roast runs 17:37 to 18:27, the rest to 18:37, ready 7 minutes after EAT AT',
+        span(lateTick, 0, 0) === '17:20-17:37 done' && span(lateTick, 0, 1) === '17:37-18:27 running' && span(lateTick, 0, 2) === '18:27-18:37 waiting'
+        && Math.round(lateTick.lateBy) === 7 && clk(lateTick.readyAt) === '18:37', JSON.stringify(lateTick.steps.slice(0, 3).map(st => [clk(st.start), clk(st.end), st.state])));
+  check('    the other dishes, which wait for nothing that was late, stay where the plan put them',
+        span(lateTick, 1, 0) === '17:52-18:12 waiting' && span(lateTick, 2, 0) === '18:18-18:26 waiting' && lateTick.done === 1);
+  const early = core.projectRun(clear, mk([0, 'o0', T(17, 30), true], [1, 'o0', T(17, 50), true]), T(17, 50));
+  check('a step ticked before its planned start was done early: drawn as its own length counted back from the tick (17:30 to 17:50), and nothing after it is pulled earlier than planned',
+        span(early, 1, 0) === '17:30-17:50 done' && span(early, 1, 1) === '18:12-18:18 waiting' && early.lateBy === 0 && clk(early.readyAt) === '18:30');
+  const along = core.projectRun(clear, mk([0, 'o0', T(17, 45), false], [0, 'o1', T(17, 45), true]), T(17, 45));
+  check('steps ticked along with a later one keep their planned times, cut short at the tick if the plan had them ending later; the step tapped is drawn to the tick',
+        span(along, 0, 0) === '17:20-17:30 done' && span(along, 0, 1) === '17:30-17:45 done' && span(along, 0, 2) === '18:20-18:30 waiting'
+        && span(core.projectRun(clear, mk([0, 'o0', T(17, 25), false], [0, 'o1', T(17, 25), true]), T(17, 25)), 0, 0) === '17:20-17:25 done');
+  const overdue = core.projectRun(clear, mk([0, 'o0', T(17, 30), true]), T(18, 35));
+  check('a running step ends at the later of its planned end and now: the roast, planned to 18:20, is still going at 18:35, so the rest runs 18:35 to 18:45 and the meal is 15 minutes late',
+        span(overdue, 0, 1) === '17:30-18:35 running' && span(overdue, 0, 2) === '18:35-18:45 waiting' && Math.round(overdue.lateBy) === 15);
+  const lateStart = core.projectRun(clear, {}, T(18, 0));
+  check('nothing is planned earlier than now: starting at 18:00 for a meal planned from 17:20, the first step is running to 18:00 and the rest follow, ready 30 minutes after EAT AT',
+        span(lateStart, 0, 0) === '17:20-18:00 running' && span(lateStart, 0, 1) === '18:00-18:50 waiting' && Math.round(lateStart.lateBy) === 30 && clk(lateStart.readyAt) === '19:00');
+  const plannedClash = core.projectRun(plan, {}, T(17, 20));
+  check('a plan with a clash is re-planned so no hands-on step is on top of another: the mash waits for the washing, so the meal is ready 2 minutes after EAT AT, and nothing moves earlier',
+        span(plannedClash, 2, 0) === '18:18-18:26 waiting' && span(plannedClash, 1, 1) === '18:26-18:32 waiting' && Math.round(plannedClash.lateBy) === 2
+        && plannedClash.steps.every((st, i) => st.start >= plan.steps[i].start - 1e-9 && st.plannedStart === plan.steps[i].start)
+        && core.handsWindows(plannedClash.steps).clashMinutes === 0);
+  const moment = core.projectRun(core.planToServe([tlOf(['Prep [10 min]', 'Plate up [instant]'])], EAT), mk([0, 'o0', T(18, 30), true]), T(18, 40));
+  check('a step with no length that has not been ticked is a moment still to come: it is placed at now and never in the past, so the meal is ready when the cook gets to it',
+        span(moment, 0, 1) === '18:40-18:40 waiting' && clk(moment.readyAt) === '18:40' && Math.round(moment.lateBy) === 10);
+  const all = core.projectRun(clear, mk(...clear.steps.map(st => [st.dish, st.output, T(18, 40), true])), T(18, 40));
+  check('with every step ticked the run is over: all done, ready when the last was ticked, nothing running or waiting',
+        all.allDone === true && all.done === 7 && all.steps.every(st => st.state === 'done') && core.runStatus(all, T(18, 40)).remaining === 0 && core.runStatus(all, T(18, 40)).going.length === 0);
+
+  /* The same promises over a spread of made-up meals and made-up cooks (a fixed seed): done steps are as marked, nothing not done starts before
+     its plan, before now or before what feeds it, no hands-on step waits on top of another, and lengths are as planned. */
+  let seed2 = 11; const rnd2 = n => { seed2 = (seed2 * 1103515245 + 12345) & 0x7fffffff; return seed2 % n; };
+  const word2 = ['Chop [6 min]', 'Stir fry [4 min]', 'Simmer [30 min, hands off]', 'Rest [10 min, hands off]', 'Whisk [3 min]', 'Bake [25 min, hands off]', 'Plate up [instant]', 'Mash [7 min]'];
+  let bad2 = [], cases2 = 0;
+  for (let c = 0; c < 200; c++) {
+    const dishes2 = Array.from({ length: 2 + rnd2(3) }, () => tlOf(Array.from({ length: 2 + rnd2(4) }, () => word2[rnd2(word2.length)])));
+    const base = core.planToServe(dishes2, EAT, { avoidClash: rnd2(2) === 0 });
+    const now = base.startAt + rnd2(120);
+    const marks = {};
+    base.lanes.forEach(l => { if (!l) return; const k = rnd2(l.steps.length + 1); for (let i = 0; i < k; i++) { const st = l.steps[i]; (marks[l.dish] = marks[l.dish] || {})[st.output] = { at: Math.min(now, st.start + rnd2(60) - 10), direct: rnd2(2) === 0 }; } });
+    const pr = core.projectRun(base, marks, now);
+    cases2++;
+    const feeds = st => (st.inputs || []).map(h => pr.steps.find(o => o.dish === st.dish && o.output === h)).filter(Boolean);
+    const open = pr.steps.filter(st => st.state !== 'done');
+    const problems = [];
+    pr.steps.forEach(st => {
+      const len = st.plannedEnd - st.plannedStart;
+      if (st.state === 'done') { const m = marks[st.dish][st.output]; if (Math.abs(st.doneAt - m.at) > 1e-9) problems.push('doneAt'); }
+      else {
+        if (st.start < st.plannedStart - 1e-6) problems.push('before plan');
+        if (st.state === 'waiting' && st.start < now - 1e-6) problems.push('before now');
+        if (feeds(st).some(f => f.end > st.start + 1e-6)) problems.push('before feeder');
+        if (st.state === 'waiting' && Math.abs((st.end - st.start) - len) > 1e-6) problems.push('length');
+      }
+    });
+    open.filter(core.needsHands).forEach((a, i, arr) => arr.slice(i + 1).forEach(b => {
+      if ((a.state === 'waiting' || b.state === 'waiting') && a.start < b.end - 1e-6 && b.start < a.end - 1e-6) problems.push('hands overlap');
+    }));
+    if (problems.length) bad2.push({ c, problems: [...new Set(problems)] });
+  }
+  check('over 200 made-up meals and cooks, projectRun keeps what is done as it was ticked, starts nothing before its plan, before now or before what feeds it, never puts two hands-on steps on top of each other, and changes no length',
+        bad2.length === 0 && cases2 === 200, JSON.stringify(bad2.slice(0, 3)));
+
+  /* What the cook is doing now, and what is next. */
+  const st1 = core.runStatus(core.projectRun(clear, {}, T(17, 25)), T(17, 25));
+  check('runStatus at 17:25, the prep half done: it is going, it wants the hands until 17:30, and the next thing for them is the mash at 18:12',
+        st1.going.length === 1 && st1.going[0].dish === 0 && st1.going[0].label === 'Prep the roots' && Math.abs(st1.going[0].left - 5) < 1e-9 && st1.handsBusy === true && st1.busyUntil === T(17, 30)
+        && st1.freeFor === null && st1.next && st1.next.label === 'Mash' && st1.next.at === T(18, 12) && st1.remaining === 7, JSON.stringify(st1));
+  const st2 = core.runStatus(core.projectRun(clear, mk([0, 'o0', T(17, 30), true]), T(17, 31)), T(17, 31));
+  check('    at 17:31, with the prep done and the roast going, the hands are free for 41 minutes, then the mash; the roast has 49 minutes left',
+        st2.handsBusy === false && Math.round(st2.freeFor) === 41 && st2.next.label === 'Mash' && st2.going.length === 1 && st2.going[0].label === 'Roast' && st2.going[0].handsOff === true && Math.round(st2.going[0].left) === 49);
+  const st3 = core.runStatus(core.projectRun(clear, mk([0, 'o0', T(17, 30), true]), T(18, 35)), T(18, 35));
+  check('    a step running past its time is still "going" with nothing left of it, and a step with no length is never going',
+        st3.going.some(g => g.label === 'Roast' && g.left === 0) && core.runStatus(core.projectRun(core.planToServe([tlOf(['Plate [instant]', 'Serve [instant]'])], EAT), {}, T(18, 0)), T(18, 0)).going.length === 0);
 }
 
 /* ---- tools/propose-hands-off.js (run sheet PR 2, §6.3) ----

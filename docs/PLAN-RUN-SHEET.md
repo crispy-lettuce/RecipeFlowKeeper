@@ -138,7 +138,7 @@ PR 2    the marker: parser, converter, display                 core.js and conve
         ── household merges PR 2, reloads every device, taps DONE on the converter bar ──
 DATA    hands-off pass over the library                        CLAUDE.md's recipe-text procedure, household present
 PR 3a   EAT AT, clock ruler, hands row, AVOID THE CLASH, ovens   (split from PR 3 on 23 Oct)
-PR 3b   START COOKING, ticks and starts driving the times, re-planning, the Now line
+PR 3b   START COOKING, ticks and starts driving the times, re-planning, the Now line   (split on 24 Oct: 3b-1 the live plan, built; 3b-2 START and DONE on each box)
 PR 4    timers
 ```
 
@@ -281,6 +281,13 @@ verified and what was not. Each PR that the household will notice adds a `change
 
 3a is `planToServe`, `handsWindows` and `ovenUse` with EAT AT, the clock ruler, the hands row, the ovens and AVOID THE CLASH; 3b is `projectRun`,
 START COOKING, the playhead, START and DONE, the ready flag and the Now line. The list below is the two together.
+
+**3b was split again on 24 Oct.** 3b-1, the live plan, is `projectRun` and `runStatus` with START COOKING and STOP COOKING, each tick noted with its time, the
+plan re-drawn from it, the ready flag, the Now line and the playhead, redrawn only as far as the strip. A step with no START of its own is one whose
+planned start has passed and whose feeders are done, so it counts as running. 3b-2 adds the START and DONE on each box in cooking mode, so a step the cook
+really started late is drawn from when it started. Settled in 3b-1: a box ticked before START counts as done at the moment of starting; AVOID THE CLASH stays on
+offer while the planned meal has a clash (the re-plan has already put one step after the other); STOP COOKING is how a run is ended without a reload; a run belongs to
+the recipe or group open; the playhead is drawn from the first step's start.
 
 - `core.js`, pure and tested:
   - `planToServe(lanes, serveAt, { avoidClash })`: today's FINISH TOGETHER offsets turned into clock times, then, with
