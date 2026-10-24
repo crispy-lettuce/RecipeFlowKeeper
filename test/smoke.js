@@ -10064,6 +10064,83 @@ const check = (name, pass, detail) => {
         r => r.end.writes === 0 && r.end.keys === 0, r => [r.end]);
   /* RD-END */
 
+  /* OA-BEGIN */
+  /* ---- The form's SHOPPING LIST: names that land in Other, new or already in the library (issue #203, 24 Oct 2026) ----
+     It listed only names new to the library, so a recipe opened to edit hid every Other name another recipe also uses. The library here
+     is made up: "smoked mackerel" and "jackfruit" land in Other; onions and mangetout are placed. The recipe being edited has both
+     Other names, and the second recipe has the mackerel too, so for the edited recipe the mackerel is known and the jackfruit is new. */
+  console.log('\nThe form\'s SHOPPING LIST, names in Other');
+  const oaPage = await browser.newPage({ viewport: { width: 1100, height: 1000 } });
+  oaPage.__label = 'form shopping list, names in Other';
+  await oaPage.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await oaPage.waitForTimeout(1200);
+  await oaPage.evaluate(() => {
+    const add = (id, title, lines) => loadRecipes().push({ id, title, source: 'Test', servings: 2, tags: { course: 'Main', keywords: [] }, history: [], dateAdded: '2026-09-05',
+      syntax: `TITLE: ${title}\nSOURCE: Test\nSERVINGS: 2\n\nGROUP a:\n${lines.join('\n')}\n\nSTAGE:\nMERGE a -> done: Cook [5 min]` });
+    add('oa-edit', 'Test Other Edit', ['300 g smoked mackerel', '400 g jackfruit', '2 onions', '175 g mangetout']);
+    add('oa-other', 'Test Other Elsewhere', ['200 g smoked mackerel', '1 onion', '100 g mangetout']);
+  });
+  const oaBand = () => oaPage.evaluate(() => ({ quiet: [...document.querySelectorAll('#reviewList .rv-quiet')].map(q => q.textContent.trim()),
+    rows: [...document.querySelectorAll('#reviewList .rv-row')].map(r => ({ text: r.textContent.replace(/\s+/g, ' ').trim(), select: !!r.querySelector('select[data-rv-aisle]'),
+      same: !!r.querySelector('[data-rv="same-as"]'), undo: !!r.querySelector('[data-rv="aisle-undo"]') })) }));
+  const oaRow = (b, n) => b.rows.find(r => r.text.startsWith(n)) || {};
+  const oaWrites = mark => oaPage.evaluate(m => window.__WRITES__.slice(m).filter(w => w.table === 'aisle_overrides')
+    .map(w => ({ op: w.op, rows: (w.rows || []).map(r => ({ name: r.name, aisle: r.aisle })), eqs: (w.eqs || []).map(e => e.column + '=' + (e.column === 'household_id' ? 'H' : e.value)).join('&') })), mark);
+  const oaMark = () => oaPage.evaluate(() => window.__WRITES__.length);
+  const oaPaste = async text => { await oaPage.evaluate(t => { const ta = document.getElementById('importInput'); ta.value = t; ta.dispatchEvent(new Event('paste', { bubbles: true })); }, text); await oaPage.waitForTimeout(350); };
+  const oaText = (title, lines) => ['TITLE: ' + title, 'SOURCE: Test', 'SERVINGS: 4', '', 'GROUP a:', ...lines, '', 'STAGE:', 'MERGE a -> done: Cook [5 min]'].join('\n');
+
+  const oaMark0 = await oaMark();
+  await oaPage.evaluate(() => openEditModal('oa-edit'));
+  await oaPage.waitForTimeout(400);
+  const oaE0 = await oaBand();
+  check('editing a recipe: a name another recipe also has, that lands in Other, is listed with its aisle pick, in a group of its own after the new names',
+        JSON.stringify(oaE0.quiet) === '["3 of 4 ingredients are already on your list. This one is new to it:","This one is on your list already, but in Other. Pick an aisle to place it:"]'
+        && oaE0.rows.length === 2 && /^Jackfruit — lands under Other/.test(oaE0.rows[0].text) && oaRow(oaE0, 'Smoked mackerel').select === true
+        && /^Smoked mackerel — lands under Other OTHER/.test(oaE0.rows[1].text), JSON.stringify(oaE0));
+  check('    the new name keeps its SAME AS… and its pick; the known one has no SAME AS…; the placed names (onions, mangetout) are still only counted',
+        oaRow(oaE0, 'Jackfruit').same === true && oaRow(oaE0, 'Jackfruit').select === true && oaRow(oaE0, 'Smoked mackerel').same === false
+        && !oaE0.rows.some(r => /^(Onion|Mangetout)/.test(r.text)), JSON.stringify(oaE0.rows));
+  await oaPage.selectOption('#reviewList select[data-rv-aisle="smoked mackerel"]', 'Meat & Fish');
+  await oaPage.waitForTimeout(300);
+  const oaPicked = await oaWrites(oaMark0);
+  const oaE1 = await oaBand();
+  check('    picking an aisle for the known name writes it at once, and its row stays, saying "Moved to Meat & Fish" with UNDO',
+        oaPicked.length === 1 && oaPicked[0].op === 'upsert' && oaPicked[0].rows[0].name === 'smoked mackerel' && oaPicked[0].rows[0].aisle === 'Meat & Fish'
+        && /^Smoked mackerel — lands under Meat & Fish.*Moved to Meat & Fish/.test(oaRow(oaE1, 'Smoked mackerel').text) && oaRow(oaE1, 'Smoked mackerel').undo === true
+        && oaRow(oaE1, 'Smoked mackerel').select === false && oaRow(oaE1, 'Jackfruit').select === true, JSON.stringify([oaPicked, oaE1]));
+  const oaMark1 = await oaMark();
+  await oaPage.evaluate(() => document.querySelector('#reviewList [data-rv="aisle-undo"]').click());
+  await oaPage.waitForTimeout(300);
+  const oaUndone = await oaWrites(oaMark1);
+  const oaE2 = await oaBand();
+  check('    UNDO removes it, and the row is back in Other with its pick, as before the pick',
+        oaUndone.length === 1 && oaUndone[0].op === 'delete' && oaUndone[0].eqs === 'household_id=H&name=smoked mackerel'
+        && JSON.stringify(oaE2) === JSON.stringify(oaE0) && (await oaPage.evaluate(() => loadAisleOverrides().length)) === 0, JSON.stringify([oaUndone, oaE2]));
+
+  await oaPage.evaluate(() => document.getElementById('openAddBtn').click());
+  await oaPage.waitForTimeout(300);
+  await oaPaste(oaText('Known Other', ['100 g smoked mackerel', '1 onion']));
+  const oaK = await oaBand();
+  check('a new recipe whose names are all known, one of them in Other, says so and lists that one with its pick',
+        JSON.stringify(oaK.quiet) === '["2 of 2 ingredients are already on your list.","This one is on your list already, but in Other. Pick an aisle to place it:"]'
+        && oaK.rows.length === 1 && oaRow(oaK, 'Smoked mackerel').select === true, JSON.stringify(oaK));
+  await oaPaste(oaText('All Placed', ['2 onions', '100 g mangetout']));
+  const oaP = await oaBand();
+  check('a recipe whose names are all known and placed still shows one quiet line and no rows',
+        JSON.stringify(oaP.quiet) === '["2 of 2 ingredients are already on your list."]' && oaP.rows.length === 0, JSON.stringify(oaP));
+  await oaPaste(oaText('Known Other', ['100 g smoked mackerel', '1 onion']));
+  await oaPage.evaluate(() => { aisleOverridesAvailable = false; refreshReviewList(); });
+  const oaU = await oaBand();
+  await oaPage.evaluate(() => { aisleOverridesAvailable = true; refreshReviewList(); });
+  check('while the aisle table does not exist nothing is offered that would fail: the known Other name is left as a count',
+        JSON.stringify(oaU.quiet) === '["2 of 2 ingredients are already on your list."]' && oaU.rows.length === 0, JSON.stringify(oaU));
+  const oaEnd = await oaPage.evaluate(() => ({ recipeWrites: window.__WRITES__.filter(w => w.table === 'recipes').length, aisleWrites: window.__WRITES__.filter(w => w.table === 'aisle_overrides').length }));
+  check('reading the band wrote nothing but the pick and its UNDO: no recipe was written, two aisle writes in all',
+        oaEnd.recipeWrites === 0 && oaEnd.aisleWrites === 2, JSON.stringify(oaEnd));
+  await oaPage.close();
+  /* OA-END */
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:
