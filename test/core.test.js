@@ -1768,6 +1768,38 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
+/* ---- Timers (run sheet PR 4, 24 Oct 2026): stepTimer and formatCountdown ----
+   A started step with a length counts down from the minute START was pressed; a range is due at its short end. Made-up steps; times are minutes since midnight. */
+{
+  const T = (h, m, s = 0) => h * 60 + m + s / 60;
+  const step = (min, max, more) => ({ started: true, startedAt: T(9, 6), state: 'running', duration: { min, max, openEnded: false }, ...more });
+  const read = (st, now) => { const t = core.stepTimer(st, now); return t && [core.formatCountdown(t.left), t.due, t.range].join(' '); };
+  check('a 10-minute step started at 09:06 reads 10:00 as it starts, 4:30 at 09:11:30 and 0:01 a second before it is due, and is due at 09:16:00 and not before',
+        read(step(10, 10), T(9, 6)) === '10:00 false false' && read(step(10, 10), T(9, 11, 30)) === '4:30 false false'
+        && read(step(10, 10), T(9, 15, 59)) === '0:01 false false' && read(step(10, 10), T(9, 16)) === '0:00 true false', [T(9, 6), T(9, 11, 30), T(9, 15, 59), T(9, 16)].map(n => read(step(10, 10), n)).join(' | '));
+  check('    and stays due afterwards with nothing left to count',
+        read(step(10, 10), T(9, 16, 1)) === '0:00 true false' && read(step(10, 10), T(12, 0)) === '0:00 true false');
+  check('a range is due at its SHORT end and says it is a range: [10-13 min] started at 09:06 reads 1:00 at 09:15 and is due, as a range, at 09:16',
+        read(step(10, 13), T(9, 15)) === '1:00 false true' && read(step(10, 13), T(9, 16)) === '0:00 true true' && read(step(10, 13), T(9, 18)) === '0:00 true true');
+  const sampled = Array.from({ length: 800 }, (_, i) => T(9, 5) + i * 0.0137);
+  const inOrder = sampled.map(n => read(step(10, 13), n));
+  const scrambled = sampled.map((n, i) => [(i * 7919) % 800, n]).sort((a, b) => a[0] - b[0]).map(([, n]) => n);
+  const answers = new Map(scrambled.map(n => [n, read(step(10, 13), n)]));
+  check('it is counted from the clock and nothing else: asking for 800 moments in order, or in a scrambled order after others, gives the same answer for each moment',
+        sampled.every((n, i) => answers.get(n) === inOrder[i]) && new Set(inOrder).size > 100, inOrder.length);
+  const none = [['not started', step(10, 10, { started: false })], ['done', step(10, 10, { state: 'done' })], ['instant', step(0, 0, { duration: { min: 0, max: 0, openEnded: false, instant: true } })],
+    ['until done', step(null, null, { duration: { min: null, max: null, openEnded: true } })], ['overnight', step(null, null, { duration: { min: null, max: null, openEnded: true, overnight: true, handsOff: true } })],
+    ['no start time', step(10, 10, { startedAt: undefined })], ['no duration', step(10, 10, { duration: null })]];
+  check('a step with nothing to count has no timer: not started, done, instant, until done, overnight, no start time, no duration, and no step at all',
+        none.every(([, st]) => core.stepTimer(st, T(9, 30)) === null) && core.stepTimer(null, T(9, 30)) === null && core.stepTimer(undefined, T(9, 30)) === null,
+        none.filter(([, st]) => core.stepTimer(st, T(9, 30)) !== null).map(([n]) => n).join());
+  check('past midnight: a 3-hour step started at 22:30 reads 1:30:00 at 00:00 and is due at 01:30, and one started at 00:10 is not mistaken for that',
+        read(step(180, 180, { startedAt: T(22, 30) }), T(0, 0)) === '1:30:00 false false' && read(step(180, 180, { startedAt: T(22, 30) }), T(1, 30)) === '0:00 true false'
+        && read(step(20, 20, { startedAt: T(0, 10) }), T(0, 20)) === '10:00 false false');
+  check('formatCountdown is whole seconds rounded up, so it never reads 0:00 before it is due, goes to hours from an hour up, and is never negative',
+        [10, 0.5, 59 / 60, 1 / 60 - 1e-9, 60, 65.5, 0, -3].map(core.formatCountdown).join(' ') === '10:00 0:30 0:59 0:01 1:00:00 1:05:30 0:00 0:00');
+}
+
 /* ---- FROZEN (issue #90, 11 Oct 2026) ----
    A line that says frozen goes to Frozen, before any other keyword can claim it, and keeps its name, so its tick stays.
    A household's own aisle still wins. Made-up lines. */

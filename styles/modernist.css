@@ -637,6 +637,10 @@ html[data-style="modernist"] .timeline-playhead{ background:var(--color-accent);
 html[data-style="modernist"] .planned-mark{ border-left-color:var(--color-text); }
 /* START and DONE on a box while cooking. */
 html[data-style="modernist"] .box-run-at{ font-size:12px; font-weight:800; letter-spacing:.08em; color:var(--color-text); }
+/* The timer (run sheet PR 4): ink while it counts, the accent once it is due; DONE pulses, and under reduced motion is solid instead. */
+html[data-style="modernist"] .box-run-left{ font-size:12px; font-weight:800; letter-spacing:.08em; font-variant-numeric:tabular-nums; color:var(--color-text); }
+html[data-style="modernist"] .box-run-left.due{ color:var(--color-accent-700); }
+html[data-style="modernist"] .box-run .box-run-btn.due{ --due-ring:var(--color-accent); background:var(--color-accent); border-color:var(--color-accent); color:#fff; }
 html[data-style="modernist"] .step-at{ font-size:12px; font-weight:800; letter-spacing:.08em; opacity:1; }
 html[data-style="modernist"] .hands-busy{ background:var(--color-text); }
 html[data-style="modernist"] :is(.hands-free, .oven-use) span{ font-size:12px; font-weight:600; color:var(--color-text); }
