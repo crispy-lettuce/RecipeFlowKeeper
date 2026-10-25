@@ -1848,6 +1848,12 @@ function loadArchivoFont(){
   }
   .login-card button:hover{ background:var(--plum-lift); }
   .login-card button[disabled]{ opacity:.55; cursor:default; }
+  /* NOT YOU?, under the remembered email: a quiet link, not a second button as big as Sign in (44px to tap). */
+  .login-card button.login-forget{
+    width:auto; min-height:44px; margin:-12px 0 8px; padding:0 4px 0 0; background:none; color:var(--ink-soft);
+    text-transform:none; letter-spacing:0; font-size:14px; font-weight:400; text-decoration:underline; text-align:left;
+  }
+  .login-card button.login-forget:hover{ background:none; color:var(--plum); }
   .login-error{
     color:var(--danger); font-size:14px; margin-bottom:14px; min-height:0;
   }
@@ -1861,18 +1867,21 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-25.3">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-25.4">
 </head>
 <body>
 <div id="loginGate" hidden>
-  <form class="login-card" id="loginForm">
+  <!-- method="post" and a name on each field are what a browser's password manager reads a sign-in form by (#196); post also means the
+       password could never end up in the address if the script failed to load. -->
+  <form class="login-card" id="loginForm" method="post" action="#">
     <h1>Kitchen</h1>
     <p>Sign in to load your recipes.</p>
     <div class="login-error" id="loginError" hidden></div>
     <label for="loginEmail">Email</label>
-    <input type="email" id="loginEmail" autocomplete="username" required>
+    <input type="email" id="loginEmail" name="email" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+    <button type="button" class="login-forget" id="loginForget" hidden>Not you? Use another email</button>
     <label for="loginPassword">Password</label>
-    <input type="password" id="loginPassword" autocomplete="current-password" required>
+    <input type="password" id="loginPassword" name="password" autocomplete="current-password" required>
     <button type="submit" id="loginSubmit">Sign in</button>
   </form>
 </div>
@@ -2598,7 +2607,7 @@ const EXPECTED_CORE_VERSION = '2026-10-25.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-25.3';
+const APP_VERSION = '2026-10-25.4';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -13261,12 +13270,34 @@ const loginForm = document.getElementById('loginForm');
 const loginError = document.getElementById('loginError');
 const loginSubmit = document.getElementById('loginSubmit');
 
+/* The email last signed in with is remembered on this device (issue #196, 25 Oct 2026), so signing in again is only the password. The password is
+   never kept by the app: the browser's own password manager offers to, and fills it, from a form it can read (name and autocomplete on each field).
+   The email stays after SIGN OUT; NOT YOU? clears it, for a device that is shared. Blocked storage just means no memory. */
+const LOGIN_EMAIL_KEY = 'kitchen.loginEmail';
+function rememberedEmail(){ try { return localStorage.getItem(LOGIN_EMAIL_KEY) || ''; } catch(e){ return ''; } }
+function rememberEmail(email){ try { if(email) localStorage.setItem(LOGIN_EMAIL_KEY, email); } catch(e){} }
+function forgetEmail(){ try { localStorage.removeItem(LOGIN_EMAIL_KEY); } catch(e){} }
+
+let loginClearTimer = null;   // the wipe of the password field after the gate was last hidden; showing the gate again cancels it, so it cannot empty a password being typed
 function showLoginGate(message){
+  clearTimeout(loginClearTimer);
   loginGate.hidden = false;
   loginError.hidden = !message;
   loginError.textContent = message || '';
   loginSubmit.disabled = false;
   loginSubmit.textContent = 'Sign in';
+  /* A remembered email fills an empty box (never one being typed in, after a wrong password), and the cursor goes to what is still needed. */
+  const emailEl = document.getElementById('loginEmail'), passEl = document.getElementById('loginPassword'), saved = rememberedEmail();
+  if(saved && !emailEl.value) emailEl.value = saved;
+  document.getElementById('loginForget').hidden = !saved;
+  try { (emailEl.value ? passEl : emailEl).focus(); } catch(e){}
+}
+/* Leaving the sign-in screen: the form is hidden first, which is what tells a browser the sign-in worked and is the moment it offers to save the
+   password. The field is emptied a little after, not at once: a browser that reads it as the form goes would otherwise save nothing. */
+function leaveLoginGate(){
+  loginGate.hidden = true;
+  clearTimeout(loginClearTimer);
+  loginClearTimer = setTimeout(()=>{ document.getElementById('loginPassword').value = ''; }, 2000);
 }
 
 /* Chrome says "Failed to fetch", Firefox "NetworkError when attempting to
@@ -13319,7 +13350,7 @@ async function startApp(){
     return;
   }
   appStarted = true;
-  loginGate.hidden = true;
+  leaveLoginGate();
   purgeOldFormatTicks();
   updateSidebarCounts();
   renderHome();
@@ -13399,15 +13430,27 @@ loginForm.addEventListener('submit', async e=>{
   loginSubmit.disabled = true;
   loginSubmit.textContent = 'Signing in…';
   loginError.hidden = true;
-  const { error } = await sb.auth.signInWithPassword({
-    email: document.getElementById('loginEmail').value.trim(),
-    password: document.getElementById('loginPassword').value
-  });
+  const email = document.getElementById('loginEmail').value.trim(), password = document.getElementById('loginPassword').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
   if(error){
     showLoginGate(error.message);
     return;
   }
+  rememberEmail(email);
+  /* Chrome (Android and desktop) has an explicit way to offer the sign-in for saving, which does not depend on guessing that this page's form
+     "succeeded"; Safari has none and goes by the form being hidden (leaveLoginGate). The browser keeps it, never this app. The password is not
+     emptied here: see leaveLoginGate. */
+  try {
+    if(window.PasswordCredential && navigator.credentials && navigator.credentials.store)
+      navigator.credentials.store(new PasswordCredential({ id: email, password, name: email })).catch(()=>{});
+  } catch(e){}
+});
+document.getElementById('loginForget').addEventListener('click', ()=>{
+  forgetEmail();
+  document.getElementById('loginEmail').value = '';
   document.getElementById('loginPassword').value = '';
+  document.getElementById('loginForget').hidden = true;
+  document.getElementById('loginEmail').focus();
 });
 
 document.getElementById('signOutBtn').addEventListener('click', async ()=>{

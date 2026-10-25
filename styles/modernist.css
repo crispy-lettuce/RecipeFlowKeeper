@@ -1408,6 +1408,8 @@ html[data-style="modernist"] .login-card input{ min-height:44px; border:2px soli
 html[data-style="modernist"] .login-card input:focus{ border-color:var(--color-accent); }
 html[data-style="modernist"] .login-card button{ min-height:44px; background:var(--km-fill); color:var(--km-on-accent); font-size:13px; font-weight:800; letter-spacing:.06em; }
 html[data-style="modernist"] .login-card button:hover{ background:var(--km-fill-hover); }
+html[data-style="modernist"] .login-card button.login-forget{ min-height:44px; background:none; color:var(--color-text); font-size:13px; font-weight:600; letter-spacing:0; text-decoration:underline; }
+html[data-style="modernist"] .login-card button.login-forget:hover{ background:none; color:var(--color-accent-700); }
 html[data-style="modernist"] .login-error{ color:var(--color-accent-700); font-weight:600; }
 
 @media (max-width: 860px){

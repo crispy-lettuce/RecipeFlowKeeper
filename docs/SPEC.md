@@ -41,6 +41,12 @@ Nothing else is shared.
 | **Converter** | Not part of the app. A Claude project loaded with `converter/conversion-instructions.md` turns a web page, photo or text into the recipe format (§3). The app reminds each household when those instructions change |
 | **Tests** | An offline harness (`test/`) runs the real page against a stubbed Supabase; CI runs it on every pull request and `offline-harness` is required on `main`. It proves app logic, not the live backend |
 
+**Signing in** (issue #196, 25 Oct 2026). The sign-in screen remembers the email last signed in with, on this device only (`kitchen.loginEmail`), fills it in and puts
+the cursor in the password box; the email stays after SIGN OUT, and **Not you? Use another email** forgets it. The app never stores the password: the form
+carries `name` and `autocomplete` on each field and is hidden on success, which is what a browser's password manager reads, and in Chrome the sign-in is also
+offered to it with `navigator.credentials.store`. The password field is emptied two seconds after the form is hidden, not before. Blocked storage means no
+memory, never an error.
+
 **How data moves.** On sign-in the whole library loads into memory; everything afterwards is instant. A change is queued and
 written to Supabase in the background, one row at a time. Coming back to a tab re-reads the library, so devices pick up each other's
 changes without a reload. Offline use is not a goal, but a short loss of connection loses nothing: the app says it is OFFLINE
