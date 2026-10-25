@@ -29,8 +29,8 @@ const core = require(path.join(REPO, 'core.js'));
 const WAITING = /\b(simmer(?:ing)?|bak(?:e|ing)|roast(?:ing)?|rest(?:ing)?|prov(?:e|ing)|proof(?:ing)?|chill(?:ing)?|marinat(?:e|ing)|soak(?:ing)?|cool(?:ing)?|leave|slow[- ]cooker|in the oven|fridge|refrigerat(?:e|ing)|freez(?:e|ing)|infus(?:e|ing)|steep(?:ing)?|rise|braise|braising)\b/i;
 const OFTEN = /\b(often|constantly|continuously|frequently|all the time|non-?stop)\b/i;
 const OCCASIONAL = /\b(occasionally|occasional|now and then|once or twice|from time to time|every few minutes|halfway|half way|midway|half-way)\b/i;
-/* Work that keeps the cook at it (brown as a verb, not "brown sugar"), and watching for a moment, which is only hands on while it is short. */
-const HANDS_ON = /\b(whisk(?:ing)?|fry(?:ing)?|brown(?:ing)?(?!\s+(?:sugar|rice|lentils?|mustard|bread|flour|stock))|toss(?:ing)?|knead(?:ing)?|beat(?:ing)?|saut[eé](?:ing)?)\b/i;
+/* Work that keeps the cook at it (brown as a verb, not "brown sugar"; fry as a verb, not the "frying pan" it is done in: issue #207, 25 Oct 2026), and watching for a moment, which is only hands on while it is short. */
+const HANDS_ON = /\b(whisk(?:ing)?|fry(?:ing)?(?![\s-]+pans?\b)|brown(?:ing)?(?!\s+(?:sugar|rice|lentils?|mustard|bread|flour|stock))|toss(?:ing)?|knead(?:ing)?|beat(?:ing)?|saut[eé](?:ing)?)\b/i;
 const WATCHING = /\b(bring to|watch(?:ing)?)\b/i;
 const STIRRING = /\b(stir(?:ring)?|turn(?:ing)?|flip(?:ping)?)\b/i;
 

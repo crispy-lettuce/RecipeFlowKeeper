@@ -329,7 +329,7 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
    The file's fingerprint is pinned here against its version: change the file, and this fails until the "Version" line
    in the file and CONVERTER_VERSION in index.html are both moved on, and the new fingerprint (printed below) is put
    here beside the new version. */
-const CONVERTER_PINNED = { version: '2026-10-24.1', sha256: '2ea8d7d0f40dc1c84bff5fc7cb83ea0cce9788fd1b03a634385b74fca5b655ef' };
+const CONVERTER_PINNED = { version: '2026-10-25.1', sha256: '6acd7940e42f4b5832e77ac15388e3aaa738019a5a17840e36d402b0061b838d' };
 {
   const convSrc = fs.readFileSync(path.join(ROOT, 'converter', 'conversion-instructions.md'), 'utf8');
   const convSha = require('crypto').createHash('sha256').update(convSrc).digest('hex');
@@ -1518,8 +1518,8 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
   const t18rows = [...t18.matchAll(/^\| (\d+) \| `(\[[^`]+\])` \|/gm)].map(m => [Number(m[1]), core.extractStepDuration('Step ' + m[1] + ' ' + m[2]).duration]);
   const t18off = t18rows.filter(([, d]) => d && d.handsOff).map(([n]) => n).join();
   const t18unread = t18rows.filter(([, d]) => !d).map(([n]) => n).join();
-  check('converter test 18: every bracket it asks for is one the app reads as a duration, and the steps read as hands off are 1, 2, 3, 8, 9 and 12',
-        t18rows.length === 12 && t18unread === '' && t18off === '1,2,3,8,9,12', `rows ${t18rows.length}, unread [${t18unread}], hands off [${t18off}]`);
+  check('converter test 18: every bracket it asks for is one the app reads as a duration, and the steps read as hands off are 1, 2, 3, 8, 9, 12 and 15',
+        t18rows.length === 15 && t18unread === '' && t18off === '1,2,3,8,9,12,15', `rows ${t18rows.length}, unread [${t18unread}], hands off [${t18off}]`);
 }
 
 /* ---- The run sheet, planning half (run sheet PR 3a, 23 Oct 2026, docs/PLAN-RUN-SHEET.md §4) ----
@@ -1764,14 +1764,15 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
     ['cover and simmer gently [40 min]', 'off'], ['bake until golden [25-30 min]', 'off'], ['chill until firm [until firm]', 'off'],
     ['cook gently, stirring now and then, until very soft [15 min]', 'off'], ['leave to rest [10 min]', 'off'],
     ['fry the onion, stirring often, until golden [8-10 min]', 'on'], ['rest the dough [3 min]', 'on'], ['whisk until smooth [6 min]', 'on'], ['toss the leaves in the dressing [2 min]', 'on'],
-    ['cook the rice [12 min]', 'ask'], ['simmer, stirring, until thick [20 min]', 'ask'], ['heat the sauce [4-8 min]', 'ask']];
+    ['cook the rice [12 min]', 'ask'], ['simmer, stirring, until thick [20 min]', 'ask'], ['heat the sauce [4-8 min]', 'ask'],
+    ['heat the oil in a frying pan, add the onions and cook gently, stirring now and then, until soft [15 min]', 'off']];
   const left = ['pour into a dish [instant]', 'chill overnight [overnight]', 'cover and simmer [30 min, hands off]', 'serve at once', 'season [to taste]'];
   const syntax = 'TITLE: Test\nGROUP a:\n1 swede\nSTAGE:\n' + lines.map(l => step(l[0])).concat(left.map(step)).join('\n');
   const exp = { recipes: [{ id: 'r-1', title: 'Test', syntax }] };
   const before = JSON.stringify(exp);
   const res = propose(exp);
   check('propose-hands-off sorts a made-up export: every timed, unmarked step is proposed once, and the answers are the ones the rule gives',
-        res.steps.length === 12 && JSON.stringify(res.counts) === '{"off":5,"on":4,"ask":3}'
+        res.steps.length === 13 && JSON.stringify(res.counts) === '{"off":6,"on":4,"ask":3}'
         && res.steps.every((s, i) => s.proposal === lines[i][1] && s.why.length > 0 && s.line.startsWith('MERGE') && /^\[.*\]$/.test(s.bracket)), JSON.stringify(res.counts) + ' ' + res.steps.map(s => s.proposal).join(','));
   check('    it leaves alone an instant step, an overnight step, a step already marked, one with no time and one with a bracket that is not a time, and counts them',
         JSON.stringify(res.skipped) === '{"instant":1,"alreadyMarked":2,"untimed":2}', JSON.stringify(res.skipped));
@@ -1785,7 +1786,7 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
   const run = args => require('child_process').spawnSync(process.execPath, [tool, ...args], { encoding: 'utf8' });
   const ok = run([inFile, outFile]);
   check('    the command writes the proposals outside the repo and prints counts only: no recipe text reaches the terminal',
-        ok.status === 0 && /12 timed steps not yet marked: 5 off, 4 on, 3 ask/.test(ok.stdout) && JSON.parse(fs.readFileSync(outFile, 'utf8')).steps.length === 12
+        ok.status === 0 && /13 timed steps not yet marked: 6 off, 4 on, 3 ask/.test(ok.stdout) && JSON.parse(fs.readFileSync(outFile, 'utf8')).steps.length === 13
         && !lines.map(l => l[0]).concat(left).some(t => ok.stdout.includes(t.split(' [')[0])), ok.stdout + ok.stderr);
   const inRepo = path.join(ROOT, 'proposals-should-not-exist.json');
   const refusedOut = run([inFile, inRepo]), refusedIn = run([path.join(ROOT, 'package.json'), outFile + '2']);
