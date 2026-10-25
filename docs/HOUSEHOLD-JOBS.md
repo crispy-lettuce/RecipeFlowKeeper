@@ -155,8 +155,8 @@ MERGE boiled, thickened -> served: drain the beans and serve with the gravy [ins
 
 **Part B: two dishes together, about 4 minutes.** On the **Planner**, add both recipes to today, tap **GROUP SOME TOGETHER**, pick both, tap **GROUP SELECTED**, and open the group.
 
-6. **You should see:** **EAT AT** with a time, the roast starting earlier than the greens (the roast about 11 minutes before EAT AT, the greens about 4), and in **YOUR HANDS** a red hatched **CLASH of 1 min** at the end, where slicing the chicken and whisking the gravy both want your hands.
-7. Tap **AVOID THE CLASH**. **You should see:** the clash gone, the roast told to start 2 minutes earlier, EAT AT unchanged, and the button reading **✓ CLASH AVOIDED**.
+6. **You should see:** **EAT AT** with a time, the roast starting earlier than the greens (the roast about 11 minutes before EAT AT, the greens about 4), and in **YOUR HANDS** a red hatched **CLASH 1 min** at the end, where slicing the chicken and whisking the gravy both want your hands.
+7. Tap **AVOID THE CLASH**. **You should see:** the clash gone, **START AT** 2 minutes earlier (the roast has to start 2 minutes earlier; the greens do not move), EAT AT unchanged, and the button reading **✓ CLASH AVOIDED · TAP TO UNDO**.
 8. Tap **START COOKING**. Work through the greens the same way: **START** on topping and tailing, **START TIMER** on the boiling, then **START** on the whisking. **You should see:** the boiling counts down from **1:00** and, at zero, reads **CHECK IT**
    (not TIME'S UP, because the step said 1-2 minutes), with one chime; **DONE** stays pulsing until you press it. The step after it, **simmer the stock until glossy**, has no countdown: it has no length to count.
 

@@ -1858,8 +1858,8 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
         serve - both.lanes[0].startAt === 11 && serve - both.lanes[1].startAt === 4 && clash.clashMinutes === 1
         && clean.clashMinutes === 0 && serve - clear.lanes[0].startAt === 13 && serve - clear.lanes[1].startAt === 4 && clear.serveAt === serve,
         JSON.stringify([both.lanes.map(l => clk(l.startAt)), clash.clashMinutes, clear.lanes.map(l => clk(l.startAt)), clean.clashMinutes]));
-  check('    and the page says the same in words: free 8 min, a CLASH of 1 min, the roast 2 minutes earlier, 7 timers, about 11 minutes',
-        ['free 8 min', 'CLASH of 1 min', 'start 2 minutes earlier', '**7 timers**', 'about 11 minutes'].every(w => section.includes(w)), section.length + ' chars');
+  check('    and the page says the same in words, as the screen words it: free 8 min, CLASH 1 min, START AT 2 minutes earlier, 7 timers, about 11 minutes',
+        ['free 8 min', 'CLASH 1 min', 'START AT** 2 minutes earlier', '**7 timers**', 'about 11 minutes'].every(w => section.includes(w)), section.length + ' chars');
   }
 }
 
