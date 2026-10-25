@@ -45,7 +45,12 @@ const check = (name, pass, detail) => {
   const openPage = browser.newPage.bind(browser);
   let opened = 0;
   browser.newPage = async (opts) => {
-    const p = await openPage(opts);
+    /* Modernist is the default style since #200 (25 Oct 2026). Most of this file was written for Classic and checks it, so a page opens as a device
+       that has chosen Classic does, unless the test says { __defaultStyle: true } (the checks on the default itself) or sets the style itself, which
+       its own init script does after this one. */
+    const { __defaultStyle, ...pageOpts } = opts || {};
+    const p = await openPage(pageOpts);
+    if (!__defaultStyle) await p.addInitScript(() => { try { if (localStorage.getItem('kitchen.style') === null) localStorage.setItem('kitchen.style', 'classic'); } catch (e) {} });
     const n = ++opened;
     const label = () => p.__label || 'page ' + n;
     p.on('pageerror', e => errors.push(`PAGEERROR (${label()}): ` + e.message));
@@ -7536,8 +7541,8 @@ const check = (name, pass, detail) => {
   await ow.close();
 
   /* ---- The second style, Modernist (docs/PLAN-MODERNIST.md, step 1: the switch) ----
-     Classic is what every device has until it chooses, and the choice is this device's alone: localStorage, never the
-     database. What is proved here is the mechanism: the attribute is set before the page body exists, it survives a
+     Modernist is what every device has until it chooses (#200; it was Classic), and the choice, either style, is this device's alone: localStorage,
+     never the database. What is proved here is the mechanism: the attribute is set before the page body exists, it survives a
      reload, Archivo is asked for only once Modernist is on, and Style and Appearance move independently. What each screen
      looks like in Modernist is checked screen by screen as they are built. */
   const watchStyle = () => {
@@ -7555,7 +7560,7 @@ const check = (name, pass, detail) => {
     optionsText: [...document.querySelectorAll('#setStyle option')].map(o => o.textContent).join(','), chosen: document.getElementById('setStyle').value
   }));
 
-  const sty = await browser.newPage();
+  const sty = await browser.newPage({ __defaultStyle: true });
   sty.__label = 'style';
   await sty.addInitScript(watchStyle);
   await sty.clock.setFixedTime(FIXTURE_NOW);
@@ -7564,64 +7569,139 @@ const check = (name, pass, detail) => {
   await sty.click('.navlink[data-view="settings"]');
   await sty.click('[data-settings-tab-btn="app"]');
   const s0 = await look(sty);
-  check('a device that has never chosen is Classic: the attribute says so, set before the body existed, in Plex and with 2px corners',
-        s0.style === 'classic' && (await sty.evaluate(() => window.__styleAtBody)) === 'classic' && s0.stored === null &&
-        /IBM Plex Sans/.test(s0.bodyFont) && /IBM Plex Mono/.test(s0.monoFont) && s0.radius === '2px' && s0.bg === 'rgb(234, 228, 213)', JSON.stringify(s0));
-  check('    and has not asked for Archivo', archivoAsked('style') === 0, String(archivoAsked('style')));
-  check('Settings → APP has a STYLE select beside APPEARANCE, CLASSIC first and chosen',
-        s0.optionsText === 'CLASSIC,MODERNIST' && s0.chosen === 'classic' &&
+  check('a device that has never chosen is Modernist (the default since #200): the attribute says so, set before the body existed, in Archivo with square corners, and nothing is stored',
+        s0.style === 'modernist' && (await sty.evaluate(() => window.__styleAtBody)) === 'modernist' && s0.stored === null &&
+        /^"?Archivo/.test(s0.bodyFont) && /^"?Archivo/.test(s0.monoFont) && s0.radius === '0px' && s0.bg === 'rgb(243, 242, 242)', JSON.stringify(s0));
+  check('    and has asked for Archivo, once, as a Modernist start does', archivoAsked('style') === 1, String(archivoAsked('style')));
+  check('Settings → APP has a STYLE select beside APPEARANCE, MODERNIST first and chosen',
+        s0.optionsText === 'MODERNIST,CLASSIC' && s0.chosen === 'modernist' &&
         (await sty.evaluate(() => { const a = document.getElementById('setDarkMode').closest('.settings-block'), b = document.getElementById('setStyle').closest('.settings-block'); return a.nextElementSibling === b && b.dataset.settingsTab === 'app'; })));
 
-  await sty.selectOption('#setStyle', 'modernist');
+  await sty.selectOption('#setStyle', 'classic');
   await sty.waitForTimeout(300);
   const s1 = await look(sty);
-  check('choosing MODERNIST sets the attribute and remembers it on this device',
-        s1.style === 'modernist' && s1.stored === 'modernist' && s1.chosen === 'modernist', JSON.stringify(s1));
-  check('    the page is now in Archivo throughout (the mono face too), with square corners and the Modernist ground',
-        /^"?Archivo/.test(s1.bodyFont) && /^"?Archivo/.test(s1.monoFont) && s1.radius === '0px' && s1.bg === 'rgb(243, 242, 242)', JSON.stringify(s1));
-  check('    and only now does it ask for Archivo; the browser chrome takes the Modernist ground',
-        archivoAsked('style') === 1 && s1.chrome === '#f3f2f2', `asked ${archivoAsked('style')}×, chrome ${s1.chrome}`);
+  check('choosing CLASSIC sets the attribute and remembers it on this device: Classic is stored as a choice, not as nothing',
+        s1.style === 'classic' && s1.stored === 'classic' && s1.chosen === 'classic', JSON.stringify(s1));
+  check('    the page is back in Plex with 2px corners and the Classic ground, asks for nothing more, and the browser chrome takes the Classic ground',
+        /IBM Plex Sans/.test(s1.bodyFont) && /IBM Plex Mono/.test(s1.monoFont) && s1.radius === '2px' && s1.bg === 'rgb(234, 228, 213)' && archivoAsked('style') === 1 && s1.chrome !== '#f3f2f2', JSON.stringify(s1));
   check('    the choice is this device\'s: nothing is written to the database', s1.writes === s0.writes, `${s0.writes} → ${s1.writes} writes`);
 
   /* All four: Style and Appearance are independent, in either order. */
   await sty.selectOption('#setDarkMode', 'dark');
   await sty.waitForTimeout(300);
   const s2 = await look(sty);
-  check('Modernist dark: the theme moved and the style did not, and the ground is the dark one',
-        s2.style === 'modernist' && s2.theme === 'dark' && s2.bg === 'rgb(22, 21, 20)' && s2.chrome === '#161514', JSON.stringify(s2));
-  await sty.selectOption('#setStyle', 'classic');
-  await sty.waitForTimeout(300);
-  const s3 = await look(sty);
-  check('Classic dark: the style moved back and the theme did not, and every Classic value is back',
-        s3.style === 'classic' && s3.theme === 'dark' && s3.bg === 'rgb(20, 18, 16)' && s3.chrome === '#141210' && s3.stored === null &&
-        /IBM Plex Sans/.test(s3.bodyFont) && s3.radius === '2px', JSON.stringify(s3));
-  await sty.selectOption('#setDarkMode', 'light');
-  await sty.waitForTimeout(300);
+  check('Classic dark: the theme moved and the style did not, and the ground is the dark one',
+        s2.style === 'classic' && s2.theme === 'dark' && s2.bg === 'rgb(20, 18, 16)' && s2.chrome === '#141210' && s2.stored === 'classic', JSON.stringify(s2));
   await sty.selectOption('#setStyle', 'modernist');
   await sty.waitForTimeout(300);
+  const s3 = await look(sty);
+  check('Modernist dark: the style moved and the theme did not, every Modernist value is back, and it is remembered as Modernist',
+        s3.style === 'modernist' && s3.theme === 'dark' && s3.bg === 'rgb(22, 21, 20)' && s3.chrome === '#161514' && s3.stored === 'modernist' &&
+        /^"?Archivo/.test(s3.bodyFont) && s3.radius === '0px', JSON.stringify(s3));
+  await sty.selectOption('#setDarkMode', 'light');
+  await sty.waitForTimeout(300);
+  await sty.selectOption('#setStyle', 'classic');
+  await sty.waitForTimeout(300);
   const s4 = await look(sty);
-  check('Modernist light again, reached the other way round: Classic light, Classic dark, Modernist dark and Modernist light all work',
-        s4.style === 'modernist' && s4.theme === 'light' && s4.bg === 'rgb(243, 242, 242)' && s4.chrome === '#f3f2f2', JSON.stringify(s4));
+  check('Classic light, reached the other way round: Classic light, Classic dark, Modernist dark and Modernist light all work',
+        s4.style === 'classic' && s4.theme === 'light' && s4.bg === 'rgb(234, 228, 213)' && s4.stored === 'classic', JSON.stringify(s4));
 
-  /* The reload is the proof that the choice outlives the page, and the observer that the first paint is already right. */
+  /* The reload is the proof that the choice outlives the page, and the observer that the first paint is already right: Classic, now a stored choice,
+     must survive it (it used to be the absence of one), and so must Modernist. */
   await sty.reload();
   await sty.waitForTimeout(1200);
-  const s5 = await sty.evaluate(() => ({ atBody: window.__styleAtBody, style: document.documentElement.getAttribute('data-style'), bg: getComputedStyle(document.body).backgroundColor }));
-  check('after a reload the style is Modernist before the page body exists, so Classic never flashes first',
-        s5.atBody === 'modernist' && s5.style === 'modernist' && s5.bg === 'rgb(243, 242, 242)', JSON.stringify(s5));
-  check('    and the reload asked for Archivo again, the way a fresh start does', archivoAsked('style') === 2, String(archivoAsked('style')));
+  const s5 = await sty.evaluate(() => ({ atBody: window.__styleAtBody, style: document.documentElement.getAttribute('data-style'), bg: getComputedStyle(document.body).backgroundColor,
+    stored: localStorage.getItem('kitchen.style') }));
+  check('after a reload a chosen Classic is still Classic before the page body exists, so Modernist never flashes first, and Archivo is not asked for',
+        s5.atBody === 'classic' && s5.style === 'classic' && s5.bg === 'rgb(234, 228, 213)' && s5.stored === 'classic' && archivoAsked('style') === 1, JSON.stringify([s5, archivoAsked('style')]));
+  await sty.click('.navlink[data-view="settings"]');
+  await sty.click('[data-settings-tab-btn="app"]');
+  await sty.selectOption('#setStyle', 'modernist');
+  await sty.waitForTimeout(300);
+  await sty.reload();
+  await sty.waitForTimeout(1200);
+  const s6 = await sty.evaluate(() => ({ atBody: window.__styleAtBody, style: document.documentElement.getAttribute('data-style'), bg: getComputedStyle(document.body).backgroundColor,
+    stored: localStorage.getItem('kitchen.style') }));
+  check('    and a chosen Modernist is Modernist after a reload, before the body exists; Archivo was asked for when it was chosen and again by the reload',
+        s6.atBody === 'modernist' && s6.style === 'modernist' && s6.bg === 'rgb(243, 242, 242)' && s6.stored === 'modernist' && archivoAsked('style') === 3, JSON.stringify([s6, archivoAsked('style')]));
   await sty.close();
 
-  /* Storage that will not answer is Classic, not an error. */
-  const stb = await browser.newPage();
+  /* Storage that will not answer, or holds nothing this app wrote, is the default (Modernist), not an error. */
+  const stb = await browser.newPage({ __defaultStyle: true });
   stb.__label = 'style, blocked storage';
   await stb.addInitScript(() => { const bad = () => { throw new Error('blocked'); }; try { Object.defineProperty(window, 'localStorage', { get: bad }); } catch (e) {} });
   await stb.clock.setFixedTime(FIXTURE_NOW);
   await stb.goto('file://' + path.join(__dirname, 'app-under-test.html'));
   await stb.waitForTimeout(800);
-  check('with storage blocked the style is Classic, and the page still starts',
-        (await stb.evaluate(() => document.documentElement.getAttribute('data-style'))) === 'classic' && (await stb.locator('.rcard').count()) > 0);
+  check('with storage blocked the style is Modernist, the default, and the page still starts',
+        (await stb.evaluate(() => document.documentElement.getAttribute('data-style'))) === 'modernist' && (await stb.locator('.rcard').count()) > 0);
   await stb.close();
+  const stg = await browser.newPage({ __defaultStyle: true });
+  stg.__label = 'style, a value that is not a style';
+  await stg.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'sepia'); } catch (e) {} });
+  await stg.clock.setFixedTime(FIXTURE_NOW);
+  await stg.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await stg.waitForTimeout(800);
+  check('a stored value that is neither style is read as the default, Modernist, and the page still starts',
+        (await stg.evaluate(() => document.documentElement.getAttribute('data-style'))) === 'modernist' && (await stg.locator('.rcard').count()) > 0);
+  await stg.close();
+
+  /* ---- The app's name on screen (issue #199, 25 Oct 2026) ---- */
+  const nmRun = async look => {
+    const p = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    p.__label = 'app name, ' + look;
+    await p.addInitScript(l => { try { localStorage.setItem('kitchen.style', l); } catch (e) {} }, look);
+    await p.clock.setFixedTime(FIXTURE_NOW);
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1200);
+    const out = await p.evaluate(() => { const vis = e => !!e && e.getClientRects().length > 0; const b = document.querySelector('.brand');
+      return { title: document.title, login: document.querySelector('#loginForm h1').textContent.trim(), brand: b.innerText.trim(), fits: b.scrollWidth <= b.clientWidth + 1,
+        classicShown: vis(document.querySelector('.brand-classic')), modShown: vis(document.querySelector('.brand-mod')), exportMarker: exportPayload().app }; });
+    await p.close();
+    return out;
+  };
+  for (const look of ['classic', 'modernist']) {
+    const nm = await nmRun(look);
+    check(`${look === 'classic' ? 'Classic' : 'Modernist'}: the app is called Recipe Wrangler on screen: the tab, the sign-in heading and the sidebar (which fits); the backup file\'s format marker is still "Kitchen"`,
+          nm.title === 'Recipe Wrangler' && nm.login === 'Recipe Wrangler' && nm.brand === 'Recipe Wrangler' && nm.fits && (look === 'classic' ? nm.classicShown && !nm.modShown : nm.modShown && !nm.classicShown)
+          && nm.exportMarker === 'Kitchen', JSON.stringify(nm));
+  }
+
+  /* ---- The Recipes grid in Modernist fits the width (issue #200) ---- */
+  const gx = await browser.newPage({ viewport: { width: 1389, height: 900 } });
+  gx.__label = 'recipe grid, modernist';
+  await gx.addInitScript(() => { try { localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} });
+  await gx.clock.setFixedTime(FIXTURE_NOW);
+  await gx.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await gx.waitForTimeout(1200);
+  await gx.evaluate(() => {
+    for (let i = 0; i < 12; i++) loadRecipes().push({ id: 'gx-' + i, title: 'Grid dish ' + i, source: 'Test Bakery', time: '20 min', servings: 4, tags: { course: 'Main', keywords: [] }, history: [], syntax: 'TITLE: Grid dish ' + i });
+    showView('recipes'); renderHome();
+  });
+  const gridAt = async w => {
+    await gx.setViewportSize({ width: w, height: 900 }); await gx.waitForTimeout(400);
+    return gx.evaluate(() => {
+      const g = document.getElementById('recipeGrid'), cs = getComputedStyle(g), cards = [...g.querySelectorAll('.rcard')];
+      const r = cards.map(c => c.getBoundingClientRect()), first = r[0], rowLen = r.filter(x => Math.abs(x.top - first.top) < 1).length;
+      const inner = g.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), bc = getComputedStyle(cards[0]);
+      return { cols: cs.gridTemplateColumns.split(' ').length, rowLen, inner: Math.round(inner), want: Math.max(1, Math.floor(inner / 240)), n: cards.length,
+        overlapX: rowLen > 1 ? Math.round((r[1].left - r[0].right) * 10) / 10 : null, overlapY: cards.length > rowLen ? Math.round((r[rowLen].top - r[0].bottom) * 10) / 10 : null,
+        border: [bc.borderTopWidth, bc.borderRightWidth, bc.borderBottomWidth, bc.borderLeftWidth, bc.borderTopStyle].join(' '), colour: bc.borderTopColor,
+        scrollX: g.scrollWidth - g.clientWidth, pageX: document.documentElement.scrollWidth - innerWidth, minW: Math.round(Math.min(...r.map(x => x.width))) };
+    });
+  };
+  const gridW = {};
+  for (const w of [390, 700, 1100, 1329, 1389, 1800]) gridW[w] = await gridAt(w);
+  check('The Modernist grid has as many columns as fit, at least 240px each: the number follows the width (1 on a phone, 2 on a narrow window, 4 across the tablet\'s 1101px pane held sideways, more on a wide one) and every row is that full',
+        Object.values(gridW).every(g => g.cols === g.want && g.rowLen === Math.min(g.cols, g.n) && g.minW >= 240)
+        && gridW[390].cols === 1 && gridW[700].cols === 2 && gridW[1329].cols === 4 && gridW[1800].cols >= 6 && gridW[1389].cols >= gridW[1100].cols && gridW[1800].cols > gridW[1389].cols, JSON.stringify(gridW));
+  check('    each card draws its own 2px rule on all four sides and overlaps its neighbour\'s by 2px, sideways and down, so no line is doubled; nothing scrolls sideways',
+        Object.values(gridW).every(g => g.border === '2px 2px 2px 2px solid' && (g.overlapX === null || g.overlapX === -2) && (g.overlapY === null || g.overlapY === -2) && g.scrollX <= 0 && g.pageX <= 0), JSON.stringify(gridW));
+  await gx.evaluate(() => { applyTheme('dark'); rerenderForTheme(); }); await gx.waitForTimeout(300);
+  const gridDark = await gridAt(1389);
+  check('    the rule is one opaque colour, so an overlap is not darker than a single line: light rgb(159, 157, 157) at every width, and in dark rgb(92, 90, 89)',
+        Object.values(gridW).every(g => g.colour === 'rgb(159, 157, 157)') && gridDark.colour === 'rgb(92, 90, 89)', JSON.stringify([Object.values(gridW).map(g => g.colour), gridDark.colour]));
+  await gx.close();
 
   /* ---- Modernist, step 2: the sidebar ----
      228px, numbered rows, the brand renamed, the count at the right. It folds to a 56px rail on the Planner and on a viewer
@@ -7643,8 +7723,8 @@ const check = (name, pass, detail) => {
   await nc.click('.navlink[data-view="planner"]'); await settle(nc);
   const c0 = await navState(nc);
   const cBrand = await nc.evaluate(() => ({ brand: document.querySelector('.brand').innerText.trim(), before: getComputedStyle(document.querySelector('.navlink'), '::before').content }));
-  check('Classic\'s sidebar is as it was on the Planner: 214px, six links, no rail, "Kitchen", no numbers',
-        c0.w === 214 && c0.links === 6 && !c0.rail && cBrand.brand === 'Kitchen' && cBrand.before === 'none', JSON.stringify([c0, cBrand]));
+  check('Classic\'s sidebar is as it was on the Planner: 214px, six links, no rail, "Recipe Wrangler" (the name since #199), no numbers',
+        c0.w === 214 && c0.links === 6 && !c0.rail && cBrand.brand === 'Recipe Wrangler' && cBrand.before === 'none', JSON.stringify([c0, cBrand]));
   await nc.close();
 
   const nv = await browser.newPage({ viewport: { width: 1280, height: 800 } });
@@ -7755,9 +7835,9 @@ const check = (name, pass, detail) => {
         r0.title === 'Recipes' && r0.count === '3 RECIPES' && r0.inBar === null && r0.beside === true && r0.barH === 48, JSON.stringify(r0));
   check('    SOURCE is not in the header (20 Oct 2026: its select is in the filter sheet, which is closed), and FILTERS is', r0.sources === 0 && r0.sourceRow === null && r0.filters === 'FILTERS', JSON.stringify(r0));
   const [ca, cb, cc] = r0.cards;
-  check('    three cards to a row, equal widths filling it, sharing 2px rules (the first row draws the top, the first card the left)',
-        ca.top === cb.top && cb.top === cc.top && ca.left < cb.left && cb.left < cc.left && Math.abs(ca.w - cb.w) <= 1 && Math.abs(cb.w - cc.w) <= 1 && Math.abs(cc.right - r0.gridRight) <= 1 &&
-        ca.bt === '2px' && ca.bl === '2px' && cb.bl === '0px' && cb.bt === '2px' && [ca, cb, cc].every(x => x.br === '2px' && x.bb === '2px') && r0.photoH === 176,
+  check('    three cards in a row (the grid has four columns at this width and a library of three), equal widths, each with its own 2px rule on every side and overlapping the next card\'s by 2px (#200)',
+        ca.top === cb.top && cb.top === cc.top && ca.left < cb.left && cb.left < cc.left && Math.abs(ca.w - cb.w) <= 1 && Math.abs(cb.w - cc.w) <= 1 && cc.right - r0.gridRight <= 2 &&
+        cb.left - ca.right === -2 && cc.left - cb.right === -2 && [ca, cb, cc].every(x => x.bt === '2px' && x.bl === '2px' && x.br === '2px' && x.bb === '2px') && r0.photoH === 176,
         JSON.stringify(r0.cards) + ' grid right ' + r0.gridRight + ' photo ' + r0.photoH);
   await rc.fill('#searchInput', 'Soup'); await rc.waitForTimeout(200);
   check('    a filter turns the count into "1 OF 3"', (await rc.textContent('#recipesCountMod')) === '1 OF 3');
@@ -8323,7 +8403,7 @@ const check = (name, pass, detail) => {
   await tu.evaluate(() => showView('recipes')); await tu.waitForTimeout(250);
   const grid = await tu.evaluate(() => { const g = document.getElementById('recipeGrid'), c = g.querySelector('.rcard');
     return { cols: getComputedStyle(g).gridTemplateColumns.split(' ').length, card: Math.round(c.getBoundingClientRect().width) }; });
-  check('    Recipes has three columns of cards at least 240px wide (they were 195px with the full sidebar)', grid.cols === 3 && grid.card >= 240, JSON.stringify(grid));
+  check('    Recipes has three columns of cards at least 240px wide (they were 195px with the full sidebar); the grid fits the width since #200 and this width still gives three', grid.cols === 3 && grid.card >= 240, JSON.stringify(grid));
   await tu.evaluate(() => showView('history')); await tu.waitForTimeout(300);
   const histNow = () => tu.evaluate(() => { const cal = document.querySelector('.history-calendar'), labels = [...document.querySelectorAll('.history-weekday-labels span')], day = document.querySelector('.history-day:not(.other-month)'),
       pv = document.getElementById('historyPrevMonth').getBoundingClientRect(), nx = document.getElementById('historyNextMonth').getBoundingClientRect(), cr = cal.getBoundingClientRect();
@@ -9360,8 +9440,8 @@ const check = (name, pass, detail) => {
   const e6 = await em.evaluate(() => { const cs = el => getComputedStyle(el), card = document.querySelector('.login-card'), btn = document.getElementById('loginSubmit');
     return { name: card.querySelector('h1').textContent, size: cs(card.querySelector('h1')).fontSize, frame: cs(card).borderTopWidth, btn: cs(btn).backgroundColor,
       btnH: Math.round(btn.getBoundingClientRect().height), inH: Math.round(document.getElementById('loginEmail').getBoundingClientRect().height) }; });
-  check('    the sign-in card: "Kitchen" at 32px in a 2px frame, 44px boxes and the red button',
-        e6.name === 'Kitchen' && e6.size === '32px' && e6.frame === '2px' && e6.btn === 'rgb(221, 43, 15)' && e6.btnH >= 44 && e6.inH >= 44, JSON.stringify(e6));
+  check('    the sign-in card: "Recipe Wrangler" (the name since #199) at 32px in a 2px frame, 44px boxes and the red button',
+        e6.name === 'Recipe Wrangler' && e6.size === '32px' && e6.frame === '2px' && e6.btn === 'rgb(221, 43, 15)' && e6.btnH >= 44 && e6.inH >= 44, JSON.stringify(e6));
   await em.close();
 
   /* ---- Fixes of 18 Oct (the review of the Modernist pull request, #153) ----

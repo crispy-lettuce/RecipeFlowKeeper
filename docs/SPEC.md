@@ -1,4 +1,4 @@
-# Kitchen (RecipeWrangler): what the app is and does
+# Recipe Wrangler: what the app is and does
 
 A reference for anyone picking the project up: what the app is for, what each screen does, what it is built on, and the
 rules it keeps. It is a specification of the app **as it stands**, not a history and not exhaustive. For how the code is
@@ -96,8 +96,11 @@ MERGE cooked, finish -> dish: stir in the lemon and serve [instant]
 Sidebar: **RECIPES · PLANNER · SHORTLIST · SHOPPING · HISTORY · SETTINGS**; four **saved views** (Weeknight under 30 min,
 Not cooked in 3 months, Sunday roasts, Favourites); **NEW RECIPE**; EXPORT DATA, IMPORT DATA, SIGN OUT.
 
-Two **looks**, chosen per device in Settings → APP → STYLE: **Classic** (paper and plum, rounded) and **Modernist** (flat,
-square, one typeface, red for the main action). Light, dark or follow-the-system is separate. Everything works the same in all
+Two **looks**, chosen per device in Settings → APP → STYLE: **Modernist** (flat, square, one typeface, red for the main action),
+which a device opens in until it chooses, and **Classic** (paper and plum, rounded); both choices are stored, `kitchen.style` being `modernist` or `classic`
+(issue #200, 25 Oct 2026; before it only Modernist was stored, so a device that had chosen Classic opens in Modernist once). In Modernist the Recipes
+grid has as many columns as fit, at least 240px each. The app is called Recipe Wrangler on screen (issue #199); the backup file's `app: 'Kitchen'` is a format
+marker the import and the Drive backup check, and is not a label. Light, dark or follow-the-system is separate. Everything works the same in all
 four; Modernist also folds the sidebar to a rail on the Planner, in cooking mode and on narrow screens, and puts the Recipes
 filters in a panel.
 

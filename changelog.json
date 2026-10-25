@@ -1,4 +1,8 @@
 [
+  { "version": "2026-10-25.5", "date": "2026-10-25", "issues": [200, 199],
+    "changes": ["Changed: the app is now called Recipe Wrangler on screen: the browser tab, the sign-in screen, the sidebar in both looks, and the how-to guide.",
+      "Changed: Modernist is now the look a device opens in. A device that had chosen Classic opens in Modernist once; choose Classic again under Settings, APP, STYLE and the device remembers it from then on.",
+      "Changed: in Modernist the recipe cards fill the width of the window: more of them across in a wide window, fewer in a narrow one, instead of always three. The look of the cards is the same."] },
   { "version": "2026-10-25.4", "date": "2026-10-25", "issues": [196],
     "changes": ["Changed: signing in again is quicker. The sign-in screen now remembers the email you last used on that device, fills it in, and puts the cursor in the password box. Your phone's or tablet's own password manager (Keychain on an iPad or iPhone, Google Password Manager in Chrome) can offer to save the password and fill it in; the app itself never keeps your password. The email stays after SIGN OUT. On a device other people use, tap Not you? Use another email, and it forgets the address."] },
   { "version": "2026-10-25.3", "date": "2026-10-25", "issues": [209, 192],
