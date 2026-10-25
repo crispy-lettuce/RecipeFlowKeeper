@@ -1,7 +1,7 @@
 # Household job list
 
 The jobs only the household can do: a session can't tap the tablet, decide for you, or deploy for you. **Last brought up to date
-25 Oct 2026**: you reported every job here complete, and nothing is waiting.
+25 Oct 2026**: you reported every job here complete; one new job is waiting (sign-in, below).
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other households sort
 out their own converter and need no steps here.
@@ -13,7 +13,30 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-Nothing is waiting. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
+One job: **Sign-in on each device** (below), a few minutes per device. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
+
+---
+
+## Job 1: signing in again on each device (issue #196)
+
+The sign-in screen now remembers your email and lets the device's own password manager offer to save the password. A test cannot see a browser's
+"save this password?" offer, so this needs a real device. Do it on the tablet you cook from first, then on a phone or laptop if you like, and tell the
+next session which device and browser you used (Safari on an iPad, Chrome on Android, and so on).
+
+1. **Reload the app** so it is on version 2026-10-25.4. **You should see:** Settings → HELP shows that version.
+2. Tap **SIGN OUT** at the foot of the sidebar. **You should see:** the sign-in screen with the email box empty the first time (this device does not know
+   your email yet).
+3. Type your email and password and tap **Sign in**. **You should see:** the app opens. The browser may now offer to save the password: Chrome shows a
+   "Save password?" box; Safari on an iPad or iPhone offers it through iCloud Keychain, if Passwords is switched on in the device's Settings. Accept it.
+   **If nothing is offered,** say so: that is what a session needs to know.
+4. Tap **SIGN OUT** again. **You should see:** the sign-in screen with your **email already filled in**, the cursor in the **password** box, and a small
+   underlined **Not you? Use another email** under the email.
+5. Tap the password box (or look at the keyboard's suggestion bar). **You should see:** the browser offers your saved password; one tap, or Face ID or a
+   fingerprint, fills it in. Tap **Sign in**. **You should see:** the app opens.
+6. *Only on a device other people use:* sign out, then tap **Not you? Use another email**. **You should see:** the email box empties and the link goes.
+   Sign in again as usual before you finish.
+
+If step 3 or 5 does not behave as written, note which one and what you saw.
 
 ---
 

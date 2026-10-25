@@ -10059,6 +10059,103 @@ const check = (name, pass, detail) => {
     }
   }
 
+  /* ---- Signing in again (issue #196, 25 Oct 2026) ----
+     The email last signed in with is remembered on the device and filled in; the password is never kept by the app. The browser's own manager is
+     helped: each field has a name and autocomplete, the form is hidden before the password is emptied, and Chrome is handed the sign-in with
+     credentials.store. What a browser then offers to save cannot be seen here (HOUSEHOLD-JOBS.md has the tablet steps). */
+  console.log('\nSigning in again');
+  const lgRun = async (look, width) => {
+    const p = await browser.newPage({ viewport: { width, height: 900 } });
+    p.__label = `sign-in ${look} ${width}`;
+    await p.addInitScript(l => {
+      try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {}
+      window.__CREDS__ = [];
+      window.PasswordCredential = class { constructor(o) { this.id = o.id; this.password = o.password; this.name = o.name; this.type = 'password'; } };
+      try { Object.defineProperty(navigator, 'credentials', { value: { store(c) { window.__CREDS__.push({ id: c.id, password: c.password, name: c.name }); return Promise.resolve(c); } }, configurable: true }); } catch (e) {}
+    }, look);
+    await p.clock.setFixedTime(FIXTURE_NOW);
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1200);
+    const out = await p.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const el = id => document.getElementById(id);
+      const PW = 'Zq-not-a-real-password-1', EM = 'cook@example.test';
+      const form = () => ({ method: el('loginForm').method, emailName: el('loginEmail').name, emailAuto: el('loginEmail').autocomplete, emailType: el('loginEmail').type, passName: el('loginPassword').name,
+        passAuto: el('loginPassword').autocomplete, passType: el('loginPassword').type, focus: document.activeElement.id, email: el('loginEmail').value,
+        forgetShown: !el('loginForget').hidden && el('loginForget').getClientRects().length > 0, stored: localStorage.getItem('kitchen.loginEmail') });
+      const res = {};
+      localStorage.removeItem('kitchen.loginEmail');
+      showLoginGate(); res.fresh = form();
+      el('loginEmail').value = EM; el('loginPassword').value = PW;
+      sb.auth.signInWithPassword = () => Promise.resolve({ error: { message: 'Invalid login credentials' } });
+      el('loginSubmit').click(); await wait(150);
+      res.wrong = Object.assign(form(), { message: el('loginError').textContent, creds: window.__CREDS__.length });
+      sb.auth.signInWithPassword = () => Promise.resolve({ error: null });
+      el('loginSubmit').click(); await wait(150);
+      res.right = Object.assign(form(), { creds: window.__CREDS__.slice(), pass: el('loginPassword').value });
+      const all = []; for (const st of [localStorage, sessionStorage]) for (let i = 0; i < st.length; i++) all.push(st.key(i) + '=' + st.getItem(st.key(i)));
+      res.leak = all.filter(x => x.includes(PW));
+      leaveLoginGate(); res.left0 = { hidden: el('loginGate').hidden, pass: el('loginPassword').value };
+      await wait(500); res.left1 = el('loginPassword').value;
+      await wait(1800); res.left2 = el('loginPassword').value;
+      /* Another email typed over the remembered one, with a wrong password: the screen comes back with what was typed, and the memory is still the first. */
+      showLoginGate(); el('loginEmail').value = 'other@example.test'; el('loginPassword').value = PW;   // the wipe above emptied it, and a required field blocks the submit
+      sb.auth.signInWithPassword = () => Promise.resolve({ error: { message: 'Invalid login credentials' } });
+      el('loginSubmit').click(); await wait(150);
+      res.other = { email: el('loginEmail').value, stored: localStorage.getItem('kitchen.loginEmail'), message: el('loginError').textContent };   // the message shows the submit really ran
+      sb.auth.signInWithPassword = () => Promise.resolve({ error: null });
+      /* A wipe scheduled by an earlier hide must not empty a password typed on a sign-in screen that has come back since. */
+      leaveLoginGate(); await wait(300); showLoginGate(); el('loginPassword').value = PW; await wait(2300); res.survived = el('loginPassword').value;
+      el('loginPassword').value = '';
+      el('loginEmail').value = ''; showLoginGate(); res.again = form();
+      const r = el('loginForget').getBoundingClientRect(), c = document.querySelector('.login-card').getBoundingClientRect();
+      res.layout = { h: Math.round(r.height), inCard: r.left >= c.left - 0.5 && r.right <= c.right + 0.5, scrollX: document.documentElement.scrollWidth - innerWidth, colour: getComputedStyle(el('loginForget')).textDecorationLine };
+      el('loginForget').click(); res.forgot = Object.assign(form(), { pass: el('loginPassword').value });
+      return res;
+    });
+    await p.close();
+    return out;
+  };
+  for (const [look, width] of [['classic', 1280], ['modernist', 390]]) {
+    const lg = await lgRun(look, width), cap = `${look === 'classic' ? 'Classic' : 'Modernist'} at ${width}px`;
+    check(`${cap}: the sign-in form is one a password manager reads (post; the email is type email, name email, autocomplete username; the password is name password, autocomplete current-password), and a first visit has the cursor in the email box and no NOT YOU? link`,
+          lg.fresh.method === 'post' && lg.fresh.emailName === 'email' && lg.fresh.emailAuto === 'username' && lg.fresh.emailType === 'email' && lg.fresh.passName === 'password' && lg.fresh.passAuto === 'current-password'
+          && lg.fresh.passType === 'password' && lg.fresh.focus === 'loginEmail' && lg.fresh.email === '' && !lg.fresh.forgetShown && lg.fresh.stored === null, JSON.stringify(lg.fresh));
+    check('    a wrong password remembers nothing, hands nothing to the browser, keeps what was typed and says why',
+          lg.wrong.stored === null && lg.wrong.creds === 0 && lg.wrong.email === 'cook@example.test' && lg.wrong.message === 'Invalid login credentials', JSON.stringify(lg.wrong));
+    check('    a successful sign-in remembers the email, offers the sign-in to the browser (Chrome\'s credentials.store: the email and the password), and leaves the password in the field for now',
+          lg.right.stored === 'cook@example.test' && lg.right.creds.length === 1 && lg.right.creds[0].id === 'cook@example.test' && lg.right.creds[0].password === 'Zq-not-a-real-password-1' && lg.right.creds[0].name === 'cook@example.test'
+          && lg.right.pass === 'Zq-not-a-real-password-1', JSON.stringify(lg.right));
+    check('    the password is in no storage the app writes, the form is hidden before the password is emptied, and it is emptied a couple of seconds later',
+          lg.leak.length === 0 && lg.left0.hidden === true && lg.left0.pass === 'Zq-not-a-real-password-1' && lg.left1 === 'Zq-not-a-real-password-1' && lg.left2 === '', JSON.stringify([lg.leak, lg.left0, lg.left1, lg.left2]));
+    check('    a different email typed over the remembered one is not overwritten by it after a wrong password, and the memory stays the first',
+          lg.other.email === 'other@example.test' && lg.other.stored === 'cook@example.test' && lg.other.message === 'Invalid login credentials', JSON.stringify(lg.other));
+    check('    and a sign-in screen that comes back within those two seconds keeps the password typed on it: the earlier hide\'s wipe is cancelled', lg.survived === 'Zq-not-a-real-password-1', JSON.stringify(lg.survived));
+    check('    back on the sign-in screen the email is filled in, the cursor is in the password box and NOT YOU? is there, 44px to tap, inside the card, underlined, and nothing runs off the side',
+          lg.again.email === 'cook@example.test' && lg.again.focus === 'loginPassword' && lg.again.forgetShown && lg.layout.h >= 44 && lg.layout.inCard && lg.layout.scrollX <= 0 && /underline/.test(lg.layout.colour), JSON.stringify([lg.again, lg.layout]));
+    check('    NOT YOU? forgets the email: the memory goes, the box and the password are emptied, the link goes, and the cursor is in the email box',
+          lg.forgot.stored === null && lg.forgot.email === '' && lg.forgot.pass === '' && !lg.forgot.forgetShown && lg.forgot.focus === 'loginEmail', JSON.stringify(lg.forgot));
+  }
+  const lb = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  lb.__label = 'sign-in, storage blocked';
+  await lb.addInitScript(() => { const bad = () => { throw new Error('blocked'); }; try { Object.defineProperty(window, 'localStorage', { get: bad }); } catch (e) {} });
+  await lb.clock.setFixedTime(FIXTURE_NOW);
+  await lb.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await lb.waitForTimeout(1200);
+  const lbOut = await lb.evaluate(async () => {
+    const el = id => document.getElementById(id), out = { errors: [] };
+    try { showLoginGate(); } catch (e) { out.errors.push('show: ' + e.message); }
+    el('loginEmail').value = 'cook@example.test'; el('loginPassword').value = 'Zq-not-a-real-password-2';
+    sb.auth.signInWithPassword = () => Promise.resolve({ error: null });
+    try { el('loginSubmit').click(); await new Promise(r => setTimeout(r, 150)); } catch (e) { out.errors.push('submit: ' + e.message); }
+    try { showLoginGate(); } catch (e) { out.errors.push('again: ' + e.message); }
+    out.email = el('loginEmail').value; out.forget = !el('loginForget').hidden;
+    return out;
+  });
+  check('With storage blocked the sign-in screen still works: nothing throws, the typed email stays, and there is no NOT YOU? link for a memory that does not exist',
+        lbOut.errors.length === 0 && lbOut.email === 'cook@example.test' && lbOut.forget === false, JSON.stringify(lbOut));
+  await lb.close();
+
   /* OT-BEGIN */
   /* ---- Timers (run sheet PR 4, 24 Oct 2026, docs/PLAN-RUN-SHEET.md §7) ----
      A started step with a length counts down on its box; at zero (the SHORT end of a range) it chimes once, vibrates once, reads TIME'S UP or CHECK IT and DONE
