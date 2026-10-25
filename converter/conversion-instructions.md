@@ -1,6 +1,6 @@
 # Recipe Conversion — Project Instructions
 
-**Version 2026-10-24.1.**
+**Version 2026-10-25.1.**
 
 Convert every recipe given here (photo, URL or pasted text) into GROUP / STAGE / MERGE syntax for the recipe merge-flow tool. Work through all four stages in order every time; never skip Check.
 
@@ -139,11 +139,12 @@ TIPS:
 - A single-input MERGE relabels a box; use it for every step after the final combine (pour, bake, cool, cut, serve).
 - **Every MERGE ends with a bracketed duration:** `[8 min]`, `[10-13 min]` (hyphen or en dash), `[1 hr]`, `[1 hr 30]`, `[30 sec]`, `[overnight]`. `[until done]` and `[till reduced]` are read as open-ended. `[instant]` for steps taking no meaningful time (plating, a final stir, garnish). Never omit it: one missing duration makes the shared cooking timeline wrong.
 - **Hands-off steps:** add `, hands off` inside the bracket of a step that looks after itself once it is going: `[25 min, hands off]`, `[40-50 min, hands off]`, `[until set, hands off]`. Hands on is the default and is written as nothing; **when unsure, write nothing.**
-  - It is hands off when it is **waiting for 5 minutes or more**: simmering, baking, roasting, soaking, resting, cooling, chilling, freezing, proving, marinating, a slow cooker, something heating in the oven, pasta or noodles boiling to the packet time, stated or not (`[until done, hands off]` when none is stated).
-  - Stirring or turning **occasionally, now and then, once or twice, from time to time or halfway** still counts as hands off **from 10 minutes up**, a long simmer or stew included.
+  - It is hands off when it is **waiting for 5 minutes or more**: simmering, baking, roasting, soaking, resting, cooling, chilling, freezing, proving, marinating, a slow cooker, something heating in the oven.
+  - **Pasta or noodles** are hands off when the step is only boiling them (and draining): to the packet time with none stated (`[until done, hands off]`), or for a stated 10 minutes or more. A step that also rinses, tosses or stirs them, or boils them for under 10 minutes, follows the general rule.
+  - Stirring or turning **occasionally, now and then, once or twice, from time to time or halfway** still counts as hands off **from 10 minutes up**, a long simmer or stew included. Opening the oven once or twice to baste or turn a dish is tending, not stirring: the bake stays hands off.
   - A step that gets the food ready and then waits ("toss with oil and roast for 30 minutes") is judged by the waiting part.
   - It is **hands on** (write nothing) when it is under 5 minutes (a range counts from its low end, so `[3-6 min]` is under 5); when the source says to stir often, constantly or all the time; when the work of the step is to whisk, fry, brown, sear, grill or toss, whatever else it says ("occasionally" does not change that); when the cook watches for a moment ("bring to a simmer, then turn off", "hot but not boiling", "bring to the boil, then simmer" for under 10 minutes); and when it is under 10 minutes with any stirring.
-  - Two cases stay hands on unless the source says to leave it alone: a wait of only 5-6 minutes in the oven, while resting or while cooling; and a boil with no stated time (`[until done]`), pasta and noodles apart.
+  - Two cases stay hands on unless the source says to leave it alone: a wait of only 5-6 minutes in the oven, while resting or while cooling; and a boil with no stated time (`[until done]`), unless it is pasta or noodles boiled on their own.
   - A step whose timing matters but needs nobody (fat heating in the oven, timed to be ready with the batter) is hands off.
   - `[overnight]` is always hands off and needs no marker. Never add the marker to `[instant]` or write it without a duration (`[hands off]`): the app does not read either as a time.
   ```
