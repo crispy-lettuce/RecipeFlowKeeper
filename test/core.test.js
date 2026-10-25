@@ -1827,6 +1827,43 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
         [10, 0.5, 59 / 60, 1 / 60 - 1e-9, 60, 65.5, 0, -3].map(core.formatCountdown).join(' ') === '10:00 0:30 0:59 0:01 1:00:00 1:05:30 0:00 0:00');
 }
 
+/* ---- The timers rehearsal (docs/HOUSEHOLD-JOBS.md, "Rehearse the timers", 25 Oct 2026) ----
+   Two made-up recipes the household pastes into Test Kitchen. The page promises numbers (an 8-minute free window, one 1-minute clash that AVOID THE CLASH clears,
+   7 timers, 3 of them START TIMER); this holds it to them, from the recipe text on the page itself, through the app's own parser and planner. */
+{
+  const jobs = fs.readFileSync(path.join(ROOT, 'docs', 'HOUSEHOLD-JOBS.md'), 'utf8');
+  const section = jobs.slice(jobs.indexOf('## Rehearse the timers'), jobs.indexOf('## The converter bar'));
+  const blocks = [...section.matchAll(/```\n([\s\S]*?)\n```/g)].map(m => m[1]);
+  const load = t => { const p = core.parseRecipe(t); return { p, tl: core.computeTimeline(p.groups, p.stages) }; };
+  const [roast, greens] = [0, 1].map(i => blocks[i] ? load(blocks[i]) : { p: { title: '', unread: [] }, tl: { steps: [], totalSpan: 0 } });
+  const shape = tl => tl.steps.map(s => s.duration.instant ? 'i' : s.duration.openEnded ? 'u' + (s.handsOff ? 'h' : '') : s.duration.min + (s.duration.max > s.duration.min ? '-' + s.duration.max : '') + (s.handsOff ? 'h' : '')).join();
+  check('the rehearsal page carries its two recipes, they read without a line left over, and their steps are 2, 7 (off), 1 (off), 1 and 1, 1-2 (off), until done (off), 2 minutes, with the instants',
+        blocks.length === 2 && roast.p.title === 'Timer Rehearsal Roast' && greens.p.title === 'Timer Rehearsal Greens' && !(roast.p.unread || []).length && !(greens.p.unread || []).length
+        && shape(roast.tl) === '2,7h,1h,1,i' && shape(greens.tl) === '1,1-2h,uh,2,i', blocks.length + ' ' + (roast && shape(roast.tl)) + ' | ' + (greens && shape(greens.tl)));
+  if(blocks.length !== 2) check('    the rest of the rehearsal checks need both recipes on the page', false, 'found ' + blocks.length);
+  else {
+  const steps = [...roast.tl.steps, ...greens.tl.steps];
+  const timed = steps.filter(s => !s.duration.instant && !s.duration.openEnded);
+  check('    and so the page\'s count holds: 7 timers, 3 of them START TIMER (a step that looks after itself and has a length), 1 a range, 1 step with no length to count, 2 instants',
+        timed.length === 7 && timed.filter(s => s.handsOff).length === 3 && timed.filter(s => s.duration.max > s.duration.min).length === 1
+        && steps.filter(s => s.duration.openEnded).length === 1 && steps.filter(s => s.duration.instant).length === 2,
+        [timed.length, timed.filter(s => s.handsOff).length].join());
+  const T = (h, m) => h * 60 + m, serve = T(18, 30), clk = core.formatClock;
+  const alone = core.planToServe([roast.tl], serve, { mode: 'finish' }), freeAlone = core.handsWindows(alone.steps);
+  check('the roast on its own takes 11 minutes and has one gap of 8 minutes where nothing needs the cook ("free 8 min"), and no clash',
+        roast.tl.totalSpan === 11 && freeAlone.clashMinutes === 0 && freeAlone.free.length === 1 && Math.round(freeAlone.free[0][1] - freeAlone.free[0][0]) === 8,
+        JSON.stringify([roast.tl.totalSpan, freeAlone.clashMinutes, freeAlone.free.map(w => [clk(w[0]), clk(w[1])])]));
+  const both = core.planToServe([roast.tl, greens.tl], serve, { mode: 'finish' }), clash = core.handsWindows(both.steps);
+  const clear = core.planToServe([roast.tl, greens.tl], serve, { mode: 'finish', avoidClash: true }), clean = core.handsWindows(clear.steps);
+  check('    together, finishing together, the roast starts 11 minutes and the greens 4 minutes before EAT AT, with one clash of 1 minute; AVOID THE CLASH clears it by starting the roast 2 minutes earlier and leaves EAT AT and the greens alone',
+        serve - both.lanes[0].startAt === 11 && serve - both.lanes[1].startAt === 4 && clash.clashMinutes === 1
+        && clean.clashMinutes === 0 && serve - clear.lanes[0].startAt === 13 && serve - clear.lanes[1].startAt === 4 && clear.serveAt === serve,
+        JSON.stringify([both.lanes.map(l => clk(l.startAt)), clash.clashMinutes, clear.lanes.map(l => clk(l.startAt)), clean.clashMinutes]));
+  check('    and the page says the same in words, as the screen words it: free 8 min, CLASH 1 min, START AT 2 minutes earlier, 7 timers, about 11 minutes',
+        ['free 8 min', 'CLASH 1 min', 'START AT** 2 minutes earlier', '**7 timers**', 'about 11 minutes'].every(w => section.includes(w)), section.length + ' chars');
+  }
+}
+
 /* ---- FROZEN (issue #90, 11 Oct 2026) ----
    A line that says frozen goes to Frozen, before any other keyword can claim it, and keeps its name, so its tick stays.
    A household's own aisle still wins. Made-up lines. */
