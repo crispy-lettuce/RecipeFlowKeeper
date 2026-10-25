@@ -4,6 +4,20 @@ What changed in `conversion-instructions.md`, and why, newest first. Until 18 Oc
 file, so every conversion read them; they say nothing a conversion needs, so they live here, for reference. **This file is
 not loaded into the conversion project.** Each household loads `conversion-instructions.md` alone.
 
+## Revision note (25 Oct 2026, version 2026-10-25.1: pasta on its own, and a basted bake)
+
+Raised by issue #207: a blind reading of the 2026-10-24.1 wording over the library's 297 timed steps matched the household's marks on 287 (an earlier note here and in Test 18 said 288; a noodle
+step had not been re-judged, which corrected the count by one). Five steps were open besides the deliberate 5-6 minute waits.
+
+- **Pasta and noodles, one clause (was a phrase in the waiting list).** Hands off when the step is only boiling them (and draining): to the packet time with none stated, or for a stated 10 minutes or
+  more. A step that also rinses, tosses or stirs them, or boils them for under 10 minutes, follows the general rule. This is what the library does on all ten pasta and noodle steps in it: it
+  also removes a clash between the old phrase and "bring to the boil, then simmer for under 10 minutes is hands on".
+- **Oven tending, one sentence.** Opening the oven once or twice to baste or turn a dish is tending, not stirring: the bake stays hands off. (An 8-minute bake basted once halfway was read as hands on.)
+- **The fifth step was the library's, not the wording's:** a slowly cooked onion step that the proposal tool had marked hands on because "frying pan" matched the verb "frying". The household had that one mark
+  changed to hands off (25 Oct, one guarded update), and the tool no longer reads the noun as the verb.
+- **Test 18 extended:** step 2 is a 12-minute boil, and steps 13 to 15 are added (short pasta that is rinsed and tossed; untimed noodles that are rinsed; a basted bake). Its "Runs" are corrected.
+- **Reload this file into the conversion project.** Recipes already in the library are not changed.
+
 ## Revision note (24 Oct 2026, version 2026-10-24.1: the hands-off rule, settled on the library)
 
 Raised by the household's pass over its own library (docs/PLAN-RUN-SHEET.md §6). Version 2026-10-23.1 introduced the `, hands off` mark
