@@ -96,12 +96,12 @@ check('index.html is the version at the top of changelog.json', !!appVersion && 
   const short = [];
   for (const [theme, block] of [['light', rootLight], ['dark', rootDark]])
     for (const ink of ['ink-soft', 'ink-faint'])
-      for (const ground of ['paper', 'card']) {
+      for (const ground of ['paper', 'card', 'weekend-card']) {
         const fg = hexOf(block, ink), bg = hexOf(block, ground);
         const r = fg && bg ? ratio(fg, bg) : 0;
         if (r < 4.5) short.push(`${theme} ${ink} ${fg} on ${ground} ${bg}: ${r.toFixed(2)}`);
       }
-  check('--ink-soft and --ink-faint reach 4.5:1 on --paper and --card, in the light and the dark theme',
+  check('--ink-soft and --ink-faint reach 4.5:1 on --paper, --card and --weekend-card, in the light and the dark theme',
         found && short.length === 0, short.join('; '));
 
   /* --ink-mute was 3.4:1 on paper and is kept only as a fill (the numbered-step badge). Text 18px or larger could use it

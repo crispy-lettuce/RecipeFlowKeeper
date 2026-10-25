@@ -744,11 +744,14 @@ const check = (name, pass, detail) => {
   check('backup keeps meal types',
         backupDiary.some(e => e.mealType === 'lunch' || e.mealType === 'dinner'));
 
-  // History calendar must start on the configured day and stay aligned.
+  /* History's calendar runs Monday to Sunday whatever day the week starts on (#212, 25 Oct 2026): the fixture's weeks start on
+     Friday, so a calendar still following WEEK STARTS ON reads FRI first. The weekday table under STATS follows it. */
   await page.click('.navlink[data-view="history"]');
   await page.waitForTimeout(350);
   const heads = await page.locator('#historyWeekdayLabels span').allTextContents();
-  check('history header starts Friday', heads.join(',') === 'FRI,SAT,SUN,MON,TUE,WED,THU', heads.join(','));
+  const statDays = await page.evaluate(() => [...document.querySelectorAll('#historyStats .hstat-weekday-table tr td:first-child')].map(td => td.textContent));
+  check('History runs Monday to Sunday though the weeks start on Friday, and so does MOST COOKED BY DAY OF WEEK',
+        heads.join(',') === 'MON,TUE,WED,THU,FRI,SAT,SUN' && statDays.join(',') === heads.join(','), heads.join(',') + ' / ' + statDays.join(','));
   const align = await page.evaluate(() => {
     const labels = [...document.querySelectorAll('#historyWeekdayLabels span')].map(s => s.textContent);
     const names = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
@@ -764,13 +767,15 @@ const check = (name, pass, detail) => {
   });
   check('every date sits under its own weekday', align.bad.length === 0,
         align.n + ' cells' + (align.bad.length ? '; ' + align.bad.join('; ') : ''));
+  const weekendMarks = await page.evaluate(() => [...document.querySelectorAll('#historyGrid .history-day')]
+    .filter(c => c.classList.contains('weekend') !== [0, 6].includes(new Date(c.dataset.date + 'T00:00:00').getDay())).map(c => c.dataset.date));
+  check('    every Saturday and Sunday is marked as the weekend, and no other day', weekendMarks.length === 0, weekendMarks.slice(0, 4).join(', '));
 
   // Planner should bucket into Friday-start weeks.
   await page.click('.navlink[data-view="planner"]');
   await page.waitForTimeout(350);
-  /* S1 claims week-start drives Planner, Shopping and History together.
-     History's bucketing is checked above; the Planner's was not — this line
-     used to collect week labels and then never assert on them. */
+  /* S1 says week-start drives the Planner and the Shopping List (History stopped following it on 25 Oct, #212). The
+     Planner's bucketing was not checked — this line used to collect week labels and then never assert on them. */
   /* The planner's day list starts at TODAY, so the first row is whatever
      day it happens to be — asserting Friday there tests the calendar, not
      the app. What week-start actually governs is where the BUCKET
@@ -8021,12 +8026,17 @@ const check = (name, pass, detail) => {
   const n1 = await fq.evaluate(() => ({ note: !document.getElementById('fsKwEmpty').hidden, text: document.getElementById('fsKwEmpty').textContent, pills: document.querySelectorAll('#fsKwPills [data-kw-pill]').length, add: !!document.getElementById('fsAddKw') }));
   await fq.press('#kwFind', 'Enter'); await fq.waitForTimeout(250);
   const n2 = await fsState(fq), n3 = await fqList(fq), n4 = await fq.evaluate(() => ({ value: document.getElementById('kwFind').value, focus: document.activeElement.id }));
-  check('    with no match it says "No keyword matches — Enter to add", and Enter adds the word: a chip, a selected pill at the head of the list, and the field empty and still in use',
-        n1.note && n1.text === 'No keyword matches — Enter to add' && n1.pills === 0 && n1.add && n2.chips.join('|') === 'PASTRY×|ZZZ×' && n3[0] === 'ZZZ' && n2.pillOn.includes('ZZZ') && n4.value === '' && n4.focus === 'kwFind',
-        JSON.stringify([n1, n2.chips, n3.slice(0, 3), n4]));
+  const nw = await fq.evaluate(() => { const l = [...document.querySelectorAll('#fsKwPills .fs-pill')]; return { first: l[0].textContent.trim(), firstWord: l[0].hasAttribute('data-word-pill'), on: l[0].getAttribute('aria-pressed'), kw: state.keywords.join(), words: state.words.join() }; });
+  check('    with no match it says "No keyword matches — Enter to search for the word", and Enter keeps the word (#201): a quoted chip, a selected quoted pill at the head of the list that is not a keyword, and the field empty and still in use',
+        n1.note && n1.text === 'No keyword matches — Enter to search for the word' && n1.pills === 0 && n1.add && n2.chips.join('|') === 'PASTRY×|“ZZZ”×' && n3[0] === 'PASTRY' && !n3.includes('ZZZ')
+        && nw.first === '“ZZZ”' && nw.firstWord && nw.on === 'true' && nw.kw === 'Pastry' && nw.words === 'zzz' && n4.value === '' && n4.focus === 'kwFind',
+        JSON.stringify([n1, n2.chips, n3.slice(0, 3), nw, n4]));
   await fq.fill('#kwFind', 'pa'); await fq.press('#kwFind', 'Enter'); await fq.waitForTimeout(200);
   const e1 = await fsState(fq);
-  check('    Enter with a match in view adds nothing: the pill that was meant is one tap away', e1.chips.join('|') === 'PASTRY×|ZZZ×', e1.chips.join('|'));
+  check('    Enter with a match in view adds nothing: the pill that was meant is one tap away', e1.chips.join('|') === 'PASTRY×|“ZZZ”×', e1.chips.join('|'));
+  await fq.click('#fsKwPills [data-word-pill]'); await fq.waitForTimeout(250);
+  const e2 = await fsState(fq);
+  check('    tapping the quoted pill takes the word off again, and its chip goes', e2.chips.join('|') === 'PASTRY×' && (await fq.evaluate(() => state.words.length)) === 0, e2.chips.join('|'));
   await fq.fill('#kwFind', '');
   await fq.click('#fsAddKw'); await fq.waitForTimeout(100);
   const a1 = await fq.evaluate(() => { const l = [...document.querySelectorAll('#fsKwPills .fs-pill')]; return { focus: document.activeElement.id, last: l[l.length - 1].id, box: !!document.getElementById('kwInput') }; });
@@ -8034,8 +8044,75 @@ const check = (name, pass, detail) => {
   await fq.fill('#kwFind', 'pa'); await fq.keyboard.press('Escape'); await fsGone(fq);
   await fq.click('#filtersBtn'); await fq.waitForTimeout(350);
   const r1 = await fq.evaluate(() => ({ value: document.getElementById('kwFind').value, pills: document.querySelectorAll('#fsKwPills [data-kw-pill]').length, note: !document.getElementById('fsKwEmpty').hidden }));
-  check('    the find field is empty each time the sheet opens, with every pill listed again', r1.value === '' && r1.pills === 10 && !r1.note, JSON.stringify(r1));
+  check('    the find field is empty each time the sheet opens, with every pill listed again', r1.value === '' && r1.pills === 9 && !r1.note, JSON.stringify(r1));
   await fq.close();
+
+  /* Keyword chips match tags only; a kept word and the search box look through everything (#201, 25 Oct 2026). Three invented
+     recipes: one tagged Zqnut, one that only has zqnut in an ingredient (tagged with another keyword), and one with both tags. */
+  const zq_kwSeed = () => {
+    const mk = (id, kws, line) => ({ id, title: 'Zq ' + id, source: 'Zq Source', time: '5 min', servings: 2, tags: { course: 'Main', keywords: kws }, history: [],
+      syntax: 'TITLE: Zq ' + id + '\nSOURCE: Zq Source\nSERVINGS: 2\n\nGROUP a:\n' + line + '\n\nSTAGE:\nMERGE a -> done: Cook [5 min]' });
+    loadRecipes().push(mk('tagged', ['Zqnut'], '1 onion'), mk('mention', ['Zqother'], '100 g zqnut pieces'), mk('both', ['Zqnut', 'Zqother'], '1 onion'));
+    renderHome();
+  };
+  const zqCards = pg => pg.evaluate(() => [...document.querySelectorAll('#recipeGrid .rcard')].map(c => c.textContent).filter(t => /Zq (tagged|mention|both)/.test(t)).map(t => t.match(/Zq (tagged|mention|both)/)[1]).sort().join());
+  const zq_kz = await fsPage({ width: 1389, height: 731 }, 'classic');
+  await zq_kz.evaluate(zq_kwSeed); await zq_kz.waitForTimeout(200);
+  const zq_k0 = await zq_kz.evaluate(() => {
+    const ids = q => filterRecipes(loadRecipes(), q).map(r => r.id).filter(i => /^(tagged|mention|both)$/.test(i)).sort().join();
+    return { chip: ids({ keywords: ['Zqnut'] }), lower: ids({ keywords: ['zqnut'] }), two: ids({ keywords: ['Zqnut', 'Zqother'] }), word: ids({ words: ['zqnut'] }), text: ids({ text: 'zqnut' }),
+      mixed: ids({ keywords: ['Zqother'], words: ['zqnut'] }), part: ids({ keywords: ['Zqn'] }) };
+  });
+  check('A keyword chip matches the recipe\'s keywords only: the recipe that merely has the word in an ingredient is not shown, and the case does not matter',
+        zq_k0.chip === 'both,tagged' && zq_k0.lower === 'both,tagged', JSON.stringify(zq_k0));
+  check('    two keyword chips need both; a part of a keyword is not the keyword',
+        zq_k0.two === 'both' && zq_k0.part === '', JSON.stringify(zq_k0));
+  check('    a kept word and the search box look through everything, the ingredient included, and a word beside a chip needs both',
+        zq_k0.word === 'both,mention,tagged' && zq_k0.text === 'both,mention,tagged' && zq_k0.mixed === 'both,mention', JSON.stringify(zq_k0));
+  /* The Planner's picker is RECIPES with a banner: CHOOSE on a day sets pickingForDate and shows the same grid and the same chips. */
+  await zq_kz.evaluate(() => { state.pickingForDate = '2026-09-10'; state.keywords = ['Zqnut']; state.words = []; renderHome(); });
+  const zq_kp1 = await zqCards(zq_kz), zq_kpBanner = await zq_kz.evaluate(() => !!document.getElementById('pickCancel'));
+  await zq_kz.evaluate(() => { state.keywords = []; state.words = ['zqnut']; renderHome(); });
+  const zq_kp2 = await zqCards(zq_kz);
+  check('    choosing a recipe for a day filters the same way: the keyword chip shows the two tagged, the kept word all three',
+        zq_kpBanner && zq_kp1 === 'both,tagged' && zq_kp2 === 'both,mention,tagged', JSON.stringify([zq_kpBanner, zq_kp1, zq_kp2]));
+  await zq_kz.evaluate(() => { state.pickingForDate = null; state.words = []; renderHome(); });
+  await zq_kz.fill('#searchInput', 'zqnut'); await zq_kz.waitForTimeout(150);
+  const zq_ks1 = await zqCards(zq_kz);
+  await zq_kz.press('#searchInput', 'Enter'); await zq_kz.waitForTimeout(200);
+  const zq_ks2 = await zq_kz.evaluate(() => ({ text: state.text, kw: state.keywords.join(), words: state.words.join(), input: document.getElementById('searchInput').value,
+    chip: [...document.querySelectorAll('#filterRows .chip[data-word]')].map(c => c.textContent.trim()).join(), keyChips: document.querySelectorAll('#filterRows .chip[data-kw]').length }));
+  const zq_ks3 = await zqCards(zq_kz);
+  check('Typing in the search box finds the recipe that only mentions the word; Enter keeps it as a quoted chip, not a keyword chip, and the three are still found',
+        zq_ks1 === 'both,mention,tagged' && zq_ks2.text === '' && zq_ks2.kw === '' && zq_ks2.words === 'zqnut' && zq_ks2.input === '' && zq_ks2.chip === '“ZQNUT”×' && zq_ks2.keyChips === 0 && zq_ks3 === 'both,mention,tagged', JSON.stringify([zq_ks1, zq_ks2, zq_ks3]));
+  await zq_kz.click('#filterRows .chip[data-word]'); await zq_kz.waitForTimeout(200);
+  const zq_ks4 = await zq_kz.evaluate(() => ({ words: state.words.length, chips: document.querySelectorAll('#filterRows .chip[data-word]').length }));
+  check('    tapping the quoted chip takes it off', zq_ks4.words === 0 && zq_ks4.chips === 0, JSON.stringify(zq_ks4));
+  await zq_kz.click('#addKwBtn'); await zq_kz.waitForTimeout(150);
+  await zq_kz.fill('#kwInput', 'zqnut'); await zq_kz.press('#kwInput', 'Enter'); await zq_kz.waitForTimeout(200);
+  const zq_ka1 = await zq_kz.evaluate(() => ({ kw: state.keywords.join(), words: state.words.join() })), zq_ka1c = await zqCards(zq_kz);
+  await zq_kz.click('#addKwBtn'); await zq_kz.waitForTimeout(150);
+  await zq_kz.fill('#kwInput', 'zqnotakeyword'); await zq_kz.press('#kwInput', 'Enter'); await zq_kz.waitForTimeout(200);
+  const zq_ka2 = await zq_kz.evaluate(() => ({ kw: state.keywords.join(), words: state.words.join() }));
+  check('+ ADD in the KEYWORD row turns a word the library has as a keyword into that keyword\'s chip, in the library\'s spelling, and any other word into a quoted one',
+        zq_ka1.kw === 'Zqnut' && zq_ka1.words === '' && zq_ka1c === 'both,tagged' && zq_ka2.kw === 'Zqnut' && zq_ka2.words === 'zqnotakeyword', JSON.stringify([zq_ka1, zq_ka1c, zq_ka2]));
+  await zq_kz.click('#clearAllBtn'); await zq_kz.waitForTimeout(200);
+  const zq_kc1 = await zq_kz.evaluate(() => ({ kw: state.keywords.length, words: state.words.length }));
+  check('    CLEAR ALL FILTERS takes both kinds of chip off', zq_kc1.kw === 0 && zq_kc1.words === 0, JSON.stringify(zq_kc1));
+  await zq_kz.close();
+  const zq_km = await fsPage({ width: 1389, height: 731 }, 'modernist');
+  await zq_km.evaluate(zq_kwSeed); await zq_km.waitForTimeout(200);
+  await zq_km.fill('#searchInput', 'zqnut'); await zq_km.press('#searchInput', 'Enter'); await zq_km.waitForTimeout(250);
+  const zq_km1 = await fsState(zq_km), zq_km1c = await zqCards(zq_km);
+  await zq_km.evaluate(() => { addKeywordFilter('Zqnut'); renderHome(); }); await zq_km.waitForTimeout(200);
+  const zq_km2 = await fsState(zq_km), zq_km2c = await zqCards(zq_km);
+  await zq_km.click('#activeChips .active-chip[data-chip="word"]'); await zq_km.waitForTimeout(200);
+  const zq_km3 = await fsState(zq_km), zq_km3c = await zqCards(zq_km);
+  check('Modernist: Enter in the search keeps a quoted chip that finds all three; a keyword chip beside it narrows to the tagged ones; the quoted chip goes when tapped',
+        zq_km1.chips.join('|') === '“ZQNUT”×' && zq_km1c === 'both,mention,tagged' && zq_km2.chips.join('|') === 'ZQNUT×|“ZQNUT”×' && zq_km2c === 'both,tagged'
+        && zq_km3.chips.join('|') === 'ZQNUT×' && zq_km3c === 'both,tagged', JSON.stringify([zq_km1.chips, zq_km1c, zq_km2.chips, zq_km2c, zq_km3.chips, zq_km3c]));
+  await zq_km.close();
+
   const ft = await fsPage({ width: 1389, height: 731 }, 'modernist', { touch: true });
   const fine = await ft.evaluate(() => matchMedia('(pointer: fine)').matches);
   await ft.tap('#filtersBtn'); await ft.waitForTimeout(350);
@@ -9052,6 +9129,12 @@ const check = (name, pass, detail) => {
       mix: [1, 2, 3, 4, 5].map(i => cs(document.documentElement).getPropertyValue('--km-mix-' + i).trim()),
       panelScroll: panel.scrollWidth - panel.clientWidth, scroll: document.documentElement.scrollWidth - innerWidth };
   });
+  /* The weekend's shade (#212), by the cells' own colours: a weekday and a weekend day with nothing on them (8 and 12 Sep), and
+     one of each with entries (15 and 19 Sep). */
+  const weekendLook = pg => pg.evaluate(() => {
+    const bg = d => getComputedStyle(document.querySelector(`.history-day[data-date="${d}"]`)).backgroundColor;
+    return { day: bg('2026-09-08'), end: bg('2026-09-12'), dayCooked: bg('2026-09-15'), endCooked: bg('2026-09-19') };
+  });
   const hc = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   hc.__label = 'history, classic';
   await hc.clock.setFixedTime(FIXTURE_NOW);
@@ -9061,6 +9144,16 @@ const check = (name, pass, detail) => {
   const y0 = await histLook(hc);
   check('Classic\'s History is as it was: no word at the foot of a cell, the two pies, ← and → as words, nothing in the panel until a day is picked',
         y0.tags.every(t => t === null) && y0.pies === 2 && y0.bars.length === 0 && y0.detail === '' && y0.arrows.every(a => / 16px$/.test(a)), JSON.stringify(y0));
+  const w0 = await weekendLook(hc);
+  await hc.evaluate(() => { applyTheme('dark'); rerenderForTheme(); }); await hc.waitForTimeout(300);
+  const w1 = await weekendLook(hc);
+  await hc.evaluate(() => { applyTheme('light'); rerenderForTheme(); }); await hc.waitForTimeout(200);
+  await hc.click('.history-day[data-date="2026-09-19"]'); await hc.waitForTimeout(300);
+  const w2 = await hc.evaluate(() => getComputedStyle(document.querySelector('.history-day[data-date="2026-09-19"]')).backgroundColor);
+  check('Classic\'s History shades Saturday and Sunday, empty or cooked, in light and dark, and a picked weekend day still reads as picked',
+        w0.day === 'rgb(251, 248, 240)' && w0.end === 'rgb(241, 238, 230)' && w0.dayCooked === 'rgba(124, 148, 115, 0.1)' && w0.endCooked === 'rgba(99, 114, 90, 0.145)' &&
+        w1.day === 'rgb(35, 32, 25)' && w1.end === 'rgb(28, 26, 20)' && w1.dayCooked === 'rgba(157, 190, 146, 0.06)' && w1.endCooked === 'rgba(38, 46, 35, 0.247)' &&
+        w2 === 'rgba(91, 42, 74, 0.06)', JSON.stringify([w0, w1, w2]));
   await hc.close();
 
   const hm = await browser.newPage({ viewport: { width: 1280, height: 800 } });
@@ -9078,6 +9171,9 @@ const check = (name, pass, detail) => {
         JSON.stringify(y1.tags) === '["COOKED","COOKED","AD HOC","TODAY",null]' && y1.ring === 'rgb(236, 48, 19) 0px 0px 0px 3px inset' && y1.todayNum === 'rgb(236, 48, 19)' &&
         y1.other.cell === '1' && y1.other.num === '0.4' && y1.other.bg === 'rgb(243, 242, 242)', JSON.stringify([y1.tags, y1.ring, y1.todayNum, y1.other]));
   check('    the panel says "Pick a day" until one is picked, and does not scroll sideways', y1.detail === 'Pick a day' && y1.panelScroll === 0, JSON.stringify([y1.detail, y1.panelScroll]));
+  const w3 = await weekendLook(hm);
+  check('    Saturday and Sunday are a shade darker than the weekdays, cooked or not (#212)',
+        w3.day === 'rgb(243, 242, 242)' && w3.dayCooked === w3.day && w3.end === 'rgb(236, 235, 235)' && w3.endCooked === w3.end, JSON.stringify(w3));
   check('    the meal-base mixes are two 28px bars in the accent and ink, with no pies',
         y1.pies === 0 && y1.bars.length === 2 && y1.bars.every(b => b.h === 28 && b.segs[0] === 'rgb(236, 48, 19)' && b.segs[1] === 'rgb(32, 30, 29)'), JSON.stringify(y1.bars));
 
@@ -9099,6 +9195,8 @@ const check = (name, pass, detail) => {
   const y3 = await histLook(hm);
   check('    in dark the bars take the dark colours without a redraw, and the five are all different (the spec\'s dark accent-300 and accent-800 are one colour)',
         y3.bars[0].segs[0] === 'rgb(255, 86, 60)' && y3.bars[0].segs[1] === 'rgb(241, 238, 236)' && new Set(y3.mix).size === 5, JSON.stringify([y3.bars, y3.mix]));
+  const w4 = await weekendLook(hm);
+  check('    in dark the weekend is a shade lighter than the weekdays', w4.end === 'rgb(31, 30, 29)' && w4.day !== w4.end, JSON.stringify(w4));
   await hm.evaluate(() => { applyTheme('light'); rerenderForTheme(); }); await hm.waitForTimeout(200);
   await hm.evaluate(() => applyStyle('classic')); await hm.waitForTimeout(300);
   const y4 = await histLook(hm);

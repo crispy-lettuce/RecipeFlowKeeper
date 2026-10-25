@@ -52,8 +52,8 @@ vocabulary that nothing is tagged with is expected (the converter never guesses 
 
 ## B. The everyday features
 
-7. **Week start.** Settings → APP → change to Sunday: Planner, Shopping and History re-bucket together. Put it back.
-8. **History calendar.** Columns start on the chosen day; every date sits under the right weekday.
+7. **Week start.** Settings → APP → change to Sunday: Planner and Shopping re-bucket together; History does not move. Put it back.
+8. **History calendar.** Columns run Monday to Sunday whatever the week start; every date sits under the right weekday; Saturday and Sunday are shaded.
 9. **Scaling.** COOK FOR 6 on a recipe with servings: quantities scale, the line reads `SERVES 6 (SCALED FROM n)`, RESET returns it,
    nothing is saved.
 10. **Servings required.** Edit a recipe, clear the servings, try to save: refused.

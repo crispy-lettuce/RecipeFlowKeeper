@@ -19,6 +19,9 @@ html[data-style="modernist"]{
   --color-text:#201e1d;
   --color-accent:#ec3013;
   --color-divider:rgba(32,30,29,.4);
+  /* History's Saturday and Sunday (#212): the ground under 3.5% ink, worked out to one opaque colour, because the grid's
+     rules are its background showing between the cells and a translucent cell would let them through. */
+  --km-weekend:#ecebeb;
 
   --color-neutral-300:#d7d3d3;
   --color-neutral-400:#bab6b6;
@@ -66,6 +69,7 @@ html[data-style="modernist"][data-theme="dark"]{
   --color-text:#f1eeec;
   --color-accent:#ff563c;
   --color-divider:rgba(241,238,236,.32);
+  --km-weekend:#1f1e1d;                    /* the ground under 4% ink, as the light theme's */
   --color-accent-100:#3a1712;
   --color-accent-600:#ff7a63;
   --color-accent-700:#ff9783;
@@ -1162,6 +1166,8 @@ html[data-style="modernist"] .history-day.has-adhoc,
 html[data-style="modernist"] .history-day.other-month{
   min-height:0; gap:6px; padding:8px 10px; border:0; background:var(--color-bg); color:var(--color-text); align-items:flex-start;
 }
+/* Before :hover and .selected, which then still show on a weekend day. */
+html[data-style="modernist"] .history-day.weekend{ background:var(--km-weekend); }
 html[data-style="modernist"] .history-day:hover{ background:var(--color-surface); }
 /* Days of other months: their words at 40%, on the same ground (fading the whole cell let the grid's rule colour through). */
 html[data-style="modernist"] .history-day.other-month{ opacity:1; }
