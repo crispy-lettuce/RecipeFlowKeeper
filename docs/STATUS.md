@@ -44,18 +44,20 @@ the Modernist style, + OTHER on the Planner, the converter reminder, the version
 
 ## 3. What is open
 
-1. **One plan, partly built: `docs/PLAN-RUN-SHEET.md`** (drafted 23 Oct). Hands-off steps in the recipe format and a live timeline:
-   four PRs and a pass over the library's recipe text, in that order. Its proof of concept (§5, step 0) is done (23 Oct): 53 of 54
-   steps agree with a session's reading, the converter's marks match the household's on 20 of 20, and the roast dinner showed the
-   run sheet needs to know about ovens. Every decision in its §10 was made on 23 Oct:
-   PR 1 (timeline fixes, ticks drive the bars) was merged on 23 Oct (#189). PR 2 (the marker: parser, converter, display, the proposal tool) was merged on 23 Oct (#190). PR 3 is split: **3a**, the planning half (EAT AT,
-   the clock ruler, your hands, AVOID THE CLASH, ovens), was merged on 23 Oct (#191); **3a.1**, the first fixes from using it (a clearer AVOID THE CLASH,
-   a sentence on what START/FINISH TOGETHER does, READY AT, recipes with no hands-off mark left out of YOUR HANDS, the oven-lane tick), was merged on 23 Oct (#193); **3b** is split too: **3b-1**, the live plan (START COOKING, ticks noted with their time and the plan re-drawn from them, the ready flag, the Now line, the playhead), was merged on 24 Oct (#194); **3b-2**, a START and a DONE on each box while the run is going, was merged on 24 Oct (#195). The data job was done on 24 Oct: 95 `, hands off` marks in 50 of the family household's 76 recipes, each stored text read back equal to the approved one in a query at 18:07 UTC, and a re-measure on a fresh export gave the same 328 shopping rows as before (the record is in the private backup repo); the relatives' household was not touched. The converter's rule was then settled on those marks (version 2026-10-24.1; its PR waits for the household's merge and each household's DONE). PR 4, the timers (a countdown on each started step, a chime and a vibration at zero), is built on 24 Oct and waits for the household's merge and the tablet check (`docs/HOUSEHOLD-JOBS.md`); the plan is deleted once that is reported passed.
+1. **Nothing planned is waiting to be built.** The run sheet (hands-off steps in the recipe format, a live timeline with EAT AT, your hands, ovens, START COOKING and
+   timers) was planned in `docs/PLAN-RUN-SHEET.md` and built on 23 and 24 Oct 2026 (#189 to #195, then #205 for the timers), with a pass over the family household's recipe
+   text on 24 Oct (95 `, hands off` marks in 50 of its 76 recipes; the record is in the private backup repo, and the one later correction of an onion step on 25 Oct is
+   there too). The converter's rule for the mark was settled in #202 and #210. What the app now does is in `docs/SPEC.md` §5.2. You reported the tablet checks passed on 25 Oct 2026;
+   that is a report, not something a session saw, except that the family household's confirmed converter version read `2026-10-25.1` in the database that day. The plan
+   was closed and deleted on 25 Oct: it is at commit `9851f20` (`git show 9851f20:docs/PLAN-RUN-SHEET.md`), which is what the code comments citing its sections mean.
+   The timers rehearsal lives on as a standing check, `docs/TEST-PLAN.md` section H.
 2. **#100, a preview site.** Parked and now ignored; close the issue if it is not wanted. The reasoning (GitHub Pages stays live,
    Cloudflare Pages gives each PR a preview, one database means a preview writes real data) is in the archive at
    `docs/PLAN-PREVIEW-SITE.md`.
-3. **Household jobs** are in `docs/HOUSEHOLD-JOBS.md`: reloading each device, and the converter bar's DONE.
-4. **Optional, not planned:** a "download all source files" backup; drawing a PDF's pages inside the app.
+3. **Household jobs** are in `docs/HOUSEHOLD-JOBS.md`: none waiting (25 Oct 2026).
+4. **Optional, not planned:** a "download all source files" backup; drawing a PDF's pages inside the app;
+   and four ideas parked from the run sheet's review, each wanting its own issue if picked up: **Trace** (hold a box to dim everything that does not feed it), folding away
+   finished rows and columns in cooking mode, a step-through view (one "now" card at a time), and drawn connector lines between boxes.
 5. **Housekeeping a session can do:** re-measure the live library every ten or so new recipes ("Re-measuring the live library",
    `test/README.md`) and look at what the shopping list puts in Other; new dictionary rows are edited in `core.js`, then
    `node tools/generate-ingredient-names.js`.

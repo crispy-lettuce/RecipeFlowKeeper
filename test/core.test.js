@@ -1827,17 +1827,18 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
         [10, 0.5, 59 / 60, 1 / 60 - 1e-9, 60, 65.5, 0, -3].map(core.formatCountdown).join(' ') === '10:00 0:30 0:59 0:01 1:00:00 1:05:30 0:00 0:00');
 }
 
-/* ---- The timers rehearsal (docs/HOUSEHOLD-JOBS.md, "Rehearse the timers", 25 Oct 2026) ----
-   Two made-up recipes the household pastes into Test Kitchen. The page promises numbers (an 8-minute free window, one 1-minute clash that AVOID THE CLASH clears,
+/* ---- The timers rehearsal (docs/TEST-PLAN.md section H, 25 Oct 2026) ----
+   Two made-up recipes pasted into Test Kitchen (a household job until the tablet check passed on 25 Oct, then a standing check). The page promises numbers (an 8-minute free window, one 1-minute clash that AVOID THE CLASH clears,
    7 timers, 3 of them START TIMER); this holds it to them, from the recipe text on the page itself, through the app's own parser and planner. */
 {
-  const jobs = fs.readFileSync(path.join(ROOT, 'docs', 'HOUSEHOLD-JOBS.md'), 'utf8');
-  const section = jobs.slice(jobs.indexOf('## Rehearse the timers'), jobs.indexOf('## The converter bar'));
+  const testPlan = fs.readFileSync(path.join(ROOT, 'docs', 'TEST-PLAN.md'), 'utf8');
+  const from = testPlan.indexOf('## H. The timers');
+  const section = from < 0 ? '' : testPlan.slice(from, testPlan.indexOf('## If something fails', from));
   const blocks = [...section.matchAll(/```\n([\s\S]*?)\n```/g)].map(m => m[1]);
   const load = t => { const p = core.parseRecipe(t); return { p, tl: core.computeTimeline(p.groups, p.stages) }; };
   const [roast, greens] = [0, 1].map(i => blocks[i] ? load(blocks[i]) : { p: { title: '', unread: [] }, tl: { steps: [], totalSpan: 0 } });
   const shape = tl => tl.steps.map(s => s.duration.instant ? 'i' : s.duration.openEnded ? 'u' + (s.handsOff ? 'h' : '') : s.duration.min + (s.duration.max > s.duration.min ? '-' + s.duration.max : '') + (s.handsOff ? 'h' : '')).join();
-  check('the rehearsal page carries its two recipes, they read without a line left over, and their steps are 2, 7 (off), 1 (off), 1 and 1, 1-2 (off), until done (off), 2 minutes, with the instants',
+  check('the rehearsal section of the test plan carries its two recipes, they read without a line left over, and their steps are 2, 7 (off), 1 (off), 1 and 1, 1-2 (off), until done (off), 2 minutes, with the instants',
         blocks.length === 2 && roast.p.title === 'Timer Rehearsal Roast' && greens.p.title === 'Timer Rehearsal Greens' && !(roast.p.unread || []).length && !(greens.p.unread || []).length
         && shape(roast.tl) === '2,7h,1h,1,i' && shape(greens.tl) === '1,1-2h,uh,2,i', blocks.length + ' ' + (roast && shape(roast.tl)) + ' | ' + (greens && shape(greens.tl)));
   if(blocks.length !== 2) check('    the rest of the rehearsal checks need both recipes on the page', false, 'found ' + blocks.length);
@@ -1862,6 +1863,28 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
   check('    and the page says the same in words, as the screen words it: free 8 min, CLASH 1 min, START AT 2 minutes earlier, 7 timers, about 11 minutes',
         ['free 8 min', 'CLASH 1 min', 'START AT** 2 minutes earlier', '**7 timers**', 'about 11 minutes'].every(w => section.includes(w)), section.length + ' chars');
   }
+}
+
+/* ---- Documents that name each other (25 Oct 2026, when the run-sheet plan was closed) ----
+   A plan is deleted when its feature is done, and anything that still names it points at nothing. Every `docs/…` path written in README.md, CLAUDE.md
+   and docs/*.md must exist, except a document retired on purpose and still named beside the commit that has it (CLAUDE.md and docs/STATUS.md do). A name with
+   a placeholder in it (`docs/<file>`) is a pattern, not a path. Code comments are not read: they may cite a retired plan by section. */
+{
+  const RETIRED = ['docs/PLAN-PREVIEW-SITE.md', 'docs/PLAN-RUN-SHEET.md'];
+  const files = ['README.md', 'CLAUDE.md', ...fs.readdirSync(path.join(ROOT, 'docs')).filter(f => f.endsWith('.md')).map(f => 'docs/' + f)];
+  const dangling = [];
+  for(const f of files) {
+    const text = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    for(const m of text.matchAll(/(?<![\w\/.-])docs\/[A-Za-z0-9_.<>\/-]*[A-Za-z0-9_>\/]/g)) {
+      const named = m[0];
+      if(named.includes('<') || RETIRED.includes(named) || fs.existsSync(path.join(ROOT, named))) continue;
+      dangling.push(f + ' names ' + named);
+    }
+  }
+  check('every docs/ path that README.md, CLAUDE.md and the documents name exists (a retired plan is named beside its commit, not as a live file)',
+        ['README.md', 'CLAUDE.md', 'docs/STATUS.md', 'docs/SPEC.md'].every(f => files.includes(f)) && dangling.length === 0, dangling.join('; ') || (files.length + ' files read'));
+  check('    and a retired document is really gone from docs/, so the list above is not hiding a file that is still there',
+        RETIRED.every(r => !fs.existsSync(path.join(ROOT, r))), RETIRED.filter(r => fs.existsSync(path.join(ROOT, r))).join());
 }
 
 /* ---- FROZEN (issue #90, 11 Oct 2026) ----

@@ -148,6 +148,89 @@ this**: the suite stubs Supabase and can only show that the app *asks* for a re-
 
 Tidy up the test recipe afterwards.
 
+## H. The timers (after any change to the timers, the chime or the vibration, START COOKING, or the run sheet's hands row)
+
+A real roast takes an hour or more, so this is a rehearsal: two **made-up** recipes whose steps are marked hands off or hands on as in a real cook, with every
+timed step shortened to 1 or 2 minutes except one 7-minute roast. The run fits in about a quarter of an hour. Do it on the **tablet** (the sound, the buzz and a
+screen that sleeps need a real one; smoke stubs all three), signed in to **Test Kitchen** (its plan and shopping list are separate from the household's, so nothing
+here reaches the week's shop). The ingredients are generic and none is a line from the library. Keep the two recipes in Test Kitchen for next time, or delete them.
+`node test/core.test.js` reads the two recipes below and holds this section to its numbers, so a change that moves them fails there before it reaches the tablet.
+
+**Set up (2 min).** In Test Kitchen tap **NEW RECIPE**, paste the first recipe into the box, tap **SAVE RECIPE**, and do the same for the second.
+
+Recipe 1, the main:
+
+```
+TITLE: Timer Rehearsal Roast
+SOURCE: Made up for the timers rehearsal
+SERVINGS: 2
+TIME: 12 min
+TAGS: course=Main
+STEPS:
+Preheat the oven to 185°C (fan).
+GROUP tray:
+450 g potatoes, cut into chunks
+3 chicken thighs
+GROUP glaze:
+1 tbsp rapeseed oil
+2 tsp clear honey
+STAGE:
+MERGE tray, glaze -> traybake: toss the potatoes and chicken with the oil and honey on a baking tray [2 min]
+STAGE:
+MERGE traybake -> roasted: roast on the top shelf until golden, turning once halfway [7 min, hands off]
+STAGE:
+MERGE roasted -> rested: cover with foil and leave to rest [1 min, hands off]
+STAGE:
+MERGE rested -> sliced: slice the chicken [1 min]
+STAGE:
+MERGE sliced -> served: plate up with the potatoes [instant]
+```
+
+Recipe 2, the side:
+
+```
+TITLE: Timer Rehearsal Greens
+SOURCE: Made up for the timers rehearsal
+SERVINGS: 2
+TIME: 6 min
+TAGS: course=Side
+STEPS:
+GROUP beans:
+180 g green beans
+GROUP gravy:
+150 ml chicken stock
+1 1/2 tsp cornflour
+STAGE:
+MERGE beans -> trimmed: top and tail the beans [1 min]
+STAGE:
+MERGE trimmed -> boiled: boil in salted water until just tender [1-2 min, hands off]
+MERGE gravy -> reduced: simmer the stock until glossy [until done, hands off]
+STAGE:
+MERGE reduced -> thickened: whisk in the cornflour and simmer until thick [2 min]
+STAGE:
+MERGE boiled, thickened -> served: drain the beans and serve with the gravy [instant]
+```
+
+**Part A: one dish, about 11 minutes.** Open **Timer Rehearsal Roast** and stay on the page: a timer sounds only while its recipe or group is open on the screen. Turn the tablet's sound up and take it off silent.
+
+45. Tap **START COOKING**. **You should see:** **On time for HH:MM**, a **Now** line, and in the row **YOUR HANDS** a long outline reading **free 8 min** (nothing needs you while the roast cooks and rests).
+46. Tap **START** on the first box (tossing the potatoes). It is hands on, so it says START. **You should see:** **STARTED hh:mm** and a countdown beside it, **2:00 LEFT**, going down each second.
+47. At 2:00. **You should see:** one chime, and a buzz if the tablet can; the box reads **TIME'S UP**; **DONE** pulses; the Now line begins **Time's up:**; a message at the foot names the step. Wait another half minute: it does not ring a second time. Tap **DONE**.
+48. The roast box now reads **START TIMER** (it looks after itself). Tap it. **You should see:** **7:00 LEFT**. This is the sleep test: press the tablet's power button to lock the screen at once, leave it for about 7 minutes, and wake it just after the 7 minutes are up.
+    **You should see:** **TIME'S UP**, and one chime when it wakes. If it was asleep when the time came, the chime may be late: that is the known limit, and why **COOKING MODE** exists. To see the other half, do this step again in a fresh run
+    with **COOKING MODE** on and leave the screen alone: it stays on and chimes on time.
+49. Tap **DONE**, then **START TIMER** on the rest (1 minute). **You should see:** **1:00 LEFT**, then **TIME'S UP** and one chime. **DONE**. Then **START** on slicing (1 minute): the same. **DONE**.
+    **You should see:** the whole dish done in about 11 minutes, with 4 chimes in all (tossing, roasting, resting, slicing).
+
+**Part B: two dishes together, about 4 minutes.** On the **Planner**, add both recipes to today, tap **GROUP SOME TOGETHER**, pick both, tap **GROUP SELECTED**, and open the group.
+
+50. **You should see:** **EAT AT** with a time, the roast starting earlier than the greens (the roast about 11 minutes before EAT AT, the greens about 4), and in **YOUR HANDS** a red hatched **CLASH 1 min** at the end, where slicing the chicken and whisking the gravy both want your hands.
+51. Tap **AVOID THE CLASH**. **You should see:** the clash gone, **START AT** 2 minutes earlier (the roast has to start 2 minutes earlier; the greens do not move), EAT AT unchanged, and the button reading **✓ CLASH AVOIDED · TAP TO UNDO**.
+52. Tap **START COOKING**. Work through the greens the same way: **START** on topping and tailing, **START TIMER** on the boiling, then **START** on the whisking. **You should see:** the boiling counts down from **1:00** and, at zero, reads **CHECK IT**
+    (not TIME'S UP, because the step said 1-2 minutes), with one chime; **DONE** stays pulsing until you press it. The step after it, **simmer the stock until glossy**, has no countdown: it has no length to count.
+
+Together the two dishes have **7 timers**: 3 read START TIMER (the roast, the rest, the boiling), one of them a range, and 4 read START. Part A rings 4 of them, and Part B 3 (topping and tailing, the boiling, and the whisking).
+
 ## If something fails
 
 Note the step number, what you saw, and anything red in the console. Your data is in Supabase, not the browser, so clearing site
