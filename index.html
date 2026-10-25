@@ -6,7 +6,7 @@
 <!-- Kept in step with the theme by applyTheme, so the browser chrome on a
      tablet does not sit as a light bar above a dark app. -->
 <meta name="theme-color" content="#EAE4D5">
-<title>Kitchen</title>
+<title>Recipe Wrangler</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -47,12 +47,14 @@
 /* Resolve the style before the first paint, for the same reason as the theme above (docs/PLAN-MODERNIST.md).
  *
  * Classic or Modernist is a choice this device makes, so unlike the theme it is not in the database: localStorage is
- * the setting here, not a mirror of one. Absent, blocked or anything else means Classic, which is what every device
- * had before the choice existed. The attribute is set before the stylesheet below is parsed, so the old style never
- * paints first.
+ * the setting here, not a mirror of one. Modernist is the default since 25 Oct 2026 (issue #200): absent, blocked or
+ * anything else means Modernist, and a device that chose Classic stores 'classic'. Until then only 'modernist' was
+ * stored and Classic was the absence of a choice, so a device that had picked Classic before this change cannot be told
+ * from one that never picked, and opens in Modernist once (Settings → APP brings Classic back, and it is then remembered).
+ * The attribute is set before the stylesheet below is parsed, so the other style never paints first.
  *
- * Archivo is requested only when the style is Modernist: Classic's fonts are unchanged and a Classic device never
- * asks for it. loadArchivoFont is global so applyStyle can call it when the choice is made in Settings.
+ * Archivo is requested only when the style is Modernist: a Classic device never asks for it. loadArchivoFont is global
+ * so applyStyle can call it when the choice is made in Settings.
  */
 function loadArchivoFont(){
   if(document.getElementById('archivoFont')) return;
@@ -63,9 +65,9 @@ function loadArchivoFont(){
   document.head.appendChild(l);
 }
 (function(){
-  var style = 'classic';
-  try { if(localStorage.getItem('kitchen.style') === 'modernist') style = 'modernist'; }
-  catch(e){ /* private browsing or blocked storage: Classic is a fine answer */ }
+  var style = 'modernist';
+  try { if(localStorage.getItem('kitchen.style') === 'classic') style = 'classic'; }
+  catch(e){ /* private browsing or blocked storage: the default is a fine answer */ }
   document.documentElement.setAttribute('data-style', style);
   if(style === 'modernist') loadArchivoFont();
 })();
@@ -1867,14 +1869,14 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-25.4">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-25.5">
 </head>
 <body>
 <div id="loginGate" hidden>
   <!-- method="post" and a name on each field are what a browser's password manager reads a sign-in form by (#196); post also means the
        password could never end up in the address if the script failed to load. -->
   <form class="login-card" id="loginForm" method="post" action="#">
-    <h1>Kitchen</h1>
+    <h1>Recipe Wrangler</h1>
     <p>Sign in to load your recipes.</p>
     <div class="login-error" id="loginError" hidden></div>
     <label for="loginEmail">Email</label>
@@ -1895,7 +1897,7 @@ function loadArchivoFont(){
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
       <span class="nav-rail-name">Recipe Wrangler</span>
     </button>
-    <div class="brand"><span class="brand-classic">Kitchen</span><span class="brand-mod mod-only">Recipe Wrangler</span><span class="brand-square mod-only" aria-hidden="true"></span><button class="nav-hide-btn mod-only" id="navHideBtn" aria-label="Hide the menu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button></div>
+    <div class="brand"><span class="brand-classic">Recipe Wrangler</span><span class="brand-mod mod-only">Recipe Wrangler</span><span class="brand-square mod-only" aria-hidden="true"></span><button class="nav-hide-btn mod-only" id="navHideBtn" aria-label="Hide the menu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button></div>
     <button class="navlink active" data-view="recipes">RECIPES</button>
     <button class="navlink" data-view="planner">PLANNER</button>
     <button class="navlink" data-view="shortlist" id="navShortlist">SHORTLIST</button>
@@ -2287,8 +2289,8 @@ function loadArchivoFont(){
 
         <div class="settings-block" data-settings-tab="app" id="styleBlock">
           <div class="side-label">STYLE</div>
-          <p class="subtle">How the app looks. Classic is the paper and plum look; Modernist is flat and square, set in one
-            typeface, with red kept for the main action and what is on. Either one works with light and dark. This device only.</p>
+          <p class="subtle">How the app looks. Modernist (the default) is flat and square, set in one typeface, with red kept for the
+            main action and what is on; Classic is the paper and plum look. Either one works with light and dark. This device only.</p>
           <select class="sort" id="setStyle" aria-label="Style"></select>
         </div>
 
@@ -2607,7 +2609,7 @@ const EXPECTED_CORE_VERSION = '2026-10-25.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-25.4';
+const APP_VERSION = '2026-10-25.5';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -2753,20 +2755,20 @@ function rerenderForTheme(){
    render function asks currentStyle() and the screen is redrawn when the choice changes. Nothing else should read the
    attribute, so there is one place to look.
 
-   Per device and not in the database, unlike Appearance: the boot script in <head> reads it before the first paint. */
-const STYLES = ['classic', 'modernist'];
+   Per device and not in the database, unlike Appearance: the boot script in <head> reads it before the first paint. Modernist
+   is the default (#200, 25 Oct 2026). */
+const STYLES = ['modernist', 'classic'];   // the default first
 const STYLE_LABELS = { classic:'CLASSIC', modernist:'MODERNIST' };
 
 function currentStyle(){
-  return document.documentElement.getAttribute('data-style') === 'modernist' ? 'modernist' : 'classic';
+  return document.documentElement.getAttribute('data-style') === 'classic' ? 'classic' : 'modernist';
 }
 
 function applyStyle(style){
-  if(STYLES.indexOf(style) === -1) style = 'classic';
+  if(STYLES.indexOf(style) === -1) style = 'modernist';
   document.documentElement.setAttribute('data-style', style);
   try {
-    if(style === 'modernist') localStorage.setItem('kitchen.style', 'modernist');
-    else localStorage.removeItem('kitchen.style');
+    localStorage.setItem('kitchen.style', style);   // both are stored: Classic is a choice now, not the absence of one (#200)
   } catch(e){ /* blocked storage is not fatal: the choice holds until the page is closed */ }
   if(style === 'modernist') loadArchivoFont();
   const meta = document.querySelector('meta[name="theme-color"]');
@@ -13163,7 +13165,7 @@ function importAllData(file){
     try{ data = JSON.parse(reader.result); }
     catch(e){ alert("That doesn't look like a valid backup file — couldn't read it as JSON."); return; }
     if(!data || !Array.isArray(data.recipes)){
-      alert("That file doesn't look like a Kitchen backup — no recipes found in it.");
+      alert("That file doesn't look like a Recipe Wrangler backup — no recipes found in it.");
       return;
     }
     const n = data.recipes.length;

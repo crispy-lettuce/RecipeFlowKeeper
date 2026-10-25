@@ -22,6 +22,9 @@ html[data-style="modernist"]{
   /* History's Saturday and Sunday (#212): the ground under 3.5% ink, worked out to one opaque colour, because the grid's
      rules are its background showing between the cells and a translucent cell would let them through. */
   --km-weekend:#ecebeb;
+  /* The grid's rules (#200): --color-divider over --color-bg as one opaque colour, because each card draws its own four sides and
+     overlaps its neighbour's by 2px, and a translucent rule drawn twice shows darker. */
+  --km-rule:#9f9d9d;
 
   --color-neutral-300:#d7d3d3;
   --color-neutral-400:#bab6b6;
@@ -70,6 +73,7 @@ html[data-style="modernist"][data-theme="dark"]{
   --color-accent:#ff563c;
   --color-divider:rgba(241,238,236,.32);
   --km-weekend:#1f1e1d;                    /* the ground under 4% ink, as the light theme's */
+  --km-rule:#5c5a59;                       /* --color-divider over --color-bg, as the light theme's */
   --color-accent-100:#3a1712;
   --color-accent-600:#ff7a63;
   --color-accent-700:#ff9783;
@@ -298,33 +302,24 @@ html[data-style="modernist"] #view-recipes .searchbar input{ font-size:16px; col
 /* Classic's "3 OF 34" inside the search bar: here the count is beside the title instead. */
 html[data-style="modernist"] #resultCount{ display:none; }
 
-/* The grid: rules shared between cards. The first row draws the top rule and the first column the left one, so no line is
-   drawn twice (the divider is translucent, and a doubled one shows darker). The number of columns follows the width.
+/* The grid: as many columns as fit, at least 240px each (#200, 25 Oct 2026; Classic's is 230), so a wider window, or the sidebar folded to its rail,
+   shows more recipes with no setting; it was three columns whatever the width. Each card draws its own four sides and overlaps the
+   next card's by 2px (margin -2px), so no rule depends on which column or row a card falls in, which a varying number of columns
+   would break; the rule is opaque (--km-rule) so the overlap is not darker.
    Rows are max-content, never auto (19 Oct 2026): above 860px the grid is a scroller of fixed height (.app is 100vh), and an
    auto row can shrink to nothing under a card that is overflow:hidden, so the browser shared the height out between the rows
    and a library of more than a few recipes was drawn as strips about 20px tall. It showed from four to seven recipes, by how tall the
    filters are, which the smoke fixture's three never reach. At 860px and below the page scrolls and the grid has no height to share. */
-html[data-style="modernist"] #recipeGrid{ padding:16px 28px 32px; grid-auto-rows:max-content; gap:0; }
+html[data-style="modernist"] #recipeGrid{ padding:16px 28px 32px; grid-auto-rows:max-content; gap:0; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); }
 html[data-style="modernist"] .rcard{
-  padding:0; gap:4px; border:0;
-  border-right:2px solid var(--color-divider); border-bottom:2px solid var(--color-divider);
+  padding:0; gap:4px; border:2px solid var(--km-rule); margin:0 -2px -2px 0;
   background:var(--color-bg);
 }
-html[data-style="modernist"] .rcard:hover{ background:var(--color-surface); border-color:var(--color-divider); }
-@media (min-width: 861px){
-  html[data-style="modernist"] #recipeGrid{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
-  html[data-style="modernist"] .rcard:nth-child(-n+3){ border-top:2px solid var(--color-divider); }
-  html[data-style="modernist"] .rcard:nth-child(3n+1){ border-left:2px solid var(--color-divider); }
-}
-@media (min-width: 561px) and (max-width: 860px){
-  html[data-style="modernist"] #recipeGrid{ grid-template-columns:repeat(2, minmax(0, 1fr)); padding:16px; }
-  html[data-style="modernist"] .rcard:nth-child(-n+2){ border-top:2px solid var(--color-divider); }
-  html[data-style="modernist"] .rcard:nth-child(2n+1){ border-left:2px solid var(--color-divider); }
+html[data-style="modernist"] .rcard:hover{ background:var(--color-surface); }
+@media (max-width: 860px){
+  html[data-style="modernist"] #recipeGrid{ padding:16px; }
 }
 @media (max-width: 560px){
-  html[data-style="modernist"] #recipeGrid{ grid-template-columns:minmax(0, 1fr); padding:16px; }
-  html[data-style="modernist"] .rcard{ border-left:2px solid var(--color-divider); }
-  html[data-style="modernist"] .rcard:first-child{ border-top:2px solid var(--color-divider); }
   html[data-style="modernist"] .recipes-titleblock h1{ font-size:44px; }
 }
 @media (max-width: 860px){
