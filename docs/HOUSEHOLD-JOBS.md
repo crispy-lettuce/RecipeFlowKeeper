@@ -17,7 +17,8 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 | --- | --- | --- | --- |
 | [Reload the app](#reload-the-app-on-every-device), on every device | every device | 1 min | No |
 | [Set the ovens and try the run sheet](#set-the-ovens-and-try-the-run-sheet), once the app is **2026-10-23.3** | tablet | 5 min | The number of ovens, on that device only |
-| [Try START COOKING and its timers](#try-start-cooking), once the app is **2026-10-24.5** | tablet | 12 min | No |
+| [Try START COOKING](#try-start-cooking), once the app is **2026-10-24.2** | tablet | 8 min | No |
+| [Rehearse the timers](#rehearse-the-timers), once the app is **2026-10-24.5** | tablet, in Test Kitchen | 15 min | Two made-up recipes in Test Kitchen's library |
 | [Tap DONE on the converter bar](#the-converter-bar), if it shows | app | 1 min | Only the converter's DONE |
 
 Nothing else is waiting. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
@@ -78,15 +79,88 @@ Kitchen, with a step or two marked `, hands off` (see the converter bar below fo
 8. Press **DONE**. **You should see:** the box ticked, and the bar drawn from when you started to now. Tap the ticked box to un-tick it: it goes back to **STARTED**.
 9. Press **START** on a step before the one before it is done. **You should see:** it is running from then.
 10. Tap **STOP COOKING**. **You should see:** the plan as it was before, with no red line, no Now line, no dotted marks and no START buttons.
-11. Start the run again. A step marked hands off with a time reads **START TIMER**; press it. **You should see:** the box reads **STARTED hh:mm** and, beside it, a countdown such as
-    **8:34 LEFT** that goes down each second. (A step with no time to count, such as "until done", has no countdown.)
-12. Let a short timer reach zero (start the shortest timed step, and watch the box). **You should see:** one chime and, on a device that can, one buzz; the box reads **TIME'S UP**; **DONE** pulses;
-    the Now line begins **Time's up:** and the step's name; and a message at the foot of the screen names it. **If you hear nothing:** check the tablet is not on silent and its volume is up,
-    then tell the next session; the buzz, the pulse and the words do not depend on sound.
-13. Leave it a minute. **You should see:** it does not ring again. Press **DONE**: the box is ticked and the pulsing stops.
-14. For a step given as a range (for example 10-13 minutes), start it. **You should see:** it counts down to the short end and then reads **CHECK IT**, not TIME'S UP.
-15. Turn on **COOKING MODE**, start a timer of a few minutes and leave the tablet alone. **You should see:** the screen stays on and it chimes on time. (Without cooking mode a tablet that
-    goes to sleep may chime late, when you wake it.)
+The timers (a countdown and a chime) have their own rehearsal, next. Tell the next session which step did not do what it said.
+
+## Rehearse the timers
+
+A real roast takes an hour or more, so this is a rehearsal: two **made-up** recipes whose steps are marked hands off or hands on as in a real cook, with every timed step shortened to 1 or 2 minutes
+except one 7-minute roast. The run fits in about a quarter of an hour. It needs the app at **2026-10-24.5** or later, on the **tablet**, signed in to **Test Kitchen** (its plan and shopping list are
+separate from yours, so nothing here reaches your week's shop). The ingredients are generic and none is a line from your library. Delete the two recipes afterwards if you like.
+
+**Set up (2 min).** In Test Kitchen tap **NEW RECIPE**, paste the first recipe into the box, tap **SAVE RECIPE**, and do the same for the second.
+
+Recipe 1, the main:
+
+```
+TITLE: Timer Rehearsal Roast
+SOURCE: Made up for the timers rehearsal
+SERVINGS: 2
+TIME: 12 min
+TAGS: course=Main
+STEPS:
+Preheat the oven to 185°C (fan).
+GROUP tray:
+450 g potatoes, cut into chunks
+3 chicken thighs
+GROUP glaze:
+1 tbsp rapeseed oil
+2 tsp clear honey
+STAGE:
+MERGE tray, glaze -> traybake: toss the potatoes and chicken with the oil and honey on a baking tray [2 min]
+STAGE:
+MERGE traybake -> roasted: roast on the top shelf until golden, turning once halfway [7 min, hands off]
+STAGE:
+MERGE roasted -> rested: cover with foil and leave to rest [1 min, hands off]
+STAGE:
+MERGE rested -> sliced: slice the chicken [1 min]
+STAGE:
+MERGE sliced -> served: plate up with the potatoes [instant]
+```
+
+Recipe 2, the side:
+
+```
+TITLE: Timer Rehearsal Greens
+SOURCE: Made up for the timers rehearsal
+SERVINGS: 2
+TIME: 6 min
+TAGS: course=Side
+STEPS:
+GROUP beans:
+180 g green beans
+GROUP gravy:
+150 ml chicken stock
+1 1/2 tsp cornflour
+STAGE:
+MERGE beans -> trimmed: top and tail the beans [1 min]
+STAGE:
+MERGE trimmed -> boiled: boil in salted water until just tender [1-2 min, hands off]
+MERGE gravy -> reduced: simmer the stock until glossy [until done, hands off]
+STAGE:
+MERGE reduced -> thickened: whisk in the cornflour and simmer until thick [2 min]
+STAGE:
+MERGE boiled, thickened -> served: drain the beans and serve with the gravy [instant]
+```
+
+**Part A: one dish, about 11 minutes.** Open **Timer Rehearsal Roast** and stay on the page: a timer sounds only while its recipe or group is open on the screen. Turn the tablet's sound up and take it off silent.
+
+1. Tap **START COOKING**. **You should see:** **On time for HH:MM**, a **Now** line, and in the row **YOUR HANDS** a long outline reading **free 8 min** (nothing needs you while the roast cooks and rests).
+2. Tap **START** on the first box (tossing the potatoes). It is hands on, so it says START. **You should see:** **STARTED hh:mm** and a countdown beside it, **2:00 LEFT**, going down each second.
+3. At 2:00. **You should see:** one chime, and a buzz if the tablet can; the box reads **TIME'S UP**; **DONE** pulses; the Now line begins **Time's up:**; a message at the foot names the step. Wait another half minute: it does not ring a second time. Tap **DONE**.
+4. The roast box now reads **START TIMER** (it looks after itself). Tap it. **You should see:** **7:00 LEFT**. This is the sleep test: press the tablet's power button to lock the screen at once, leave it for about 7 minutes, and wake it just after the 7 minutes are up.
+   **You should see:** **TIME'S UP**, and one chime when it wakes. If it was asleep when the time came, the chime may be late: that is the known limit, and why **COOKING MODE** exists. To see the other half, do this step again in a fresh run
+   with **COOKING MODE** on and leave the screen alone: it stays on and chimes on time.
+5. Tap **DONE**, then **START TIMER** on the rest (1 minute). **You should see:** **1:00 LEFT**, then **TIME'S UP** and one chime. **DONE**. Then **START** on slicing (1 minute): the same. **DONE**.
+   **You should see:** the whole dish done in about 11 minutes, with 4 chimes in all (tossing, roasting, resting, slicing).
+
+**Part B: two dishes together, about 4 minutes.** On the **Planner**, add both recipes to today, tap **GROUP SOME TOGETHER**, pick both, tap **GROUP SELECTED**, and open the group.
+
+6. **You should see:** **EAT AT** with a time, the roast starting earlier than the greens (the roast about 11 minutes before EAT AT, the greens about 4), and in **YOUR HANDS** a red hatched **CLASH of 1 min** at the end, where slicing the chicken and whisking the gravy both want your hands.
+7. Tap **AVOID THE CLASH**. **You should see:** the clash gone, the roast told to start 2 minutes earlier, EAT AT unchanged, and the button reading **✓ CLASH AVOIDED**.
+8. Tap **START COOKING**. Work through the greens the same way: **START** on topping and tailing, **START TIMER** on the boiling, then **START** on the whisking. **You should see:** the boiling counts down from **1:00** and, at zero, reads **CHECK IT**
+   (not TIME'S UP, because the step said 1-2 minutes), with one chime; **DONE** stays pulsing until you press it. The step after it, **simmer the stock until glossy**, has no countdown: it has no length to count.
+
+Together the two dishes have **7 timers**: 3 read START TIMER (the roast, the rest, the boiling), one of them a range, and 4 read START. Part A rings 4 of them, and Part B 3 (topping and tailing, the boiling, and the whisking).
 
 Tell the next session which step did not do what it said. When you report the timers passed, the plan (`docs/PLAN-RUN-SHEET.md`) is closed and deleted in a docs-only PR.
 
