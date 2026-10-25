@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-24.3';
+const KITCHEN_CORE_VERSION = '2026-10-25.1';
 
 
 /* ======================= quantity split ======================= */
@@ -941,6 +941,15 @@ function planToServe(timelines, serveAt, opts){
   const unmarked = lined.lanes.map((lane, dish)=> lane && !steps.some(st=> st.dish === dish && st.handsKnown) ? dish : -1).filter(d=> d >= 0);
   return { serveAt, mode, base, totalSpan: lined.totalSpan, about: lined.about, startAt, readyAt, lanes, steps,
            moved: steps.filter(st=> st.moved > 0).length, cleared, unmarked };
+}
+/* How many minutes earlier the meal has to begin for AVOID THE CLASH (issue #209, 25 Oct 2026). Moving a step earlier can pull the
+   first start earlier too, and the cook who opens a recipe and means to start now would then find the start already gone. EAT AT left
+   at its default is therefore set later by this much, so the start stays at now. Plans are the same shape wherever EAT AT is put (every
+   time moves together), so it is worked out at 0 and does not depend on the clock. Never negative: nothing moves later. */
+function clashStartShift(timelines, mode){
+  const plain = planToServe(timelines, 0, { mode });
+  const clear = planToServe(timelines, 0, { mode, avoidClash: true });
+  return Math.max(0, plain.startAt - clear.startAt);
 }
 /* A step that needs the cook: hands on, with some length (an [instant] step is a moment, not a stretch of time), and in a dish whose
    hands can be told (planToServe's handsKnown: a step with no such flag, as in a hand-made list, is taken as known). */
@@ -2791,7 +2800,7 @@ if(typeof module !== 'undefined' && module.exports){
     KITCHEN_CORE_VERSION, INGREDIENT_AISLES, INGREDIENT_DICTIONARY,
     splitQty, parseTags, extractStepDuration, parseRecipe,
     withUpdatedHeaderLine, withUpdatedHeaderLines, changedHeaderKeys, splitTimeText, tagsToLine, withUpdatedTitleLine, withUpdatedImageLine,
-    scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, lineUpTimelines, formatClock, defaultServeAt, planToServe, needsHands, handsWindows, projectRun, runStatus, stepTimer, formatCountdown, preheatOf, ovenUse, servingCalls, matchSides, groupedWith, formatMinutesForDisplay, formatDuration,
+    scaleRecipeSyntax, buildRows, computeColumns, prepStepFor, withPrepSteps, computeTimeline, lineUpTimelines, formatClock, defaultServeAt, planToServe, clashStartShift, needsHands, handsWindows, projectRun, runStatus, stepTimer, formatCountdown, preheatOf, ovenUse, servingCalls, matchSides, groupedWith, formatMinutesForDisplay, formatDuration,
     parseFraction, normalizeUnit, toBaseUnit, formatShoppingQty, parseIngredientAmount,
     formatAmount, stripPrepWords, stripPrepWordsForCategorizing, categorizeIngredient,
     SHOPPING_CATEGORIES, PREP_WORDS, AGGREGATION_PREP_WORDS,

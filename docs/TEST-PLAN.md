@@ -224,8 +224,8 @@ MERGE boiled, thickened -> served: drain the beans and serve with the gravy [ins
 
 **Part B: two dishes together, about 4 minutes.** On the **Planner**, add both recipes to today, tap **GROUP SOME TOGETHER**, pick both, tap **GROUP SELECTED**, and open the group.
 
-50. **You should see:** **EAT AT** with a time, the roast starting earlier than the greens (the roast about 11 minutes before EAT AT, the greens about 4), and in **YOUR HANDS** a red hatched **CLASH 1 min** at the end, where slicing the chicken and whisking the gravy both want your hands.
-51. Tap **AVOID THE CLASH**. **You should see:** the clash gone, **START AT** 2 minutes earlier (the roast has to start 2 minutes earlier; the greens do not move), EAT AT unchanged, and the button reading **✓ CLASH AVOIDED · TAP TO UNDO**.
+50. **You should see:** **EAT AT** with a time, the button reading **✓ CLASH AVOIDED · TAP TO UNDO** (a meal opens with its clash avoided, unless Settings → APP says otherwise), the roast starting 13 minutes before EAT AT and the greens 4, and no red in **YOUR HANDS**. Because EAT AT was not changed it is set later so you can still start now; a sentence under the heading says so, unless the five-minute rounding hid the 2 minutes.
+51. Tap the button. **You should see:** it now reads **AVOID THE CLASH**, the roast starting 11 minutes before EAT AT, and in **YOUR HANDS** a red hatched **CLASH 1 min** at the end, where slicing the chicken and whisking the gravy both want your hands. Tap **AVOID THE CLASH**: the clash gone, **START AT** 2 minutes earlier (the roast has to start 2 minutes earlier; the greens do not move), and the button reading **✓ CLASH AVOIDED · TAP TO UNDO** again.
 52. Tap **START COOKING**. Work through the greens the same way: **START** on topping and tailing, **START TIMER** on the boiling, then **START** on the whisking. **You should see:** the boiling counts down from **1:00** and, at zero, reads **CHECK IT**
     (not TIME'S UP, because the step said 1-2 minutes), with one chime; **DONE** stays pulsing until you press it. The step after it, **simmer the stock until glossy**, has no countdown: it has no length to count.
 

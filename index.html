@@ -1861,7 +1861,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-25.2">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-25.3">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2305,6 +2305,17 @@ function loadArchivoFont(){
           </select>
         </div>
 
+        <div class="settings-block" data-settings-tab="app" id="avoidBlock">
+          <div class="side-label">AVOID THE CLASH</div>
+          <p class="subtle">Whether a recipe or group opens with its clashes already avoided: where two steps would want your hands at once, the later one
+            is moved earlier. EAT AT, if you have not changed it, is set later by the same amount, so you can still start now. The AVOID THE CLASH button
+            on the timeline still turns it off for one meal. This device only.</p>
+          <select class="sort" id="setAvoidClashes" aria-label="Avoid the clash">
+            <option value="on">ON WHEN A MEAL OPENS</option>
+            <option value="off">OFF WHEN A MEAL OPENS</option>
+          </select>
+        </div>
+
         <div class="settings-block" data-settings-tab="app">
           <div class="side-label">CALENDAR</div>
           <div id="calendarSettings"></div>
@@ -2574,7 +2585,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-24.3"></script>
+<script src="core.js?v=2026-10-25.1"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2582,12 +2593,12 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-24.3';
+const EXPECTED_CORE_VERSION = '2026-10-25.1';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-25.2';
+const APP_VERSION = '2026-10-25.3';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -2833,17 +2844,29 @@ function nowMinutes(){
 function ovenCount(){
   try { const n = parseInt(localStorage.getItem('kitchen.ovens'), 10); return n >= 1 && n <= 3 ? n : 1; } catch(e){ return 1; }
 }
+/* AVOID THE CLASH, as each recipe or group opens (issue #209, 25 Oct 2026): on unless this device was set off in Settings → APP. Per device,
+   like OVENS and PREPARATION, so it never reaches setSetting or the queue and needs no column. An unset or blocked device is on, which is
+   what the setting is for; only "off" is stored. The button on the strip still turns it off for one meal. */
+function avoidClashesDefault(){
+  try { return localStorage.getItem('kitchen.clashDefault') !== 'off'; } catch(e){ return true; }
+}
 /* The plan for what is open. `key` names it (a recipe, or a group) so EAT AT and AVOID THE CLASH are kept for it and for nothing else;
    `items` are its dishes, [{ title, timeline, setup }], a timeline null where a recipe has no timing. EAT AT is the cook's, or by default
    now plus the longest dish up to the next five minutes (decided 23 Oct: start now, eat when it is ready). */
 function buildRun(key, mode, items, day){
-  if(state.eatAt.key !== key) state.eatAt = { key, mins: null, avoid: false };
+  if(state.eatAt.key !== key) state.eatAt = { key, mins: null, avoid: avoidClashesDefault() };
   if(state.cook.key !== key) state.cook = { key, startedAt: null, marks: {}, starts: {} };
   const timelines = items.map(it=> it.timeline);
   const longest = Math.max(0, ...timelines.filter(Boolean).map(t=> t.totalSpan));
   const now = nowMinutes();
-  const serveAt = state.eatAt.mins !== null ? state.eatAt.mins : defaultServeAt(now, longest);
+  /* A default EAT AT with the clash avoided is set later by what avoiding pulls the first start earlier by, so the cook can still start
+     now (#209, decided 25 Oct). One the cook chose is theirs, and is not moved. `eatShift` is how much later than without avoiding. */
+  const lead = state.eatAt.mins === null && state.eatAt.avoid ? clashStartShift(timelines, mode) : 0;
+  const serveAt = state.eatAt.mins !== null ? state.eatAt.mins : defaultServeAt(now, longest + lead);
+  const eatShift = state.eatAt.mins === null ? serveAt - defaultServeAt(now, longest) : 0;
   const planned = planToServe(timelines, serveAt, { mode, avoidClash: state.eatAt.avoid });
+  /* The plan as it is without avoiding, for whether there is a clash to avoid at all: with it on, `planned` has none left to show. */
+  const plain = state.eatAt.avoid ? planToServe(timelines, serveAt, { mode }) : planned;
   /* Once the cook has pressed START COOKING the plan is re-drawn from what has happened (projectRun, core.js): every row and bar below
      reads `plan`, so they follow with no other change. `planned` is what it was before, for the faint marks. */
   const cooking = state.cook.startedAt !== null;
@@ -2854,13 +2877,14 @@ function buildRun(key, mode, items, day){
   const plan = cooking ? projectRun(planned, marks, now, began) : planned;
   const hands = handsWindows(plan.steps);
   /* While cooking the re-plan has already put one hands-on step after the other, so `hands` shows no clash; AVOID THE CLASH is still on offer for
-     the one the plan had, as it moves the step earlier instead of making the meal late. */
-  const plannedClash = cooking ? handsWindows(planned.steps).clashMinutes : hands.clashMinutes;
+     the one the plan had, as it moves the step earlier instead of making the meal late. It is on offer only where the plan without it has a
+     clash: with avoiding on by default, a button on every meal would say a clash was avoided where there was none. */
+  const plannedClash = handsWindows(plain.steps).clashMinutes;
   const oven = ovenUse(items.map((it, i)=> ({ index: i, title: it.title, setup: it.setup, steps: plan.lanes[i] ? plan.lanes[i].steps : [] })), ovenCount());
   /* `today`: whether "that time has passed" means anything: a group planned for another day (`day`) has no "now" to be late for. The recipes
      whose hands cannot be told yet (no step marked hands off) are named, for the note under the strip. */
   return { key, mode, plan, planned, cooking, plannedClash, status: cooking ? runStatus(plan, now) : null, args: [key, mode, items, day],
-    hands, oven, now, serveAt, isDefault: state.eatAt.mins === null, avoid: state.eatAt.avoid,
+    hands, oven, now, serveAt, longest, lead, eatShift, isDefault: state.eatAt.mins === null, avoid: state.eatAt.avoid,
     axisStart: plan.startAt, span: Math.max(serveAt, cooking ? plan.readyAt : serveAt) - plan.startAt, items, today: !day || day === todayStr(), single: items.length === 1,
     unmarked: plan.unmarked.map(i=> items[i].title), timed: items.filter(it=> it.timeline).length };
 }
@@ -2883,8 +2907,8 @@ function settingLabel(key){ return `${parseInt(key, 10)}°C${/f$/.test(key) ? ' 
 function runControlsHTML(run){
   const late = run.today && !run.cooking ? run.now - run.plan.startAt : 0;
   const button = ([n, words])=> `<button type="button" class="btn" data-eat-step="${n}" aria-label="${n < 0 ? 'Earlier' : 'Later'} by ${Math.abs(n)} minutes">${words}</button>`;
-  const clash = run.plannedClash > 1e-9 || run.avoid;
-  return `<div class="timeline-eat" data-serve="${run.serveAt}" data-span="${run.plan.totalSpan}">
+  const clash = run.plannedClash > 1e-9;
+  return `<div class="timeline-eat" data-serve="${run.serveAt}" data-span="${run.longest + run.lead}">
     <span class="eat-label">EAT AT</span>
     ${EAT_STEPS.filter(e=> e[0] < 0).map(button).join('')}<b class="eat-time">${formatClock(run.serveAt)}</b>${EAT_STEPS.filter(e=> e[0] > 0).map(button).join('')}
     ${run.isDefault ? '' : '<button type="button" class="btn" data-eat-now>NOW</button>'}
@@ -2933,9 +2957,10 @@ function playheadHTML(run){
 function modeNoteHTML(run){
   if(run.single || run.timed < 2) return '';
   const moved = run.avoid && run.plan.moved > 0 ? ` AVOID THE CLASH has moved ${run.plan.moved} step${run.plan.moved === 1 ? '' : 's'} earlier, so your hands are never wanted twice at once.` : '';
+  const later = run.avoid && run.eatShift > 0 ? ` EAT AT is ${run.eatShift} minutes later than it would be, so that you can still start now.` : '';
   const text = run.mode === 'start' ? `Every dish starts at ${formatClock(run.plan.startAt)}; the shorter ones are ready earlier.`
     : `Every dish is timed to be ready at ${formatClock(run.serveAt)}; the shorter ones start later.`;
-  return `<p class="timeline-mode-note">${escapeHtml(text + moved)}</p>`;
+  return `<p class="timeline-mode-note">${escapeHtml(text + moved + later)}</p>`;
 }
 /* Your hands, then the ovens, above the lanes and on the same axis. */
 function runRowsHTML(run){
@@ -2985,7 +3010,7 @@ function wireEatAt(root, rerender, cookId){
     rerender();
   }));
   const now = bar.querySelector('[data-eat-now]');
-  if(now) now.addEventListener('click', ()=>{ state.eatAt.mins = null; state.eatAt.avoid = false; rerender(); });
+  if(now) now.addEventListener('click', ()=>{ state.eatAt.mins = null; state.eatAt.avoid = avoidClashesDefault(); rerender(); });
   const avoid = bar.querySelector('[data-avoid-clash]');
   if(avoid) avoid.addEventListener('click', ()=>{ state.eatAt.avoid = !state.eatAt.avoid; rerender(); });
   /* START COOKING: the run starts at the real time and EAT AT stops following the clock (a default one is fixed at now plus the longest dish,
@@ -3444,14 +3469,17 @@ function buildGroupTimelineHTML(groupTimeline){
 /* Parser, header lines, scaling, layout, timeline: moved to core.js on 25 Sep 2026 (PR 6a). */
 
 /* ============================= FLOW RENDER ============================= */
-function buildFlowHTML(parsed, starts, live){
+function buildFlowHTML(parsed, starts, live, flowOpts){
   const {title, setup, groups, stages, notes} = parsed;
+  /* The Group Viewer names each dish in its own header (colour, SERVES, the buttons), so it asks for the flow without the title it would
+     draw a second time (#192, 25 Oct 2026). */
+  const noTitle = !!(flowOpts && flowOpts.noTitle);
   /* Modernist (docs/PLAN-MODERNIST.md) draws the table by kind rather than by the group colours, so in that style the cells
      carry what they are (merge, final, where a group starts) instead of inline colours, and the title has the servings and
      the ticks beside it. Classic's markup is exactly as it was. renderViewer and renderGroupViewer are redrawn on a switch. */
   const mod = currentStyle() === 'modernist';
   let html = '';
-  if(title) html += mod
+  if(title && !noTitle) html += mod
     ? `<div class="recipe-title-row"><h2 class="recipe-title">${escapeHtml(title)}</h2><div class="recipe-progress"><span class="recipe-serves"></span><span class="recipe-ticked"></span></div></div>`
     : `<h2 class="recipe-title">${escapeHtml(title)}</h2>`;
   if(setup && setup.length) html += `<ol class="setup">` + setup.map(s=>`<li>${escapeHtml(s)}</li>`).join('') + `</ol>`;
@@ -3577,7 +3605,9 @@ function clearViewerTicks(key){ delete state.viewerTicks[key]; delete state.cook
    stand, so whatever ticks or unticks in place brings it up to date: a tap, and RESET TICKS, which until 18 Oct cleared
    the cells and left the old count showing. */
 function showTickedCount(container){
-  const el = container && container.querySelector('.recipe-ticked');
+  /* A dish in the Group Viewer has no title row of its own; its count sits in the header above its flow (#192). */
+  const home = container && container.closest && container.closest('.stacked-recipe');
+  const el = container && (container.querySelector('.recipe-ticked') || (home && home.querySelector('.stacked-ticked')));
   if(!el) return;
   const cells = container.querySelectorAll('.ing-cell, .box-cell');
   el.textContent = `${container.querySelectorAll('.ing-cell.done, .box-cell.done').length} / ${cells.length} TICKED`;
@@ -3616,7 +3646,7 @@ function mountFlow(container, parsed, opts){
   const drawn = opts.prepSteps && prepStepsOn() ? withPrepSteps(parsed) : parsed;
   const withPrep = drawn !== parsed;
   /* The run sheet's plan for this flow (opts.run, the single viewer's) or this dish's start times (opts.starts, a dish in the Group Viewer). */
-  const {html: flowHtml, colCount} = buildFlowHTML(drawn, opts.run ? runStarts(opts.run, 0) : opts.starts, opts.run ? runBoxSteps(opts.run, 0) : opts.live);
+  const {html: flowHtml, colCount} = buildFlowHTML(drawn, opts.run ? runStarts(opts.run, 0) : opts.starts, opts.run ? runBoxSteps(opts.run, 0) : opts.live, { noTitle: opts.noTitle });
   const html = withPrep ? flowHtml.replace('<p class="hint">', '<p class="hint">PREPARATION SHOWN AS STEPS (SETTINGS → APP) — ') : flowHtml;
 
   /* Timeline strip — only requested by the real Viewer (not the Add/Edit
@@ -6907,6 +6937,7 @@ function renderGroupViewer(){
         <h3>${escapeHtml(recipe.title)}</h3>
         ${serves ? `<span class="stacked-recipe-serves">SERVES ${serves}</span>` : ''}
         ${startAt(recipe)}
+        <span class="recipe-ticked stacked-ticked mod-only"></span>
         <span class="stacked-recipe-actions">
           <button class="btn" data-group-action="favourite">${recipe.favourite ? '★ FAVOURITE' : '☆ FAVOURITE'}</button>
           <button class="btn" data-group-action="edit">EDIT</button>
@@ -6923,6 +6954,7 @@ function renderGroupViewer(){
     const sub = document.getElementById(`groupFlow-${recipe.id}`);
     if(!sub) return;
     mountFlow(sub, parsed, {
+      noTitle: true,   // the header above already names the dish (#192)
       /* The same tick key as the single Viewer: it's the same recipe and
          the same flow, so ticking here and opening it on its own keeps
          your place either way. */
@@ -10362,6 +10394,7 @@ function renderSettings(){
   ).join('');
   document.getElementById('setPrepSteps').value = prepStepsOn() ? 'steps' : 'before';
   document.getElementById('setOvens').value = String(ovenCount());
+  document.getElementById('setAvoidClashes').value = avoidClashesDefault() ? 'on' : 'off';
   renderIngredientLookup();
   renderAliasesList();
   renderAisleOverridesList();
@@ -10989,6 +11022,13 @@ document.getElementById('setOvens').addEventListener('change', e=>{
   try { if(e.target.value === '1') localStorage.removeItem('kitchen.ovens'); else localStorage.setItem('kitchen.ovens', e.target.value); } catch(err){}
   e.target.value = String(ovenCount());
   showToast(`This kitchen has ${ovenCount()} oven${ovenCount() === 1 ? '' : 's'}, on this device`);
+});
+/* AVOID THE CLASH by default (#209): this device only, like OVENS. Only "off" is stored, so an unset or blocked device is on. It applies from the
+   next meal opened; one already open keeps what the button says. */
+document.getElementById('setAvoidClashes').addEventListener('change', e=>{
+  try { if(e.target.value === 'off') localStorage.setItem('kitchen.clashDefault', 'off'); else localStorage.removeItem('kitchen.clashDefault'); } catch(err){}
+  e.target.value = avoidClashesDefault() ? 'on' : 'off';
+  showToast(avoidClashesDefault() ? 'Meals open with their clashes avoided, on this device' : 'Meals open with their clashes left in, on this device');
 });
 /* STYLE: this device only, so like PREPARATION it never reaches setSetting or the queue. */
 document.getElementById('setStyle').addEventListener('change', e=>{

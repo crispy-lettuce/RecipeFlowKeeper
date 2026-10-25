@@ -4417,9 +4417,9 @@ const check = (name, pass, detail) => {
   check('layout E: Settings has three tabs; Ingredients holds the lookup, word matches, aisles, swaps and dictionary, and SWAPS has left the sidebar',
         stIng.join('|') === 'INGREDIENT LOOKUP|WORD MATCHES|SHOPPING AISLES|SWAPS|DICTIONARY' && !stNav.includes('swaps') && stNav.includes('settings'),
         JSON.stringify([stIng, stNav]));
-  /* CALENDAR joined App on 9 Oct 2026 (P3 PR 2), RECIPE SHARING and BACKUP TO GOOGLE DRIVE on 10 Oct; before their migrations each only says it is waiting. */
-  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, style, preparation, ovens, calendar, sharing and Drive backup; the last tab is remembered',
-        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|STYLE|PREPARATION|OVENS|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
+  /* CALENDAR joined App on 9 Oct 2026 (P3 PR 2), RECIPE SHARING and BACKUP TO GOOGLE DRIVE on 10 Oct; before their migrations each only says it is waiting. AVOID THE CLASH joined on 25 Oct (#209). */
+  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, style, preparation, ovens, avoid the clash, calendar, sharing and Drive backup; the last tab is remembered',
+        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|STYLE|PREPARATION|OVENS|AVOID THE CLASH|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
         JSON.stringify([stLib, stApp, stKept]));
   /* Since #95 (13 Oct) the dictionary's fold is its heading, DICTIONARY (n), like every list on the tab. */
   const stDict = () => page.evaluate(() => ({ list: document.getElementById('dictionaryList').offsetParent !== null,
@@ -9765,7 +9765,8 @@ const check = (name, pass, detail) => {
   const rsRun = async (look, w) => {
     const p = await browser.newPage({ viewport: { width: w, height: 1000 } });
     p.__label = `run sheet ${look} ${w}`;
-    await p.addInitScript(l => { try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
+    /* AVOID THE CLASH opens on since #209; these checks are about the button that is off until pressed, so this device is set off (the default has its own checks below). */
+    await p.addInitScript(l => { try { localStorage.setItem('kitchen.clashDefault', 'off'); if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
     await p.clock.setFixedTime(FIXTURE_NOW);
     await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
     await p.waitForTimeout(1200);
@@ -9921,6 +9922,143 @@ const check = (name, pass, detail) => {
   rsAll('none of it wrote anything', r => r.writes1 === r.writes0, r => [r.writes0, r.writes1]);
   /* RS-END */
 
+  /* ---- AVOID THE CLASH when a meal opens (issue #209, 25 Oct 2026) ----
+     The roast and the greens of docs/TEST-PLAN.md section H (made-up; 11 and 4 minutes), opened at 09:04 so that the five-minute rounding of a
+     default EAT AT cannot hide the shift: left alone the roast would start at 09:04, avoided it starts 2 minutes earlier. The default is on;
+     Settings → APP turns it off for this device (only "off" is stored). */
+  console.log('\nAvoid the clash by default');
+  const avRun = async () => {
+    const p = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+    p.__label = 'avoid the clash by default';
+    await p.clock.setFixedTime(new Date(+FIXTURE_NOW + 4 * 60000));
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1200);
+    const out = await p.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const dish = (id, title, course, groups, steps) => loadRecipes().push({ id, title, source: 'Test', servings: 2, tags: { course, keywords: [] }, history: [],
+        syntax: `TITLE: ${title}\nSERVINGS: 2\n\n${groups}\n\n${steps}` });
+      dish('av-roast', 'Test Av Roast', 'Main', 'GROUP tray:\n450 g swede\nGROUP glaze:\n1 tbsp rapeseed oil',
+        'STAGE:\nMERGE tray, glaze -> traybake: toss on a tray [2 min]\n\nSTAGE:\nMERGE traybake -> roasted: roast until golden [7 min, hands off]\n\nSTAGE:\nMERGE roasted -> rested: leave to rest [1 min, hands off]\n\nSTAGE:\nMERGE rested -> sliced: slice [1 min]\n\nSTAGE:\nMERGE sliced -> served: plate up [instant]');
+      dish('av-greens', 'Test Av Greens', 'Side', 'GROUP beans:\n180 g green beans\nGROUP gravy:\n150 ml stock\n1 tsp cornflour',
+        'STAGE:\nMERGE beans -> trimmed: top and tail the beans [1 min]\n\nSTAGE:\nMERGE trimmed -> boiled: boil until just tender [1-2 min, hands off]\n\nSTAGE:\nMERGE gravy -> reduced: simmer until glossy [until done, hands off]\n\nSTAGE:\nMERGE reduced -> thickened: whisk and simmer [2 min]\n\nSTAGE:\nMERGE boiled, thickened -> served: drain and serve [instant]');
+      dish('av-plain', 'Test Av Plain', 'Side', 'GROUP a:\n1 swede', 'STAGE:\nMERGE a -> done: chop [3 min]');
+      const day = isoLocal(new Date());
+      ['av-roast', 'av-greens'].forEach(id => addPlanRecipe(day, id)); createGroup(day, ['av-roast', 'av-greens']);
+      const tomorrow = isoLocal(new Date(Date.now() + 86400000));   // a recipe is in one group a day
+      ['av-roast', 'av-plain'].forEach(id => addPlanRecipe(tomorrow, id)); createGroup(tomorrow, ['av-roast', 'av-plain']);
+      const gid = (a, b) => loadGroups().find(g => g.recipeIds.includes(a) && g.recipeIds.includes(b)).id;
+      const txt = (root, sel) => { const e = root.querySelector(sel); return e ? e.textContent.trim().replace(/\s+/g, ' ') : null; };
+      const snap = mountId => {
+        const root = document.getElementById(mountId), st = root.querySelector('.timeline-strip'), ab = root.querySelector('[data-avoid-clash]');
+        return { eat: txt(root, '.eat-time'), start: txt(root, '.eat-start'), now: !!root.querySelector('[data-eat-now]'), late: txt(root, '.eat-late'), note: txt(root, '.timeline-mode-note'),
+          avoid: ab ? ab.getAttribute('aria-pressed') : null, avoidText: ab ? ab.textContent.trim() : null, clash: st.querySelectorAll('.hands-clash').length, status: txt(root, '.timeline-run-status') };
+      };
+      const click = (mountId, sel) => document.getElementById(mountId).querySelector(sel).click();
+      const res = { stored0: localStorage.getItem('kitchen.clashDefault') };
+      openGroup(gid('av-roast', 'av-greens'), 'planner'); await wait(350);
+      res.opened = snap('groupFlowMount');
+      click('groupFlowMount', '[data-avoid-clash]'); res.undone = snap('groupFlowMount');
+      click('groupFlowMount', '[data-avoid-clash]'); res.again = snap('groupFlowMount');
+      click('groupFlowMount', '[data-eat-step="5"]'); res.chosen = snap('groupFlowMount');
+      click('groupFlowMount', '[data-avoid-clash]'); res.chosenOff = snap('groupFlowMount');
+      click('groupFlowMount', '[data-eat-now]'); res.nowBack = snap('groupFlowMount');
+      click('groupFlowMount', '[data-cook-toggle]'); res.cooking = snap('groupFlowMount');
+      click('groupFlowMount', '[data-cook-toggle]');
+      openGroup(gid('av-roast', 'av-plain'), 'planner'); await wait(350);
+      res.noClash = snap('groupFlowMount');
+      openRecipe('av-roast', 'recipes'); await wait(350);
+      res.single = snap('flowMount');
+      /* Off on this device: a meal opens with the clash left in, and the same button turns it on. */
+      const sel = document.getElementById('setAvoidClashes');
+      res.selectOn = sel.value;
+      sel.value = 'off'; sel.dispatchEvent(new Event('change'));
+      res.stored1 = localStorage.getItem('kitchen.clashDefault');
+      openGroup(gid('av-roast', 'av-greens'), 'planner'); await wait(350);
+      res.off = snap('groupFlowMount');
+      click('groupFlowMount', '[data-avoid-clash]'); res.offPressed = snap('groupFlowMount');
+      click('groupFlowMount', '[data-avoid-clash]'); click('groupFlowMount', '[data-eat-step="5"]'); click('groupFlowMount', '[data-eat-now]'); res.offNow = snap('groupFlowMount');
+      sel.value = 'on'; sel.dispatchEvent(new Event('change'));
+      res.stored2 = localStorage.getItem('kitchen.clashDefault');
+      return res;
+    });
+    await p.close();
+    return out;
+  };
+  const av = await avRun();
+  const avShow = r => JSON.stringify([r.opened, r.undone]);
+  check('A meal with a clash opens with it avoided: the button is the filled "✓ CLASH AVOIDED · TAP TO UNDO", no red clash in YOUR HANDS, and the heading says what moved',
+        av.stored0 === null && av.opened.avoid === 'true' && av.opened.avoidText === '✓ CLASH AVOIDED · TAP TO UNDO' && av.opened.clash === 0 && /AVOID THE CLASH has moved \d+ steps? earlier/.test(av.opened.note), avShow(av));
+  check('    EAT AT, left at its default, is set later by what avoiding pulls the start earlier by (09:20, not 09:15), so the meal starts at 09:07 and "THAT TIME HAS PASSED" is not shown, and the heading says so',
+        av.opened.eat === '09:20' && /START AT 09:07$/.test(av.opened.start) && av.opened.late === null && / EAT AT is 5 minutes later than it would be, so that you can still start now\.$/.test(av.opened.note) && av.opened.now === false, avShow(av));
+  check('    the button undoes it for this meal: the clash is back, EAT AT is the 09:15 it would have been, the start 09:04 and the sentence gone; and pressing it again puts it back',
+        av.undone.avoid === 'false' && av.undone.avoidText === 'AVOID THE CLASH' && av.undone.clash === 1 && av.undone.eat === '09:15' && /START AT 09:04$/.test(av.undone.start) && !/later than it would be/.test(av.undone.note)
+        && av.again.avoid === 'true' && av.again.eat === '09:20' && av.again.clash === 0, JSON.stringify([av.undone, av.again]));
+  check('    an EAT AT the cook has chosen is theirs and is not moved (09:25 after +5), with the clash still avoided and no sentence; NOW goes back to how a meal opens, avoided, at 09:20, even after the button turned it off',
+        av.chosen.eat === '09:25' && av.chosen.avoid === 'true' && av.chosen.now === true && !/later than it would be/.test(av.chosen.note) && av.chosenOff.avoid === 'false' && av.chosenOff.clash === 1
+        && av.nowBack.avoid === 'true' && av.nowBack.eat === '09:20' && av.nowBack.now === false, JSON.stringify([av.chosen, av.chosenOff, av.nowBack]));
+  check('    START COOKING keeps the EAT AT that was showing (09:20), and the plan is on time for it',
+        av.cooking.eat === '09:20' && /^On time for 09:20/.test(av.cooking.status || ''), JSON.stringify(av.cooking));
+  check('A meal with no clash has no AVOID THE CLASH button and says nothing about EAT AT moving, in a group and on one recipe',
+        av.noClash.avoid === null && av.noClash.eat === '09:15' && !/later than it would be/.test(av.noClash.note || '') && av.single.avoid === null && av.single.eat === '09:15', JSON.stringify([av.noClash, av.single]));
+  check('Settings → APP has AVOID THE CLASH (on when unset); OFF WHEN A MEAL OPENS stores "off" on this device and meals then open with the clash left in (09:15, start 09:04, button not pressed); the button and NOW turn it on and off; ON clears the store',
+        av.selectOn === 'on' && av.stored1 === 'off' && av.off.avoid === 'false' && av.off.avoidText === 'AVOID THE CLASH' && av.off.clash === 1 && av.off.eat === '09:15' && /START AT 09:04$/.test(av.off.start)
+        && av.offPressed.avoid === 'true' && av.offNow.avoid === 'false' && av.offNow.now === false && av.stored2 === null, JSON.stringify([av.stored1, av.off, av.offPressed, av.offNow, av.stored2]));
+
+  /* ---- A dish's name once in the Group Viewer (issue #192, 25 Oct 2026) ----
+     Its header names it (colour, name, SERVES, buttons), and it used to be named again above its diagram. Both looks; the single viewer keeps its one title;
+     Modernist's "n / N TICKED" sits in the header, follows a tick and RESET TICKS, and Classic does not show it. */
+  const tiRun = async look => {
+    const p = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+    p.__label = 'dish titles, ' + look;
+    await p.addInitScript(l => { try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
+    await p.clock.setFixedTime(FIXTURE_NOW);
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1200);
+    const out = await p.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const dish = (id, title, course) => loadRecipes().push({ id, title, source: 'Test', servings: 2, tags: { course, keywords: [] }, history: [],
+        syntax: `TITLE: ${title}\nSERVINGS: 2\n\nGROUP a:\n1 swede\nGROUP b:\n1 onion\n\nSTAGE:\nMERGE a, b -> o0: cook [5 min]\n\nSTAGE:\nMERGE o0 -> o1: plate [2 min]` });
+      dish('ti-a', 'Test Ti Alpha Dish', 'Main'); dish('ti-b', 'Test Ti Beta Dish', 'Side');
+      const day = isoLocal(new Date());
+      ['ti-a', 'ti-b'].forEach(id => addPlanRecipe(day, id)); createGroup(day, ['ti-a', 'ti-b']);
+      const g = loadGroups().find(x => x.recipeIds.includes('ti-a') && x.recipeIds.includes('ti-b'));
+      openGroup(g.id, 'planner'); await wait(400);
+      const cards = () => [...document.querySelectorAll('#groupFlowMount .stacked-recipe')];
+      const times = (text, name) => text.split(name).length - 1;
+      const look = () => cards().map(c => {
+        const t = c.querySelector('.stacked-ticked');
+        return { head: c.querySelector('.stacked-recipe-head h3').textContent.trim(), once: times(c.textContent, c.querySelector('.stacked-recipe-head h3').textContent.trim()), flowTitles: c.querySelectorAll('.stacked-recipe-flow .recipe-title, .stacked-recipe-flow .recipe-title-row').length,
+          ticked: t ? t.textContent.trim() : null, tickedShown: t ? getComputedStyle(t).display !== 'none' && t.getClientRects().length > 0 : false, cells: c.querySelectorAll('.stacked-recipe-flow .ing-cell, .stacked-recipe-flow .box-cell').length };
+      });
+      const res = { before: look() };
+      cards()[0].querySelector('.stacked-recipe-flow .box-cell').click(); await wait(100);
+      res.ticked = look();
+      document.getElementById('groupResetTicksBtn').click(); await wait(100);
+      res.reset = look();
+      openRecipe('ti-a', 'recipes'); await wait(400);
+      res.single = { titles: document.querySelectorAll('#flowMount .recipe-title').length, text: (document.querySelector('#flowMount .recipe-title') || {}).textContent || null,
+        ticked: (document.querySelector('#flowMount .recipe-ticked') || {}).textContent || null };
+      return res;
+    });
+    await p.close();
+    return out;
+  };
+  for (const look of ['classic', 'modernist']) {
+    const ti = await tiRun(look), cap = look === 'classic' ? 'Classic' : 'Modernist';
+    check(`${cap}: in the Group Viewer each dish's name is shown once, in its header, and not again above its diagram`,
+          ti.before.length === 2 && ti.before.every(d => d.once === 1 && d.flowTitles === 0 && d.cells > 0) && ti.before[0].head === 'Test Ti Alpha Dish' && ti.before[1].head === 'Test Ti Beta Dish', JSON.stringify(ti.before));
+    check(`    and a recipe opened on its own still has its one title${look === 'modernist' ? ' with its "n / N TICKED" beside it' : ''}`,
+          ti.single.titles === 1 && ti.single.text === 'Test Ti Alpha Dish' && (look === 'classic' ? true : /^0 \/ \d+ TICKED$/.test(ti.single.ticked || '')), JSON.stringify(ti.single));
+    if (look === 'modernist') {
+      const n = ti.before[0].cells;
+      check('    the dish\'s "0 / N TICKED" is in its header, counts a tick in that dish only, and RESET TICKS brings it back to 0',
+            ti.before.every(d => d.tickedShown) && ti.before[0].ticked === `0 / ${n} TICKED` && /^[1-9]\d* \/ \d+ TICKED$/.test(ti.ticked[0].ticked) && ti.ticked[1].ticked === ti.before[1].ticked
+            && ti.reset[0].ticked === `0 / ${n} TICKED`, JSON.stringify([ti.before.map(d => d.ticked), ti.ticked.map(d => d.ticked), ti.reset.map(d => d.ticked)]));
+    } else {
+      check('    the tick count is Modernist\'s: Classic draws none in a dish\'s header', ti.before.every(d => !d.tickedShown), JSON.stringify(ti.before.map(d => d.tickedShown)));
+    }
+  }
+
   /* OT-BEGIN */
   /* ---- Timers (run sheet PR 4, 24 Oct 2026, docs/PLAN-RUN-SHEET.md §7) ----
      A started step with a length counts down on its box; at zero (the SHORT end of a range) it chimes once, vibrates once, reads TIME'S UP or CHECK IT and DONE
@@ -10067,7 +10205,8 @@ const check = (name, pass, detail) => {
   const rcRun = async (look, w) => {
     const p = await browser.newPage({ viewport: { width: w, height: 1000 } });
     p.__label = `cooking ${look} ${w}`;
-    await p.addInitScript(l => { try { if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
+    /* The clash is left in at the start, as these checks follow it from there (AVOID THE CLASH opens on since #209). */
+    await p.addInitScript(l => { try { localStorage.setItem('kitchen.clashDefault', 'off'); if (l === 'modernist') localStorage.setItem('kitchen.style', 'modernist'); } catch (e) {} }, look);
     const at = m => new Date(+FIXTURE_NOW + m * 60000);
     await p.clock.setFixedTime(at(0));
     await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
