@@ -2,7 +2,7 @@
 
 Read `docs/STATUS.md` first: where things stand and what is open. `docs/SPEC.md` says what the app does,
 `docs/ARCHITECTURE.md` how it is built and its recipe format, `docs/INFRASTRUCTURE.md` where everything lives. The README
-lists the rest. Anything removed from `docs/` on 22 Oct 2026 is at commit `67b552e` (`git show 67b552e:docs/<file>`).
+lists the rest. Anything removed from `docs/` on 22 Oct 2026 is at commit `67b552e` (`git show 67b552e:docs/<file>`). The run-sheet plan, closed on 25 Oct 2026, is at `9851f20` (`git show 9851f20:docs/PLAN-RUN-SHEET.md`); code comments that cite its sections mean that file.
 
 ## Every session, before you push
 

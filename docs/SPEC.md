@@ -113,7 +113,7 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
   (drawn from the boxes as they stand, so it survives a redraw and RESET TICKS clears it), tapping a box flashes its bar, tapping a bar jumps
   to its box. Drawing only: nothing is stored. When the table is wider than the screen, an arrow at its top right says so (both styles; not
   in print or PNG).
-- **The run sheet** (planning half 23 Oct 2026, running half 24 Oct; the timers are not built): the strip is on the clock. **EAT AT**
+- **The run sheet** (planning half 23 Oct 2026, running half and timers 24 Oct): the strip is on the clock. **EAT AT**
   (with −15, −5, +5, +15 and NOW) is by default now plus the longest dish up to the next five minutes, and is held for the recipe or group open in this tab only,
   never stored; the ruler reads times of day, every box says `AT 17:20` when its step starts, and START AT gives when the meal begins. **YOUR HANDS**
   is a row above the lanes: solid where a hands-on step runs, red hatched where two do at once (a clash), an outline `free 16 min` where nothing

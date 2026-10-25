@@ -752,5 +752,5 @@ reads each bracket as the table says, so the test cannot ask for a bracket the a
 - **A stand-in run of version 2026-10-25.1, 25 Oct 2026**, the same way, against the library after the household's one correction (the onion step, hands off). The file
   marks 91 of the 297 steps hands off; **292 match**, and the 5 that do not are the 5-6 minute waits above, on purpose. The pasta clause now matches all ten
   pasta and noodle steps in the library. The clauses were drawn from the same library, so this shows the wording says what the household decided; it is not an
-  independent test; the household's re-conversion of three recipes (docs/HOUSEHOLD-JOBS.md, the converter bar, step 4) is.
-- Not yet run in the conversion project.
+  independent test; the household's re-conversion of three recipes is, and the household reported it passed on 25 Oct 2026 (the recipes and the marks were not shown to a session).
+- Run in the conversion project by the household on 25 Oct 2026, as reported above.
