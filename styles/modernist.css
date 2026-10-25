@@ -1391,6 +1391,8 @@ html[data-style="modernist"] .stacked-recipe-head{ gap:10px; }
 html[data-style="modernist"] .stacked-recipe-head h3{ font-size:22px; font-weight:800; letter-spacing:-0.01em; }
 html[data-style="modernist"] .stacked-recipe .recipe-swatch{ width:12px; height:12px; }
 html[data-style="modernist"] :is(.stacked-recipe-serves, .stacked-recipe-start){ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+/* "3 / 19 TICKED" beside a dish's name (#192): the single viewer sets it by the title, and a dish here has its header instead. */
+html[data-style="modernist"] .stacked-ticked{ display:inline; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
 html[data-style="modernist"] .timeline-lane-abs[data-recipe-id] span{ color:var(--km-on-group); font-weight:700; }
 html[data-style="modernist"] .group-lineup .btn[aria-pressed="true"]{ border-color:var(--color-accent); color:var(--color-accent-700); }
 

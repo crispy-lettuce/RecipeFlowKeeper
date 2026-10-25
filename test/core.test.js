@@ -1860,6 +1860,15 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
         serve - both.lanes[0].startAt === 11 && serve - both.lanes[1].startAt === 4 && clash.clashMinutes === 1
         && clean.clashMinutes === 0 && serve - clear.lanes[0].startAt === 13 && serve - clear.lanes[1].startAt === 4 && clear.serveAt === serve,
         JSON.stringify([both.lanes.map(l => clk(l.startAt)), clash.clashMinutes, clear.lanes.map(l => clk(l.startAt)), clean.clashMinutes]));
+  /* AVOID THE CLASH on by default (#209, 25 Oct 2026): a default EAT AT is set later by what avoiding pulls the first start earlier by, so the
+     cook can still start now. The same 2 minutes as above, wherever EAT AT is put; none where there is no clash or the dish is alone. */
+  const shift = core.clashStartShift([roast.tl, greens.tl], 'finish');
+  const lateStart = (now, longest, extra) => core.defaultServeAt(now, longest + extra) - (longest + extra);
+  check('    clashStartShift is the 2 minutes the roast starts earlier (the same at any EAT AT), and 0 for the roast alone; a default EAT AT set that much later still starts at or after now, to the next five minutes, where one left alone would start before it',
+        shift === 2 && shift === serve - clear.lanes[0].startAt - (serve - both.lanes[0].startAt) && core.clashStartShift([roast.tl], 'finish') === 0 && core.clashStartShift([greens.tl], 'start') === 0
+        && [T(9, 0), T(9, 4), T(9, 5), T(9, 6)].every(now => lateStart(now, 11, shift) >= now - 1e-9 && lateStart(now, 11, shift) < now + 5)
+        && core.defaultServeAt(T(9, 4), 11) - 13 < T(9, 4) && core.defaultServeAt(T(9, 4), 11 + shift) - 13 >= T(9, 4),
+        JSON.stringify([shift, [T(9, 0), T(9, 4), T(9, 6)].map(now => clk(lateStart(now, 11, shift)))]));
   check('    and the page says the same in words, as the screen words it: free 8 min, CLASH 1 min, START AT 2 minutes earlier, 7 timers, about 11 minutes',
         ['free 8 min', 'CLASH 1 min', 'START AT** 2 minutes earlier', '**7 timers**', 'about 11 minutes'].every(w => section.includes(w)), section.length + ' chars');
   }

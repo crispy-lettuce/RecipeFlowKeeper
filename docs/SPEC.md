@@ -120,9 +120,12 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
   (with −15, −5, +5, +15 and NOW) is by default now plus the longest dish up to the next five minutes, and is held for the recipe or group open in this tab only,
   never stored; the ruler reads times of day, every box says `AT 17:20` when its step starts, and START AT gives when the meal begins. **YOUR HANDS**
   is a row above the lanes: solid where a hands-on step runs, red hatched where two do at once (a clash), an outline `free 16 min` where nothing
-  needs the cook for six minutes or more (between busy stretches only). **AVOID THE CLASH** (shown only while there is a clash, or once pressed, to undo
-  it) moves the later hands-on step, and what feeds it, earlier until none overlap, so that dish is ready early; once pressed it is a filled button
-  reading `✓ CLASH AVOIDED · TAP TO UNDO` and the heading says what moved. A one-sentence note under the heading says what the lining-up does (FINISH
+  needs the cook for six minutes or more (between busy stretches only). **AVOID THE CLASH** moves the later hands-on step, and what feeds it, earlier until
+  none overlap, so that dish is ready early. It is **on when a meal opens** unless Settings → APP (AVOID THE CLASH, this device only, on when unset) says
+  otherwise (issue #209, 25 Oct 2026); NOW goes back to that, and the button turns it off, and on again, for the meal that is open. The button is shown only
+  where the plan without it has a clash, so a meal with none has no button; it is a filled `✓ CLASH AVOIDED · TAP TO UNDO` while it is on, and the heading says
+  what moved. An EAT AT left at its default is set later by the minutes avoiding pulls the first start earlier by (`clashStartShift`, `core.js`), rounded as the
+  default always is, and the heading says so, so the start stays at now; one the cook has chosen is not moved. A meal opened already on the clock keeps its EAT AT. A one-sentence note under the heading says what the lining-up does (FINISH
   TOGETHER: every dish ready at EAT AT, the shorter ones starting later; START TOGETHER: every dish starting at once, the shorter ones ready earlier),
   and each dish says START AT and READY AT. `THAT TIME HAS PASSED: TAP NOW` shows only for a meal planned for today whose start has gone. Ovens: a thin lane per oven, each step
   that says oven, roast or bake in the setting its recipe's preheat line gives (one °C figure, fan or not; a recipe with none, a range or two is left out
@@ -139,7 +142,7 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
   The strip says `On time for 18:30` or `Ready at 18:43, 13 min after 18:30`, a Now line says what is going with its time left and the hands' next step
   (`Hands free for 9 min, then: …`), and a red line is the real time. A clock looks once a second, from the real time each time; it moves the line and the Now
   line in place and redraws only the strip (never the flow table) when the plan has moved a minute. AVOID THE CLASH stays on offer while the planned meal has a
-  clash. STOP COOKING puts the plan back. The status, Now line, line and marks are left out of print and PNG.
+  clash without it. STOP COOKING puts the plan back. The status, Now line, line and marks are left out of print and PNG.
   **START and DONE on a box** (24 Oct 2026): while the run is going each box that is a step of the plan has a START button (a 44px target; none on a step with no
   length, a step already done, a prep box or a carried-across box). Pressing it notes the time (`state.cook.starts[recipeId][handle]`, this tab only) and the box
   reads `STARTED 09:14` with DONE, which is the tick (tapping the box does the same). A step with a start is running from it, even before its planned start or before
@@ -182,7 +185,8 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
 On the Planner, **GROUP SOME TOGETHER** → **GROUP SELECTED** makes dishes of one day a group, opened as one **Group Viewer**: a
 timeline with a lane per dish and each diagram below. **START TOGETHER** starts everything at once; **FINISH TOGETHER** lines
 dishes up to be ready together, each saying when to start (START AT 17:35, as a time of day since the run sheet). A group with a Side opens in FINISH TOGETHER. Each dish's lane is headed by its name and colour, its bars are matched to its own diagram
-only (two dishes can share a handle name), and the strip's heading wraps at phone width.
+only (two dishes can share a handle name), and the strip's heading wraps at phone width. A dish's name is shown once, in its header (colour, name, SERVES, its
+buttons), and not again above its diagram (issue #192, 25 Oct 2026); in Modernist its `3 / 19 TICKED` count sits in that header.
 - **SERVE WITH:** a recipe that says "serve with rice or naan" (or an ingredient "…, to serve") is matched to Side recipes whose
   title or keyword has that word; the viewer and the Planner offer them, and a tap adds the side to the day and groups it.
 - **OFTEN WITH:** recipes previously grouped with this dish, any course, offered the same way.
@@ -224,7 +228,7 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
   ingredient); **SHOPPING AISLES** (move an ingredient's aisle); **SWAPS**; the DICTIONARY. Lists fold and remember it per device.
 - **LIBRARY:** **LIBRARY CHECK** (recipes not yet compared with their source, and recipes writing one ingredient on several lines);
   tidy SOURCES and KEYWORDS; **RECIPE PHOTOS** (RE-HOST EXTERNAL IMAGES, CHECK STORED IMAGES).
-- **APP:** week start day for the Planner and the shopping list (default Friday; History always starts on Monday), APPEARANCE, STYLE, PREPARATION, OVENS (how many this kitchen has, per device), Google Calendar (§6.6),
+- **APP:** week start day for the Planner and the shopping list (default Friday; History always starts on Monday), APPEARANCE, STYLE, PREPARATION, OVENS (how many this kitchen has, per device), AVOID THE CLASH (on or off when a meal opens, per device), Google Calendar (§6.6),
   BACKUP TO GOOGLE DRIVE, RECIPE SHARING.
 - **HELP:** the guide (`help.html`), the app's version and what changed lately.
 
