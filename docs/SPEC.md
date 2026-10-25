@@ -100,7 +100,10 @@ filters in a panel.
 ## 5. What each screen does
 
 ### 5.1 Recipes
-A grid of cards. Search by name, ingredient or note (Enter keeps it as a tag filter). Filters: course (several), source, keyword.
+A grid of cards. Search by name, ingredient or note (Enter keeps the word as a quoted chip that searches the same way, so it finds a recipe
+that only mentions it). Filters: course (several), source, keyword. A keyword chip matches the recipe's tagged keywords only, exactly and in any
+case, and several chips need all of them (issue #201, 25 Oct 2026); a word typed into + ADD that the library has as a keyword becomes that
+keyword's chip, and any other word is a quoted one. Choosing a recipe for a Planner day uses the same grid and filters.
 Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each card has **+** (shortlist, turns to ✓) and **☆**
 (favourite). Another household's library appears behind a switch at the top when they share with us (§6.8).
 
@@ -211,7 +214,8 @@ Adds up every ingredient the week's planned dishes need, scaled to each day's SE
 - Per-recipe list from the viewer is separate and its ticks stay on the device.
 
 ### 5.8 History and the food diary
-A month calendar of what was eaten. Cooked recipes arrive by ticking the last column or COOKED ✓; PRE-MADE meals arrive by
+A month calendar of what was eaten, Monday to Sunday whatever WEEK STARTS ON says, with Saturday and Sunday lightly shaded in both
+styles (issue #212, 25 Oct 2026); MOST COOKED BY DAY OF WEEK runs in the same order. Cooked recipes arrive by ticking the last column or COOKED ✓; PRE-MADE meals arrive by
 themselves, marked FROM THE FREEZER; **+ ENTRY** adds anything with no recipe. REMOVE deletes an entry (for a freezer meal it also
 turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives totals, the streak and most-cooked.
 
@@ -220,7 +224,7 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
   ingredient); **SHOPPING AISLES** (move an ingredient's aisle); **SWAPS**; the DICTIONARY. Lists fold and remember it per device.
 - **LIBRARY:** **LIBRARY CHECK** (recipes not yet compared with their source, and recipes writing one ingredient on several lines);
   tidy SOURCES and KEYWORDS; **RECIPE PHOTOS** (RE-HOST EXTERNAL IMAGES, CHECK STORED IMAGES).
-- **APP:** week start day (default Friday), APPEARANCE, STYLE, PREPARATION, OVENS (how many this kitchen has, per device), Google Calendar (§6.6),
+- **APP:** week start day for the Planner and the shopping list (default Friday; History always starts on Monday), APPEARANCE, STYLE, PREPARATION, OVENS (how many this kitchen has, per device), Google Calendar (§6.6),
   BACKUP TO GOOGLE DRIVE, RECIPE SHARING.
 - **HELP:** the guide (`help.html`), the app's version and what changed lately.
 

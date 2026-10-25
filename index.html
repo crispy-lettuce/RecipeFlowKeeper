@@ -115,6 +115,11 @@ function loadArchivoFont(){
     --sage-wash:rgba(124,148,115,.10);
     --sage-wash-strong:rgba(124,148,115,.16);
     --sage-line:rgba(124,148,115,.35);
+    /* History's Saturday and Sunday (#212): --card under 5% ink, and a cooked day's --sage-wash laid over the same 5% ink,
+       worked out into one colour each so the readability check in test/smoke.js, which reads background-color, still
+       measures the text on them. Change --card, --ink or --sage-wash and these are worked out again. */
+    --weekend-card:#F1EEE6;
+    --weekend-sage-wash:rgba(99,114,90,.145);
     --danger-wash:rgba(140,58,52,.08);
     --danger-line:rgba(140,58,52,.28);
     --ink-shadow:rgba(43,39,34,.12);
@@ -184,6 +189,10 @@ function loadArchivoFont(){
     --sage-wash:rgba(157,190,146,.06);
     --sage-wash-strong:rgba(157,190,146,.09);
     --sage-line:rgba(157,190,146,.35);
+    /* Here the weekend is darker, under 20% black: lifting it toward the ink, as the light theme does, left --ink-faint on it
+       at 4.19:1, and a lower step here is the dark theme's "less raised" (see the note above this block). */
+    --weekend-card:#1C1A14;
+    --weekend-sage-wash:rgba(38,46,35,.248);
     --danger-wash:rgba(224,138,130,.10);
     --danger-line:rgba(224,138,130,.30);
     --ink-shadow:rgba(0,0,0,.35);
@@ -1128,6 +1137,14 @@ function loadArchivoFont(){
   .history-day.selected{ background:var(--plum-wash); border-color:var(--plum); }
   .history-day.has-entries{ background:var(--sage-wash); }
   .history-day.has-entries.selected{ background:var(--plum-wash); }
+  /* After the rules above, so a weekend day outside the month is shaded with its column; before the selected rules further
+     down, so a picked day still reads as picked. */
+  .history-day.weekend{ background:var(--weekend-card); }
+  .history-day.weekend.has-entries{ background:var(--weekend-sage-wash); }
+  /* A cooked weekday is already at 4.58:1 for --ink-soft on its wash, so a cooked weekend day, shaded further, cannot keep the
+     quiet ink and be seen to be shaded (the date was 4.20:1). The weekend's number is in --ink instead, which also marks it. The
+     rule for today below is the same weight and later, so today's number stays plum. */
+  .history-day.weekend .history-day-num{ color:var(--ink); }
   .history-day-num{
     font-family:'IBM Plex Mono', monospace; font-size:14px; color:var(--ink-soft); flex:none;
   }
@@ -1844,7 +1861,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-25.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-25.2">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2570,7 +2587,7 @@ const EXPECTED_CORE_VERSION = '2026-10-24.3';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-25.1';
+const APP_VERSION = '2026-10-25.2';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -5803,15 +5820,23 @@ function filterRecipes(recipes, q){
   q = q || {};
   const text = (q.text||'').trim().toLowerCase();
   const terms = (q.keywords||[]).map(k=>k.toLowerCase());
+  const words = (q.words||[]).map(w=>w.toLowerCase());
 
   const out = recipes.filter(r=>{
     const t = r.tags || {};
     if(q.course && q.course.length && !q.course.includes(t.course)) return false;
     if(q.source && r.source !== q.source) return false;
     if(q.savedView && SAVED_VIEWS[q.savedView] && !SAVED_VIEWS[q.savedView].test(r)) return false;
-    if(terms.length || text){
+    /* A keyword chip matches the recipe's keywords and nothing else, exactly and in any case (#201: it used to look for the word
+       in all of the recipe's text, so a recipe that only mentioned it came up). Several chips need all of them. The words kept
+       with Enter and the search box still look through everything. */
+    if(terms.length){
+      const mine = ((t.keywords)||[]).map(k=>String(k).toLowerCase());
+      for(const term of terms){ if(!mine.includes(term)) return false; }
+    }
+    if(words.length || text){
       const hay = searchText(r);
-      for(const term of terms){ if(!hay.includes(term)) return false; }
+      for(const word of words){ if(!hay.includes(word)) return false; }
       if(text && !hay.includes(text)) return false;
     }
     return true;
@@ -5892,7 +5917,8 @@ const state = {
   view: 'recipes',
   text: '',
   course: [],
-  keywords: [],
+  keywords: [],                // chips that match a recipe's keywords exactly (#201)
+  words: [],                   // words kept with Enter: chips that search all of a recipe's text, as the search box does (#201)
   source: '',                  // exact-match Source filter (dropdown, not a chip row — see findings doc)
   savedView: null,
   sort: 'recent',
@@ -5944,11 +5970,11 @@ const shared = { loaded: false, available: false, problem: null, ourName: '', sh
                  recipes: {}, loading: {}, failed: {} };
 
 function anyFilterActive(){
-  return !!(state.text || state.keywords.length || state.savedView || state.source ||
+  return !!(state.text || state.keywords.length || state.words.length || state.savedView || state.source ||
             state.course.length);
 }
 function clearAllFilters(){
-  state.text=''; state.keywords=[]; state.savedView=null;
+  state.text=''; state.keywords=[]; state.words=[]; state.savedView=null;
   state.course=[]; state.source='';
   state.addingKeyword=false;
   /* Modernist's row of chips shows a sort that is not the default as a filter, so clearing them clears it too. */
@@ -6091,6 +6117,22 @@ function removeKeywordFilter(kw){
 function toggleKeywordFilter(kw){
   if(state.keywords.includes(kw)) removeKeywordFilter(kw); else addKeywordFilter(kw);
 }
+/* A kept word (#201, 25 Oct 2026): it searches everything a recipe says, as the search box does, so it matches a recipe that
+   mentions it whether or not it is tagged with it. Shown in quotes, to tell it from a keyword chip, which matches tags only. */
+function addWordFilter(w){
+  if(w && !state.words.includes(w)) state.words.push(w);
+}
+function removeWordFilter(w){
+  state.words = state.words.filter(x=> x !== w);
+}
+/* A word typed into + ADD: a keyword the library has becomes that keyword's chip (the library's own spelling), and anything
+   else is a kept word, since no recipe could be tagged with it. */
+function addKeywordOrWord(typed){
+  const w = (typed || '').trim();
+  if(!w) return;
+  const known = fullKeywordVocab(homeRecipes()).find(k=> k.toLowerCase() === w.toLowerCase());
+  if(known) addKeywordFilter(known); else addWordFilter(w);
+}
 
 /* Whose recipes RECIPES is showing, as a list: the other household's when the switch says so, ours otherwise. */
 function homeRecipes(){
@@ -6135,7 +6177,7 @@ function wireKeywordAdd(){
     kwInput.focus();
     kwInput.addEventListener('keydown', e=>{
       if(e.key === 'Enter'){
-        addKeywordFilter(kwInput.value.trim());
+        addKeywordOrWord(kwInput.value);
         state.addingKeyword = false;
         renderHome();
       } else if(e.key === 'Escape'){
@@ -6146,7 +6188,7 @@ function wireKeywordAdd(){
     });
     kwInput.addEventListener('blur', ()=>{
       if(!state.addingKeyword) return;
-      addKeywordFilter(kwInput.value.trim());
+      addKeywordOrWord(kwInput.value);
       state.addingKeyword = false;
       renderHome();
     });
@@ -6202,6 +6244,8 @@ function renderFilterRows(recipes){
 
   const kwChips = state.keywords.map(k=>
     `<button class="chip on removable" data-kw="${escapeHtml(k)}">${escapeHtml(k.toUpperCase())}<span class="x" aria-hidden="true">×</span></button>`
+  ).join('') + state.words.map(w=>
+    `<button class="chip on removable" data-word="${escapeHtml(w)}" aria-label="Remove the word ${escapeHtml(w)}">“${escapeHtml(w.toUpperCase())}”<span class="x" aria-hidden="true">×</span></button>`
   ).join('');
 
   const savedChip = state.savedView
@@ -6255,6 +6299,12 @@ function renderFilterRows(recipes){
       renderHome();
     });
   });
+  rows.querySelectorAll('.chip[data-word]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      removeWordFilter(btn.dataset.word);
+      renderHome();
+    });
+  });
   rows.querySelectorAll('.chip[data-suggest-kw]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       addKeywordFilter(btn.dataset.suggestKw);
@@ -6288,6 +6338,7 @@ function activeFilterChips(){
   if(state.savedView && SAVED_VIEWS[state.savedView]) chips.push({ kind:'saved', val:state.savedView, label:SAVED_VIEWS[state.savedView].label });
   state.course.forEach(c=> chips.push({ kind:'course', val:c, label:c }));
   state.keywords.forEach(k=> chips.push({ kind:'kw', val:k, label:k }));
+  state.words.forEach(w=> chips.push({ kind:'word', val:w, label:'“' + w + '”' }));
   if(state.source) chips.push({ kind:'source', val:state.source, label:'Source: ' + state.source });
   if(state.sort !== DEFAULT_SORT && SORTS[state.sort]) chips.push({ kind:'sort', val:state.sort, label:'Sort: ' + SORTS[state.sort].label });
   return chips;
@@ -6297,6 +6348,7 @@ function removeActiveFilter(kind, val){
   if(kind === 'saved') state.savedView = null;
   else if(kind === 'course') toggleCourseFilter(val);
   else if(kind === 'kw') removeKeywordFilter(val);
+  else if(kind === 'word') removeWordFilter(val);
   else if(kind === 'source') state.source = '';
   else if(kind === 'sort') state.sort = DEFAULT_SORT;
 }
@@ -6376,6 +6428,7 @@ function filterFocusKey(el){
   if(el.id) return '#' + el.id;
   if(el.dataset && el.dataset.cat) return `[data-cat="${q(el.dataset.cat)}"][data-val="${q(el.dataset.val)}"]`;
   if(el.dataset && el.dataset.kwPill !== undefined) return `[data-kw-pill="${q(el.dataset.kwPill)}"]`;
+  if(el.dataset && el.dataset.wordPill !== undefined) return `[data-word-pill="${q(el.dataset.wordPill)}"]`;
   return null;
 }
 
@@ -6399,7 +6452,7 @@ function keywordOrder(recipes){
    arrived since at the end. Every keyword, and any word typed into the search and kept with Enter, which is applied the same
    way but may be in no recipe's tags. */
 function sheetKeywords(recipes){
-  const live = new Set(fullKeywordVocab(recipes).concat(state.keywords));
+  const live = new Set(fullKeywordVocab(recipes).concat(state.keywords));   // a kept word is listed apart, ahead of these (renderKeywordPills)
   const known = new Set(filterSheet.order);
   return filterSheet.order.filter(k=> live.has(k)).concat([...live].filter(k=> !known.has(k)));
 }
@@ -6412,7 +6465,10 @@ function renderKeywordPills(recipes){
   const q = filterSheet.find.trim().toLowerCase();
   const list = sheetKeywords(recipes);
   const shown = q ? list.filter(k=> k.toLowerCase().includes(q)) : list;
-  box.innerHTML = shown.map(k=> fsPill(`data-kw-pill="${escapeHtml(k)}"`, state.keywords.includes(k), k, ' kw')).join('') +
+  /* The words kept with Enter head the list, in quotes, always on: tapping one takes it off. They are not keywords, so they are
+     never among the pills a tap turns on, and the find field does not narrow them: a filter that is on stays in sight. */
+  box.innerHTML = state.words.map(w=> fsPill(`data-word-pill="${escapeHtml(w)}"`, true, '“' + w + '”', ' kw')).join('') +
+    shown.map(k=> fsPill(`data-kw-pill="${escapeHtml(k)}"`, state.keywords.includes(k), k, ' kw')).join('') +
     `<button type="button" class="fs-pill kw ghost" id="fsAddKw">+ ADD</button>`;
   document.getElementById('fsKwEmpty').hidden = !(q && !shown.length);
 }
@@ -6440,7 +6496,7 @@ function renderFilterSheetBody(recipes){
     <section class="fs-section" aria-labelledby="fsKeyword">
       <div class="fs-label-row"><h3 class="fs-label" id="fsKeyword">KEYWORD</h3><span class="fs-count">${total} KEYWORD${total === 1 ? '' : 'S'}</span></div>
       <input type="text" class="fs-find" id="kwFind" placeholder="Find a keyword…" aria-label="Find a keyword" autocomplete="off" autocapitalize="off" spellcheck="false" value="${escapeHtml(filterSheet.find)}">
-      <p class="fs-empty" id="fsKwEmpty" role="status" hidden>No keyword matches — Enter to add</p>
+      <p class="fs-empty" id="fsKwEmpty" role="status" hidden>No keyword matches — Enter to search for the word</p>
       <div class="fs-pills" id="fsKwPills"></div>
     </section>`;
   renderKeywordPills(recipes);
@@ -6454,6 +6510,8 @@ document.getElementById('filterSheetBody').addEventListener('click', e=>{
   if(course){ toggleCourseFilter(course.dataset.val); renderHome(); return; }
   const kw = e.target.closest('[data-kw-pill]');
   if(kw){ toggleKeywordFilter(kw.dataset.kwPill); renderHome(); return; }
+  const word = e.target.closest('[data-word-pill]');
+  if(word){ removeWordFilter(word.dataset.wordPill); renderHome(); return; }
   /* + ADD is the find field with the cursor in it: type the word, and Enter adds it when no keyword already has it. */
   if(e.target.closest('#fsAddKw')) document.getElementById('kwFind').focus();
 });
@@ -6468,11 +6526,11 @@ document.getElementById('filterSheetBody').addEventListener('keydown', e=>{
   const word = e.target.value.trim();
   if(!word) return;
   /* Only when nothing matches: with matches in view, Enter has nothing to create, and the pill that was meant is one tap away.
-     A word added is applied as every kept word is (addKeywordFilter, as + ADD and the search always did), and heads the list. */
+     A word added is a kept word, as the search box's Enter makes (addWordFilter, #201): it searches all a recipe says, it heads
+     the list in quotes, and it is not a keyword, which only a tag can be. */
   const q = word.toLowerCase();
   if(sheetKeywords(homeRecipes()).some(k=> k.toLowerCase().includes(q))) return;
-  addKeywordFilter(word);
-  filterSheet.order.unshift(word);
+  addWordFilter(word);
   filterSheet.find = '';
   renderHome();
 });
@@ -6606,6 +6664,7 @@ function renderHome(){
   const results = filterRecipes(recipes, {
     text: state.text,
     keywords: state.keywords,
+    words: state.words,
     course: state.course,
     source: state.source,
     savedView: state.savedView,
@@ -6728,7 +6787,7 @@ searchInput.addEventListener('keydown', e=>{
   if(e.key !== 'Enter') return;
   const v = searchInput.value.trim();
   if(!v) return;
-  if(!state.keywords.includes(v)) state.keywords.push(v);
+  addWordFilter(v);   // a kept word looks through everything, as the box does; only a keyword chip is limited to tags (#201)
   state.text = '';
   searchInput.value = '';
   renderHome();
@@ -8921,17 +8980,21 @@ document.getElementById('shopPrintBtn').addEventListener('click', ()=> window.pr
    ===================================================================== */
 const WEEKDAY_NAMES = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
 
-/* getDay() numbers in the order the week is shown, e.g. [5,6,0,1,2,3,4]
-   for a Friday start. Never reorder WEEKDAY_NAMES itself — it is indexed
-   by getDay() in several places. */
+/* History's month always runs Monday to Sunday, as a wall calendar or Outlook does (issue #212, 25 Oct 2026). It used to
+   start on WEEK STARTS ON, which is the shopping week's day (Friday by default) and put the weekend in the middle of each
+   row. That setting groups the Planner and the shopping list, whose ticks are keyed by it; History stores nothing by week,
+   so it has no reason to follow it. */
+const HISTORY_WEEK_START = 1;
+/* getDay() numbers in the order History shows the week: [1,2,3,4,5,6,0]. Never reorder WEEKDAY_NAMES itself — it is
+   indexed by getDay() in several places. */
 function weekdaysInDisplayOrder(){
-  return Array.from({length:7}, (_, i)=> (weekStartDay() + i) % 7);
+  return Array.from({length:7}, (_, i)=> (HISTORY_WEEK_START + i) % 7);
 }
 
 function historyMonthGrid(year, month){
   /* How many leading cells belong to the previous month: the distance from
-     the configured week start to the weekday the 1st falls on. */
-  const firstWeekday = (new Date(year, month, 1).getDay() - weekStartDay() + 7) % 7;
+     Monday to the weekday the 1st falls on. */
+  const firstWeekday = (new Date(year, month, 1).getDay() - HISTORY_WEEK_START + 7) % 7;
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const cells = [];
   for(let i=0; i<firstWeekday; i++){
@@ -9094,6 +9157,7 @@ function renderHistoryCalendar(){
     const iso = isoLocal(date);
     const entries = byDate.get(iso) || [];
     const classes = ['history-day'];
+    if(date.getDay() === 0 || date.getDay() === 6) classes.push('weekend');   // shaded, so the weekend reads at a glance (#212)
     if(!inMonth) classes.push('other-month');
     if(iso === todayIso) classes.push('today');
     if(iso === state.historySelectedDate) classes.push('selected');
