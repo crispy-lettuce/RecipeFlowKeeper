@@ -179,13 +179,18 @@ html[data-style="modernist"] :focus-visible{ outline-color:var(--color-accent); 
   }
   html[data-style="modernist"] .app .sidebar-peek-btn{ display:none !important; }
 
-  /* Folded: the planner, or a viewer while cooking, unless peeked. */
-  html[data-style="modernist"] .app:is([data-view="planner"], .keep-awake.viewer-open):not(.sidebar-peek){ --mod-nav-w:56px; }
-  html[data-style="modernist"] .app:is([data-view="planner"], .keep-awake.viewer-open):not(.sidebar-peek) .sidebar > :not(.nav-rail){ display:none; }
-  html[data-style="modernist"] .app:is([data-view="planner"], .keep-awake.viewer-open):not(.sidebar-peek) .nav-rail{ display:flex; }
-  /* On those screens the brand row offers ‹ instead of the square, to fold it again. */
-  html[data-style="modernist"] .app:is([data-view="planner"], .keep-awake.viewer-open) .brand .brand-square{ display:none; }
-  html[data-style="modernist"] .app:is([data-view="planner"], .keep-awake.viewer-open) .nav-hide-btn{ display:flex; }
+  /* Folded: the planner, or a viewer while cooking, unless peeked. Only while the menu is automatic (no html[data-sb]): a device that has
+     chosen ALWAYS SHOWN or ALWAYS HIDDEN (#200, 26 Oct 2026) is not folded by the screen. */
+  html[data-style="modernist"]:not([data-sb]) .app:is([data-view="planner"], .keep-awake.viewer-open):not(.sidebar-peek){ --mod-nav-w:56px; }
+  html[data-style="modernist"]:not([data-sb]) .app:is([data-view="planner"], .keep-awake.viewer-open):not(.sidebar-peek) .sidebar > :not(.nav-rail){ display:none; }
+  html[data-style="modernist"]:not([data-sb]) .app:is([data-view="planner"], .keep-awake.viewer-open):not(.sidebar-peek) .nav-rail{ display:flex; }
+  /* Hidden on purpose, on every screen: the rail, and › on it brings the menu back for good. */
+  html[data-style="modernist"][data-sb="hidden"] .app{ --mod-nav-w:56px; }
+  html[data-style="modernist"][data-sb="hidden"] .app .sidebar > :not(.nav-rail){ display:none; }
+  html[data-style="modernist"][data-sb="hidden"] .app .nav-rail{ display:flex; }
+  /* The brand row offers ‹ instead of the square on every screen, to hide the menu. */
+  html[data-style="modernist"] .app .brand .brand-square{ display:none; }
+  html[data-style="modernist"] .app .nav-hide-btn{ display:flex; }
 
   html[data-style="modernist"] .nav-rail{
     flex:1; flex-direction:column; align-items:center; gap:16px;
@@ -204,6 +209,7 @@ html[data-style="modernist"] :focus-visible{ outline-color:var(--color-accent); 
     font-size:28px; font-weight:800; letter-spacing:-0.02em; line-height:1;
   }
   html[data-style="modernist"] .brand-classic{ display:none; }
+  html[data-style="modernist"] .classic-only{ display:none !important; }
   html[data-style="modernist"] .brand-mod{ display:inline; }
   html[data-style="modernist"] .nav-hide-btn{
     position:relative; width:32px; height:32px; flex:none; align-self:center;
@@ -257,11 +263,9 @@ html[data-style="modernist"] :focus-visible{ outline-color:var(--color-accent); 
   html[data-style="modernist"] .data-link:hover{ opacity:1; color:var(--color-accent); }
 }
 @media (min-width: 861px) and (max-width: 1180px){
-  html[data-style="modernist"] .app.viewer-open:not(.sidebar-peek){ --mod-nav-w:56px; }
-  html[data-style="modernist"] .app.viewer-open:not(.sidebar-peek) .sidebar > :not(.nav-rail){ display:none; }
-  html[data-style="modernist"] .app.viewer-open:not(.sidebar-peek) .nav-rail{ display:flex; }
-  html[data-style="modernist"] .app.viewer-open .brand .brand-square{ display:none; }
-  html[data-style="modernist"] .app.viewer-open .nav-hide-btn{ display:flex; }
+  html[data-style="modernist"]:not([data-sb]) .app.viewer-open:not(.sidebar-peek){ --mod-nav-w:56px; }
+  html[data-style="modernist"]:not([data-sb]) .app.viewer-open:not(.sidebar-peek) .sidebar > :not(.nav-rail){ display:none; }
+  html[data-style="modernist"]:not([data-sb]) .app.viewer-open:not(.sidebar-peek) .nav-rail{ display:flex; }
 }
 /* Held upright the tablet is 868px wide, just over the 861px where the wide layouts begin, and the full 228px sidebar left them 640px
    (tablet review F4, 20 Oct 2026): Recipes' cards were 195px with their titles cut, History's month title and THU were cut off and its days
@@ -269,11 +273,9 @@ html[data-style="modernist"] :focus-visible{ outline-color:var(--color-accent); 
    The cost is a tap more to reach NEW RECIPE, ADD SEVERAL and the data links, as on the Planner already. A laptop window between 861 and
    1100px gets the same. */
 @media (min-width: 861px) and (max-width: 1100px){
-  html[data-style="modernist"] .app:not(.sidebar-peek){ --mod-nav-w:56px; }
-  html[data-style="modernist"] .app:not(.sidebar-peek) .sidebar > :not(.nav-rail){ display:none; }
-  html[data-style="modernist"] .app:not(.sidebar-peek) .nav-rail{ display:flex; }
-  html[data-style="modernist"] .app .brand .brand-square{ display:none; }
-  html[data-style="modernist"] .app .nav-hide-btn{ display:flex; }
+  html[data-style="modernist"]:not([data-sb]) .app:not(.sidebar-peek){ --mod-nav-w:56px; }
+  html[data-style="modernist"]:not([data-sb]) .app:not(.sidebar-peek) .sidebar > :not(.nav-rail){ display:none; }
+  html[data-style="modernist"]:not([data-sb]) .app:not(.sidebar-peek) .nav-rail{ display:flex; }
 }
 
 /* ============================== RECIPES ==============================

@@ -94,7 +94,12 @@ MERGE cooked, finish -> dish: stir in the lemon and serve [instant]
 ## 4. Navigation
 
 Sidebar: **RECIPES · PLANNER · SHORTLIST · SHOPPING · HISTORY · SETTINGS**; four **saved views** (Weeknight under 30 min,
-Not cooked in 3 months, Sunday roasts, Favourites); **NEW RECIPE**; EXPORT DATA, IMPORT DATA, SIGN OUT.
+Not cooked in 3 months, Sunday roasts, Favourites); **NEW RECIPE**; EXPORT DATA, IMPORT DATA, SIGN OUT. **The menu** (issue #200, 26 Oct 2026) is per device,
+`kitchen.sidebar`, shown to the stylesheets as `html[data-sb]` before the first paint: **AUTOMATIC** (nothing stored; the folding below) or **ALWAYS HIDDEN**
+(`hidden`) or **ALWAYS SHOWN** (`open`), chosen in Settings → APP → MENU or by the **‹** in the brand row on every screen (Modernist's, and Classic's 44px square
+with a 24px square drawn in it), which always means hidden, and **›** on the rail or Classic's **☰** tab, which means shown where it was hidden on purpose and a peek
+for the screen where the automatic setting folded it. Hidden is the rail in Modernist and the ☰ tab in Classic; shown cancels every automatic fold. From 861px
+up only: the phone's bar across the top stays.
 
 Two **looks**, chosen per device in Settings → APP → STYLE: **Modernist** (flat, square, one typeface, red for the main action),
 which a device opens in until it chooses, and **Classic** (paper and plum, rounded); both choices are stored, `kitchen.style` being `modernist` or `classic`
@@ -183,8 +188,10 @@ Sort: recently added, least cooked, most cooked, recently cooked, A to Z. Each c
   step is detected and said.
 - **ADD PHOTO OR PDF** keeps the page the recipe came from (private storage); **CHECKED AGAINST THE PHOTO** records the check.
   **UPLOAD PHOTO** gives the card a picture from the device. A web photo is copied into our own storage on save.
-- **ADD SEVERAL** takes a whole converted batch in one file or message: each is ticked, held back (no source, servings or steps),
-  or flagged as a likely duplicate; only new recipes are added, never changes to existing ones.
+- **Several at once** (issue #197, 26 Oct 2026; there is no ADD SEVERAL button any more): pasting text with more than one `TITLE:` recipe into NEW RECIPE, or
+  choosing a file with **CHOOSE A FILE OF RECIPES** (adding only, never editing), closes the form and opens the **review** ("Add several recipes"),
+  already read, with the cursor on its summary: each is ticked, held back (no source, servings or steps), or flagged as a likely duplicate; only new
+  recipes are added, never changes to existing ones, and nothing is written until ADD. A file or paste of one recipe stays in the form; a file with none says so.
 - Reviewing as you add or edit: a section shows ingredient names new to the library, the aisle each will land in, near matches already in
   the library, and a duplicate check on the source link. A name that lands in Other gets an aisle pick, whether it is new or already in
   the library (a recipe opened to edit is left out of the library, so a name another recipe also uses counts as known): the pick is
@@ -237,7 +244,7 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
   ingredient); **SHOPPING AISLES** (move an ingredient's aisle); **SWAPS**; the DICTIONARY. Lists fold and remember it per device.
 - **LIBRARY:** **LIBRARY CHECK** (recipes not yet compared with their source, and recipes writing one ingredient on several lines);
   tidy SOURCES and KEYWORDS; **RECIPE PHOTOS** (RE-HOST EXTERNAL IMAGES, CHECK STORED IMAGES).
-- **APP:** week start day for the Planner and the shopping list (default Friday; History always starts on Monday), APPEARANCE, STYLE, PREPARATION, OVENS (how many this kitchen has, per device), AVOID THE CLASH (on or off when a meal opens, per device), Google Calendar (§6.6),
+- **APP:** week start day for the Planner and the shopping list (default Friday; History always starts on Monday), APPEARANCE, STYLE, MENU (automatic, always shown or always hidden, per device), PREPARATION, OVENS (how many this kitchen has, per device), AVOID THE CLASH (on or off when a meal opens, per device), Google Calendar (§6.6),
   BACKUP TO GOOGLE DRIVE, RECIPE SHARING.
 - **HELP:** the guide (`help.html`), the app's version and what changed lately.
 

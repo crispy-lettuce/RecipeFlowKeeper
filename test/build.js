@@ -100,6 +100,14 @@ const data = {
 
 let html = fs.readFileSync(SRC, 'utf8');
 
+/* Modernist became the default style on 25 Oct 2026 (#200), and most of test/smoke.js was written for Classic and checks it, so the built page opens as a
+   device that has chosen Classic does, unless the page says otherwise: the first thing in <head>, before the app's own boot script reads the choice, it stores
+   'classic' when nothing is stored, and does nothing when the test sets window.__DEFAULT_STYLE__ first (the checks on the default itself).
+   It is a page script and not a Playwright init script on purpose: an init script that touches localStorage makes a page that then reloads lose what it
+   wrote about one time in ten (found 26 Oct 2026: 8 to 11 lost in 60, with plain setItem and no app code), which put the "remembered after a reload"
+   checks at risk of failing the required CI run. A script in the page reads storage as the app's own boot script does, and loses nothing. */
+html = html.replace('<head>', `<head>\n<script>try { if (!window.__DEFAULT_STYLE__ && localStorage.getItem('kitchen.style') === null) localStorage.setItem('kitchen.style', 'classic'); } catch (e) {}</script>`);
+
 // Drop both CDN tags; neither host is reachable from this sandbox.
 html = html.replace(/<script src="https:\/\/cdnjs[^"]*"><\/script>\s*/g, '');
 html = html.replace(/<script src="https:\/\/cdn\.jsdelivr[^"]*"><\/script>\s*/g,

@@ -39,7 +39,7 @@ It carries no test counts: run the suites, and CI is the record.
 | Architecture | Pages hosting, Supabase, household id on every table, private backup repo, images in Storage, calendar reminders | `INFRASTRUCTURE.md` |
 
 Added since the brief, all in `SPEC.md`: recipe sharing between households, the Drive backup, PRE-MADE and COOKED ✓, SERVE WITH /
-OFTEN WITH, FINISH TOGETHER, preparation as steps, AUDIT on the shopping list, the source-photo store, ADD SEVERAL, LIBRARY CHECK,
+OFTEN WITH, FINISH TOGETHER, preparation as steps, AUDIT on the shopping list, the source-photo store, several recipes at once through NEW RECIPE, LIBRARY CHECK,
 the Modernist style, + OTHER on the Planner, the converter reminder, the version bar.
 
 ## 3. What is open
@@ -103,7 +103,7 @@ When unsure, stop and ask. A smaller PR is always fine.
 
 ### Other starting points
 
-- **Adding recipes:** through the app's NEW RECIPE form, one at a time, or ADD SEVERAL for a batch (`docs/SPEC.md` §5.3). A batch
+- **Adding recipes:** through the app's NEW RECIPE form: one at a time, or a batch pasted or chosen as a file, which goes to a review (`docs/SPEC.md` §5.3). A batch
   written straight to the database is the exception, and follows `CLAUDE.md`'s rules for recipe text.
 - **A regression pass:** `docs/TEST-PLAN.md`, after a change to `hydrate()`, the write queue, or anything its expected counts
   depend on. Re-read those counts from the database first.
