@@ -1,4 +1,7 @@
 [
+  { "version": "2026-10-26.1", "date": "2026-10-26", "issues": [200, 197],
+    "changes": ["Changed: the menu down the left can now be hidden on every screen, in both looks. The ‹ at the top of it hides it everywhere, and the device remembers; the narrow strip (or, in Classic, the ☰ tab) brings it back everywhere, kept open even on the Planner and while you cook. Settings, APP, MENU has the three choices: AUTOMATIC (how it has always worked: it folds by itself on the Planner, while you cook and on narrow screens, and it is how a device starts), ALWAYS SHOWN and ALWAYS HIDDEN. On a phone the menu stays as the bar across the top.",
+      "Changed: there is one button for adding recipes now. ADD SEVERAL has gone: paste several recipes into NEW RECIPE, or tap CHOOSE A FILE OF RECIPES there, and the app takes you to the same review of all of them as before, before anything is added. One recipe works as always."] },
   { "version": "2026-10-25.5", "date": "2026-10-25", "issues": [200, 199],
     "changes": ["Changed: the app is now called Recipe Wrangler on screen: the browser tab, the sign-in screen, the sidebar in both looks, and the how-to guide.",
       "Changed: Modernist is now the look a device opens in. A device that had chosen Classic opens in Modernist once; choose Classic again under Settings, APP, STYLE and the device remembers it from then on.",

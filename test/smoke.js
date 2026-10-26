@@ -46,11 +46,12 @@ const check = (name, pass, detail) => {
   let opened = 0;
   browser.newPage = async (opts) => {
     /* Modernist is the default style since #200 (25 Oct 2026). Most of this file was written for Classic and checks it, so a page opens as a device
-       that has chosen Classic does, unless the test says { __defaultStyle: true } (the checks on the default itself) or sets the style itself, which
-       its own init script does after this one. */
+       that has chosen Classic does, unless the test says { __defaultStyle: true } (the checks on the default itself) or sets the style itself in its
+       own init script, which runs before the page's pin and which the pin leaves alone. */
     const { __defaultStyle, ...pageOpts } = opts || {};
     const p = await openPage(pageOpts);
-    if (!__defaultStyle) await p.addInitScript(() => { try { if (localStorage.getItem('kitchen.style') === null) localStorage.setItem('kitchen.style', 'classic'); } catch (e) {} });
+    /* The Classic pin is in the built page (test/build.js), not an init script: see there. A test that wants the default says so with a flag that touches no storage. */
+    if (__defaultStyle) await p.addInitScript(() => { window.__DEFAULT_STYLE__ = true; });
     const n = ++opened;
     const label = () => p.__label || 'page ' + n;
     p.on('pageerror', e => errors.push(`PAGEERROR (${label()}): ` + e.message));
@@ -1416,9 +1417,10 @@ const check = (name, pass, detail) => {
     const kw = () => page.evaluate(() => (window.__WRITES__ || []).filter(w => w.table === 'keywords').length);
     const shown = sel => page.isVisible(sel);
 
-    await page.click('#openBulkBtn');
+    /* The sidebar's ADD SEVERAL button went on 26 Oct (#197): NEW RECIPE hands several recipes to this dialog (tested below), so the rest of this block opens it directly. */
+    await page.evaluate(() => openBulk());
     await page.waitForTimeout(300);
-    check('ADD SEVERAL opens its own dialog, with the text box and a file picker', (await shown('#bulkOverlay.open')) && (await shown('#bulkText')) && (await shown('#bulkFileBtn')));
+    check('the review dialog has its text box and a file picker', (await shown('#bulkOverlay.open')) && (await shown('#bulkText')) && (await shown('#bulkFileBtn')));
     const w0 = await rw(), k0 = await kw(), n0 = await page.evaluate(() => loadRecipes().length);
     await page.fill('#bulkText', 'Here you go:\n\n1. Bulk Alpha\n' + A + '\n\n2. Bulk Beta\n' + B + '\n\n3. Bulk Gamma\n' + C + '\n');
     await page.click('#bulkReadBtn');
@@ -1469,7 +1471,7 @@ const check = (name, pass, detail) => {
 
     // A second batch: the first recipe again (same link), one new with the source spelt with a curly apostrophe.
     const D = R('Bulk Delta', { source: 'Zq Cook\u2019s Diary', tag: 'Zzdelta' });
-    await page.click('#openBulkBtn');
+    await page.evaluate(() => openBulk());
     await page.fill('#bulkText', A + '\n\n' + D);
     await page.click('#bulkReadBtn');
     await page.waitForTimeout(300);
@@ -1494,12 +1496,12 @@ const check = (name, pass, detail) => {
           (await rw()) === w1 + 1 && d && d.source === "Zq Cook's Diary" && d.line === "Zq Cook's Diary" && d.n === 1, JSON.stringify(d));
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
-    check('Escape closes the ADD SEVERAL dialog', !(await shown('#bulkOverlay.open')));
+    check('Escape closes the review dialog', !(await shown('#bulkOverlay.open')));
     if(await shown('#bulkOverlay.open')) await page.click('#closeBulk');
 
     // The library moves while the dialog is open: a ticked recipe that has become a duplicate is not added blind.
     const E = R('Bulk Epsilon', { url: 'https://example.com/bulk-epsilon' });
-    await page.click('#openBulkBtn');
+    await page.evaluate(() => openBulk());
     await page.fill('#bulkText', E);
     await page.click('#bulkReadBtn');
     await page.waitForTimeout(300);
@@ -1514,7 +1516,7 @@ const check = (name, pass, detail) => {
     check('Escape closes the dialog and the text is forgotten', !(await shown('#bulkOverlay.open')) && (await page.inputValue('#bulkText')) === '');
 
     // A file, a half-fenced paste, and a text with no recipes in it.
-    await page.click('#openBulkBtn');
+    await page.evaluate(() => openBulk());
     await page.setInputFiles('#bulkFile', { name: 'batch.md', mimeType: 'text/markdown', buffer: Buffer.from('```\n' + R('Bulk Zeta', { tag: 'Zzzeta' }) + '\n```\n\n' + R('Bulk Eta', { tag: 'Zzeta' })) });
     await page.waitForTimeout(500);
     check('a file is read like pasted text, and a TITLE: left outside the code blocks is reported, not silently lost',
@@ -1525,6 +1527,76 @@ const check = (name, pass, detail) => {
     check('text with no recipe in it says so and stays on the input', /No recipes found/.test(await page.textContent('#bulkNone')) && (await shown('#bulkInputPane')));
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
+
+    /* ---- NEW RECIPE is the one way in (issue #197, 26 Oct 2026) ----
+       The sidebar has no ADD SEVERAL. Several recipes pasted into NEW RECIPE, or chosen as a file there, go to the review above, opened already
+       read; one recipe stays in the form; none says so; editing is always one recipe. Nothing is written by any of it. */
+    const F = R('Bulk Theta', { tag: 'Zztheta' }), G = R('Bulk Iota', { tag: 'Zziota' }), H = R('Bulk Kappa', { tag: 'Zzkappa' });
+    const wN = await rw();
+    check('the sidebar has NEW RECIPE and no ADD SEVERAL button', (await page.locator('#openAddBtn').count()) === 1 && (await page.locator('#openBulkBtn').count()) === 0
+          && !/ADD SEVERAL/.test(await page.textContent('.sidebar')), (await page.textContent('.sidebar')).replace(/\s+/g, ' ').slice(0, 200));
+    await page.click('#openAddBtn');
+    await page.waitForTimeout(300);
+    check('    NEW RECIPE opens the form, with a button to choose a file of recipes, and says that several go to a review',
+          (await shown('#addModalOverlay.open')) && (await shown('#addFileBtn')) && /review/.test(await page.textContent('#pasteHelp')) && !(await shown('#bulkOverlay.open')));
+    await page.evaluate(t => { const ta = document.getElementById('importInput'); ta.value = t; ta.dispatchEvent(new Event('paste', { bubbles: true })); }, F + '\n\n' + G);
+    await page.waitForTimeout(500);
+    const sev = await page.evaluate(() => ({ form: document.getElementById('addModalOverlay').classList.contains('open'), review: document.getElementById('bulkOverlay').classList.contains('open'),
+      reviewShown: !document.getElementById('bulkReview').hidden, inputShown: !document.getElementById('bulkInputPane').hidden, summary: document.getElementById('bulkSummary').textContent.trim(),
+      focus: document.activeElement && document.activeElement.id, formText: document.getElementById('importInput').value, formShown: document.getElementById('addForm').style.display }));
+    check('pasting two recipes into NEW RECIPE closes the form and opens the review, already read: "2 read: 2 ready.", with the cursor on that line and the form emptied',
+          !sev.form && sev.review && sev.reviewShown && !sev.inputShown && sev.summary === '2 read: 2 ready.' && sev.focus === 'bulkSummary' && sev.formText === '' && sev.formShown === 'none', JSON.stringify(sev));
+    check('    and nothing has been written', (await rw()) === wN);
+    await page.click('#bulkBackBtn');
+    check('    CHANGE THE TEXT shows what was pasted, for editing', (await page.inputValue('#bulkText')).includes('Bulk Theta') && (await page.inputValue('#bulkText')).includes('Bulk Iota'));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(250);
+    await page.click('#openAddBtn');
+    await page.fill('#importInput', F + '\n\n' + G);
+    await page.click('#parseBtn');
+    await page.waitForTimeout(400);
+    check('    PARSE & PREVIEW does the same with text that was typed or filled in', !(await shown('#addModalOverlay.open')) && (await shown('#bulkOverlay.open')) && /2 read/.test(await page.textContent('#bulkSummary')));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(250);
+    await page.click('#openAddBtn');
+    await page.setInputFiles('#addFile', { name: 'batch.md', mimeType: 'text/markdown', buffer: Buffer.from(F + '\n\n' + G) });
+    await page.waitForTimeout(500);
+    check('a file of two recipes chosen in NEW RECIPE goes to the review', !(await shown('#addModalOverlay.open')) && (await shown('#bulkOverlay.open')) && (await page.textContent('#bulkSummary')).trim() === '2 read: 2 ready.');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(250);
+    await page.click('#openAddBtn');
+    await page.setInputFiles('#addFile', { name: 'one.txt', mimeType: 'text/plain', buffer: Buffer.from(H) });
+    await page.waitForTimeout(500);
+    check('    a file of one recipe is read into the form as if it had been pasted, and no review opens',
+          (await shown('#addModalOverlay.open')) && !(await shown('#bulkOverlay.open')) && (await page.inputValue('#f-title')) === 'Bulk Kappa', await page.inputValue('#f-title'));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(250);
+    await page.click('#openAddBtn');
+    await page.setInputFiles('#addFile', { name: 'none.txt', mimeType: 'text/plain', buffer: Buffer.from('just some notes, no recipes') });
+    await page.waitForTimeout(400);
+    check('    a file with no recipe in it says so and stays on the form', (await shown('#addModalOverlay.open')) && !(await shown('#bulkOverlay.open')) && /No recipes found in that file/.test(await page.textContent('#parseResult')));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(250);
+    await page.click('#openAddBtn');
+    await page.evaluate(t => { const ta = document.getElementById('importInput'); ta.value = t; ta.dispatchEvent(new Event('paste', { bubbles: true })); }, H);
+    await page.waitForTimeout(500);
+    check('one recipe pasted into NEW RECIPE stays in the form and is read there, as it always was',
+          (await shown('#addModalOverlay.open')) && !(await shown('#bulkOverlay.open')) && (await page.inputValue('#f-title')) === 'Bulk Kappa', await page.inputValue('#f-title'));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(250);
+    const edit = await page.evaluate(t => {
+      const r = loadRecipes()[0]; openEditModal(r.id);
+      const out = { file: !document.getElementById('addFileBtn').hidden, editing: state.editingRecipeId === r.id };
+      document.getElementById('importInput').value = t; parseAndPreview({ reveal: true });
+      out.stillEditing = state.editingRecipeId === r.id && document.getElementById('addModalOverlay').classList.contains('open') && !document.getElementById('bulkOverlay').classList.contains('open');
+      out.text = document.getElementById('importInput').value === t;
+      return out;
+    }, F + '\n\n' + G);
+    check('editing a recipe is always one recipe: no file button, and text with two TITLE: lines in it stays in the edit form and is not taken to a review',
+          !edit.file && edit.editing && edit.stillEditing && edit.text, JSON.stringify(edit));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(250);
+    check('    and nothing was written by any of it', (await rw()) === wN);
 
     // Put the library back as it was.
     await page.evaluate(() => {
@@ -4423,8 +4495,8 @@ const check = (name, pass, detail) => {
         stIng.join('|') === 'INGREDIENT LOOKUP|WORD MATCHES|SHOPPING AISLES|SWAPS|DICTIONARY' && !stNav.includes('swaps') && stNav.includes('settings'),
         JSON.stringify([stIng, stNav]));
   /* CALENDAR joined App on 9 Oct 2026 (P3 PR 2), RECIPE SHARING and BACKUP TO GOOGLE DRIVE on 10 Oct; before their migrations each only says it is waiting. AVOID THE CLASH joined on 25 Oct (#209). */
-  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, style, preparation, ovens, avoid the clash, calendar, sharing and Drive backup; the last tab is remembered',
-        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|STYLE|PREPARATION|OVENS|AVOID THE CLASH|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
+  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, style, menu, preparation, ovens, avoid the clash, calendar, sharing and Drive backup; the last tab is remembered',
+        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|STYLE|MENU|PREPARATION|OVENS|AVOID THE CLASH|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
         JSON.stringify([stLib, stApp, stKept]));
   /* Since #95 (13 Oct) the dictionary's fold is its heading, DICTIONARY (n), like every list on the tab. */
   const stDict = () => page.evaluate(() => ({ list: document.getElementById('dictionaryList').offsetParent !== null,
@@ -7741,8 +7813,8 @@ const check = (name, pass, detail) => {
       text: sl.textContent, count: count && count.textContent, sepShown: !!sep && getComputedStyle(sep).display !== 'none',
       countGap: count ? Math.round(sb.right - count.getBoundingClientRect().right) : null };
   });
-  check('Modernist\'s sidebar on Recipes: 228px, six numbered links, "Recipe Wrangler", no rail',
-        m0.w === 228 && m0.links === 6 && !m0.rail && !m0.hide && mLook.brand === 'Recipe Wrangler' && /counter\(nav, decimal-leading-zero\)/.test(mLook.before),
+  check('Modernist\'s sidebar on Recipes: 228px, six numbered links, "Recipe Wrangler", ‹ to hide it (on every screen since #200), no rail',
+        m0.w === 228 && m0.links === 6 && !m0.rail && m0.hide && mLook.brand === 'Recipe Wrangler' && /counter\(nav, decimal-leading-zero\)/.test(mLook.before),
         JSON.stringify([m0, mLook.brand, mLook.before]));
   check('    the shortlist count sits at the right of its row without its " · ", and the row\'s words are unchanged',
         mLook.text === 'SHORTLIST · 1' && mLook.count === '1' && !mLook.sepShown && mLook.countGap >= 18 && mLook.countGap <= 24, JSON.stringify(mLook));
@@ -7764,6 +7836,8 @@ const check = (name, pass, detail) => {
   await nv.click('#navHideBtn'); await settle(nv);
   const m3 = await navState(nv);
   check('    ‹ folds it again, and focus goes back to the rail', m3.w === 56 && m3.rail && m3.focus === 'navRailBtn', JSON.stringify(m3));
+  /* ‹ is also the choice to hide the menu on every screen, and the device remembers it (#200; checked below). This block is about the automatic folding, so it goes back to it. */
+  await nv.evaluate(() => setSidebarPref('auto')); await settle(nv);
   await nv.click('#navRailBtn'); await settle(nv);
   await nv.click('.navlink[data-view="shopping"]'); await settle(nv);
   const m4 = await navState(nv);
@@ -7791,6 +7865,126 @@ const check = (name, pass, detail) => {
     rail: getComputedStyle(document.getElementById('navRailBtn')).display }));
   check('    on a phone it is Classic\'s bar across the top, with no rail', v4.w === v4.vw && v4.rail === 'none', JSON.stringify(v4));
   await nv.close();
+
+  /* ---- The menu on every screen, remembered (issue #200, 26 Oct 2026) ----
+     ‹ hides the sidebar on every screen and › brings it back on every screen, as the device's own choice (html[data-sb], kitchen.sidebar); Settings → APP →
+     MENU gives back AUTOMATIC, which is the folding checked above. From 861px up. */
+  /* No init script touches localStorage here: a page that has one and then reloads loses what the page wrote about one time in ten (found 26 Oct 2026 by setting a key with
+     plain setItem, no app code, 9 lost in 40; a read-then-write init script too), and "it is still hidden after a reload" is exactly the check that cannot afford that.
+     Modernist is the default, so it needs no style written; Classic is chosen once the page is up. */
+  const menuPage = async (look, w, label) => {
+    const p = await browser.newPage({ viewport: { width: w, height: 800 }, __defaultStyle: true });
+    p.__label = label;
+    await p.addInitScript(() => { window.__sbAtBody = null; new MutationObserver((m, o) => { if (document.body) { window.__sbAtBody = document.documentElement.getAttribute('data-sb'); o.disconnect(); } }).observe(document, { childList: true, subtree: true }); });
+    await p.clock.setFixedTime(FIXTURE_NOW);
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1200);
+    if (look === 'classic') { await p.evaluate(() => applyStyle('classic')); await p.waitForTimeout(300); }
+    return p;
+  };
+  const sbSnap = pg => pg.evaluate(() => { const vis = el => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+    return { w: Math.round(document.querySelector('.sidebar').getBoundingClientRect().width), rail: vis(document.getElementById('navRailBtn')), hide: vis(document.getElementById('navHideBtn')),
+      classicHide: vis(document.getElementById('sbHideClassic')), tab: vis(document.getElementById('sidebarPeekBtn')), links: [...document.querySelectorAll('.navlink')].filter(vis).length,
+      sb: document.documentElement.getAttribute('data-sb'), stored: (() => { try { return localStorage.getItem('kitchen.sidebar'); } catch (e) { return 'BLOCKED'; } })(),
+      select: document.getElementById('setMenu') ? document.getElementById('setMenu').value : null, focus: document.activeElement && document.activeElement.id,
+      scrollX: document.documentElement.scrollWidth - innerWidth }; });
+  const goView = async (pg, v) => { await pg.evaluate(v => showView(v), v); await settle(pg); };
+
+  const sm = await menuPage('modernist', 1389, 'menu, modernist');
+  const sm0 = await sbSnap(sm);
+  await sm.click('#navHideBtn'); await settle(sm);
+  const sm1 = await sbSnap(sm);
+  check('Modernist: ‹ on the full sidebar hides it, and the device remembers it: the rail, "hidden" in the page and in storage, and focus on the rail',
+        sm0.w === 228 && sm0.hide && sm0.sb === null && sm0.stored === null && sm1.w === 56 && sm1.rail && sm1.links === 0 && sm1.sb === 'hidden' && sm1.stored === 'hidden' && sm1.focus === 'navRailBtn', JSON.stringify([sm0, sm1]));
+  const smAll = {};
+  for (const v of ['recipes', 'planner', 'shopping', 'history', 'settings']) { await goView(sm, v); smAll[v] = await sbSnap(sm); }
+  check('    and it is hidden on every screen, not only the one it was hidden on, with nothing running off the side',
+        Object.values(smAll).every(x => x.w === 56 && x.rail && x.links === 0 && x.scrollX <= 0), JSON.stringify(smAll));
+  await sm.reload(); await sm.waitForTimeout(1200);
+  const sm2 = await sbSnap(sm), smAtBody = await sm.evaluate(() => window.__sbAtBody);
+  check('    after a reload it is still hidden, and was hidden before the page body existed, so it is never drawn and then taken away',
+        sm2.sb === 'hidden' && smAtBody === 'hidden' && sm2.w === 56, JSON.stringify([sm2, smAtBody]));
+  await sm.click('#navRailBtn'); await settle(sm);
+  const sm3 = await sbSnap(sm);
+  check('    › brings it back for good: the full sidebar, "open" in storage, and focus on ‹',
+        sm3.w === 228 && sm3.links === 6 && sm3.sb === 'open' && sm3.stored === 'open' && sm3.focus === 'navHideBtn', JSON.stringify(sm3));
+  const smOpen = {};
+  for (const v of ['planner', 'shopping']) { await goView(sm, v); smOpen[v] = await sbSnap(sm); }
+  await sm.setViewportSize({ width: 900, height: 800 }); await settle(sm);
+  smOpen.narrow = await sbSnap(sm);
+  await sm.evaluate(() => { document.querySelector('.app').classList.add('keep-awake', 'viewer-open'); }); await settle(sm);
+  smOpen.cooking = await sbSnap(sm);
+  await sm.evaluate(() => { document.querySelector('.app').classList.remove('keep-awake', 'viewer-open'); });
+  check('    and kept open it stays open where the automatic menu folds: on the Planner, at 900px wide and in cooking mode',
+        Object.values(smOpen).every(x => x.w === 228 && x.links === 6 && !x.rail), JSON.stringify(smOpen));
+  await sm.setViewportSize({ width: 700, height: 800 }); await settle(sm);
+  const smPhone = await sm.evaluate(() => ({ w: Math.round(document.querySelector('.sidebar').getBoundingClientRect().width), vw: innerWidth, rail: getComputedStyle(document.getElementById('navRailBtn')).display,
+    links: [...document.querySelectorAll('.navlink')].filter(e => e.getClientRects().length).length, sb: document.documentElement.getAttribute('data-sb') }));
+  check('    below 861px the choice does not apply: it is the bar across the top, with its links, whatever was chosen', smPhone.w === smPhone.vw && smPhone.rail === 'none' && smPhone.links === 6 && smPhone.sb === 'open', JSON.stringify(smPhone));
+  await sm.setViewportSize({ width: 1389, height: 800 }); await settle(sm);
+  await goView(sm, 'settings'); await sm.click('[data-settings-tab-btn="app"]');
+  const sm4 = await sbSnap(sm);
+  await sm.selectOption('#setMenu', 'auto'); await settle(sm);
+  const sm5 = await sbSnap(sm);
+  await goView(sm, 'planner');
+  const sm6 = await sbSnap(sm);
+  check('Settings → APP → MENU shows what is chosen and AUTOMATIC gives back the folding: nothing stored, nothing in the page, and the Planner is folded again',
+        sm4.select === 'open' && sm5.select === 'auto' && sm5.sb === null && sm5.stored === null && sm6.w === 56 && sm6.rail, JSON.stringify([sm4.select, sm5, sm6]));
+  await goView(sm, 'settings'); await sm.click('[data-settings-tab-btn="app"]'); await sm.selectOption('#setMenu', 'hidden'); await settle(sm);
+  const sm7 = await sbSnap(sm);
+  check('    ALWAYS HIDDEN there is the same as ‹: hidden on every screen', sm7.sb === 'hidden' && sm7.stored === 'hidden' && sm7.w === 56 && sm7.rail, JSON.stringify(sm7));
+  await sm.setViewportSize({ width: 700, height: 800 }); await settle(sm);
+  const sm8 = await sm.evaluate(() => ({ w: Math.round(document.querySelector('.sidebar').getBoundingClientRect().width), vw: innerWidth, rail: getComputedStyle(document.getElementById('navRailBtn')).display,
+    links: [...document.querySelectorAll('.navlink')].filter(e => e.getClientRects().length).length, sb: document.documentElement.getAttribute('data-sb') }));
+  check('    and hidden does not take the phone\'s bar across the top away: below 861px it still has its links, so there is always a way to another screen',
+        sm8.sb === 'hidden' && sm8.w === sm8.vw && sm8.rail === 'none' && sm8.links === 6, JSON.stringify(sm8));
+  await sm.close();
+  const sp = await menuPage('modernist', 1389, 'menu, modernist peek');
+  await goView(sp, 'planner');
+  await sp.click('#navRailBtn'); await settle(sp);
+  const sp1 = await sbSnap(sp);
+  check('where the menu is only folded by the automatic setting (the Planner), › still just peeks it for that screen, and chooses nothing',
+        sp1.w === 228 && sp1.sb === null && sp1.stored === null && sp1.focus === 'navHideBtn', JSON.stringify(sp1));
+  await sp.close();
+
+  const sc = await menuPage('classic', 1280, 'menu, classic');
+  const sc0 = await sbSnap(sc);
+  const scBrand = await sc.evaluate(() => { const b = document.querySelector('.brand'), n = document.querySelector('.brand-classic'), h = document.getElementById('sbHideClassic'), r = h.getBoundingClientRect();
+    const on = (x, y) => { const e = document.elementFromPoint(x, y); return !!e && e.closest('#sbHideClassic') === h; };
+    return { oneLine: n.getBoundingClientRect().height < parseFloat(getComputedStyle(n).lineHeight || '0') * 1.6 || n.getBoundingClientRect().height < 30, fits: b.scrollWidth <= b.clientWidth + 1, size: [Math.round(r.width), Math.round(r.height)],
+      tap: [on(r.left + 4, r.top + r.height / 2), on(r.right - 4, r.top + r.height / 2), on(r.left + r.width / 2, r.top + 4), on(r.left + r.width / 2, r.bottom - 4)],
+      drawn: Math.round(parseFloat(getComputedStyle(h, '::after').width) + 2 * parseFloat(getComputedStyle(h, '::after').borderLeftWidth)) }; });
+  check('Classic: ‹ is in the brand row on every screen, "Recipe Wrangler" stays on one line beside it, and the button is 44px square with a 24px square drawn in it',
+        sc0.classicHide && !sc0.tab && sc0.w === 214 && scBrand.oneLine && scBrand.fits && scBrand.size.join() === '44,44' && scBrand.tap.slice(0, 2).every(Boolean) && scBrand.tap[2] === true && scBrand.drawn === 24, JSON.stringify([sc0, scBrand]));
+  await sc.click('#sbHideClassic'); await settle(sc);
+  const sc1 = await sbSnap(sc);
+  const scAll = {};
+  for (const v of ['planner', 'shopping', 'history', 'settings', 'recipes']) { await goView(sc, v); scAll[v] = await sbSnap(sc); }
+  check('Classic: ‹ hides the menu on every screen and the device remembers it: no sidebar, the ☰ tab to bring it back, "hidden" in the page and in storage, and focus on the tab',
+        sc1.w === 0 && sc1.tab && sc1.sb === 'hidden' && sc1.stored === 'hidden' && sc1.focus === 'sidebarPeekBtn' && Object.values(scAll).every(x => x.w === 0 && x.tab && x.scrollX <= 0), JSON.stringify([sc1, scAll]));
+  await sc.click('#sidebarPeekBtn'); await settle(sc);
+  const sc2 = await sbSnap(sc);
+  check('    ☰ brings it back for good: 214px, no tab, "open" in storage, and focus on ‹', sc2.w === 214 && !sc2.tab && sc2.sb === 'open' && sc2.stored === 'open' && sc2.focus === 'sbHideClassic', JSON.stringify(sc2));
+  await sc.setViewportSize({ width: 1000, height: 800 }); await settle(sc);
+  await sc.evaluate(() => { document.querySelector('.app').classList.add('viewer-open'); }); await settle(sc);
+  const sc3 = await sbSnap(sc);
+  await sc.evaluate(() => setSidebarPref('auto')); await settle(sc);
+  const sc4 = await sbSnap(sc);
+  check('    kept open it is not folded on a recipe at 1000px, where the automatic Classic menu is (no sidebar, a ☰ tab); AUTOMATIC folds it again',
+        sc3.w === 214 && !sc3.tab && sc4.w === 0 && sc4.tab, JSON.stringify([sc3, sc4]));
+  await sc.close();
+
+  const sb2 = await browser.newPage({ viewport: { width: 1389, height: 800 }, __defaultStyle: true });
+  sb2.__label = 'menu, blocked storage';
+  await sb2.addInitScript(() => { const bad = () => { throw new Error('blocked'); }; try { Object.defineProperty(window, 'localStorage', { get: bad }); } catch (e) {} });
+  await sb2.clock.setFixedTime(FIXTURE_NOW);
+  await sb2.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await sb2.waitForTimeout(1000);
+  const sbk = await sb2.evaluate(() => { const out = { sb: document.documentElement.getAttribute('data-sb') };
+    try { out.pref = sidebarPref(); } catch (e) { out.err = 'sidebarPref: ' + e.message; }   // a throw is a failed check, not a crash that ends the run
+    try { document.getElementById('navHideBtn').click(); out.hidden = document.documentElement.getAttribute('data-sb'); } catch (e) { out.err = e.message; } return out; });
+  check('with storage blocked the menu is automatic, and hiding it still works for as long as the page is open, without an error', sbk.sb === null && sbk.pref === 'auto' && sbk.hidden === 'hidden' && !sbk.err, JSON.stringify(sbk));
+  await sb2.close();
 
   /* ---- Modernist, step 3: Recipes ----
      The title and its count beside the search; SOURCE beside SORT on the KEYWORD row; three cards to a row sharing 2px rules;
@@ -8430,6 +8624,8 @@ const check = (name, pass, detail) => {
   const peek = await sideOf(tu), hideShown = await tu.evaluate(() => document.getElementById('navHideBtn').getClientRects().length > 0);
   await tu.evaluate(() => { const b = document.getElementById('navHideBtn'); if (b && b.getClientRects().length) b.click(); }); await tu.waitForTimeout(250);   // a hidden ‹ is a failed check, not a timeout that stops the run
   const peeked = await sideOf(tu);
+  /* ‹ is also the choice to hide the menu on every screen, remembered (#200); this check is about the automatic folding, so it goes back to it. */
+  await tu.evaluate(() => setSidebarPref('auto')); await tu.waitForTimeout(250);
   await tu.evaluate(() => { const b = document.getElementById('navRailBtn'); if (b && b.getClientRects().length) b.click(); }); await tu.waitForTimeout(250);
   await tu.click('.navlink[data-view="shopping"]'); await tu.waitForTimeout(300);
   const chosen = await sideOf(tu), onShop = await tu.evaluate(() => state.view);

@@ -93,6 +93,13 @@ node test/core.test.js
 `build.js` inlines the real `core.js` into the built page, so the smoke suite below tests exactly
 what Pages serves.
 
+**Two things about how the pages are made** (26 Oct 2026). A test page opens as a device that chose Classic: `build.js` puts a script first in the built
+page's `<head>` that stores `kitchen.style = classic` when nothing is stored, because Modernist became the default (#200) and most of the suite was written for Classic;
+`{ __defaultStyle: true }` on `browser.newPage` turns it off for the checks on the default itself. And **a page that reloads must not have a Playwright init
+script that touches `localStorage`**: such a page loses what it wrote before the reload about one time in ten (8 to 11 lost in 60 runs of plain `setItem`, no app
+code involved, with a write-only init script and with a read-then-write one; none in 80 without). That is why the style pin is in the page, and why the one
+check that a menu choice survives a reload uses a page with no storage init script. Any new "remembered after a reload" check needs the same.
+
 **`test/smoke.js` — the browser suite.** It is slow (many minutes). It covers the parts that are pure app logic: week bucketing, scaling (including mixed numbers, ranges and pack counts),
 shopping-list totals and unit merging, tick behaviour, the planner's per-day servings, the
 `SOURCE_URL` round trip, the `[instant]`/`[overnight]` duration keywords, the automatic image
