@@ -7951,11 +7951,20 @@ const check = (name, pass, detail) => {
   const sc0 = await sbSnap(sc);
   const scBrand = await sc.evaluate(() => { const b = document.querySelector('.brand'), n = document.querySelector('.brand-classic'), h = document.getElementById('sbHideClassic'), r = h.getBoundingClientRect();
     const on = (x, y) => { const e = document.elementFromPoint(x, y); return !!e && e.closest('#sbHideClassic') === h; };
-    return { oneLine: n.getBoundingClientRect().height < parseFloat(getComputedStyle(n).lineHeight || '0') * 1.6 || n.getBoundingClientRect().height < 30, fits: b.scrollWidth <= b.clientWidth + 1, size: [Math.round(r.width), Math.round(r.height)],
+    return { fits: b.scrollWidth <= b.clientWidth + 1, size: [Math.round(r.width), Math.round(r.height)],
       tap: [on(r.left + 4, r.top + r.height / 2), on(r.right - 4, r.top + r.height / 2), on(r.left + r.width / 2, r.top + 4), on(r.left + r.width / 2, r.bottom - 4)],
       drawn: Math.round(parseFloat(getComputedStyle(h, '::after').width) + 2 * parseFloat(getComputedStyle(h, '::after').borderLeftWidth)) }; });
-  check('Classic: ‹ is in the brand row on every screen, "Recipe Wrangler" stays on one line beside it, and the button is 44px square with a 24px square drawn in it',
-        sc0.classicHide && !sc0.tab && sc0.w === 214 && scBrand.oneLine && scBrand.fits && scBrand.size.join() === '44,44' && scBrand.tap.slice(0, 2).every(Boolean) && scBrand.tap[2] === true && scBrand.drawn === 24, JSON.stringify([sc0, scBrand]));
+  /* The name is on one line where the font is narrow (IBM Plex, which the tablet loads) and wraps onto two where it is wider (CI's fallback font is: the first run of #219 failed on
+     this with the name pushing ‹ out of the menu); either way ‹ is inside the menu, whole, and answers a tap. Letter-spacing makes any font wide, so this does not depend on which one. */
+  const scWide = await sc.evaluate(async () => { const st = document.createElement('style'); st.id = 'wideBrand'; st.textContent = '.brand-classic{ letter-spacing:4px !important; }'; document.head.appendChild(st);
+    await new Promise(r => setTimeout(r, 200));
+    const b = document.querySelector('.brand'), n = document.querySelector('.brand-classic'), h = document.getElementById('sbHideClassic'), sb = document.querySelector('.sidebar').getBoundingClientRect(), r = h.getBoundingClientRect();
+    const on = (x, y) => { const e = document.elementFromPoint(x, y); return !!e && e.closest('#sbHideClassic') === h; };
+    const out = { lines: Math.round(n.getBoundingClientRect().height / 23), fits: b.scrollWidth <= b.clientWidth + 1, inside: r.left >= sb.left && r.right <= sb.right + 0.5,
+      tap: [on(r.left + 4, r.top + r.height / 2), on(r.right - 4, r.top + r.height / 2), on(r.left + r.width / 2, r.top + 4), on(r.left + r.width / 2, r.bottom - 4)] };
+    st.remove(); return out; });
+  check('Classic: ‹ is in the brand row on every screen, "Recipe Wrangler" fits beside it (one line, or two where the font is wider, and never pushing ‹ out of the menu), and the button is 44px square with a 24px square drawn in it',
+        sc0.classicHide && !sc0.tab && sc0.w === 214 && scBrand.fits && scWide.lines >= 2 && scWide.fits && scWide.inside && scWide.tap.every(Boolean) && scBrand.size.join() === '44,44' && scBrand.tap.every(Boolean) && scBrand.drawn === 24, JSON.stringify([sc0, scBrand, scWide]));
   await sc.click('#sbHideClassic'); await settle(sc);
   const sc1 = await sbSnap(sc);
   const scAll = {};
