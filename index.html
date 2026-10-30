@@ -918,6 +918,11 @@ function loadArchivoFont(){
   }
   .day-recipe-premade.on{ border-color:var(--sage); color:var(--sage); background:var(--sage-wash-strong); }
   .day-recipe-cooked.done{ border-color:var(--sage); color:var(--sage); cursor:default; }
+  .day-recipe-cooked.done.ahead{ cursor:pointer; background:none; }
+  /* The chooser for TO COOK / COOK AHEAD / PRE-MADE (#221): three full-width choices, each saying what it does. */
+  .dish-state-choices{ display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+  .dish-state-choices .meal-type-btn{ flex:none; min-height:44px; text-align:left; font-weight:600; }
+  .dish-state-choices .meal-type-btn small{ display:block; margin-top:4px; font-size:13px; font-weight:400; letter-spacing:0; line-height:1.45; color:var(--ink-soft); }
   /* The calendar push (P3): the day's two switches, quiet until on, like the headcount above. */
   .day-cal{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
   .day-cal-btn{
@@ -1610,6 +1615,17 @@ function loadArchivoFont(){
   .help-answers{ margin:0; padding-left:18px; }
   .help-answers li{ margin:6px 0; }
   .help-answers a{ color:var(--plum); }
+  .report-kind{ display:flex; gap:8px; margin-bottom:14px; }
+  .report-kind .btn{ flex:0 0 auto; min-width:96px; }
+  .report-kind .btn[aria-pressed="true"]{ background:var(--plum-wash); border-color:var(--plum); color:var(--plum); }
+  .report-title, .report-body{
+    display:block; width:100%; max-width:62ch; box-sizing:border-box; margin-bottom:14px; padding:10px 12px;
+    font:inherit; font-size:15px; color:var(--ink); background:var(--paper);
+    border:1px solid var(--line); border-radius:var(--r);
+  }
+  .report-title{ min-height:44px; }
+  .report-body{ min-height:120px; resize:vertical; line-height:1.5; }
+  .report-title:focus, .report-body:focus{ border-color:var(--plum); }
   a.btn{ display:inline-block; text-decoration:none; }
   .settings-tabs .btn.active{ background:var(--plum); border-color:var(--plum); color:var(--on-accent); }
   /* The hidden attribute loses to .sources-list's display:flex and the like without this. */
@@ -1896,7 +1912,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-26.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-30.2">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2418,7 +2434,26 @@ function loadArchivoFont(){
             <li><a href="help.html#converter" target="_blank" rel="noopener">How do we convert our own recipes for the app?</a></li>
             <li><a href="help.html#drive-backup" target="_blank" rel="noopener">How do I keep a backup in my Google Drive?</a></li>
             <li><a href="help.html#offline" target="_blank" rel="noopener">What does the OFFLINE bar mean?</a></li>
+            <li><a href="help.html#report" target="_blank" rel="noopener">How do I report a bug or suggest an idea?</a></li>
           </ul>
+        </div>
+
+        <!-- Issue #198. The app never writes to GitHub: OPEN ON GITHUB opens its own "new issue" page already filled in, and the
+             person reads it there and submits it. Nothing is stored, and no token or Edge Function is involved. -->
+        <div class="settings-block" data-settings-tab="help" id="reportBlock">
+          <div class="side-label">REPORT A BUG OR AN IDEA</div>
+          <p class="subtle">Something broken, or something you would like the app to do. This opens GitHub with your words already in place, and you
+            send it from there (you need to be signed in to GitHub). Reports are public: leave out recipe text and anything personal.</p>
+          <div class="report-kind" role="group" aria-label="Kind of report">
+            <button type="button" class="btn" data-report-kind="bug" aria-pressed="true">BUG</button>
+            <button type="button" class="btn" data-report-kind="idea" aria-pressed="false">IDEA</button>
+          </div>
+          <label class="field-label" for="reportTitle">TITLE</label>
+          <input type="text" id="reportTitle" class="report-title" maxlength="120" autocomplete="off" placeholder="e.g. the timer did not chime">
+          <label class="field-label" for="reportBody">WHAT HAPPENED, OR WHAT YOU WOULD LIKE</label>
+          <textarea id="reportBody" class="report-body" rows="5" placeholder="The more you say, the easier it is to put right."></textarea>
+          <p class="field-error" id="reportError" style="display:none;"></p>
+          <button type="button" class="btn primary" id="reportOpenBtn" disabled>OPEN ON GITHUB ↗</button>
         </div>
       </div>
     </section>
@@ -2466,6 +2501,22 @@ function loadArchivoFont(){
     <div class="meal-type-row" id="premadeChoices"></div>
     <div class="mini-actions">
       <button class="link-btn" id="premadeCancel">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- Issue #221: TO COOK, COOK AHEAD or PRE-MADE for one dish on the Planner. PRE-MADE goes on to the meal question above. -->
+<div class="modal-overlay" id="dishStateOverlay">
+  <div class="mini-panel" role="dialog" aria-modal="true" aria-labelledby="dishStateHeading">
+    <h2 id="dishStateHeading">How is this dish made?</h2>
+    <p class="subtle"><span id="dishStateWhat"></span> on this day:</p>
+    <div class="dish-state-choices" id="dishStateChoices">
+      <button type="button" class="meal-type-btn" data-state="cook" aria-pressed="false">TO COOK<small>Cooked for this day. On the shopping list; in the cooking stats and the food diary when you tap COOKED ✓.</small></button>
+      <button type="button" class="meal-type-btn" data-state="ahead" aria-pressed="false">COOK AHEAD<small>Cooked on this day to eat another. On the shopping list; in the cooking stats when you tap COOKED ✓, not in the food diary.</small></button>
+      <button type="button" class="meal-type-btn" data-state="premade" aria-pressed="false">PRE-MADE<small>Already made, from the freezer. Off the shopping list; in the food diary by itself, not in the cooking stats.</small></button>
+    </div>
+    <div class="mini-actions">
+      <button class="link-btn" id="dishStateCancel">CANCEL</button>
     </div>
   </div>
 </div>
@@ -2649,7 +2700,7 @@ const EXPECTED_CORE_VERSION = '2026-10-25.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-26.1';
+const APP_VERSION = '2026-10-30.2';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -4171,6 +4222,66 @@ function renderWhatsNew(){
       <ul>${(e.changes || []).map(c=> `<li>${escapeHtml(c)}</li>`).join('')}</ul>
     </div>`).join('');
 }
+/* ---- Report a bug or an idea (issue #198) ----
+   Settings → HELP. The app does not write to GitHub: it builds the address of GitHub's own "new issue" page with the title,
+   the label and the words already filled in, and opens it. The person reads it there and submits it, signed in as
+   themselves, so the app holds no token and calls no function. The prefix ("Bug: ", "Idea: ") is in the title as well as the
+   label because GitHub applies a label from the address only for someone allowed to label issues; for anyone else the
+   report arrives unlabelled and the prefix is what sorts it. The repository is public, so the page tells the person not to
+   write recipe text into a report, and the block of facts added to the body holds none: versions, look and screen only. */
+const ISSUES_NEW_URL = 'https://github.com/crispy-lettuce/RecipeFlowKeeper/issues/new';
+const REPORT_KINDS = { bug: { prefix: 'Bug', label: 'bug' }, idea: { prefix: 'Idea', label: 'enhancement' } };
+/* GitHub takes addresses well past this; some browsers and the tablet's share sheet do not. Past it the words are refused
+   with a message rather than cut, since a report that loses its last lines silently is worse than one that asks. */
+const REPORT_URL_MAX = 7500;
+function issueUrl({ kind, title, description, context }){
+  const k = REPORT_KINDS[kind];
+  const t = String(title || '').replace(/\s+/g, ' ').trim();
+  if(!k || !t) return { error: 'title' };
+  const body = [String(description || '').trim(), '', '---', 'From the app (added by the app: no recipes or personal details):', String(context || '')]
+    .join('\n').trim();
+  const url = ISSUES_NEW_URL + '?title=' + encodeURIComponent(`${k.prefix}: ${t}`)
+    + '&labels=' + encodeURIComponent(k.label) + '&body=' + encodeURIComponent(body);
+  return url.length > REPORT_URL_MAX ? { error: 'long' } : { url };
+}
+function reportContext(){
+  const root = document.documentElement;
+  return [
+    `- Version ${APP_VERSION}` + (typeof KITCHEN_CORE_VERSION === 'undefined' ? '' : ` (core ${KITCHEN_CORE_VERSION})`),
+    `- Look: ${currentStyle()}, ${root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'}`,
+    `- Screen: ${window.innerWidth} x ${window.innerHeight}, ${navigator.onLine ? 'online' : 'offline'}`,
+    `- Browser: ${navigator.userAgent}`
+  ].join('\n');
+}
+let reportKind = 'bug';
+function syncReportForm(){
+  document.querySelectorAll('#reportBlock [data-report-kind]').forEach(b=> b.setAttribute('aria-pressed', String(b.dataset.reportKind === reportKind)));
+  document.getElementById('reportOpenBtn').disabled = !document.getElementById('reportTitle').value.trim();
+}
+function showReportError(msg){
+  const el = document.getElementById('reportError');
+  el.textContent = msg || '';
+  el.style.display = msg ? '' : 'none';
+}
+document.querySelectorAll('#reportBlock [data-report-kind]').forEach(b=> b.addEventListener('click', ()=>{ reportKind = b.dataset.reportKind; syncReportForm(); }));
+document.getElementById('reportTitle').addEventListener('input', ()=>{ showReportError(''); syncReportForm(); });
+document.getElementById('reportBody').addEventListener('input', ()=> showReportError(''));
+document.getElementById('reportOpenBtn').addEventListener('click', ()=>{
+  const r = issueUrl({ kind: reportKind, title: document.getElementById('reportTitle').value,
+    description: document.getElementById('reportBody').value, context: reportContext() });
+  if(r.error){
+    showReportError(r.error === 'long'
+      ? 'That is too long to carry to GitHub this way. Shorten it here and add the rest on the GitHub page.'
+      : 'Give it a title first.');
+    return;
+  }
+  showReportError('');
+  /* Left in the boxes: if the new tab was blocked, tapping again needs no retyping. */
+  window.open(r.url, '_blank', 'noopener');
+  showToast('GitHub is open: send it from there');
+});
+syncReportForm();
+
 /* Once per device after an update: one line to say so. Nothing on a first visit, when there is nothing to compare. */
 function noteVersionSeen(){
   try {
@@ -4278,7 +4389,7 @@ async function hydrate(opts){
     throw new Error('This account belongs to more than one household. Ask whoever set it up to take it out of one.');
   const household = memberships[0].household_id;
 
-  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides, recipeNotes, calendarRow, autoColumns, premadeColumn, itemsColumn] = await Promise.all([
+  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides, recipeNotes, calendarRow, autoColumns, premadeColumn, itemsColumn, cookAheadColumn] = await Promise.all([
     sb.from('recipes').select('*'),
     /* Every column, and no recipe_id filter. The filter was here because a
        log could only ever be a cooked recipe; an ad-hoc diary entry (H2) is
@@ -4312,7 +4423,10 @@ async function hydrate(opts){
     sb.from('planner_days').select('premade').limit(1),
     /* Whether add-calendar-items.md is in (docs/PLAN-CALENDAR-PUSH.md §12), asked the same way and read apart for the
        same reason: a failure means "not yet", and until then the Planner keeps its one pair of calendar switches a day. */
-    sb.from('planner_days').select('calendar_items').limit(1)
+    sb.from('planner_days').select('calendar_items').limit(1),
+    /* Whether add-cook-ahead.md is in (issue #221), asked the same way and read apart for the same reason: a failure means
+       "not yet", and until then the Planner keeps its TO COOK / PRE-MADE switch and no save names either new column. */
+    sb.from('planner_days').select('cook_ahead').limit(1)
   ]);
   for(const res of [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases]){
     if(res.error) throw res.error;
@@ -4366,6 +4480,8 @@ async function hydrate(opts){
      household, made empty on 18 Oct, had no PRE-MADE switch, and its first days were saved without the column. The
      rows still count, so a failed probe on a database that plainly has the column cannot take the switch away. */
   premadeAvailable = !premadeColumn.error || planner.data.some(row=> 'premade' in row) || logs.data.some(row=> 'premade' in row);
+  /* The same for docs/migrations/add-cook-ahead.md (#221). */
+  cookAheadAvailable = !cookAheadColumn.error || planner.data.some(row=> 'cook_ahead' in row) || logs.data.some(row=> 'cook_ahead' in row);
   /* The same for docs/migrations/add-calendar-items.md: the rows alone cannot tell a household with no planned day. */
   calendarItemsAvailable = !itemsColumn.error || planner.data.some(row=> 'calendar_items' in row);
   rebuildCalendarDates();
@@ -4458,7 +4574,9 @@ function rowToDiaryEntry(row){
     mealType: row.meal_type || null,
     note: row.note || '',
     /* Present only when true, so an ordinary entry keeps the shape it always had, in the cache and in exports. */
-    ...(row.premade ? { premade: true } : {})
+    ...(row.premade ? { premade: true } : {}),
+    /* Cooking that was not a meal (#221): in the recipe's history, left out of the food diary. Present only when true. */
+    ...(row.cook_ahead && !row.premade ? { cookAhead: true } : {})
   };
 }
 
@@ -4481,14 +4599,15 @@ function diaryEntryTitle(entry, recipesById){
    lets the meal-type prompt (H1) update the row it just created while the
    insert is still in flight, and keeps every loader and saver in this
    file synchronous, as the rest of them are. */
-function addDiaryEntry({ recipeId = null, title = '', cookedOn, mealType = null, note = '', id = null, premade = false }){
+function addDiaryEntry({ recipeId = null, title = '', cookedOn, mealType = null, note = '', id = null, premade = false, cookAhead = false }){
   const entry = {
     /* uid(), not a second copy of it: the inline version here lacked the
        `window.crypto &&` guard and produced a value no uuid column accepts. A pre-made entry brings its own id,
        worked out from the planned day (premadeLogId), so that two devices write the same row. */
     id: id || uid(),
     recipeId, title: title.trim(), cookedOn, mealType, note,
-    ...(premade ? { premade: true } : {})
+    ...(premade ? { premade: true } : {}),
+    ...(cookAhead && !premade ? { cookAhead: true } : {})
   };
   cache.diary = cache.diary.concat([entry]);
   /* Assumed unsaved until the insert says otherwise — see unsavedDiaryIds. */
@@ -4497,7 +4616,9 @@ function addDiaryEntry({ recipeId = null, title = '', cookedOn, mealType = null,
     const row = {
       id: entry.id, household_id: HOUSEHOLD_ID,
       recipe_id: entry.recipeId, title: entry.title || null,
-      cooked_on: entry.cookedOn, meal_type: entry.mealType, note: entry.note || null
+      cooked_on: entry.cookedOn, meal_type: entry.mealType, note: entry.note || null,
+      /* Named only on a cooked-ahead row, which exists only once the migration is in (#221). */
+      ...(entry.cookAhead ? { cook_ahead: true } : {})
     };
     /* A pre-made entry is an upsert that leaves an existing row alone: another device may have written the same one
        first, and that is the same meal, not a second one. The column is named only on these, which exist only once
@@ -4979,13 +5100,13 @@ function deleteRecipe(id){
     if(!entry || entry.blank) return;
     const ids = planRecipeIds(entry);
     if(!ids.includes(id)) return;
-    const servings = planServings(entry), premade = planPremade(entry), items = planCalendarItems(entry);
+    const servings = planServings(entry), premade = planPremade(entry), cookAhead = planCookAhead(entry), items = planCalendarItems(entry);
     /* PRE-MADE kept in step with the rest (F14): it used to be dropped here, so deleting any recipe turned the
        other dishes on its days from the freezer back into fresh ones, back on the shopping list. The calendar's
        setting per dish goes the same way. */
-    const keepIds = [], keepServings = [], keepPremade = [], keepItems = [];
-    ids.forEach((rid, i) => { if(rid !== id){ keepIds.push(rid); keepServings.push(servings[i]); keepPremade.push(premade[i]); keepItems.push(items[i]); } });
-    if(keepIds.length) p[date] = keepCalendarFlags(entry, withPremade({ recipeIds: keepIds, servings: keepServings }, keepPremade), keepItems); else delete p[date];
+    const keepIds = [], keepServings = [], keepPremade = [], keepCookAhead = [], keepItems = [];
+    ids.forEach((rid, i) => { if(rid !== id){ keepIds.push(rid); keepServings.push(servings[i]); keepPremade.push(premade[i]); keepCookAhead.push(cookAhead[i]); keepItems.push(items[i]); } });
+    if(keepIds.length) p[date] = keepCalendarFlags(entry, withDishFlags({ recipeIds: keepIds, servings: keepServings }, keepPremade, keepCookAhead), keepItems); else delete p[date];
     savePlanDay(date);
   }));
   loadGroups().filter(g => g.recipeIds.includes(id)).forEach(g => {
@@ -5043,7 +5164,9 @@ async function replaceAllDiary(recipeList, diaryList){
         meal_type: MEAL_TYPES.indexOf(e.mealType) === -1 ? null : e.mealType,
         note: e.note || null,
         /* On every row once the column exists: a batch upsert writes a missing key as null, which the column refuses. */
-        ...(premadeAvailable ? { premade: !!e.premade } : {})
+        ...(premadeAvailable ? { premade: !!e.premade } : {}),
+        /* On every row once the column exists, for the same reason; never beside premade (the table refuses both). */
+        ...(cookAheadAvailable ? { cook_ahead: !!e.cookAhead && !e.premade } : {})
       }));
 
     if(rows.length){
@@ -5154,6 +5277,7 @@ async function pushPlan(p){
     servings: planServings(entry),
     /* PRE-MADE on every row once the column exists: a batch upsert writes a missing key as null. */
     ...(premadeAvailable ? { premade: planPremade(entry) } : {}),
+    ...(cookAheadAvailable ? { cook_ahead: planCookAhead(entry) } : {}),
     /* A restore says what the plan is, switches included, so the server is told the same as the cache.
        Only once the columns exist (calendarAvailable); the importer then brings the calendar into step. */
     ...(calendarAvailable ? calendarColumns(entry) : {}),
@@ -5191,6 +5315,7 @@ function savePlanDay(dateStr){
       household_id: HOUSEHOLD_ID, plan_date: dateStr, is_blank: !!entry.blank,
       recipe_ids: planRecipeIds(entry), servings: planServings(entry),
       ...(premadeAvailable ? { premade: planPremade(entry) } : {}),
+      ...(cookAheadAvailable ? { cook_ahead: planCookAhead(entry) } : {}),
       /* Named only once the migration is in, like recipeToRow's source_check: before it, a row naming a
          column that does not exist would fail every Planner save. A blank day sends both as false. */
       ...(calendarAvailable ? calendarColumns(entry) : {}),
@@ -5249,12 +5374,36 @@ function withPremade(entry, premade){
   else delete entry.premade;
   return entry;
 }
+/* Whether docs/migrations/add-cook-ahead.md is in: set by hydrate (#221). */
+let cookAheadAvailable = false;
+/* COOK AHEAD per entry (#221): true for a dish cooked on this day to be eaten on another. It counts as cooking when it is
+   logged (COOKED ✓) and never goes into the food diary; it stays on the shopping list. Padded like planPremade, and never
+   true beside a PRE-MADE meal: a dish is one or the other. */
+function planCookAhead(entry){
+  const ids = planRecipeIds(entry);
+  const raw = (entry && Array.isArray(entry.cookAhead)) ? entry.cookAhead : [];
+  const premade = planPremade(entry);
+  return ids.map((_, i)=> raw[i] === true && !premade[i]);
+}
+/* Kept on the entry only while some dish is cooked ahead, as PRE-MADE is, so an ordinary day keeps the shape it always had. */
+function withCookAhead(entry, list){
+  const l = Array.isArray(list) ? list : [];
+  if(l.some(v=> v === true)) entry.cookAhead = l.slice(0, planRecipeIds(entry).length);
+  else delete entry.cookAhead;
+  return entry;
+}
+/* Both per-dish settings that ride beside recipeIds and servings, set in one call: every place that rebuilds a day from
+   its lists goes through here, so a list that has to be spliced or padded in step with the dishes cannot be left out of one. */
+function withDishFlags(entry, premade, cookAhead){
+  return withCookAhead(withPremade(entry, premade), cookAhead);
+}
 /* The arrays read as one list of entries. planRecipeIds stays as it was
    so the call sites that only want ids are untouched. */
 function planEntries(entry){
   const servings = planServings(entry);
   const premade = planPremade(entry);
-  return planRecipeIds(entry).map((recipeId, i)=> ({ recipeId, servings: servings[i], premade: premade[i] }));
+  const cookAhead = planCookAhead(entry);
+  return planRecipeIds(entry).map((recipeId, i)=> ({ recipeId, servings: servings[i], premade: premade[i], cookAhead: cookAhead[i] }));
 }
 function setPlanBlank(dateStr){ const p = loadPlan(); p[dateStr] = {blank:true}; return savePlanDay(dateStr); }
 function clearPlanDay(dateStr){ const p = loadPlan(); delete p[dateStr]; return savePlanDay(dateStr); }
@@ -5263,16 +5412,18 @@ function addPlanRecipe(dateStr, recipeId, people, calState){
   const ids = planRecipeIds(p[dateStr]);
   const servings = planServings(p[dateStr]);
   const premade = planPremade(p[dateStr]);
+  const cookAhead = planCookAhead(p[dateStr]);
   const items = planCalendarItems(p[dateStr]);
   ids.push(recipeId);
   /* As written, until someone says otherwise; a side offered on the Planner (#87) comes in at its main's headcount, in
      this same single upsert rather than a second write. */
   servings.push(parseInt(people, 10) || 0);
   premade.push(''); // cooked fresh, until someone says otherwise
+  cookAhead.push(false);
   /* On a day that is in the calendar the new dish is in it too (IN CALENDAR is the whole day's), without the reminder
      unless `calState` says otherwise: a side put with its main takes the main's state (§12.5), in this same write. */
   items.push(isCalendarDay(p[dateStr]) ? (calState === 'remind' ? 'remind' : 'in') : '');
-  p[dateStr] = keepCalendarFlags(p[dateStr], withPremade({recipeIds: ids, servings}, premade), items);
+  p[dateStr] = keepCalendarFlags(p[dateStr], withDishFlags({recipeIds: ids, servings}, premade, cookAhead), items);
   /* The one place a recipe is put on a day (the card picker and the shortlist both come here), so the one
      place the automatic toggles act. Before the save, which then writes the day and queues its sync. */
   applyCalendarAuto(p[dateStr], dateStr, ids.length - 1);
@@ -5287,7 +5438,7 @@ function setPlanServingsAt(dateStr, index, people){
   if(index < 0 || index >= ids.length) return true;
   const servings = planServings(entry);
   servings[index] = parseInt(people, 10) || 0;
-  p[dateStr] = keepCalendarFlags(entry, withPremade({recipeIds: ids, servings}, planPremade(entry)));
+  p[dateStr] = keepCalendarFlags(entry, withDishFlags({recipeIds: ids, servings}, planPremade(entry), planCookAhead(entry)));
   return savePlanDay(dateStr);
 }
 /* PRE-MADE on or off for one item, by its place on the day. On ('breakfast' … 'snack') is also a moment the automatic
@@ -5301,7 +5452,10 @@ function setPlanPremadeAt(dateStr, index, meal){
   if(index < 0 || index >= ids.length) return true;
   const premade = planPremade(entry);
   premade[index] = MEAL_TYPES.includes(meal) ? meal : '';
-  p[dateStr] = keepCalendarFlags(entry, withPremade({recipeIds: ids, servings: planServings(entry)}, premade));
+  /* From the freezer or cooked ahead, never both (#221): choosing a meal here takes COOK AHEAD off the dish. */
+  const cookAhead = planCookAhead(entry);
+  if(premade[index]) cookAhead[index] = false;
+  p[dateStr] = keepCalendarFlags(entry, withDishFlags({recipeIds: ids, servings: planServings(entry)}, premade, cookAhead));
   if(premade[index]) applyCalendarAuto(p[dateStr], dateStr, index);
   const saved = savePlanDay(dateStr);
   /* Switched on as a meal while its freezer row is already in the diary as another (PRE-MADE off, which keeps the row,
@@ -5313,6 +5467,21 @@ function setPlanPremadeAt(dateStr, index, meal){
   logDuePremade();
   return saved;
 }
+/* COOK AHEAD on or off for one item (#221). On clears PRE-MADE, so a dish that was coming out of the freezer is cooked fresh
+   again. A diary entry already made for it from the freezer stays, as switching PRE-MADE off has always left it. Off, and a
+   cook-ahead log already made for the day, stay as they are: the ✓ COOKED AHEAD on the day is what takes that out. */
+function setPlanCookAheadAt(dateStr, index, on){
+  const p = loadPlan();
+  const entry = p[dateStr];
+  if(!entry || !cookAheadAvailable) return true;
+  const ids = planRecipeIds(entry);
+  if(index < 0 || index >= ids.length) return true;
+  const premade = planPremade(entry), cookAhead = planCookAhead(entry);
+  cookAhead[index] = !!on;
+  if(on) premade[index] = '';
+  p[dateStr] = keepCalendarFlags(entry, withDishFlags({recipeIds: ids, servings: planServings(entry)}, premade, cookAhead));
+  return savePlanDay(dateStr);
+}
 /* Removes by list position, not by id — if the same recipe is assigned
    to a day twice on purpose (e.g. a doubled batch), removing "the one you
    tapped" should only take that one out, not every occurrence. */
@@ -5323,12 +5492,14 @@ function removePlanRecipeAt(dateStr, index){
   const ids = planRecipeIds(entry);
   const servings = planServings(entry);
   const premade = planPremade(entry);
+  const cookAhead = planCookAhead(entry);
   const items = planCalendarItems(entry); // before the splice below, which shortens entry's own list of ids
   ids.splice(index, 1);
   servings.splice(index, 1); // in lockstep, or every later entry's servings shift up one
   premade.splice(index, 1);
+  cookAhead.splice(index, 1);
   items.splice(index, 1);
-  if(ids.length) p[dateStr] = keepCalendarFlags(entry, withPremade({recipeIds: ids, servings}, premade), items); else delete p[dateStr];
+  if(ids.length) p[dateStr] = keepCalendarFlags(entry, withDishFlags({recipeIds: ids, servings}, premade, cookAhead), items); else delete p[dateStr];
   return savePlanDay(dateStr);
 }
 
@@ -5441,7 +5612,7 @@ function keepCalendarFlags(before, after, items){
 }
 /* A day row as the entry the app keeps. */
 function rowToPlanEntry(row){
-  const entry = withCalendarFlags(withPremade({recipeIds: row.recipe_ids || [], servings: row.servings || []}, row.premade),
+  const entry = withCalendarFlags(withDishFlags({recipeIds: row.recipe_ids || [], servings: row.servings || []}, row.premade, row.cook_ahead),
     !!row.calendar, !!row.calendar_remind);
   if(row.calendar && Array.isArray(row.calendar_items) && row.calendar_items.length){
     entry.calendarItems = row.calendar_items;
@@ -7316,7 +7487,7 @@ function renderViewer(){
    `history` array so everything that reads it stays as it was. */
 /* `date` is today when the flow is finished, or the Planner day COOKED ✓ was tapped on (docs/PLAN-FOOD-DIARY.md):
    the same entry, the same prompt, for the day it was eaten. */
-function logRecipeUsed(id, date){
+function logRecipeUsed(id, date, opts){
   const recipes = loadRecipes();
   const idx = recipes.findIndex(r=>r.id === id);
   if(idx === -1) return;
@@ -7336,13 +7507,19 @@ function logRecipeUsed(id, date){
 
      The id is generated client-side by addDiaryEntry precisely so the
      prompt can target this row while its insert is still in flight. */
-  const entry = addDiaryEntry({ recipeId: id, cookedOn: today });
-  showToast(`Logged "${recipes[idx].title}" as cooked ${today === todayStr() ? 'today' : formatDate(today)}`);
+  /* Cooked ahead (#221): cooking that counts, for a dish made on this day to be eaten on another. It is in the history just
+     pushed, so last cooked, times cooked, the streak and STATS count it; its row is marked so the food diary leaves it out.
+     Nobody ate it, so there is no meal to ask for. */
+  const cookAhead = !!(opts && opts.cookAhead) && cookAheadAvailable;
+  const entry = addDiaryEntry({ recipeId: id, cookedOn: today, cookAhead });
+  showToast(cookAhead
+    ? `Logged "${recipes[idx].title}" as cooked ahead ${today === todayStr() ? 'today' : formatDate(today)}: in your cooking stats, not in the food diary`
+    : `Logged "${recipes[idx].title}" as cooked ${today === todayStr() ? 'today' : formatDate(today)}`);
   /* Only the screen it was logged from is redrawn. renderViewer from anywhere else would look for a recipe that is not
      open and take the page back to RECIPES. */
   if(state.view === 'viewer') renderViewer();
   if(state.view === 'planner') renderPlanner();
-  promptForMealType(entry.id, recipes[idx].title, id);
+  if(!cookAhead) promptForMealType(entry.id, recipes[idx].title, id);
 }
 
 /* Finishing a recipe's flow, in the viewer or a group. Usually that is logRecipeUsed. But a dish down as PRE-MADE today
@@ -7360,8 +7537,15 @@ function finishRecipe(id){
      Only while the dish is still PRE-MADE (F39): switched off since, finishing its flow is ordinary cooking again, and
      used to log nothing and say nothing. */
   const key = `${today}|${id}`;
-  const idx = planEntries(loadPlan()[today]).findIndex(e=> e.recipeId === id && e.premade);
-  if(idx === -1){ logRecipeUsed(id); return; }
+  const todays = planEntries(loadPlan()[today]);
+  const idx = todays.findIndex(e=> e.recipeId === id && e.premade);
+  if(idx === -1){
+    /* A dish down as COOK AHEAD today is logged as cooked ahead, without a question (#221). The first place the recipe has
+       on the day decides, as the one log a recipe gets a day is made once. */
+    const first = todays.find(e=> e.recipeId === id);
+    logRecipeUsed(id, undefined, { cookAhead: !!(first && first.cookAhead) });
+    return;
+  }
   if(freshOrFreezerAnswered.has(key)) return;
   freshOrFreezerAsk = { id, date: today, idx, key };
   document.getElementById('freshOrFreezerWhat').textContent = recipe.title || 'This dish';
@@ -7950,7 +8134,8 @@ function renderPlannerDays(){
            what removal and "view" need to target the right entry. */
         const entryServings = planServings(entry);
         const entryPremade = planPremade(entry);
-        const items = ids.map((id, idx)=>({ idx, serves: entryServings[idx], premade: entryPremade[idx], recipe: recipes.find(r=>r.id===id) }));
+        const entryCookAhead = planCookAhead(entry);
+        const items = ids.map((id, idx)=>({ idx, serves: entryServings[idx], premade: entryPremade[idx], cookAhead: entryCookAhead[idx], recipe: recipes.find(r=>r.id===id) }));
         items.sort((a,b)=>
           courseSortIndex(a.recipe && a.recipe.tags && a.recipe.tags.course) -
           courseSortIndex(b.recipe && b.recipe.tags && b.recipe.tags.course)
@@ -7969,7 +8154,7 @@ function renderPlannerDays(){
           return `<button class="day-cal-btn meal-remind${on ? ' on' : ''}" data-action="calMealRemind" ${attrs} aria-pressed="${on ? 'true' : 'false'}">${on ? '✓ ' : ''}REMIND ME ${formatRemindAt(remindAtNow())}</button>`;
         };
 
-        const rows = items.map(({idx, serves, premade, recipe})=>{
+        const rows = items.map(({idx, serves, premade, cookAhead, recipe})=>{
           if(!recipe){
             return `<div class="day-recipe-row">
               <span class="day-away">Recipe removed</span>
@@ -7996,7 +8181,7 @@ function renderPlannerDays(){
               ${course ? `<span class="day-recipe-course${tone}">${escapeHtml(course.toUpperCase())}</span>` : ''}
               <span class="day-recipe-time">${timeHtml(recipe.time)}</span>
               ${servesPill(recipe, serves, idx)}
-              ${premadePill(premade, idx)}
+              ${dishStatePill(premade, cookAhead, idx)}
               ${cookedPill(recipe, iso, todayIso, premade, idx)}
               ${perMeal && !group ? mealPill({ indexes: [idx] }, `data-idx="${idx}"`) : ''}
               <button class="day-recipe-remove" data-action="removeOne" data-idx="${idx}" aria-label="Remove from this day">×</button>
@@ -8157,11 +8342,77 @@ function premadePill(premade, idx){
    Once that recipe is logged for that day it says so and does nothing more. A pre-made meal is logged by itself instead,
    and a future day has not been eaten yet. */
 function cookedPill(recipe, iso, todayIso, premade, idx){
+  /* Cooked ahead for this day (#221): in the cooking stats, not in the food diary. Tapping it asks, and takes it out again. */
+  const ahead = cookAheadAvailable ? loadDiary().find(e=> e.cookAhead && e.recipeId === recipe.id && e.cookedOn === iso) : null;
+  if(ahead) return `<button class="day-recipe-cooked done ahead" data-action="uncookAhead" data-idx="${idx}"
+    title="Cooked on this day to eat another: it counts in your cooking stats and is not in the food diary. Tap to take it out of the stats">✓ COOKED AHEAD</button>`;
   if(premade || iso > todayIso) return '';
   return (recipe.history || []).includes(iso)
     ? `<span class="day-recipe-cooked done" title="In the food diary for this day">✓ COOKED</span>`
     : `<button class="day-recipe-cooked" data-action="cooked" data-idx="${idx}" title="Log it as cooked on this day">COOKED ✓</button>`;
 }
+
+/* TO COOK, COOK AHEAD or PRE-MADE (#221). Before docs/migrations/add-cook-ahead.md the pill is the two-way PRE-MADE switch as it
+   was; after, it shows which of the three the dish is and opens the chooser. */
+function dishStatePill(premade, cookAhead, idx){
+  if(!cookAheadAvailable) return premadePill(premade, idx);
+  if(premade) return `<button class="day-recipe-premade on" data-action="dishState" data-idx="${idx}" aria-haspopup="dialog"
+    title="Comes out of the freezer, as ${MEAL_TYPE_LABELS[premade].toLowerCase()}. Tap to change.">PRE-MADE · ${MEAL_TYPE_LABELS[premade].toUpperCase()}</button>`;
+  if(cookAhead) return `<button class="day-recipe-premade on" data-action="dishState" data-idx="${idx}" aria-haspopup="dialog"
+    title="Cooked on this day to eat another. Tap to change.">COOK AHEAD</button>`;
+  return `<button class="day-recipe-premade" data-action="dishState" data-idx="${idx}" aria-haspopup="dialog"
+    title="To be cooked for this day. Tap to cook it ahead for another day, or to use one that is already made">TO COOK</button>`;
+}
+/* The chooser: which day and which item, while it is open. */
+let dishStateAsk = null;
+function openDishStateChooser(date, idx){
+  const ent = planEntries(loadPlan()[date])[idx];
+  if(!ent) return;
+  const recipe = loadRecipes().find(r=> r.id === ent.recipeId);
+  dishStateAsk = { date, idx };
+  document.getElementById('dishStateWhat').textContent = recipe ? recipe.title : 'This dish';
+  const current = ent.premade ? 'premade' : ent.cookAhead ? 'ahead' : 'cook';
+  document.querySelectorAll('#dishStateChoices .meal-type-btn').forEach(b=>{
+    const on = b.dataset.state === current;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+  document.getElementById('dishStateOverlay').classList.add('open');
+  const first = document.querySelector('#dishStateChoices .meal-type-btn');
+  if(first) first.focus();
+}
+function closeDishStateChooser(){
+  dishStateAsk = null;
+  document.getElementById('dishStateOverlay').classList.remove('open');
+}
+document.getElementById('dishStateChoices').addEventListener('click', e=>{
+  const btn = e.target.closest('.meal-type-btn');
+  if(!btn || !dishStateAsk) return;
+  const { date, idx } = dishStateAsk;
+  const choice = btn.dataset.state;
+  closeDishStateChooser();
+  const ent = planEntries(loadPlan()[date])[idx];
+  if(!ent) return;
+  if(choice === 'premade'){
+    /* Already PRE-MADE: nothing to ask again, it stays as it is. */
+    if(!ent.premade) askPremadeMeal(date, idx);
+    return;
+  }
+  if(choice === 'ahead'){
+    if(ent.cookAhead) return;
+    setPlanCookAheadAt(date, idx, true);
+    showToast('Cook ahead: still on the shopping list. Tap COOKED ✓ when it is made, and it counts in your cooking stats but not the food diary');
+  } else {
+    if(!ent.premade && !ent.cookAhead) return;
+    if(ent.premade) setPlanPremadeAt(date, idx, ''); else setPlanCookAheadAt(date, idx, false);
+    showToast('To cook: on the shopping list, and in the food diary when you cook it');
+  }
+  renderPlanner();
+  updateSidebarCounts();
+});
+document.getElementById('dishStateCancel').addEventListener('click', closeDishStateChooser);
+document.getElementById('dishStateOverlay').addEventListener('click', e=>{ if(e.target.id === 'dishStateOverlay') closeDishStateChooser(); });
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && dishStateAsk) closeDishStateChooser(); });
 
 /* The meal for a dish switched to PRE-MADE: which day and which item, while the question is open. */
 let premadeAsk = null;
@@ -8215,7 +8466,7 @@ function initPlannerListeners(){
        on the headcount button, which would otherwise never be reachable
        while something is selected. */
     if(state.selectedShortlistId && state.groupingDate !== date
-       && !e.target.closest('[data-action="setServes"], [data-action="calToggle"], [data-action="calRemind"], [data-action="calMealRemind"], [data-action="premade"], [data-action="cooked"], [data-action="undoRemove"], [data-action="addOther"], [data-action="removeAdHoc"], [data-action="adHocMeal"]')){
+       && !e.target.closest('[data-action="setServes"], [data-action="calToggle"], [data-action="calRemind"], [data-action="calMealRemind"], [data-action="premade"], [data-action="dishState"], [data-action="uncookAhead"], [data-action="cooked"], [data-action="undoRemove"], [data-action="addOther"], [data-action="removeAdHoc"], [data-action="adHocMeal"]')){
       const item = loadShortlist().find(i=>i.id === state.selectedShortlistId);
       if(item && item.recipeId){
         addPlanRecipe(date, item.recipeId);
@@ -8366,10 +8617,21 @@ function initPlannerListeners(){
       } else {
         askPremadeMeal(date, idx);
       }
+    } else if(action === 'dishState'){
+      openDishStateChooser(date, parseInt(actionEl.dataset.idx, 10));
+    } else if(action === 'uncookAhead'){
+      const id = planRecipeIds(loadPlan()[date])[parseInt(actionEl.dataset.idx, 10)];
+      const ahead = loadDiary().find(e=> e.cookAhead && e.recipeId === id && e.cookedOn === date);
+      if(ahead && confirm('Take this out of your cooking stats? It was cooked ahead, so it is not in the food diary either.')){
+        deleteDiaryEntry(ahead.id);
+        renderPlanner();
+        updateSidebarCounts();
+        showToast('Taken out of your cooking stats');
+      }
     } else if(action === 'cooked'){
-      const ids = planRecipeIds(loadPlan()[date]);
-      const id = ids[parseInt(actionEl.dataset.idx, 10)];
-      if(id) logRecipeUsed(id, date);
+      const ents = planEntries(loadPlan()[date]);
+      const ent = ents[parseInt(actionEl.dataset.idx, 10)];
+      if(ent) logRecipeUsed(ent.recipeId, date, { cookAhead: !!ent.cookAhead });
     } else if(action === 'calToggle'){
       const entry = loadPlan()[date];
       setPlanCalendar(date, !(entry && entry.calendar));
@@ -9130,6 +9392,8 @@ function historyByDate(recipes){
   const byId = new Map((recipes || []).map(r=>[r.id, r]));
   const map = new Map();
   loadDiary().forEach(e=>{
+    /* Cooked ahead (#221): in the recipe's history and the stats, never in the food diary. */
+    if(e.cookAhead) return;
     if(!map.has(e.cookedOn)) map.set(e.cookedOn, []);
     map.get(e.cookedOn).push({
       logId: e.id,
@@ -13221,8 +13485,9 @@ function csvCell(value){
 function exportDiaryCsv(){
   const recipes = loadRecipes();
   const byId = new Map(recipes.map(r=>[r.id, r]));
+  /* The food diary only: a dish cooked ahead (#221) is cooking, not a meal eaten, so it is not a row here. EXPORT DATA keeps it. */
   const rows = loadDiary()
-    .slice()
+    .filter(e=> !e.cookAhead)
     .sort((a,b)=> a.cookedOn.localeCompare(b.cookedOn) ||
                   diaryEntryTitle(a, byId).localeCompare(diaryEntryTitle(b, byId)));
 
@@ -13297,7 +13562,8 @@ function importAllData(file){
           cookedOn: e.cookedOn,
           mealType: MEAL_TYPES.indexOf(e.mealType) === -1 ? null : e.mealType,
           note: e.note || '',
-          ...(premadeAvailable && e.premade ? { premade: true } : {})
+          ...(premadeAvailable && e.premade ? { premade: true } : {}),
+          ...(cookAheadAvailable && e.cookAhead && !e.premade ? { cookAhead: true } : {})
         }));
     }
     queueWrite('cooking history', ()=> replaceAllDiary(data.recipes, Array.isArray(data.diary) ? data.diary : null), { whole: true });

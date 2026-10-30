@@ -212,9 +212,14 @@ buttons), and not again above its diagram (issue #192, 25 Oct 2026); in Modernis
 The next 14 days, rolling, in weeks. Per day:
 - **CHOOSE A RECIPE** / **ADD ANOTHER**; **MARK DAY AWAY**; **SERVES** (people for that dish on that day: the shopping list and the
   recipe opened from the Planner follow it); **×** takes a dish off, with a 10-second **UNDO**.
-- **TO COOK / PRE-MADE:** a dish defaults to TO COOK. PRE-MADE (with a meal) means "already cooked, from the freezer": it leaves
-  the shopping list and goes into the diary by itself on its day, and does not count towards last cooked or the streak.
-- **COOKED ✓** (today's dishes): logs it as if the recipe had been finished.
+- **TO COOK / COOK AHEAD / PRE-MADE** (issue #221): a dish defaults to TO COOK. Tapping its pill opens a chooser of the three.
+  PRE-MADE (with a meal) means "already cooked, from the freezer": it leaves the shopping list and goes into the diary by itself on
+  its day, and does not count towards last cooked or the streak. COOK AHEAD means "cooked on this day to be eaten on another": it stays
+  on the shopping list, counts as cooking when logged (last cooked, times cooked, the streak, STATS) and is never in the food diary.
+  A dish is one of the three. Until `docs/migrations/add-cook-ahead.md` is applied the pill is the old two-way TO COOK / PRE-MADE switch.
+- **COOKED ✓** (today's dishes): logs it as if the recipe had been finished. On a COOK AHEAD dish it logs a cooked-ahead row
+  (`recipe_logs.cook_ahead`) and asks no meal; finishing the recipe's flow does the same. It then reads ✓ COOKED AHEAD, and tapping that,
+  after a question, deletes that log row and takes the date out of the recipe's history.
 - **+ OTHER:** an entry that is not a recipe (takeaway, meal out, leftovers) with an optional meal, tagged AD HOC. It is the same
   diary entry History's + ENTRY makes. Not on the shopping list or the calendar.
 - **Calendar buttons** (§6.6): IN CALENDAR, REMIND ME per meal, ADD THE WEEK.
@@ -236,7 +241,7 @@ Adds up every ingredient the week's planned dishes need, scaled to each day's SE
 ### 5.8 History and the food diary
 A month calendar of what was eaten, Monday to Sunday whatever WEEK STARTS ON says, with Saturday and Sunday lightly shaded in both
 styles (issue #212, 25 Oct 2026); MOST COOKED BY DAY OF WEEK runs in the same order. Cooked recipes arrive by ticking the last column or COOKED ✓; PRE-MADE meals arrive by
-themselves, marked FROM THE FREEZER; **+ ENTRY** adds anything with no recipe. REMOVE deletes an entry (for a freezer meal it also
+themselves, marked FROM THE FREEZER; a dish cooked ahead is not here (it counts in STATS, not in the diary); **+ ENTRY** adds anything with no recipe. REMOVE deletes an entry (for a freezer meal it also
 turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives totals, the streak and most-cooked.
 
 ### 5.9 Settings (four tabs)
@@ -246,7 +251,10 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
   tidy SOURCES and KEYWORDS; **RECIPE PHOTOS** (RE-HOST EXTERNAL IMAGES, CHECK STORED IMAGES).
 - **APP:** week start day for the Planner and the shopping list (default Friday; History always starts on Monday), APPEARANCE, STYLE, MENU (automatic, always shown or always hidden, per device), PREPARATION, OVENS (how many this kitchen has, per device), AVOID THE CLASH (on or off when a meal opens, per device), Google Calendar (§6.6),
   BACKUP TO GOOGLE DRIVE, RECIPE SHARING.
-- **HELP:** the guide (`help.html`), the app's version and what changed lately.
+- **HELP:** the guide (`help.html`), the app's version and what changed lately, quick answers, and **REPORT A BUG OR AN IDEA** (issue #198):
+  BUG or IDEA, a title and some words, then **OPEN ON GITHUB ↗** opens GitHub's "new issue" page already filled in (the title prefixed `Bug: `
+  or `Idea: `, the `bug` or `enhancement` label, the words, and the app's versions, look, screen size and browser). The person sends it from GitHub, as themselves:
+  the app holds no token and writes nothing. Disabled until there is a title; too long for an address is refused, not cut.
 
 ---
 
@@ -271,12 +279,14 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
    recipes are visible, never plans, diary, notes, shopping or calendar. Each side switches it on for itself, by email.
 9. **Versions.** The app has a date version; a new one is announced by an UPDATE bar (RELOAD). When the converter instructions change,
    each household sees a CONVERTER bar until someone taps DONE.
-10. **Help.** `help.html` names every button exactly as it reads and is checked against the app by a test.
+10. **Help.** `help.html` names every button exactly as it reads and is checked against the app by a test. Reports of bugs and ideas leave the app only as
+    a link the person opens and submits on GitHub; the facts added to one hold no recipe, household or account data.
 11. **Look and feel rules that stand.** Everything pressed with a thumb is at least 44 px tall; text meets 4.5:1 contrast on the surface
     it sits on; there is one type scale and one corner radius per style; step text is flush left; keyboard focus is always visible.
     Colours come from tokens, per theme, so light, dark, Classic and Modernist all work.
-12. **Eaten is not cooked.** A meal from the freezer is logged in the diary on its day but does not change "last cooked", times cooked
-    or the streak, and a PRE-MADE dish is not on the shopping list.
+12. **Eaten is not cooked, and cooked is not eaten.** A meal from the freezer is logged in the diary on its day but does not change "last cooked",
+    times cooked or the streak, and a PRE-MADE dish is not on the shopping list. A dish cooked ahead is the reverse: it changes them when logged, is
+    on the shopping list, and is not in the diary (the History calendar, its day detail and the diary CSV leave it out; EXPORT DATA keeps it).
 13. **One key, one home, per fact held about an ingredient.** Word matches, aisle overrides, swaps and the dictionary row each have one
     key and one place in Settings; only the naming facts re-key ticks.
 
@@ -289,9 +299,9 @@ Each row of a household's data carries `household_id`; row-level security restri
 | Table | Holds |
 | --- | --- |
 | `recipes` | The library: `syntax` (the recipe) plus derived columns, `source_check`, `source_photos`, `copied_from` |
-| `recipe_logs` | The diary: one row per cooked or eaten meal, with meal type, `premade`, a note. Deleted with its recipe |
+| `recipe_logs` | The diary: one row per cooked or eaten meal, with meal type, `premade`, `cook_ahead` (cooking that is not a meal: in a recipe's history, not in the diary), a note. Deleted with its recipe |
 | `recipe_notes` | Dated cooking notes |
-| `planner_days` | One row per day: recipe ids with parallel servings and premade, calendar flags, per-meal reminder slots |
+| `planner_days` | One row per day: recipe ids with parallel servings, premade and cook_ahead, calendar flags, per-meal reminder slots |
 | `meal_groups` | Dishes cooked together on a day |
 | `shortlist_items` | Recipes and notes waiting for a day |
 | `shopping_checked` | Ticked items by week and key |

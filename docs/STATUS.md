@@ -13,8 +13,9 @@ It carries no test counts: run the suites, and CI is the record.
 
 - **The app is live and in daily use.** `main` is production: GitHub Pages serves it and every merge deploys. App version
   `2026-10-26.1` (`APP_VERSION`, `index.html`), core `2026-10-25.1` (`KITCHEN_CORE_VERSION`, `core.js`).
-- **Open work on GitHub:** no open pull requests; four open issues: #216 (the converter and old BBC Good Food recipes), #200 (view styles: its
-  three asks are built, see §3), #199 (names: the on-screen name is done, the repository rename is not) and #198 (reporting a bug or idea from the app).
+- **Open work on GitHub:** no open pull requests; five open issues (checked 30 Oct): #221 (COOK AHEAD on the Planner), #216 (the converter and old BBC Good
+  Food recipes), #200 (view styles: its three asks are built, see §3), #199 (names: the on-screen name is done, the repository rename is not) and #198
+  (reporting a bug or idea from the app). #221 and #198 are built (30 Oct): see §3.
   #100 (a preview site) was closed.
 - **Tablet checks:** the household reported every check complete on 25 Oct. Built since, and not yet reported on a device: the sign-in changes (#196,
   Job 1 in `docs/HOUSEHOLD-JOBS.md`), and the Modernist default, the Recipes grid, hiding the menu on every screen and the single NEW RECIPE button (#197, #199, #200).
@@ -55,8 +56,10 @@ the Modernist style, + OTHER on the Planner, the converter reminder, the version
    The timers rehearsal lives on as a standing check, `docs/TEST-PLAN.md` section H.
 2. **Open issues** (26 Oct 2026). **#216**, the converter and old BBC Good Food recipes, has no work on it in the repository. **#200** is built in #218 and #219 (Modernist the
    default, the grid fitting its width, the menu hideable on every screen) and the issue is left open for the household to close once it is seen on the tablet.
-   **#199**: the app is called "Recipe Wrangler" on screen; renaming the repository is not started and waits on the household's answers. **#198**, reporting a bug or idea from the app, is not started and
-   waits on the same. #100, a preview site, was closed; its reasoning is at `git show 67b552e:docs/PLAN-PREVIEW-SITE.md`.
+   **#199**: the app is called "Recipe Wrangler" on screen; renaming the repository is not started and waits on the household's answers. **#198**, reporting a bug or idea from the app, is built (Settings → HELP → REPORT A BUG OR AN IDEA, `docs/SPEC.md` §5.9; it opens a prefilled GitHub
+   page, so nothing is stored or deployed) and **#221**, COOK AHEAD on the Planner, is built (`docs/SPEC.md` §5.5). Both await the household's tablet checks
+   (`docs/HOUSEHOLD-JOBS.md` Jobs 2 and 3), and #221 needs `docs/migrations/add-cook-ahead.md` applied first: until then the Planner keeps its two-way switch.
+   Neither issue is closed; the household closes them once seen. The plan that covered both was deleted with the build: `git show 40e461d:docs/PLAN-COOK-AHEAD-AND-REPORTS.md`. #100, a preview site, was closed; its reasoning is at `git show 67b552e:docs/PLAN-PREVIEW-SITE.md`.
 3. **Household jobs** are in `docs/HOUSEHOLD-JOBS.md`: one waiting, signing in again on each device (Job 1, #196).
 4. **Optional, not planned:** a "download all source files" backup; drawing a PDF's pages inside the app;
    and four ideas parked from the run sheet's review, each wanting its own issue if picked up: **Trace** (hold a box to dim everything that does not feed it), folding away

@@ -258,15 +258,21 @@
       back in its place, with its number of people and the group it was in. The bar goes by itself, and if you leave the Planner or change the day
       in the meantime.</li>
   </ul>
-  <h3 id="premade">From the freezer, and cooked</h3>
+  <h3 id="premade">From the freezer, cooked ahead, and cooked</h3>
   <ul>
-    <li>Every dish on the Planner starts as <b class="ui">TO COOK</b>. Tap it if the dish is already cooked and coming out of the freezer.
-      It asks which meal it's for (breakfast, lunch, dinner or snack) and then reads, for example, <b>PRE-MADE · DINNER</b>. The dish leaves the shopping list,
-      and on its day it goes into the food diary by itself, marked <b>from the freezer</b>. Tap it again to make it fresh.
+    <li>Every dish on the Planner starts as <b class="ui">TO COOK</b>. Tap it to say how the dish is made: <b class="ui">TO COOK</b> (cooked for that day),
+      <b class="ui">COOK AHEAD</b> (cooked on that day to eat on another) or <b class="ui">PRE-MADE</b> (already cooked, coming out of the freezer).
+      Choose <b>PRE-MADE</b> and it asks which meal it's for (breakfast, lunch, dinner or snack) and then reads, for example, <b>PRE-MADE · DINNER</b>.
+      The dish leaves the shopping list, and on its day it goes into the food diary by itself, marked <b>from the freezer</b>.
       Switched back on as a different meal, the food diary changes to match.</li>
+    <li><b class="ui">COOK AHEAD</b> is for a batch you cook now for later. The dish stays on the shopping list, and when you tap <b class="ui">COOKED ✓</b> (or finish its recipe)
+      it counts in your cooking: last cooked, times cooked, the streak and STATS. It does <i>not</i> go into the food diary, because nobody ate it that day;
+      the days you eat it are PRE-MADE. It then reads <b class="ui">✓ COOKED AHEAD</b>; tap that, and say yes, to take it out of your cooking stats again.
+      This appears once your household's database has been updated for it; until then the button is the old two-way TO COOK / PRE-MADE switch.</li>
     <li><b class="ui">COOKED ✓</b> appears on today's dishes. Tap it when you've cooked one without ticking through its recipe: it's
       logged just as finishing the recipe would, and asks which meal it was. Afterwards it reads <b>✓ COOKED</b>.</li>
-    <li>A meal from the freezer is <i>eaten</i>, not <i>cooked</i>: it doesn't change "last cooked", times cooked or the streak.</li>
+    <li>A meal from the freezer is <i>eaten</i>, not <i>cooked</i>: it doesn't change "last cooked", times cooked or the streak. A dish cooked ahead is the other way
+      round: <i>cooked</i>, not <i>eaten</i>.</li>
     <li>Finish the recipe of a dish marked PRE-MADE for today and it asks <b>Cooked fresh, or from the freezer?</b>
       <b class="ui">FROM THE FREEZER</b> leaves the diary as it is. <b class="ui">COOKED FRESH</b> turns PRE-MADE off for that dish (it goes back to TO COOK),
       swaps its freezer entry for a cooked one, and asks which meal it was.</li>
@@ -507,6 +513,17 @@
   <p>"A new version is ready": the app was changed while this tab was open. "Part-way through an update": it arrived in
     pieces. Either way, tap <b class="ui">RELOAD</b>. What changed is under <b class="ui">VERSION AND WHAT'S NEW</b> in
     Settings → HELP.</p>
+  <h3 id="report">Reporting a bug, or an idea</h3>
+  <p>Settings → HELP → <b class="ui">REPORT A BUG OR AN IDEA</b>. Choose <b class="ui">BUG</b> for something that is broken, or <b class="ui">IDEA</b>
+    for something you would like the app to do. Give it a short title, say what happened (or what you would like), and tap
+    <b class="ui">OPEN ON GITHUB ↗</b>. GitHub opens in a new tab with your words already in place, the title starting <i>Bug:</i> or <i>Idea:</i>;
+    read it and tap GitHub's own green button to send it. You need to be signed in to GitHub.</p>
+  <ul>
+    <li>The button stays grey until there is a title.</li>
+    <li>Reports on GitHub are public. Leave out recipe text and anything personal. The app adds only its version, whether the screen is light or dark,
+      the size of the screen and the browser, so whoever reads it can see what you were using.</li>
+    <li>If the new tab does not open, tap the button again: what you wrote is still there.</li>
+  </ul>
   <h3 id="converter-bar">The CONVERTER bar</h3>
   <p>"The recipe converter's instructions have changed": a change to the app also changed the instructions your household's
     conversion project follows (<a href="#converter">section 9</a>). Nothing in the app stops working, and you can carry on under it.

@@ -13,7 +13,8 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-One job: **Sign-in on each device** (below), a few minutes per device. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
+Three jobs: **Sign-in on each device** (Job 1), a few minutes per device; **Reporting a bug or an idea** (Job 2), a few minutes on the tablet; and **COOK AHEAD** (Job 3),
+which starts with applying a database change from the dashboard, before the pull request that carries it is merged. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
 
@@ -37,6 +38,49 @@ next session which device and browser you used (Safari on an iPad, Chrome on And
    Sign in again as usual before you finish.
 
 If step 3 or 5 does not behave as written, note which one and what you saw.
+
+---
+
+## Job 2: reporting a bug or an idea from the app (issue #198)
+
+A test cannot open GitHub as you, so whether the form arrives filled in, and whether the label lands, needs a real device. Do it on the tablet and, if you
+like, a phone. You need to be signed in to GitHub in that browser.
+
+1. **Reload the app** so it is on version 2026-10-30.1. **You should see:** Settings → HELP shows that version.
+2. In Settings → HELP, find **REPORT A BUG OR AN IDEA**. **You should see:** **BUG** and **IDEA** buttons, a title box, a larger box, and
+   **OPEN ON GITHUB ↗** greyed out.
+3. Choose **IDEA**, type the title `Test report, please close`, and a line or two in the box. **You should see:** the button turns solid once there is a title.
+4. Tap **OPEN ON GITHUB ↗**. **You should see:** GitHub opens in a new tab on the app's *new issue* page with the title `Idea: Test report, please close`, your words, and under
+   a line a short "From the app" list (version, look, screen, browser). Nothing about any recipe. If GitHub shows the label **enhancement** on it, say so;
+   if there is no label, say that instead (it depends on your GitHub account's rights on the repository).
+5. Tap GitHub's green **Submit new issue**, then close the issue. **You should see:** it appears under the app's issues. **Do not send a second one**
+   unless step 4 failed.
+6. Back in the app, **You should see:** what you typed is still in the boxes.
+
+If a step does not do what it says, note which one and what you saw.
+
+---
+
+## Job 3: COOK AHEAD on the Planner (issue #221)
+
+**This one starts with a step only you can do, and it has to come first.** Do the rest in Test Kitchen.
+
+1. **Apply the change to the database.** Supabase dashboard → SQL editor → paste the statement from `docs/migrations/add-cook-ahead.md` (the first code
+   block, from `begin;` to `commit;`) → Run. **You should see:** it finishes without an error. Then run the *After it is applied* queries on that page.
+   **You should see:** `planner_days | cook_ahead | ARRAY | NO` and `recipe_logs | cook_ahead | boolean | NO`, `cook_ahead_logs 0`, and one constraint row.
+   Tell the next session the date, so the page and `docs/INFRASTRUCTURE.md` can say it was applied.
+2. **Reload the app** so it is on the version that carries this change. **You should see:** Settings → HELP shows it, and What's new mentions COOK AHEAD.
+3. On the Planner, tap the **TO COOK** button on a dish (a recipe for a day from today on is fine). **You should see:** a box, "How is this dish made?", with
+   **TO COOK** (marked as the current one), **COOK AHEAD** and **PRE-MADE**, each saying what it does.
+4. Choose **COOK AHEAD**. **You should see:** the button reads **COOK AHEAD**, and the dish is still on the Shopping list.
+5. On **today**, tap **COOKED ✓** on that dish. **You should see:** a note that it was logged as cooked ahead and is in your cooking stats, not the food diary; no
+   question about which meal; the button now reads **✓ COOKED AHEAD**. Open **History** for today. **You should see:** the dish is **not** there. Open **STATS**.
+   **You should see:** the meal count up by one, and the dish's card says it was cooked today.
+6. Back on the Planner, tap **✓ COOKED AHEAD** and say yes. **You should see:** the button goes back to **COOKED ✓**, and STATS and the card are as they were.
+7. Choose **PRE-MADE** from the same box on a dish. **You should see:** it still asks which meal, reads **PRE-MADE · DINNER**, and leaves the Shopping list.
+   Put it back to **TO COOK** afterwards.
+
+If a step does not do what it says, note which one and what you saw.
 
 ---
 

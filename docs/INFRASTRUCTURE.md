@@ -150,8 +150,10 @@ editor is **not** recorded there, so the later changes are listed here instead. 
 | `add_converter_ack` | `add-converter-ack.md` | 13 Oct |
 | `add_calendar_items` | `add-calendar-items.md` | 20 Oct |
 
-(The 13 Sep temporary import function and staging table were created and dropped the same day.) **Waiting to be applied: nothing**
-(20 Oct). A PR that adds a page lists it here as waiting; whoever applies it moves it into the table.
+(The 13 Sep temporary import function and staging table were created and dropped the same day.) **Waiting to be applied:**
+`add-cook-ahead.md` (`planner_days.cook_ahead`, `recipe_logs.cook_ahead`, issue #221), written 30 Oct and run with its undo on a scratch
+Postgres 16 only; the household applies it from the dashboard before merging the PR that carries the app's side. A PR that adds a page
+lists it here as waiting; whoever applies it moves it into the table.
 
 ---
 
