@@ -1280,7 +1280,11 @@ html[data-style="modernist"] #view-settings select.sort{
   padding:0 10px; border:2px solid var(--color-divider); background:var(--color-surface); color:var(--color-text);
   font-size:13px; font-weight:700; letter-spacing:.04em;
 }
-html[data-style="modernist"] #view-settings :is(input, select):focus{ border-color:var(--color-accent); outline-color:var(--color-accent); }
+html[data-style="modernist"] #view-settings :is(input, select, textarea):focus{ border-color:var(--color-accent); outline-color:var(--color-accent); }
+/* REPORT A BUG OR AN IDEA (#198): the box is a text area, which the rule above does not reach; its labels read as the other forms'. */
+html[data-style="modernist"] #view-settings textarea.report-body{ padding:10px 12px; border:2px solid var(--color-divider); border-radius:0; background:var(--color-surface); color:var(--color-text); font-size:15px; }
+html[data-style="modernist"] #view-settings #reportBlock .field-label{ font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] #view-settings .report-kind .btn[aria-pressed="true"]{ background:var(--color-text); border-color:var(--color-text); color:var(--color-bg); }
 html[data-style="modernist"] #view-settings #ingredientLookup{ max-width:520px; min-height:48px; margin:0 0 8px; border-color:var(--color-accent); font-size:16px; }
 html[data-style="modernist"] #view-settings .lookup-line{ font-size:14px; color:var(--km-ink-72); }
 html[data-style="modernist"] #view-settings .lookup-line b{ font-weight:700; color:var(--color-text); }

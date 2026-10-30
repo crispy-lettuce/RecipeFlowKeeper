@@ -4481,13 +4481,56 @@ const check = (name, pass, detail) => {
     return { guide: g && g.getAttribute('href'), guideTarget: g && g.target, guideShown: !!(g && g.offsetParent),
       quick: qs.length, quickOk: qs.every(a => /^help\.html#[a-z-]+$/.test(a.getAttribute('href')) && a.target === '_blank' && /noopener/.test(a.rel)) };
   });
+  /* REPORT A BUG OR AN IDEA (#198). window.open is recorded, not followed: nothing here reaches GitHub, and whether GitHub opens the
+     form filled in is a tablet check (docs/HOUSEHOLD-JOBS.md). The library's real titles are read from the page so the check on
+     "no recipe in the report" is made against whatever the fixture holds, not a name written into the test. */
+  await page.evaluate(() => { window.__reported = []; window.__origOpenReport = window.open; window.open = (...a) => { window.__reported.push(a); return null; }; });
+  const rpt = async (kind, title, body) => page.evaluate(([k, t, b]) => {
+    document.querySelector(`#reportBlock [data-report-kind="${k}"]`).click();
+    const ti = document.getElementById('reportTitle'), bo = document.getElementById('reportBody');
+    ti.value = t; ti.dispatchEvent(new Event('input', { bubbles: true }));
+    bo.value = b; bo.dispatchEvent(new Event('input', { bubbles: true }));
+    const btn = document.getElementById('reportOpenBtn');
+    const wasDisabled = btn.disabled;
+    const before = window.__reported.length;
+    if(!btn.disabled) btn.click();
+    const err = document.getElementById('reportError');
+    return { wasDisabled, opened: window.__reported.slice(before), error: err.style.display === 'none' ? '' : err.textContent,
+      pressed: [...document.querySelectorAll('#reportBlock [data-report-kind]')].map(x => x.getAttribute('aria-pressed')).join(',') };
+  }, [kind, title, body]);
+  const rptEmpty = await rpt('bug', '   ', 'words but no title');
+  const rptBug = await rpt('bug', 'Timer & chime? #1', 'It said 100% done\nthen nothing (café)');
+  const rptIdea = await rpt('idea', 'Print the plan', 'a line');
+  const rptLong = await rpt('idea', 'Too much', 'x'.repeat(9000));
+  const rptUrl = r => r.opened[0] ? new URL(r.opened[0][0]) : null;
+  const rptBugUrl = rptUrl(rptBug), rptIdeaUrl = rptUrl(rptIdea);
+  const rptFacts = await page.evaluate(() => ({ app: APP_VERSION, titles: loadRecipes().map(r => r.title).filter(Boolean), household: typeof HOUSEHOLD_ID === 'string' ? HOUSEHOLD_ID : '' }));
+  const rptBody = rptBugUrl ? rptBugUrl.searchParams.get('body') : '';
+  check('    REPORT A BUG OR AN IDEA: the button is disabled without a title, and a title opens nothing',
+        rptEmpty.wasDisabled && rptEmpty.opened.length === 0, JSON.stringify(rptEmpty));
+  check('    BUG opens GitHub\'s new-issue page with "Bug: ", the bug label, the words and the version, in a new tab without an opener; characters that need encoding survive',
+        rptBugUrl && rptBugUrl.origin + rptBugUrl.pathname === 'https://github.com/crispy-lettuce/RecipeFlowKeeper/issues/new'
+        && rptBugUrl.searchParams.get('title') === 'Bug: Timer & chime? #1' && rptBugUrl.searchParams.get('labels') === 'bug'
+        && rptBody.startsWith('It said 100% done\nthen nothing (café)') && rptBody.includes('Version ' + rptFacts.app)
+        && rptBug.opened[0][1] === '_blank' && /noopener/.test(rptBug.opened[0][2] || '') && rptBug.pressed === 'true,false',
+        JSON.stringify([rptBug.opened, rptBody.slice(0, 200)]));
+  check('    IDEA opens the same page with "Idea: " and the enhancement label',
+        rptIdeaUrl && rptIdeaUrl.searchParams.get('title') === 'Idea: Print the plan' && rptIdeaUrl.searchParams.get('labels') === 'enhancement'
+        && rptIdea.pressed === 'false,true', JSON.stringify(rptIdea.opened));
+  check('    the report carries no recipe title and no household id from the page',
+        rptFacts.titles.length > 0 && !rptFacts.titles.some(t => rptBody.includes(t)) && (!rptFacts.household || !rptBody.includes(rptFacts.household)),
+        rptFacts.titles.length + ' titles');
+  check('    words too long for an address are refused with a message, not cut and not opened',
+        rptLong.opened.length === 0 && /too long/.test(rptLong.error), JSON.stringify(rptLong.error));
+  await page.evaluate(() => { window.open = window.__origOpenReport; });
+
   await page.click('.navlink[data-view="recipes"]');
   await page.waitForTimeout(200);
   await page.click('.navlink[data-view="settings"]');
   await page.waitForTimeout(300);
   const stHelpKept = await stShown();
   check('    HELP shows the guide, the version and the quick answers alone, opens help.html in a new tab, and is remembered like the other tabs',
-        stHelp.join('|') === 'HOW-TO GUIDE|VERSION AND WHAT\'S NEW|QUICK ANSWERS' && stHelpLinks.guide === 'help.html' && stHelpLinks.guideTarget === '_blank'
+        stHelp.join('|') === 'HOW-TO GUIDE|VERSION AND WHAT\'S NEW|QUICK ANSWERS|REPORT A BUG OR AN IDEA' && stHelpLinks.guide === 'help.html' && stHelpLinks.guideTarget === '_blank'
         && stHelpLinks.guideShown && stHelpLinks.quick >= 6 && stHelpLinks.quickOk && stHelpKept.join('|') === stHelp.join('|'),
         JSON.stringify([stHelp, stHelpLinks, stHelpKept]));
   await page.click('[data-settings-tab-btn="ingredients"]');

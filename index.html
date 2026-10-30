@@ -1610,6 +1610,17 @@ function loadArchivoFont(){
   .help-answers{ margin:0; padding-left:18px; }
   .help-answers li{ margin:6px 0; }
   .help-answers a{ color:var(--plum); }
+  .report-kind{ display:flex; gap:8px; margin-bottom:14px; }
+  .report-kind .btn{ flex:0 0 auto; min-width:96px; }
+  .report-kind .btn[aria-pressed="true"]{ background:var(--plum-wash); border-color:var(--plum); color:var(--plum); }
+  .report-title, .report-body{
+    display:block; width:100%; max-width:62ch; box-sizing:border-box; margin-bottom:14px; padding:10px 12px;
+    font:inherit; font-size:15px; color:var(--ink); background:var(--paper);
+    border:1px solid var(--line); border-radius:var(--r);
+  }
+  .report-title{ min-height:44px; }
+  .report-body{ min-height:120px; resize:vertical; line-height:1.5; }
+  .report-title:focus, .report-body:focus{ border-color:var(--plum); }
   a.btn{ display:inline-block; text-decoration:none; }
   .settings-tabs .btn.active{ background:var(--plum); border-color:var(--plum); color:var(--on-accent); }
   /* The hidden attribute loses to .sources-list's display:flex and the like without this. */
@@ -1896,7 +1907,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-26.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-30.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2418,7 +2429,26 @@ function loadArchivoFont(){
             <li><a href="help.html#converter" target="_blank" rel="noopener">How do we convert our own recipes for the app?</a></li>
             <li><a href="help.html#drive-backup" target="_blank" rel="noopener">How do I keep a backup in my Google Drive?</a></li>
             <li><a href="help.html#offline" target="_blank" rel="noopener">What does the OFFLINE bar mean?</a></li>
+            <li><a href="help.html#report" target="_blank" rel="noopener">How do I report a bug or suggest an idea?</a></li>
           </ul>
+        </div>
+
+        <!-- Issue #198. The app never writes to GitHub: OPEN ON GITHUB opens its own "new issue" page already filled in, and the
+             person reads it there and submits it. Nothing is stored, and no token or Edge Function is involved. -->
+        <div class="settings-block" data-settings-tab="help" id="reportBlock">
+          <div class="side-label">REPORT A BUG OR AN IDEA</div>
+          <p class="subtle">Something broken, or something you would like the app to do. This opens GitHub with your words already in place, and you
+            send it from there (you need to be signed in to GitHub). Reports are public: leave out recipe text and anything personal.</p>
+          <div class="report-kind" role="group" aria-label="Kind of report">
+            <button type="button" class="btn" data-report-kind="bug" aria-pressed="true">BUG</button>
+            <button type="button" class="btn" data-report-kind="idea" aria-pressed="false">IDEA</button>
+          </div>
+          <label class="field-label" for="reportTitle">TITLE</label>
+          <input type="text" id="reportTitle" class="report-title" maxlength="120" autocomplete="off" placeholder="e.g. the timer did not chime">
+          <label class="field-label" for="reportBody">WHAT HAPPENED, OR WHAT YOU WOULD LIKE</label>
+          <textarea id="reportBody" class="report-body" rows="5" placeholder="The more you say, the easier it is to put right."></textarea>
+          <p class="field-error" id="reportError" style="display:none;"></p>
+          <button type="button" class="btn primary" id="reportOpenBtn" disabled>OPEN ON GITHUB ↗</button>
         </div>
       </div>
     </section>
@@ -2649,7 +2679,7 @@ const EXPECTED_CORE_VERSION = '2026-10-25.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-26.1';
+const APP_VERSION = '2026-10-30.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -4171,6 +4201,66 @@ function renderWhatsNew(){
       <ul>${(e.changes || []).map(c=> `<li>${escapeHtml(c)}</li>`).join('')}</ul>
     </div>`).join('');
 }
+/* ---- Report a bug or an idea (issue #198) ----
+   Settings → HELP. The app does not write to GitHub: it builds the address of GitHub's own "new issue" page with the title,
+   the label and the words already filled in, and opens it. The person reads it there and submits it, signed in as
+   themselves, so the app holds no token and calls no function. The prefix ("Bug: ", "Idea: ") is in the title as well as the
+   label because GitHub applies a label from the address only for someone allowed to label issues; for anyone else the
+   report arrives unlabelled and the prefix is what sorts it. The repository is public, so the page tells the person not to
+   write recipe text into a report, and the block of facts added to the body holds none: versions, look and screen only. */
+const ISSUES_NEW_URL = 'https://github.com/crispy-lettuce/RecipeFlowKeeper/issues/new';
+const REPORT_KINDS = { bug: { prefix: 'Bug', label: 'bug' }, idea: { prefix: 'Idea', label: 'enhancement' } };
+/* GitHub takes addresses well past this; some browsers and the tablet's share sheet do not. Past it the words are refused
+   with a message rather than cut, since a report that loses its last lines silently is worse than one that asks. */
+const REPORT_URL_MAX = 7500;
+function issueUrl({ kind, title, description, context }){
+  const k = REPORT_KINDS[kind];
+  const t = String(title || '').replace(/\s+/g, ' ').trim();
+  if(!k || !t) return { error: 'title' };
+  const body = [String(description || '').trim(), '', '---', 'From the app (added by the app: no recipes or personal details):', String(context || '')]
+    .join('\n').trim();
+  const url = ISSUES_NEW_URL + '?title=' + encodeURIComponent(`${k.prefix}: ${t}`)
+    + '&labels=' + encodeURIComponent(k.label) + '&body=' + encodeURIComponent(body);
+  return url.length > REPORT_URL_MAX ? { error: 'long' } : { url };
+}
+function reportContext(){
+  const root = document.documentElement;
+  return [
+    `- Version ${APP_VERSION}` + (typeof KITCHEN_CORE_VERSION === 'undefined' ? '' : ` (core ${KITCHEN_CORE_VERSION})`),
+    `- Look: ${currentStyle()}, ${root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'}`,
+    `- Screen: ${window.innerWidth} x ${window.innerHeight}, ${navigator.onLine ? 'online' : 'offline'}`,
+    `- Browser: ${navigator.userAgent}`
+  ].join('\n');
+}
+let reportKind = 'bug';
+function syncReportForm(){
+  document.querySelectorAll('#reportBlock [data-report-kind]').forEach(b=> b.setAttribute('aria-pressed', String(b.dataset.reportKind === reportKind)));
+  document.getElementById('reportOpenBtn').disabled = !document.getElementById('reportTitle').value.trim();
+}
+function showReportError(msg){
+  const el = document.getElementById('reportError');
+  el.textContent = msg || '';
+  el.style.display = msg ? '' : 'none';
+}
+document.querySelectorAll('#reportBlock [data-report-kind]').forEach(b=> b.addEventListener('click', ()=>{ reportKind = b.dataset.reportKind; syncReportForm(); }));
+document.getElementById('reportTitle').addEventListener('input', ()=>{ showReportError(''); syncReportForm(); });
+document.getElementById('reportBody').addEventListener('input', ()=> showReportError(''));
+document.getElementById('reportOpenBtn').addEventListener('click', ()=>{
+  const r = issueUrl({ kind: reportKind, title: document.getElementById('reportTitle').value,
+    description: document.getElementById('reportBody').value, context: reportContext() });
+  if(r.error){
+    showReportError(r.error === 'long'
+      ? 'That is too long to carry to GitHub this way. Shorten it here and add the rest on the GitHub page.'
+      : 'Give it a title first.');
+    return;
+  }
+  showReportError('');
+  /* Left in the boxes: if the new tab was blocked, tapping again needs no retyping. */
+  window.open(r.url, '_blank', 'noopener');
+  showToast('GitHub is open: send it from there');
+});
+syncReportForm();
+
 /* Once per device after an update: one line to say so. Nothing on a first visit, when there is nothing to compare. */
 function noteVersionSeen(){
   try {

@@ -246,7 +246,10 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
   tidy SOURCES and KEYWORDS; **RECIPE PHOTOS** (RE-HOST EXTERNAL IMAGES, CHECK STORED IMAGES).
 - **APP:** week start day for the Planner and the shopping list (default Friday; History always starts on Monday), APPEARANCE, STYLE, MENU (automatic, always shown or always hidden, per device), PREPARATION, OVENS (how many this kitchen has, per device), AVOID THE CLASH (on or off when a meal opens, per device), Google Calendar (§6.6),
   BACKUP TO GOOGLE DRIVE, RECIPE SHARING.
-- **HELP:** the guide (`help.html`), the app's version and what changed lately.
+- **HELP:** the guide (`help.html`), the app's version and what changed lately, quick answers, and **REPORT A BUG OR AN IDEA** (issue #198):
+  BUG or IDEA, a title and some words, then **OPEN ON GITHUB ↗** opens GitHub's "new issue" page already filled in (the title prefixed `Bug: `
+  or `Idea: `, the `bug` or `enhancement` label, the words, and the app's versions, look, screen size and browser). The person sends it from GitHub, as themselves:
+  the app holds no token and writes nothing. Disabled until there is a title; too long for an address is refused, not cut.
 
 ---
 
@@ -271,7 +274,8 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
    recipes are visible, never plans, diary, notes, shopping or calendar. Each side switches it on for itself, by email.
 9. **Versions.** The app has a date version; a new one is announced by an UPDATE bar (RELOAD). When the converter instructions change,
    each household sees a CONVERTER bar until someone taps DONE.
-10. **Help.** `help.html` names every button exactly as it reads and is checked against the app by a test.
+10. **Help.** `help.html` names every button exactly as it reads and is checked against the app by a test. Reports of bugs and ideas leave the app only as
+    a link the person opens and submits on GitHub; the facts added to one hold no recipe, household or account data.
 11. **Look and feel rules that stand.** Everything pressed with a thumb is at least 44 px tall; text meets 4.5:1 contrast on the surface
     it sits on; there is one type scale and one corner radius per style; step text is flush left; keyboard focus is always visible.
     Colours come from tokens, per theme, so light, dark, Classic and Modernist all work.

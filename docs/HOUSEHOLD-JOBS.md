@@ -13,7 +13,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-One job: **Sign-in on each device** (below), a few minutes per device. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
+Two jobs: **Sign-in on each device** (Job 1), a few minutes per device, and **Reporting a bug or an idea** (Job 2), a few minutes on the tablet. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
 
@@ -37,6 +37,26 @@ next session which device and browser you used (Safari on an iPad, Chrome on And
    Sign in again as usual before you finish.
 
 If step 3 or 5 does not behave as written, note which one and what you saw.
+
+---
+
+## Job 2: reporting a bug or an idea from the app (issue #198)
+
+A test cannot open GitHub as you, so whether the form arrives filled in, and whether the label lands, needs a real device. Do it on the tablet and, if you
+like, a phone. You need to be signed in to GitHub in that browser.
+
+1. **Reload the app** so it is on version 2026-10-30.1. **You should see:** Settings → HELP shows that version.
+2. In Settings → HELP, find **REPORT A BUG OR AN IDEA**. **You should see:** **BUG** and **IDEA** buttons, a title box, a larger box, and
+   **OPEN ON GITHUB ↗** greyed out.
+3. Choose **IDEA**, type the title `Test report, please close`, and a line or two in the box. **You should see:** the button turns solid once there is a title.
+4. Tap **OPEN ON GITHUB ↗**. **You should see:** GitHub opens in a new tab on the app's *new issue* page with the title `Idea: Test report, please close`, your words, and under
+   a line a short "From the app" list (version, look, screen, browser). Nothing about any recipe. If GitHub shows the label **enhancement** on it, say so;
+   if there is no label, say that instead (it depends on your GitHub account's rights on the repository).
+5. Tap GitHub's green **Submit new issue**, then close the issue. **You should see:** it appears under the app's issues. **Do not send a second one**
+   unless step 4 failed.
+6. Back in the app, **You should see:** what you typed is still in the boxes.
+
+If a step does not do what it says, note which one and what you saw.
 
 ---
 
