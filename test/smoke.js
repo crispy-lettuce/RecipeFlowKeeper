@@ -6204,6 +6204,209 @@ const check = (name, pass, detail) => {
         JSON.stringify([pmExport, pmImp]));
   await pmPage.close();
 
+  /* ---- COOK AHEAD (issue #221, 30 Oct 2026, docs/migrations/add-cook-ahead.md) ----
+     A third state beside TO COOK and PRE-MADE: cooked on this day to be eaten on another. It counts as cooking when logged
+     (history, STATS) and never as a meal in the food diary; it stays on the shopping list. Without the column the Planner is
+     exactly what it was; with it the pill opens a chooser. Today here is Pasta then Soup; tomorrow the same. */
+  console.log('\nCOOK AHEAD');
+  const caEmpty = async hasColumn => {
+    const p = await browser.newPage();
+    p.__label = 'cook ahead, empty household';
+    await p.addInitScript(c => { window.__STUB_EXTRA__ = { planner_days: [], recipe_logs: [] };
+      window.__STUB_COLUMNS__ = c ? ['planner_days.premade', 'planner_days.cook_ahead'] : ['planner_days.premade']; }, hasColumn);
+    await p.clock.setFixedTime(FIXTURE_NOW);
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1500);
+    const out = await p.evaluate(async ([today, r1]) => {
+      showView('planner');
+      const m = window.__WRITES__.length;
+      addPlanRecipe(today, r1);
+      renderPlanner();
+      let t; do { t = writeQueue; await t; } while(t !== writeQueue);
+      const row = window.__WRITES__.slice(m).filter(w => w.table === 'planner_days').flatMap(w => w.rows || [])[0] || {};
+      const pill = document.querySelector('#dayList .day-recipe-premade');
+      return { available: cookAheadAvailable, action: pill ? pill.dataset.action : '', text: pill ? pill.textContent.trim() : '',
+        cookAhead: 'cook_ahead' in row ? row.cook_ahead : 'not sent', signouts: window.__SIGNOUTS__ };
+    }, [PM_TODAY, PM_R1]);
+    await p.close();
+    return out;
+  };
+  const caOn = await caEmpty(true), caOff = await caEmpty(false);
+  check('    with the column: the pill opens the chooser, still reads TO COOK, and the first save names cook_ahead as [false]',
+        caOn.available && caOn.action === 'dishState' && caOn.text === 'TO COOK' && JSON.stringify(caOn.cookAhead) === '[false]' && caOn.signouts === 0,
+        JSON.stringify(caOn));
+  check('    before the database change: the pill is the two-way PRE-MADE switch as it was, no cook_ahead is sent, and nobody is signed out',
+        !caOff.available && caOff.action === 'premade' && caOff.cookAhead === 'not sent' && caOff.signouts === 0, JSON.stringify(caOff));
+
+  const caPage = await browser.newPage();
+  caPage.__label = 'cook ahead';
+  await caPage.addInitScript(([today, tomorrow, yesterday, r1, r2]) => {
+    const H = '286a8a12-c12a-4b83-afbc-0912533f6b1c';
+    window.__STUB_EXTRA__ = {
+      planner_days: [
+        { household_id: H, plan_date: today, is_blank: false, recipe_ids: [r1, r2], servings: [], premade: [], cook_ahead: [] },
+        { household_id: H, plan_date: tomorrow, is_blank: false, recipe_ids: [r1, r2], servings: [], premade: [], cook_ahead: [] }
+      ],
+      recipe_logs: [
+        { id: 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', household_id: H, recipe_id: r1, cooked_on: '2026-09-15', meal_type: 'dinner', note: null, title: null, premade: false, cook_ahead: false },
+        { id: 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb', household_id: H, recipe_id: r2, cooked_on: yesterday, meal_type: null, note: null, title: null, premade: false, cook_ahead: true }
+      ]
+    };
+  }, [PM_TODAY, PM_TOMORROW, PM_YESTERDAY, PM_R1, PM_R2]);
+  await caPage.clock.setFixedTime(FIXTURE_NOW);
+  await caPage.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await caPage.waitForTimeout(1500);
+  const caLoad = await caPage.evaluate(([y, r2]) => {
+    const r = loadRecipes().find(x => x.id === r2);
+    state.historySelectedDate = y; showView('history');
+    const detail = document.getElementById('historyDayDetail').textContent;
+    return { available: cookAheadAvailable, inHistory: r.history.includes(y), inStats: computeHistoryStats(loadRecipes()).totalMeals,
+      entry: loadDiary().filter(e => e.cookAhead).map(e => e.cookedOn), dayEntries: (historyByDate(loadRecipes()).get(y) || []).length,
+      detailHasTitle: detail.includes(r.title) };
+  }, [PM_YESTERDAY, PM_R2]);
+  check('    a cooked-ahead log is in the recipe\'s history and the cooking stats, and not on the History day',
+        caLoad.available && caLoad.inHistory && JSON.stringify(caLoad.entry) === JSON.stringify([PM_YESTERDAY])
+        && caLoad.inStats === 2 && caLoad.dayEntries === 0 && !caLoad.detailHasTitle, JSON.stringify(caLoad));
+  const caCsv = await (async () => {
+    await caPage.evaluate(() => showView('history'));
+    const [dl] = await Promise.all([caPage.waitForEvent('download'), caPage.click('#historyCsvBtn')]);
+    const tmp = require('path').join(require('os').tmpdir(), 'kitchen-diary-cook-ahead.csv');
+    await dl.saveAs(tmp);
+    return require('fs').readFileSync(tmp, 'utf8').replace(/^﻿/, '').split('\r\n').filter(Boolean);
+  })();
+  const caTitle = await caPage.evaluate(r2 => loadRecipes().find(x => x.id === r2).title, PM_R2);
+  check('    the diary CSV leaves a cooked-ahead log out and keeps the ordinary one',
+        caCsv.length === 2 && !caCsv.some(l => l.includes(caTitle)), JSON.stringify(caCsv));
+
+  /* The chooser. Today's Pasta (first row) is made COOK AHEAD, then PRE-MADE is chosen over it, then back to TO COOK. */
+  await caPage.evaluate(() => showView('planner'));
+  const caRow = (page_, d, i) => page_.evaluate(([d_, i_]) => {
+    const row = document.querySelector(`.day-row[data-date="${d_}"]`);
+    const pills = [...row.querySelectorAll('.day-recipe-premade')];
+    const day = loadPlan()[d_] || {};
+    return { pill: pills[i_] ? pills[i_].textContent.trim() : null, cookAhead: day.cookAhead || null, premade: day.premade || null };
+  }, [d, i]);
+  const caSent = (page_, m) => page_.evaluate(m_ => window.__WRITES__.slice(m_).filter(w => w.table === 'planner_days' && w.op === 'upsert').flatMap(w => w.rows)
+    .map(r => JSON.parse(JSON.stringify({ cook_ahead: r.cook_ahead, premade: r.premade }))), m);
+  let caM = await caPage.evaluate(() => window.__WRITES__.length);
+  await caPage.click(`.day-row[data-date="${PM_TODAY}"] [data-action="dishState"]`);
+  const caChooser = await caPage.evaluate(() => ({ open: document.getElementById('dishStateOverlay').classList.contains('open'),
+    choices: [...document.querySelectorAll('#dishStateChoices .meal-type-btn')].map(b => b.dataset.state + (b.classList.contains('on') ? '*' : '')),
+    what: document.getElementById('dishStateWhat').textContent }));
+  check('    the pill opens a chooser of three, TO COOK marked as the current one, naming the dish',
+        caChooser.open && caChooser.choices.join() === 'cook*,ahead,premade' && caChooser.what.length > 0, JSON.stringify(caChooser));
+  await caPage.click('#dishStateChoices [data-state="ahead"]');
+  await caPage.waitForTimeout(200); await pmDrain(caPage);
+  const caAhead = await caRow(caPage, PM_TODAY, 0), caAheadSent = await caSent(caPage, caM);
+  check('    COOK AHEAD: the pill reads COOK AHEAD, the chooser closes, and the one-row save carries cook_ahead true for that dish only, premade empty',
+        caAhead.pill === 'COOK AHEAD' && JSON.stringify(caAheadSent[caAheadSent.length - 1]) === JSON.stringify({ cook_ahead: [true, false], premade: ['', ''] })
+        && !(await caPage.evaluate(() => document.getElementById('dishStateOverlay').classList.contains('open'))), JSON.stringify([caAhead, caAheadSent]));
+
+  /* The shopping list: unchanged by COOK AHEAD, and a PRE-MADE dish is off it. */
+  const caShop = () => caPage.evaluate(() => buildShoppingList(groupDaysByWeek(dayList())[0] || []).categories.flatMap(c => c.items.map(i => i.name + ' ' + JSON.stringify(i))));
+  const caShopAhead = await caShop();
+  await caPage.click(`.day-row[data-date="${PM_TODAY}"] [data-action="dishState"]`);
+  await caPage.click('#dishStateChoices [data-state="cook"]');
+  await caPage.waitForTimeout(200); await pmDrain(caPage);
+  const caShopCook = await caShop();
+  check('    COOK AHEAD leaves the dish on the shopping list exactly as TO COOK has it', caShopAhead.length > 0 && JSON.stringify(caShopAhead) === JSON.stringify(caShopCook),
+        JSON.stringify([caShopAhead.length, caShopCook.length]));
+
+  /* Logging: COOKED ✓ on a cook-ahead dish. */
+  await caPage.click(`.day-row[data-date="${PM_TODAY}"] [data-action="dishState"]`);
+  await caPage.click('#dishStateChoices [data-state="ahead"]');
+  await pmDrain(caPage);
+  caM = await caPage.evaluate(() => window.__WRITES__.length);
+  const caStatsBefore = await caPage.evaluate(() => computeHistoryStats(loadRecipes()).totalMeals);
+  await caPage.click(`.day-row[data-date="${PM_TODAY}"] [data-action="cooked"]`);
+  await caPage.waitForTimeout(300); await pmDrain(caPage);
+  const caLogged = await caPage.evaluate(([m, today, r1]) => {
+    const ins = window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs');
+    const rows = ins.flatMap(w => Array.isArray(w.rows) ? w.rows : [w.rows]);
+    return { ops: ins.map(w => w.op), rows: rows.map(r => ({ recipe: r.recipe_id === r1, on: r.cooked_on, cook_ahead: r.cook_ahead, premade: 'premade' in r })),
+      prompt: document.getElementById('mealTypeOverlay').classList.contains('open'), toast: document.querySelector('.toast').textContent,
+      pill: (document.querySelector(`.day-row[data-date="${today}"] .day-recipe-cooked`) || {}).textContent || '',
+      history: loadRecipes().find(r => r.id === r1).history.includes(today), stats: computeHistoryStats(loadRecipes()).totalMeals,
+      day: (historyByDate(loadRecipes()).get(today) || []).length };
+  }, [caM, PM_TODAY, PM_R1]);
+  check('    COOKED ✓ on a cook-ahead dish writes one log marked cook_ahead, asks no meal, counts in STATS (+1), is not on that History day, and reads ✓ COOKED AHEAD',
+        JSON.stringify(caLogged.ops) === '["insert"]' && caLogged.rows.length === 1 && caLogged.rows[0].recipe && caLogged.rows[0].on === PM_TODAY
+        && caLogged.rows[0].cook_ahead === true && !caLogged.rows[0].premade && !caLogged.prompt && /cooked ahead/.test(caLogged.toast)
+        && caLogged.pill === '✓ COOKED AHEAD' && caLogged.history && caLogged.stats === caStatsBefore + 1 && caLogged.day === 0, JSON.stringify([caLogged, caStatsBefore]));
+
+  /* EXPORT DATA keeps it, marked. */
+  const caExport = await caPage.evaluate(([today]) => { const x = exportPayload();
+    return { plan: (x.plan[today] || {}).cookAhead || null, plainDay: !('cookAhead' in (x.plan[Object.keys(x.plan).find(d => d !== today && !x.plan[d].cookAhead)] || {})),
+      diary: x.diary.filter(e => e.cookAhead).length, ordinary: x.diary.filter(e => !e.cookAhead && !('cookAhead' in e)).length }; }, [PM_TODAY]);
+  check('    EXPORT DATA carries cookAhead on the day and on the diary entries only where set',
+        JSON.stringify(caExport.plan) === '[true,false]' && caExport.plainDay && caExport.diary === 2 && caExport.ordinary >= 1, JSON.stringify(caExport));
+
+  /* Undo: tapping ✓ COOKED AHEAD asks, and on yes deletes that row and takes the date out of the history. */
+  caM = await caPage.evaluate(() => window.__WRITES__.length);
+  caPage.once('dialog', d => d.dismiss());
+  await caPage.click(`.day-row[data-date="${PM_TODAY}"] [data-action="uncookAhead"]`);
+  await pmDrain(caPage);
+  const caKept = await caPage.evaluate(([m, today, r1]) => ({ deletes: window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs').length,
+    history: loadRecipes().find(r => r.id === r1).history.includes(today) }), [caM, PM_TODAY, PM_R1]);
+  caPage.once('dialog', d => d.accept());
+  await caPage.click(`.day-row[data-date="${PM_TODAY}"] [data-action="uncookAhead"]`);
+  await caPage.waitForTimeout(200); await pmDrain(caPage);
+  const caUndone = await caPage.evaluate(([m, today, r1]) => ({ ops: window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs').map(w => w.op),
+    history: loadRecipes().find(r => r.id === r1).history.includes(today), stats: computeHistoryStats(loadRecipes()).totalMeals,
+    pill: (document.querySelector(`.day-row[data-date="${today}"] .day-recipe-cooked`) || {}).textContent || '' }), [caM, PM_TODAY, PM_R1]);
+  check('    ✓ COOKED AHEAD asks first (cancel changes nothing); yes deletes that one log and takes the date out of the history and the stats',
+        caKept.deletes === 0 && caKept.history && JSON.stringify(caUndone.ops) === '["delete"]' && !caUndone.history
+        && caUndone.stats === caStatsBefore && caUndone.pill === 'COOKED ✓', JSON.stringify([caKept, caUndone, caStatsBefore]));
+
+  /* PRE-MADE over COOK AHEAD clears it, and a removed dish takes its slot with it (the lists stay in step). */
+  const caPremade = await caPage.evaluate(async ([today, tomorrow]) => {
+    let t; const drain = async () => { do { t = writeQueue; await t; } while(t !== writeQueue); };
+    setPlanCookAheadAt(tomorrow, 1, true); await drain();
+    const aheadSecond = JSON.parse(JSON.stringify(loadPlan()[tomorrow]));
+    setPlanPremadeAt(tomorrow, 1, 'lunch'); await drain();
+    const over = JSON.parse(JSON.stringify(loadPlan()[tomorrow]));
+    setPlanCookAheadAt(tomorrow, 0, true); await drain();
+    removePlanRecipeAt(tomorrow, 0); await drain();
+    const afterRemove = JSON.parse(JSON.stringify(loadPlan()[tomorrow]));
+    const rows = window.__WRITES__.filter(w => w.table === 'planner_days' && w.op === 'upsert').flatMap(w => w.rows).filter(r => r.plan_date === tomorrow);
+    return { aheadSecond: aheadSecond.cookAhead, over: { premade: over.premade, cookAhead: over.cookAhead || null },
+      afterRemove: { ids: afterRemove.recipeIds.length, premade: afterRemove.premade, cookAhead: afterRemove.cookAhead || null },
+      lastSent: JSON.parse(JSON.stringify(rows[rows.length - 1])) };
+  }, [PM_TODAY, PM_TOMORROW]);
+  check('    choosing a PRE-MADE meal over COOK AHEAD clears it; taking a dish off keeps the other dishes\' settings in step',
+        JSON.stringify(caPremade.aheadSecond) === '[false,true]' && JSON.stringify(caPremade.over) === JSON.stringify({ premade: ['', 'lunch'], cookAhead: null })
+        && caPremade.afterRemove.ids === 1 && JSON.stringify(caPremade.afterRemove.premade) === '["lunch"]' && caPremade.afterRemove.cookAhead === null
+        && JSON.stringify(caPremade.lastSent.cook_ahead) === '[false]' && JSON.stringify(caPremade.lastSent.premade) === '["lunch"]', JSON.stringify(caPremade));
+  await caPage.close();
+
+  /* Finishing the flow of a dish that is COOK AHEAD today logs it as cooked ahead with no question. */
+  const caFlow = await browser.newPage();
+  caFlow.__label = 'cook ahead, finishing the flow';
+  await caFlow.addInitScript(([today, r1, r2]) => {
+    const H = '286a8a12-c12a-4b83-afbc-0912533f6b1c';
+    window.__STUB_EXTRA__ = { planner_days: [{ household_id: H, plan_date: today, is_blank: false, recipe_ids: [r1, r2], servings: [], premade: [], cook_ahead: [true, false] }], recipe_logs: [] };
+  }, [PM_TODAY, PM_R1, PM_R2]);
+  await caFlow.clock.setFixedTime(FIXTURE_NOW);
+  await caFlow.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await caFlow.waitForTimeout(1500);
+  const caFinish = await caFlow.evaluate(async ([today, r1, r2]) => {
+    let t; const drain = async () => { do { t = writeQueue; await t; } while(t !== writeQueue); };
+    const m = window.__WRITES__.length;
+    finishRecipe(r1); await drain();
+    const mid = window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs').flatMap(w => Array.isArray(w.rows) ? w.rows : [w.rows]);
+    const promptOne = document.getElementById('mealTypeOverlay').classList.contains('open');
+    closeMealTypePrompt();
+    finishRecipe(r2); await drain();
+    const all = window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs').flatMap(w => Array.isArray(w.rows) ? w.rows : [w.rows]);
+    const promptTwo = document.getElementById('mealTypeOverlay').classList.contains('open');
+    return { first: mid.map(r => ({ recipe: r.recipe_id === r1, cook_ahead: r.cook_ahead })), promptOne,
+      second: all.slice(mid.length).map(r => ({ recipe: r.recipe_id === r2, cook_ahead: 'cook_ahead' in r })), promptTwo };
+  }, [PM_TODAY, PM_R1, PM_R2]);
+  check('    finishing the flow of a COOK AHEAD dish logs it cooked ahead with no meal question; an ordinary dish is logged and asked as before',
+        JSON.stringify(caFinish.first) === JSON.stringify([{ recipe: true, cook_ahead: true }]) && !caFinish.promptOne
+        && JSON.stringify(caFinish.second) === JSON.stringify([{ recipe: true, cook_ahead: false }]) && caFinish.promptTwo, JSON.stringify(caFinish));
+  await caFlow.close();
+
   /* ---- Fresh or freezer? (tablet step 41a, 10 Oct 2026) ----
      Finishing the flow of a dish down as PRE-MADE today logged it a second time, as cooked. Today here is Pasta (pre-made,
      dinner) then Soup (fresh); the load puts Pasta in the diary from the freezer. Then the Planner row on a phone. */

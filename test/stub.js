@@ -13,7 +13,7 @@
      says so, unless some fixture row carries it or a test lists it in __STUB_COLUMNS__ ('table.column', for a column
      that exists in a table with no rows yet). The default fixture carries none, so it stays the database before the
      migration, as every check written before the probe expects. select('*') is never refused: it names no column. */
-  const PENDING_COLUMNS = { planner_days: ['premade', 'calendar_items'] };
+  const PENDING_COLUMNS = { planner_days: ['premade', 'calendar_items', 'cook_ahead'] };
   window.__WRITES__ = [];
 
   /* Switches for the paths that only exist when the network misbehaves —
