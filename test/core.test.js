@@ -1879,7 +1879,7 @@ check('an hour or more is rounded before it is split: never "1h 60m"; 59.97 minu
    and docs/*.md must exist, except a document retired on purpose and still named beside the commit that has it (CLAUDE.md and docs/STATUS.md do). A name with
    a placeholder in it (`docs/<file>`) is a pattern, not a path. Code comments are not read: they may cite a retired plan by section. */
 {
-  const RETIRED = ['docs/PLAN-PREVIEW-SITE.md', 'docs/PLAN-RUN-SHEET.md'];
+  const RETIRED = ['docs/PLAN-PREVIEW-SITE.md', 'docs/PLAN-RUN-SHEET.md', 'docs/PLAN-COOK-AHEAD-AND-REPORTS.md'];
   const files = ['README.md', 'CLAUDE.md', ...fs.readdirSync(path.join(ROOT, 'docs')).filter(f => f.endsWith('.md')).map(f => 'docs/' + f)];
   const dangling = [];
   for(const f of files) {
