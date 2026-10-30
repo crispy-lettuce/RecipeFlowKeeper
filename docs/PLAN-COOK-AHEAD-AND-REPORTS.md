@@ -166,8 +166,8 @@ In Settings → HELP, a section **REPORT A BUG OR AN IDEA**:
   - title: `Bug: <title>` or `Idea: <title>`;
   - label: `bug` or `enhancement` (both exist on the repository, checked 30 Oct). GitHub applies a label from the link only for
     someone allowed to label issues. Others' reports arrive unlabelled but keep the prefix, which is why the prefix is there;
-  - body: the description, then a short "From the app" block: app version, core version, which screen and tab it was opened
-    from, style and theme, screen size and the browser. **No** recipe names, household id, email or any other content.
+  - body: the description, then a short "From the app" block: app version, core version, style and theme, screen size, whether
+    the device is online, and the browser. (Not which screen it was opened from: it is always opened from Settings → HELP.) **No** recipe names, household id, email or any other content.
 - A QUICK ANSWERS link in the HELP tab ("How do I report a bug or suggest an idea?") goes to a new section in `help.html`.
 
 ### 2.4 Changes
