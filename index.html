@@ -1912,7 +1912,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-30.2">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-31.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2234,6 +2234,13 @@ function loadArchivoFont(){
           </div>
           <p class="subtle" id="aisleOverrideNow" style="display:none;"></p>
           <p class="field-error" id="aisleOverrideError" style="display:none;"></p>
+          <div id="aisleOtherBlock" hidden>
+            <div class="alias-group-label" id="aisleOtherLabel">IN OTHER NOW</div>
+            <p class="subtle">Ingredients the shopping list cannot place. Pick an aisle and it is set at once; it then
+              appears below, where REMOVE puts it back. If two of these are really one thing, match them in Word
+              Matches instead.</p>
+            <div id="aisleOtherList" class="sources-list"></div>
+          </div>
           <div id="aisleOverridesList" class="sources-list"></div>
           <p class="empty ingr-nomatch" hidden></p>
           </div>
@@ -2700,7 +2707,7 @@ const EXPECTED_CORE_VERSION = '2026-10-25.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-30.2';
+const APP_VERSION = '2026-10-31.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -11637,7 +11644,7 @@ function storeIngredientsOpen(sec, open){
 /* The words a row is matched on: its own text, less its buttons' labels. */
 function ingrRowText(row){
   const copy = row.cloneNode(true);
-  copy.querySelectorAll('button').forEach(b=> b.remove());
+  copy.querySelectorAll('button, select').forEach(b=> b.remove());   // a picker's options are not the row's words
   return copy.textContent.replace(/\s+/g, ' ').toLowerCase();
 }
 function renderIngredientsHeads(){
@@ -11663,16 +11670,21 @@ function renderIngredientsHeads(){
         label.hidden = !!q && !any;
       });
     }
+    /* SHOPPING AISLES also holds IN OTHER NOW (31 Oct 2026). The search narrows those rows too, and they count towards
+       whether the section opens or says nothing matches, but the number in the heading stays the household's own aisles. */
+    const extra = sec === 'aisles' ? [...document.querySelectorAll('#aisleOtherList .source-row')] : [];
+    extra.forEach(r=> { r.hidden = !!q && !ingrRowText(r).includes(q); });
+    const extraShown = extra.filter(r=> !r.hidden).length;
     const unavailable = sec === 'aisles' && !aisleOverridesAvailable;
     head.querySelector('.ingr-count').textContent = unavailable ? '' : q ? ` (${shown} OF ${total})` : ` (${total})`;
-    const open = q ? (sec in ingrSearchOpen ? ingrSearchOpen[sec] : shown > 0) : !!stored[sec];
+    const open = q ? (sec in ingrSearchOpen ? ingrSearchOpen[sec] : shown + extraShown > 0) : !!stored[sec];
     head.setAttribute('aria-expanded', String(open));
     head.querySelector('.ingr-chevron').textContent = open ? '▾' : '▸';
     head.closest('.settings-block').classList.toggle('ingr-folded', !open);
     body.hidden = !open;
     const none = body.querySelector('.ingr-nomatch');
     if(none){
-      none.hidden = !(q && shown === 0);
+      none.hidden = !(q && shown + extraShown === 0);
       none.textContent = `Nothing here matches “${q}”.`;
     }
   });
@@ -11833,6 +11845,7 @@ function renderAisleOverridesList(){
   }
   if(document.getElementById('ingredientLookup').value) renderIngredientLookup();
   renderAisleOverrideNow();
+  renderAisleOtherList();
   const list = document.getElementById('aisleOverridesList');
   const rows = [...loadAisleOverrides()].sort((a, b)=> a.name.localeCompare(b.name));
   list.innerHTML = !ok ? '' : !rows.length ? `<p class="empty">No aisles set. The list places everything itself.</p>`
@@ -11842,6 +11855,47 @@ function renderAisleOverridesList(){
       </div>`).join('');
   renderIngredientsHeads();
 }
+/* IN OTHER NOW (31 Oct 2026): every ingredient name the shopping list puts in Other, so an aisle can be given
+   without knowing the name to type. The names are the shopping list's own: each recipe's ingredient lines (the ones
+   the parser read, as LIBRARY CHECK takes them) through aggregateShoppingLines with the household's word matches and
+   aisles, so a name that has been given an aisle is no longer here, and the count agrees with LIBRARY CHECK's "in
+   Other". Most used first, because those are the rows that show up on a shopping list most often. Read-only; the
+   pick writes through addAisleOverride, the one place a name becomes a key, so it is the same single-row upsert as
+   ADD above and the review's pick, and never re-keys a tick. */
+function otherAisleItems(){
+  const lines = loadRecipes().flatMap(r=> ingredientLinesOf(parseRecipe(r.syntax || '')).map(raw=> ({ recipeTitle: r.title, raw, group: '' })));
+  return aggregateShoppingLines(lines, applyIngredientAlias, applyAisleOverride)
+    .filter(i=> i.category === 'Other')
+    .map(i=> ({ key: i.key, name: i.name, recipes: i.recipes.size }))
+    .sort((a, b)=> (b.recipes - a.recipes) || a.name.localeCompare(b.name));
+}
+function renderAisleOtherList(){
+  const block = document.getElementById('aisleOtherBlock');
+  const list = document.getElementById('aisleOtherList');
+  if(!aisleOverridesAvailable){ block.hidden = true; list.innerHTML = ''; return; }
+  const items = otherAisleItems();
+  block.hidden = false;
+  document.getElementById('aisleOtherLabel').textContent = `IN OTHER NOW (${items.length})`;
+  const options = `<option value="">AISLE…</option>` + INGREDIENT_AISLES.map(a=> `<option value="${escapeHtml(a)}">${escapeHtml(a.toUpperCase())}</option>`).join('');
+  list.innerHTML = items.length
+    ? items.map(i=> `<div class="source-row" data-other-row="${escapeHtml(i.key)}">
+        <div><div class="source-row-name">${escapeHtml(i.name.toLowerCase())}</div>
+          <div class="swap-row-detail">in ${i.recipes} recipe${i.recipes === 1 ? '' : 's'}</div></div>
+        <select class="sort" data-other-aisle="${escapeHtml(i.key)}" aria-label="Aisle for ${escapeHtml(i.name.toLowerCase())}">${options}</select>
+      </div>`).join('')
+    : `<p class="empty">Nothing is in Other: every ingredient in your recipes has an aisle.</p>`;
+}
+document.getElementById('aisleOtherList').addEventListener('change', e=>{
+  const sel = e.target.closest('[data-other-aisle]');
+  if(!sel || !sel.value) return;
+  const key = sel.dataset.otherAisle, aisle = sel.value;
+  addAisleOverride(key, aisle);
+  showToast(`"${key}" now goes under ${aisle}`);
+  renderAisleOverridesList();
+  if(state.view === 'shopping') renderShopping();
+  updateSidebarCounts();
+});
+
 /* Where the name in the box goes now (D of docs/PLAN-LAYOUT.md, 30 Sep 2026): asked for so an aisle is not set
    blind. The answer is ingredientLookup's, the lookup's own, so the two never disagree. Typing a name sets the
    aisle picker to where it goes now, and ADD stays greyed out until a different aisle is picked, so no row is

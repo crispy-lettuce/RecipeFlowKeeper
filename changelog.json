@@ -1,4 +1,6 @@
 [
+  { "version": "2026-10-31.1", "date": "2026-10-31", "issues": [],
+    "changes": ["New: Settings, INGREDIENTS, SHOPPING AISLES now lists everything the shopping list cannot place, under IN OTHER NOW, most-used first and saying how many recipes use each. Pick an aisle on a row and it is set at once, then shows in your aisles below, where REMOVE puts it back. The search box at the top of the tab narrows this list too. Nothing about the shopping list's names changes, so ticks stay."] },
   { "version": "2026-10-30.2", "date": "2026-10-30", "issues": [221],
     "changes": ["New: COOK AHEAD on the Planner, for a batch you cook now to eat another day. Tap TO COOK on a dish to choose how it is made: TO COOK, COOK AHEAD or PRE-MADE. A cook-ahead dish stays on the shopping list, and when you tap COOKED ✓ (or finish its recipe) it counts in your cooking (last cooked, times cooked, the streak and STATS) but does not go into the food diary, because nobody ate it that day. The day you eat it from the freezer is PRE-MADE, as before. It then reads ✓ COOKED AHEAD; tap that and say yes to take it out of your cooking stats again. The new choice appears once your household's database has been updated for it; until then the button stays the two-way TO COOK / PRE-MADE switch."] },
   { "version": "2026-10-30.1", "date": "2026-10-30", "issues": [198],

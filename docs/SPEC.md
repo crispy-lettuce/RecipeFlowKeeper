@@ -246,7 +246,9 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
 
 ### 5.9 Settings (four tabs)
 - **INGREDIENTS:** INGREDIENT LOOKUP (how the list names something and its aisle); **WORD MATCHES** (two words are one
-  ingredient); **SHOPPING AISLES** (move an ingredient's aisle); **SWAPS**; the DICTIONARY. Lists fold and remember it per device.
+  ingredient); **SHOPPING AISLES** (move an ingredient's aisle; it opens with **IN OTHER NOW**, every name the list puts in Other,
+  most used first with how many recipes use it, each with an aisle picker that sets the aisle at once, 31 Oct 2026; the search box
+  narrows it too, and it is absent where the aisles table has not been created); **SWAPS**; the DICTIONARY. Lists fold and remember it per device.
 - **LIBRARY:** **LIBRARY CHECK** (recipes not yet compared with their source, and recipes writing one ingredient on several lines);
   tidy SOURCES and KEYWORDS; **RECIPE PHOTOS** (RE-HOST EXTERNAL IMAGES, CHECK STORED IMAGES).
 - **APP:** week start day for the Planner and the shopping list (default Friday; History always starts on Monday), APPEARANCE, STYLE, MENU (automatic, always shown or always hidden, per device), PREPARATION, OVENS (how many this kitchen has, per device), AVOID THE CLASH (on or off when a meal opens, per device), Google Calendar (§6.6),
