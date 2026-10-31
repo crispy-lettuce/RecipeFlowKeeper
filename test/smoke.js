@@ -4112,6 +4112,47 @@ const check = (name, pass, detail) => {
         && aoRowOf(aoR2, 'Smoked mackerel').select && !aoRowOf(aoR2, 'Smoked mackerel').undo && (await page.evaluate(() => loadAisleOverrides().length)) === 0,
         JSON.stringify([aoUndone, aoR2]));
 
+  /* ---- IN OTHER NOW (31 Oct 2026): the names the list cannot place, with a picker on each ----
+     Two made-up recipes share an invented name (so it is "in 2 recipes" and sorts first) and one has a name of its own. The
+     expected set is taken a second way, from LIBRARY CHECK's own "in Other", so a change to either that moved them apart would fail. */
+  const ioOther = () => page.evaluate(() => ({
+    shown: !document.getElementById('aisleOtherBlock').hidden,
+    label: document.getElementById('aisleOtherLabel').textContent,
+    rows: [...document.querySelectorAll('#aisleOtherList [data-other-row]')].map(r => ({ key: r.dataset.otherRow,
+      name: r.querySelector('.source-row-name').textContent, used: r.querySelector('.swap-row-detail').textContent, hidden: r.hidden })),
+    libraryCheck: [...new Set(libraryCheckRows().flatMap(x => x.other.map(n => n.toLowerCase())))].sort() }));
+  await page.evaluate(() => {
+    const mk = (id, title, lines) => ({ id, title, source: 'Blue Door Bakery', sourceUrl: '', servings: 4, tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-10-31',
+      syntax: 'TITLE: ' + title + '\nSOURCE: Blue Door Bakery\nSERVINGS: 4\n\nGROUP a:\n' + lines.join('\n') + '\n\nSTAGE:\nMERGE a -> done: Stir [5 min]' });
+    loadRecipes().push(mk('io-1', 'Other Now One', ['2 zebra quince', '1 quillwort']), mk('io-2', 'Other Now Two', ['3 zebra quince']));
+    renderAisleOverridesList();
+  });
+  const ioA = await ioOther();
+  const ioNames = ioA.rows.map(r => r.name).slice().sort();
+  check('IN OTHER NOW lists the names the shopping list puts in Other: the same set as LIBRARY CHECK, most used first, with how many recipes use each',
+        ioA.shown && ioA.rows.length > 0 && JSON.stringify(ioNames) === JSON.stringify(ioA.libraryCheck)
+        && ioA.rows[0].name === 'zebra quince' && ioA.rows[0].used === 'in 2 recipes'
+        && ioA.rows.find(r => r.name === 'quillwort').used === 'in 1 recipe' && ioA.label === `IN OTHER NOW (${ioA.rows.length})`, JSON.stringify(ioA));
+  const ioMark = await anMark();
+  await page.evaluate(() => { const s = document.querySelector('#aisleOtherList [data-other-aisle="zebra quince"]'); s.value = 'Produce'; s.dispatchEvent(new Event('change', { bubbles: true })); });
+  await page.waitForTimeout(300);
+  const ioPicked = await aoWrites(ioMark);
+  const ioB = await ioOther();
+  const ioListed = await page.evaluate(() => document.getElementById('aisleOverridesList').textContent.replace(/\s+/g, ' ').trim());
+  check('    picking an aisle writes that one row, takes the name out of the list, and shows it under the household\'s aisles',
+        ioPicked.length === 1 && ioPicked[0].op === 'upsert' && ioPicked[0].rows.length === 1 && ioPicked[0].rows[0].name === 'zebra quince' && ioPicked[0].rows[0].aisle === 'Produce'
+        && ioPicked[0].onConflict === 'household_id,name' && !ioB.rows.some(r => r.name === 'zebra quince') && ioB.rows.length === ioA.rows.length - 1
+        && /zebra quince ?in ?Produce/.test(ioListed), JSON.stringify([ioPicked, ioB.rows.length, ioListed]));
+  await page.evaluate(() => { document.getElementById('ingredientLookup').value = 'quillwort'; renderIngredientsHeads(); });
+  const ioFound = await ioOther();
+  await page.evaluate(() => { document.getElementById('ingredientLookup').value = 'Produce'; renderIngredientsHeads(); });
+  const ioWord = await ioOther();
+  await page.evaluate(() => { document.getElementById('ingredientLookup').value = ''; renderIngredientsHeads(); });
+  check('    the Ingredients search narrows the list to the rows that match, and the picker\'s aisle words are not part of a row\'s text',
+        ioFound.rows.filter(r => !r.hidden).map(r => r.name).join('|') === 'quillwort' && ioWord.rows.every(r => r.hidden), JSON.stringify([ioFound.rows.filter(r => !r.hidden).length, ioWord.rows.filter(r => !r.hidden).length]));
+  await page.evaluate(() => { const rm = id => { const i = loadRecipes().findIndex(r => r.id === id); if(i > -1) loadRecipes().splice(i, 1); };
+    rm('io-1'); rm('io-2'); removeAisleOverride(loadAisleOverrides().find(o => o.name === 'zebra quince').id); renderAisleOverridesList(); });
+
   /* Merged before its migration: the table does not exist yet. The load must not throw (a throw in
      hydrate signs the household out), and nothing may offer a write that would fail. */
   const aoSignouts = await page.evaluate(() => window.__SIGNOUTS__);
@@ -4120,7 +4161,8 @@ const check = (name, pass, detail) => {
     catch(e){ return { threw: String(e && e.message || e) }; } });
   await page.evaluate(() => { renderAisleOverridesList(); });
   const aoMissingUi = await page.evaluate(() => ({ note: getComputedStyle(document.getElementById('aisleOverridesUnavailable')).display !== 'none',
-    form: getComputedStyle(document.getElementById('aisleOverrideForm')).display !== 'none' }));
+    form: getComputedStyle(document.getElementById('aisleOverrideForm')).display !== 'none',
+    other: !document.getElementById('aisleOtherBlock').hidden || document.getElementById('aisleOtherList').children.length > 0 }));
   await rvPaste(anText('Aisle Missing', 'Blue Door Bakery', ['300 g smoked mackerel']));
   const aoMissingRows = await aoRows();
   const aoMissingExport = await page.evaluate(() => { let payload = null; const real = window.Blob;
@@ -4129,8 +4171,8 @@ const check = (name, pass, detail) => {
   check('with the table not created yet, the load carries on without aisles and signs nobody out',
         aoMissing.ok === true && aoMissing.available === false && aoMissing.n === 0 && (await page.evaluate(() => window.__SIGNOUTS__)) === aoSignouts,
         JSON.stringify(aoMissing));
-  check('    and nothing offers a write that would fail: Settings says why, with no form, the review has no aisle pick, and export leaves the key out',
-        aoMissingUi.note && !aoMissingUi.form && aoRowOf(aoMissingRows, 'Smoked mackerel').text && !aoRowOf(aoMissingRows, 'Smoked mackerel').select && aoMissingExport === false,
+  check('    and nothing offers a write that would fail: Settings says why, with no form and no IN OTHER NOW list, the review has no aisle pick, and export leaves the key out',
+        aoMissingUi.note && !aoMissingUi.form && !aoMissingUi.other && aoRowOf(aoMissingRows, 'Smoked mackerel').text && !aoRowOf(aoMissingRows, 'Smoked mackerel').select && aoMissingExport === false,
         JSON.stringify([aoMissingUi, aoMissingRows, aoMissingExport]));
   await page.evaluate(async () => { window.__MISSING_TABLES__ = []; await hydrate(); renderAisleOverridesList(); });
   check('    and once the table exists the next load finds it again',
