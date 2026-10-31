@@ -249,7 +249,12 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
   ingredient); **SHOPPING AISLES** (move an ingredient's aisle; it opens with **IN OTHER NOW**, every name the list puts in Other,
   most used first with how many recipes use it, each with an aisle picker that sets the aisle at once, 31 Oct 2026; the search box
   narrows it too, and it is absent where the aisles table has not been created); **SWAPS**; the DICTIONARY. Lists fold and remember it per device.
-- **LIBRARY:** **LIBRARY CHECK** (recipes not yet compared with their source, and recipes writing one ingredient on several lines);
+- **LIBRARY:** **CHECK ALL AGAINST SOURCES** (31 Oct 2026): **CHECK ALL** reads, one at a time, the source page of every recipe with an https link
+  and no fresh comparison (none, or made before its ingredient lines changed), runs it through the same `sourceFidelity` as COMPARE WITH SOURCE and records
+  it as `route: "function"`. Exact match (no difference and no soft note) is recorded **validated**; anything else is recorded not validated and listed
+  with OPEN; a page the function cannot read writes nothing and is listed; a recipe edited while its page was read is skipped. **STOP** ends it after the page
+  in hand, and three failures to reach the function in a row end it. The write is an update of `source_check` on that one row; recipe text is never changed;
+  **LIBRARY CHECK** (recipes not yet compared with their source, and recipes writing one ingredient on several lines);
   tidy SOURCES and KEYWORDS; **RECIPE PHOTOS** (RE-HOST EXTERNAL IMAGES, CHECK STORED IMAGES).
 - **APP:** week start day for the Planner and the shopping list (default Friday; History always starts on Monday), APPEARANCE, STYLE, MENU (automatic, always shown or always hidden, per device), PREPARATION, OVENS (how many this kitchen has, per device), AVOID THE CLASH (on or off when a meal opens, per device), Google Calendar (§6.6),
   BACKUP TO GOOGLE DRIVE, RECIPE SHARING.
@@ -268,7 +273,7 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
    spellings that count as it, an aisle and how a line is counted. The shopping key is the name alone, so **a change to how
    ingredients are named re-keys the household's ticks**.
 3. **Source check.** A recipe's ingredients can be compared with its web page's; the result (counts, route, date) is stored on
-   the recipe and shown as a chip.
+   the recipe and shown as a chip. Settings → LIBRARY → CHECK ALL does it for every recipe with a link and no fresh comparison (§5.9).
 4. **Images.** Photos live in Supabase Storage. Saving a recipe with a web photo asks `rehost-images` to copy it into our storage;
    a device photo is shrunk and uploaded at save. Source photos/PDFs go to a private bucket.
 5. **Write safety.** One row per write; a failed write is kept and retried; a refresh never overwrites anything unsaved.

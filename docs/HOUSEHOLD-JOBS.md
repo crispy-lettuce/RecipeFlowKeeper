@@ -13,8 +13,8 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-Three jobs: **Sign-in on each device** (Job 1), a few minutes per device; **Reporting a bug or an idea** (Job 2), a few minutes on the tablet; and **COOK AHEAD** (Job 3),
-which starts with applying a database change from the dashboard, before the pull request that carries it is merged. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
+Four jobs: **Sign-in on each device** (Job 1), a few minutes per device; **Reporting a bug or an idea** (Job 2), a few minutes on the tablet; **COOK AHEAD** (Job 3),
+which starts with applying a database change from the dashboard, before the pull request that carries it is merged; and **CHECK ALL AGAINST SOURCES** (Job 5), a few minutes, with no database change. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
 
@@ -79,6 +79,26 @@ If a step does not do what it says, note which one and what you saw.
 6. Back on the Planner, tap **✓ COOKED AHEAD** and say yes. **You should see:** the button goes back to **COOKED ✓**, and STATS and the card are as they were.
 7. Choose **PRE-MADE** from the same box on a dish. **You should see:** it still asks which meal, reads **PRE-MADE · DINNER**, and leaves the Shopping list.
    Put it back to **TO COOK** afterwards.
+
+If a step does not do what it says, note which one and what you saw.
+
+---
+
+## Job 5: CHECK ALL AGAINST SOURCES
+
+No database change and nothing to deploy. Do it in your own household: it writes a comparison onto your recipes (the text of no recipe changes), and Test Kitchen's
+placeholder links would tell you nothing. Settings → LIBRARY → **LIBRARY CHECK** → RUN first, and note how many recipes it calls "not compared".
+
+1. **Reload the app** so it is on version 2026-10-31.2. **You should see:** Settings → HELP shows it, and What's new mentions CHECK ALL.
+2. Settings → LIBRARY. **You should see:** a box **CHECK ALL AGAINST SOURCES** above LIBRARY CHECK, saying how many recipes are waiting to be checked.
+3. Press **CHECK ALL**, then **STOP** after a few. **You should see:** a line counting up ("Checking 3 of N…"), the run ending after the page it was reading with "Stopped.",
+   and a summary of how many matched exactly, how many were recorded with differences or notes, and how many could not be read.
+4. Press **CHECK ALL** again and let it finish. **You should see:** the same summary at the end; a recipe that matched exactly is not listed; each recipe with a
+   difference or note is listed with **OPEN**; each page that could not be read is listed with the reason (a site with no ingredient list in its page, or one that refuses
+   the check).
+5. Settings → LIBRARY CHECK → RUN. **You should see:** "not compared" lower by the number the summary said was recorded, and those that matched exactly under "validated".
+6. Tap **OPEN** on one recipe listed with a difference. **You should see:** its Edit form, with the stored comparison and its difference count in the SOURCE section,
+   and the recipe **not** validated. Look at it; fix or VALIDATE INGREDIENT LIST as you do now.
 
 If a step does not do what it says, note which one and what you saw.
 
