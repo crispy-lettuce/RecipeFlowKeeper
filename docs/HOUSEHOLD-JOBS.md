@@ -13,9 +13,8 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-Four jobs: **Sign-in on each device** (Job 1), a few minutes per device; **Reporting a bug or an idea** (Job 2), a few minutes on the tablet; **COOK AHEAD** (Job 3),
-which starts with applying a database change from the dashboard, before the pull request that carries it is merged; and **IN OTHER NOW** (Job 4), a few
-minutes, with no database change. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
+Three jobs: **Sign-in on each device** (Job 1), a few minutes per device; **Reporting a bug or an idea** (Job 2), a few minutes on the tablet; and **COOK AHEAD** (Job 3),
+which starts with applying a database change from the dashboard, before the pull request that carries it is merged. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
 
@@ -85,23 +84,6 @@ If a step does not do what it says, note which one and what you saw.
 
 ---
 
-## Job 4: giving aisles from IN OTHER NOW
-
-No database change. Do it in your own household, since the point is the real list.
-
-1. **Reload the app** so it is on version 2026-10-31.1. **You should see:** Settings → HELP shows it, and What's new mentions IN OTHER NOW.
-2. Settings → INGREDIENTS → **SHOPPING AISLES**. **You should see:** a heading **IN OTHER NOW (n)** above your own aisles, then one row per ingredient the
-   shopping list cannot place, each saying how many recipes use it and carrying an **AISLE…** picker. The most used are first. Settings → LIBRARY →
-   LIBRARY CHECK → RUN should name the same ingredients under "in Other".
-3. Pick an aisle on one row. **You should see:** a note that it now goes under that aisle, the row leaves the list, **n** goes down by one, and the name
-   appears under your own aisles lower down. On the Shopping list it is in that aisle, and anything you had ticked stays ticked.
-4. Under your own aisles, tap **REMOVE** on that one. **You should see:** it returns to IN OTHER NOW.
-5. Type part of a name in INGREDIENT LOOKUP at the top. **You should see:** the list narrows to the matching rows.
-
-If a step does not do what it says, note which one and what you saw.
-
----
-
 ## Nothing to do: a session checks these
 
 None at the moment.
@@ -110,6 +92,7 @@ None at the moment.
 
 ## Recently done
 
+- **31 Oct:** you reported the IN OTHER NOW job (Job 4, #225, app version 2026-10-31.1) OK. That is your report; a session did not see it.
 - **25 Oct:** you reported every job on this page complete: the reload (2026-10-25.1), setting the ovens and trying the run sheet, trying START COOKING,
   the timers rehearsal on the tablet, and the converter bar (DONE tapped, and the re-conversion of three recipes compared with the library). Seen in the database
   the same day: the family household's confirmed converter version is 2026-10-25.1, set at 12:59 UTC; the rest is your report, which a session did not see.
