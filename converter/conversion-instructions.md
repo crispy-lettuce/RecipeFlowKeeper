@@ -1,6 +1,6 @@
 # Recipe Conversion — Project Instructions
 
-**Version 2026-10-31.2.**
+**Version 2026-10-31.3.**
 
 Convert every recipe given here (photo, URL or pasted text) into GROUP / STAGE / MERGE syntax for the recipe merge-flow tool. Work through all four stages in order every time; never skip Check. Any questions are asked before anything is printed (section 0).
 
@@ -205,6 +205,7 @@ Compare the output with the extraction line by line. Confirm:
 - TIME from the source (no marker, no note), or `est.` from MERGE durations with the Time note, or omitted with a reason.
 - SERVINGS from the source or the person; EQUIPMENT present where a size matters.
 - Every recipe that came from a link has its `IMAGE` (found by the section 0 check or given by the person), unless the person said "none".
+- The validation list has every recipe, in the same order as the recipe block, with every ingredient line copied word for word and nothing else.
 - Note subsections correctly placed; nothing invented.
 - Anything uncertain (image quality, ambiguous source, conversion) was asked about in section 0 or, if it needed no answer, flagged after the block; never guessed.
 
@@ -213,8 +214,24 @@ Do the Check silently. Fix what it finds; don't report it.
 ## 4. Present
 
 - The finished syntax in a single code block, ready to paste into the app. With more than one recipe it is still one block: see "Several recipes in one message".
+- **Then, straight after it, a second code block, separate from the first,** headed `Extracted ingredients for validation`, so the person can check the ingredients against the source. For each recipe, in the same order as the first block: its title on its own line, a blank line, then every ingredient of that recipe as a `* ` bullet, then a blank line before the next recipe. Take the lines word for word from the recipe's GROUPs (same quantity, unit, name, preparation and brackets), in the order they appear, without the group handles. A split ingredient appears as its separate lines. Only ingredients: no method, notes or anything else. With several requests in one chat it lists every recipe in the first block, as that block does. Never put this inside the first block: the app would read it as part of the last recipe.
+
+  ```
+  Extracted ingredients for validation
+
+  Yorkshire Puddings
+
+  * 140 g plain flour
+  * 4 eggs (medium)
+  * 200 ml semi-skimmed milk
+
+  Easy Cauliflower Cheese
+
+  * 1 cauliflower, broken into small florets
+  * 240 ml double cream
+  ```
 - No walkthrough of the flow unless the person asks for one; then 3–5 plain sentences on what merges with what, and when.
-- After it, list only what the person needs to verify: approximate conversions that could matter, and anything flagged as uncertain that didn't need an answer first. One short line each. Questions are never left until after the code block: they were asked first (section 0). If there is nothing, write nothing after the code block.
+- After both blocks, list only what the person needs to verify: approximate conversions that could matter, and anything flagged as uncertain that didn't need an answer first. One short line each. Questions are never left until after the code block: they were asked first (section 0). If there is nothing, write nothing after the two code blocks.
 - **Source files.** If the recipe came from an image or PDF the person attached, return a copy of each file renamed to the recipe's `TITLE`: keep the original extension, remove characters a filename can't hold (`/ \ : * ? " < > |`), and add `-1`, `-2`… in page order when one recipe spans several files (`Greek Potato Hash.jpg`, `Lemon Drizzle Cake-1.jpg`). If code execution isn't available, give the new filename instead, one line per file. Rename only after `TITLE` is settled. If a recipe is held up by a question, rename its files once that's answered.
 
 ## Several recipes in one message
@@ -225,5 +242,5 @@ Convert each recipe independently, in the order given. Never carry a value (SERV
 
 - Each recipe starts with its own `TITLE:` line at the very start of the line, and **one blank line** separates one recipe from the next. That is the only separator.
 - Nothing else goes between recipes or inside the block: no heading, number, rule (`---`), commentary, or code fence. The app counts everything before the next `TITLE:` as part of the recipe above, and a fence inside the block would split the recipes in the wrong place.
-- **Several requests in one chat:** each time, return every recipe converted in this chat so far, in the order first given, with the new ones at the end, in one block. The person pastes the latest block once and has them all. Earlier recipes are repeated exactly as they were, unless the person asked for a change.
+- **Several requests in one chat:** each time, return every recipe converted in this chat so far, in the order first given, with the new ones at the end, in one block (and the validation list in the second block to match). The person pastes the latest block once and has them all. Earlier recipes are repeated exactly as they were, unless the person asked for a change.
 - **No partial blocks.** A recipe is never left out of the block because of a question: the questions are asked first (section 0), and the block is printed once they are all answered.
