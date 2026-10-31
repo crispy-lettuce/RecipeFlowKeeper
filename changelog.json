@@ -1,4 +1,6 @@
 [
+  { "version": "2026-10-31.2", "date": "2026-10-31", "issues": [],
+    "changes": ["New: Settings, LIBRARY, CHECK ALL AGAINST SOURCES. One button, CHECK ALL, reads the source page of every recipe that has a link and has not been compared (or was compared before its ingredients changed), one after another, and compares each page's ingredient list with the recipe's, as COMPARE WITH SOURCE does for one recipe. A recipe that matches its page exactly is marked validated. A recipe with any difference or note is recorded as compared and listed with OPEN so you can look at it; it is not validated. A page that cannot be read changes nothing and is listed. STOP ends a run after the page being read. No recipe text is changed."] },
   { "version": "2026-10-31.1", "date": "2026-10-31", "issues": [],
     "changes": ["New: Settings, INGREDIENTS, SHOPPING AISLES now lists everything the shopping list cannot place, under IN OTHER NOW, most-used first and saying how many recipes use each. Pick an aisle on a row and it is set at once, then shows in your aisles below, where REMOVE puts it back. The search box at the top of the tab narrows this list too. Nothing about the shopping list's names changes, so ticks stay."] },
   { "version": "2026-10-30.2", "date": "2026-10-30", "issues": [221],

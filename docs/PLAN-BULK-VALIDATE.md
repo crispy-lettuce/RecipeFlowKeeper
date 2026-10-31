@@ -1,7 +1,7 @@
 # Plan: checking many recipes against their sources at once
 
 A working file with an end (`CLAUDE.md`, "How the documents are kept"): the PR that closes it updates `docs/SPEC.md` §5.3, §5.9 and §6.3 and deletes
-this file. Written 31 Oct 2026. **Nothing here is built.** The aisle half of the original ask is built and separate (IN OTHER NOW, Settings → INGREDIENTS →
+this file. Written 31 Oct 2026. **Slice 2 (CHECK ALL by the function) is built; the rest is not.** The aisle half of the original ask is built and separate (IN OTHER NOW, Settings → INGREDIENTS →
 SHOPPING AISLES, #225): it needed no chat.
 
 ## 1. The problem
@@ -39,7 +39,8 @@ comparison as ingredients and show as extras; and **the failed page's title was 
 The chat is not the first resort. The app can already read many pages itself, and does so deterministically.
 
 1. **CHECK ALL (the app, no chat).** One button in Settings → LIBRARY. For each recipe with an https link that is not fresh-compared, the app calls the existing
-   `source-ingredients` function with the recipe's `recipeId` (it reads the recipe's `SOURCE_URL` itself), one recipe at a time with a visible progress line and a
+   `source-ingredients` function with the recipe's link (`pageUrl`, as the Edit form does; the function can also take a `recipeId`, but that reads the link from
+   the database and needs no more than the cache already holds), one recipe at a time with a visible progress line and a
    STOP, and runs the result through `sourceFidelity`. Recorded as `route: "function"`, as the Edit form records it. No chat, no copy and paste, no deploy.
 2. **READ BY CHAT (the leftovers).** Recipes the function could not read (no Schema.org block, a refused page) are offered in batches of **5** as a prompt to
    copy into a regular chat (§5), and the reply is pasted back. Recorded as `route: "chat"`, so the viewer's chip can say the list was read by a person's
@@ -93,7 +94,9 @@ read, couldn't read, or unmatched. It is a pure function in `core.js` with tests
 
 1. **Pure functions in `core.js`**: `buildSourcePrompt(items)`, `parseSourceReply(text, items)`. Tests in `test/core.test.js` with made-up recipes, each check seen
    failing once. Bumps `KITCHEN_CORE_VERSION` in its three places.
-2. **CHECK ALL by the function** (route 1) and the review table with RECORD COMPARISONS. `index.html`, smoke tests (the stub answers the function), changelog,
+2. **CHECK ALL by the function** (route 1), **built 31 Oct 2026** as Settings → LIBRARY → CHECK ALL AGAINST SOURCES. As built it records as it goes
+   instead of waiting behind a RECORD COMPARISONS button, because the household decided that an exact match is validated automatically (§9); everything else
+   is recorded not validated and listed with OPEN. Of the original wording, the review table is the list under the button. `index.html`, smoke tests (the stub answers the function), changelog,
    `help.html`, `docs/SPEC.md`. **No Edge Function change.** This slice alone may be most of the saving; stop and look at the numbers after it.
 3. **READ BY CHAT** (route 2): the prompt screen, the paste box, the same review. Settings-side only.
 4. **Small:** OPEN with the list pre-filled in Edit; a LIBRARY CHECK filter for `chat`; the chip's wording for the route.
@@ -121,8 +124,10 @@ Each PR also adds its tablet steps to `docs/HOUSEHOLD-JOBS.md` and removes them 
   a recipe in bulk: recipe text changes only by the procedure in `CLAUDE.md`, with the household present.
 - **Aisles** are done in #225. A shared dictionary row for a name is a session job (re-measure first, then ask), not part of this plan.
 
-## 9. Questions for the household
+## 9. Decided by the household (31 Oct 2026)
 
-1. Is it right to start with CHECK ALL by the function (slice 2) and decide on the chat route from the count it leaves?
-2. Should a batch ever set VALIDATED itself? The plan says no: only on rows ticked after looking.
-3. Anything else wanted from the same page read, such as its stated servings, to set against the recipe's? It widens the scope, so it is left out unless asked for.
+1. **Start with CHECK ALL by the function**, and decide on the chat route from the count it leaves: yes.
+2. **Validated by itself:** only on an exact match, meaning no hard difference **and no soft note**. A recipe with a note, however soft, is recorded but not validated.
+3. **Servings:** read a page's servings only for a recipe that has none in the app. **Not built.** It needs two things this slice avoids: the function returning the
+   page's yield (an Edge Function change, deployed by the household), and writing a `SERVINGS:` line into the recipe, which is recipe text and follows the procedure
+   in `CLAUDE.md` with the household present. Servings are mandatory in the app, so how many recipes lack them is unknown; count them before building anything.

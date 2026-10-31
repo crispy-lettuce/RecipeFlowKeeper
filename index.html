@@ -1912,7 +1912,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-31.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-10-31.2">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2276,6 +2276,21 @@ function loadArchivoFont(){
             that name. The lookup box above filters it. Changing a row is a code change; ask for it in a session.</p>
           <div id="dictionaryList" class="sources-list"></div>
           </div>
+        </div>
+
+        <div class="settings-block" data-settings-tab="library" id="checkAll">
+          <div class="side-label">CHECK ALL AGAINST SOURCES</div>
+          <p class="subtle">Reads each recipe's source page for its own ingredient list and compares it with the recipe, as
+            COMPARE WITH SOURCE does for one. Only recipes with an https link that have not been compared, or were
+            compared before their ingredients changed, are read, one after another. A recipe that matches its page
+            exactly is marked validated; one with any difference or note is recorded and left for you to look at. A
+            page that cannot be read changes nothing. No recipe text is changed.</p>
+          <div class="alias-form">
+            <button class="btn" id="checkAllBtn">CHECK ALL</button>
+            <button class="btn" id="checkAllStopBtn" hidden>STOP</button>
+          </div>
+          <p class="subtle" id="checkAllSummary"></p>
+          <div id="checkAllList" class="sources-list"></div>
         </div>
 
         <div class="settings-block" data-settings-tab="library" id="libraryCheck">
@@ -2707,7 +2722,7 @@ const EXPECTED_CORE_VERSION = '2026-10-25.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-31.1';
+const APP_VERSION = '2026-10-31.2';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -10759,6 +10774,7 @@ function renderSettings(){
   renderCalendarSettings();
   renderSharingSettings();
   renderDriveSettings();
+  renderCheckAll();
   showSettingsTab(settingsTabStored());
 }
 
@@ -11555,7 +11571,103 @@ function renderLibraryCheck(){
       <button class="btn" data-lc-open="${escapeHtml(x.id)}">OPEN</button>
     </div>`).join('') || `<p class="empty">Nothing needs attention.</p>`;
 }
-document.getElementById('libraryCheckRunBtn').addEventListener('click', ()=>{ libraryCheckResult = libraryCheckRows(); renderLibraryCheck(); });
+/* CHECK ALL AGAINST SOURCES (31 Oct 2026, docs/PLAN-BULK-VALIDATE.md §3 route 1). COMPARE WITH SOURCE for the whole
+   library: for each recipe with an https link that has no fresh comparison, the same call the Edit form makes
+   (`source-ingredients` with the recipe's link), the same sourceFidelity and fidelityCounts, recorded as route
+   "function" the same way. One recipe at a time, so a long library is minutes and can be stopped.
+   - A recipe that matches its page EXACTLY (no hard difference and no soft note) is recorded validated, as the
+     household decided (31 Oct 2026). A note, however soft, is recorded but not validated: VALIDATE stays the
+     household's word on anything it has not looked at.
+   - A page that cannot be read writes nothing. Three failures in a row to reach the function at all stop the run.
+   - The write is patchRecipe: an UPDATE of source_check on that one row, never an upsert of the row, and the cache
+     is changed with it (a later save of the recipe upserts from the cache, and must not lose the record). It never
+     touches recipe text. A recipe whose ingredient lines changed while its page was being read is skipped: the
+     comparison would be of lines that are no longer there. */
+let checkAllState = null;   // { running, stop, total, done, results, note } for this tab; never stored
+function checkAllEligible(){
+  return loadRecipes().filter(r=> /^https:\/\//i.test(r.sourceUrl || '')
+    && sourceCheckStatus(r.sourceCheck, ingredientLinesOf(parseRecipe(r.syntax || ''))).state !== 'fresh');
+}
+function renderCheckAll(){
+  const btn = document.getElementById('checkAllBtn');
+  if(!btn) return;
+  const st = checkAllState;
+  const running = !!(st && st.running);
+  const waiting = running ? 0 : checkAllEligible().length;
+  btn.disabled = running || waiting === 0;
+  document.getElementById('checkAllStopBtn').hidden = !running;
+  const count = k=> st ? st.results.filter(x=> x.kind === k).length : 0;
+  const parts = [];
+  if(st){
+    parts.push(running ? `Checking ${st.done} of ${st.total}…` : `Checked ${st.done} of ${st.total}.`);
+    const bits = [
+      count('exact') ? `${count('exact')} matched exactly and ${count('exact') === 1 ? 'is' : 'are'} validated` : '',
+      count('looked') ? `${count('looked')} recorded with differences or notes to look at` : '',
+      count('unread') ? `${count('unread')} could not be read` : '',
+      count('skipped') ? `${count('skipped')} skipped` : ''
+    ].filter(Boolean);
+    if(bits.length) parts.push(bits.join('; ') + '.');
+    if(st.note) parts.push(st.note);
+  }
+  if(!running) parts.push(waiting ? `${waiting} recipe${waiting === 1 ? '' : 's'} waiting to be checked.` : 'No recipe is waiting to be checked.');
+  document.getElementById('checkAllSummary').textContent = parts.join(' ');
+  const shown = st ? st.results.filter(x=> x.kind !== 'exact') : [];
+  document.getElementById('checkAllList').innerHTML = shown.map(x=> `<div class="source-row lc-row" data-ca-id="${escapeHtml(x.id)}" data-ca-kind="${x.kind}">
+      <div><div class="source-row-name">${escapeHtml(x.title)}</div><div class="swap-row-detail">${escapeHtml(x.text)}</div></div>
+      ${x.kind === 'skipped' ? '' : `<button class="btn" data-ca-open="${escapeHtml(x.id)}">OPEN</button>`}
+    </div>`).join('');
+}
+async function runCheckAll(){
+  if(checkAllState && checkAllState.running) return;
+  const todo = checkAllEligible().map(r=> ({ id: r.id, title: r.title, url: r.sourceUrl, hash: linesHash(ingredientLinesOf(parseRecipe(r.syntax || ''))) }));
+  const st = checkAllState = { running: true, stop: false, total: todo.length, done: 0, results: [], note: '' };
+  const add = (t, kind, text)=> st.results.push({ id: t.id, title: t.title, kind, text });
+  let unreachable = 0;
+  renderCheckAll();
+  for(const t of todo){
+    if(st.stop){ st.note = 'Stopped.'; break; }
+    let data = null, error = null;
+    try { ({ data, error } = await sb.functions.invoke('source-ingredients', { body: { pageUrl: t.url } })); }
+    catch(e){ error = e; }
+    st.done++;
+    if(error || !data){
+      add(t, 'unread', 'The check could not be reached.');
+      if(++unreachable >= 3){ st.note = 'Stopped: the check could not be reached three times running. Try again when you are back online.'; break; }
+      renderCheckAll(); continue;
+    }
+    unreachable = 0;
+    if(!data.ingredients || !data.ingredients.length){
+      add(t, 'unread', (data.error || 'The page carries no ingredient list the check can read') + '.');
+      renderCheckAll(); continue;
+    }
+    const r = loadRecipes().find(x=> x.id === t.id);
+    if(!r || r.sourceUrl !== t.url || linesHash(ingredientLinesOf(parseRecipe(r.syntax || ''))) !== t.hash){
+      add(t, 'skipped', 'The recipe changed while its page was being read, so nothing was recorded.');
+      renderCheckAll(); continue;
+    }
+    const f = sourceFidelity(data.ingredients, ingredientLinesOf(parseRecipe(r.syntax || '')));
+    const { hard, soft } = fidelityCounts(f);
+    const at = new Date().toISOString();
+    const exact = hard === 0 && soft === 0;
+    const check = { at, route: 'function', hard, soft, sourceLines: data.ingredients.length, linesHash: t.hash, ...(exact ? { validated: at } : {}) };
+    r.sourceCheck = check;
+    patchRecipe(r.id, { source_check: check });
+    if(exact) add(t, 'exact', '');
+    else add(t, 'looked', `${differencesWords(hard)}${soft ? `, ${soft} note${soft === 1 ? '' : 's'}` : ''}. Recorded, not validated.`);
+    renderCheckAll();
+  }
+  st.running = false;
+  renderCheckAll();
+  if(libraryCheckResult){ libraryCheckResult = libraryCheckRows(); renderLibraryCheck(); }
+}
+document.getElementById('checkAllBtn').addEventListener('click', runCheckAll);
+document.getElementById('checkAllStopBtn').addEventListener('click', ()=>{ if(checkAllState) checkAllState.stop = true; });
+document.getElementById('checkAllList').addEventListener('click', e=>{
+  const open = e.target.closest('[data-ca-open]');
+  if(open) openEditModal(open.dataset.caOpen);
+});
+
+document.getElementById('libraryCheckRunBtn').addEventListener('click', ()=>{ libraryCheckResult = libraryCheckRows(); renderLibraryCheck(); renderCheckAll(); });
 document.getElementById('libraryCheckOnly').addEventListener('change', renderLibraryCheck);
 document.getElementById('libraryCheckSplits').addEventListener('change', renderLibraryCheck);
 document.getElementById('libraryCheckList').addEventListener('click', e=>{

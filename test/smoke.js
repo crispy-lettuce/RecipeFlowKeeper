@@ -4153,6 +4153,82 @@ const check = (name, pass, detail) => {
   await page.evaluate(() => { const rm = id => { const i = loadRecipes().findIndex(r => r.id === id); if(i > -1) loadRecipes().splice(i, 1); };
     rm('io-1'); rm('io-2'); removeAisleOverride(loadAisleOverrides().find(o => o.name === 'zebra quince').id); renderAisleOverridesList(); });
 
+  /* ---- CHECK ALL AGAINST SOURCES (31 Oct 2026, docs/PLAN-BULK-VALIDATE.md §3) ----
+     Invented recipes on example.test, each with a page that answers differently: one that matches exactly, one with an extra
+     line, one with only a soft note ("light soy sauce" against "soy sauce"), one the function cannot read, one whose recipe is
+     edited while its page is being read; and two that must never be asked about (already compared; no link). Every other recipe
+     in the fixture library is answered "no list", so the run covers them without recording anything. */
+  const caL = ['2 onions, diced', '200 g red lentils'];
+  await page.evaluate(L => {
+    const mk = (id, title, lines, url, check) => ({ id, title, source: 'Blue Door Bakery', sourceUrl: url, servings: 4, tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-10-31', sourceCheck: check || null,
+      syntax: ['TITLE: ' + title, 'SOURCE: Blue Door Bakery', url ? 'SOURCE_URL: ' + url : '', 'SERVINGS: 4', '', 'GROUP a:', ...lines, '', 'STAGE:', 'MERGE a -> done: Cook [5 min]'].filter(x => x !== '').join('\n') });
+    const u = n => 'https://example.test/ca-' + n;
+    const soy = ['2 tbsp light soy sauce', '200 g red lentils'];
+    loadRecipes().push(mk('ca-exact', 'Check Exact', L, u('exact')), mk('ca-diff', 'Check Differs', L, u('diff')), mk('ca-note', 'Check Note', soy, u('note')),
+      mk('ca-unread', 'Check Unread', L, u('unread')), mk('ca-edit', 'Check Edited', L, u('edit')),
+      mk('ca-fresh', 'Check Fresh', L, u('fresh'), { at: new Date().toISOString(), route: 'function', hard: 0, soft: 0, sourceLines: 2, linesHash: linesHash(L) }),
+      mk('ca-nolink', 'Check No Link', L, ''));
+    window.__INVOKES__.length = 0;
+    window.__INVOKE_REPLY__ = call => {
+      const url = call.body && call.body.pageUrl, ok = list => ({ data: { pageUrl: url, name: 'Page', ingredients: list }, error: null });
+      if(call.name !== 'source-ingredients') return { data: null, error: null };
+      if(url === u('exact')) return ok(L);
+      if(url === u('diff')) return ok([...L, '1 tsp cumin']);
+      if(url === u('note')) return ok(['2 tbsp soy sauce', '200 g red lentils']);
+      if(url === u('edit')){ const r = loadRecipes().find(x => x.id === 'ca-edit'); r.syntax = r.syntax.replace('200 g red lentils', '300 g red lentils'); return ok(L); }
+      return { data: { error: 'the page carries no Schema.org recipe with an ingredient list', pageUrl: url, ingredients: [] }, error: null };
+    };
+    renderCheckAll();
+  }, caL);
+  const caBefore = await page.evaluate(() => ({ waiting: checkAllEligible().length, ids: checkAllEligible().map(r => r.id) }));
+  const caMark = await anMark();
+  await page.evaluate(() => document.getElementById('checkAllBtn').click());
+  await page.waitForFunction(() => checkAllState && !checkAllState.running, null, { timeout: 15000 });
+  await page.waitForTimeout(300);
+  const caAfter = await page.evaluate(m => ({
+    calls: window.__INVOKES__.filter(c => c.name === 'source-ingredients').map(c => c.body.pageUrl),
+    writes: window.__WRITES__.slice(m).filter(w => w.table === 'recipes').map(w => ({ op: w.op, cols: Object.keys(w.patch || {}).sort().join(','), id: (w.eqs.find(e => e.column === 'id') || {}).value, check: w.patch && w.patch.source_check })),
+    cache: Object.fromEntries(['ca-exact', 'ca-diff', 'ca-note', 'ca-unread', 'ca-edit', 'ca-fresh'].map(id => [id, loadRecipes().find(r => r.id === id).sourceCheck])),
+    kinds: checkAllState.results.map(x => x.kind), total: checkAllState.total, done: checkAllState.done, waiting: checkAllEligible().length,
+    summary: document.getElementById('checkAllSummary').textContent, rows: [...document.querySelectorAll('#checkAllList [data-ca-id]')].map(r => r.dataset.caId + ':' + r.dataset.caKind) }), caMark);
+  const caMine = caAfter.writes.filter(w => String(w.id).startsWith('ca-'));
+  check('CHECK ALL asks about each recipe with a link and no fresh comparison, once, and not about one already compared or one with no link',
+        caBefore.ids.includes('ca-exact') && !caBefore.ids.includes('ca-fresh') && !caBefore.ids.includes('ca-nolink')
+        && caAfter.calls.length === caBefore.waiting && new Set(caAfter.calls).size === caAfter.calls.length
+        && !caAfter.calls.includes('https://example.test/ca-fresh'), JSON.stringify([caBefore, caAfter.calls]));
+  check('    an exact match is recorded as validated, from the function, with its counts and the hash of its lines',
+        caAfter.cache['ca-exact'] && caAfter.cache['ca-exact'].route === 'function' && caAfter.cache['ca-exact'].hard === 0 && caAfter.cache['ca-exact'].soft === 0
+        && caAfter.cache['ca-exact'].validated === caAfter.cache['ca-exact'].at && caAfter.cache['ca-exact'].sourceLines === 2 && typeof caAfter.cache['ca-exact'].linesHash === 'string', JSON.stringify(caAfter.cache['ca-exact']));
+  check('    a difference, and a soft note on its own, are recorded but NOT validated',
+        caAfter.cache['ca-diff'] && caAfter.cache['ca-diff'].hard === 1 && !('validated' in caAfter.cache['ca-diff'])
+        && caAfter.cache['ca-note'] && caAfter.cache['ca-note'].hard === 0 && caAfter.cache['ca-note'].soft === 1 && !('validated' in caAfter.cache['ca-note']), JSON.stringify([caAfter.cache['ca-diff'], caAfter.cache['ca-note']]));
+  check('    a page the function cannot read, and a recipe edited while its page was read, record nothing',
+        caAfter.cache['ca-unread'] === null && caAfter.cache['ca-edit'] === null && !caMine.some(w => w.id === 'ca-unread' || w.id === 'ca-edit')
+        && caAfter.rows.includes('ca-unread:unread') && caAfter.rows.includes('ca-edit:skipped'), JSON.stringify([caAfter.rows, caMine]));
+  check('    each recording is one update of source_check on that one row (never an upsert), and nothing else is written to a recipe',
+        caMine.length === 3 && caMine.every(w => w.op === 'update' && w.cols === 'source_check,updated_at') && caAfter.writes.length === caMine.length
+        && JSON.stringify(caMine.map(w => w.id).sort()) === '["ca-diff","ca-exact","ca-note"]', JSON.stringify(caAfter.writes));
+  check('    the numbers agree: asked = recorded + could not be read + skipped, and the recipes still waiting fall by the number recorded',
+        caAfter.total === caBefore.waiting && caAfter.done === caAfter.total && caAfter.kinds.length === caAfter.total
+        && caAfter.waiting === caBefore.waiting - caAfter.kinds.filter(k => k === 'exact' || k === 'looked').length
+        && /matched exactly and is validated/.test(caAfter.summary) && /1 skipped/.test(caAfter.summary) && /could not be read/.test(caAfter.summary), JSON.stringify([caAfter.summary, caAfter.total, caAfter.waiting]));
+  /* STOP: the next run has the unread ones to ask about again, and stops after the first answer. */
+  await page.evaluate(() => { window.__INVOKES__.length = 0;
+    const real = window.__INVOKE_REPLY__; window.__INVOKE_REPLY__ = call => { if(checkAllState) checkAllState.stop = true; return real(call); };
+    document.getElementById('checkAllBtn').click(); });
+  await page.waitForFunction(() => checkAllState && !checkAllState.running, null, { timeout: 15000 });
+  const caStopped = await page.evaluate(() => ({ calls: window.__INVOKES__.filter(c => c.name === 'source-ingredients').length, done: checkAllState.done, total: checkAllState.total, note: checkAllState.note }));
+  check('    STOP ends the run after the page being read, and says so', caStopped.total > 1 && caStopped.calls === 1 && caStopped.done === 1 && /Stopped/.test(caStopped.note), JSON.stringify(caStopped));
+  /* Three failures to reach the function in a row end the run rather than going through the whole library. */
+  await page.evaluate(L => { for(const n of [1, 2, 3]) loadRecipes().push({ id: 'ca-down-' + n, title: 'Check Down ' + n, source: 'Blue Door Bakery', sourceUrl: 'https://example.test/ca-down-' + n, servings: 4, tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-10-31', sourceCheck: null,
+      syntax: ['TITLE: Check Down ' + n, 'SOURCE: Blue Door Bakery', 'SOURCE_URL: https://example.test/ca-down-' + n, 'SERVINGS: 4', '', 'GROUP a:', ...L, '', 'STAGE:', 'MERGE a -> done: Cook [5 min]'].join('\n') });
+    window.__INVOKES__.length = 0; window.__INVOKE_REPLY__ = () => ({ data: null, error: { message: 'offline' } }); document.getElementById('checkAllBtn').click(); }, caL);
+  await page.waitForFunction(() => checkAllState && !checkAllState.running, null, { timeout: 15000 });
+  const caDown = await page.evaluate(() => ({ calls: window.__INVOKES__.length, note: checkAllState.note }));
+  check('    three failures to reach the check in a row stop the run', caDown.calls === 3 && /could not be reached three times/.test(caDown.note), JSON.stringify(caDown));
+  await page.evaluate(() => { for(const id of ['ca-exact', 'ca-diff', 'ca-note', 'ca-unread', 'ca-edit', 'ca-fresh', 'ca-nolink', 'ca-down-1', 'ca-down-2', 'ca-down-3']){ const i = loadRecipes().findIndex(r => r.id === id); if(i > -1) loadRecipes().splice(i, 1); }
+    window.__INVOKES__.length = 0; window.__INVOKE_REPLY__ = null; checkAllState = null; renderCheckAll(); });
+
   /* Merged before its migration: the table does not exist yet. The load must not throw (a throw in
      hydrate signs the household out), and nothing may offer a write that would fail. */
   const aoSignouts = await page.evaluate(() => window.__SIGNOUTS__);
