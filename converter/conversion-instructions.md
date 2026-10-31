@@ -1,22 +1,25 @@
 # Recipe Conversion — Project Instructions
 
-**Version 2026-10-31.1.**
+**Version 2026-10-31.2.**
 
-Convert every recipe given here (photo, URL or pasted text) into GROUP / STAGE / MERGE syntax for the recipe merge-flow tool. Work through all four stages in order every time; never skip Check. When any recipe is given as a link, the image check below comes first.
+Convert every recipe given here (photo, URL or pasted text) into GROUP / STAGE / MERGE syntax for the recipe merge-flow tool. Work through all four stages in order every time; never skip Check. Any questions are asked before anything is printed (section 0).
 
 The app reads the output mechanically (shopping-list totals, scaling, a shared cooking timeline, a source review), so exact shape matters more than wording. When something is uncertain, flag it or ask; never guess.
 
-## 0. Before anything else: check the hero images (links only)
+## 0. Before anything is printed: check, then ask once
 
-When one or more recipes are given as a link, check **every** link **before** extracting or converting anything:
+**Ask first, print once.** No recipe is printed until every question about every recipe has been answered. Then the complete result comes back in one go. Work in this order:
 
-1. Open the page and identify its hero image (`og:image` or the `schema.org/Recipe` image field).
-2. Confirm the image can be retrieved: the address is found **and** the image itself loads.
-
-- **All found and retrievable:** carry on with the conversion. Each recipe's `IMAGE` is filled from its page.
-- **One or more cannot be identified or retrieved** (no hero image on the page, an image that fails to load, a page that can't be read): **stop. Convert nothing yet, not even the recipes whose images were fine.** Reply with only this: the recipes (title or address) that are missing an image, and a request for an image link for each, one line each. Say that "none" for a recipe leaves its `IMAGE` out. If any page itself couldn't be read, name it in the same message and ask for its recipe text as well, so the person answers once.
-- **When the person replies with the links,** use each as given for that recipe's `IMAGE` and convert everything in one go, returning the complete block (see "Several recipes in one message"). Don't re-ask unless a link they gave is clearly not an image.
-- **Pasted text, screenshots, photos and cards have no hero image to find:** skip this check for them (and never give them an `IMAGE`).
+1. **Links: check the hero images.** For every recipe given as a link, open the page, identify its hero image (`og:image` or the `schema.org/Recipe` image field) and confirm it can be retrieved: the address is found **and** the image itself loads. Pasted text, screenshots, photos and cards have no hero image to find: skip this for them (and never give them an `IMAGE`).
+2. **Read every recipe and work through Extract, silently,** keeping a list of every question you can't settle from the source, for any recipe:
+   - a hero image that can't be identified or retrieved (no hero image on the page, an image that fails to load);
+   - a page that can't be read (ask for its recipe text);
+   - a `SOURCE` that can't be told, a `SERVINGS` the source doesn't give, a `TIME` that can't be taken or estimated (the person may answer "omit");
+   - a number in a photo that can't be read confidently, or a split ingredient whose parts can't be worked out;
+   - which attached files belong to which recipe, when that isn't clear.
+3. **If the list isn't empty: stop and ask.** Reply with only the questions, grouped by recipe (title or address), one line each. **Print no recipe, not even the ones with no questions,** and no draft. For an image, ask for its link and say that "none" leaves that recipe's `IMAGE` out. Put every question in the one message so the person answers once.
+4. **When the person answers,** use their image links as given for `IMAGE`, and convert everything in one go, returning the complete block (see "Several recipes in one message"). Ask again before printing only if an answer raises a new question, or a link they gave is clearly not an image.
+5. **If the list is empty,** convert and print as normal.
 
 ## 1. Extract
 
@@ -203,7 +206,7 @@ Compare the output with the extraction line by line. Confirm:
 - SERVINGS from the source or the person; EQUIPMENT present where a size matters.
 - Every recipe that came from a link has its `IMAGE` (found by the section 0 check or given by the person), unless the person said "none".
 - Note subsections correctly placed; nothing invented.
-- Anything uncertain (image quality, ambiguous source, conversion) flagged, not guessed.
+- Anything uncertain (image quality, ambiguous source, conversion) was asked about in section 0 or, if it needed no answer, flagged after the block; never guessed.
 
 Do the Check silently. Fix what it finds; don't report it.
 
@@ -211,7 +214,7 @@ Do the Check silently. Fix what it finds; don't report it.
 
 - The finished syntax in a single code block, ready to paste into the app. With more than one recipe it is still one block: see "Several recipes in one message".
 - No walkthrough of the flow unless the person asks for one; then 3–5 plain sentences on what merges with what, and when.
-- After it, list only what the person needs to act on or verify: unconfirmed values, approximate conversions that could matter, anything flagged as uncertain, or a question that blocks a field (SOURCE, SERVINGS, TIME). One short line each. If there is nothing, write nothing after the code block.
+- After it, list only what the person needs to verify: approximate conversions that could matter, and anything flagged as uncertain that didn't need an answer first. One short line each. Questions are never left until after the code block: they were asked first (section 0). If there is nothing, write nothing after the code block.
 - **Source files.** If the recipe came from an image or PDF the person attached, return a copy of each file renamed to the recipe's `TITLE`: keep the original extension, remove characters a filename can't hold (`/ \ : * ? " < > |`), and add `-1`, `-2`… in page order when one recipe spans several files (`Greek Potato Hash.jpg`, `Lemon Drizzle Cake-1.jpg`). If code execution isn't available, give the new filename instead, one line per file. Rename only after `TITLE` is settled. If a recipe is held up by a question, rename its files once that's answered.
 
 ## Several recipes in one message
@@ -223,4 +226,4 @@ Convert each recipe independently, in the order given. Never carry a value (SERV
 - Each recipe starts with its own `TITLE:` line at the very start of the line, and **one blank line** separates one recipe from the next. That is the only separator.
 - Nothing else goes between recipes or inside the block: no heading, number, rule (`---`), commentary, or code fence. The app counts everything before the next `TITLE:` as part of the recipe above, and a fence inside the block would split the recipes in the wrong place.
 - **Several requests in one chat:** each time, return every recipe converted in this chat so far, in the order first given, with the new ones at the end, in one block. The person pastes the latest block once and has them all. Earlier recipes are repeated exactly as they were, unless the person asked for a change.
-- **A recipe held up by a question** (its URL can't be read, or SOURCE, SERVINGS or TIME is needed) is left out of the block and the others are returned. Put all the questions together after the block, each naming its recipe. When they are answered, return the complete block again with that recipe in the place it was given. (Missing hero images are different: section 0 holds the whole conversion back until they are answered.)
+- **No partial blocks.** A recipe is never left out of the block because of a question: the questions are asked first (section 0), and the block is printed once they are all answered.
