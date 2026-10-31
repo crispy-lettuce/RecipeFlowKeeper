@@ -4656,8 +4656,8 @@ const check = (name, pass, detail) => {
         stIng.join('|') === 'INGREDIENT LOOKUP|WORD MATCHES|SHOPPING AISLES|SWAPS|DICTIONARY' && !stNav.includes('swaps') && stNav.includes('settings'),
         JSON.stringify([stIng, stNav]));
   /* CALENDAR joined App on 9 Oct 2026 (P3 PR 2), RECIPE SHARING and BACKUP TO GOOGLE DRIVE on 10 Oct; before their migrations each only says it is waiting. AVOID THE CLASH joined on 25 Oct (#209). */
-  check('    Library holds the library check, sources, keywords and photos; App the week start, appearance, style, menu, preparation, ovens, avoid the clash, calendar, sharing and Drive backup; the last tab is remembered',
-        stLib.join('|') === 'LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|STYLE|MENU|PREPARATION|OVENS|AVOID THE CLASH|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
+  check('    Library holds check all against sources, the library check, sources, keywords and photos; App the week start, appearance, style, menu, preparation, ovens, avoid the clash, calendar, sharing and Drive backup; the last tab is remembered',
+        stLib.join('|') === 'CHECK ALL AGAINST SOURCES|LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|STYLE|MENU|PREPARATION|OVENS|AVOID THE CLASH|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
         JSON.stringify([stLib, stApp, stKept]));
   /* Since #95 (13 Oct) the dictionary's fold is its heading, DICTIONARY (n), like every list on the tab. */
   const stDict = () => page.evaluate(() => ({ list: document.getElementById('dictionaryList').offsetParent !== null,
