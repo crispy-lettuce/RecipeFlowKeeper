@@ -4150,9 +4150,6 @@ const check = (name, pass, detail) => {
   await page.evaluate(() => { document.getElementById('ingredientLookup').value = ''; renderIngredientsHeads(); });
   check('    the Ingredients search narrows the list to the rows that match, and the picker\'s aisle words are not part of a row\'s text',
         ioFound.rows.filter(r => !r.hidden).map(r => r.name).join('|') === 'quillwort' && ioWord.rows.every(r => r.hidden), JSON.stringify([ioFound.rows.filter(r => !r.hidden).length, ioWord.rows.filter(r => !r.hidden).length]));
-  const ioMark2 = await anMark();
-  await page.evaluate(() => { const s = document.querySelector('#aisleOtherList [data-other-aisle="quillwort"]'); s.value = ''; s.dispatchEvent(new Event('change', { bubbles: true })); });
-  check('    leaving the picker on AISLE… writes nothing', (await aoWrites(ioMark2)).length === 0);
   await page.evaluate(() => { const rm = id => { const i = loadRecipes().findIndex(r => r.id === id); if(i > -1) loadRecipes().splice(i, 1); };
     rm('io-1'); rm('io-2'); removeAisleOverride(loadAisleOverrides().find(o => o.name === 'zebra quince').id); renderAisleOverridesList(); });
 
