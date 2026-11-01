@@ -2684,18 +2684,19 @@ const check = (name, pass, detail) => {
   const pdIds = await page.evaluate(() => loadRecipes().slice(0, 3).map(r => ({ id: r.id, title: r.title })));
   await page.evaluate(([y, y2, a, b, c]) => { state.plannerPast = 0; addPlanRecipe(y, a, 5); addPlanRecipe(y, b, 0); addPlanRecipe(y2, c, 0); showView('planner'); renderPlanner(); }, [pdY, pdY2, pdIds[0].id, pdIds[1].id, pdIds[2].id]);
   const pdShot = () => page.evaluate(() => ({ toggle: [...document.querySelectorAll('#dayList .past-toggle button')].map(b => b.textContent.trim()),
+    head: (b => b && !b.hidden ? b.textContent.trim() : null)(document.getElementById('plannerPastBtn')), headInRow: !!document.querySelector('#view-planner .planner-head #plannerPastBtn'),
     label: !!document.querySelector('#dayList .past-label'), past: [...document.querySelectorAll('#dayList .day-row.past')].map(r => r.dataset.date),
     ordinary: document.querySelectorAll('#dayList .day-row:not(.past)').length, planDays: dayList().length }));
   const pd0 = await pdShot();
-  check('Planner: PREVIOUS 3 DAYS is there, no earlier day is shown, and the 14 days from today are as they were',
-        pd0.toggle.join('|') === 'PREVIOUS 3 DAYS' && !pd0.label && pd0.past.length === 0 && pd0.ordinary === 14 && pd0.planDays === 14, JSON.stringify(pd0));
-  await page.evaluate(() => document.querySelector('#dayList [data-action="showPast"]').click());
+  check('Planner: PREVIOUS 3 DAYS is in the heading row (so the Planner is no taller), no earlier day is shown, and the 14 days from today are as they were',
+        pd0.head === 'PREVIOUS 3 DAYS' && pd0.headInRow && pd0.toggle.length === 0 && !pd0.label && pd0.past.length === 0 && pd0.ordinary === 14 && pd0.planDays === 14, JSON.stringify(pd0));
+  await page.evaluate(() => document.getElementById('plannerPastBtn').click());
   const pd1 = await pdShot();
   const pdRows = await page.evaluate(([y, y3]) => { const text = d => (document.querySelector(`#dayList .day-row.past[data-date="${d}"]`) || {}).textContent || '';
     const ctl = ['removeOne', 'choose', 'addOther', 'setServes', 'dishState', 'toggleGroupMode', 'calToggle', 'removeAdHoc'].filter(a => document.querySelector(`#dayList .day-row.past [data-action="${a}"]`));
     return { yesterday: text(y).replace(/\s+/g, ' '), empty: text(y3).replace(/\s+/g, ' '), controls: ctl }; }, [pdY, pdY3]);
   check('    pressing it opens an EARLIER band of the last three days, oldest first, above the week rows, with HIDE and 3 MORE; the shopping days stay 14',
-        pd1.label && pd1.past.join() === [pdY3, pdY2, pdY].join() && pd1.toggle.join('|') === '3 MORE|HIDE' && pd1.ordinary === 14 && pd1.planDays === 14, JSON.stringify(pd1));
+        pd1.label && pd1.past.join() === [pdY3, pdY2, pdY].join() && pd1.toggle.join('|') === '3 MORE|HIDE' && pd1.head === null && pd1.ordinary === 14 && pd1.planDays === 14, JSON.stringify(pd1));
   check('    a past day shows its dishes with their headcount (and an ad-hoc entry as plain text), and none of the controls that change a day are there',
         pdRows.yesterday.includes(pdIds[0].title) && /SERVES 5/.test(pdRows.yesterday) && pdRows.yesterday.includes(pdIds[1].title) && /ADD TO TODAY/.test(pdRows.yesterday)
         && /AD HOC/.test(pdRows.empty) && pdRows.controls.length === 0, JSON.stringify(pdRows));
@@ -2707,7 +2708,7 @@ const check = (name, pass, detail) => {
   await page.evaluate(() => document.querySelector('#dayList [data-action="hidePast"]').click());
   const pd3 = await pdShot();
   check('    3 MORE goes three days further back, and HIDE closes the band again',
-        pd2.past.length === 6 && pd3.past.length === 0 && pd3.toggle.join('|') === 'PREVIOUS 3 DAYS', JSON.stringify([pd2.past.length, pd3]));
+        pd2.past.length === 6 && pd3.past.length === 0 && pd3.head === 'PREVIOUS 3 DAYS' && pd3.toggle.length === 0, JSON.stringify([pd2.past.length, pd3]));
   /* A shortlist item selected: tapping a past day must not put it there. */
   const pdShortlist = await page.evaluate(([a]) => { addShortlistRecipe(a); const it = loadShortlist().find(i => i.recipeId === a); state.selectedShortlistId = it.id; state.plannerPast = 3; renderPlanner(); return it.id; }, [pdIds[2].id]);
   const pdMark0 = await anMark();

@@ -24,7 +24,7 @@ No database change and nothing to deploy. Do it in your own household: it adds a
 entry from History, and × the dish from today) if you were only trying it.
 
 1. **Reload the app** so it is on version 2026-11-01.3. **You should see:** Settings → HELP shows it, and What's new mentions the Planner's previous days.
-2. On the Planner, look at the top. **You should see:** a **PREVIOUS 3 DAYS** button above the first week, and nothing before today.
+2. On the Planner, look at the heading. **You should see:** a **PREVIOUS 3 DAYS** button beside ROLLS FORWARD DAILY, the first week starting where it always did, and nothing before today.
 3. Press it. **You should see:** an **EARLIER** band with the last three days above today, oldest first. A day with dishes shows them with their title, course, time and **SERVES**
    number; an empty day says **NOTHING PLANNED**; and there is no **×**, no **CHOOSE A RECIPE** and no SERVES button to change on them.
 4. Tap a dish's title on one of those days. **You should see:** its recipe opens, at that day's number of people.

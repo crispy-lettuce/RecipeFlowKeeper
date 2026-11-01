@@ -803,6 +803,12 @@ function loadArchivoFont(){
   .week-label:first-of-type{ margin-top:16px; }
   /* PREVIOUS 3 DAYS, 3 MORE and HIDE (#223): the same small buttons as the day's own, in a row of their own above the first week. */
   .past-toggle{ display:flex; flex-wrap:wrap; gap:10px; margin:8px 0 0; }
+  /* PREVIOUS 3 DAYS sits in the Planner's heading row (the row is already taller than the button, so the Planner is no taller): drawn
+     small, with the tap area of 44px that every button here keeps, made by an invisible expansion as the small buttons in a day do. */
+  .planner-tools{ display:flex; align-items:baseline; gap:16px; flex-wrap:wrap; }
+  .planner-past{ position:relative; background:none; border:none; padding:4px 0; cursor:pointer; font-size:14px; letter-spacing:.04em; color:var(--plum); font-weight:500; }
+  .planner-past::before{ content:''; position:absolute; left:-8px; right:-8px; top:-8px; bottom:-8px; }
+  .planner-past[hidden]{ display:none; }
 
   .assign-banner{
     display:flex; align-items:center; gap:12px; justify-content:space-between;
@@ -2096,7 +2102,7 @@ function loadArchivoFont(){
         <div class="planner-days">
           <div class="planner-head">
             <h1>Next Fourteen Days</h1>
-            <div class="planner-rolls">ROLLS FORWARD DAILY</div>
+            <div class="planner-tools"><button class="planner-past" id="plannerPastBtn" type="button" aria-expanded="false">PREVIOUS 3 DAYS</button><div class="planner-rolls">ROLLS FORWARD DAILY</div></div>
           </div>
           <div id="assignBanner" class="assign-banner" style="display:none;"></div>
           <div id="dayList"></div>
@@ -8194,7 +8200,9 @@ function pastDayHtml(d, iso, entry, recipes, adHoc, mod){
 }
 function pastBandHtml(plan, recipes, adHocByDay, mod){
   const n = state.plannerPast | 0;
-  if(!n) return `<div class="past-toggle"><button class="day-choose day-add-more" data-action="showPast" aria-expanded="false">PREVIOUS 3 DAYS</button></div>`;
+  const head = document.getElementById('plannerPastBtn');
+  if(head){ head.hidden = !!n; head.setAttribute('aria-expanded', 'false'); }
+  if(!n) return '';
   const rows = [];
   for(let k = n; k >= 1; k--){
     const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - k);
@@ -8204,6 +8212,7 @@ function pastBandHtml(plan, recipes, adHocByDay, mod){
   return `<div class="week-label past-label">EARLIER</div>${rows.join('')}<div class="past-toggle">${n < PAST_MAX
     ? `<button class="day-choose day-add-more" data-action="morePast">3 MORE</button>` : ''}<button class="day-choose day-add-more" data-action="hidePast" aria-expanded="true">HIDE</button></div>`;
 }
+document.getElementById('plannerPastBtn').addEventListener('click', ()=>{ state.plannerPast = PAST_STEP; renderPlanner(); });
 function renderPlannerDays(){
   const buckets = groupDaysByWeek(dayList());
   const plan = loadPlan();
@@ -8573,10 +8582,10 @@ function initPlannerListeners(){
       showToast(n ? `Added ${n} day${n === 1 ? '' : 's'} to the calendar` : 'Every planned day this week is already in the calendar');
       return;
     }
-    const pastBtn = e.target.closest('[data-action="showPast"], [data-action="morePast"], [data-action="hidePast"]');
+    const pastBtn = e.target.closest('[data-action="morePast"], [data-action="hidePast"]');
     if(pastBtn){
       const a = pastBtn.dataset.action;
-      state.plannerPast = a === 'hidePast' ? 0 : a === 'showPast' ? PAST_STEP : Math.min(PAST_MAX, (state.plannerPast | 0) + PAST_STEP);
+      state.plannerPast = a === 'hidePast' ? 0 : Math.min(PAST_MAX, (state.plannerPast | 0) + PAST_STEP);
       renderPlanner();
       return;
     }
