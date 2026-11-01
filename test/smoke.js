@@ -4229,6 +4229,85 @@ const check = (name, pass, detail) => {
   await page.evaluate(() => { for(const id of ['ca-exact', 'ca-diff', 'ca-note', 'ca-unread', 'ca-edit', 'ca-fresh', 'ca-nolink', 'ca-down-1', 'ca-down-2', 'ca-down-3']){ const i = loadRecipes().findIndex(r => r.id === id); if(i > -1) loadRecipes().splice(i, 1); }
     window.__INVOKES__.length = 0; window.__INVOKE_REPLY__ = null; checkAllState = null; renderCheckAll(); });
 
+  /* ---- READ BY CHAT (1 Nov 2026, docs/PLAN-BULK-VALIDATE.md §5) ----
+     Ten invented recipes with a link and no comparison. The batch is the first eight (every other waiting recipe in the fixture
+     is set aside first), a reply is built to cover each case, and the second batch is what is left. Recipe 7 is edited after the
+     prompt is copied, as a household might while the chat works. */
+  const rcL = ['2 onions, diced', '200 g red lentils'];
+  await page.evaluate(L => {
+    const mk = (id, title, lines) => ({ id, title, source: 'Blue Door Bakery', sourceUrl: 'https://example.test/' + id, servings: 4, tags: { course: '', keywords: [] }, history: [], dateAdded: '2026-11-01', sourceCheck: null,
+      syntax: ['TITLE: ' + title, 'SOURCE: Blue Door Bakery', 'SOURCE_URL: https://example.test/' + id, 'SERVINGS: 4', '', 'GROUP a:', ...lines, '', 'STAGE:', 'MERGE a -> done: Cook [5 min]'].join('\n') });
+    for(let n = 1; n <= 10; n++) loadRecipes().push(mk('cb-' + n, 'Chat ' + n, n === 4 ? ['2 tbsp light soy sauce', '200 g red lentils'] : n === 9 ? ['1 onion', '2 carrots', '3 leeks', '4 plums', '5 pears', '6 figs'] : L));
+    readChat = { sent: null, results: [], skip: new Set(checkAllEligible().filter(r => !String(r.id).startsWith('cb-')).map(r => r.id)), note: '' };
+    renderReadByChat();
+  }, rcL);
+  const rcUi = () => page.evaluate(() => ({ batch: document.getElementById('readChatBatch').textContent, summary: document.getElementById('readChatSummary').textContent,
+    copyOff: document.getElementById('readChatCopyBtn').disabled, readOff: document.getElementById('readChatReadBtn').disabled,
+    prompt: document.getElementById('readChatPrompt').hidden ? null : document.getElementById('readChatPrompt').value,
+    sent: readChat.sent ? readChat.sent.items.map(i => i.n + ':' + i.id) : null, skip: [...readChat.skip].filter(x => x.startsWith('cb-')).sort(),
+    rows: [...document.querySelectorAll('#readChatList [data-rc-id]')].map(r => r.dataset.rcId + ':' + r.dataset.rcKind) }));
+  const rc0 = await rcUi();
+  check('READ BY CHAT: before any prompt it says how many recipes are waiting and for which the next prompt is, and READ REPLY is off',
+        /10 recipes waiting\. The next prompt is for 8: Chat 1; Chat 2;/.test(rc0.batch) && rc0.readOff && !rc0.copyOff && rc0.prompt === null, JSON.stringify(rc0));
+  await page.evaluate(() => document.getElementById('readChatCopyBtn').click());
+  await page.waitForTimeout(300);
+  const rc1 = await rcUi();
+  check('    COPY PROMPT freezes the first eight, numbered 1 to 8, and shows the prompt (titles and links, no recipe lines) in a box to copy by hand',
+        rc1.sent && rc1.sent.join() === 'cb-1,cb-2,cb-3,cb-4,cb-5,cb-6,cb-7,cb-8'.split(',').map((x, i) => (i + 1) + ':' + x).join() && rc1.prompt
+        && /^1\. Chat 1 - https:\/\/example\.test\/cb-1$/m.test(rc1.prompt) && /^8\. Chat 8 - https:\/\/example\.test\/cb-8$/m.test(rc1.prompt) && !/Chat 9|red lentils/.test(rc1.prompt)
+        && !rc1.readOff && /copied|Copy the prompt/.test(rc1.summary), JSON.stringify(rc1).slice(0, 700));
+  const rcFence = (n, body) => '```\nRECIPE ' + n + '\n' + body + '\n```';
+  const rcReply = ['Here are the lists:', '',
+    rcFence(1, 'TITLE: One\nREAD: yes\nINGREDIENTS:\n2 onions, diced\n200 g red lentils'),
+    rcFence(2, 'TITLE: Two\nREAD: yes\nINGREDIENTS:\n2 onions, diced\n200 g red lentils\n1 tsp cumin'),
+    rcFence(3, 'TITLE: COULD NOT READ\nREAD: no (blocked)\nINGREDIENTS:\nCOULD NOT READ: 403 Forbidden'),
+    rcFence(4, 'TITLE: Four\nREAD: yes\nINGREDIENTS:\n2 tbsp soy sauce\n200 g red lentils'),
+    rcFence(6, 'TITLE: Six\nREAD: partly (top of the page only)\nINGREDIENTS:\n2 onions, diced\n200 g red lentils'),
+    rcFence(7, 'TITLE: Seven\nREAD: yes\nINGREDIENTS:\n2 onions, diced\n200 g red lentils'),
+    rcFence(8, 'TITLE: Eight\nREAD: yes\nINGREDIENTS:\nFor the base:\n- 2 onions, diced\n▢ 200 g red lentils'),
+    rcFence(99, 'TITLE: Not Asked For\nREAD: yes\nINGREDIENTS:\n1 egg'),
+    '', 'Line counts: 1: 2, 2: 3.', 'I changed nothing.'].join('\n');
+  const rcMark = await anMark();
+  await page.evaluate(r => { const x = loadRecipes().find(q => q.id === 'cb-7'); x.syntax = x.syntax.replace('200 g red lentils', '250 g red lentils');
+    document.getElementById('readChatReply').value = r; document.getElementById('readChatReadBtn').click(); }, rcReply);
+  await page.waitForTimeout(300);
+  const rc2 = await rcUi();
+  const rcW = await page.evaluate(m => ({
+    writes: window.__WRITES__.slice(m).filter(w => w.table === 'recipes').map(w => ({ op: w.op, cols: Object.keys(w.patch || {}).sort().join(','), id: (w.eqs.find(e => e.column === 'id') || {}).value, check: w.patch && w.patch.source_check })),
+    cache: Object.fromEntries(Array.from({ length: 8 }, (_, i) => 'cb-' + (i + 1)).map(id => [id, loadRecipes().find(r => r.id === id).sourceCheck])),
+    chip: (renderProvenance(loadRecipes().find(r => r.id === 'cb-1')), (document.querySelector('#viewerProvenance .prov-chip') || {}).title) }), rcMark);
+  const rcWrote = rcW.writes.map(w => w.id).sort().join();
+  check('the reply is read by number: the exact matches (1, 8) are recorded as read by a chat and validated, the difference (2), the soft note (4) and the "partly" (6) are recorded not validated',
+        rcW.cache['cb-1'] && rcW.cache['cb-1'].route === 'chat' && rcW.cache['cb-1'].validated === rcW.cache['cb-1'].at && rcW.cache['cb-8'] && rcW.cache['cb-8'].validated && rcW.cache['cb-8'].hard === 0 && rcW.cache['cb-8'].soft === 0
+        && rcW.cache['cb-2'].hard === 1 && !('validated' in rcW.cache['cb-2']) && rcW.cache['cb-4'].hard === 0 && rcW.cache['cb-4'].soft === 1 && !('validated' in rcW.cache['cb-4'])
+        && rcW.cache['cb-6'] && rcW.cache['cb-6'].hard === 0 && rcW.cache['cb-6'].soft === 0 && !('validated' in rcW.cache['cb-6']), JSON.stringify(rcW.cache));
+  check('    what the chat could not read (3), left out (5), or what was edited while it worked (7), records nothing, and a block numbered for no recipe (99) is ignored and said',
+        rcW.cache['cb-3'] === null && rcW.cache['cb-5'] === null && rcW.cache['cb-7'] === null && rcWrote === 'cb-1,cb-2,cb-4,cb-6,cb-8' && /numbered 99/.test(rc2.summary), JSON.stringify([rcWrote, rc2.summary]));
+  check('    each recording is one update of source_check on that one row, and the viewer says the list was read by a chat',
+        rcW.writes.length === 5 && rcW.writes.every(w => w.op === 'update' && w.cols === 'source_check,updated_at' && w.check.route === 'chat') && /Claude chat/.test(rcW.chip || ''), JSON.stringify([rcW.writes.map(w => w.cols), rcW.chip]));
+  check('    the summary adds up (2 exact, 3 to look at, 2 unread, 1 skipped = 8), the unread and skipped are set aside for this session, and OPEN is on every row but the skipped',
+        /2 matched exactly and are validated/.test(rc2.summary) && /3 recorded with differences or notes/.test(rc2.summary) && /2 could not be read by the chat/.test(rc2.summary) && /1 skipped/.test(rc2.summary)
+        && rc2.skip.join() === 'cb-3,cb-5,cb-7' && rc2.rows.sort().join() === 'cb-2:looked,cb-3:unread,cb-4:looked,cb-5:unread,cb-6:looked,cb-7:skipped' && rc2.sent === null && rc2.prompt === null && rc2.readOff, JSON.stringify(rc2));
+  await page.evaluate(() => document.getElementById('readChatCopyBtn').click());
+  await page.waitForTimeout(200);
+  const rc3 = await rcUi();
+  check('    the next prompt is for what is left (9 and 10, numbered 1 and 2), not the eight again',
+        rc3.sent && rc3.sent.join() === '1:cb-9,2:cb-10' && /^1\. Chat 9 - /m.test(rc3.prompt) && /^2\. Chat 10 - /m.test(rc3.prompt) && !/Chat 3 - /.test(rc3.prompt), JSON.stringify(rc3.sent));
+  await page.evaluate(() => document.getElementById('readChatReadBtn').click());
+  await page.waitForTimeout(150);
+  const rc4 = await rcUi();
+  check('    READ REPLY with nothing pasted says so, keeps the prompt waiting, and writes nothing', /Paste your chat's reply/.test(rc4.summary) && rc4.sent && rc4.sent.length === 2, JSON.stringify(rc4.summary));
+  const rcMark2 = await anMark();
+  await page.evaluate(() => { document.getElementById('readChatReply').value = '```\nRECIPE 1\nREAD: yes\nINGREDIENTS:\n1 onion\n```\n```\nRECIPE 2\nREAD: no\nINGREDIENTS:\nCOULD NOT READ\n```'; document.getElementById('readChatReadBtn').click(); });
+  await page.waitForTimeout(300);
+  const rc5 = await rcUi();
+  const rcW2 = await page.evaluate(m => window.__WRITES__.slice(m).filter(w => w.table === 'recipes').map(w => ({ id: (w.eqs.find(e => e.column === 'id') || {}).value, cols: Object.keys(w.patch || {}).sort().join(',') })), rcMark2);
+  check('    a list far shorter than the recipe\'s is recorded (it can only differ) and flagged as the wrong length; with every recipe read or set aside, none is waiting and COPY PROMPT is off',
+        rc5.rows.some(r => r === 'cb-9:looked') && /wrong length: 1 lines against the recipe's 6/.test(await page.evaluate(() => document.getElementById('readChatList').textContent))
+        && /No recipe is waiting to be read by a chat/.test(rc5.batch) && rc5.copyOff && rcW2.length === 1 && rcW2[0].id === 'cb-9' && rcW2[0].cols === 'source_check,updated_at', JSON.stringify([rc5.rows, rc5.batch, rcW2]));
+  await page.evaluate(() => { for(let n = 1; n <= 10; n++){ const i = loadRecipes().findIndex(r => r.id === 'cb-' + n); if(i > -1) loadRecipes().splice(i, 1); }
+    readChat = { sent: null, results: [], skip: new Set(), note: '' }; document.getElementById('readChatReply').value = ''; renderReadByChat(); renderCheckAll(); });
+
   /* Merged before its migration: the table does not exist yet. The load must not throw (a throw in
      hydrate signs the household out), and nothing may offer a write that would fail. */
   const aoSignouts = await page.evaluate(() => window.__SIGNOUTS__);
@@ -4656,8 +4735,8 @@ const check = (name, pass, detail) => {
         stIng.join('|') === 'INGREDIENT LOOKUP|WORD MATCHES|SHOPPING AISLES|SWAPS|DICTIONARY' && !stNav.includes('swaps') && stNav.includes('settings'),
         JSON.stringify([stIng, stNav]));
   /* CALENDAR joined App on 9 Oct 2026 (P3 PR 2), RECIPE SHARING and BACKUP TO GOOGLE DRIVE on 10 Oct; before their migrations each only says it is waiting. AVOID THE CLASH joined on 25 Oct (#209). */
-  check('    Library holds check all against sources, the library check, sources, keywords and photos; App the week start, appearance, style, menu, preparation, ovens, avoid the clash, calendar, sharing and Drive backup; the last tab is remembered',
-        stLib.join('|') === 'CHECK ALL AGAINST SOURCES|LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|STYLE|MENU|PREPARATION|OVENS|AVOID THE CLASH|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
+  check('    Library holds check all against sources, read by chat, the library check, sources, keywords and photos; App the week start, appearance, style, menu, preparation, ovens, avoid the clash, calendar, sharing and Drive backup; the last tab is remembered',
+        stLib.join('|') === 'CHECK ALL AGAINST SOURCES|READ BY CHAT|LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|STYLE|MENU|PREPARATION|OVENS|AVOID THE CLASH|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
         JSON.stringify([stLib, stApp, stKept]));
   /* Since #95 (13 Oct) the dictionary's fold is its heading, DICTIONARY (n), like every list on the tab. */
   const stDict = () => page.evaluate(() => ({ list: document.getElementById('dictionaryList').offsetParent !== null,

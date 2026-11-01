@@ -254,6 +254,12 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
   it as `route: "function"`. Exact match (no difference and no soft note) is recorded **validated**; anything else is recorded not validated and listed
   with OPEN; a page the function cannot read writes nothing and is listed; a recipe edited while its page was read is skipped. **STOP** ends it after the page
   in hand, and three failures to reach the function in a row end it. The write is an update of `source_check` on that one row; recipe text is never changed;
+  **READ BY CHAT** (1 Nov 2026) is the same for the pages the function cannot read (most sites refuse it with a 403): **COPY PROMPT** freezes the next 8 waiting
+  recipes and copies a prompt of their numbered titles and links (never recipe lines) for the household's own Claude chat; the chat's reply is pasted into the
+  box and **READ REPLY** reads it by the number on each block, compares each list as CHECK ALL does and records it as `route: "chat"`, validated only on an exact
+  match and never when the chat said it read only part of the page. A recipe the chat could not read, or left out, writes nothing and is not offered again that
+  session. A list far shorter or longer than the recipe's is flagged; the viewer's chip says a chat read the list. `buildSourcePrompt`, `parseSourceReply` and
+  `replyLengthOff` are in `core.js`;
   **LIBRARY CHECK** (recipes not yet compared with their source, and recipes writing one ingredient on several lines);
   tidy SOURCES and KEYWORDS; **RECIPE PHOTOS** (RE-HOST EXTERNAL IMAGES, CHECK STORED IMAGES).
 - **APP:** week start day for the Planner and the shopping list (default Friday; History always starts on Monday), APPEARANCE, STYLE, MENU (automatic, always shown or always hidden, per device), PREPARATION, OVENS (how many this kitchen has, per device), AVOID THE CLASH (on or off when a meal opens, per device), Google Calendar (§6.6),
@@ -273,7 +279,7 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
    spellings that count as it, an aisle and how a line is counted. The shopping key is the name alone, so **a change to how
    ingredients are named re-keys the household's ticks**.
 3. **Source check.** A recipe's ingredients can be compared with its web page's; the result (counts, route, date) is stored on
-   the recipe and shown as a chip. Settings → LIBRARY → CHECK ALL does it for every recipe with a link and no fresh comparison (§5.9).
+   the recipe and shown as a chip. Settings → LIBRARY → CHECK ALL does it for every recipe with a link and no fresh comparison, and READ BY CHAT for the pages the app cannot read (§5.9).
 4. **Images.** Photos live in Supabase Storage. Saving a recipe with a web photo asks `rehost-images` to copy it into our storage;
    a device photo is shrunk and uploaded at save. Source photos/PDFs go to a private bucket.
 5. **Write safety.** One row per write; a failed write is kept and retried; a refresh never overwrites anything unsaved.

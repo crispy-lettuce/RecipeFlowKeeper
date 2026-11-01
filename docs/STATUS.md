@@ -61,7 +61,8 @@ the Modernist style, + OTHER on the Planner, the converter reminder, the version
    (`docs/HOUSEHOLD-JOBS.md` Jobs 2 and 3), and #221 needs `docs/migrations/add-cook-ahead.md` applied first: until then the Planner keeps its two-way switch.
    Neither issue is closed; the household closes them once seen. The plan that covered both was deleted with the build: `git show 40e461d:docs/PLAN-COOK-AHEAD-AND-REPORTS.md`. #100, a preview site, was closed; its reasoning is at `git show 67b552e:docs/PLAN-PREVIEW-SITE.md`.
 3. **Household jobs** are in `docs/HOUSEHOLD-JOBS.md`: one waiting, signing in again on each device (Job 1, #196).
-4. **Checking many recipes against their sources at once** is planned, not built: `docs/PLAN-BULK-VALIDATE.md` (31 Oct 2026). The aisle half of that ask is built
+4. **Checking many recipes against their sources at once** (`docs/PLAN-BULK-VALIDATE.md`): CHECK ALL (the app reads the page) and READ BY CHAT (a Claude chat reads
+   it) are built, the second not yet seen on a device (Job 6). Reading a page's servings for a recipe with none is not built. The aisle half of that ask is built
    (IN OTHER NOW, #225).
 5. **Optional, not planned:** a "download all source files" backup; drawing a PDF's pages inside the app;
    and four ideas parked from the run sheet's review, each wanting its own issue if picked up: **Trace** (hold a box to dim everything that does not feed it), folding away

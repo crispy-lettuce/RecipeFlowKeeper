@@ -2148,6 +2148,68 @@ check('Frozen is the last aisle, and the last section of the shopping list',
         /splitRecipeBlocks\(md\)/.test(validatorSrc) && !/inFence/.test(validatorSrc));
 }
 
+/* ---- READ BY CHAT (1 Nov 2026): the prompt and the reply reader, with invented recipes ---- */
+{
+  const items = [{ n: 1, title: 'Plum Crumble', url: 'https://example.test/plum' }, { n: 2, title: 'Fennel Soup', url: 'https://example.test/fennel' },
+    { n: 3, title: 'Quince Tart', url: 'https://example.test/quince' }, { n: 4, title: 'Sorrel Pie', url: 'https://example.test/sorrel' },
+    { n: 5, title: 'Leek Bake', url: 'https://example.test/leek' }];
+  const prompt = core.buildSourcePrompt(items.slice(0, 3));
+  const pageLines = prompt.split('\n').filter(l => /^\d+\. .+ - https:\/\//.test(l));
+  check('buildSourcePrompt: one numbered line per recipe with its title and link, and nothing of the recipe itself',
+        pageLines.join('|') === '1. Plum Crumble - https://example.test/plum|2. Fennel Soup - https://example.test/fennel|3. Quince Tart - https://example.test/quince'
+        && !/Sorrel|Leek/.test(prompt), pageLines.join('|'));
+  check('    and it asks for the things the household\'s test showed it needs: exact copying, a colon on headings, COULD NOT READ with a reason, a number on each block',
+        /EXACTLY as the page prints it/.test(prompt) && /heading[^\n]*ending with a colon/.test(prompt) && /COULD NOT READ and the exact reason/.test(prompt)
+        && /Never rebuild a list from memory/.test(prompt) && /each opening with its number/.test(prompt) && /^RECIPE 1$/m.test(prompt));
+
+  const fenced = (n, body) => '```\nRECIPE ' + n + '\n' + body + '\n```';
+  const reply = [
+    'Here are the lists.', '',
+    fenced(1, 'TITLE: Plum Crumble\nREAD: yes (page text)\nINGREDIENTS:\nFor the crumble:\n200 g plain flour\n- 1/2 tsp salt\n▢ 6 plums, stoned'), '',
+    fenced(2, 'TITLE: COULD NOT READ\nREAD: no (blocked)\nINGREDIENTS:\nCOULD NOT READ: 403 Forbidden'), '',
+    fenced(3, 'TITLE: Quince Tart\nREAD: partly (the top of the page only)\nINGREDIENTS:\n3 quinces'), '',
+    fenced(9, 'TITLE: Something Else\nREAD: yes\nINGREDIENTS:\n1 egg'), '',
+    'Line counts: 1: 3 lines, 3: 1 line.', 'I changed nothing.'
+  ].join('\n');
+  const got = core.parseSourceReply(reply, items.slice(0, 4));
+  const by = n => got.results.find(r => r.n === n);
+  check('parseSourceReply: a block is matched by its number, headings and bullets are cleaned, and the notes after the blocks are not ingredients',
+        by(1).status === 'read' && by(1).lines.join('|') === '200 g plain flour|1/2 tsp salt|6 plums, stoned', JSON.stringify(by(1)));
+  check('    COULD NOT READ gives an unread result with the chat\'s reason, wherever it was written',
+        by(2).status === 'unread' && by(2).lines.length === 0 && by(2).why === '403 Forbidden', JSON.stringify(by(2)));
+  check('    "partly" is read but marked partly, so the caller can refuse to validate it',
+        by(3).status === 'partly' && by(3).lines.join('|') === '3 quinces', JSON.stringify(by(3)));
+  check('    a recipe with no block is missing, and a block numbered for no recipe is unmatched, never attached to another',
+        by(4).status === 'missing' && got.unmatched.join() === '9' && got.results.length === 4 && !got.results.some(r => r.lines.includes('1 egg')), JSON.stringify([by(4), got.unmatched]));
+
+  const byTitle = core.parseSourceReply(fenced(2, 'TITLE: Plum Crumble\nREAD: yes\nINGREDIENTS:\n1 fennel bulb'), items.slice(0, 2));
+  check('    the number decides, not the title: a block numbered 2 that carries recipe 1\'s title is still recipe 2\'s',
+        byTitle.results[0].status === 'missing' && byTitle.results[1].status === 'read' && byTitle.results[1].lines.join() === '1 fennel bulb', JSON.stringify(byTitle.results));
+
+  const bare = core.parseSourceReply('**RECIPE 1**\nTITLE: Plum Crumble\n**READ:** yes\n**INGREDIENTS:**\n- 2 eggs\n- 1 tsp salt\n\nLine counts: 1: 2 lines.\nNotes: nothing changed\n**RECIPE 2**\nignored after the notes', items.slice(0, 2));
+  check('    with no code fences it reads bold marks and bullets, and stops at the notes the prompt asks for',
+        bare.results[0].status === 'read' && bare.results[0].lines.join('|') === '2 eggs|1 tsp salt' && bare.results[1].status === 'missing', JSON.stringify(bare.results));
+
+  const twice = core.parseSourceReply(fenced(1, 'READ: yes\nINGREDIENTS:\n1 egg') + '\n' + fenced(1, 'READ: yes\nINGREDIENTS:\n2 eggs'), items.slice(0, 1));
+  check('    the first block for a number wins', twice.results[0].lines.join() === '1 egg', JSON.stringify(twice.results));
+
+  const other = core.parseSourceReply('```js\nconsole.log(1)\n```\n' + fenced(1, 'READ: yes\nINGREDIENTS:\n1 egg'), items.slice(0, 1));
+  check('    a code block that is not a recipe block is not read', other.results[0].status === 'read' && other.results[0].lines.join() === '1 egg', JSON.stringify(other.results));
+
+  const noList = core.parseSourceReply(fenced(1, 'TITLE: Plum Crumble\nREAD: yes\nINGREDIENTS:\n'), items.slice(0, 1));
+  const refused = core.parseSourceReply(fenced(1, 'READ: no (the site blocked the request)\nINGREDIENTS:\n'), items.slice(0, 1));
+  check('    a block with no ingredient lines is unread, and READ: no with a reason in brackets is unread with that reason',
+        noList.results[0].status === 'unread' && /no ingredient lines/.test(noList.results[0].why) && refused.results[0].status === 'unread' && refused.results[0].why === '(the site blocked the request)', JSON.stringify([noList.results, refused.results]));
+
+  const empty = [core.parseSourceReply('', items.slice(0, 2)), core.parseSourceReply(null, items.slice(0, 2)), core.parseSourceReply('just chat', items.slice(0, 2)), core.parseSourceReply('x', null)];
+  check('    empty, null and unrelated text give every recipe as missing, nothing unmatched, and never throw',
+        empty.slice(0, 3).every(e => e.results.length === 2 && e.results.every(r => r.status === 'missing') && e.unmatched.length === 0) && empty[3].results.length === 0);
+
+  check('replyLengthOff: no lines, or half or less, or double or more of a recipe of four lines or more, is flagged; a near length and a short recipe are not',
+        /no ingredient lines/.test(core.replyLengthOff(0, 8)) && core.replyLengthOff(4, 8) !== '' && core.replyLengthOff(16, 8) !== ''
+        && core.replyLengthOff(7, 8) === '' && core.replyLengthOff(9, 8) === '' && core.replyLengthOff(1, 3) === '' && core.replyLengthOff(6, 3) === '');
+}
+
 const failed = checks.filter(c => !c.pass).length;
 console.log(`\n${checks.length} checks, ${failed} failed`);
 process.exit(failed ? 1 : 0);

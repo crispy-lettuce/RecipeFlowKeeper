@@ -1,7 +1,7 @@
 # Plan: checking many recipes against their sources at once
 
 A working file with an end (`CLAUDE.md`, "How the documents are kept"): the PR that closes it updates `docs/SPEC.md` §5.3, §5.9 and §6.3 and deletes
-this file. Written 31 Oct 2026. **Slice 2 (CHECK ALL by the function) is built; the rest is not.** The aisle half of the original ask is built and separate (IN OTHER NOW, Settings → INGREDIENTS →
+this file. Written 31 Oct 2026. **Slices 1 to 3 (the prompt and reader in `core.js`, CHECK ALL by the function, and READ BY CHAT) are built; slice 4 and the servings idea are not.** The aisle half of the original ask is built and separate (IN OTHER NOW, Settings → INGREDIENTS →
 SHOPPING AISLES, #225): it needed no chat.
 
 ## 1. The problem
@@ -42,7 +42,7 @@ The chat is not the first resort. The app can already read many pages itself, an
    `source-ingredients` function with the recipe's link (`pageUrl`, as the Edit form does; the function can also take a `recipeId`, but that reads the link from
    the database and needs no more than the cache already holds), one recipe at a time with a visible progress line and a
    STOP, and runs the result through `sourceFidelity`. Recorded as `route: "function"`, as the Edit form records it. No chat, no copy and paste, no deploy.
-2. **READ BY CHAT (the leftovers).** Recipes the function could not read (no Schema.org block, a refused page) are offered in batches of **5** as a prompt to
+2. **READ BY CHAT (the leftovers).** Recipes the function could not read (no Schema.org block, a refused page) are offered in batches of **8** (the household's choice on 1 Nov 2026; the chat estimated 4 to 6 as reliable, so watch for dropped lines) as a prompt to
    copy into a regular chat (§5), and the reply is pasted back. Recorded as `route: "chat"`, so the viewer's chip can say the list was read by a person's
    chat and not by the app's function.
 3. **As today.** Still unread (blocked sites, no link): SOURCE PHOTO / CHECKED AGAINST THE PHOTO, or paste the list in the Edit form.
@@ -98,8 +98,12 @@ read, couldn't read, or unmatched. It is a pure function in `core.js` with tests
    instead of waiting behind a RECORD COMPARISONS button, because the household decided that an exact match is validated automatically (§9); everything else
    is recorded not validated and listed with OPEN. Of the original wording, the review table is the list under the button. `index.html`, smoke tests (the stub answers the function), changelog,
    `help.html`, `docs/SPEC.md`. **No Edge Function change.** This slice alone may be most of the saving; stop and look at the numbers after it.
-3. **READ BY CHAT** (route 2): the prompt screen, the paste box, the same review. Settings-side only.
-4. **Small:** OPEN with the list pre-filled in Edit; a LIBRARY CHECK filter for `chat`; the chip's wording for the route.
+3. **READ BY CHAT** (route 2), **built 1 Nov 2026** together with slice 1 (`buildSourcePrompt`, `parseSourceReply`, `replyLengthOff` in `core.js`) as Settings → LIBRARY → READ BY CHAT.
+   It was built because the first real CHECK ALL read 4 of 55 pages and the other 51 all failed with 403: the sites refuse the function, which identifies itself honestly and
+   is not made to look like a browser. As built: the batch is frozen when the prompt is copied and the reply is matched to it by number; the same exact-match rule
+   validates, except that a chat that said it read only part of a page is never validated; a recipe the chat could not read is set aside for the session; the
+   viewer's chip says a chat read the list. Not yet seen on a device (`docs/HOUSEHOLD-JOBS.md` Job 6).
+4. **Small, not built:** OPEN with the list pre-filled in Edit; a LIBRARY CHECK filter for `chat`. (The viewer chip's wording for the route is built.)
 
 Each PR also adds its tablet steps to `docs/HOUSEHOLD-JOBS.md` and removes them when reported passed.
 

@@ -402,8 +402,8 @@
     <li>The button at the foot counts what is ticked. Press it. The recipes appear at once and save in the background.</li>
     <li>Then check each one. <b class="ui">OPEN</b> beside a recipe in the list takes you into it, ready for
       <b class="ui">COMPARE WITH SOURCE</b>. To compare a whole batch with its pages in one go, use Settings → Library →
-      <b class="ui">CHECK ALL AGAINST SOURCES</b> and press <b class="ui">CHECK ALL</b>; <b class="ui">LIBRARY CHECK</b> lists what is
-      still not compared.</li>
+      <b class="ui">CHECK ALL AGAINST SOURCES</b> and press <b class="ui">CHECK ALL</b>; for the pages it cannot read, use
+      <b class="ui">READ BY CHAT</b> below it; <b class="ui">LIBRARY CHECK</b> lists what is still not compared.</li>
   </ol>
   <p class="tip">Added something by mistake? Delete that recipe the usual way; there is no single undo for a whole batch.</p>
 
@@ -444,7 +444,11 @@
       been compared, one after another, when you press <b class="ui">CHECK ALL</b>. A recipe that matches its page exactly is marked
       validated; one with any difference or note is recorded and listed, with <b class="ui">OPEN</b>, for you to look at (it is not
       validated); a page that cannot be read changes nothing. <b class="ui">STOP</b> ends the run after the page being read, and no recipe
-      text is ever changed. <b class="ui">LIBRARY CHECK</b> lists recipes still to be checked against their source, and under a recipe that writes
+      text is ever changed. Many recipe sites refuse the check; <b class="ui">READ BY CHAT</b> is for those. Press
+      <b class="ui">COPY PROMPT</b> for the next 8 recipes waiting, paste it into your Claude chat (one that can open web pages), paste the
+      chat's reply into the box and press <b class="ui">READ REPLY</b>. Each list the chat read is compared as CHECK ALL does (an exact match is
+      validated; anything else is recorded and listed with <b class="ui">OPEN</b>); a page the chat could not read changes nothing; a list the chat
+      read only part of is recorded but never validated. Then copy the prompt for the next 8. Only titles and links go to the chat. <b class="ui">LIBRARY CHECK</b> lists recipes still to be checked against their source, and under a recipe that writes
       one ingredient on several lines (a splash of soy sauce, then more later) says so, with the two-different-units ones first, because a
       comparison with its page is what shows whether they add up (the box beside it shows only those); tidy
       <b class="ui">SOURCES</b> and <b class="ui">KEYWORDS</b>; look after recipe photos.</li>

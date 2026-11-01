@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-10-25.1';
+const KITCHEN_CORE_VERSION = '2026-11-01.1';
 
 
 /* ======================= quantity split ======================= */
@@ -2579,6 +2579,100 @@ function pastedIngredientLines(text){
       || /^(ingredients?|method|instructions?|directions?|equipment)$/i.test(l))));
 }
 
+/* READ BY CHAT (1 Nov 2026, docs/PLAN-BULK-VALIDATE.md §5). For the pages the source-ingredients function cannot read (they
+   refuse it with a 403), a regular Claude chat with a page reader can: the app writes the prompt, the household pastes it into
+   the chat and the chat's reply back, and the reply is read here into ingredient lines that go through the same
+   sourceFidelity as every other route. Both functions are pure; the screen is in index.html.
+
+   WHAT THE HOUSEHOLD'S OWN TEST OF THE CHAT SHOWED (31 Oct 2026), which shapes both: a page it could not read came back with
+   its title replaced by "COULD NOT READ", so a reply is matched to a recipe by the NUMBER the prompt gave it and never by
+   title; and its section headings came back bare ("Cookie Dough"), which pastedIngredientLines keeps as an ingredient, so
+   the prompt asks for a colon on every heading. The prompt carries titles and links only, never a recipe's lines, so
+   nothing leans the transcription towards what the recipe already says. `items` is [{ n, title, url }]. */
+function buildSourcePrompt(items) {
+  const pages = (items || []).map(it => `${it.n}. ${it.title} - ${it.url}`).join('\n');
+  return [
+    'I am checking recipes in a recipe app against the web pages they came from. For each numbered page below, open it and copy its ingredient list EXACTLY as the page prints it.',
+    '',
+    'Rules:',
+    '- Copy, do not edit: no unit conversion, no tidying, no merging of lines, no rewording and no guessing. Keep imperial units and bracketed amounts as printed.',
+    "- Ingredients only. Leave out the page's comments, notes, method and adverts.",
+    '- Write each section heading (for example "For the sauce") on its own line ending with a colon.',
+    '- If you cannot read a page, write COULD NOT READ and the exact reason (for example the error or block message). Never rebuild a list from memory or from another site. If a page is paywalled rather than blocked you may try its web.archive.org copy, but say so on the READ line.',
+    '',
+    'Pages:',
+    pages,
+    '',
+    'Reply with one code block per page, in this exact shape, each opening with its number from the list above:',
+    '',
+    '```',
+    'RECIPE 1',
+    'TITLE: <the title as the page gives it>',
+    'READ: yes | no | partly (one short line on how you got it)',
+    'INGREDIENTS:',
+    '<one ingredient per line, exactly as printed>',
+    '```',
+    '',
+    "After the code blocks, give each page's ingredient-line count and name any line you were unsure of or changed, however slightly."
+  ].join('\n');
+}
+
+/* A pasted reply into one result per item, in the order sent: { n, status, lines, why }.
+   status 'read' (lines are the page's list), 'partly' (the chat said it read only part; the caller never validates it),
+   'unread' (the chat said it could not, or gave no ingredient lines) or 'missing' (no block for this number). `unmatched`
+   lists the numbers in the reply that the prompt did not have. Tolerant of what a chat does around the shape it was asked
+   for: bold or heading marks on the RECIPE and INGREDIENTS lines, bullets and ticks on ingredient lines (pastedIngredientLines),
+   text before, between and after the code blocks. Fenced blocks are the reply when any holds a RECIPE line, so the notes
+   the prompt asks for after them are never read as ingredients; with no fences the text is read whole and cut at the first
+   line that starts those notes. The first block for a number wins. */
+function parseSourceReply(text, items) {
+  const wanted = new Map((items || []).map(it => [it.n, it]));
+  const src = String(text || '').replace(/\r\n?/g, '\n');
+  const isMark = /^[\s*#>_`-]*RECIPE\s+(\d+)\b/i;
+  let bodies = [...src.matchAll(/```[^\n]*\n([\s\S]*?)(?:```|$)/g)].map(m => m[1]).filter(b => b.split('\n').some(l => isMark.test(l)));
+  if (!bodies.length) {
+    const lines = src.split('\n');
+    const end = lines.findIndex((l, i) => i > 0 && /^[\s*#>_`-]*(?:ingredient[- ]line counts?|line counts?|notes?|lines? (?:i|you)|uncertain|summary)\b/i.test(l) && lines.slice(0, i).some(x => isMark.test(x)));
+    bodies = [(end < 0 ? lines : lines.slice(0, end)).join('\n')];
+  }
+  const sections = [];
+  bodies.forEach(body => body.split('\n').forEach(line => {
+    const m = line.match(isMark);
+    if (m) sections.push({ n: +m[1], rows: [] });
+    else if (sections.length) sections[sections.length - 1].rows.push(line);
+  }));
+  const found = new Map(), unmatched = [];
+  sections.forEach(sec => {
+    if (!wanted.has(sec.n)) { if (!unmatched.includes(sec.n)) unmatched.push(sec.n); return; }
+    if (found.has(sec.n)) return;
+    const at = sec.rows.findIndex(l => /^[\s*#>_`-]*INGREDIENTS\s*:?[\s*_]*$/i.test(l));
+    const head = at < 0 ? sec.rows : sec.rows.slice(0, at);
+    const body = at < 0 ? [] : sec.rows.slice(at + 1);
+    const readLine = (head.find(l => /^[\s*_-]*READ\s*:/i.test(l)) || '').replace(/^[\s*_-]*READ\s*:/i, '').replace(/[*_]/g, '').trim();
+    const said = [...head, ...body.slice(0, 3)].join('\n');
+    const couldNot = /COULD NOT READ/i.test(said) || /^no\b/i.test(readLine);
+    const named = [...said.matchAll(/COULD NOT READ[ \t]*[:\-–—]?[ \t]*([^\n]*)/gi)].map(m => m[1].replace(/[*_`]/g, '').trim()).find(x => x);
+    const reason = named || readLine.replace(/^no\b[\s:,.-]*/i, '').replace(/[*_`]/g, '').trim();
+    if (couldNot) { found.set(sec.n, { n: sec.n, status: 'unread', lines: [], why: reason }); return; }
+    const lines = pastedIngredientLines(body.join('\n'));
+    if (!lines.length) { found.set(sec.n, { n: sec.n, status: 'unread', lines: [], why: 'the reply has no ingredient lines for this recipe' }); return; }
+    found.set(sec.n, { n: sec.n, status: /^partly\b/i.test(readLine) ? 'partly' : 'read', lines, why: readLine });
+  });
+  return {
+    results: (items || []).map(it => found.get(it.n) || { n: it.n, status: 'missing', lines: [], why: 'the reply has no block for this recipe' }),
+    unmatched
+  };
+}
+
+/* Whether a chat's list is a length the recipe's could plausibly be set against: an advice flag the screen shows beside a
+   result, never a gate. A list a half or less, or twice or more, of the recipe's own (for a recipe of four lines or more) is
+   more likely a page read wrongly than a recipe converted wrongly. Empty string when nothing looks off. */
+function replyLengthOff(sourceCount, recipeCount) {
+  if (!sourceCount) return 'the reply has no ingredient lines';
+  if (recipeCount >= 4 && (sourceCount * 2 <= recipeCount || sourceCount >= recipeCount * 2)) return `${sourceCount} lines against the recipe's ${recipeCount}`;
+  return '';
+}
+
 /* The household's word matches as the shopping list applies them: each
    side re-normalised through today's rules (so a match stored in older
    words still means the same thing), and one the rules now make anyway
@@ -2808,6 +2902,7 @@ if(typeof module !== 'undefined' && module.exports){
     shoppingKeyForName, strictMatchSuggestions,
     ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, fidelityAmount, fidelityAgree, fidelityCompare, fidelityDelta, pastedRepeats, splitIngredients, pastedIngredientLines, ingredientMatchMap, aisleOverrideMap,
     sourceNoteIn, normalisedSourceUrl, linesHash, fidelityCounts, sourceCheckStatus, newRecipeReview,
+    buildSourcePrompt, parseSourceReply, replyLengthOff,
     splitRecipeBlocks
   };
 }
