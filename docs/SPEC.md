@@ -209,7 +209,11 @@ buttons), and not again above its diagram (issue #192, 25 Oct 2026); in Modernis
 - UNGROUP separates a group; the dishes stay on the day.
 
 ### 5.5 Planner
-The next 14 days, rolling, in weeks. Per day:
+The next 14 days, rolling, in weeks. **PREVIOUS 3 DAYS** at the top opens an **EARLIER** band above today (issue #223, 1 Nov 2026): the last three days, **3 MORE** for
+three more each time (up to 15) and **HIDE**; closed each time the Planner is left, never stored. A past day is read-only: its dishes with their headcount, tap a title to open the
+recipe, **COOKED ✓** (the same log as today's, for that day), and **ADD TO TODAY**, which puts the dish on today at that day's headcount (as to cook, whatever it was) and leaves
+the past day as it was. No ×, CHOOSE A RECIPE, + OTHER, SERVES, calendar or grouping controls, and a selected shortlist item cannot be put on it. The shopping list, the calendar and the
+sidebar's counts read the 14 days from today (`dayList()`) and never the band. Past days' plans are kept in the database (`planner_days` is never pruned). Per day:
 - **CHOOSE A RECIPE** / **ADD ANOTHER**; **MARK DAY AWAY**; **SERVES** (people for that dish on that day: the shopping list and the
   recipe opened from the Planner follow it); **×** takes a dish off, with a 10-second **UNDO**.
 - **TO COOK / COOK AHEAD / PRE-MADE** (issue #221): a dish defaults to TO COOK. Tapping its pill opens a chooser of the three.

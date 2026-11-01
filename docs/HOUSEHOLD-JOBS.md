@@ -1,7 +1,7 @@
 # Household job list
 
 The jobs only the household can do: a session can't tap the tablet, decide for you, or deploy for you. **Last brought up to date
-1 Nov 2026**: you reported every job here complete (Jobs 1, 2, 3 and 6); nothing is waiting.
+1 Nov 2026**: you reported every job here complete (Jobs 1, 2, 3 and 6); one new job is waiting (Job 7, the Planner's previous days).
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other households sort
 out their own converter and need no steps here.
@@ -13,8 +13,26 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-**Nothing is waiting.** One loose end, which is not a job: issue #224, "Idea: Test", is the test report Job 2 asked you to close, and it is still open on GitHub.
+**One job is waiting:** Job 7, the Planner's previous days (#223), a few minutes on the tablet. One loose end, which is not a job: issue #224, "Idea: Test", is the test report Job 2 asked you to close, and it is still open on GitHub.
 What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
+
+---
+
+## Job 7: the Planner's previous days (issue #223)
+
+No database change and nothing to deploy. Do it in your own household: it adds a dish to today and can log a dish as cooked on a past day, so tidy up afterwards (REMOVE the diary
+entry from History, and × the dish from today) if you were only trying it.
+
+1. **Reload the app** so it is on version 2026-11-01.3. **You should see:** Settings → HELP shows it, and What's new mentions the Planner's previous days.
+2. On the Planner, look at the top. **You should see:** a **PREVIOUS 3 DAYS** button above the first week, and nothing before today.
+3. Press it. **You should see:** an **EARLIER** band with the last three days above today, oldest first. A day with dishes shows them with their title, course, time and **SERVES**
+   number; an empty day says **NOTHING PLANNED**; and there is no **×**, no **CHOOSE A RECIPE** and no SERVES button to change on them.
+4. Tap a dish's title on one of those days. **You should see:** its recipe opens, at that day's number of people.
+5. Press **ADD TO TODAY** on one dish. **You should see:** a note that it is on today as well, and the dish now listed under today, for the same number of people. The past day still has it.
+6. Press **COOKED ✓** on a past dish you did cook that day. **You should see:** it reads ✓ COOKED, and in History that day shows the dish.
+7. Press **3 MORE**, then **HIDE**. **You should see:** three more days appear, and then the band closes and PREVIOUS 3 DAYS is back. Check the Shopping list: nothing from the past days is on it.
+
+If a step does not do what it says, note which one and what you saw.
 
 ---
 
