@@ -4293,6 +4293,13 @@ const check = (name, pass, detail) => {
   const rc3 = await rcUi();
   check('    the next prompt is for what is left (9 and 10, numbered 1 and 2), not the eight again',
         rc3.sent && rc3.sent.join() === '1:cb-9,2:cb-10' && /^1\. Chat 9 - /m.test(rc3.prompt) && /^2\. Chat 10 - /m.test(rc3.prompt) && !/Chat 3 - /.test(rc3.prompt), JSON.stringify(rc3.sent));
+  /* Copying again before the reply is read re-copies the SAME batch, even if the waiting set has moved meanwhile (recipe 9 compared elsewhere). */
+  await page.evaluate(() => { loadRecipes().find(r => r.id === 'cb-9').sourceCheck = { at: new Date().toISOString(), route: 'function', hard: 0, soft: 0, sourceLines: 6, linesHash: linesHash(ingredientLinesOf(parseRecipe(loadRecipes().find(r => r.id === 'cb-9').syntax))) };
+    document.getElementById('readChatCopyBtn').click(); });
+  await page.waitForTimeout(200);
+  const rcAgain = await rcUi();
+  await page.evaluate(() => { loadRecipes().find(r => r.id === 'cb-9').sourceCheck = null; });
+  check('    copying again before the reply is read gives the same frozen batch, so the reply still lines up with the numbers', rcAgain.sent && rcAgain.sent.join() === '1:cb-9,2:cb-10' && /^1\. Chat 9 - /m.test(rcAgain.prompt), JSON.stringify(rcAgain.sent));
   await page.evaluate(() => document.getElementById('readChatReadBtn').click());
   await page.waitForTimeout(150);
   const rc4 = await rcUi();

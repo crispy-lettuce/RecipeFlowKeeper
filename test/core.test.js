@@ -2193,8 +2193,8 @@ check('Frozen is the last aisle, and the last section of the shopping list',
   const twice = core.parseSourceReply(fenced(1, 'READ: yes\nINGREDIENTS:\n1 egg') + '\n' + fenced(1, 'READ: yes\nINGREDIENTS:\n2 eggs'), items.slice(0, 1));
   check('    the first block for a number wins', twice.results[0].lines.join() === '1 egg', JSON.stringify(twice.results));
 
-  const other = core.parseSourceReply('```js\nconsole.log(1)\n```\n' + fenced(1, 'READ: yes\nINGREDIENTS:\n1 egg'), items.slice(0, 1));
-  check('    a code block that is not a recipe block is not read', other.results[0].status === 'read' && other.results[0].lines.join() === '1 egg', JSON.stringify(other.results));
+  const other = core.parseSourceReply(fenced(1, 'READ: yes\nINGREDIENTS:\n1 egg') + '\n```js\nconsole.log(1)\n```', items.slice(0, 1));
+  check('    a code block after the recipes that is not a recipe block is not read as ingredients', other.results[0].status === 'read' && other.results[0].lines.join() === '1 egg', JSON.stringify(other.results));
 
   const noList = core.parseSourceReply(fenced(1, 'TITLE: Plum Crumble\nREAD: yes\nINGREDIENTS:\n'), items.slice(0, 1));
   const refused = core.parseSourceReply(fenced(1, 'READ: no (the site blocked the request)\nINGREDIENTS:\n'), items.slice(0, 1));
