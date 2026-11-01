@@ -2732,10 +2732,13 @@ const check = (name, pass, detail) => {
   const pdMark2 = await anMark();
   await page.evaluate(y => document.querySelector(`#dayList .day-row.past[data-date="${y}"] [data-action="cooked"]`).click(), pdY);
   await page.waitForTimeout(400);
+  const pdAsk = await page.evaluate(() => ({ open: document.getElementById('mealTypeOverlay').classList.contains('open'), heading: document.getElementById('mealTypeHeading').textContent }));
+  await page.evaluate(() => document.getElementById('mealTypeSkip').click());
+  await page.waitForTimeout(150);
   const pdCooked = await page.evaluate(([y, a, m]) => ({ history: loadRecipes().find(r => r.id === a).history.includes(y), logs: window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs').length,
     row: (document.querySelector(`#dayList .day-row.past[data-date="${y}"]`) || {}).textContent.replace(/\s+/g, ' ') }), [pdY, pdIds[0].id, pdMark2]);
-  check('    COOKED ✓ on a past day logs the dish as cooked on that day, and the row then reads ✓ COOKED',
-        pdCooked.history && pdCooked.logs >= 1 && /✓ COOKED/.test(pdCooked.row), JSON.stringify(pdCooked));
+  check('    COOKED ✓ on a past day logs the dish as cooked on that day, asks which meal as today\'s does, and the row then reads ✓ COOKED',
+        pdCooked.history && pdCooked.logs >= 1 && /✓ COOKED/.test(pdCooked.row) && pdAsk.open && /Which meal was that/.test(pdAsk.heading), JSON.stringify([pdCooked, pdAsk]));
   await page.evaluate(([y, y2, t, a]) => { loadDiary().filter(e => e.recipeId === a && e.cookedOn === y).forEach(e => deleteDiaryEntry(e.id));
     const idx = planRecipeIds(loadPlan()[t]).lastIndexOf(a); if(idx > -1) removePlanRecipeAt(t, idx); clearPlanDay(y); clearPlanDay(y2); state.plannerPast = 0; showView('planner'); renderPlanner(); }, [pdY, pdY2, pdToday, pdIds[0].id]);
 
