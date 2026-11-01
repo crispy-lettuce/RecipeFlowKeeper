@@ -14,7 +14,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 ## At a glance
 
 Four jobs: **Sign-in on each device** (Job 1), a few minutes per device; **Reporting a bug or an idea** (Job 2), a few minutes on the tablet; **COOK AHEAD** (Job 3),
-which starts with applying a database change from the dashboard, before the pull request that carries it is merged; and **CHECK ALL AGAINST SOURCES** (Job 5), a few minutes, with no database change. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
+which starts with applying a database change from the dashboard, before the pull request that carries it is merged; and **READ BY CHAT** (Job 6), a few minutes, with no database change. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
 
@@ -84,22 +84,24 @@ If a step does not do what it says, note which one and what you saw.
 
 ---
 
-## Job 5: CHECK ALL AGAINST SOURCES
+## Job 6: READ BY CHAT
 
-No database change and nothing to deploy. Do it in your own household: it writes a comparison onto your recipes (the text of no recipe changes), and Test Kitchen's
-placeholder links would tell you nothing. Settings → LIBRARY → **LIBRARY CHECK** → RUN first, and note how many recipes it calls "not compared".
+No database change and nothing to deploy. Do it in your own household, with a Claude chat that can open web pages (the one you tested with). It writes a
+comparison onto your recipes; the text of no recipe changes. Settings → LIBRARY → **LIBRARY CHECK** → RUN first, and note how many recipes it calls "not compared".
 
-1. **Reload the app** so it is on version 2026-10-31.2. **You should see:** Settings → HELP shows it, and What's new mentions CHECK ALL.
-2. Settings → LIBRARY. **You should see:** a box **CHECK ALL AGAINST SOURCES** above LIBRARY CHECK, saying how many recipes are waiting to be checked.
-3. Press **CHECK ALL**, then **STOP** after a few. **You should see:** a line counting up ("Checking 3 of N…"), the run ending after the page it was reading with "Stopped.",
-   and a summary of how many matched exactly, how many were recorded with differences or notes, and how many could not be read.
-4. Press **CHECK ALL** again and let it finish. **You should see:** the same summary at the end; a recipe that matched exactly is not listed; each recipe with a
-   difference or note is listed with **OPEN**; each page that could not be read is listed with the reason (a site with no ingredient list in its page, or one that refuses
-   the check).
-5. Settings → LIBRARY CHECK → RUN. **You should see:** "not compared" lower by the number the summary said was recorded, and those that matched exactly under "validated".
-6. Tap **OPEN** on one recipe listed with a difference. **You should see:** its Edit form, with the stored comparison and its difference count in the SOURCE section,
-   and the recipe **not** validated. Look at it; fix or VALIDATE INGREDIENT LIST as you do now.
+1. **Reload the app** so it is on version 2026-11-01.1. **You should see:** Settings → HELP shows it, and What's new mentions READ BY CHAT.
+2. Settings → LIBRARY. **You should see:** a box **READ BY CHAT** under CHECK ALL AGAINST SOURCES, saying how many recipes are waiting and which 8 the next prompt is for.
+3. Press **COPY PROMPT**. **You should see:** a note that the prompt is copied (or, if the browser refused, to copy it from the box), and a box showing the prompt with the
+   8 recipes numbered 1 to 8, each with its title and link, and no ingredient lines.
+4. Paste it into your Claude chat and wait for the reply. Copy the **whole** reply, notes and all, and paste it into the box under the prompt.
+5. Press **READ REPLY**. **You should see:** a summary of how many matched exactly (and are validated), how many were recorded with differences or notes, and how many
+   the chat could not read; each recipe that is not an exact match is listed with the reason or its difference count, and **OPEN**.
+6. Tap **OPEN** on a recipe listed with a difference. **You should see:** its Edit form with the stored comparison in the SOURCE section, and the recipe not validated. Look at it as you do now.
+7. Open one recipe that matched exactly. **You should see:** a VALIDATED chip, and its hover text (or long-press) saying a Claude chat read the list.
+8. Press **COPY PROMPT** again. **You should see:** the next 8 waiting, not the ones the chat could not read.
+9. Settings → LIBRARY CHECK → RUN. **You should see:** "not compared" lower by the number the summary said was recorded.
 
+Tell the next session: how many recipes a batch of 8 got through, any page the chat could not read (the site only, not the recipe), and any reply the app seemed to misread.
 If a step does not do what it says, note which one and what you saw.
 
 ---
@@ -112,6 +114,8 @@ None at the moment.
 
 ## Recently done
 
+- **31 Oct:** you reported CHECK ALL AGAINST SOURCES (Job 5, app version 2026-10-31.2) done: of 55 recipes waiting, 4 were recorded with differences, which you judged real, and 51 could
+  not be read; a second run of those 51 failed all 51 with "the source page returned 403" (sites refusing the check). That is your report; a session did not see it. It is why READ BY CHAT exists.
 - **31 Oct:** you reported the IN OTHER NOW job (Job 4, #225, app version 2026-10-31.1) OK. That is your report; a session did not see it.
 - **25 Oct:** you reported every job on this page complete: the reload (2026-10-25.1), setting the ovens and trying the run sheet, trying START COOKING,
   the timers rehearsal on the tablet, and the converter bar (DONE tapped, and the re-conversion of three recipes compared with the library). Seen in the database

@@ -1912,7 +1912,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-10-31.2">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-11-01.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2291,6 +2291,26 @@ function loadArchivoFont(){
           </div>
           <p class="subtle" id="checkAllSummary"></p>
           <div id="checkAllList" class="sources-list"></div>
+        </div>
+
+        <div class="settings-block" data-settings-tab="library" id="readByChat">
+          <div class="side-label">READ BY CHAT</div>
+          <p class="subtle">For the pages CHECK ALL cannot read because the site refuses it. Copy a prompt for the next 8
+            recipes waiting, paste it into your Claude chat (one that can open web pages), then paste the chat's reply
+            below. Each list is compared with its recipe as CHECK ALL does and recorded as read by a chat: an exact match
+            is validated; anything else is recorded and listed for you to look at; a page the chat could not read changes
+            nothing. Only titles and links go to the chat, and no recipe text is changed.</p>
+          <p class="subtle" id="readChatBatch"></p>
+          <div class="alias-form">
+            <button class="btn" id="readChatCopyBtn">COPY PROMPT</button>
+          </div>
+          <textarea id="readChatPrompt" rows="6" spellcheck="false" readonly hidden aria-label="The prompt to paste into your chat"></textarea>
+          <textarea id="readChatReply" rows="6" spellcheck="false" placeholder="Paste the chat's reply here" aria-label="The chat's reply"></textarea>
+          <div class="alias-form">
+            <button class="btn" id="readChatReadBtn">READ REPLY</button>
+          </div>
+          <p class="subtle" id="readChatSummary"></p>
+          <div id="readChatList" class="sources-list"></div>
         </div>
 
         <div class="settings-block" data-settings-tab="library" id="libraryCheck">
@@ -2709,7 +2729,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-10-25.1"></script>
+<script src="core.js?v=2026-11-01.1"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2717,12 +2737,12 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-10-25.1';
+const EXPECTED_CORE_VERSION = '2026-11-01.1';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-10-31.2';
+const APP_VERSION = '2026-11-01.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -7348,7 +7368,9 @@ function renderProvenance(recipe){
   const st = sourceCheckStatus(recipe.sourceCheck, ingredientLinesOf(parseRecipe(recipe.syntax || '')));
   const note = sourceNoteIn(recipe.syntax);
   const chips = [];
-  const how = st.route === 'pasted' ? 'Compared with a list pasted from the source page' : "Compared with the source page's own list";
+  const how = st.route === 'pasted' ? 'Compared with a list pasted from the source page'
+    : st.route === 'chat' ? 'Compared with a list a Claude chat read from the source page'
+    : "Compared with the source page's own list";
   if(st.state === 'fresh' && st.validated && st.route === 'photo'){
     chips.push({ cls: 'ok', text: `VALIDATED ${formatDate(isoLocal(new Date(st.validated)))}`, title: 'The ingredient list checked by eye against the source photo' });
   } else if(st.state === 'fresh' && st.validated){
@@ -10775,6 +10797,7 @@ function renderSettings(){
   renderSharingSettings();
   renderDriveSettings();
   renderCheckAll();
+  renderReadByChat();
   showSettingsTab(settingsTabStored());
 }
 
@@ -11617,6 +11640,27 @@ function renderCheckAll(){
       ${x.kind === 'skipped' ? '' : `<button class="btn" data-ca-open="${escapeHtml(x.id)}">OPEN</button>`}
     </div>`).join('');
 }
+/* The step CHECK ALL and READ BY CHAT share: set a page's ingredient lines against the recipe's now, and record it.
+   `t` is { id, url, hash }, taken when the page was asked for: a recipe that has gone, changed link, or whose ingredient
+   lines no longer hash to what they did is skipped, since the comparison would be of lines that are not there. An exact
+   match (no hard difference, no soft note) is recorded validated, as the household decided on 31 Oct 2026, unless the list
+   is `partial` (a chat that said it read only part of a page): that is recorded and never validated. Returns { kind, text }
+   with kind 'exact', 'looked' or 'skipped'. The write is patchRecipe: an UPDATE of source_check on the one row, with the
+   cache changed beside it. */
+function recordSourceCheck(t, sourceLines, route, partial){
+  const r = loadRecipes().find(x=> x.id === t.id);
+  if(!r || r.sourceUrl !== t.url || linesHash(ingredientLinesOf(parseRecipe(r.syntax || ''))) !== t.hash)
+    return { kind: 'skipped', text: 'The recipe changed while its page was being read, so nothing was recorded.' };
+  const f = sourceFidelity(sourceLines, ingredientLinesOf(parseRecipe(r.syntax || '')));
+  const { hard, soft } = fidelityCounts(f);
+  const at = new Date().toISOString();
+  const exact = hard === 0 && soft === 0 && !partial;
+  const check = { at, route, hard, soft, sourceLines: sourceLines.length, linesHash: t.hash, ...(exact ? { validated: at } : {}) };
+  r.sourceCheck = check;
+  patchRecipe(r.id, { source_check: check });
+  if(exact) return { kind: 'exact', text: '' };
+  return { kind: 'looked', text: `${differencesWords(hard)}${soft ? `, ${soft} note${soft === 1 ? '' : 's'}` : ''}. Recorded, not validated.${partial ? ' The chat said it read only part of the page, so this cannot be validated.' : ''}` };
+}
 async function runCheckAll(){
   if(checkAllState && checkAllState.running) return;
   const todo = checkAllEligible().map(r=> ({ id: r.id, title: r.title, url: r.sourceUrl, hash: linesHash(ingredientLinesOf(parseRecipe(r.syntax || ''))) }));
@@ -11640,20 +11684,8 @@ async function runCheckAll(){
       add(t, 'unread', (data.error || 'The page carries no ingredient list the check can read') + '.');
       renderCheckAll(); continue;
     }
-    const r = loadRecipes().find(x=> x.id === t.id);
-    if(!r || r.sourceUrl !== t.url || linesHash(ingredientLinesOf(parseRecipe(r.syntax || ''))) !== t.hash){
-      add(t, 'skipped', 'The recipe changed while its page was being read, so nothing was recorded.');
-      renderCheckAll(); continue;
-    }
-    const f = sourceFidelity(data.ingredients, ingredientLinesOf(parseRecipe(r.syntax || '')));
-    const { hard, soft } = fidelityCounts(f);
-    const at = new Date().toISOString();
-    const exact = hard === 0 && soft === 0;
-    const check = { at, route: 'function', hard, soft, sourceLines: data.ingredients.length, linesHash: t.hash, ...(exact ? { validated: at } : {}) };
-    r.sourceCheck = check;
-    patchRecipe(r.id, { source_check: check });
-    if(exact) add(t, 'exact', '');
-    else add(t, 'looked', `${differencesWords(hard)}${soft ? `, ${soft} note${soft === 1 ? '' : 's'}` : ''}. Recorded, not validated.`);
+    const rec = recordSourceCheck(t, data.ingredients, 'function', false);
+    add(t, rec.kind, rec.text);
     renderCheckAll();
   }
   st.running = false;
@@ -11665,6 +11697,97 @@ document.getElementById('checkAllStopBtn').addEventListener('click', ()=>{ if(ch
 document.getElementById('checkAllList').addEventListener('click', e=>{
   const open = e.target.closest('[data-ca-open]');
   if(open) openEditModal(open.dataset.caOpen);
+});
+
+/* READ BY CHAT (1 Nov 2026, docs/PLAN-BULK-VALIDATE.md §5). CHECK ALL's second route, for the pages the function cannot read:
+   a prompt for the next CHAT_BATCH recipes still waiting, copied into the household's own Claude chat, and the chat's reply
+   pasted back. buildSourcePrompt and parseSourceReply (core.js) do the words; recordSourceCheck is CHECK ALL's own step, so
+   both routes compare and record alike, with route "chat".
+   - The batch is FROZEN when the prompt is copied (`sent`): the reply is matched to it by number, so a batch that moved while
+     the chat was working could attach a list to the wrong recipe. Copying again re-copies the same batch.
+   - A recipe the chat could not read (or left out) is not offered again this session (`skip`), or the next batch would be
+     the same eight for ever. It is still waiting, and CHECK ALL or the Edit form can still take it; nothing is recorded.
+   - Sent to the chat: titles and links, never a recipe's lines. Nothing is written until a reply is read. */
+const CHAT_BATCH = 8;
+let readChat = { sent: null, results: [], skip: new Set(), note: '' };
+function chatWaiting(){ return checkAllEligible().filter(r=> !readChat.skip.has(r.id)); }
+function renderReadByChat(){
+  const copyBtn = document.getElementById('readChatCopyBtn');
+  if(!copyBtn) return;
+  const sent = readChat.sent;
+  const waiting = chatWaiting();
+  const titles = (sent ? sent.items.map(i=> i.title) : waiting.slice(0, CHAT_BATCH).map(r=> r.title)).join('; ');
+  document.getElementById('readChatBatch').textContent = sent
+    ? `Waiting for your chat's reply to the prompt for ${sent.items.length} recipe${sent.items.length === 1 ? '' : 's'}: ${titles}.`
+    : waiting.length ? `${waiting.length} recipe${waiting.length === 1 ? '' : 's'} waiting. The next prompt is for ${Math.min(CHAT_BATCH, waiting.length)}: ${titles}.`
+    : 'No recipe is waiting to be read by a chat.';
+  copyBtn.disabled = !sent && !waiting.length;
+  document.getElementById('readChatReadBtn').disabled = !sent;
+  const count = k=> readChat.results.filter(x=> x.kind === k).length;
+  const bits = [
+    count('exact') ? `${count('exact')} matched exactly and ${count('exact') === 1 ? 'is' : 'are'} validated` : '',
+    count('looked') ? `${count('looked')} recorded with differences or notes to look at` : '',
+    count('unread') ? `${count('unread')} could not be read by the chat` : '',
+    count('skipped') ? `${count('skipped')} skipped` : ''
+  ].filter(Boolean);
+  document.getElementById('readChatSummary').textContent = [bits.length ? 'Read this way: ' + bits.join('; ') + '.' : '', readChat.note].filter(Boolean).join(' ');
+  document.getElementById('readChatList').innerHTML = readChat.results.filter(x=> x.kind !== 'exact').map(x=> `<div class="source-row lc-row" data-rc-id="${escapeHtml(x.id)}" data-rc-kind="${x.kind}">
+      <div><div class="source-row-name">${escapeHtml(x.title)}</div><div class="swap-row-detail">${escapeHtml(x.text)}</div></div>
+      ${x.kind === 'skipped' ? '' : `<button class="btn" data-rc-open="${escapeHtml(x.id)}">OPEN</button>`}
+    </div>`).join('');
+}
+function copyChatPrompt(){
+  if(!readChat.sent){
+    const batch = chatWaiting().slice(0, CHAT_BATCH);
+    if(!batch.length) return;
+    readChat.sent = { items: batch.map((r, i)=> ({ n: i + 1, id: r.id, title: r.title, url: r.sourceUrl,
+      hash: linesHash(ingredientLinesOf(parseRecipe(r.syntax || ''))) })) };
+  }
+  const prompt = buildSourcePrompt(readChat.sent.items);
+  const box = document.getElementById('readChatPrompt');
+  box.value = prompt;
+  box.hidden = false;
+  readChat.note = '';
+  /* The box stays so it can be copied by hand where the clipboard is refused (an insecure page, a locked-down browser). */
+  const done = ok=> { readChat.note = ok ? 'The prompt is copied: paste it into your chat.' : 'Copy the prompt from the box above and paste it into your chat.'; renderReadByChat(); };
+  try { navigator.clipboard.writeText(prompt).then(()=> done(true), ()=> { box.select(); done(false); }); }
+  catch(e){ box.select(); done(false); }
+  renderReadByChat();
+}
+function readChatReply(){
+  const sent = readChat.sent;
+  if(!sent) return;
+  const replyEl = document.getElementById('readChatReply');
+  if(!replyEl.value.trim()){ readChat.note = "Paste your chat's reply into the box first."; renderReadByChat(); return; }
+  const parsed = parseSourceReply(replyEl.value, sent.items);
+  parsed.results.forEach((res, i)=>{
+    const item = sent.items[i];
+    const add = (kind, text)=> readChat.results.push({ id: item.id, title: item.title, kind, text });
+    if(res.status === 'unread' || res.status === 'missing'){
+      readChat.skip.add(item.id);
+      add('unread', res.why ? res.why.charAt(0).toUpperCase() + res.why.slice(1).replace(/\.$/, '') + '.' : 'The chat gave no reason.');
+      return;
+    }
+    const r = loadRecipes().find(x=> x.id === item.id);
+    const off = replyLengthOff(res.lines.length, r ? ingredientLinesOf(parseRecipe(r.syntax || '')).length : 0);
+    const rec = recordSourceCheck(item, res.lines, 'chat', res.status === 'partly');
+    if(rec.kind === 'skipped') readChat.skip.add(item.id);
+    const kind = off && rec.kind === 'exact' ? 'looked' : rec.kind;
+    add(kind, [rec.text, off ? `The chat's list looks the wrong length: ${off}.` : ''].filter(Boolean).join(' '));
+  });
+  readChat.note = parsed.unmatched.length ? `The reply had ${parsed.unmatched.length === 1 ? 'a block' : 'blocks'} numbered ${parsed.unmatched.join(', ')} that the prompt did not have; ignored.` : '';
+  readChat.sent = null;
+  replyEl.value = '';
+  document.getElementById('readChatPrompt').hidden = true;
+  renderReadByChat();
+  renderCheckAll();
+  if(libraryCheckResult){ libraryCheckResult = libraryCheckRows(); renderLibraryCheck(); }
+}
+document.getElementById('readChatCopyBtn').addEventListener('click', copyChatPrompt);
+document.getElementById('readChatReadBtn').addEventListener('click', readChatReply);
+document.getElementById('readChatList').addEventListener('click', e=>{
+  const open = e.target.closest('[data-rc-open]');
+  if(open) openEditModal(open.dataset.rcOpen);
 });
 
 document.getElementById('libraryCheckRunBtn').addEventListener('click', ()=>{ libraryCheckResult = libraryCheckRows(); renderLibraryCheck(); renderCheckAll(); });
