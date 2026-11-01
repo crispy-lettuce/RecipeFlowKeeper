@@ -2210,6 +2210,36 @@ check('Frozen is the last aisle, and the last section of the shopping list',
         && core.replyLengthOff(7, 8) === '' && core.replyLengthOff(9, 8) === '' && core.replyLengthOff(1, 3) === '' && core.replyLengthOff(6, 3) === '');
 }
 
+/* ---- The comparison pairs "the same words" as exact (1 Nov 2026) ----
+   The shape that went wrong on the first real run: a source with two lines of one ingredient, one of them with a preparation
+   note and no comma ("butter cut into pieces"), against a recipe whose lines carry the comma. Made-up amounts. */
+{
+  const fid = (src, rec) => { const f = core.sourceFidelity(src, rec); return { f, n: core.fidelityCounts(f) }; };
+  const recLines = ['80 g unsalted butter, softened', '50 g unsalted butter, cut into pieces'];
+  const same = fid(['50 g (1/4 cup) unsalted butter cut into pieces', '80 g (6 tbsp) unsalted butter softened'], recLines);
+  check('sourceFidelity: two source lines of one ingredient, one with its preparation note and no comma, pair with the recipe\'s two lines: no difference, nothing left over',
+        same.n.hard === 0 && same.n.soft === 0 && same.f.sourceOnly.length === 0 && same.f.recipeOnly.length === 0 && same.f.matched.length === 2
+        && same.f.matched.every(m => !m.check && m.group && m.group.source.length === 2 && m.group.recipe.length === 2), JSON.stringify([same.n, same.f.sourceOnly, same.f.matched.length]));
+  const withComma = fid(['50 g unsalted butter, cut into pieces', '80 g unsalted butter, softened'], recLines);
+  check('    the same lines with the comma already agreed, so a comma or none makes no difference', withComma.n.hard === 0 && withComma.f.sourceOnly.length === 0);
+  const lacks = fid(['50 g unsalted butter cut into pieces', '80 g unsalted butter softened'], ['80 g unsalted butter, softened']);
+  const other = fid(['50 g unsalted butter cut into pieces', '80 g unsalted butter softened'], ['80 g unsalted butter, softened', '70 g unsalted butter, cut into pieces']);
+  check('    a recipe that really lacks one of the two lines, or has a different amount, is still a difference, counted once, with nothing left over',
+        lacks.n.hard === 1 && lacks.f.sourceOnly.length === 0 && /amounts differ: source 50 g \+ 80 g; recipe 80 g/.test(lacks.f.matched[0].check.why)
+        && other.n.hard === 1 && other.f.sourceOnly.length === 0 && /recipe 70 g \+ 80 g/.test(other.f.matched[0].check.why), JSON.stringify([lacks.n, other.n]));
+  const pepper = fid(['1 tsp crushed red pepper'], ['1 red pepper']);
+  check('    two lines of the same words that the dictionary puts in different rows (chilli flakes and the vegetable) are still not the same ingredient',
+        pepper.n.hard === 1 && pepper.f.matched.length === 1 && pepper.f.matched[0].check && pepper.f.matched[0].check.kind === 'wording', JSON.stringify(pepper.f.matched));
+  const soy = fid(['2 tbsp soy sauce'], ['2 tbsp light soy sauce']);
+  const ground = fid(['100 g ground almonds', '2 eggs'], ['100 g ground almonds', '2 eggs']);
+  check('    and the notes that were already right are unchanged: "light" soy sauce stays a soft note, and an identical list has no differences',
+        soy.n.hard === 0 && soy.n.soft === 1 && ground.n.hard === 0 && ground.n.soft === 0);
+
+  const block = ['RECIPE 3', 'TITLE: Plum Crumble', 'READ: yes (page text)', 'INGREDIENTS:', 'COULD NOT READ: 403', '200 g plain flour', '2 eggs'].join('\n');
+  check('pastedIngredientLines: a chat\'s block pasted whole loses its RECIPE, TITLE, READ and COULD NOT READ lines and keeps the ingredients',
+        core.pastedIngredientLines(block).join('|') === '200 g plain flour|2 eggs' && core.pastedIngredientLines('1 egg\nTitle: x\n3 tbsp read tea').join('|') === '1 egg|3 tbsp read tea', JSON.stringify(core.pastedIngredientLines(block)));
+}
+
 const failed = checks.filter(c => !c.pass).length;
 console.log(`\n${checks.length} checks, ${failed} failed`);
 process.exit(failed ? 1 : 0);

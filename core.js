@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-11-01.1';
+const KITCHEN_CORE_VERSION = '2026-11-01.2';
 
 
 /* ======================= quantity split ======================= */
@@ -2490,7 +2490,16 @@ function sourceFidelity(sourceLines, recipeLines){
      exact. "The recipe says less than the source" is looser, and joins only lines
      that have no exact partner: a line already matched by name is spoken for, or
      a leftover "pepper" would absorb a dropped "red bell pepper". */
-  const exact = p => p.a.key && p.a.key === p.b.key;
+  /* "The same words" is exact too, not only the same key (1 Nov 2026). The key is the shopping list's, and it keeps a tail the
+     list cannot read: a page prints "unsalted butter cut into pieces" with no comma, so its key is "unsalted butter cut into
+     piece" while the recipe's "unsalted butter, cut into pieces" (the comma ends the name) is "unsalted butter". The two say the
+     same words, but with no exact partner the page's line fell to the looser tier, which refuses a line whose only partners
+     are spoken for by its sibling, so it was left over while the sibling was set against BOTH recipe lines ("source 90 g;
+     recipe 60 g + 90 g"). Both uses of `exact` below also require the same-ingredient test (p.same), so two lines the
+     dictionary puts in different rows stay apart however alike their words: the one such pair in the dictionary is the
+     vegetable "red pepper" and the chilli flakes "crushed red pepper". */
+  const sameWords = (x, y) => x.words.size > 0 && x.words.size === y.words.size && [...x.words].every(w => y.words.has(w));
+  const exact = p => (p.a.key && p.a.key === p.b.key) || sameWords(p.a, p.b);
   const spoken = new Set();
   pairs.forEach(p => { if(p.same && exact(p)){ spoken.add(p.a); spoken.add(p.b); } });
   const same = pairs.filter(p => p.same && (exact(p) || (!spoken.has(p.a) && !spoken.has(p.b)))).sort(order);
@@ -2576,7 +2585,11 @@ function pastedIngredientLines(text){
     .map(l => l.replace(/\u200b/g, '')   // \s already covers a non-breaking space; a zero-width one it does not
       .replace(/^\s*(?:[▢☐☑□◻○●•▪◦‣·]|[-*–—]\s|\[[ xX]?\])\s*/, '').replace(/\s+/g, ' ').trim())
     .filter(l => l && !(!/\d/.test(l) && (/:$/.test(l) || /^for (the|a|an)\b/i.test(l)
-      || /^(ingredients?|method|instructions?|directions?|equipment)$/i.test(l))));
+      || /^(ingredients?|method|instructions?|directions?|equipment)$/i.test(l)))
+      /* The shape READ BY CHAT asks a chat to answer in (1 Nov 2026): a whole block pasted into the Edit form's box brings its
+         own label lines with it, which are never ingredients and showed as "missing" rows (a TITLE: line, a READ: line, a
+         "RECIPE 3" line, and a "COULD NOT READ" note). */
+      && !/^(?:title|read)\s*:/i.test(l) && !/^recipe\s+\d+\s*:?$/i.test(l) && !/^could not read\b/i.test(l));
 }
 
 /* READ BY CHAT (1 Nov 2026, docs/PLAN-BULK-VALIDATE.md §5). For the pages the source-ingredients function cannot read (they
