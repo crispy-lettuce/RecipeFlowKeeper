@@ -804,11 +804,9 @@ function loadArchivoFont(){
   /* PREVIOUS 3 DAYS, 3 MORE and HIDE (#223): the same small buttons as the day's own, in a row of their own above the first week. */
   .past-toggle{ display:flex; flex-wrap:wrap; gap:10px; margin:8px 0 0; }
   /* PREVIOUS 3 DAYS sits in the Planner's heading row (the row is already taller than the button, so the Planner is no taller): drawn
-     44px tall, as every button here is; the other look draws it smaller (its own stylesheet), keeping the 44px tap area with the invisible
-     expansion below, as the small buttons in a day do. */
+     44px tall, as every button here is; the other look draws it smaller and keeps the 44px tap area in its own stylesheet. */
   .planner-tools{ display:flex; align-items:baseline; gap:16px; flex-wrap:wrap; }
   .planner-past{ position:relative; min-height:44px; background:none; border:none; padding:4px 0; cursor:pointer; font-size:14px; letter-spacing:.04em; color:var(--plum); font-weight:500; }
-  .planner-past::before{ content:''; position:absolute; left:-8px; right:-8px; top:-8px; bottom:-8px; }
   .planner-past[hidden]{ display:none; }
 
   .assign-banner{
