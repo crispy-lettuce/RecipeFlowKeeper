@@ -4,25 +4,25 @@ The one page to read first after `README.md` and `CLAUDE.md`. It says what is bu
 *what the app does* read `docs/SPEC.md`; for *how it is built*, `docs/ARCHITECTURE.md`; for repos, Supabase and secrets,
 `docs/INFRASTRUCTURE.md`; for what only the household can do, `docs/HOUSEHOLD-JOBS.md`.
 
-**Brought up to date 26 Oct 2026.** Checked against `main` at `17157c4` and GitHub that day. Not checked against the live database.
-It carries no test counts: run the suites, and CI is the record.
+**Brought up to date 1 Nov 2026.** Checked that day against `main` at `19bd473`, GitHub (open pull requests and issues) and the live database (read-only: column
+metadata, counts and the Edge Function versions; no household rows). It carries no test counts: run the suites, and CI is the record.
 
 ---
 
-## 1. Where things stand (26 Oct 2026)
+## 1. Where things stand (1 Nov 2026)
 
 - **The app is live and in daily use.** `main` is production: GitHub Pages serves it and every merge deploys. App version
-  `2026-10-26.1` (`APP_VERSION`, `index.html`), core `2026-10-25.1` (`KITCHEN_CORE_VERSION`, `core.js`).
-- **Open work on GitHub:** no open pull requests; five open issues (checked 30 Oct): #221 (COOK AHEAD on the Planner), #216 (the converter and old BBC Good
-  Food recipes), #200 (view styles: its three asks are built, see §3), #199 (names: the on-screen name is done, the repository rename is not) and #198
-  (reporting a bug or idea from the app). #221 and #198 are built (30 Oct): see §3.
-  #100 (a preview site) was closed.
-- **Tablet checks:** the household reported every check complete on 25 Oct. Built since, and not yet reported on a device: the sign-in changes (#196,
-  Job 1 in `docs/HOUSEHOLD-JOBS.md`), and the Modernist default, the Recipes grid, hiding the menu on every screen and the single NEW RECIPE button (#197, #199, #200).
-- **Schema:** nothing waiting to be applied; every page in `docs/migrations/` is applied (`docs/INFRASTRUCTURE.md` §3).
-- **Edge Functions:** five; nothing waiting to be redeployed (`docs/INFRASTRUCTURE.md` §3, last read 20 Oct).
-- **Households:** four (the family's, the relatives', Test Kitchen, and the live check's). Testing is done in Test Kitchen.
-- **Backups:** nightly database dump, weekly photo mirror, weekly live check, in `PrivateBackup`; a weekly Drive copy of the export.
+  `2026-11-01.2` (`APP_VERSION`, `index.html`), core `2026-11-01.2` (`KITCHEN_CORE_VERSION`, `core.js`): read from `main`, not from the running app.
+- **Open work on GitHub:** no open pull requests; five open issues: #224 (the test report Job 2 asked the household to close), #223 (an idea sent from the app: a way to see
+  the Planner's previous days), #216 (the converter and old BBC Good Food recipes), #200 (view styles: its three asks are built, see §3) and #199 (names: the on-screen name is
+  done, the repository rename is not). #198 and #221 were closed on 31 Oct, #196 on 25 Oct and #197 on 26 Oct. #100 (a preview site) was closed.
+- **Tablet checks:** the household reported every job on `docs/HOUSEHOLD-JOBS.md` complete on 1 Nov (sign-in, REPORT A BUG OR AN IDEA, COOK AHEAD, READ BY CHAT); that is a report,
+  and what a session saw is recorded under "Recently done" there. Not yet reported on a device: the Modernist default, the Recipes grid and hiding the menu on every screen
+  (#199, #200, both still open).
+- **Schema:** nothing waiting to be applied. `add-cook-ahead.md` is applied: both columns and the constraint were read back on 1 Nov (`docs/INFRASTRUCTURE.md` §3).
+- **Edge Functions:** five; nothing waiting to be redeployed. The dashboard's list gave the versions the card records on 1 Nov; the deployed source was not read back.
+- **Households:** four (the family's, the relatives', Test Kitchen, and the live check's); `households` held four rows on 1 Nov. Testing is done in Test Kitchen.
+- **Backups:** nightly database dump, weekly photo mirror, weekly live check, in `PrivateBackup`; a weekly Drive copy of the export. Not checked on 1 Nov.
 - **Documentation** was rationalised on 22 Oct: the plans, reviews and handovers are gone, and `SPEC.md` and this page replace them. Anything removed is at commit
   `67b552e` of `main`: `git show 67b552e:docs/<file>`. A reference in a code comment to a removed document, or a finding number
   (`F5`, `F45`; two review series overlap), is read there.
@@ -43,7 +43,8 @@ It carries no test counts: run the suites, and CI is the record.
 
 Added since the brief, all in `SPEC.md`: recipe sharing between households, the Drive backup, PRE-MADE and COOKED ✓, SERVE WITH /
 OFTEN WITH, FINISH TOGETHER, preparation as steps, AUDIT on the shopping list, the source-photo store, several recipes at once through NEW RECIPE, LIBRARY CHECK,
-the Modernist style, + OTHER on the Planner, the converter reminder, the version bar.
+the Modernist style, + OTHER on the Planner, the converter reminder, the version bar, COOK AHEAD, REPORT A BUG OR AN IDEA, IN OTHER NOW (Shopping Aisles), CHECK ALL AGAINST SOURCES and
+READ BY CHAT.
 
 ## 3. What is open
 
@@ -54,16 +55,19 @@ the Modernist style, + OTHER on the Planner, the converter reminder, the version
    that is a report, not something a session saw, except that the family household's confirmed converter version read `2026-10-25.1` in the database that day. The plan
    was closed and deleted on 25 Oct: it is at commit `9851f20` (`git show 9851f20:docs/PLAN-RUN-SHEET.md`), which is what the code comments citing its sections mean.
    The timers rehearsal lives on as a standing check, `docs/TEST-PLAN.md` section H.
-2. **Open issues** (26 Oct 2026). **#216**, the converter and old BBC Good Food recipes, has no work on it in the repository. **#200** is built in #218 and #219 (Modernist the
-   default, the grid fitting its width, the menu hideable on every screen) and the issue is left open for the household to close once it is seen on the tablet.
-   **#199**: the app is called "Recipe Wrangler" on screen; renaming the repository is not started and waits on the household's answers. **#198**, reporting a bug or idea from the app, is built (Settings → HELP → REPORT A BUG OR AN IDEA, `docs/SPEC.md` §5.9; it opens a prefilled GitHub
-   page, so nothing is stored or deployed) and **#221**, COOK AHEAD on the Planner, is built (`docs/SPEC.md` §5.5). Both await the household's tablet checks
-   (`docs/HOUSEHOLD-JOBS.md` Jobs 2 and 3), and #221 needs `docs/migrations/add-cook-ahead.md` applied first: until then the Planner keeps its two-way switch.
-   Neither issue is closed; the household closes them once seen. The plan that covered both was deleted with the build: `git show 40e461d:docs/PLAN-COOK-AHEAD-AND-REPORTS.md`. #100, a preview site, was closed; its reasoning is at `git show 67b552e:docs/PLAN-PREVIEW-SITE.md`.
-3. **Household jobs** are in `docs/HOUSEHOLD-JOBS.md`: one waiting, signing in again on each device (Job 1, #196).
-4. **Checking many recipes against their sources at once** (`docs/PLAN-BULK-VALIDATE.md`): CHECK ALL (the app reads the page) and READ BY CHAT (a Claude chat reads
-   it) are built, the second not yet seen on a device (Job 6). Reading a page's servings for a recipe with none is not built. The aisle half of that ask is built
-   (IN OTHER NOW, #225).
+2. **Open issues** (1 Nov 2026). **#223** was sent from the app's own form: a way to reach the Planner's previous days, since the Planner shows 14 days from today; no work on it,
+   and it is the household's call. **#224** is the test report from Job 2; the household closes it. **#216**, the converter and old BBC Good Food recipes, has no work on it in the
+   repository. **#200** is built in #218 and #219 (Modernist the default, the grid fitting its width, the menu hideable on every screen) and the issue is left open for the household
+   to close once it is seen on the tablet. **#199**: the app is called "Recipe Wrangler" on screen; renaming the repository is not started and waits on the household's answers.
+   **#198** (reporting a bug or idea, Settings → HELP → REPORT A BUG OR AN IDEA, `docs/SPEC.md` §5.9) and **#221** (COOK AHEAD on the Planner, §5.5) are built and were closed on
+   31 Oct; the plan that covered both was deleted with the build: `git show 40e461d:docs/PLAN-COOK-AHEAD-AND-REPORTS.md`. #100, a preview site, was closed; its reasoning is at
+   `git show 67b552e:docs/PLAN-PREVIEW-SITE.md`.
+3. **Household jobs** are in `docs/HOUSEHOLD-JOBS.md`: none waiting (1 Nov 2026).
+4. **Checking many recipes against their sources at once** (`docs/PLAN-BULK-VALIDATE.md`) is built: IN OTHER NOW (#225), CHECK ALL (#227), READ BY CHAT (#228) and the comparison fix with
+   OPEN carrying the list (#229). The household worked the library through it and reported it complete on 1 Nov. Two things in the plan are not built, and the plan stays until
+   they are built or moved to issues: reading a page's servings for a recipe that has none (it needs an Edge Function change the household deploys, and a write to the recipe's
+   `SERVINGS:` line, which follows `CLAUDE.md`'s recipe-text procedure; count the recipes without servings first) and a LIBRARY CHECK filter for recipes read by a chat. Not checked
+   on a real list: whether a curly against a straight apostrophe shows as a difference.
 5. **Optional, not planned:** a "download all source files" backup; drawing a PDF's pages inside the app;
    and four ideas parked from the run sheet's review, each wanting its own issue if picked up: **Trace** (hold a box to dim everything that does not feed it), folding away
    finished rows and columns in cooking mode, a step-through view (one "now" card at a time), and drawn connector lines between boxes.

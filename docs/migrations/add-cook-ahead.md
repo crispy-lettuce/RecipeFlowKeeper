@@ -6,13 +6,14 @@ rows are cooking that is not a meal. DDL only, no data.
 *(A markdown page rather than a `.sql` file because `.gitignore` excludes `*.sql`, on purpose: nothing that looks like a data dump
 may be committed to this public repo.)*
 
-**Not yet applied to the live database.** Tested on 30 Oct 2026 on a scratch Postgres 16.15, with `planner_days` and `recipe_logs`
+**Applied** by the household from the dashboard's SQL editor, on a date nobody wrote down (after 30 Oct 2026, when this page was written, and before 1 Nov).
+**Checked read-only on 1 Nov 2026** against the live project: both columns as the first check below expects, 0 of 158 log rows cook-ahead, and the constraint
+present. Recorded in `docs/INFRASTRUCTURE.md` §3. Before that it was tested on 30 Oct 2026 on a scratch Postgres 16.15, with `planner_days` and `recipe_logs`
 cut down to the columns that matter here (`premade` already in) and owned by a superuser rather than the live `postgres` role, so
 ownership and policies were not exercised. The statement and the undo were run exactly as written on this page. It applies; an
 existing day reads `cook_ahead = '{}'` and an existing log row `false`; an insert that does not name either column gets those
 defaults; a day can store `'{t}'`; a log row can be `cook_ahead` alone; a row with `premade` and `cook_ahead` both true is refused
-by the constraint; the check queries below give what they say; the undo removes both columns and the constraint. Whoever applies
-it records the date and the check in `docs/INFRASTRUCTURE.md` §3, in the same PR or the next one.
+by the constraint; the check queries below give what they say; the undo removes both columns and the constraint.
 
 ## Who and when
 
