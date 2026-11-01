@@ -89,17 +89,22 @@ If a step does not do what it says, note which one and what you saw.
 No database change and nothing to deploy. Do it in your own household, with a Claude chat that can open web pages (the one you tested with). It writes a
 comparison onto your recipes; the text of no recipe changes. Settings → LIBRARY → **LIBRARY CHECK** → RUN first, and note how many recipes it calls "not compared".
 
-1. **Reload the app** so it is on version 2026-11-01.1. **You should see:** Settings → HELP shows it, and What's new mentions READ BY CHAT.
+1. **Reload the app** so it is on version 2026-11-01.2. **You should see:** Settings → HELP shows it, and What's new mentions the comparison fix and OPEN.
 2. Settings → LIBRARY. **You should see:** a box **READ BY CHAT** under CHECK ALL AGAINST SOURCES, saying how many recipes are waiting and which 8 the next prompt is for.
 3. Press **COPY PROMPT**. **You should see:** a note that the prompt is copied (or, if the browser refused, to copy it from the box), and a box showing the prompt with the
    8 recipes numbered 1 to 8, each with its title and link, and no ingredient lines.
 4. Paste it into your Claude chat and wait for the reply. Copy the **whole** reply, notes and all, and paste it into the box under the prompt.
 5. Press **READ REPLY**. **You should see:** a summary of how many matched exactly (and are validated), how many were recorded with differences or notes, and how many
    the chat could not read; each recipe that is not an exact match is listed with the reason or its difference count, and **OPEN**.
-6. Tap **OPEN** on a recipe listed with a difference. **You should see:** its Edit form with the stored comparison in the SOURCE section, and the recipe not validated. Look at it as you do now.
+6. Tap **OPEN** on a recipe listed with a difference. **You should see:** its Edit form with the chat's list already in the paste box and already set against the recipe (the
+   table is drawn, nothing to copy), and the recipe not validated. A recipe with two lines of one ingredient, one of them with a note and no comma ("butter cut into pieces"), should
+   now show no difference for it. If you are satisfied, press **VALIDATE INGREDIENT LIST** and **SAVE CHANGES**. **You should see:** that recipe gone from the list under READ BY CHAT,
+   and the "still to look at" count one lower.
 7. Open one recipe that matched exactly. **You should see:** a VALIDATED chip, and its hover text (or long-press) saying a Claude chat read the list.
 8. Press **COPY PROMPT** again. **You should see:** the next 8 waiting, not the ones the chat could not read.
 9. Settings → LIBRARY CHECK → RUN. **You should see:** "not compared" lower by the number the summary said was recorded.
+
+Recipes recorded before this version keep the counts they were recorded with, and the list under the buttons starts empty after a reload. To re-check one: open it from LIBRARY CHECK and use RE-CHECK in its SOURCE section (or paste the list again).
 
 Tell the next session: how many recipes a batch of 8 got through, any page the chat could not read (the site only, not the recipe), and any reply the app seemed to misread.
 If a step does not do what it says, note which one and what you saw.

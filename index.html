@@ -1912,7 +1912,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-11-01.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-11-01.2">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2729,7 +2729,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-11-01.1"></script>
+<script src="core.js?v=2026-11-01.2"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2737,12 +2737,12 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-11-01.1';
+const EXPECTED_CORE_VERSION = '2026-11-01.2';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-11-01.1';
+const APP_VERSION = '2026-11-01.2';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -10513,7 +10513,7 @@ function openEditModal(recipeId){
   pendingFold = null;
   document.getElementById('addFileBtn').hidden = true;
   document.getElementById('parseResult').hidden = true;
-  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null; formValidated = null; aisleUndo = null;
+  lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null; formValidated = null; aisleUndo = null; prefilledSource = null;
 
   document.getElementById('modalTitle').textContent = 'Edit recipe';
   document.getElementById('modalSubtitle').textContent =
@@ -10579,7 +10579,7 @@ function closeAddModal(){
   /* Nothing of one recipe's review may reach the next: the link field is emptied too, since a
      link left behind would send the next recipe's source check to the wrong page. */
   document.getElementById('f-source-url').value = '';
-  lastCheckedUrl = ''; lastSourceLines = null; bandsShown = false; reviewLines = [];
+  lastCheckedUrl = ''; lastSourceLines = null; prefilledSource = null; bandsShown = false; reviewLines = [];
   lineUndos = []; scaleUndo = null; refreshScaleUndo(); showSpellRow(''); formComparison = null; formValidated = null; aisleUndo = null;
   resetFormPhotos(null); closeSourcePhotoViewer(); pendingFold = null;
   clearTimeout(beforeSaveTimer); renderBeforeSave();
@@ -11594,6 +11594,41 @@ function renderLibraryCheck(){
       <button class="btn" data-lc-open="${escapeHtml(x.id)}">OPEN</button>
     </div>`).join('') || `<p class="empty">Nothing needs attention.</p>`;
 }
+/* OPEN on a result that has a list (1 Nov 2026): the Edit form with that list already set against the recipe, so what was copied
+   and pasted by hand, for every recipe with a difference, is not. `heading` is what showSourceComparison records the route from:
+   'SOURCE' for the function's list, 'CHAT' for a chat's (whose lines also go in the paste box, where they can be edited). Nothing is
+   written by opening: SAVE records the comparison, and VALIDATE INGREDIENT LIST is still the household's word. A result with no
+   list (a page that could not be read) just opens the form. */
+function openEditWithSource(id, lines, heading){
+  openEditModal(id);
+  if(state.editingRecipeId !== id || !lines || !lines.length) return;
+  prefilledSource = { lines, heading };
+  if(heading === 'CHAT'){
+    pastedSourceText = lines.join('\n');
+    document.getElementById('sourcePasteInput').value = pastedSourceText;
+  }
+  const out = document.getElementById('sourceCompareOut');
+  showSourceComparison(out, lines, heading);
+  try { out.scrollIntoView({ block: 'start' }); } catch(e){}
+}
+/* A result stays on CHECK ALL's and READ BY CHAT's lists only while it still asks something of the household: a recipe recorded
+   with differences until it is validated, or compared clean, or has changed since (then it needs comparing again); one that could
+   not be read or was skipped until it has been compared some other way. The lists were a log of the run, so a recipe the household
+   had gone on to validate in the Edit form stayed on them (1 Nov 2026). */
+function sourceResultOpen(x){
+  const r = loadRecipes().find(q=> q.id === x.id);
+  if(!r) return false;
+  const st = sourceCheckStatus(r.sourceCheck, ingredientLinesOf(parseRecipe(r.syntax || '')));
+  if(st.validated) return false;
+  if(x.kind === 'looked') return !(st.state === 'fresh' && st.hard === 0 && st.soft === 0);
+  return st.state !== 'fresh';
+}
+function refreshSourceLists(){
+  renderCheckAll();
+  renderReadByChat();
+  if(libraryCheckResult){ libraryCheckResult = libraryCheckRows(); renderLibraryCheck(); }
+}
+
 /* CHECK ALL AGAINST SOURCES (31 Oct 2026, docs/PLAN-BULK-VALIDATE.md §3 route 1). COMPARE WITH SOURCE for the whole
    library: for each recipe with an https link that has no fresh comparison, the same call the Edit form makes
    (`source-ingredients` with the recipe's link), the same sourceFidelity and fidelityCounts, recorded as route
@@ -11619,13 +11654,14 @@ function renderCheckAll(){
   const waiting = running ? 0 : checkAllEligible().length;
   btn.disabled = running || waiting === 0;
   document.getElementById('checkAllStopBtn').hidden = !running;
-  const count = k=> st ? st.results.filter(x=> x.kind === k).length : 0;
+  const open = st ? st.results.filter(x=> x.kind !== 'exact' && sourceResultOpen(x)) : [];
+  const count = k=> st ? (k === 'exact' ? st.results.filter(x=> x.kind === 'exact').length : open.filter(x=> x.kind === k).length) : 0;
   const parts = [];
   if(st){
     parts.push(running ? `Checking ${st.done} of ${st.total}…` : `Checked ${st.done} of ${st.total}.`);
     const bits = [
       count('exact') ? `${count('exact')} matched exactly and ${count('exact') === 1 ? 'is' : 'are'} validated` : '',
-      count('looked') ? `${count('looked')} recorded with differences or notes to look at` : '',
+      count('looked') ? `${count('looked')} recorded with differences or notes still to look at` : '',
       count('unread') ? `${count('unread')} could not be read` : '',
       count('skipped') ? `${count('skipped')} skipped` : ''
     ].filter(Boolean);
@@ -11634,7 +11670,7 @@ function renderCheckAll(){
   }
   if(!running) parts.push(waiting ? `${waiting} recipe${waiting === 1 ? '' : 's'} waiting to be checked.` : 'No recipe is waiting to be checked.');
   document.getElementById('checkAllSummary').textContent = parts.join(' ');
-  const shown = st ? st.results.filter(x=> x.kind !== 'exact') : [];
+  const shown = open;
   document.getElementById('checkAllList').innerHTML = shown.map(x=> `<div class="source-row lc-row" data-ca-id="${escapeHtml(x.id)}" data-ca-kind="${x.kind}">
       <div><div class="source-row-name">${escapeHtml(x.title)}</div><div class="swap-row-detail">${escapeHtml(x.text)}</div></div>
       ${x.kind === 'skipped' ? '' : `<button class="btn" data-ca-open="${escapeHtml(x.id)}">OPEN</button>`}
@@ -11665,7 +11701,7 @@ async function runCheckAll(){
   if(checkAllState && checkAllState.running) return;
   const todo = checkAllEligible().map(r=> ({ id: r.id, title: r.title, url: r.sourceUrl, hash: linesHash(ingredientLinesOf(parseRecipe(r.syntax || ''))) }));
   const st = checkAllState = { running: true, stop: false, total: todo.length, done: 0, results: [], note: '' };
-  const add = (t, kind, text)=> st.results.push({ id: t.id, title: t.title, kind, text });
+  const add = (t, kind, text, lines)=> st.results.push({ id: t.id, title: t.title, kind, text, lines: lines || null });
   let unreachable = 0;
   renderCheckAll();
   for(const t of todo){
@@ -11685,7 +11721,7 @@ async function runCheckAll(){
       renderCheckAll(); continue;
     }
     const rec = recordSourceCheck(t, data.ingredients, 'function', false);
-    add(t, rec.kind, rec.text);
+    add(t, rec.kind, rec.text, rec.kind === 'looked' ? data.ingredients : null);
     renderCheckAll();
   }
   st.running = false;
@@ -11696,7 +11732,9 @@ document.getElementById('checkAllBtn').addEventListener('click', runCheckAll);
 document.getElementById('checkAllStopBtn').addEventListener('click', ()=>{ if(checkAllState) checkAllState.stop = true; });
 document.getElementById('checkAllList').addEventListener('click', e=>{
   const open = e.target.closest('[data-ca-open]');
-  if(open) openEditModal(open.dataset.caOpen);
+  if(!open) return;
+  const res = checkAllState && [...checkAllState.results].reverse().find(x=> x.id === open.dataset.caOpen);
+  openEditWithSource(open.dataset.caOpen, res && res.lines, 'SOURCE');
 });
 
 /* READ BY CHAT (1 Nov 2026, docs/PLAN-BULK-VALIDATE.md §5). CHECK ALL's second route, for the pages the function cannot read:
@@ -11723,15 +11761,16 @@ function renderReadByChat(){
     : 'No recipe is waiting to be read by a chat.';
   copyBtn.disabled = !sent && !waiting.length;
   document.getElementById('readChatReadBtn').disabled = !sent;
-  const count = k=> readChat.results.filter(x=> x.kind === k).length;
+  const open = readChat.results.filter(x=> x.kind !== 'exact' && sourceResultOpen(x));
+  const count = k=> k === 'exact' ? readChat.results.filter(x=> x.kind === 'exact').length : open.filter(x=> x.kind === k).length;
   const bits = [
     count('exact') ? `${count('exact')} matched exactly and ${count('exact') === 1 ? 'is' : 'are'} validated` : '',
-    count('looked') ? `${count('looked')} recorded with differences or notes to look at` : '',
+    count('looked') ? `${count('looked')} recorded with differences or notes still to look at` : '',
     count('unread') ? `${count('unread')} could not be read by the chat` : '',
     count('skipped') ? `${count('skipped')} skipped` : ''
   ].filter(Boolean);
   document.getElementById('readChatSummary').textContent = [bits.length ? 'Read this way: ' + bits.join('; ') + '.' : '', readChat.note].filter(Boolean).join(' ');
-  document.getElementById('readChatList').innerHTML = readChat.results.filter(x=> x.kind !== 'exact').map(x=> `<div class="source-row lc-row" data-rc-id="${escapeHtml(x.id)}" data-rc-kind="${x.kind}">
+  document.getElementById('readChatList').innerHTML = open.map(x=> `<div class="source-row lc-row" data-rc-id="${escapeHtml(x.id)}" data-rc-kind="${x.kind}">
       <div><div class="source-row-name">${escapeHtml(x.title)}</div><div class="swap-row-detail">${escapeHtml(x.text)}</div></div>
       ${x.kind === 'skipped' ? '' : `<button class="btn" data-rc-open="${escapeHtml(x.id)}">OPEN</button>`}
     </div>`).join('');
@@ -11762,7 +11801,7 @@ function readChatReply(){
   const parsed = parseSourceReply(replyEl.value, sent.items);
   parsed.results.forEach((res, i)=>{
     const item = sent.items[i];
-    const add = (kind, text)=> readChat.results.push({ id: item.id, title: item.title, kind, text });
+    const add = (kind, text, lines)=> readChat.results.push({ id: item.id, title: item.title, kind, text, lines: lines || null });
     if(res.status === 'unread' || res.status === 'missing'){
       readChat.skip.add(item.id);
       add('unread', res.why ? res.why.charAt(0).toUpperCase() + res.why.slice(1).replace(/\.$/, '') + '.' : 'The chat gave no reason.');
@@ -11773,7 +11812,7 @@ function readChatReply(){
     const rec = recordSourceCheck(item, res.lines, 'chat', res.status === 'partly');
     if(rec.kind === 'skipped') readChat.skip.add(item.id);
     const kind = off && rec.kind === 'exact' ? 'looked' : rec.kind;
-    add(kind, [rec.text, off ? `The chat's list looks the wrong length: ${off}.` : ''].filter(Boolean).join(' '));
+    add(kind, [rec.text, off ? `The chat's list looks the wrong length: ${off}.` : ''].filter(Boolean).join(' '), kind === 'looked' ? res.lines : null);
   });
   readChat.note = parsed.unmatched.length ? `The reply had ${parsed.unmatched.length === 1 ? 'a block' : 'blocks'} numbered ${parsed.unmatched.join(', ')} that the prompt did not have; ignored.` : '';
   readChat.sent = null;
@@ -11787,7 +11826,9 @@ document.getElementById('readChatCopyBtn').addEventListener('click', copyChatPro
 document.getElementById('readChatReadBtn').addEventListener('click', readChatReply);
 document.getElementById('readChatList').addEventListener('click', e=>{
   const open = e.target.closest('[data-rc-open]');
-  if(open) openEditModal(open.dataset.rcOpen);
+  if(!open) return;
+  const res = [...readChat.results].reverse().find(x=> x.id === open.dataset.rcOpen);
+  openEditWithSource(open.dataset.rcOpen, res && res.lines, 'CHAT');
 });
 
 document.getElementById('libraryCheckRunBtn').addEventListener('click', ()=>{ libraryCheckResult = libraryCheckRows(); renderLibraryCheck(); renderCheckAll(); });
@@ -12552,6 +12593,9 @@ let pastedSourceText = '';
    the comparison can be redrawn against the recipe's current lines without a second fetch. */
 let lastCheckedUrl = '';
 let lastSourceLines = null;
+/* A list handed to the form by OPEN on a CHECK ALL or READ BY CHAT result (1 Nov 2026): { lines, heading }, drawn as a comparison as soon
+   as the form opens and redrawn when the form re-parses, like lastSourceLines. Never kept past the form. */
+let prefilledSource = null;
 let bandsShown = false;        // a parse (or an Edit) has drawn the bands, so an edit to the text now makes them stale
 let reviewLines = [];          // the recipe's ingredient lines as last read, for the sections that follow the link field
 /* PR 4. What each undo needs is the whole text before and after the step, so that an undo puts
@@ -12818,6 +12862,8 @@ function renderLineChecks(parsed){
      re-parse clears the box as it always has. */
   if(lastSourceLines && lastCheckedUrl === document.getElementById('f-source-url').value.trim()){
     showSourceComparison(document.getElementById('sourceCompareOut'), lastSourceLines, 'SOURCE');
+  } else if(prefilledSource){
+    showSourceComparison(document.getElementById('sourceCompareOut'), prefilledSource.lines, prefilledSource.heading);
   }
 }
 
@@ -12895,7 +12941,7 @@ function showSourceComparison(out, sourceLines, heading){
      hash is of the lines compared, so a recipe edited afterwards reads as compared before it changed.
      Only counts are kept: the pasted text, and the page's, are never stored. Every redraw against
      the lines as they are now is a comparison of those lines, so it replaces the record. */
-  formComparison = { at: new Date().toISOString(), route: heading === 'PASTED' ? 'pasted' : 'function',
+  formComparison = { at: new Date().toISOString(), route: heading === 'PASTED' ? 'pasted' : heading === 'CHAT' ? 'chat' : 'function',
     hard: misses, soft: softCount, sourceLines: sourceLines.length, linesHash: linesHash(recipeLines) };
   formValidated = null;
   /* A comparison speaks for the list from here on, so the photo's offer steps aside (SAVE records the comparison). */
@@ -12939,7 +12985,7 @@ function showSourceComparison(out, sourceLines, heading){
   const quiet = misses + softCount > 0 && plain.length > 0;
   const sec = (title, n, body, cls)=> body ? `<tr class="sec ${cls || ''}"><th colspan="2">${title} (${n})</th></tr>${body}` : '';
   const flagSec = (title, dir)=>{ const rows = flaggedBy(dir); return sec(title, distinct(rows), rows.map(m=> matchedRow(m, 'miss', m.check.why + (m.note ? ' · ' + m.note.why : ''))).join('')); };
-  const repeats = heading === 'PASTED' ? pastedRepeats(sourceLines) : [];
+  const repeats = heading === 'PASTED' || heading === 'CHAT' ? pastedRepeats(sourceLines) : [];
   const repeatsHtml = repeats.length
     ? `<div class="hint repeats">${repeats.slice(0, 3).map(r=> `<b>${escapeHtml(r.line)}</b> is in the pasted list ${r.n} times`).join('; ')}${repeats.length > 3 ? `; ${repeats.length - 3} more repeat${repeats.length - 3 === 1 ? '' : 's'}` : ''}. ` +
       `Some pages print an ingredient again under each step that uses it, with its whole amount, and copying the list from there brings the repeats with it. If this page does, paste only the main ingredient list; if the recipe really uses it that often, carry on. Every line is still compared as pasted.</div>`
@@ -13298,6 +13344,7 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     const returnTo = state.viewerReturnTo;
     closeAddModal();
     updateSidebarCounts();
+    refreshSourceLists();
     openRecipe(editedId, returnTo);
     showToast(`Saved changes to "${fields.title}"`);
   } else {

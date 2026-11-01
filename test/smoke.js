@@ -4312,6 +4312,50 @@ const check = (name, pass, detail) => {
   check('    a list far shorter than the recipe\'s is recorded (it can only differ) and flagged as the wrong length; with every recipe read or set aside, none is waiting and COPY PROMPT is off',
         rc5.rows.some(r => r === 'cb-9:looked') && /wrong length: 1 lines against the recipe's 6/.test(await page.evaluate(() => document.getElementById('readChatList').textContent))
         && /No recipe is waiting to be read by a chat/.test(rc5.batch) && rc5.copyOff && rcW2.length === 1 && rcW2[0].id === 'cb-9' && rcW2[0].cols === 'source_check,updated_at', JSON.stringify([rc5.rows, rc5.batch, rcW2]));
+  /* ---- OPEN carries the list, and the lists show what is still open (1 Nov 2026) ----
+     After the two reads above, recipes 2, 4, 6 and 9 are recorded with differences and 3, 5, 7 and 10 are not recorded. */
+  const rcOpenRows = () => page.evaluate(() => [...document.querySelectorAll('#readChatList [data-rc-id]')].map(r => r.dataset.rcId).sort().join());
+  const rcBefore = await rcOpenRows();
+  check('OPEN lists every recipe still to look at after the two reads: the four recorded with differences and the four not recorded',
+        rcBefore === 'cb-10,cb-2,cb-3,cb-4,cb-5,cb-6,cb-7,cb-9', rcBefore);
+  await page.evaluate(() => document.querySelector('#readChatList [data-rc-open="cb-2"]').click());
+  await page.waitForTimeout(300);
+  const rcOpen = await page.evaluate(() => ({ open: document.getElementById('addModalOverlay').classList.contains('open'), editing: state.editingRecipeId,
+    paste: document.getElementById('sourcePasteInput').value, table: document.getElementById('sourceCompareOut').textContent.replace(/\s+/g, ' '),
+    route: formComparison && formComparison.route, hard: formComparison && formComparison.hard, validated: formValidated }));
+  check('    OPEN on a recipe recorded with a difference opens its Edit form with the chat\'s list in the paste box and already set against the recipe, recorded as read by a chat, not yet validated',
+        rcOpen.open && rcOpen.editing === 'cb-2' && /1 tsp cumin/.test(rcOpen.paste) && /1 tsp cumin/.test(rcOpen.table) && rcOpen.route === 'chat' && rcOpen.hard === 1 && !rcOpen.validated, JSON.stringify(rcOpen).slice(0, 500));
+  const rcMark3 = await anMark();
+  await page.evaluate(() => { document.querySelector('[data-source-validate]').click(); });
+  await page.waitForTimeout(100);
+  await page.evaluate(() => document.getElementById('saveBtn').click());
+  await page.waitForTimeout(500);
+  const rcSaved = await page.evaluate(m => ({ open: document.getElementById('addModalOverlay').classList.contains('open'), check: loadRecipes().find(r => r.id === 'cb-2').sourceCheck,
+    rows: [...document.querySelectorAll('#readChatList [data-rc-id]')].map(r => r.dataset.rcId).sort().join(), summary: document.getElementById('readChatSummary').textContent,
+    upserts: window.__WRITES__.slice(m).filter(w => w.table === 'recipes' && w.op === 'upsert').length }), rcMark3);
+  check('    validating and saving there records it validated by a chat, and the recipe leaves the list while the others stay (it was a log before, so it stayed)',
+        !rcSaved.open && rcSaved.check && rcSaved.check.route === 'chat' && rcSaved.check.validated && rcSaved.check.hard === 1 && rcSaved.upserts === 1
+        && rcSaved.rows === 'cb-10,cb-3,cb-4,cb-5,cb-6,cb-7,cb-9' && /3 recorded with differences or notes still to look at/.test(rcSaved.summary), JSON.stringify(rcSaved));
+  await page.evaluate(() => { loadRecipes().find(r => r.id === 'cb-6').sourceCheck = { at: new Date().toISOString(), route: 'chat', hard: 0, soft: 0, sourceLines: 2, linesHash: linesHash(ingredientLinesOf(parseRecipe(loadRecipes().find(r => r.id === 'cb-6').syntax))) }; renderReadByChat(); });
+  const rcClean = await rcOpenRows();
+  await page.evaluate(() => { loadRecipes().find(r => r.id === 'cb-9').syntax = loadRecipes().find(r => r.id === 'cb-9').syntax.replace('6 figs', '7 figs'); renderReadByChat(); });
+  const rcEdited = await rcOpenRows();
+  check('    a recipe compared clean leaves the list; one edited since it was recorded stays, since its comparison is of lines that are no longer there',
+        rcClean === 'cb-10,cb-3,cb-4,cb-5,cb-7,cb-9' && rcEdited === 'cb-10,cb-3,cb-4,cb-5,cb-7,cb-9', JSON.stringify([rcClean, rcEdited]));
+  await page.evaluate(() => document.querySelector('#readChatList [data-rc-open="cb-3"]').click());
+  await page.waitForTimeout(300);
+  const rcNone = await page.evaluate(() => ({ editing: state.editingRecipeId, paste: document.getElementById('sourcePasteInput').value, table: document.getElementById('sourceCompareOut').textContent.trim(), comparison: formComparison }));
+  check('    OPEN on a page the chat could not read just opens the form: no list to carry, nothing compared',
+        rcNone.editing === 'cb-3' && rcNone.paste === '' && rcNone.table === '' && rcNone.comparison === null, JSON.stringify(rcNone));
+  await page.evaluate(() => closeAddModal());
+  await page.evaluate(() => { checkAllState = { running: false, stop: false, total: 1, done: 1, note: '', results: [{ id: 'cb-4', title: 'Chat 4', kind: 'looked', text: '1 difference. Recorded, not validated.', lines: ['2 tbsp soy sauce', '200 g red lentils', '1 tsp cumin'] }] }; renderCheckAll(); });
+  await page.evaluate(() => document.querySelector('#checkAllList [data-ca-open="cb-4"]').click());
+  await page.waitForTimeout(300);
+  const caOpen = await page.evaluate(() => ({ editing: state.editingRecipeId, route: formComparison && formComparison.route, table: document.getElementById('sourceCompareOut').textContent.replace(/\s+/g, ' '), paste: document.getElementById('sourcePasteInput').value }));
+  check('    CHECK ALL\'s list does the same with the function\'s list: opened already compared, recorded as the function\'s, and the paste box left empty',
+        caOpen.editing === 'cb-4' && caOpen.route === 'function' && /1 tsp cumin/.test(caOpen.table) && caOpen.paste === '', JSON.stringify(caOpen).slice(0, 400));
+  await page.evaluate(() => { closeAddModal(); checkAllState = null; renderCheckAll(); });
+
   await page.evaluate(() => { for(let n = 1; n <= 10; n++){ const i = loadRecipes().findIndex(r => r.id === 'cb-' + n); if(i > -1) loadRecipes().splice(i, 1); }
     readChat = { sent: null, results: [], skip: new Set(), note: '' }; document.getElementById('readChatReply').value = ''; renderReadByChat(); renderCheckAll(); });
 

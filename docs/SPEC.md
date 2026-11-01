@@ -258,7 +258,7 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
   recipes and copies a prompt of their numbered titles and links (never recipe lines) for the household's own Claude chat; the chat's reply is pasted into the
   box and **READ REPLY** reads it by the number on each block, compares each list as CHECK ALL does and records it as `route: "chat"`, validated only on an exact
   match and never when the chat said it read only part of the page. A recipe the chat could not read, or left out, writes nothing and is not offered again that
-  session. A list far shorter or longer than the recipe's is flagged; the viewer's chip says a chat read the list. `buildSourcePrompt`, `parseSourceReply` and
+  session. A list far shorter or longer than the recipe's is flagged; the viewer's chip says a chat read the list. On both CHECK ALL's list and READ BY CHAT's, **OPEN** on a recipe recorded with differences opens its Edit form with that list already set against the recipe (a chat's also in the paste box), and a recipe leaves either list once it is validated or compared clean, so the lists show only what is still to look at (1 Nov 2026). `buildSourcePrompt`, `parseSourceReply` and
   `replyLengthOff` are in `core.js`;
   **LIBRARY CHECK** (recipes not yet compared with their source, and recipes writing one ingredient on several lines);
   tidy SOURCES and KEYWORDS; **RECIPE PHOTOS** (RE-HOST EXTERNAL IMAGES, CHECK STORED IMAGES).
