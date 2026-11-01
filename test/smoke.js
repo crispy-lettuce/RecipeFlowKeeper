@@ -2696,9 +2696,12 @@ const check = (name, pass, detail) => {
     return { yesterday: text(y).replace(/\s+/g, ' '), empty: text(y3).replace(/\s+/g, ' '), controls: ctl }; }, [pdY, pdY3]);
   check('    pressing it opens an EARLIER band of the last three days, oldest first, above the week rows, with HIDE and 3 MORE; the shopping days stay 14',
         pd1.label && pd1.past.join() === [pdY3, pdY2, pdY].join() && pd1.toggle.join('|') === '3 MORE|HIDE' && pd1.ordinary === 14 && pd1.planDays === 14, JSON.stringify(pd1));
-  check('    a past day shows its dishes with their headcount, an empty one says so, and none of the controls that change a day are there',
+  check('    a past day shows its dishes with their headcount (and an ad-hoc entry as plain text), and none of the controls that change a day are there',
         pdRows.yesterday.includes(pdIds[0].title) && /SERVES 5/.test(pdRows.yesterday) && pdRows.yesterday.includes(pdIds[1].title) && /ADD TO TODAY/.test(pdRows.yesterday)
-        && /NOTHING PLANNED/.test(pdRows.empty) && pdRows.controls.length === 0, JSON.stringify(pdRows));
+        && /AD HOC/.test(pdRows.empty) && pdRows.controls.length === 0, JSON.stringify(pdRows));
+  const pdNone = await page.evaluate(() => pastDayHtml(new Date(), '2000-01-01', undefined, loadRecipes(), [], false).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
+  check('    a past day with nothing on it says NOTHING PLANNED, and one that only has an ad-hoc entry (a takeaway) shows it as plain text, with no tag button or ×',
+        /NOTHING PLANNED/.test(pdNone) && !/ADD TO TODAY/.test(pdNone), pdNone);
   await page.evaluate(() => document.querySelector('#dayList [data-action="morePast"]').click());
   const pd2 = await pdShot();
   await page.evaluate(() => document.querySelector('#dayList [data-action="hidePast"]').click());
