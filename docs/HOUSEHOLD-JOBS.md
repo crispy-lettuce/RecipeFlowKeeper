@@ -1,7 +1,7 @@
 # Household job list
 
 The jobs only the household can do: a session can't tap the tablet, decide for you, or deploy for you. **Last brought up to date
-25 Oct 2026**: you reported every job here complete; one new job is waiting (sign-in, below).
+1 Nov 2026**: you reported every job here complete (Jobs 1, 2, 3 and 6); nothing is waiting.
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other households sort
 out their own converter and need no steps here.
@@ -13,101 +13,8 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-Four jobs: **Sign-in on each device** (Job 1), a few minutes per device; **Reporting a bug or an idea** (Job 2), a few minutes on the tablet; **COOK AHEAD** (Job 3),
-which starts with applying a database change from the dashboard, before the pull request that carries it is merged; and **READ BY CHAT** (Job 6), a few minutes, with no database change. What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
-
----
-
-## Job 1: signing in again on each device (issue #196)
-
-The sign-in screen now remembers your email and lets the device's own password manager offer to save the password. A test cannot see a browser's
-"save this password?" offer, so this needs a real device. Do it on the tablet you cook from first, then on a phone or laptop if you like, and tell the
-next session which device and browser you used (Safari on an iPad, Chrome on Android, and so on).
-
-1. **Reload the app** so it is on version 2026-10-25.4. **You should see:** Settings → HELP shows that version.
-2. Tap **SIGN OUT** at the foot of the sidebar. **You should see:** the sign-in screen with the email box empty the first time (this device does not know
-   your email yet).
-3. Type your email and password and tap **Sign in**. **You should see:** the app opens. The browser may now offer to save the password: Chrome shows a
-   "Save password?" box; Safari on an iPad or iPhone offers it through iCloud Keychain, if Passwords is switched on in the device's Settings. Accept it.
-   **If nothing is offered,** say so: that is what a session needs to know.
-4. Tap **SIGN OUT** again. **You should see:** the sign-in screen with your **email already filled in**, the cursor in the **password** box, and a small
-   underlined **Not you? Use another email** under the email.
-5. Tap the password box (or look at the keyboard's suggestion bar). **You should see:** the browser offers your saved password; one tap, or Face ID or a
-   fingerprint, fills it in. Tap **Sign in**. **You should see:** the app opens.
-6. *Only on a device other people use:* sign out, then tap **Not you? Use another email**. **You should see:** the email box empties and the link goes.
-   Sign in again as usual before you finish.
-
-If step 3 or 5 does not behave as written, note which one and what you saw.
-
----
-
-## Job 2: reporting a bug or an idea from the app (issue #198)
-
-A test cannot open GitHub as you, so whether the form arrives filled in, and whether the label lands, needs a real device. Do it on the tablet and, if you
-like, a phone. You need to be signed in to GitHub in that browser.
-
-1. **Reload the app** so it is on version 2026-10-30.1. **You should see:** Settings → HELP shows that version.
-2. In Settings → HELP, find **REPORT A BUG OR AN IDEA**. **You should see:** **BUG** and **IDEA** buttons, a title box, a larger box, and
-   **OPEN ON GITHUB ↗** greyed out.
-3. Choose **IDEA**, type the title `Test report, please close`, and a line or two in the box. **You should see:** the button turns solid once there is a title.
-4. Tap **OPEN ON GITHUB ↗**. **You should see:** GitHub opens in a new tab on the app's *new issue* page with the title `Idea: Test report, please close`, your words, and under
-   a line a short "From the app" list (version, look, screen, browser). Nothing about any recipe. If GitHub shows the label **enhancement** on it, say so;
-   if there is no label, say that instead (it depends on your GitHub account's rights on the repository).
-5. Tap GitHub's green **Submit new issue**, then close the issue. **You should see:** it appears under the app's issues. **Do not send a second one**
-   unless step 4 failed.
-6. Back in the app, **You should see:** what you typed is still in the boxes.
-
-If a step does not do what it says, note which one and what you saw.
-
----
-
-## Job 3: COOK AHEAD on the Planner (issue #221)
-
-**This one starts with a step only you can do, and it has to come first.** Do the rest in Test Kitchen.
-
-1. **Apply the change to the database.** Supabase dashboard → SQL editor → paste the statement from `docs/migrations/add-cook-ahead.md` (the first code
-   block, from `begin;` to `commit;`) → Run. **You should see:** it finishes without an error. Then run the *After it is applied* queries on that page.
-   **You should see:** `planner_days | cook_ahead | ARRAY | NO` and `recipe_logs | cook_ahead | boolean | NO`, `cook_ahead_logs 0`, and one constraint row.
-   Tell the next session the date, so the page and `docs/INFRASTRUCTURE.md` can say it was applied.
-2. **Reload the app** so it is on the version that carries this change. **You should see:** Settings → HELP shows it, and What's new mentions COOK AHEAD.
-3. On the Planner, tap the **TO COOK** button on a dish (a recipe for a day from today on is fine). **You should see:** a box, "How is this dish made?", with
-   **TO COOK** (marked as the current one), **COOK AHEAD** and **PRE-MADE**, each saying what it does.
-4. Choose **COOK AHEAD**. **You should see:** the button reads **COOK AHEAD**, and the dish is still on the Shopping list.
-5. On **today**, tap **COOKED ✓** on that dish. **You should see:** a note that it was logged as cooked ahead and is in your cooking stats, not the food diary; no
-   question about which meal; the button now reads **✓ COOKED AHEAD**. Open **History** for today. **You should see:** the dish is **not** there. Open **STATS**.
-   **You should see:** the meal count up by one, and the dish's card says it was cooked today.
-6. Back on the Planner, tap **✓ COOKED AHEAD** and say yes. **You should see:** the button goes back to **COOKED ✓**, and STATS and the card are as they were.
-7. Choose **PRE-MADE** from the same box on a dish. **You should see:** it still asks which meal, reads **PRE-MADE · DINNER**, and leaves the Shopping list.
-   Put it back to **TO COOK** afterwards.
-
-If a step does not do what it says, note which one and what you saw.
-
----
-
-## Job 6: READ BY CHAT
-
-No database change and nothing to deploy. Do it in your own household, with a Claude chat that can open web pages (the one you tested with). It writes a
-comparison onto your recipes; the text of no recipe changes. Settings → LIBRARY → **LIBRARY CHECK** → RUN first, and note how many recipes it calls "not compared".
-
-1. **Reload the app** so it is on version 2026-11-01.2. **You should see:** Settings → HELP shows it, and What's new mentions the comparison fix and OPEN.
-2. Settings → LIBRARY. **You should see:** a box **READ BY CHAT** under CHECK ALL AGAINST SOURCES, saying how many recipes are waiting and which 8 the next prompt is for.
-3. Press **COPY PROMPT**. **You should see:** a note that the prompt is copied (or, if the browser refused, to copy it from the box), and a box showing the prompt with the
-   8 recipes numbered 1 to 8, each with its title and link, and no ingredient lines.
-4. Paste it into your Claude chat and wait for the reply. Copy the **whole** reply, notes and all, and paste it into the box under the prompt.
-5. Press **READ REPLY**. **You should see:** a summary of how many matched exactly (and are validated), how many were recorded with differences or notes, and how many
-   the chat could not read; each recipe that is not an exact match is listed with the reason or its difference count, and **OPEN**.
-6. Tap **OPEN** on a recipe listed with a difference. **You should see:** its Edit form with the chat's list already in the paste box and already set against the recipe (the
-   table is drawn, nothing to copy), and the recipe not validated. A recipe with two lines of one ingredient, one of them with a note and no comma ("butter cut into pieces"), should
-   now show no difference for it. If you are satisfied, press **VALIDATE INGREDIENT LIST** and **SAVE CHANGES**. **You should see:** that recipe gone from the list under READ BY CHAT,
-   and the "still to look at" count one lower.
-7. Open one recipe that matched exactly. **You should see:** a VALIDATED chip, and its hover text (or long-press) saying a Claude chat read the list.
-8. Press **COPY PROMPT** again. **You should see:** the next 8 waiting, not the ones the chat could not read.
-9. Settings → LIBRARY CHECK → RUN. **You should see:** "not compared" lower by the number the summary said was recorded.
-
-Recipes recorded before this version keep the counts they were recorded with, and the list under the buttons starts empty after a reload. To re-check one: open it from LIBRARY CHECK and use RE-CHECK in its SOURCE section (or paste the list again).
-
-Tell the next session: how many recipes a batch of 8 got through, any page the chat could not read (the site only, not the recipe), and any reply the app seemed to misread.
-If a step does not do what it says, note which one and what you saw.
+**Nothing is waiting.** One loose end, which is not a job: issue #224, "Idea: Test", is the test report Job 2 asked you to close, and it is still open on GitHub.
+What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
 
@@ -119,6 +26,11 @@ None at the moment.
 
 ## Recently done
 
+- **1 Nov:** you reported every job on this page complete: Job 1 (signing in again on each device, #196), Job 2 (REPORT A BUG OR AN IDEA, #198), Job 3 (COOK AHEAD, #221)
+  and Job 6 (READ BY CHAT: the remaining recipes worked through, and a re-check after the comparison fix, #229, with the false differences gone). Seen by a session, not only
+  reported: #196 was closed on 25 Oct and #198 and #221 on 31 Oct at 09:11 UTC; on 1 Nov the live database held COOK AHEAD's two columns and its constraint (read-only, and 0 of 158
+  log rows are cook-ahead, which is what the job's own undo step leaves), and `docs/INFRASTRUCTURE.md` now records the migration as applied. The rest is your report; a session did
+  not see it. The test report Job 2 asked you to close, #224, is still open.
 - **31 Oct:** you reported CHECK ALL AGAINST SOURCES (Job 5, app version 2026-10-31.2) done: of 55 recipes waiting, 4 were recorded with differences, which you judged real, and 51 could
   not be read; a second run of those 51 failed all 51 with "the source page returned 403" (sites refusing the check). That is your report; a session did not see it. It is why READ BY CHAT exists.
 - **31 Oct:** you reported the IN OTHER NOW job (Job 4, #225, app version 2026-10-31.1) OK. That is your report; a session did not see it.
