@@ -4325,6 +4325,9 @@ const check = (name, pass, detail) => {
     route: formComparison && formComparison.route, hard: formComparison && formComparison.hard, validated: formValidated }));
   check('    OPEN on a recipe recorded with a difference opens its Edit form with the chat\'s list in the paste box and already set against the recipe, recorded as read by a chat, not yet validated',
         rcOpen.open && rcOpen.editing === 'cb-2' && /1 tsp cumin/.test(rcOpen.paste) && /1 tsp cumin/.test(rcOpen.table) && rcOpen.route === 'chat' && rcOpen.hard === 1 && !rcOpen.validated, JSON.stringify(rcOpen).slice(0, 500));
+  await page.evaluate(() => renderLineChecks(parseRecipe(document.getElementById('importInput').value)));
+  const rcRe = await page.evaluate(() => ({ table: document.getElementById('sourceCompareOut').textContent.replace(/\s+/g, ' '), paste: document.getElementById('sourcePasteInput').value, route: formComparison && formComparison.route }));
+  check('    re-reading the form (as any edit to the text does) redraws the list against the recipe rather than losing it', /1 tsp cumin/.test(rcRe.table) && /1 tsp cumin/.test(rcRe.paste) && rcRe.route === 'chat', JSON.stringify(rcRe).slice(0, 300));
   const rcMark3 = await anMark();
   await page.evaluate(() => { document.querySelector('[data-source-validate]').click(); });
   await page.waitForTimeout(100);
