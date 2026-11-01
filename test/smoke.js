@@ -2700,7 +2700,7 @@ const check = (name, pass, detail) => {
         pdRows.yesterday.includes(pdIds[0].title) && /SERVES 5/.test(pdRows.yesterday) && pdRows.yesterday.includes(pdIds[1].title) && /ADD TO TODAY/.test(pdRows.yesterday)
         && /AD HOC/.test(pdRows.empty) && pdRows.controls.length === 0, JSON.stringify(pdRows));
   const pdNone = await page.evaluate(() => pastDayHtml(new Date(), '2000-01-01', undefined, loadRecipes(), [], false).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
-  check('    a past day with nothing on it says NOTHING PLANNED, and one that only has an ad-hoc entry (a takeaway) shows it as plain text, with no tag button or ×',
+  check('    a past day with nothing on it says NOTHING PLANNED and offers nothing to add',
         /NOTHING PLANNED/.test(pdNone) && !/ADD TO TODAY/.test(pdNone), pdNone);
   await page.evaluate(() => document.querySelector('#dayList [data-action="morePast"]').click());
   const pd2 = await pdShot();
