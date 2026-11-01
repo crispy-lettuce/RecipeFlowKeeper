@@ -4336,11 +4336,11 @@ const check = (name, pass, detail) => {
   check('    validating and saving there records it validated by a chat, and the recipe leaves the list while the others stay (it was a log before, so it stayed)',
         !rcSaved.open && rcSaved.check && rcSaved.check.route === 'chat' && rcSaved.check.validated && rcSaved.check.hard === 1 && rcSaved.upserts === 1
         && rcSaved.rows === 'cb-10,cb-3,cb-4,cb-5,cb-6,cb-7,cb-9' && /3 recorded with differences or notes still to look at/.test(rcSaved.summary), JSON.stringify(rcSaved));
-  await page.evaluate(() => { loadRecipes().find(r => r.id === 'cb-6').sourceCheck = { at: new Date().toISOString(), route: 'chat', hard: 0, soft: 0, sourceLines: 2, linesHash: linesHash(ingredientLinesOf(parseRecipe(loadRecipes().find(r => r.id === 'cb-6').syntax))) }; renderReadByChat(); });
+  await page.evaluate(() => { loadRecipes().find(r => r.id === 'cb-6').sourceCheck = { at: '2026-11-01T10:00:00.000Z', route: 'chat', hard: 0, soft: 0, sourceLines: 2, linesHash: linesHash(ingredientLinesOf(parseRecipe(loadRecipes().find(r => r.id === 'cb-6').syntax))) }; renderReadByChat(); });
   const rcClean = await rcOpenRows();
   await page.evaluate(() => { loadRecipes().find(r => r.id === 'cb-9').syntax = loadRecipes().find(r => r.id === 'cb-9').syntax.replace('6 figs', '7 figs'); renderReadByChat(); });
   const rcEdited = await rcOpenRows();
-  check('    a recipe compared clean leaves the list; one edited since it was recorded stays, since its comparison is of lines that are no longer there',
+  check('    a recipe compared clean again leaves the list (the one the chat read only partly stays until validated); one edited since it was recorded stays, since its comparison is of lines that are no longer there',
         rcClean === 'cb-10,cb-3,cb-4,cb-5,cb-7,cb-9' && rcEdited === 'cb-10,cb-3,cb-4,cb-5,cb-7,cb-9', JSON.stringify([rcClean, rcEdited]));
   await page.evaluate(() => document.querySelector('#readChatList [data-rc-open="cb-3"]').click());
   await page.waitForTimeout(300);

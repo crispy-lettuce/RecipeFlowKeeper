@@ -11620,7 +11620,9 @@ function sourceResultOpen(x){
   if(!r) return false;
   const st = sourceCheckStatus(r.sourceCheck, ingredientLinesOf(parseRecipe(r.syntax || '')));
   if(st.validated) return false;
-  if(x.kind === 'looked') return !(st.state === 'fresh' && st.hard === 0 && st.soft === 0);
+  /* Compared clean AGAIN since it was recorded: a later comparison, not the recorded one, which may itself be clean (a chat that read only
+     part of a page records no difference, and is not validated, so it stays until the household has looked). */
+  if(x.kind === 'looked') return !(st.state === 'fresh' && st.hard === 0 && st.soft === 0 && x.at && st.at !== x.at);
   return st.state !== 'fresh';
 }
 function refreshSourceLists(){
@@ -11694,14 +11696,14 @@ function recordSourceCheck(t, sourceLines, route, partial){
   const check = { at, route, hard, soft, sourceLines: sourceLines.length, linesHash: t.hash, ...(exact ? { validated: at } : {}) };
   r.sourceCheck = check;
   patchRecipe(r.id, { source_check: check });
-  if(exact) return { kind: 'exact', text: '' };
-  return { kind: 'looked', text: `${differencesWords(hard)}${soft ? `, ${soft} note${soft === 1 ? '' : 's'}` : ''}. Recorded, not validated.${partial ? ' The chat said it read only part of the page, so this cannot be validated.' : ''}` };
+  if(exact) return { kind: 'exact', text: '', at };
+  return { kind: 'looked', at, text: `${differencesWords(hard)}${soft ? `, ${soft} note${soft === 1 ? '' : 's'}` : ''}. Recorded, not validated.${partial ? ' The chat said it read only part of the page, so this cannot be validated.' : ''}` };
 }
 async function runCheckAll(){
   if(checkAllState && checkAllState.running) return;
   const todo = checkAllEligible().map(r=> ({ id: r.id, title: r.title, url: r.sourceUrl, hash: linesHash(ingredientLinesOf(parseRecipe(r.syntax || ''))) }));
   const st = checkAllState = { running: true, stop: false, total: todo.length, done: 0, results: [], note: '' };
-  const add = (t, kind, text, lines)=> st.results.push({ id: t.id, title: t.title, kind, text, lines: lines || null });
+  const add = (t, kind, text, lines, at)=> st.results.push({ id: t.id, title: t.title, kind, text, lines: lines || null, at: at || null });
   let unreachable = 0;
   renderCheckAll();
   for(const t of todo){
@@ -11721,7 +11723,7 @@ async function runCheckAll(){
       renderCheckAll(); continue;
     }
     const rec = recordSourceCheck(t, data.ingredients, 'function', false);
-    add(t, rec.kind, rec.text, rec.kind === 'looked' ? data.ingredients : null);
+    add(t, rec.kind, rec.text, rec.kind === 'looked' ? data.ingredients : null, rec.at);
     renderCheckAll();
   }
   st.running = false;
@@ -11801,7 +11803,7 @@ function readChatReply(){
   const parsed = parseSourceReply(replyEl.value, sent.items);
   parsed.results.forEach((res, i)=>{
     const item = sent.items[i];
-    const add = (kind, text, lines)=> readChat.results.push({ id: item.id, title: item.title, kind, text, lines: lines || null });
+    const add = (kind, text, lines, at)=> readChat.results.push({ id: item.id, title: item.title, kind, text, lines: lines || null, at: at || null });
     if(res.status === 'unread' || res.status === 'missing'){
       readChat.skip.add(item.id);
       add('unread', res.why ? res.why.charAt(0).toUpperCase() + res.why.slice(1).replace(/\.$/, '') + '.' : 'The chat gave no reason.');
@@ -11812,7 +11814,7 @@ function readChatReply(){
     const rec = recordSourceCheck(item, res.lines, 'chat', res.status === 'partly');
     if(rec.kind === 'skipped') readChat.skip.add(item.id);
     const kind = off && rec.kind === 'exact' ? 'looked' : rec.kind;
-    add(kind, [rec.text, off ? `The chat's list looks the wrong length: ${off}.` : ''].filter(Boolean).join(' '), kind === 'looked' ? res.lines : null);
+    add(kind, [rec.text, off ? `The chat's list looks the wrong length: ${off}.` : ''].filter(Boolean).join(' '), kind === 'looked' ? res.lines : null, rec.at);
   });
   readChat.note = parsed.unmatched.length ? `The reply had ${parsed.unmatched.length === 1 ? 'a block' : 'blocks'} numbered ${parsed.unmatched.join(', ')} that the prompt did not have; ignored.` : '';
   readChat.sent = null;
