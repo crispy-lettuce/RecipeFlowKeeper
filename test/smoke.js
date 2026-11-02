@@ -2676,6 +2676,73 @@ const check = (name, pass, detail) => {
   check('    History\'s + ENTRY still words its dialog for the diary and ends on History at the day it added', ahHist2.view === 'history' && ahHist2.hist === ahToday, JSON.stringify(ahHist2));
   await page.evaluate(t => { loadDiary().filter(e => e.title === 'Test History Entry').forEach(e => deleteDiaryEntry(e.id)); state.historySelectedDate = null; showView('planner'); renderPlanner(); }, ahToday);
 
+  /* ---- The Planner's EARLIER band: previous days (#223, 1 Nov 2026) ----
+     Yesterday carries two dishes (one at a headcount of 5), the day before one, and the third day back nothing. The band is closed until
+     PREVIOUS 3 DAYS is pressed, and past days are read-only apart from COOKED ✓ and ADD TO TODAY. */
+  const pdIso = k => page.evaluate(n => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - n); return isoLocal(d); }, k);
+  const pdY = await pdIso(1), pdY2 = await pdIso(2), pdY3 = await pdIso(3), pdToday = await page.evaluate(() => todayStr());
+  const pdIds = await page.evaluate(() => loadRecipes().slice(0, 3).map(r => ({ id: r.id, title: r.title })));
+  await page.evaluate(([y, y2, a, b, c]) => { state.plannerPast = 0; addPlanRecipe(y, a, 5); addPlanRecipe(y, b, 0); addPlanRecipe(y2, c, 0); showView('planner'); renderPlanner(); }, [pdY, pdY2, pdIds[0].id, pdIds[1].id, pdIds[2].id]);
+  const pdShot = () => page.evaluate(() => ({ toggle: [...document.querySelectorAll('#dayList .past-toggle button')].map(b => b.textContent.trim()),
+    head: (b => b && !b.hidden ? b.textContent.trim() : null)(document.getElementById('plannerPastBtn')), headInRow: !!document.querySelector('#view-planner .planner-head #plannerPastBtn'),
+    label: !!document.querySelector('#dayList .past-label'), past: [...document.querySelectorAll('#dayList .day-row.past')].map(r => r.dataset.date),
+    ordinary: document.querySelectorAll('#dayList .day-row:not(.past)').length, planDays: dayList().length }));
+  const pd0 = await pdShot();
+  check('Planner: PREVIOUS 3 DAYS is in the heading row (so the Planner is no taller), no earlier day is shown, and the 14 days from today are as they were',
+        pd0.head === 'PREVIOUS 3 DAYS' && pd0.headInRow && pd0.toggle.length === 0 && !pd0.label && pd0.past.length === 0 && pd0.ordinary === 14 && pd0.planDays === 14, JSON.stringify(pd0));
+  await page.evaluate(() => document.getElementById('plannerPastBtn').click());
+  const pd1 = await pdShot();
+  const pdRows = await page.evaluate(([y, y3]) => { const text = d => (document.querySelector(`#dayList .day-row.past[data-date="${d}"]`) || {}).textContent || '';
+    const ctl = ['removeOne', 'choose', 'addOther', 'setServes', 'dishState', 'toggleGroupMode', 'calToggle', 'removeAdHoc'].filter(a => document.querySelector(`#dayList .day-row.past [data-action="${a}"]`));
+    return { yesterday: text(y).replace(/\s+/g, ' '), empty: text(y3).replace(/\s+/g, ' '), controls: ctl }; }, [pdY, pdY3]);
+  check('    pressing it opens an EARLIER band of the last three days, oldest first, above the week rows, with HIDE and 3 MORE; the shopping days stay 14',
+        pd1.label && pd1.past.join() === [pdY3, pdY2, pdY].join() && pd1.toggle.join('|') === '3 MORE|HIDE' && pd1.head === null && pd1.ordinary === 14 && pd1.planDays === 14, JSON.stringify(pd1));
+  check('    a past day shows its dishes with their headcount (and an ad-hoc entry as plain text), and none of the controls that change a day are there',
+        pdRows.yesterday.includes(pdIds[0].title) && /SERVES 5/.test(pdRows.yesterday) && pdRows.yesterday.includes(pdIds[1].title) && /ADD TO TODAY/.test(pdRows.yesterday)
+        && /AD HOC/.test(pdRows.empty) && pdRows.controls.length === 0, JSON.stringify(pdRows));
+  const pdNone = await page.evaluate(() => pastDayHtml(new Date(), '2000-01-01', undefined, loadRecipes(), [], false).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
+  check('    a past day with nothing on it says NOTHING PLANNED and offers nothing to add',
+        /NOTHING PLANNED/.test(pdNone) && !/ADD TO TODAY/.test(pdNone), pdNone);
+  await page.evaluate(() => document.querySelector('#dayList [data-action="morePast"]').click());
+  const pd2 = await pdShot();
+  await page.evaluate(() => document.querySelector('#dayList [data-action="hidePast"]').click());
+  const pd3 = await pdShot();
+  check('    3 MORE goes three days further back, and HIDE closes the band again',
+        pd2.past.length === 6 && pd3.past.length === 0 && pd3.head === 'PREVIOUS 3 DAYS' && pd3.toggle.length === 0, JSON.stringify([pd2.past.length, pd3]));
+  /* A shortlist item selected: tapping a past day must not put it there. */
+  const pdShortlist = await page.evaluate(([a]) => { addShortlistRecipe(a); const it = loadShortlist().find(i => i.recipeId === a); state.selectedShortlistId = it.id; state.plannerPast = 3; renderPlanner(); return it.id; }, [pdIds[2].id]);
+  const pdMark0 = await anMark();
+  await page.evaluate(y => document.querySelector(`#dayList .day-row.past[data-date="${y}"]`).click(), pdY);
+  const pdAfterTap = await page.evaluate(([y, id]) => ({ stillSelected: state.selectedShortlistId === id, ids: planRecipeIds(loadPlan()[y]).length, assignable: document.querySelectorAll('#dayList .day-row.past.assignable').length,
+    writes: window.__WRITES__.slice(window.__WRITES__.length).length }), [pdY, pdShortlist]);
+  check('    with a shortlist item selected, tapping a past day puts nothing on it',
+        pdAfterTap.stillSelected && pdAfterTap.ids === 2 && pdAfterTap.assignable === 0 && (await page.evaluate(m => window.__WRITES__.slice(m).filter(w => w.table === 'planner_days').length, pdMark0)) === 0, JSON.stringify(pdAfterTap));
+  await page.evaluate(id => { removeShortlistItem(id); state.selectedShortlistId = null; renderPlanner(); }, pdShortlist);
+  /* ADD TO TODAY puts yesterday's first dish on today at its headcount, and leaves yesterday as it was. */
+  const pdBefore = await page.evaluate(([t, y]) => ({ today: planRecipeIds(loadPlan()[t]).length, yesterday: planRecipeIds(loadPlan()[y]).length }), [pdToday, pdY]);
+  const pdMark1 = await anMark();
+  await page.evaluate(y => document.querySelector(`#dayList .day-row.past[data-date="${y}"] [data-action="addToday"]`).click(), pdY);
+  await page.waitForTimeout(300);
+  const pdAdded = await page.evaluate(([t, y, m]) => ({ today: planRecipeIds(loadPlan()[t]), servings: planServings(loadPlan()[t]), yesterday: planRecipeIds(loadPlan()[y]).length,
+    writes: window.__WRITES__.slice(m).filter(w => w.table === 'planner_days').map(w => (w.rows || []).map(r => r.plan_date).join()), toast: document.querySelector('.toast').textContent }), [pdToday, pdY, pdMark1]);
+  const pdFirst = pdAdded.today[pdAdded.today.length - 1];
+  check('    ADD TO TODAY puts that dish on today at yesterday\'s headcount with one write to today\'s row, and leaves yesterday as it was',
+        pdAdded.today.length === pdBefore.today + 1 && pdFirst === pdIds[0].id && pdAdded.servings[pdAdded.servings.length - 1] === 5 && pdAdded.yesterday === pdBefore.yesterday
+        && pdAdded.writes.length === 1 && pdAdded.writes[0] === pdToday && /is on today as well/.test(pdAdded.toast), JSON.stringify(pdAdded));
+  /* COOKED ✓ on a past day logs it for that day, through the same path as today's. */
+  const pdMark2 = await anMark();
+  await page.evaluate(y => document.querySelector(`#dayList .day-row.past[data-date="${y}"] [data-action="cooked"]`).click(), pdY);
+  await page.waitForTimeout(400);
+  const pdAsk = await page.evaluate(() => ({ open: document.getElementById('mealTypeOverlay').classList.contains('open'), heading: document.getElementById('mealTypeHeading').textContent }));
+  await page.evaluate(() => document.getElementById('mealTypeSkip').click());
+  await page.waitForTimeout(150);
+  const pdCooked = await page.evaluate(([y, a, m]) => ({ history: loadRecipes().find(r => r.id === a).history.includes(y), logs: window.__WRITES__.slice(m).filter(w => w.table === 'recipe_logs').length,
+    row: (document.querySelector(`#dayList .day-row.past[data-date="${y}"]`) || {}).textContent.replace(/\s+/g, ' ') }), [pdY, pdIds[0].id, pdMark2]);
+  check('    COOKED ✓ on a past day logs the dish as cooked on that day, asks which meal as today\'s does, and the row then reads ✓ COOKED',
+        pdCooked.history && pdCooked.logs >= 1 && /✓ COOKED/.test(pdCooked.row) && pdAsk.open && /Which meal was that/.test(pdAsk.heading), JSON.stringify([pdCooked, pdAsk]));
+  await page.evaluate(([y, y2, t, a]) => { loadDiary().filter(e => e.recipeId === a && e.cookedOn === y).forEach(e => deleteDiaryEntry(e.id));
+    const idx = planRecipeIds(loadPlan()[t]).lastIndexOf(a); if(idx > -1) removePlanRecipeAt(t, idx); clearPlanDay(y); clearPlanDay(y2); state.plannerPast = 0; showView('planner'); renderPlanner(); }, [pdY, pdY2, pdToday, pdIds[0].id]);
+
   /* An entry's meal, changed from the Planner (PR 2 of docs/PLAN-ADHOC-PLANNER.md): the tag is a button that opens the meal prompt, worded for a planned entry, with the entry's meal shown
      as chosen; tapping another sets it, tapping the chosen one takes it off, closing changes nothing, and the prompt keeps its ordinary words for a dish just cooked. */
   await page.evaluate(d => { addDiaryEntry({ title: 'Test Takeaway', cookedOn: d, mealType: 'dinner' }); addDiaryEntry({ title: 'Test Leftovers', cookedOn: d, mealType: null }); showView('planner'); renderPlanner(); }, ahDay);

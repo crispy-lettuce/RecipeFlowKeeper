@@ -55,14 +55,14 @@ READ BY CHAT.
    that is a report, not something a session saw, except that the family household's confirmed converter version read `2026-10-25.1` in the database that day. The plan
    was closed and deleted on 25 Oct: it is at commit `9851f20` (`git show 9851f20:docs/PLAN-RUN-SHEET.md`), which is what the code comments citing its sections mean.
    The timers rehearsal lives on as a standing check, `docs/TEST-PLAN.md` section H.
-2. **Open issues** (1 Nov 2026). **#223** was sent from the app's own form: a way to reach the Planner's previous days, since the Planner shows 14 days from today; no work on it,
-   and it is the household's call. **#224** is the test report from Job 2; the household closes it. **#216**, the converter and old BBC Good Food recipes, has no work on it in the
+2. **Open issues** (1 Nov 2026). **#223** was sent from the app's own form: a way to reach the Planner's previous days, since the Planner shows 14 days from today. It is built (1 Nov 2026: PREVIOUS 3 DAYS,
+   `docs/SPEC.md` §5.5) and awaits the household's tablet check, Job 7; the household closes the issue once seen. **#224** is the test report from Job 2; the household closes it. **#216**, the converter and old BBC Good Food recipes, has no work on it in the
    repository. **#200** is built in #218 and #219 (Modernist the default, the grid fitting its width, the menu hideable on every screen) and the issue is left open for the household
    to close once it is seen on the tablet. **#199**: the app is called "Recipe Wrangler" on screen; renaming the repository is not started and waits on the household's answers.
    **#198** (reporting a bug or idea, Settings → HELP → REPORT A BUG OR AN IDEA, `docs/SPEC.md` §5.9) and **#221** (COOK AHEAD on the Planner, §5.5) are built and were closed on
    31 Oct; the plan that covered both was deleted with the build: `git show 40e461d:docs/PLAN-COOK-AHEAD-AND-REPORTS.md`. #100, a preview site, was closed; its reasoning is at
    `git show 67b552e:docs/PLAN-PREVIEW-SITE.md`.
-3. **Household jobs** are in `docs/HOUSEHOLD-JOBS.md`: none waiting (1 Nov 2026).
+3. **Household jobs** are in `docs/HOUSEHOLD-JOBS.md`: one waiting (1 Nov 2026), Job 7, the Planner's previous days (#223).
 4. **Checking many recipes against their sources at once** (`docs/PLAN-BULK-VALIDATE.md`) is built: IN OTHER NOW (#225), CHECK ALL (#227), READ BY CHAT (#228) and the comparison fix with
    OPEN carrying the list (#229). The household worked the library through it and reported it complete on 1 Nov. Two things in the plan are not built, and the plan stays until
    they are built or moved to issues: reading a page's servings for a recipe that has none (it needs an Edge Function change the household deploys, and a write to the recipe's

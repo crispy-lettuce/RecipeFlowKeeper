@@ -801,6 +801,13 @@ function loadArchivoFont(){
     letter-spacing:.04em; color:var(--ink-faint); text-transform:uppercase; font-weight:500;
   }
   .week-label:first-of-type{ margin-top:16px; }
+  /* PREVIOUS 3 DAYS, 3 MORE and HIDE (#223): the same small buttons as the day's own, in a row of their own above the first week. */
+  .past-toggle{ display:flex; flex-wrap:wrap; gap:10px; margin:8px 0 0; }
+  /* PREVIOUS 3 DAYS sits in the Planner's heading row (the row is already taller than the button, so the Planner is no taller): drawn
+     44px tall, as every button here is; the other look draws it smaller and keeps the 44px tap area in its own stylesheet. */
+  .planner-tools{ display:flex; align-items:baseline; gap:16px; flex-wrap:wrap; }
+  .planner-past{ position:relative; min-height:44px; background:none; border:none; padding:4px 0; cursor:pointer; font-size:14px; letter-spacing:.04em; color:var(--plum); font-weight:500; }
+  .planner-past[hidden]{ display:none; }
 
   .assign-banner{
     display:flex; align-items:center; gap:12px; justify-content:space-between;
@@ -1912,7 +1919,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-11-01.2">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-11-01.3">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2094,7 +2101,7 @@ function loadArchivoFont(){
         <div class="planner-days">
           <div class="planner-head">
             <h1>Next Fourteen Days</h1>
-            <div class="planner-rolls">ROLLS FORWARD DAILY</div>
+            <div class="planner-tools"><button class="planner-past" id="plannerPastBtn" type="button" aria-expanded="false">PREVIOUS 3 DAYS</button><div class="planner-rolls">ROLLS FORWARD DAILY</div></div>
           </div>
           <div id="assignBanner" class="assign-banner" style="display:none;"></div>
           <div id="dayList"></div>
@@ -2742,7 +2749,7 @@ const EXPECTED_CORE_VERSION = '2026-11-01.2';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-11-01.2';
+const APP_VERSION = '2026-11-01.3';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -6209,6 +6216,7 @@ function findSimilarTerm(newTerm, countsByTerm){
    ===================================================================== */
 const state = {
   view: 'recipes',
+  plannerPast: 0,              // days of the Planner's EARLIER band shown (#223); 0 is closed. This tab only, never stored.
   text: '',
   course: [],
   keywords: [],                // chips that match a recipe's keywords exactly (#201)
@@ -8133,6 +8141,77 @@ function adHocRowHtml(e){
     </span>
   </div>`;
 }
+/* EARLIER (#223, 1 Nov 2026): the last few days above today, for when the week did not go to plan and last night's dish is
+   wanted tonight. A past day's plan is never deleted (the database keeps every day back to August), it just was not shown.
+   Read-only on purpose: no ×, no CHOOSE A RECIPE, no headcount or calendar buttons, and not a day a shortlist item can be put on.
+   What it offers is the recipe (tap the title), COOKED ✓ for a dish that was cooked (the same log as today's), and ADD TO TODAY, which
+   puts the dish on today at that day's headcount and leaves the past day as it was. dayList() stays 14 days from today: the shopping
+   list, the calendar and the sidebar's counts all read it, so past days are drawn from here and never join it. */
+const PAST_STEP = 3, PAST_MAX = 15;
+function pastCookedHtml(recipe, iso, premade, cookAhead, idx){
+  if(premade) return '';
+  if(cookAheadAvailable && loadDiary().find(e=> e.cookAhead && e.recipeId === recipe.id && e.cookedOn === iso))
+    return `<span class="day-recipe-cooked done ahead" title="Cooked on this day to eat another">✓ COOKED AHEAD</span>`;
+  return (recipe.history || []).includes(iso)
+    ? `<span class="day-recipe-cooked done" title="In the food diary for this day">✓ COOKED</span>`
+    : `<button class="day-recipe-cooked" data-action="cooked" data-idx="${idx}" title="Log it as cooked on this day">COOKED ✓</button>`;
+}
+function pastDayHtml(d, iso, entry, recipes, adHoc, mod){
+  const adHocRows = adHoc.map(e=> `<div class="day-recipe-row day-adhoc-row">
+      <span class="day-recipe-title day-adhoc-title">${escapeHtml(e.title || 'Untitled')}</span>
+      <span class="day-recipe-meta"><span class="day-recipe-course adhoc">${escapeHtml((e.mealType ? MEAL_TYPE_LABELS[e.mealType].toUpperCase() + ' · ' : '') + 'AD HOC')}</span></span>
+    </div>`).join('');
+  const ids = planRecipeIds(entry);
+  let inner;
+  if(entry && entry.blank){
+    inner = `<div class="day-main"><span class="day-away">AWAY — LEFT BLANK ON PURPOSE</span>${adHocRows}</div>`;
+  } else if(ids.length){
+    const servings = planServings(entry), premade = planPremade(entry), ahead = planCookAhead(entry);
+    const rows = ids.map((id, idx)=>{
+      const recipe = recipes.find(r=> r.id === id);
+      if(!recipe) return `<div class="day-recipe-row"><span class="day-away">Recipe removed</span></div>`;
+      const course = (recipe.tags && recipe.tags.course) || '';
+      const tone = course === 'Dessert' ? ' dessert' : ((course === 'Bread' || course === 'Baking') ? ' bread' : '');
+      const target = servings[idx] || parseInt(recipe.servings, 10) || 0;
+      const how = premade[idx] ? 'PRE-MADE' : ahead[idx] ? 'COOK AHEAD' : '';
+      return `<div class="day-recipe-row">
+        <button class="day-recipe-title" data-action="view" data-idx="${idx}">${escapeHtml(recipe.title || 'Untitled')}</button>
+        <span class="day-recipe-meta">
+          ${course ? `<span class="day-recipe-course${tone}">${escapeHtml(course.toUpperCase())}</span>` : ''}
+          <span class="day-recipe-time">${timeHtml(recipe.time)}</span>
+          ${target ? `<span class="day-recipe-time">SERVES ${target}</span>` : ''}
+          ${how ? `<span class="day-recipe-time">${how}</span>` : ''}
+          ${pastCookedHtml(recipe, iso, premade[idx], ahead[idx], idx)}
+          <button class="day-recipe-cooked" data-action="addToday" data-idx="${idx}" title="Put this dish on today as well. This day is left as it was">ADD TO TODAY</button>
+        </span>
+      </div>`;
+    }).join('');
+    inner = `<div class="day-main">${rows}${adHocRows}</div>`;
+  } else if(adHoc.length){
+    inner = `<div class="day-main">${adHocRows}</div>`;
+  } else {
+    inner = `<div class="day-main day-main-empty"><span class="day-away">NOTHING PLANNED</span></div>`;
+  }
+  return `<div class="day-row past" data-date="${iso}">
+    <div class="day-num">${mod ? `<span class="day-dow">${d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase()}</span><span class="day-date">${d.getDate()}</span>` : formatDayLabel(d)}</div>
+    ${inner}
+  </div>`;
+}
+function pastBandHtml(plan, recipes, adHocByDay, mod){
+  const n = state.plannerPast | 0;
+  const head = document.getElementById('plannerPastBtn');
+  if(head){ head.hidden = !!n; head.setAttribute('aria-expanded', 'false'); }
+  if(!n) return '';
+  const rows = [];
+  for(let k = n; k >= 1; k--){
+    const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - k);
+    const iso = isoLocal(d);
+    rows.push(pastDayHtml(d, iso, plan[iso], recipes, adHocByDay.get(iso) || [], mod));
+  }
+  return `<div class="week-label past-label">EARLIER</div>${rows.join('')}<div class="past-toggle">${n < PAST_MAX
+    ? `<button class="day-choose day-add-more" data-action="morePast">3 MORE</button>` : ''}<button class="day-choose day-add-more" data-action="hidePast" aria-expanded="true">HIDE</button></div>`;
+}
+document.getElementById('plannerPastBtn').addEventListener('click', ()=>{ state.plannerPast = PAST_STEP; renderPlanner(); });
 function renderPlannerDays(){
   const buckets = groupDaysByWeek(dayList());
   const plan = loadPlan();
@@ -8144,7 +8223,7 @@ function renderPlannerDays(){
   /* Modernist (docs/PLAN-MODERNIST.md) puts the week's dates and how many dishes are planned in it on the week's band, and
      stacks the day's name over its date. Classic's markup is as it was; the screen is redrawn when the style changes. */
   const mod = currentStyle() === 'modernist';
-  let html = '';
+  let html = pastBandHtml(plan, recipes, adHocByDay, mod);
   buckets.forEach((bucketDays, i)=>{
     let label = weekBucketLabel(i, bucketDays);
     if(mod && bucketDays.length){
@@ -8502,9 +8581,35 @@ function initPlannerListeners(){
       showToast(n ? `Added ${n} day${n === 1 ? '' : 's'} to the calendar` : 'Every planned day this week is already in the calendar');
       return;
     }
+    const pastBtn = e.target.closest('[data-action="morePast"], [data-action="hidePast"]');
+    if(pastBtn){
+      const a = pastBtn.dataset.action;
+      state.plannerPast = a === 'hidePast' ? 0 : Math.min(PAST_MAX, (state.plannerPast | 0) + PAST_STEP);
+      renderPlanner();
+      return;
+    }
     const row = e.target.closest('.day-row');
     if(!row) return;
     const date = row.dataset.date;
+    /* A past day (#223) answers only to its own three buttons, before the shortlist test below can put something on it. */
+    if(row.classList.contains('past')){
+      const pa = e.target.closest('[data-action]');
+      if(!pa) return;
+      const ent = planEntries(loadPlan()[date])[parseInt(pa.dataset.idx, 10)];
+      if(!ent) return;
+      if(pa.dataset.action === 'view') openRecipe(ent.recipeId, 'planner', ent.servings);
+      else if(pa.dataset.action === 'cooked') logRecipeUsed(ent.recipeId, date, { cookAhead: !!ent.cookAhead });
+      else if(pa.dataset.action === 'addToday'){
+        const recipe = loadRecipes().find(r=> r.id === ent.recipeId);
+        addPlanRecipe(todayStr(), ent.recipeId, ent.servings || 0);
+        updateSidebarCounts();
+        renderPlanner();
+        showToast(`${recipe ? recipe.title : 'The dish'} is on today as well`);
+        const todayRow = document.querySelector('#dayList .day-row.today');
+        if(todayRow) try { todayRow.scrollIntoView({ block: 'nearest' }); } catch(err){}
+      }
+      return;
+    }
 
     /* Tapping anywhere on a day assigns the selected shortlist item — except
        on the headcount button, which would otherwise never be reachable
