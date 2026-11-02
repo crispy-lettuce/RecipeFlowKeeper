@@ -770,9 +770,10 @@ html[data-style="modernist"] #view-planner .planner-head{ align-items:flex-end; 
 html[data-style="modernist"] #view-planner .planner-head h1{ margin:0; font-size:46px; font-weight:800; line-height:.9; letter-spacing:-0.035em; }
 html[data-style="modernist"] #view-planner .planner-rolls{ padding-bottom:4px; font-size:11px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
 /* PREVIOUS 3 DAYS (#223), in the heading row beside it: drawn small like the Planner's other small buttons, its 44px tap area the ::before the base rule gives it. */
-html[data-style="modernist"] #view-planner .planner-past{ min-height:0; padding:4px 0; font-size:12px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+/* A fixed line height and padding, so it is drawn 28px whatever font the machine falls back to (the tap area must not depend on font metrics: on the CI runner's fonts a natural line height left it at the edge of the 44px). */
+html[data-style="modernist"] #view-planner .planner-past{ min-height:0; padding:6px 0; line-height:16px; font-size:12px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
 html[data-style="modernist"] #view-planner .planner-past:hover{ color:var(--color-accent-700); }
-html[data-style="modernist"] #view-planner .planner-past::before{ content:''; position:absolute; left:-8px; right:-8px; top:-10px; bottom:-10px; }   /* 25px drawn, 45px to tap */
+html[data-style="modernist"] #view-planner .planner-past::before{ content:''; position:absolute; left:-8px; right:-8px; top:-10px; bottom:-10px; }   /* 28px drawn, 48px to tap */
 
 /* The week's band: name and dates on the left, how many planned on the right, then ADD THE WEEK when the calendar is on. */
 html[data-style="modernist"] #view-planner .week-label{
