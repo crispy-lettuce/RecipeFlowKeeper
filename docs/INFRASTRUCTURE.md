@@ -5,7 +5,8 @@ every value is either meant to be public (§6) or an identifier that grants noth
 
 **Last rewritten 22 Oct 2026** from the previous card (last checked against the live project on 12 Oct, with the calendar
 function and one migration added on 20 Oct). Figures marked *as last read* have not been re-checked since; check with the
-Supabase connector (`list_tables`, `list_edge_functions`, `list_migrations`) before relying on them.
+Supabase connector (`list_tables`, `list_edge_functions`, `list_migrations`) before relying on them. **Read against the live project on 1 Nov 2026**
+(read-only): the table, policy and household counts, the five Edge Function versions, and COOK AHEAD's columns; each says so below.
 
 **How this card is kept.** A migration or an Edge Function deploy is not finished until this card says so. Whoever applies or
 deploys it, or the session that checks it afterwards, updates §3 or §4 in the same PR or the next: what, when, how it was checked.
@@ -70,7 +71,7 @@ Four repository secrets (Settings → Secrets and variables → Actions): `SUPAB
 
 ## 3. Supabase
 
-### Tables (*as last read, 12 Oct: 16 in `public`, 1 in `private`, row-level security on all*)
+### Tables (*as last read, 1 Nov: 16 in `public`, 1 in `private`, row-level security on all 16, 52 policies*)
 `public`: `households`, `household_members`, `household_settings`, `recipes`, `recipe_logs`, `recipe_notes`, `keywords`,
 `planner_days`, `meal_groups`, `shortlist_items`, `ingredient_swaps`, `shopping_checked`, `aliases`, `aisle_overrides`,
 `calendar_connections`, `recipe_shares`. `private`: `calendar_oauth_states`. What each holds: `docs/SPEC.md` §7.
@@ -80,7 +81,7 @@ never `anon`. `private.my_household()` is used by the sharing functions. New tab
 in `public` give `anon` nothing by default (`docs/migrations/harden-default-privileges.md`); a new **function** still needs its
 own revoke from `PUBLIC`.
 
-### Households (*as last read, 18 Oct*)
+### Households (*as last read, 18 Oct; `households` was still four rows on 1 Nov*)
 Four rows each in `households`, `household_members`, `auth.users` and `household_settings`:
 - **the family's own** (`dfeac187…`), owner the family's account; shares its recipes with the relatives' household and Test Kitchen;
   holds the Google connection;
@@ -127,7 +128,7 @@ separate acts; if a change is not backward compatible, choose the order delibera
 - The dashboard editor adds indentation on paste and drops the final newline; compare ignoring whitespace.
 - Afterwards read the deployed source back with `get_edge_function`, and record the version here.
 
-**Waiting to be redeployed: nothing** (20 Oct).
+**Waiting to be redeployed: nothing.** The dashboard's function list on 1 Nov 2026 gave exactly the versions in the table (v16, v6, v4, v8, v2); the deployed source was not read back.
 
 ### Migrations
 `select version, name from supabase_migrations.schema_migrations` lists the versioned ones. A statement run in the dashboard's SQL
@@ -149,11 +150,9 @@ editor is **not** recorded there, so the later changes are listed here instead. 
 | `harden_default_privileges` | `harden-default-privileges.md` | 12 Oct |
 | `add_converter_ack` | `add-converter-ack.md` | 13 Oct |
 | `add_calendar_items` | `add-calendar-items.md` | 20 Oct |
+| `add_cook_ahead` | `add-cook-ahead.md` | by the household; date not recorded (after 30 Oct, when the page was written). Read back on 1 Nov |
 
-(The 13 Sep temporary import function and staging table were created and dropped the same day.) **Waiting to be applied:**
-`add-cook-ahead.md` (`planner_days.cook_ahead`, `recipe_logs.cook_ahead`, issue #221), written 30 Oct and run with its undo on a scratch
-Postgres 16 only; the household applies it from the dashboard before merging the PR that carries the app's side. A PR that adds a page
-lists it here as waiting; whoever applies it moves it into the table.
+(The 13 Sep temporary import function and staging table were created and dropped the same day.) **Waiting to be applied: nothing** (1 Nov 2026). A PR that adds a page lists it here as waiting; whoever applies it moves it into the table.
 
 ---
 

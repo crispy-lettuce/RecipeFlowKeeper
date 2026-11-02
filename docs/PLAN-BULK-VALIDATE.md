@@ -102,7 +102,7 @@ read, couldn't read, or unmatched. It is a pure function in `core.js` with tests
    It was built because the first real CHECK ALL read 4 of 55 pages and the other 51 all failed with 403: the sites refuse the function, which identifies itself honestly and
    is not made to look like a browser. As built: the batch is frozen when the prompt is copied and the reply is matched to it by number; the same exact-match rule
    validates, except that a chat that said it read only part of a page is never validated; a recipe the chat could not read is set aside for the session; the
-   viewer's chip says a chat read the list. Not yet seen on a device (`docs/HOUSEHOLD-JOBS.md` Job 6).
+   viewer's chip says a chat read the list. Used on the tablet by the household, who reported it working on 1 Nov 2026 (the remaining recipes worked through, and a re-check after the comparison fix showing the false differences gone): a report, not something a session saw.
 4. **Small, built 1 Nov 2026 except the filter:** OPEN with the list pre-filled in Edit (for CHECK ALL's list and READ BY CHAT's alike), and both lists showing only what is still to look at. Not built: a LIBRARY CHECK filter for `chat`. The viewer chip's wording for the route is built.
 
 Each PR also adds its tablet steps to `docs/HOUSEHOLD-JOBS.md` and removes them when reported passed.
