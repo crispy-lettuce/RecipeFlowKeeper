@@ -1433,3 +1433,12 @@ html[data-style="modernist"] .login-error{ color:var(--color-accent-700); font-w
 @media (max-width: 860px){
   html[data-style="modernist"] .offline-bar{ padding-left:16px; padding-right:16px; }
 }
+
+/* A WEEK (docs/PLAN-INSPIRE-ME.md, slice 3): the stepper, the proposals on the days and the UNDO bar, flat and square like the rest of this look. */
+html[data-style="modernist"] #view-planner .inspire-step{ border:2px solid var(--color-text); border-radius:0; }
+html[data-style="modernist"] #view-planner .inspire-step-name{ font-size:12px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] #view-planner .proposal{ border:2px dashed var(--color-accent-700); border-radius:0; background:transparent; }
+html[data-style="modernist"] #view-planner .proposal-tag{ font-size:13px; font-weight:800; letter-spacing:.1em; color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .proposal-btn{ border:2px solid var(--color-text); border-radius:0; font-size:12px; font-weight:800; letter-spacing:.1em; color:var(--color-text); background:transparent; }
+html[data-style="modernist"] #view-planner .inspire-undo{ border:2px solid var(--color-text); border-radius:0; background:transparent; }
+html[data-style="modernist"] #view-planner .inspire-short{ border-left-color:var(--color-accent-700); }

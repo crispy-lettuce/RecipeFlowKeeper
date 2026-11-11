@@ -2879,7 +2879,110 @@ const check = (name, pass, detail) => {
   await imTap('[data-inspire="close"]');
   const im11 = await page.evaluate(() => ({ hidden: document.getElementById('inspirePanel').hidden, expanded: document.getElementById('inspireBtn').getAttribute('aria-expanded'), kept: state.inspire.keywords.join() }));
   check('    CLOSE puts the panel away and keeps the choices for next time', im11.hidden && im11.expanded === 'false' && im11.kept === 'INSPIRETEST', JSON.stringify(im11));
-  await page.evaluate(([a, b]) => { clearPlanDay(a); clearPlanDay(b); loadShortlist().filter(i => window.__IM_IDS__.includes(i.recipeId)).forEach(i => removeShortlistItem(i.id));
+  /* ---- A WEEK (docs/PLAN-INSPIRE-ME.md, slice 3): proposals on NEXT WEEK's empty days. Same six made-up Mains; nothing is planned until ADD ALL. ---- */
+  await page.evaluate(() => { state.inspire = null; state.inspirePlacing = null; state.plannerPast = 0; showView('planner'); renderPlanner(); });
+  await page.click('#inspireBtn');
+  await imTap('[data-inspire="more"]');
+  await imTap('[data-k="k-INSPIRETEST"]');
+  const imPlanBefore = await page.evaluate(() => JSON.stringify(loadPlan()));
+  const imWkMark = await anMark();
+  await imTap('[data-k="c-w"]');
+  await imTap('[data-k="wk-1"]');
+  const imWk = () => page.evaluate(() => { const s = state.inspire, panel = document.getElementById('inspirePanel');
+    const empty = inspireWeekCtxDays().filter(d => !d.away && !d.recipeIds.length).length;
+    return { props: s.proposals.map(p => p.date + ':' + p.id), empty, rows: document.querySelectorAll('#dayList .proposal').length,
+      rowBtns: [...document.querySelectorAll('#dayList .proposal')].map(r => [...r.querySelectorAll('button')].map(b => b.textContent.trim()).join('|')).filter((v, i, a) => a.indexOf(v) === i).join(),
+      labels: [...panel.querySelectorAll('.inspire-label')].map(l => l.textContent.trim()).join(','), steppers: panel.querySelectorAll('.inspire-step').length,
+      chips: ['c-1', 'c-3', 'c-w', 'wk-0', 'wk-1'].map(k => { const c = panel.querySelector('[data-k="' + k + '"]'); return c ? k + (c.classList.contains('on') ? '+' : '-') : k + '?'; }).join(),
+      foot: [...panel.querySelectorAll('.inspire-foot button')].map(b => b.textContent.trim()).join('|'), shorts: [...panel.querySelectorAll('.inspire-short')].map(e => e.textContent.trim()),
+      sum: (panel.querySelector('.inspire-results .inspire-fits') || {}).textContent || '', conflicts: document.querySelectorAll('#dayList .proposal').length - new Set(s.proposals.map(p => p.date)).size }; });
+  const imW1 = await imWk();
+  const imWPlan = await page.evaluate(() => JSON.stringify(loadPlan()));
+  check('    A WEEK, NEXT WEEK: a proposal on each empty day (as many as there are recipes that fit), each with SWAP and ×; the AT LEAST steppers replace PROTEIN; and nothing is planned or written',
+        imW1.chips === 'c-1-,c-3-,c-w+,wk-0-,wk-1+' && imW1.labels.includes('AT LEAST') && imW1.steppers >= 3 && imW1.props.length === Math.min(imW1.empty, 6) && imW1.props.length >= 5
+        && imW1.rows === imW1.props.length && imW1.rowBtns === 'SWAP|×' && imW1.foot === 'ADD ALL|ANOTHER WEEK|CANCEL' && imWPlan === imPlanBefore && await anMark() === imWkMark && /NOTHING IS PLANNED UNTIL YOU ADD ALL/.test(imW1.sum),
+        JSON.stringify([imW1, imWPlan === imPlanBefore, await anMark() - imWkMark]));
+  /* AT LEAST one fish, one lamb and two chicken: all met, nothing short. */
+  for (const k of ['more-fish', 'more-lamb', 'more-chicken', 'more-chicken']) await imTap(`[data-k="${k}"]`);
+  const imW2 = await imWk();
+  const imKinds = ids => ({ fish: ids.filter(i => i === 'im-haddock').length, lamb: ids.filter(i => i === 'im-lamb').length, chicken: ids.filter(i => /^im-hen/.test(i)).length });
+  const imK2 = imKinds(imW2.props.map(p => p.split(':')[1]));
+  check('    AT LEAST one fish, one lamb and two chicken puts a fish, a lamb and at least two chicken on the week, and says nothing is short',
+        imK2.fish >= 1 && imK2.lamb >= 1 && imK2.chicken >= 2 && imW2.shorts.length === 0, JSON.stringify([imW2, imK2]));
+  /* Six recipes fill seven days whatever is asked, so that proves little. With three days left empty with × only four are open, and the four AT LEAST asks
+     (fish, lamb, two chicken) must win those four places over the other two recipes, in every one of twelve draws. */
+  const imTight = await page.evaluate(() => { const s = state.inspire;
+    s.skip = inspireWeekCtxDays().filter(d => !d.away && !d.recipeIds.length).slice(0, 3).map(d => d.date);
+    const rolls = []; for (let i = 0; i < 12; i++) { rollWeek(false); rolls.push(s.proposals.map(p => p.id)); }
+    s.skip = []; rollWeek(false); renderPlanner(); return rolls; });
+  check('    with only four days open, every one of twelve draws still has the fish, the lamb and two chicken that were asked for',
+        imTight.length === 12 && imTight.every(r => r.length === 4 && r.includes('im-haddock') && r.includes('im-lamb') && r.filter(i => /^im-hen/.test(i)).length === 2), JSON.stringify(imTight.slice(0, 3)));
+  /* Three fish asked for, one in the library: filled as far as it can be, and the shortfall said. */
+  for (const k of ['more-fish', 'more-fish']) await imTap(`[data-k="${k}"]`);
+  const imW3 = await imWk();
+  check('    asking for three fish when one fits fills what it can and says "Only 1 of the 3 fish you asked for was found."',
+        imW3.props.length >= 5 && imW3.shorts.some(t => t === 'Only 1 of the 3 fish you asked for was found.'), JSON.stringify(imW3));
+  for (const k of ['less-fish', 'less-fish', 'less-fish', 'less-lamb', 'less-chicken', 'less-chicken']) await imTap(`[data-k="${k}"]`);
+  /* × leaves a day empty, and what it freed can come back through SWAP on another day. */
+  const imW4 = await imWk();
+  const [skipDate, skipId] = imW4.props[0].split(':');
+  await page.evaluate(d => document.querySelector(`#dayList .day-row[data-date="${d}"] [data-action="proposalSkip"]`).click(), skipDate);
+  const imW5 = await imWk();
+  const imSkipRow = await page.evaluate(d => ({ proposal: !!document.querySelector(`#dayList .day-row[data-date="${d}"] .proposal`), choose: !!document.querySelector(`#dayList .day-row[data-date="${d}"] [data-action="choose"]`) }), skipDate);
+  const [swapDate, swapOld] = imW5.props[1].split(':');
+  await page.evaluate(d => document.querySelector(`#dayList .day-row[data-date="${d}"] [data-action="proposalSwap"]`).click(), swapDate);
+  const imW6 = await imWk();
+  const imOthers = p => p.filter(x => !x.startsWith(swapDate + ':')).join();
+  check('    × leaves that day as it was (its own buttons back, never proposed again); SWAP changes only its own day, to a dish not already proposed',
+        imW5.props.length === imW4.props.length - 1 && !imW5.props.some(p => p.startsWith(skipDate + ':')) && !imSkipRow.proposal && imSkipRow.choose
+        && imW6.props.length === imW5.props.length && imOthers(imW6.props) === imOthers(imW5.props) && !imW6.props.find(p => p.startsWith(swapDate + ':')).endsWith(':' + swapOld)
+        && new Set(imW6.props.map(p => p.split(':')[1])).size === imW6.props.length, JSON.stringify([imW4.props, imW5.props, imW6.props, imSkipRow]));
+  /* CANCEL: nothing on the days, nothing written. */
+  await imTap('[data-inspire="cancelweek"]');
+  const imC = await page.evaluate(() => ({ rows: document.querySelectorAll('#dayList .proposal').length, plan: JSON.stringify(loadPlan()), n: state.inspire.proposals.length }));
+  check('    CANCEL takes every proposal off the days and writes nothing', imC.rows === 0 && imC.n === 0 && imC.plan === imPlanBefore && await anMark() === imWkMark, JSON.stringify([imC.rows, imC.n, await anMark() - imWkMark]));
+  /* ADD ALL: one write per day, then one UNDO. */
+  await imTap('[data-k="wk-0"]'); await imTap('[data-k="wk-1"]');
+  const imW7 = await imWk();
+  const imMarkAdd = await anMark();
+  await imTap('[data-inspire="addall"]');
+  const imAdded = await page.evaluate(([dates]) => ({ plan: dates.map(d => planRecipeIds(loadPlan()[d]).join()), open: !document.getElementById('inspirePanel').hidden,
+    undo: document.getElementById('inspireUndo').hidden ? '' : [...document.querySelectorAll('#inspireUndo span, #inspireUndo button')].map(e => e.textContent.trim()).join(' '), rows: document.querySelectorAll('#dayList .proposal').length }), [imW7.props.map(p => p.split(':')[0])]);
+  const imAddWrites = await imPlanWrites(imMarkAdd);
+  check('    ADD ALL writes one row for each day and no more (the dish each day was proposed), closes the panel, and offers one UNDO',
+        JSON.stringify(imAdded.plan) === JSON.stringify(imW7.props.map(p => p.split(':')[1])) && imAddWrites.length === imW7.props.length
+        && JSON.stringify(imAddWrites.slice().sort()) === JSON.stringify(imW7.props.map(p => p.split(':')[0]).sort()) && !imAdded.open && imAdded.rows === 0
+        && new RegExp('^' + imW7.props.length + ' dishes added from INSPIRE ME UNDO$').test(imAdded.undo), JSON.stringify([imAdded, imAddWrites, imW7.props]));
+  const imMarkUndo = await anMark();
+  await page.click('#inspireUndo [data-inspire-undo]');
+  const imUndone = await page.evaluate(() => ({ plan: JSON.stringify(loadPlan()), bar: !document.getElementById('inspireUndo').hidden }));
+  check('    UNDO takes them all off again: the plan is as it was before ADD ALL, one write for each day, and the bar is gone',
+        imUndone.plan === imPlanBefore && !imUndone.bar && (await imPlanWrites(imMarkUndo)).length === imW7.props.length, JSON.stringify([imUndone.plan === imPlanBefore, imUndone.bar, await imPlanWrites(imMarkUndo)]));
+  /* A day changed by hand after ADD ALL is left as it is by UNDO. */
+  await page.click('#inspireBtn');
+  await imTap('[data-k="wk-1"]');
+  const imW8 = await imWk();
+  await imTap('[data-inspire="addall"]');
+  const [touchedDate] = imW8.props[0].split(':');
+  await page.evaluate(d => { addPlanRecipe(d, 'im-chickpea'); renderPlanner(); }, touchedDate);
+  await page.click('#inspireUndo [data-inspire-undo]');
+  const imKept = await page.evaluate(([d, dates]) => ({ touched: planRecipeIds(loadPlan()[d]).length, others: dates.filter(x => x !== d).every(x => !planRecipeIds(loadPlan()[x]).some(id => /^im-/.test(id))) }), [touchedDate, imW8.props.map(p => p.split(':')[0])]);
+  check('    UNDO leaves a day alone that has been changed since ADD ALL, and takes the others off', imKept.touched >= 2 && imKept.others, JSON.stringify(imKept));
+  /* Every button on a phone is a full thumb's height, and nothing runs off the side. */
+  await page.evaluate(d => { clearPlanDay(d); }, touchedDate);
+  await page.click('#inspireBtn');
+  await imTap('[data-k="wk-1"]');
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.waitForTimeout(150);
+  const imWPhone = await page.evaluate(() => { const btns = [...document.querySelectorAll('#inspirePanel button, #dayList .proposal button')];
+    const pr = document.getElementById('inspirePanel').getBoundingClientRect();
+    return { n: btns.length, short: btns.filter(b => Math.round(b.getBoundingClientRect().height) < 44).map(b => b.textContent.trim()),
+      wide: [...document.querySelectorAll('#inspirePanel *, #dayList .proposal *')].filter(e => e.getBoundingClientRect().right > window.innerWidth + 1).length,
+      overflow: document.documentElement.scrollWidth > window.innerWidth, panelWide: pr.right > window.innerWidth + 1 }; });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  check('    at 412px every A WEEK button (steppers, ADD ALL, SWAP, ×) is at least 44px tall and nothing runs off the side', imWPhone.n > 20 && imWPhone.short.length === 0 && imWPhone.wide === 0 && !imWPhone.overflow && !imWPhone.panelWide, JSON.stringify(imWPhone));
+  await imTap('[data-inspire="close"]');
+  await page.evaluate(([a, b]) => { Object.keys(loadPlan()).forEach(d => { if (planRecipeIds(loadPlan()[d]).some(id => window.__IM_IDS__.includes(id))) clearPlanDay(d); }); clearPlanDay(a); clearPlanDay(b); loadShortlist().filter(i => window.__IM_IDS__.includes(i.recipeId)).forEach(i => removeShortlistItem(i.id));
     cache.recipes = cache.recipes.filter(r => !window.__IM_IDS__.includes(r.id)); state.inspire = null; state.inspirePlacing = null; updateSidebarCounts(); showView('planner'); renderPlanner(); }, [imD3, imD5]);
 
   /* An entry's meal, changed from the Planner (PR 2 of docs/PLAN-ADHOC-PLANNER.md): the tag is a button that opens the meal prompt, worded for a planned entry, with the entry's meal shown
