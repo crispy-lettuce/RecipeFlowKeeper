@@ -2240,6 +2240,155 @@ check('Frozen is the last aisle, and the last section of the shopping list',
         core.pastedIngredientLines(block).join('|') === '200 g plain flour|2 eggs' && core.pastedIngredientLines('1 egg\nTitle: x\n3 tbsp read tea').join('|') === '1 egg|3 tbsp read tea', JSON.stringify(core.pastedIngredientLines(block)));
 }
 
+/* ---- INSPIRE ME, the engine (docs/PLAN-INSPIRE-ME.md, slice 1, 11 Nov 2026) ----
+   Made-up recipes throughout. The page is not built yet, so these are the only thing holding the rules. */
+{
+  const rec = (id, lines, o) => ({ id, title: id, time: '40 min', favourite: false, history: [], ...o,
+    tags: { course: 'Main', keywords: [], ...((o || {}).tags || {}) },
+    syntax: (o && o.syntax) || ['TITLE: ' + id, 'GROUP a:', ...lines, 'STAGE:', 'MERGE a -> done: cook [10 min]'].join('\n') });
+  const fam = (lines, keywords) => core.mainProtein(rec('x', lines, { tags: { keywords: keywords || [] } }));
+
+  check('parseMinutes moved to core.js and reads a recipe\'s time as before',
+        core.parseMinutes('25 min') === 25 && core.parseMinutes('1 hr 40') === 100 && core.parseMinutes('est. 1 hr 45') === 105 && core.parseMinutes('3 hr') === 180 &&
+        core.parseMinutes('1 day') === 1440 && core.parseMinutes('') === null && inCore.has('parseMinutes') && !inPage.has('parseMinutes'));
+
+  check('mainProtein: the heaviest meat or fish in the lines, counted pieces weighed roughly',
+        fam(['3 chicken thighs, diced', '60 g chorizo, sliced', '250 g orzo']).family === 'chicken' &&
+        fam(['300 g lamb neck, cubed', '2 carrots']).family === 'lamb' && fam(['4 haddock fillets', '150 g raw king prawns']).family === 'fish' &&
+        fam(['180 g raw king prawns', '2 limes']).family === 'fish' && fam(['300 g mussels'], []).family === 'fish' && fam(['200 g puy lentils'], ['Prawns']).family === 'fish' && fam(['8 pork sausages']).family === 'pork', JSON.stringify(fam(['3 chicken thighs, diced', '60 g chorizo, sliced']).weights));
+  check('mainProtein: stock, sauce, fat and a vegetable named after an animal are not the meat',
+        fam(['600 ml chicken stock', '2 tbsp fish sauce', '1 tbsp beef dripping', '3 beef tomatoes', '200 g puy lentils']).family === 'veg' &&
+        fam(['600 ml chicken stock', '2 tbsp fish sauce', '200 g puy lentils']).by === 'none', JSON.stringify(fam(['600 ml chicken stock', '2 tbsp fish sauce', '1 tbsp beef dripping', '3 beef tomatoes']).weights));
+  check('mainProtein: a vegetarian stand-in is not the meat it is named after',
+        fam(['4 vegetarian sausages, halved', '1 red onion']).family === 'veg' && fam(['300 g vegan mince']).family === 'veg' && fam(['250 g smoked tofu']).family === 'veg');
+  check('mainProtein: a tin "in olive oil" is still the fish, and a few anchovies do not outweigh the meat',
+        fam(['160 g tuna in olive oil, drained']).family === 'fish' && fam(['6 anchovy fillets, chopped', '300 g beef mince']).family === 'beef' &&
+        fam(['6 anchovy fillets, chopped', '400 g gnocchi']).family === 'fish');
+  check('mainProtein: steak, mince and meatballs with no animal named are beef; with one, the animal decides',
+        fam(['2 sirloin steaks']).family === 'beef' && fam(['400 g mince']).family === 'beef' && fam(['2 tuna steaks']).family === 'fish' &&
+        fam(['450 g lamb mince']).family === 'lamb' && fam(['4 burger buns', '2 portobello caps']).family === 'veg');
+  const kw = fam(['450 g chicken thigh fillets'], ['Veg']);
+  check('mainProtein: a protein keyword on the recipe wins, and what the lines said is kept beside it',
+        kw.family === 'veg' && kw.by === 'keyword' && kw.fromIngredients === 'chicken' &&
+        fam(['200 g puy lentils'], ['Salmon']).family === 'fish' && fam(['200 g puy lentils'], ['Vegetarian', 'Pasta']).family === 'veg' &&
+        fam(['200 g puy lentils'], ['Pasta']).by === 'none', JSON.stringify(kw));
+  check('mainProtein: of several protein keywords, the one heaviest in the lines',
+        fam(['80 g chorizo', '500 g chicken breast'], ['Chorizo', 'Chicken']).family === 'chicken' && fam(['300 g chorizo', '100 g chicken breast'], ['Chicken', 'Chorizo']).family === 'pork');
+
+  const timed = lines => core.parseRecipe(['TITLE: t', 'GROUP a:', '1 onion', 'GROUP b:', '1 leek', ...lines].join('\n'));
+  check('handsOnMinutes: the steps that are not hands off, added up; null when no step is marked',
+        core.handsOnMinutes(timed(['STAGE:', 'MERGE a -> x: soften [8 min]', 'MERGE b -> y: chop [4 min]', 'STAGE:', 'MERGE x, y -> z: bake [45 min, hands off]'])) === 12 &&
+        core.handsOnMinutes(timed(['STAGE:', 'MERGE a -> x: soften [8 min]', 'STAGE:', 'MERGE x, b -> z: bake [45 min]'])) === null &&
+        core.handsOnMinutes(timed([])) === null);
+
+  check('dishStyles: the meal-base keywords, plural and spelling folded, anything else ignored',
+        core.dishStyles(['Noodles', 'Stir fry', 'Weeknight', 'Sunday Roast', 'Curries']).sort().join() === 'curry,noodle,roast,stir-fry' && core.dishStyles(['Chicken']).length === 0);
+
+  const today = '2026-06-20';
+  const lib = [
+    rec('hen-new',   ['400 g chicken breast']),
+    rec('hen-old',   ['400 g chicken breast'], { history: ['2026-01-05', '2026-02-01'] }),
+    rec('hen-fresh', ['400 g chicken breast'], { history: ['2026-06-15'] }),
+    rec('hen-star',  ['400 g chicken breast'], { favourite: true }),
+    rec('cod-quick', ['2 cod fillets'], { time: '20 min', tags: { keywords: ['Weeknight'] } }),
+    rec('cod-often', ['2 cod fillets'], { history: ['2026-03-01', '2026-03-20', '2026-04-10', '2026-05-01'] }),
+    rec('lamb-slow', ['600 g lamb shoulder'], { time: '3 hr', syntax: ['TITLE: lamb-slow', 'GROUP a:', '600 g lamb shoulder', 'STAGE:', 'MERGE a -> b: brown [10 min]', 'STAGE:', 'MERGE b -> c: braise [3 hr, hands off]', 'FREEZING:', 'Freezes for a month.'].join('\n') }),
+    rec('veg-dal',   ['250 g red lentils'], { tags: { keywords: ['Curry'] } }),
+    rec('a-side',    ['300 g green beans'], { tags: { course: 'Side' } })
+  ];
+  const facts = lib.map(core.suggestionFacts);
+  const ids = (ask, ctx) => core.suggestPool(facts, ask, { today, ...ctx }).map(f => f.id).sort().join();
+  const fact = id => facts.find(f => f.id === id);
+  check('suggestionFacts: protein, minutes, hands on, freezes, styles and the cooking record',
+        fact('lamb-slow').protein === 'lamb' && fact('lamb-slow').minutes === 180 && fact('lamb-slow').handsOn === 10 && fact('lamb-slow').freezes === true &&
+        fact('veg-dal').styles.join() === 'curry' && fact('cod-often').timesCooked === 4 && fact('cod-often').lastCooked === '2026-05-01' && fact('hen-new').lastCooked === null,
+        JSON.stringify(fact('lamb-slow')));
+  check('suggestPool: Mains only, and nothing cooked in the last fortnight',
+        ids({}) === 'cod-often,cod-quick,hen-new,hen-old,hen-star,lamb-slow,veg-dal');
+  check('suggestPool: PROTEIN is any of the chosen families, VEG among them',
+        ids({ proteins: ['chicken'] }) === 'hen-new,hen-old,hen-star' && ids({ proteins: ['veg', 'lamb'] }) === 'lamb-slow,veg-dal');
+  check('suggestPool: NEVER TRIED has no cooking logged; NOT LATELY was cooked, 60 days ago or more',
+        ids({ which: 'never' }) === 'cod-quick,hen-new,hen-star,lamb-slow,veg-dal' && ids({ which: 'notLately' }) === 'hen-old' &&
+        ids({ which: 'notLately' }, { today: '2026-07-01' }) === 'cod-often,hen-old');
+  check('suggestPool: POPULAR is a favourite or the top fifth by times cooked, and may have been cooked this fortnight',
+        ids({ which: 'popular' }) === 'cod-often,hen-star' && core.popularThreshold(facts) === 4 &&
+        core.suggestPool(facts.map(f => f.id === 'hen-fresh' ? { ...f, favourite: true } : f), { which: 'popular' }, { today }).some(f => f.id === 'hen-fresh'));
+  check('popularThreshold: nothing cooked twice means favourites alone',
+        core.popularThreshold(facts.map(f => ({ ...f, timesCooked: Math.min(f.timesCooked, 1) }))) === Infinity);
+  check('suggestPool: a time limit, LOW EFFORT (hands on, else the whole time), FREEZES WELL and keywords',
+        ids({ maxMinutes: 30 }) === 'cod-quick' && ids({ lowEffort: true }) === 'lamb-slow' && ids({ lowEffort: true, lowEffortMinutes: 20 }) === 'cod-quick,lamb-slow' &&
+        ids({ lowEffort: true, lowEffortMinutes: 5 }) === '' && ids({ freezes: true }) === 'lamb-slow' &&
+        ids({ keywords: ['weeknight'] }) === 'cod-quick' && ids({ keywords: ['Weeknight', 'Curry'] }) === '');
+  check('suggestPool: never what is on the Planner or was swapped away',
+        ids({ proteins: ['chicken'] }, { planned: ['hen-new'], rejected: ['hen-star'] }) === 'hen-old');
+  const w = (ask, id, on) => core.suggestPool(facts, ask, { today: on || today }).find(f => f.id === id).weight;
+  check('suggestPool: the lean. ANY towards longest since cooked, never-cooked level with half a year; POPULAR towards times cooked; NOT LATELY towards longest since',
+        w({}, 'hen-old', '2027-03-01') > w({}, 'hen-new') && w({}, 'hen-new') > w({}, 'hen-old') && w({}, 'hen-old') > w({}, 'cod-often') &&
+        w({ which: 'popular' }, 'cod-often') > w({ which: 'popular' }, 'hen-star') &&
+        w({ which: 'notLately' }, 'hen-old', '2026-09-01') > w({ which: 'notLately' }, 'cod-often', '2026-09-01'));
+
+  const three = core.suggestMeals(facts, { proteins: ['chicken'], count: 3 }, { today, seed: 7 });
+  const again = core.suggestMeals(facts, { proteins: ['chicken'], count: 3 }, { today, seed: 7 });
+  const firsts = new Set(Array.from({ length: 40 }, (_, seed) => core.suggestMeals(facts, {}, { today, seed }).picks[0].id));
+  check('suggestMeals: different recipes, the same for the same seed, and no more than fit',
+        three.picks.length === 3 && new Set(three.picks.map(x => x.id)).size === 3 && three.fits === 3 &&
+        three.picks.map(x => x.id).join() === again.picks.map(x => x.id).join() &&
+        core.suggestMeals(facts, { proteins: ['lamb'], count: 3 }, { today, seed: 1 }).picks.length === 1 &&
+        core.suggestMeals(facts, { proteins: ['duck'] }, { today, seed: 1 }).picks.length === 0);
+  check('suggestMeals: another seed gives another answer', firsts.size >= 4, [...firsts].join());
+
+  const big = [];
+  ['chicken breast', 'cod fillets', 'lamb shoulder', 'pork loin', 'beef brisket', 'red lentils'].forEach((meat, m) => {
+    for(let n = 0; n < 3; n++) big.push(rec(`${meat.split(' ')[0]}-${n}`, [`400 g ${meat}`], { tags: { keywords: n === 0 ? ['Pasta'] : [] } }));
+  });
+  const bigFacts = big.map(core.suggestionFacts);
+  const week = dates => dates.map(d => typeof d === 'string' ? { date: d, recipeIds: [] } : d);
+  const seven = ['2026-06-20', '2026-06-21', '2026-06-22', '2026-06-23', '2026-06-24', '2026-06-25', '2026-06-26'];
+  let weekOk = true, weekWhy = '';
+  for(let seed = 0; seed < 30 && weekOk; seed++){
+    const r = core.suggestWeek(bigFacts, { atLeast: { fish: 1, chicken: 2, lamb: 1 } }, { today, seed, days: week(seven) });
+    const fams = r.days.map(d => d.pick && d.pick.protein);
+    const count = f => fams.filter(x => x === f).length;
+    const pasta = r.days.filter(d => d.pick && d.pick.styles.includes('pasta')).length;
+    if(r.days.length !== 7 || fams.includes(null) || new Set(r.days.map(d => d.pick.id)).size !== 7){ weekOk = false; weekWhy = `seed ${seed}: not seven different picks`; }
+    else if(count('fish') < 1 || count('chicken') < 2 || count('lamb') < 1 || r.short.length){ weekOk = false; weekWhy = `seed ${seed}: at least not met ${fams.join()}`; }
+    else if(fams.some((f, i) => i && f === fams[i - 1])){ weekOk = false; weekWhy = `seed ${seed}: same protein two days running ${fams.join()}`; }
+    else if(pasta > 1){ weekOk = false; weekWhy = `seed ${seed}: ${pasta} pastas`; }
+    /* Every lamb the library has, which chance alone does not deal: the rule is what places them. */
+    const lambs = core.suggestWeek(bigFacts, { atLeast: { lamb: 3 } }, { today, seed, days: week(seven) });
+    if(weekOk && (lambs.days.filter(d => d.pick && d.pick.protein === 'lamb').length !== 3 || lambs.short.length)){ weekOk = false; weekWhy = `seed ${seed}: three lamb asked for and not placed`; }
+  }
+  check('suggestWeek: a Main for every empty day, the "at least" met, no protein two days running, one of each dish style', weekOk, weekWhy);
+
+  const partly = week(['2026-06-20', { date: '2026-06-21', recipeIds: ['cod-0'] }, '2026-06-22', { date: '2026-06-23', recipeIds: [], away: true }, '2026-06-24']);
+  let plannedOk = true, plannedWhy = '';
+  for(let seed = 0; seed < 30 && plannedOk; seed++){
+    const r = core.suggestWeek(bigFacts, { atLeast: { fish: 1, lamb: 1 } }, { today, seed, days: partly });
+    const on = Object.fromEntries(r.days.map(d => [d.date, d.pick]));
+    if(r.days.map(d => d.date).join() !== '2026-06-20,2026-06-22,2026-06-24'){ plannedOk = false; plannedWhy = 'filled a planned or away day'; }
+    else if(r.days.some(d => !d.pick || d.pick.id === 'cod-0')){ plannedOk = false; plannedWhy = 'suggested what is planned, or left a day empty'; }
+    else if(on['2026-06-20'].protein === 'fish' || on['2026-06-22'].protein === 'fish'){ plannedOk = false; plannedWhy = `seed ${seed}: fish beside the planned fish`; }
+    else if(r.days.filter(d => d.pick.protein === 'lamb').length < 1 || r.short.length){ plannedOk = false; plannedWhy = `seed ${seed}: lamb not placed`; }
+    else if(r.days.some(d => d.pick.styles.includes('pasta'))){ plannedOk = false; plannedWhy = `seed ${seed}: a second pasta beside the planned one`; }
+  }
+  check('suggestWeek: planned and away days are left alone, and what is planned counts (at least, neighbour, style)', plannedOk, plannedWhy);
+
+  const short = core.suggestWeek(bigFacts, { atLeast: { duck: 1, fish: 4 } }, { today, seed: 3, days: week(seven) });
+  check('suggestWeek: a rule that cannot be met is reported, and the days are still filled',
+        short.days.every(d => d.pick) && short.short.map(x => `${x.family} ${x.got}/${x.wanted}`).join() === 'duck 0/1,fish 3/4', JSON.stringify(short.short));
+  const few = core.suggestWeek(bigFacts.filter(f => f.protein === 'chicken'), {}, { today, seed: 2, days: week(seven.slice(0, 4)) });
+  check('suggestWeek: the spread gives way before a day is left empty, and a day with nothing left is null',
+        few.days.filter(d => d.pick).length === 3 && few.days.filter(d => !d.pick).length === 1 && few.bent.neighbour >= 1, JSON.stringify(few.bent));
+  check('suggestWeek: the filters apply to a week too',
+        core.suggestWeek(bigFacts, { keywords: ['Pasta'] }, { today, seed: 1, days: week(seven) }).days.filter(d => d.pick).every(d => d.pick.keywords.includes('pasta')));
+
+  const tool = require(path.join(ROOT, 'tools', 'measure-suggestions.js')).measureSuggestions({ recipes: lib.concat([rec('hen-tagged-veg', ['400 g chicken breast'], { tags: { keywords: ['Veg'] } })]) }, today);
+  check('tools/measure-suggestions.js counts the Mains by protein and lists where a keyword and the lines disagree',
+        tool.mains === 9 && tool.byFamily.chicken === 4 && tool.byFamily.veg === 2 && tool.vegByKeyword.length === 1 && tool.vegByKeyword[0].title === 'hen-tagged-veg' &&
+        tool.vegByNothing.length === 1 && tool.pools.never === 6 && tool.handsOn.known === 1, JSON.stringify([tool.byFamily, tool.pools, tool.handsOn]));
+}
+
+
 const failed = checks.filter(c => !c.pass).length;
 console.log(`\n${checks.length} checks, ${failed} failed`);
 process.exit(failed ? 1 : 0);

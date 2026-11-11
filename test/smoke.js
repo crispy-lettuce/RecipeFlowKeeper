@@ -2743,6 +2743,145 @@ const check = (name, pass, detail) => {
   await page.evaluate(([y, y2, t, a]) => { loadDiary().filter(e => e.recipeId === a && e.cookedOn === y).forEach(e => deleteDiaryEntry(e.id));
     const idx = planRecipeIds(loadPlan()[t]).lastIndexOf(a); if(idx > -1) removePlanRecipeAt(t, idx); clearPlanDay(y); clearPlanDay(y2); state.plannerPast = 0; showView('planner'); renderPlanner(); }, [pdY, pdY2, pdToday, pdIds[0].id]);
 
+  /* ---- INSPIRE ME on the Planner (docs/PLAN-INSPIRE-ME.md, slice 2, 11 Nov 2026) ----
+     The choosing is checked in Node (test/core.test.js). Here: the panel, what it offers, and that ADD is the only thing that writes.
+     Six made-up Mains are put in the library for it and taken out again; the fixture's own recipes are still there, so every check
+     that names a recipe narrows to these with the INSPIRETEST keyword. */
+  const imIso = k => page.evaluate(n => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + n); return isoLocal(d); }, k);
+  const imD3 = await imIso(3), imD5 = await imIso(5), imAgo = await imIso(-100);
+  await page.evaluate(([ago]) => {
+    const mk = (id, lines, kw, o) => Object.assign({ id, title: id, source: 'Test', time: '35 min', servings: '4', favourite: false, history: [], dateAdded: '2026-01-01',
+      tags: { course: 'Main', keywords: ['INSPIRETEST'].concat(kw) }, syntax: ['TITLE: ' + id, 'SERVINGS: 4', 'GROUP a:', ...lines, 'STAGE:', 'MERGE a -> b: chop [8 min]', 'STAGE:', 'MERGE b -> c: bake [25 min, hands off]'].join('\n') }, o || {});
+    window.__IM_IDS__ = ['im-hen-orzo', 'im-hen-tray', 'im-hen-old', 'im-haddock', 'im-lamb', 'im-chickpea'];
+    cache.recipes.push(mk('im-hen-orzo', ['500 g chicken thigh fillets'], ['Orzo']), mk('im-hen-tray', ['8 chicken drumsticks'], ['Traybake']),
+      mk('im-hen-old', ['450 g chicken breast'], [], { history: [ago] }), mk('im-haddock', ['300 g smoked haddock'], ['Soup'], { time: '20 min' }),
+      mk('im-lamb', ['600 g lamb neck'], ['Tagine'], { time: '2 hr', syntax: ['TITLE: im-lamb', 'SERVINGS: 4', 'GROUP a:', '600 g lamb neck', 'STAGE:', 'MERGE a -> b: brown [15 min]', 'STAGE:', 'MERGE b -> c: braise [2 hr, hands off]'].join('\n') }),
+      mk('im-chickpea', ['400 g tinned chickpeas'], ['Curry'], { favourite: true }));
+    try { localStorage.removeItem('kitchen.lowEffort'); } catch (e) {}
+    state.inspire = null; state.inspirePlacing = null; state.plannerPast = 3; showView('planner'); renderPlanner();
+  }, [imAgo]);
+  const imShot = () => page.evaluate(() => { const panel = document.getElementById('inspirePanel'); const chips = {};
+    panel.querySelectorAll('.chip[data-inspire]').forEach(c => { chips[c.dataset.k] = { on: c.classList.contains('on'), n: (c.querySelector('.inspire-n') || {}).textContent || null, disabled: c.disabled, text: c.childNodes[0].textContent.trim() }; });
+    return { open: !panel.hidden, expanded: document.getElementById('inspireBtn').getAttribute('aria-expanded'), for: (panel.querySelector('.inspire-for') || {}).textContent || '',
+      chips, cards: [...panel.querySelectorAll('.inspire-card')].map(c => ({ id: c.dataset.id, meta: c.querySelector('.inspire-meta').textContent.replace(/\s+/g, ' ').trim(), add: c.querySelector('[data-inspire="add"]').textContent.trim() })),
+      none: (panel.querySelector('.inspire-none') || {}).textContent || '', foot: [...panel.querySelectorAll('.inspire-foot button')].map(b => b.textContent.trim()).join('|') }; });
+  const imTap = sel => page.evaluate(q => document.querySelector('#inspirePanel ' + q).click(), sel);
+  const imPlanWrites = m => page.evaluate(k => window.__WRITES__.slice(k).filter(w => w.table === 'planner_days').map(w => (w.rows || []).map(r => r.plan_date).join()), m);
+  const im0 = await page.evaluate(() => ({ head: document.getElementById('inspireBtn').textContent.trim(), inRow: !!document.querySelector('#view-planner .planner-head #inspireBtn'),
+    hidden: document.getElementById('inspirePanel').hidden, toolsH: Math.round(document.querySelector('#view-planner .planner-tools').getBoundingClientRect().height),
+    btnH: Math.round(document.getElementById('inspireBtn').getBoundingClientRect().height),
+    empties: document.querySelectorAll('#dayList .day-row:not(.past) .day-main-empty').length, onEmpty: document.querySelectorAll('#dayList .day-row:not(.past) .day-main-empty [data-action="inspire"]').length,
+    onPast: document.querySelectorAll('#dayList .day-row.past [data-action="inspire"]').length,
+    order: [...document.querySelector('#dayList .day-row:not(.past) .day-main-empty').querySelectorAll('button')].map(b => b.dataset.action).join() }));
+  check('INSPIRE ME is in the Planner\'s heading row, which stays one line tall, and on every empty day between CHOOSE A RECIPE and OTHER; never on a past day; the panel is closed',
+        im0.head === 'INSPIRE ME' && im0.inRow && im0.hidden && im0.toolsH <= 44 && im0.btnH >= 44 && im0.empties > 0 && im0.onEmpty === im0.empties && im0.onPast === 0 && im0.order === 'choose,inspire,addOther', JSON.stringify(im0));
+  /* Where the three do not fit one line (this look, a narrower screen or a phone), the two buttons keep the line and the label gives way:
+     the tools must not grow, and neither button may be the thing that is lost. The band is closed first, so PREVIOUS 3 DAYS is showing. */
+  await page.evaluate(() => { state.plannerPast = 0; renderPlanner(); });
+  const imHeadAt = async w => { await page.setViewportSize({ width: w, height: 800 }); await page.waitForTimeout(150); return page.evaluate(() => {
+    const box = document.querySelector('#view-planner .planner-tools').getBoundingClientRect(); const r = id => document.getElementById(id).getBoundingClientRect();
+    const a = r('inspireBtn'), b = r('plannerPastBtn'), rolls = document.querySelector('#view-planner .planner-rolls').getBoundingClientRect();
+    return { toolsH: Math.round(box.height), sameLine: a.width > 0 && b.width > 0 && Math.round(a.top) === Math.round(b.top),
+      inside: a.bottom <= box.bottom + 1 && b.bottom <= box.bottom + 1 && a.left >= box.left - 1 && b.right <= box.right + 1, rollsGone: rolls.top >= box.bottom - 1 }; }); };
+  const imHead900 = await imHeadAt(900), imHead412 = await imHeadAt(412);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.waitForTimeout(150);
+  check('    at 900px and at 412px the heading\'s tools are still one line: INSPIRE ME and PREVIOUS 3 DAYS side by side and whole, ROLLS FORWARD DAILY given way',
+        [imHead900, imHead412].every(h => h.toolsH <= 44 && h.sameLine && h.inside && h.rollsGone), JSON.stringify([imHead900, imHead412]));
+
+  const imM0 = await anMark();
+  await page.evaluate(d => document.querySelector(`#dayList .day-row[data-date="${d}"] [data-action="inspire"]`).click(), imD3);
+  const im1 = await imShot();
+  const imIsMain = await page.evaluate(id => { const r = loadRecipes().find(x => x.id === id); return !!r && r.tags.course === 'Main'; }, (im1.cards[0] || {}).id);
+  check('    a day\'s INSPIRE ME opens the panel for that day with ONE MEAL chosen and one suggestion, a Main, offered as ADD TO that day',
+        im1.open && im1.expanded === 'true' && /^FOR /.test(im1.for) && im1.chips['c-1'].on && !im1.chips['c-3'].on && im1.cards.length === 1 && imIsMain && /^ADD TO /.test(im1.cards[0].add) && im1.foot === 'ANOTHER', JSON.stringify(im1));
+  await imTap('[data-inspire="more"]');
+  await imTap('[data-k="k-INSPIRETEST"]');
+  const im2 = await imShot();
+  const imCounts = await page.evaluate(() => { const f = inspireFacts(), c = inspireCtx(); const n = over => suggestPool(f, inspireAsk(over), c).length;
+    return { chicken: n({ proteins: ['chicken'] }), fish: n({ proteins: ['fish'] }), veg: n({ proteins: ['veg'] }), never: n({ which: 'never' }), lately: n({ which: 'notLately' }), popular: n({ which: 'popular' }), low: n({ lowEffort: true }), freezes: n({ freezes: true }), m30: n({ maxMinutes: 30 }) }; });
+  check('    MORE CHOICES shows the time limits, LOW EFFORT, FREEZES WELL and the keywords; each chip carries how many recipes fit, and one with none is greyed',
+        im2.chips['k-INSPIRETEST'].on && im2.chips['p-chicken'].n === '3' && imCounts.chicken === 3 && im2.chips['p-fish'].n === '1' && im2.chips['p-lamb'].n === '1' && im2.chips['p-veg'].n === '1'
+        && im2.chips['w-never'].n === '5' && im2.chips['w-notLately'].n === '1' && im2.chips['w-popular'].n === '1' && im2.chips['t-30'].n === '1' && im2.chips['low'].n === '5'
+        && im2.chips['frz'].n === '0' && im2.chips['frz'].disabled && !im2.chips['low'].disabled && im2.chips['more'].text === 'FEWER CHOICES', JSON.stringify([im2.chips, imCounts]));
+  await imTap('[data-k="p-chicken"]');
+  const imFocus = await page.evaluate(() => { const b = document.querySelector('#inspirePanel [data-k="w-never"]'); b.focus(); b.click(); return [document.activeElement.dataset.k, document.activeElement === document.querySelector('#inspirePanel [data-k="w-never"]'), b.isConnected].join(); });
+  await imTap('[data-k="w-any"]');
+  const imSeen = [];
+  for (let i = 0; i < 3; i++) { const sh = await imShot(); imSeen.push((sh.cards[0] || {}).id); if (i < 2) await imTap('[data-inspire="another"]'); }
+  await imTap('[data-inspire="another"]');
+  const im3 = await imShot();
+  check('    a protein chip narrows to that protein, and ANOTHER never repeats: three chickens are three different suggestions, then it says all have been seen and offers START AGAIN',
+        imSeen.slice().sort().join() === 'im-hen-old,im-hen-orzo,im-hen-tray' && im3.cards.length === 0 && /seen all 3 that fit/.test(im3.none) && im3.foot === 'START AGAIN', JSON.stringify([imSeen, im3.none, im3.foot]));
+  check('    the panel is redrawn at every press, and the chip that was pressed keeps the keyboard focus', imFocus === 'w-never,true,false', imFocus);
+  await imTap('[data-inspire="again"]');
+  const im4 = await imShot();
+  check('    all of that wrote nothing to the plan: nothing is planned until ADD', im4.cards.length === 1 && (await imPlanWrites(imM0)).length === 0, JSON.stringify(await imPlanWrites(imM0)));
+  const imPick = im4.cards[0].id;
+  const imM1 = await anMark();
+  await imTap('[data-inspire="add"]');
+  await page.waitForTimeout(250);
+  const im5 = await page.evaluate(([d]) => ({ ids: planRecipeIds(loadPlan()[d]), servings: planServings(loadPlan()[d]), hidden: document.getElementById('inspirePanel').hidden, toast: document.querySelector('.toast').textContent }), [imD3]);
+  check('    ADD TO the day puts that dish on it at the recipe\'s own servings with one write to that day\'s row, says so, and closes the panel',
+        im5.ids.join() === imPick && im5.servings.join() === '0' && im5.hidden && /is on /.test(im5.toast) && (await imPlanWrites(imM1)).join('|') === imD3, JSON.stringify([im5, await imPlanWrites(imM1)]));
+
+  /* From the heading: three options, and ADD asks for a day. */
+  await page.evaluate(() => document.getElementById('inspireBtn').click());
+  await imTap('[data-k="c-3"]');
+  const im6 = await imShot();
+  check('    INSPIRE ME in the heading, then 3 OPTIONS: three different suggestions, none of them the dish just planned, each offered as ADD, with ANOTHER 3',
+        im6.open && !/^FOR /.test(im6.for) && im6.cards.length === 2 && new Set(im6.cards.map(c => c.id)).size === 2 && !im6.cards.some(c => c.id === imPick) && im6.cards.every(c => c.add === 'ADD') && im6.foot === 'ANOTHER 3',
+        JSON.stringify(im6));
+  await imTap('[data-k="p-chicken"]');
+  const im7 = await imShot();
+  check('    with the protein chip off, three of the five still unplanned are offered', im7.cards.length === 3 && new Set(im7.cards.map(c => c.id)).size === 3 && im7.cards.every(c => /^im-/.test(c.id) && c.id !== imPick), JSON.stringify(im7.cards));
+  const imM2 = await anMark();
+  await imTap('[data-inspire="add"]');
+  const im8 = await page.evaluate(() => ({ banner: document.getElementById('assignBanner').textContent.replace(/\s+/g, ' ').trim(), assignable: document.querySelectorAll('#dayList .day-row.assignable').length,
+    add: document.querySelector('#inspirePanel [data-inspire="add"]').textContent.trim(), placing: state.inspirePlacing }));
+  const imPlaced = im7.cards[0].id;
+  await page.evaluate(d => document.querySelector(`#dayList .day-row[data-date="${d}"]`).click(), imD5);
+  await page.waitForTimeout(250);
+  const im9 = await imShot();
+  const im9plan = await page.evaluate(d => planRecipeIds(loadPlan()[d]), imD5);
+  check('    ADD from the heading asks for a day (the bar says so and the button reads TAP A DAY); the day tapped takes it with one write, and the other two suggestions stay',
+        /^Putting "im-/.test(im8.banner) && /tap a day below/.test(im8.banner) && im8.assignable === 14 && im8.add === 'TAP A DAY' && im8.placing === imPlaced
+        && im9plan.join() === imPlaced && (await imPlanWrites(imM2)).join('|') === imD5 && im9.open && im9.cards.length === 2 && !im9.cards.some(c => c.id === imPlaced), JSON.stringify([im8, im9plan, im9.cards]));
+  await imTap('[data-inspire="shortlist"]');
+  const im10 = await page.evaluate(() => { const b = document.querySelector('#inspirePanel [data-inspire="shortlist"]'); return { text: b.textContent.trim(), disabled: b.disabled, onList: loadShortlist().some(i => i.recipeId === b.closest('.inspire-card').dataset.id) }; });
+  check('    + SHORTLIST puts the suggestion on the shortlist and then reads ✓ SHORTLIST', im10.text === '✓ SHORTLIST' && im10.disabled && im10.onList, JSON.stringify(im10));
+
+  /* LOW EFFORT follows Settings → APP → LOW EFFORT MEANS, on this device. The lamb is 15 minutes hands on, the rest 8. Both days are
+     cleared first, so all six are on offer again. */
+  await page.evaluate(([x, y]) => { clearPlanDay(x); clearPlanDay(y); renderPlanner(); }, [imD3, imD5]);
+  await imTap('[data-k="c-1"]');
+  const imLow10 = (await imShot()).chips['low'].n;
+  await page.evaluate(() => { const sel = document.getElementById('setLowEffort'); sel.value = '5'; sel.dispatchEvent(new Event('change', { bubbles: true })); renderPlanner(); });
+  const imLow5 = (await imShot()).chips['low'];
+  await page.evaluate(() => { const sel = document.getElementById('setLowEffort'); sel.value = '20'; sel.dispatchEvent(new Event('change', { bubbles: true })); renderPlanner(); });
+  const imLow20 = (await imShot()).chips['low'].n;
+  const imStored = await page.evaluate(() => { const v = localStorage.getItem('kitchen.lowEffort'); const sel = document.getElementById('setLowEffort'); sel.value = '10'; sel.dispatchEvent(new Event('change', { bubbles: true }));
+    return [v, localStorage.getItem('kitchen.lowEffort'), lowEffortLimit(), [...sel.options].map(o => o.value).join()]; });
+  check('    LOW EFFORT counts hands-on minutes against Settings → APP → LOW EFFORT MEANS: 10 by default, and 5 or 20 change how many fit; the default is stored as nothing',
+        imLow10 === '5' && imLow5.n === '0' && imLow5.disabled && imLow20 === '6' && JSON.stringify(imStored) === JSON.stringify(['20', null, 10, '5,10,15,20,30']), JSON.stringify([imLow10, imLow5, imLow20, imStored]));
+
+  /* Every button in the panel is a full thumb's height, here and at phone width, where nothing may run off the side. */
+  const imSizes = () => page.evaluate(() => { const panel = document.getElementById('inspirePanel'); const short = [...panel.querySelectorAll('button')].filter(b => Math.round(b.getBoundingClientRect().height) < 44).map(b => b.textContent.trim());
+    const pr = panel.getBoundingClientRect(); const wide = [...panel.querySelectorAll('*')].filter(e => e.getBoundingClientRect().right > pr.right + 1).length;
+    return { buttons: panel.querySelectorAll('button').length, short, wide, overflow: document.documentElement.scrollWidth > window.innerWidth }; });
+  const imWide = await imSizes();
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.waitForTimeout(150);
+  const imNarrow = await imSizes();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  check('    every button in the panel is at least 44px tall at 1280px and at 412px, and at 412px nothing runs past the panel\'s edge',
+        imWide.buttons > 10 && imWide.short.length === 0 && imNarrow.short.length === 0 && imNarrow.wide === 0 && !imNarrow.overflow, JSON.stringify([imWide, imNarrow]));
+  await imTap('[data-inspire="close"]');
+  const im11 = await page.evaluate(() => ({ hidden: document.getElementById('inspirePanel').hidden, expanded: document.getElementById('inspireBtn').getAttribute('aria-expanded'), kept: state.inspire.keywords.join() }));
+  check('    CLOSE puts the panel away and keeps the choices for next time', im11.hidden && im11.expanded === 'false' && im11.kept === 'INSPIRETEST', JSON.stringify(im11));
+  await page.evaluate(([a, b]) => { clearPlanDay(a); clearPlanDay(b); loadShortlist().filter(i => window.__IM_IDS__.includes(i.recipeId)).forEach(i => removeShortlistItem(i.id));
+    cache.recipes = cache.recipes.filter(r => !window.__IM_IDS__.includes(r.id)); state.inspire = null; state.inspirePlacing = null; updateSidebarCounts(); showView('planner'); renderPlanner(); }, [imD3, imD5]);
+
   /* An entry's meal, changed from the Planner (PR 2 of docs/PLAN-ADHOC-PLANNER.md): the tag is a button that opens the meal prompt, worded for a planned entry, with the entry's meal shown
      as chosen; tapping another sets it, tapping the chosen one takes it off, closing changes nothing, and the prompt keeps its ordinary words for a dish just cooked. */
   await page.evaluate(d => { addDiaryEntry({ title: 'Test Takeaway', cookedOn: d, mealType: 'dinner' }); addDiaryEntry({ title: 'Test Leftovers', cookedOn: d, mealType: null }); showView('planner'); renderPlanner(); }, ahDay);
@@ -2850,7 +2989,8 @@ const check = (name, pass, detail) => {
         return [-21, 21].every(dy => { const el = document.elementFromPoint(cx, cy + dy); return el && el.closest('button') === b; }); };
       const day = document.querySelector(`.day-row[data-date="${iso(1)}"]`), far = document.querySelector(`.day-row[data-date="${iso(5)}"]`);
       const empty = document.querySelector(`.day-row[data-date="${iso(9)}"]`);
-      const ch = empty.querySelector('[data-action="choose"]').getBoundingClientRect(), ot = empty.querySelector('[data-action="addOther"]').getBoundingClientRect();
+      const chBtn = empty.querySelector('[data-action="choose"]');
+      const ch = chBtn.getBoundingClientRect(), ot = empty.querySelector('[data-action="addOther"]').getBoundingClientRect(), ins = empty.querySelector('[data-action="inspire"]').getBoundingClientRect();
       const mine = [day.querySelector('[data-action="addOther"]'), day.querySelector('[data-action="removeAdHoc"]'), day.querySelector('[data-action="adHocMeal"]'), far.querySelector('[data-action="removeAdHoc"]'), far.querySelector('[data-action="adHocMeal"]'), empty.querySelector('[data-action="addOther"]')];
       /* Where each sits across the screen is read before any scrolling: the page clips what is too wide rather than growing a scroll bar of its own
          (so the document's width cannot say), and scrolling a clipped button into view would slide the box and hide it. */
@@ -2858,7 +2998,9 @@ const check = (name, pass, detail) => {
       /* Each is brought to the middle of the screen just before it is tried: a point off the screen answers with nothing. */
       const tried = mine.map(b => { b.scrollIntoView({ block: 'center' }); return answers(b); });
       return { sideways: document.documentElement.scrollWidth - window.innerWidth, inside, answers: tried,
-        sameLine: Math.abs((ch.top + ch.height / 2) - (ot.top + ot.height / 2)) < 12, emptyH: Math.round(empty.getBoundingClientRect().height),
+        sameLine: Math.abs((ch.top + ch.height / 2) - (ot.top + ot.height / 2)) < 12,
+        pair: Math.abs((ins.top + ins.height / 2) - (ot.top + ot.height / 2)) < 12 && ins.right <= ot.left,
+        noClip: chBtn.scrollWidth <= chBtn.clientWidth + 1, emptyH: Math.round(empty.getBoundingClientRect().height),
         summary: [...document.querySelectorAll('.week-summary')].map(e => e.textContent.trim()).slice(0, 2) };
     });
     await p.close();
@@ -2866,8 +3008,11 @@ const check = (name, pass, detail) => {
   };
   for (const [look, w, h] of [['classic', 1280, 800], ['classic', 412, 915], ['modernist', 1280, 800], ['modernist', 412, 915]]) {
     const r = await ahLook(look, w, h);
-    check(`    ${look} at ${w}px: nothing runs off the side of the screen, the new buttons answer a tap 21px above and below their middle, and an empty day's two buttons share a line`,
-          r.sideways <= 1 && r.inside && r.answers.every(Boolean) && r.sameLine, JSON.stringify(r));
+    /* Since INSPIRE ME joined + OTHER (11 Nov 2026) an empty day has three buttons: on a tablet all on one line; on a phone INSPIRE ME and
+       + OTHER together beneath CHOOSE A RECIPE, which keeps room for its words. */
+    const line = w >= 1280 ? r.sameLine && r.pair : r.pair;
+    check(`    ${look} at ${w}px: nothing runs off the side of the screen, the new buttons answer a tap 21px above and below their middle, and an empty day's buttons ${w >= 1280 ? 'share a line' : 'keep INSPIRE ME and + OTHER together under an unclipped CHOOSE A RECIPE'}`,
+          r.sideways <= 1 && r.inside && r.answers.every(Boolean) && line && r.noClip, JSON.stringify(r));
     /* The fixture plans three dishes this week (Fri to Thu); one entry is on Wednesday of it and one on the Sunday after, so 3 + 1 and then 1. */
     if (look === 'modernist') check(`    modernist at ${w}px: each week's header counts the entries with its dishes (this week 3 dishes + 1 entry, the next week's 1 entry)`,
                                     JSON.stringify(r.summary) === JSON.stringify(['4 PLANNED', '1 PLANNED']), JSON.stringify(r.summary));
@@ -4857,7 +5002,7 @@ const check = (name, pass, detail) => {
         JSON.stringify([stIng, stNav]));
   /* CALENDAR joined App on 9 Oct 2026 (P3 PR 2), RECIPE SHARING and BACKUP TO GOOGLE DRIVE on 10 Oct; before their migrations each only says it is waiting. AVOID THE CLASH joined on 25 Oct (#209). */
   check('    Library holds check all against sources, read by chat, the library check, sources, keywords and photos; App the week start, appearance, style, menu, preparation, ovens, avoid the clash, calendar, sharing and Drive backup; the last tab is remembered',
-        stLib.join('|') === 'CHECK ALL AGAINST SOURCES|READ BY CHAT|LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|STYLE|MENU|PREPARATION|OVENS|AVOID THE CLASH|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
+        stLib.join('|') === 'CHECK ALL AGAINST SOURCES|READ BY CHAT|LIBRARY CHECK|SOURCES|KEYWORDS|RECIPE PHOTOS' && stApp.join('|') === 'WEEK STARTS ON|APPEARANCE|STYLE|MENU|PREPARATION|OVENS|LOW EFFORT MEANS|AVOID THE CLASH|CALENDAR|RECIPE SHARING|BACKUP TO GOOGLE DRIVE' && stKept.join('|') === stApp.join('|'),
         JSON.stringify([stLib, stApp, stKept]));
   /* Since #95 (13 Oct) the dictionary's fold is its heading, DICTIONARY (n), like every list on the tab. */
   const stDict = () => page.evaluate(() => ({ list: document.getElementById('dictionaryList').offsetParent !== null,

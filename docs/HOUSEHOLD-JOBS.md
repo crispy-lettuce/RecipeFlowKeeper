@@ -1,7 +1,7 @@
 # Household job list
 
 The jobs only the household can do: a session can't tap the tablet, decide for you, or deploy for you. **Last brought up to date
-1 Nov 2026**: you reported every job here complete (Jobs 1, 2, 3 and 6); one new job is waiting (Job 7, the Planner's previous days).
+11 Nov 2026**: two jobs are waiting, Job 7 (the Planner's previous days) and Job 8 (INSPIRE ME).
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other households sort
 out their own converter and need no steps here.
@@ -13,7 +13,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-**One job is waiting:** Job 7, the Planner's previous days (#223), a few minutes on the tablet. One loose end, which is not a job: issue #224, "Idea: Test", is the test report Job 2 asked you to close, and it is still open on GitHub.
+**Two jobs are waiting:** Job 7, the Planner's previous days (#223), and Job 8, INSPIRE ME; a few minutes each on the tablet. One loose end, which is not a job: issue #224, "Idea: Test", is the test report Job 2 asked you to close, and it is still open on GitHub.
 What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
@@ -31,6 +31,30 @@ entry from History, and × the dish from today) if you were only trying it.
 5. Press **ADD TO TODAY** on one dish. **You should see:** a note that it is on today as well, and the dish now listed under today, for the same number of people. The past day still has it.
 6. Press **COOKED ✓** on a past dish you did cook that day. **You should see:** it reads ✓ COOKED, and in History that day shows the dish.
 7. Press **3 MORE**, then **HIDE**. **You should see:** three more days appear, and then the band closes and PREVIOUS 3 DAYS is back. Check the Shopping list: nothing from the past days is on it.
+
+If a step does not do what it says, note which one and what you saw.
+
+---
+
+## Job 8: INSPIRE ME on the Planner
+
+No database change and nothing to deploy. ADD puts a dish on a day, so × it afterwards if you were only trying it.
+
+1. **Reload the app** so it is on version 2026-11-11.1. **You should see:** Settings → HELP shows it, and What's new mentions INSPIRE ME.
+2. On the Planner, look at the heading and at a day with nothing planned. **You should see:** **INSPIRE ME** in the heading beside PREVIOUS 3 DAYS, and a smaller
+   **INSPIRE ME** on each empty day between CHOOSE A RECIPE and OTHER. The heading is no taller than it was.
+3. Press **INSPIRE ME** on an empty day. **You should see:** a panel under the heading that says which day it is for, with ONE MEAL chosen and one suggestion: a main
+   course, with its protein, time and when it was last cooked.
+4. Tap a protein, for example **CHICKEN**. **You should see:** the suggestion change to a chicken dish, and each chip's number say how many recipes fit. Check the
+   protein shown on a few suggestions is what you would call that dish; if one is wrong, note which recipe.
+5. Press **ANOTHER** a few times. **You should see:** a different dish each time, never one already on the Planner.
+6. Press **ADD TO** (the day). **You should see:** the dish on that day, a note saying so, and the panel gone.
+7. Press **INSPIRE ME** in the heading, then **3 OPTIONS**. **You should see:** three suggestions. Press **ADD** on one. **You should see:** a bar saying to tap a day;
+   tap one, and the dish is on it while the other two suggestions stay.
+8. Press **MORE CHOICES**, then **LOW EFFORT**. **You should see:** only dishes that ask little of your own time. In Settings → APP, **LOW EFFORT MEANS** changes how little
+   (on this device); set it to 20 and the LOW EFFORT number on the Planner goes up.
+9. Try **POPULAR** and **NOT LATELY**. **You should see:** few or none for now (they go by what has been logged as cooked), and a chip with nothing to offer is greyed.
+10. Look at it once in the other look (Settings → APP → STYLE) and on a phone. **You should see:** nothing cut off or overlapping.
 
 If a step does not do what it says, note which one and what you saw.
 

@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-11-01.2';
+const KITCHEN_CORE_VERSION = '2026-11-11.1';
 
 
 /* ======================= quantity split ======================= */
@@ -2899,6 +2899,289 @@ function splitRecipeBlocks(text){
   return { blocks, stray };
 }
 
+/* ======================= suggestions: INSPIRE ME, the engine (docs/PLAN-INSPIRE-ME.md, slice 1, 11 Nov 2026) =======================
+   Pure, like the rest of this file: the page hands in the recipes, what is planned, today's date and a seed, and gets picks back.
+   Nothing here writes, and nothing here changes how an ingredient is named: it reads shoppingLine's answer and no more. */
+
+/* "25 min" -> 25 · "1 hr 40" -> 100 · "3 hr" -> 180 · "1 day" -> 1440 */
+function parseMinutes(t){
+  if(!t) return null;
+  const s = String(t).toLowerCase();
+  const day = s.match(/(\d+(?:\.\d+)?)\s*day/);
+  if(day) return Math.round(parseFloat(day[1]) * 1440);
+  const hr = s.match(/(\d+(?:\.\d+)?)\s*(?:hrs?|hours?|h)\b/);
+  const mn = s.match(/(\d+)\s*(?:mins?|minutes?|m)\b/);
+  let total = 0, found = false;
+  if(hr){ total += parseFloat(hr[1]) * 60; found = true; }
+  if(mn){ total += parseInt(mn[1], 10); found = true; }
+  if(hr && !mn){
+    const tail = s.slice(s.indexOf(hr[0]) + hr[0].length).match(/(\d+)/);
+    if(tail) total += parseInt(tail[1], 10);
+  }
+  if(found) return Math.round(total);
+  const bare = s.match(/(\d+)/);
+  return bare ? parseInt(bare[1], 10) : null;
+}
+
+/* lowEffortMinutes is the household's choice (11 Nov 2026: at 20, four Mains in five passed) and only the default: an ask may carry
+   its own, which is how a setting will reach it. 60 days and the top fifth are unjudged until there is more cooking history. */
+const SUGGEST_RULES = { recentDays: 14, notLatelyDays: 60, lowEffortMinutes: 10, popularShare: 0.2, popularMinCooked: 2, weekAttempts: 40 };
+
+/* A recipe's main protein. There is no protein field (it was removed, and Chicken, Fish and the rest became ordinary keywords), and
+   keyword coverage differs a great deal between libraries, so the ingredients decide and a keyword only overrides (decided 11 Nov).
+   `words` are whole words in a line's name as the shopping list names it, singular; `keywords` are what a household may have tagged. */
+const PROTEIN_FAMILIES = [
+  { id: 'chicken', label: 'Chicken', words: ['chicken', 'poussin'], keywords: ['chicken'] },
+  { id: 'turkey',  label: 'Turkey',  words: ['turkey'], keywords: ['turkey'] },
+  { id: 'duck',    label: 'Duck',    words: ['duck'], keywords: ['duck'] },
+  { id: 'beef',    label: 'Beef',    words: ['beef', 'brisket', 'oxtail', 'veal', 'bresaola'], keywords: ['beef', 'steak'] },
+  { id: 'lamb',    label: 'Lamb',    words: ['lamb', 'mutton'], keywords: ['lamb'] },
+  { id: 'pork',    label: 'Pork',    words: ['pork', 'bacon', 'sausage', 'ham', 'gammon', 'chorizo', 'pancetta', 'prosciutto', 'lardon', 'salami', 'nduja', 'chipolata', 'pepperoni'],
+    keywords: ['pork', 'bacon', 'sausage', 'sausages', 'chorizo', 'ham', 'gammon'] },
+  { id: 'game',    label: 'Game',    words: ['venison', 'rabbit', 'pheasant', 'partridge', 'pigeon'], keywords: ['game', 'venison'] },
+  /* Fish, prawns and other seafood are one family (decided 11 Nov 2026: a prawn dish tagged Fish is how the household thinks of it). */
+  { id: 'fish',    label: 'Fish',    words: ['fish', 'salmon', 'cod', 'haddock', 'tuna', 'trout', 'mackerel', 'bass', 'bream', 'hake', 'pollock', 'sardine', 'anchovy', 'plaice',
+    'sole', 'monkfish', 'halibut', 'kipper', 'coley', 'basa', 'tilapia', 'swordfish', 'herring',
+    'prawn', 'shrimp', 'crab', 'mussel', 'squid', 'calamari', 'scallop', 'clam', 'lobster', 'langoustine', 'crayfish', 'octopus', 'seafood'],
+    keywords: ['fish', 'salmon', 'tuna', 'cod', 'seafood', 'prawn', 'prawns', 'shellfish'] },
+  { id: 'veg',     label: 'Veg',     words: [], keywords: ['veg', 'vegetarian', 'vegan', 'veggie'] }
+];
+/* A line that names an animal and is not the meat: "chicken stock", "fish sauce", "beef dripping", "vegetarian sausages". These words
+   are the guard; a dictionary row's aisle is the second (a row is a decision about that one ingredient). An aisle reached by the keyword
+   lists is not asked: they stop at the first word that matches, and "tuna in olive oil" is Pantry by its oil (measured 11 Nov 2026). */
+const PROTEIN_NOT_MEAT = /\b(stock|broth|bouillon|cube|gravy|sauce|paste|fat|dripping|lard|gelatine|seasoning|powder|granule|extract|tomato|mushroom|ketchup|cracker|style|free|vegetarian|vegan|veggie|meatless|plant|quorn|tofu|seitan|jackfruit)\b/;
+const PROTEIN_NOT_MEAT_AISLES = ['Pantry', 'Spices & Seasoning', 'Dairy & Eggs', 'Produce'];
+/* Grams for a counted line ("3 chicken breasts", "6 rashers"), near enough to say which of two meats a dish is mostly made of.
+   Never shown and never totalled: it only ranks the families within one recipe. */
+const PROTEIN_PIECE_GRAMS = [[/\banchov/, 4], [/\bmeatball/, 30], [/\bwhole\b/, 1500], [/\bbreast/, 170], [/\bthigh/, 110], [/\bdrumstick/, 100], [/\bleg\b/, 250], [/\bfillet/, 140], [/\bsteak/, 200],
+  [/\bchop/, 150], [/\bcutlet/, 90], [/\bshank/, 350], [/\bsausage|chipolata/, 60], [/\brasher|bacon|pancetta|prosciutto|ham\b/, 25], [/\bprawn|shrimp/, 15],
+  [/\bmussel|clam/, 10], [/\bscallop/, 30]];
+const PROTEIN_PIECE_DEFAULT = 120;
+function proteinFamilyOfKeyword(keyword){
+  const k = String(keyword || '').trim().toLowerCase();
+  const fam = PROTEIN_FAMILIES.find(f => f.keywords.includes(k));
+  return fam ? fam.id : null;
+}
+function proteinGrams(line, name){
+  if(line.amount === null) return 1;                       // named with no quantity: present, and outweighed by anything measured
+  if(line.unit === 'g') return line.amount;
+  if(line.unit === 'ml') return line.amount;               // rare for meat; a tin's worth read as its weight
+  const hit = PROTEIN_PIECE_GRAMS.find(([re]) => re.test(name));
+  return line.amount * (hit ? hit[1] : PROTEIN_PIECE_DEFAULT);
+}
+/* → { family, by: 'keyword' | 'ingredients' | 'none', weights: {family: grams}, fromIngredients, keywordFamilies }.
+   `fromIngredients` is what the lines alone say, kept beside the answer so the measurement can list where a keyword disagrees. */
+function mainProtein(recipe, parsed){
+  const p = parsed || parseRecipe((recipe && recipe.syntax) || '');
+  const weights = {};
+  (p.groups || []).forEach(g => (g.items || []).forEach(item => {
+    const { qty, rest } = splitQty(item);
+    const line = shoppingLine(rest, qty ? parseIngredientAmount(qty) : null);
+    const name = `${line.key} ${String(line.display || '').toLowerCase()}`;
+    if(PROTEIN_NOT_MEAT.test(name)) return;
+    const row = line.dictionary ? dictionaryRow(line.key) : null;
+    if(row && PROTEIN_NOT_MEAT_AISLES.includes(row.aisle)) return;
+    const words = new Set(name.split(/[^a-z]+/).filter(Boolean).map(w => foldPlural(w)));
+    /* "steak", "mince" and "meatballs" with no animal named are beef, as a British recipe means them; with one ("tuna steak", "lamb mince") the animal decides. */
+    const fam = PROTEIN_FAMILIES.find(f => f.words.some(w => words.has(w)))
+      || ((words.has('steak') || words.has('mince') || words.has('meatball')) ? PROTEIN_FAMILIES.find(f => f.id === 'beef') : null);
+    if(!fam) return;
+    weights[fam.id] = (weights[fam.id] || 0) + proteinGrams(line, name);
+  }));
+  const ranked = Object.keys(weights).sort((a, b) => weights[b] - weights[a] || a.localeCompare(b));
+  const fromIngredients = ranked[0] || 'veg';
+  const keywordFamilies = [...new Set((((recipe && recipe.tags) || {}).keywords || []).map(proteinFamilyOfKeyword).filter(Boolean))];
+  let family = fromIngredients, by = ranked.length ? 'ingredients' : 'none';
+  if(keywordFamilies.length){
+    /* Several protein keywords (a chicken and chorizo dish): the heaviest of them in the lines, else the first written. */
+    family = keywordFamilies.slice().sort((a, b) => (weights[b] || 0) - (weights[a] || 0))[0];
+    by = 'keyword';
+  }
+  return { family, by, weights, fromIngredients, keywordFamilies };
+}
+
+/* Minutes the cook is busy, from the recipe's own timeline: every step that is not hands off, added up (one pair of hands, so two
+   hands-on steps drawn side by side are still both worked). null when it cannot be told: no timing at all, or no step marked hands off,
+   since an unmarked recipe reads as hands on throughout, "bake 25 min" included (the run sheet's rule, planToServe's handsKnown). */
+function handsOnMinutes(parsed){
+  const tl = computeTimeline(parsed.groups || [], parsed.stages || []);
+  if(!tl || !tl.steps.some(s => s.handsOff)) return null;
+  return Math.round(tl.steps.reduce((sum, s) => sum + (s.handsOff ? 0 : s.end - s.start), 0));
+}
+
+/* Dish styles, for "not two pastas in a week": the meal-base keywords, folded so Noodle and Noodles, Stir fry and Stir-fry are one. */
+const DISH_STYLES = ['pasta', 'rice', 'risotto', 'orzo', 'noodle', 'curry', 'traybake', 'salad', 'stir-fry', 'soup', 'stew', 'pie', 'gnocchi', 'burger', 'tagine', 'paella',
+  'couscous', 'roast', 'pizza', 'taco', 'casserole', 'bake'];
+function dishStyles(keywords){
+  const out = new Set();
+  (keywords || []).forEach(k => {
+    const w = String(k || '').trim().toLowerCase().replace(/\s+/g, '-').replace(/^sunday-roast$/, 'roast');
+    const s = [w, w.replace(/ies$/, 'y'), w.replace(/es$/, ''), w.replace(/s$/, '')].find(x => DISH_STYLES.includes(x));
+    if(s) out.add(s);
+  });
+  return [...out];
+}
+
+function isoDaysApart(fromIso, toIso){
+  const a = Date.parse(`${fromIso}T00:00:00Z`), b = Date.parse(`${toIso}T00:00:00Z`);
+  return (isNaN(a) || isNaN(b)) ? null : Math.round((b - a) / 86400000);
+}
+/* Everything the suggester needs to know about one recipe, worked out once (it parses the recipe). `history` is the app's list of
+   dates cooked, which already leaves a freezer meal out and counts a dish cooked ahead (SPEC §6.12). */
+function suggestionFacts(recipe){
+  const parsed = parseRecipe(recipe.syntax || '');
+  const tags = recipe.tags || {};
+  const history = (recipe.history || []).filter(Boolean).slice().sort();
+  const protein = mainProtein(recipe, parsed);
+  return {
+    id: recipe.id, title: recipe.title, course: String(tags.course || '').toLowerCase(),
+    protein: protein.family, proteinBy: protein.by,
+    minutes: parseMinutes(recipe.time), handsOn: handsOnMinutes(parsed),
+    freezes: (parsed.notes && parsed.notes.freezing || []).length > 0,
+    keywords: (tags.keywords || []).map(k => String(k).toLowerCase()), styles: dishStyles(tags.keywords),
+    favourite: !!recipe.favourite, timesCooked: history.length, lastCooked: history.length ? history[history.length - 1] : null
+  };
+}
+
+/* Times cooked at or above which a recipe is POPULAR without being a favourite: the top fifth of those cooked at least twice, ties in.
+   Infinity when nothing has been cooked twice, which is most libraries today: POPULAR is then the favourites alone. */
+function popularThreshold(facts){
+  const counts = facts.filter(f => f.course === 'main' && f.timesCooked >= SUGGEST_RULES.popularMinCooked).map(f => f.timesCooked).sort((a, b) => b - a);
+  if(!counts.length) return Infinity;
+  return counts[Math.max(0, Math.ceil(counts.length * SUGGEST_RULES.popularShare) - 1)];
+}
+/* The recipes that fit an ask. ask: { proteins: [family…] (any of), which: 'any' | 'popular' | 'notLately' | 'never', maxMinutes,
+   lowEffort (with lowEffortMinutes, else the default), freezes, keywords: [all of] }. ctx: { today: 'YYYY-MM-DD', planned: [ids on the Planner], rejected: [ids swapped away] }.
+   Each comes back with `weight`, its share of the chance. */
+function suggestPool(facts, ask, ctx){
+  ask = ask || {}; ctx = ctx || {};
+  const which = ask.which || 'any';
+  const off = new Set([...(ctx.planned || []), ...(ctx.rejected || [])]);
+  const popularAt = popularThreshold(facts);
+  const proteins = ask.proteins || [], keywords = (ask.keywords || []).map(k => String(k).toLowerCase());
+  const out = [];
+  facts.forEach(f => {
+    if(f.course !== 'main' || off.has(f.id)) return;
+    const since = f.lastCooked && ctx.today ? isoDaysApart(f.lastCooked, ctx.today) : null;
+    /* Cooked in the last fortnight is too soon, unless popular is what was asked for. */
+    if(which !== 'popular' && since !== null && since < SUGGEST_RULES.recentDays) return;
+    if(proteins.length && !proteins.includes(f.protein)) return;
+    if(which === 'popular' && !(f.favourite || f.timesCooked >= popularAt)) return;
+    if(which === 'notLately' && !(f.timesCooked > 0 && since !== null && since >= SUGGEST_RULES.notLatelyDays)) return;
+    if(which === 'never' && f.timesCooked > 0) return;
+    if(ask.maxMinutes && !(f.minutes !== null && f.minutes <= ask.maxMinutes)) return;
+    if(ask.lowEffort){
+      const busy = f.handsOn !== null ? f.handsOn : f.minutes;
+      if(!(busy !== null && busy <= (ask.lowEffortMinutes || SUGGEST_RULES.lowEffortMinutes))) return;
+    }
+    if(ask.freezes && !f.freezes) return;
+    if(keywords.some(k => !f.keywords.includes(k))) return;
+    let weight = 1;
+    if(which === 'popular') weight = 1 + f.timesCooked + (f.favourite ? 1 : 0);
+    else if(which === 'notLately') weight = Math.max(1, since / SUGGEST_RULES.notLatelyDays);
+    else if(which === 'any') weight = since === null ? 1.5 : 1 + Math.min(since, 365) / 365;   // never cooked sits in the middle
+    out.push({ ...f, weight });
+  });
+  return out;
+}
+/* Chance from a seed, so a test can fix it (mulberry32). The page passes a fresh seed for each ANOTHER. */
+function seededRandom(seed){
+  let a = (Number(seed) || 0) >>> 0;
+  return function(){
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function weightedPick(list, rand){
+  const total = list.reduce((s, x) => s + x.weight, 0);
+  let r = rand() * total;
+  for(const x of list){ r -= x.weight; if(r < 0) return x; }
+  return list[list.length - 1] || null;
+}
+/* ONE MEAL and 3 OPTIONS: `count` different recipes by weighted chance. → { picks, fits } where fits is how many recipes fit the ask. */
+function suggestMeals(facts, ask, ctx){
+  const pool = suggestPool(facts, ask, ctx);
+  const rand = seededRandom((ctx || {}).seed);
+  const left = pool.slice(), picks = [];
+  const count = Math.max(1, (ask && ask.count) || 1);
+  while(picks.length < count && left.length){
+    const x = weightedPick(left, rand);
+    picks.push(x); left.splice(left.indexOf(x), 1);
+  }
+  return { picks, fits: pool.length };
+}
+
+/* A WEEK: one Main for each empty day. ctx.days is the chosen week from today on, in order: { date, recipeIds: [what is planned], away }.
+   A day with a dish, or away, is left alone, and what is planned counts: towards ask.atLeast ({ fish: 1, chicken: 2 }), as a neighbour
+   for "not the same protein two days running", and as a style already had this week.
+   The spread rules give way before a day is left empty: first the style rule, then the neighbour rule, and a family that has run out
+   is reported in `short` and its day given to anything that fits. Several shuffles are tried and the one that bent fewest rules kept.
+   → { days: [{ date, pick | null }], short: [{ family, wanted, got }], bent: { style, neighbour } } */
+function suggestWeek(facts, ask, ctx){
+  ask = ask || {}; ctx = ctx || {};
+  const days = ctx.days || [];
+  const byId = new Map(facts.map(f => [f.id, f]));
+  const plannedIds = days.flatMap(d => d.recipeIds || []);
+  const pool = suggestPool(facts, { ...ask, proteins: [] }, { ...ctx, planned: [...(ctx.planned || []), ...plannedIds] });
+  const plannedMains = days.map(d => (d.recipeIds || []).map(id => byId.get(id)).filter(f => f && f.course === 'main'));
+  const open = days.map((d, i) => (!d.away && !(d.recipeIds || []).length) ? i : -1).filter(i => i >= 0);
+  const want = ask.atLeast || {};
+  const have = {};
+  plannedMains.flat().forEach(f => { have[f.protein] = (have[f.protein] || 0) + 1; });
+  const demands = [];
+  Object.keys(want).sort().forEach(fam => { for(let n = (have[fam] || 0); n < want[fam]; n++) demands.push(fam); });
+  const rand = seededRandom(ctx.seed);
+  const shuffle = arr => { const a = arr.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  let best = null;
+  for(let attempt = 0; attempt < SUGGEST_RULES.weekAttempts; attempt++){
+    /* Which open day each required family lands on: the days shuffled, the demands dealt onto the first of them. */
+    const order = shuffle(open);
+    const demandOf = {};
+    shuffle(demands).slice(0, order.length).forEach((fam, k) => { demandOf[order[k]] = fam; });
+    const chosen = {};
+    const used = new Set(), styles = new Set(plannedMains.flat().flatMap(f => f.styles));
+    const bent = { style: 0, neighbour: 0 };
+    const proteinsOn = i => i < 0 || i >= days.length ? [] : (chosen[i] ? [chosen[i].protein] : plannedMains[i].map(f => f.protein));
+    /* Required days first, so a scarce family is not spent on a free day. */
+    const sequence = order.filter(i => demandOf[i]).concat(order.filter(i => !demandOf[i]));
+    sequence.forEach(i => {
+      const near = new Set([...proteinsOn(i - 1), ...proteinsOn(i + 1)]);
+      const free = pool.filter(f => !used.has(f.id));
+      const tiers = fam => {
+        const base = fam ? free.filter(f => f.protein === fam) : free;
+        const fresh = base.filter(f => !f.styles.some(s => styles.has(s)));
+        return [ [fresh.filter(f => !near.has(f.protein)), null], [base.filter(f => !near.has(f.protein)), 'style'], [base, 'neighbour'] ];
+      };
+      let pick = null;
+      for(const fam of (demandOf[i] ? [demandOf[i], null] : [null])){
+        for(const [cands, rule] of tiers(fam)){
+          if(!cands.length) continue;
+          pick = weightedPick(cands, rand);
+          if(rule) bent[rule]++;
+          break;
+        }
+        if(pick) break;
+      }
+      if(pick){ chosen[i] = pick; used.add(pick.id); pick.styles.forEach(s => styles.add(s)); }
+    });
+    const got = { ...have };
+    Object.values(chosen).forEach(f => { got[f.protein] = (got[f.protein] || 0) + 1; });
+    const short = Object.keys(want).sort().filter(fam => (got[fam] || 0) < want[fam]).map(fam => ({ family: fam, wanted: want[fam], got: got[fam] || 0 }));
+    const empty = open.filter(i => !chosen[i]).length;
+    const score = short.reduce((s, x) => s + (x.wanted - x.got) * 100, 0) + empty * 50 + bent.neighbour * 3 + bent.style;
+    if(!best || score < best.score) best = { score, chosen, short, bent };
+    if(score === 0) break;
+  }
+  return {
+    days: days.map((d, i) => ({ date: d.date, pick: (best && best.chosen[i]) || null })).filter((d, i) => open.includes(i)),
+    short: best ? best.short : [], bent: best ? best.bent : { style: 0, neighbour: 0 }
+  };
+}
+
 /* So Node can load this file too (test/core.test.js, the validators). In the
    page there is no `module`, and everything above is simply global, as it was
    when it lived in index.html. */
@@ -2916,6 +3199,7 @@ if(typeof module !== 'undefined' && module.exports){
     ingredientLineFaults, suggestIngredientLine, LINE_HINTS, sourceFidelity, fidelityWords, fidelityAmount, fidelityAgree, fidelityCompare, fidelityDelta, pastedRepeats, splitIngredients, pastedIngredientLines, ingredientMatchMap, aisleOverrideMap,
     sourceNoteIn, normalisedSourceUrl, linesHash, fidelityCounts, sourceCheckStatus, newRecipeReview,
     buildSourcePrompt, parseSourceReply, replyLengthOff,
-    splitRecipeBlocks
+    splitRecipeBlocks,
+    parseMinutes, SUGGEST_RULES, PROTEIN_FAMILIES, mainProtein, handsOnMinutes, dishStyles, suggestionFacts, popularThreshold, suggestPool, seededRandom, suggestMeals, suggestWeek
   };
 }

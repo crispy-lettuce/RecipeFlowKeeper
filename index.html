@@ -808,7 +808,54 @@ function loadArchivoFont(){
   .planner-tools{ display:flex; align-items:baseline; gap:16px; flex-wrap:wrap; }
   .planner-past{ position:relative; min-height:44px; background:none; border:none; padding:4px 0; cursor:pointer; font-size:14px; letter-spacing:.04em; color:var(--plum); font-weight:500; }
   .planner-past[hidden]{ display:none; }
+  /* With INSPIRE ME beside it (docs/PLAN-INSPIRE-ME.md) the heading's tools no longer always fit one line, and a second line would make the
+     Planner taller for a label. So this look keeps one line of them and lets ROLLS FORWARD DAILY, the last and the only one that is not a
+     button, fall off the end where there is no room. The two buttons are one unbreakable piece (.planner-btns), so the box is never narrower
+     than both and neither can be the one that falls off: the heading's words wrap instead (measured 11 Nov 2026: without it PREVIOUS 3 DAYS
+     vanished at phone width). The ring is drawn inside the two buttons, since the box now clips what is outside it.
+     The second look draws them smaller, fits all three, and keeps its tap areas outside the box, so its own stylesheet undoes this. */
+  /* min-content: a box that clips would otherwise shrink to nothing. And where even the heading's longest word and the two buttons do not
+     fit one line (a phone; a tablet with both side panels open) the tools take the next line, at the right, with the heading's words in one
+     line above: about as tall as the words wrapped to three were. */
+  .planner-head{ flex-wrap:wrap; }
+  /* The basis is the two buttons' width, so the tools share the heading's line whenever the words and the buttons fit, and take what is left. */
+  .planner-tools{ flex:1 1 min-content; max-height:44px; overflow:hidden; justify-content:flex-end; min-width:min-content; margin-left:auto; }
+  .planner-btns{ display:flex; flex:none; align-items:baseline; gap:16px; }
+  .planner-past:focus-visible{ outline-offset:-2px; }
 
+  /* INSPIRE ME (docs/PLAN-INSPIRE-ME.md, slice 2, 11 Nov 2026). The panel sits under the Planner's heading: rows of chips, then the
+     suggestions as cards. Built from .chip and .btn, so both looks and both themes draw it from their own tokens and every button is
+     44px tall by the rule that already covers those two. */
+  .inspire-panel{ margin:14px 0 6px; padding:14px 16px 16px; border:1px solid var(--plum); border-radius:var(--r); background:var(--card); }
+  .inspire-panel[hidden]{ display:none; }
+  .inspire-head{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+  .inspire-title{ font-size:14px; letter-spacing:.04em; font-weight:500; color:var(--plum); }
+  .inspire-for{ flex:1; min-width:0; font-size:14px; color:var(--ink-soft); }
+  .inspire-row{ display:flex; align-items:flex-start; gap:8px 14px; flex-wrap:wrap; padding:5px 0; }
+  .inspire-label{ flex:none; width:6.5em; min-height:44px; display:flex; align-items:center; font-size:14px; letter-spacing:.04em; font-weight:500; color:var(--ink-faint); }
+  .inspire-chips{ flex:1 1 14em; min-width:0; display:flex; flex-wrap:wrap; gap:8px; }
+  .inspire-chips .chip .inspire-n{ margin-left:8px; font-weight:400; color:var(--ink-soft); }
+  .inspire-chips .chip.on .inspire-n{ color:inherit; }
+  .inspire-chips .chip:disabled{ opacity:.45; cursor:default; border-color:var(--line-faint); color:var(--ink-soft); }
+  .inspire-results{ margin-top:10px; padding-top:12px; border-top:1px solid var(--line); }
+  .inspire-cards{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; }
+  .inspire-card{ display:flex; gap:12px; min-width:0; padding:10px; border:1px solid var(--line); border-radius:var(--r); background:var(--paper, transparent); }
+  .inspire-photo{ flex:none; width:84px; height:84px; overflow:hidden; border-radius:var(--r); background:var(--plum-wash); display:flex; align-items:center; justify-content:center;
+    font-size:13px; letter-spacing:.04em; text-align:center; color:var(--ink-soft); }
+  .inspire-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .inspire-body{ flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; }
+  .inspire-name{ font-size:16px; line-height:1.25; color:var(--ink); overflow-wrap:anywhere; }
+  .inspire-meta{ font-size:13px; letter-spacing:.04em; color:var(--ink-soft); }
+  .inspire-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:auto; }
+  .inspire-foot{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:12px; }
+  .inspire-fits{ font-size:14px; color:var(--ink-soft); }
+  .inspire-none{ font-size:15px; color:var(--ink-soft); padding:6px 0; }
+  .inspire-label:empty{ min-height:0; }
+  @media (max-width:560px){
+    .inspire-label{ width:100%; min-height:0; }
+    .inspire-label:empty{ display:none; }
+    .inspire-row{ padding:6px 0; }
+  }
   .assign-banner{
     display:flex; align-items:center; gap:12px; justify-content:space-between;
     margin:14px 0 4px; padding:0 16px; min-height:44px;   /* its buttons are 44px now (tablet review F6), so the banner is that tall and no taller */
@@ -901,10 +948,13 @@ function loadArchivoFont(){
   /* The tag is a button (tap it to set or change the meal), drawn as the text it was: no box, a dotted line under it, and the usual 44px to tap. */
   .day-adhoc-meal{ background:none; border:0; padding:0 4px; font-family:inherit; cursor:pointer; text-decoration:underline dotted; text-underline-offset:4px; }
   .day-adhoc-meal:hover{ color:var(--plum); }
-  /* + OTHER shares an empty day's one line with CHOOSE A RECIPE, at the right; too narrow for both, it drops beneath. */
+  /* INSPIRE ME and + OTHER are one pair (.day-tools) at the right of an empty day's line, beside CHOOSE A RECIPE. On a phone the three
+     cannot share the line, so the pair drops beneath it together, never + OTHER alone, and CHOOSE A RECIPE keeps room for its words
+     (docs/PLAN-INSPIRE-ME.md, 11 Nov 2026). */
   .day-main-empty{ flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px 16px; }
-  .day-main-empty > .day-choose:not(.day-add-more){ flex:1 1 11em; }
-  .day-main-empty > .day-choose.day-add-more{ align-self:center; margin:0 0 0 auto; }
+  .day-main-empty > .day-choose:not(.day-add-more){ flex:1 1 auto; }
+  .day-main-empty > .day-tools{ display:flex; flex:none; align-items:center; gap:16px; margin:0 0 0 auto; }
+  .day-main-empty > .day-tools > .day-choose.day-add-more{ align-self:center; margin:0; }
   .day-recipe-time{
     flex:none; min-width:60px; text-align:right; white-space:nowrap;
     font-family:'IBM Plex Mono', monospace; font-size:14px; letter-spacing:.03em; color:var(--ink-soft);
@@ -1919,7 +1969,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-11-01.3">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-11-11.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2101,8 +2151,10 @@ function loadArchivoFont(){
         <div class="planner-days">
           <div class="planner-head">
             <h1>Next Fourteen Days</h1>
-            <div class="planner-tools"><button class="planner-past" id="plannerPastBtn" type="button" aria-expanded="false">PREVIOUS 3 DAYS</button><div class="planner-rolls">ROLLS FORWARD DAILY</div></div>
+            <div class="planner-tools"><span class="planner-btns"><button class="planner-past" id="inspireBtn" type="button" aria-expanded="false" aria-controls="inspirePanel">INSPIRE ME</button><button class="planner-past" id="plannerPastBtn" type="button" aria-expanded="false">PREVIOUS 3 DAYS</button></span><div class="planner-rolls">ROLLS FORWARD DAILY</div></div>
           </div>
+          <!-- INSPIRE ME (docs/PLAN-INSPIRE-ME.md): suggestions by protein, how lately cooked and effort. Closed until asked for. -->
+          <div id="inspirePanel" class="inspire-panel" role="region" aria-label="Inspire me" hidden></div>
           <div id="assignBanner" class="assign-banner" style="display:none;"></div>
           <div id="dayList"></div>
         </div>
@@ -2419,6 +2471,20 @@ function loadArchivoFont(){
           </select>
         </div>
 
+        <div class="settings-block" data-settings-tab="app" id="lowEffortBlock">
+          <div class="side-label">LOW EFFORT MEANS</div>
+          <p class="subtle">How many minutes of your own time a recipe may ask for and still count as LOW EFFORT when the Planner's INSPIRE ME
+            suggests one. It is the hands-on time, read from the steps not marked hands off; a recipe with no such mark is judged by its
+            whole time. This device only.</p>
+          <select class="sort" id="setLowEffort" aria-label="Low effort means">
+            <option value="5">5 MINUTES HANDS ON</option>
+            <option value="10">10 MINUTES HANDS ON</option>
+            <option value="15">15 MINUTES HANDS ON</option>
+            <option value="20">20 MINUTES HANDS ON</option>
+            <option value="30">30 MINUTES HANDS ON</option>
+          </select>
+        </div>
+
         <div class="settings-block" data-settings-tab="app" id="avoidBlock">
           <div class="side-label">AVOID THE CLASH</div>
           <p class="subtle">Whether a recipe or group opens with its clashes already avoided: where two steps would want your hands at once, the later one
@@ -2466,6 +2532,7 @@ function loadArchivoFont(){
           <div class="side-label">QUICK ANSWERS</div>
           <ul class="help-answers" id="helpAnswers">
             <li><a href="help.html#planner" target="_blank" rel="noopener">How do I plan the week?</a></li>
+            <li><a href="help.html#inspire" target="_blank" rel="noopener">How do I get an idea for what to cook?</a></li>
             <li><a href="help.html#calendar" target="_blank" rel="noopener">How do I put a day in my Google Calendar?</a></li>
             <li><a href="help.html#shopping-both" target="_blank" rel="noopener">How do I shop for both weeks at once?</a></li>
             <li><a href="help.html#shopping-audit" target="_blank" rel="noopener">How do I move something to another aisle?</a></li>
@@ -2736,7 +2803,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-11-01.2"></script>
+<script src="core.js?v=2026-11-11.1"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2744,12 +2811,12 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-11-01.2';
+const EXPECTED_CORE_VERSION = '2026-11-11.1';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-11-01.3';
+const APP_VERSION = '2026-11-11.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -6047,25 +6114,7 @@ function daysSince(iso){
   return Math.floor((Date.now() - then) / 86400000);
 }
 
-/* "25 min" -> 25 · "1 hr 40" -> 100 · "3 hr" -> 180 · "1 day" -> 1440 */
-function parseMinutes(t){
-  if(!t) return null;
-  const s = String(t).toLowerCase();
-  const day = s.match(/(\d+(?:\.\d+)?)\s*day/);
-  if(day) return Math.round(parseFloat(day[1]) * 1440);
-  const hr = s.match(/(\d+(?:\.\d+)?)\s*(?:hrs?|hours?|h)\b/);
-  const mn = s.match(/(\d+)\s*(?:mins?|minutes?|m)\b/);
-  let total = 0, found = false;
-  if(hr){ total += parseFloat(hr[1]) * 60; found = true; }
-  if(mn){ total += parseInt(mn[1], 10); found = true; }
-  if(hr && !mn){
-    const tail = s.slice(s.indexOf(hr[0]) + hr[0].length).match(/(\d+)/);
-    if(tail) total += parseInt(tail[1], 10);
-  }
-  if(found) return Math.round(total);
-  const bare = s.match(/(\d+)/);
-  return bare ? parseInt(bare[1], 10) : null;
-}
+/* parseMinutes ("25 min" -> 25) is in core.js since 11 Nov 2026: the suggestions engine reads a recipe's time too. */
 
 /* A recipe's TIME for display: escaped and in capitals like the rest of the card, with an EST. tag in front of the
    figure when the converter marked it as worked out from the method (splitTimeText in core.js, 18 Oct 2026). The tag
@@ -6217,6 +6266,8 @@ function findSimilarTerm(newTerm, countsByTerm){
 const state = {
   view: 'recipes',
   plannerPast: 0,              // days of the Planner's EARLIER band shown (#223); 0 is closed. This tab only, never stored.
+  inspire: null,               // INSPIRE ME's choices and what it is showing (inspireState()). This tab only, never stored.
+  inspirePlacing: null,        // a suggested recipe waiting for a day to be tapped, as a selected shortlist item waits
   text: '',
   course: [],
   keywords: [],                // chips that match a recipe's keywords exactly (#201)
@@ -8112,7 +8163,233 @@ function addWithToDay(date, mainIdx, sideId){
   else createGroup(date, [main.id, sideId]);
   showToast(`${side.title} added to ${formatDate(date)}, cooking with ${main.title}.`);
 }
+/* =====================================================================
+   INSPIRE ME (docs/PLAN-INSPIRE-ME.md, slice 2, 11 Nov 2026): suggestions on the Planner.
+   The choosing is in core.js (suggestionFacts, suggestPool, suggestMeals), pure and tested in Node. This is the panel: chips for
+   what is wanted, cards for what came back, and ADD, which is the only thing here that writes, through addPlanRecipe, the one-row
+   save CHOOSE A RECIPE makes. Until ADD the plan, the shopping list and the calendar are untouched.
+   ===================================================================== */
+const INSPIRE_LOW_EFFORT_CHOICES = [5, 10, 15, 20, 30];
+/* LOW EFFORT's limit on this device (Settings → APP → LOW EFFORT MEANS): the engine's default when unset or blocked. */
+function lowEffortLimit(){
+  try { const n = parseInt(localStorage.getItem('kitchen.lowEffort'), 10); return INSPIRE_LOW_EFFORT_CHOICES.includes(n) ? n : SUGGEST_RULES.lowEffortMinutes; }
+  catch(e){ return SUGGEST_RULES.lowEffortMinutes; }
+}
+/* What the panel remembers while the tab is open. `date` is the day it was opened from (null from the heading: ADD then asks for a
+   day). `picks` are recipe ids on show; `rejected` are those already shown and passed over with ANOTHER, never offered again until
+   START AGAIN or a choice changes. */
+function inspireState(){
+  if(!state.inspire) state.inspire = { open: false, date: null, count: 1, proteins: [], which: 'any', maxMinutes: 0, lowEffort: false, freezes: false, keywords: [], more: false, picks: [], rejected: [] };
+  return state.inspire;
+}
+/* Each recipe's facts are worked out once (it parses the recipe) and kept while the recipe is as it was. */
+const INSPIRE_FACTS = new WeakMap();
+function inspireFacts(){
+  return loadRecipes().map(r=>{
+    const sig = [r.syntax, r.time, r.favourite ? 1 : 0, JSON.stringify(r.tags || {}), (r.history || []).join()].join('\u0001');
+    const had = INSPIRE_FACTS.get(r);
+    if(had && had.sig === sig) return had.facts;
+    const facts = suggestionFacts(r);
+    INSPIRE_FACTS.set(r, { sig, facts });
+    return facts;
+  });
+}
+function inspireAsk(over){
+  const s = inspireState();
+  return { count: s.count, proteins: s.proteins, which: s.which, maxMinutes: s.maxMinutes, lowEffort: s.lowEffort, lowEffortMinutes: lowEffortLimit(),
+           freezes: s.freezes, keywords: s.keywords, ...(over || {}) };
+}
+/* Never what is already on the 14 days (dayList(), as the shopping list reads them), nor what was passed over. */
+function inspireCtx(withRejected){
+  const plan = loadPlan();
+  const planned = dayList().flatMap(d=> planRecipeIds(plan[isoLocal(d)]));
+  return { today: todayStr(), planned, rejected: withRejected === false ? [] : inspireState().rejected };
+}
+/* New suggestions. `another` passes over what is showing first. */
+function rollInspire(another){
+  const s = inspireState();
+  if(another) s.rejected = s.rejected.concat(s.picks);
+  const seed = Math.floor(Math.random() * 4294967296);
+  s.picks = suggestMeals(inspireFacts(), inspireAsk(), { ...inspireCtx(), seed }).picks.map(f=> f.id);
+}
+/* A choice changed: what was passed over under the old choices is forgotten, and the suggestions are drawn again. */
+function inspireChanged(){
+  inspireState().rejected = [];
+  rollInspire(false);
+  renderPlanner();
+}
+function openInspire(date){
+  const s = inspireState();
+  const wasOpen = s.open;
+  s.open = true;
+  s.date = date || null;
+  if(date) s.count = 1;          // from a day: one meal for that day
+  state.inspirePlacing = null;
+  if(!wasOpen || !s.picks.length || date) rollInspire(false);
+  renderPlanner();
+  const panel = document.getElementById('inspirePanel');
+  try { panel.scrollIntoView({ block: 'nearest' }); } catch(err){}
+}
+function closeInspire(){
+  inspireState().open = false;
+  state.inspirePlacing = null;
+  renderPlanner();
+}
+/* ADD: the one write. From a day's own button the panel has done its job and closes; from the heading the other cards stay. */
+function inspireAddTo(date, recipeId){
+  const s = inspireState();
+  const recipe = loadRecipes().find(r=> r.id === recipeId);
+  if(!recipe) return;
+  addPlanRecipe(date, recipeId);
+  state.inspirePlacing = null;
+  s.picks = s.picks.filter(id=> id !== recipeId);
+  if(s.date || !s.picks.length) s.open = false;
+  updateSidebarCounts();
+  renderPlanner();
+  showToast(`${recipe.title || 'The dish'} is on ${formatDate(date)}`);
+  const row = document.querySelector(`#dayList .day-row[data-date="${date}"]`);
+  if(row) try { row.scrollIntoView({ block: 'nearest' }); } catch(err){}
+}
+function inspireChip(key, label, on, n, attrs){
+  const none = !on && n === 0;
+  return `<button type="button" class="chip${on ? ' on' : ''}" data-k="${escapeHtml(key)}" ${attrs} aria-pressed="${on ? 'true' : 'false'}"${none ? ' disabled' : ''}>${escapeHtml(label)}${
+    n === null ? '' : `<span class="inspire-n">${n}</span>`}</button>`;
+}
+function renderInspirePanel(){
+  const panel = document.getElementById('inspirePanel');
+  const btn = document.getElementById('inspireBtn');
+  const s = inspireState();
+  btn.setAttribute('aria-expanded', s.open ? 'true' : 'false');
+  if(!s.open){ panel.hidden = true; panel.innerHTML = ''; return; }
+  const focused = panel.contains(document.activeElement) ? document.activeElement.dataset.k : null;
+  const facts = inspireFacts();
+  const ctx = inspireCtx();
+  /* Each choice says how many recipes fit with the others as they are, so one that would leave none is plain before it is tapped. */
+  const fits = over=> suggestPool(facts, inspireAsk(over), ctx).length;
+  const mains = facts.filter(f=> f.course === 'main');
+
+  const families = PROTEIN_FAMILIES.filter(fam=> mains.some(f=> f.protein === fam.id));
+  const proteinChips = families.map(fam=> inspireChip('p-' + fam.id, fam.label.toUpperCase(), s.proteins.includes(fam.id), fits({ proteins: [fam.id] }), `data-inspire="protein" data-val="${fam.id}"`)).join('');
+  const WHICH = [['any', 'ANY'], ['popular', 'POPULAR'], ['notLately', 'NOT LATELY'], ['never', 'NEVER TRIED']];
+  const whichChips = WHICH.map(([val, label])=> inspireChip('w-' + val, label, s.which === val, fits({ which: val }), `data-inspire="which" data-val="${val}"`)).join('');
+  const TIMES = [[0, 'ANY TIME'], [30, '30 MIN'], [60, '1 HOUR']];
+  const timeChips = TIMES.map(([val, label])=> inspireChip('t-' + val, label, s.maxMinutes === val, fits({ maxMinutes: val }), `data-inspire="time" data-val="${val}"`)).join('');
+  const effortChips = inspireChip('low', 'LOW EFFORT', s.lowEffort, fits({ lowEffort: true }), `data-inspire="low" title="${lowEffortLimit()} minutes hands on or less"`)
+    + inspireChip('frz', 'FREEZES WELL', s.freezes, fits({ freezes: true }), `data-inspire="freezes"`);
+  /* The library's own keywords on its Mains, most used first; a protein's keyword is left out, PROTEIN above being the same choice. */
+  const counts = new Map();
+  loadRecipes().forEach(r=>{ if(String((r.tags || {}).course || '').toLowerCase() !== 'main') return;
+    ((r.tags || {}).keywords || []).forEach(k=>{ if(!proteinFamilyOfKeyword(k)) counts.set(k, (counts.get(k) || 0) + 1); }); });
+  const INSPIRE_KEYWORD_LIMIT = 12;
+  const shown = [...counts.keys()].sort((a, b)=> counts.get(b) - counts.get(a) || a.localeCompare(b)).slice(0, INSPIRE_KEYWORD_LIMIT);
+  s.keywords.forEach(k=>{ if(!shown.includes(k)) shown.push(k); });
+  const keywordChips = shown.map(k=>{
+    const on = s.keywords.includes(k);
+    return inspireChip('k-' + k, k.toUpperCase(), on, fits({ keywords: on ? s.keywords : s.keywords.concat(k) }), `data-inspire="keyword" data-val="${escapeHtml(k)}"`);
+  }).join('');
+
+  /* TIME and KEYWORDS are folded away until asked for, so the suggestions are not a screen below the choices; folded, the button
+     says how many of them are on, since a choice that cannot be seen still narrows what is offered. */
+  const moreOn = (s.maxMinutes ? 1 : 0) + (s.lowEffort ? 1 : 0) + (s.freezes ? 1 : 0) + s.keywords.length;
+  /* What is on show, less anything that has since been planned or no longer fits. */
+  const pool = suggestPool(facts, inspireAsk(), ctx);
+  const fitsAll = suggestPool(facts, inspireAsk(), inspireCtx(false)).length;
+  s.picks = s.picks.filter(id=> pool.some(f=> f.id === id));
+  const recipes = loadRecipes();
+  const shortlisted = new Set(loadShortlist().map(i=> i.recipeId).filter(Boolean));
+  const dayLabel = s.date ? formatDayLabel(new Date(s.date + 'T00:00:00')).toUpperCase() : '';
+  const cards = s.picks.map(id=>{
+    const r = recipes.find(x=> x.id === id), f = pool.find(x=> x.id === id);
+    const fam = PROTEIN_FAMILIES.find(x=> x.id === f.protein);
+    const used = lastUsed(r);
+    const meta = [fam ? fam.label.toUpperCase() : '', r.time ? timeHtml(r.time) : '', used ? 'LAST ' + escapeHtml(formatDate(used).toUpperCase()) : 'NEVER COOKED'].filter(Boolean).join(' · ');
+    const waiting = state.inspirePlacing === id;
+    const on = shortlisted.has(id);
+    return `<div class="inspire-card" data-id="${escapeHtml(id)}">
+      <div class="inspire-photo">${r.imageUrl ? `<img src="${escapeHtml(r.imageUrl)}" alt="" loading="lazy">` : 'NO PHOTO YET'}</div>
+      <div class="inspire-body">
+        <div class="inspire-name">${escapeHtml(r.title || 'Untitled')}</div>
+        <div class="inspire-meta">${meta}</div>
+        <div class="inspire-actions">
+          <button type="button" class="btn primary" data-k="add-${escapeHtml(id)}" data-inspire="add" aria-label="Add ${escapeHtml(r.title || 'Untitled')}${s.date ? ' to ' + escapeHtml(dayLabel) : ''}">${waiting ? 'TAP A DAY' : (s.date ? `ADD TO ${escapeHtml(dayLabel)}` : 'ADD')}</button>
+          <button type="button" class="btn" data-k="open-${escapeHtml(id)}" data-inspire="open" aria-label="Open ${escapeHtml(r.title || 'Untitled')}">OPEN</button>
+          <button type="button" class="btn${on ? ' on' : ''}" data-k="sl-${escapeHtml(id)}" data-inspire="shortlist"${on ? ' disabled' : ''} aria-label="${on ? 'On the shortlist' : 'Add to shortlist'}: ${escapeHtml(r.title || 'Untitled')}">${on ? '✓ SHORTLIST' : '+ SHORTLIST'}</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  let results;
+  if(!fitsAll) results = `<div class="inspire-none" role="status">Nothing fits those choices. Take one off.</div>`;
+  else if(!s.picks.length) results = `<div class="inspire-none" role="status">You have seen all ${fitsAll} that fit${fitsAll === 1 ? 's' : ''}.</div>
+    <div class="inspire-foot"><button type="button" class="btn" data-k="again" data-inspire="again">START AGAIN</button></div>`;
+  else results = `<div class="inspire-cards">${cards}</div>
+    <div class="inspire-foot"><button type="button" class="btn" data-k="another" data-inspire="another">${s.count === 3 ? 'ANOTHER 3' : 'ANOTHER'}</button><span class="inspire-fits">${fitsAll} FIT${fitsAll === 1 ? 'S' : ''}</span></div>`;
+
+  panel.hidden = false;
+  panel.innerHTML = `<div class="inspire-head">
+      <span class="inspire-title">INSPIRE ME</span>
+      <span class="inspire-for">${s.date ? `FOR ${escapeHtml(dayLabel)}` : 'CHOOSE WHAT YOU FANCY; ADD THEN ASKS WHICH DAY'}</span>
+      <button type="button" class="btn" data-k="close" data-inspire="close">CLOSE</button>
+    </div>
+    <div class="inspire-row"><div class="inspire-label">HOW MANY</div><div class="inspire-chips">${
+      inspireChip('c-1', 'ONE MEAL', s.count === 1, null, 'data-inspire="count" data-val="1"')}${inspireChip('c-3', '3 OPTIONS', s.count === 3, null, 'data-inspire="count" data-val="3"')}</div></div>
+    <div class="inspire-row"><div class="inspire-label">PROTEIN</div><div class="inspire-chips">${proteinChips}</div></div>
+    <div class="inspire-row"><div class="inspire-label">WHICH</div><div class="inspire-chips">${whichChips}</div></div>
+    ${s.more ? `<div class="inspire-row"><div class="inspire-label">TIME</div><div class="inspire-chips">${timeChips}${effortChips}</div></div>
+    ${keywordChips ? `<div class="inspire-row"><div class="inspire-label">KEYWORDS</div><div class="inspire-chips">${keywordChips}</div></div>` : ''}` : ''}
+    <div class="inspire-row"><div class="inspire-label"></div><div class="inspire-chips"><button type="button" class="chip ghost" data-k="more" data-inspire="more" aria-expanded="${s.more ? 'true' : 'false'}">${
+      s.more ? 'FEWER CHOICES' : 'MORE CHOICES'}${!s.more && moreOn ? `<span class="inspire-n">${moreOn} ON</span>` : ''}</button></div></div>
+    <div class="inspire-results">${results}</div>`;
+  /* The panel is redrawn whole, so the button that was pressed is found again by its key: keyboard focus is never dropped. */
+  if(focused){
+    const again = [...panel.querySelectorAll('[data-k]')].find(el=> el.dataset.k === focused && !el.disabled) || panel.querySelector('[data-k="close"]');
+    if(again) try { again.focus({ preventScroll: true }); } catch(err){}
+  }
+}
+function initInspireListeners(){
+  document.getElementById('inspireBtn').addEventListener('click', ()=>{ if(inspireState().open && !inspireState().date) closeInspire(); else openInspire(null); });
+  document.getElementById('inspirePanel').addEventListener('click', e=>{
+    const el = e.target.closest('[data-inspire]');
+    if(!el || el.disabled) return;
+    const s = inspireState();
+    const what = el.dataset.inspire, val = el.dataset.val;
+    const card = el.closest('.inspire-card');
+    const id = card ? card.dataset.id : null;
+    const toggle = (list, v)=> list.includes(v) ? list.filter(x=> x !== v) : list.concat(v);
+    if(what === 'close') closeInspire();
+    else if(what === 'count'){ s.count = val === '3' ? 3 : 1; inspireChanged(); }
+    else if(what === 'protein'){ s.proteins = toggle(s.proteins, val); inspireChanged(); }
+    else if(what === 'which'){ s.which = val; inspireChanged(); }
+    else if(what === 'time'){ s.maxMinutes = parseInt(val, 10) || 0; inspireChanged(); }
+    else if(what === 'low'){ s.lowEffort = !s.lowEffort; inspireChanged(); }
+    else if(what === 'freezes'){ s.freezes = !s.freezes; inspireChanged(); }
+    else if(what === 'keyword'){ s.keywords = toggle(s.keywords, val); inspireChanged(); }
+    else if(what === 'more'){ s.more = !s.more; renderPlanner(); }
+    else if(what === 'another'){ rollInspire(true); renderPlanner(); }
+    else if(what === 'again'){ s.rejected = []; rollInspire(false); renderPlanner(); }
+    else if(what === 'open' && id) openRecipe(id, 'planner');
+    else if(what === 'shortlist' && id){
+      if(addShortlistRecipe(id)){ const r = loadRecipes().find(x=> x.id === id); showToast(`${r ? r.title : 'The recipe'} is on the shortlist`); }
+      updateSidebarCounts();
+      renderPlanner();
+    }
+    else if(what === 'add' && id){
+      if(s.date) inspireAddTo(s.date, id);
+      else {
+        /* No day yet: the suggestion waits, as a selected shortlist item does, and the next day tapped takes it. A second tap lets it go. */
+        state.inspirePlacing = state.inspirePlacing === id ? null : id;
+        state.selectedShortlistId = null;
+        renderPlanner();
+        /* The days are below the panel: bring the bar that says "tap a day" to the top, with the days under it. */
+        if(state.inspirePlacing) try { document.getElementById('assignBanner').scrollIntoView({ block: 'start' }); } catch(err){}
+      }
+    }
+  });
+}
+initInspireListeners();
+
 function renderPlanner(){
+  renderInspirePanel();
   renderPlannerDays();
   renderShortlistPanel();
 }
@@ -8245,6 +8522,8 @@ function renderPlannerDays(){
       const adHocHere = adHocByDay.get(iso) || [];
       /* + OTHER sits beside the day's other small buttons; a day marked away has none (UNDO that first), but keeps any rows it has. */
       const otherBtn = `<button class="day-choose day-add-more" data-action="addOther"><span class="circle">+</span>OTHER</button>`;
+      /* INSPIRE ME on a day with nothing to cook (docs/PLAN-INSPIRE-ME.md): opens the panel set to one meal for this day. */
+      const inspireDayBtn = `<button class="day-choose day-add-more" data-action="inspire"><span class="circle">?</span>INSPIRE ME</button>`;
       if(entry && entry.blank){
         inner = `<div class="day-main"><span class="day-away">AWAY — LEFT BLANK ON PURPOSE</span>${adHocHere.map(adHocRowHtml).join('')}</div>
           <button class="day-clear" data-action="clear">UNDO</button>`;
@@ -8350,10 +8629,10 @@ function renderPlannerDays(){
       } else if(adHocHere.length){
         /* Only ad-hoc entries: still a day with nothing to cook, so CHOOSE A RECIPE stays, as a small button beneath them. */
         inner = `<div class="day-main">${adHocHere.map(adHocRowHtml).join('')}
-          <button class="day-choose day-add-more" data-action="choose"><span class="circle">+</span>CHOOSE A RECIPE</button>${otherBtn}
+          <button class="day-choose day-add-more" data-action="choose"><span class="circle">+</span>CHOOSE A RECIPE</button>${inspireDayBtn}${otherBtn}
         </div>`;
       } else {
-        inner = `<div class="day-main day-main-empty"><button class="day-choose" data-action="choose"><span class="circle">+</span>CHOOSE A RECIPE</button>${otherBtn}</div>`;
+        inner = `<div class="day-main day-main-empty"><button class="day-choose" data-action="choose"><span class="circle">+</span>CHOOSE A RECIPE</button><span class="day-tools">${inspireDayBtn}${otherBtn}</span></div>`;
       }
 
       /* The bar from the × (tablet review F10): only while the day is still as the removal left it. */
@@ -8362,7 +8641,7 @@ function renderPlannerDays(){
         inner = inner.replace(/<div class="day-main[^"]*">/, box => `${box}<div class="day-undo" role="status"><span>Removed ${escapeHtml(plannerUndo.label)}</span><button data-action="undoRemove">UNDO</button></div>`);
       }
 
-      html += `<div class="day-row${isToday?' today':''}${(state.selectedShortlistId && state.groupingDate!==iso)?' assignable':''}" data-date="${iso}">
+      html += `<div class="day-row${isToday?' today':''}${((state.selectedShortlistId || state.inspirePlacing) && state.groupingDate!==iso)?' assignable':''}" data-date="${iso}">
         <div class="day-num">${mod ? `<span class="day-dow">${d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase()}</span><span class="day-date">${d.getDate()}</span>` : formatDayLabel(d)}${isToday?'<span class="today-tag">TODAY</span>':''}</div>
         ${inner}
       </div>`;
@@ -8375,6 +8654,17 @@ function renderPlannerDays(){
 
 function renderAssignBanner(){
   const banner = document.getElementById('assignBanner');
+  /* A suggestion from INSPIRE ME waiting for its day uses the same bar as a shortlist item does. */
+  if(state.inspirePlacing){
+    const r = loadRecipes().find(x=> x.id === state.inspirePlacing);
+    if(!r){ state.inspirePlacing = null; }
+    else {
+      banner.style.display = 'flex';
+      banner.innerHTML = `<span>Putting "${escapeHtml(r.title || 'Untitled')}" on a day — tap a day below.</span><button id="cancelAssign">CANCEL</button>`;
+      document.getElementById('cancelAssign').addEventListener('click', ()=>{ state.inspirePlacing = null; renderPlanner(); });
+      return;
+    }
+  }
   if(!state.selectedShortlistId){ banner.style.display = 'none'; banner.innerHTML = ''; return; }
   const item = loadShortlist().find(i=>i.id === state.selectedShortlistId);
   if(!item){ state.selectedShortlistId = null; banner.style.display = 'none'; return; }
@@ -8611,6 +8901,11 @@ function initPlannerListeners(){
       return;
     }
 
+    /* A suggestion waiting for its day (INSPIRE ME, ADD from the heading's panel): the day tapped takes it, as it takes a shortlist item. */
+    if(state.inspirePlacing && state.groupingDate !== date){
+      inspireAddTo(date, state.inspirePlacing);
+      return;
+    }
     /* Tapping anywhere on a day assigns the selected shortlist item — except
        on the headcount button, which would otherwise never be reachable
        while something is selected. */
@@ -8681,6 +8976,8 @@ function initPlannerListeners(){
       const ent = planEntries(loadPlan()[date])[parseInt(actionEl.dataset.idx, 10)];
       if(ent) state.sideOffersHidden.add(date + '|' + ent.recipeId);
       renderPlanner();
+    } else if(action === 'inspire'){
+      openInspire(date);
     } else if(action === 'choose'){
       state.pickingForDate = date;
       showView('recipes');
@@ -8815,6 +9112,7 @@ function initPlannerListeners(){
     if(!item || (item.classList.contains('note') && !item.dataset.note)) return;
     const id = item.dataset.id;
     state.selectedShortlistId = (state.selectedShortlistId === id) ? null : id;
+    state.inspirePlacing = null;   // one thing waits for a day at a time
     renderPlanner();
   });
 
@@ -10891,6 +11189,7 @@ function renderSettings(){
   document.getElementById('setPrepSteps').value = prepStepsOn() ? 'steps' : 'before';
   document.getElementById('setOvens').value = String(ovenCount());
   document.getElementById('setAvoidClashes').value = avoidClashesDefault() ? 'on' : 'off';
+  document.getElementById('setLowEffort').value = String(lowEffortLimit());
   document.getElementById('setMenu').value = sidebarPref();
   renderIngredientLookup();
   renderAliasesList();
@@ -11528,6 +11827,12 @@ document.getElementById('setAvoidClashes').addEventListener('change', e=>{
   try { if(e.target.value === 'off') localStorage.setItem('kitchen.clashDefault', 'off'); else localStorage.removeItem('kitchen.clashDefault'); } catch(err){}
   e.target.value = avoidClashesDefault() ? 'on' : 'off';
   showToast(avoidClashesDefault() ? 'Meals open with their clashes avoided, on this device' : 'Meals open with their clashes left in, on this device');
+});
+/* LOW EFFORT MEANS: this device only, like OVENS, so it needs no column. The default (SUGGEST_RULES.lowEffortMinutes) is stored as nothing. */
+document.getElementById('setLowEffort').addEventListener('change', e=>{
+  try { if(parseInt(e.target.value, 10) === SUGGEST_RULES.lowEffortMinutes) localStorage.removeItem('kitchen.lowEffort'); else localStorage.setItem('kitchen.lowEffort', e.target.value); } catch(err){}
+  e.target.value = String(lowEffortLimit());
+  showToast(`LOW EFFORT means ${lowEffortLimit()} minutes hands on or less, on this device`);
 });
 /* MENU: this device only (issue #200). Choosing AUTOMATIC clears the stored value. */
 document.getElementById('setMenu').addEventListener('change', e=>{
