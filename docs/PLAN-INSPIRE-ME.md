@@ -1,7 +1,7 @@
 # Plan: INSPIRE ME, suggestions on the Planner
 
 A working file with an end (`CLAUDE.md`, "How the documents are kept"): the PR that closes it updates `docs/SPEC.md` §5.5 and deletes this file.
-Written 11 Nov 2026 from an interview with the household that day. **Slice 1 (the engine in `core.js`, and its measurement) is built; there is no screen yet.**
+Written 11 Nov 2026 from an interview with the household that day. **Slices 1 and 2 are built (the engine, then ONE MEAL and 3 OPTIONS on the Planner, app version 2026-11-11.1); A WEEK and shared ingredients are not.**
 
 ## 1. The ask
 
@@ -94,8 +94,11 @@ Each is its own PR, with `changelog.json`, `help.html` and SPEC from the first o
 1. **The engine, in `core.js`, with no screen. Built 11 Nov 2026.** `mainProtein`, `handsOnMinutes`, `dishStyles`, `suggestionFacts` (one recipe's
    facts, worked out once), `suggestPool` (what fits an ask), `suggestMeals` and `suggestWeek`, pure and tested in `core.test.js`; `parseMinutes` moved
    to `core.js` for it. `tools/measure-suggestions.js` measures a library from an export kept outside the repo. See §5.1.
-2. **ONE MEAL and 3 OPTIONS.** The panel, the two buttons, the cards, ADD, ANOTHER. Settings → APP gains **LOW EFFORT MEANS** (5, 10, 15, 20 or 30 minutes
-   hands on), per device like OVENS, so it needs no schema change; the engine already takes the number in the ask. Smoke tests; a household job on the tablet.
+2. **ONE MEAL and 3 OPTIONS. Built 11 Nov 2026**, and described in `docs/SPEC.md` §5.5: the panel, INSPIRE ME in the heading and on each empty day, the cards
+   with ADD, OPEN and + SHORTLIST, ANOTHER, and Settings → APP → LOW EFFORT MEANS (per device). Where it differs from §4 above: TIME, LOW EFFORT, FREEZES WELL and
+   the keywords are folded behind MORE CHOICES, so the suggestions are not a screen below the chips; + SHORTLIST is on every card, not only in 3 OPTIONS; a
+   suggestion says when it was last cooked; and ROLLS FORWARD DAILY gives way in the heading where the two buttons leave it no room (measured at eight widths in both looks: the heading is no taller than before at any of them). Awaits the household's
+   tablet check, `docs/HOUSEHOLD-JOBS.md` Job 8.
 3. **A WEEK.** Proposals on the days, AT LEAST steppers, SWAP, ADD ALL with its UNDO, the "cannot be met" message, and the spread rules except shared
    ingredients.
 4. **Shared ingredients.** The lean in §4.3, last because it is the least certain to be worth its weight; if it is not, it becomes an issue and this

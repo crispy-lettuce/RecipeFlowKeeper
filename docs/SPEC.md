@@ -209,7 +209,7 @@ buttons), and not again above its diagram (issue #192, 25 Oct 2026); in Modernis
 - UNGROUP separates a group; the dishes stay on the day.
 
 ### 5.5 Planner
-The next 14 days, rolling, in weeks. **PREVIOUS 3 DAYS**, in the Planner's heading row beside ROLLS FORWARD DAILY (so the Planner is no taller), opens an **EARLIER** band above today (issue #223, 1 Nov 2026): the last three days, **3 MORE** for
+The next 14 days, rolling, in weeks. **PREVIOUS 3 DAYS**, in the Planner's heading row (so the Planner is no taller; ROLLS FORWARD DAILY gives way where INSPIRE ME and it leave no room: in Classic the tools are one line, clipped, the two buttons one unbreakable piece, and in Modernist the label is hidden at phone width), opens an **EARLIER** band above today (issue #223, 1 Nov 2026): the last three days, **3 MORE** for
 three more each time (up to 15) and **HIDE**; closed each time the Planner is left, never stored. A past day is read-only: its dishes with their headcount, tap a title to open the
 recipe, **COOKED ✓** (the same log as today's, for that day), and **ADD TO TODAY**, which puts the dish on today at that day's headcount (as to cook, whatever it was) and leaves
 the past day as it was. No ×, CHOOSE A RECIPE, + OTHER, SERVES, calendar or grouping controls, and a selected shortlist item cannot be put on it. The shopping list, the calendar and the
@@ -228,6 +228,18 @@ sidebar's counts read the 14 days from today (`dayList()`) and never the band. P
   diary entry History's + ENTRY makes. Not on the shopping list or the calendar.
 - **Calendar buttons** (§6.6): IN CALENDAR, REMIND ME per meal, ADD THE WEEK.
 - The **shortlist** panel: tap a recipe or note, then tap a day. A note becomes an ad-hoc entry on that day.
+- **INSPIRE ME** (11 Nov 2026; `docs/PLAN-INSPIRE-ME.md` while the week is unbuilt): suggestions from the household's own Mains. In the heading it opens a panel
+  under it; on a day with nothing to cook it opens the same panel set to one meal for that day. Chips, each with the number of recipes that fit with the
+  others as they are (greyed at none): **ONE MEAL** or **3 OPTIONS**; **PROTEIN**, any of the families the library has (Chicken, Turkey, Duck, Beef, Lamb, Pork,
+  Game, Fish, Veg; fish, prawns and seafood are one); **ANY**, **POPULAR** (a favourite, or the top fifth by times cooked of those cooked twice or more),
+  **NOT LATELY** (cooked, and not in the last 60 days) or **NEVER TRIED**; and behind **MORE CHOICES** a time limit (30 MIN, 1 HOUR), **LOW EFFORT** (hands-on
+  minutes at or under Settings → APP → LOW EFFORT MEANS, 10 unless set; a recipe with no hands-off mark is judged by its whole time), **FREEZES WELL** (it has a
+  `FREEZING:` section) and the library's keywords. A recipe's main protein is a protein keyword if it has one, else the heaviest meat or fish in its ingredient
+  lines, else Veg (`mainProtein`, `core.js`). Never suggested: a recipe on the 14 days, one cooked in the last 14 days (unless POPULAR), one passed over with
+  **ANOTHER** / **ANOTHER 3** (until a choice changes or **START AGAIN**). The choice among what fits is weighted chance. A card has **ADD** (from a day's button:
+  onto that day, and the panel closes; from the heading: the suggestion waits and the next day tapped takes it, as a shortlist item does), **OPEN** and
+  **+ SHORTLIST**. ADD is the only write, the one-row plan save, at the recipe's own servings; until then the plan, the shopping list and the calendar are
+  untouched. The choices last while the tab is open and are not stored. A whole week at once is planned and not built.
 
 ### 5.6 Shortlist
 Ideas waiting for a day: recipes added with **+**, and free-text notes for things with no recipe yet.
@@ -266,7 +278,7 @@ turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives t
   `replyLengthOff` are in `core.js`;
   **LIBRARY CHECK** (recipes not yet compared with their source, and recipes writing one ingredient on several lines);
   tidy SOURCES and KEYWORDS; **RECIPE PHOTOS** (RE-HOST EXTERNAL IMAGES, CHECK STORED IMAGES).
-- **APP:** week start day for the Planner and the shopping list (default Friday; History always starts on Monday), APPEARANCE, STYLE, MENU (automatic, always shown or always hidden, per device), PREPARATION, OVENS (how many this kitchen has, per device), AVOID THE CLASH (on or off when a meal opens, per device), Google Calendar (§6.6),
+- **APP:** week start day for the Planner and the shopping list (default Friday; History always starts on Monday), APPEARANCE, STYLE, MENU (automatic, always shown or always hidden, per device), PREPARATION, OVENS (how many this kitchen has, per device), LOW EFFORT MEANS (5, 10, 15, 20 or 30 minutes hands on for INSPIRE ME, per device, `kitchen.lowEffort`), AVOID THE CLASH (on or off when a meal opens, per device), Google Calendar (§6.6),
   BACKUP TO GOOGLE DRIVE, RECIPE SHARING.
 - **HELP:** the guide (`help.html`), the app's version and what changed lately, quick answers, and **REPORT A BUG OR AN IDEA** (issue #198):
   BUG or IDEA, a title and some words, then **OPEN ON GITHUB ↗** opens GitHub's "new issue" page already filled in (the title prefixed `Bug: `

@@ -957,6 +957,18 @@ html[data-style="modernist"] #view-planner .day-main > .day-choose:not(.day-add-
 html[data-style="modernist"] #view-planner .day-main.day-main-empty{ gap:8px 14px; }
 html[data-style="modernist"] #view-planner .day-main.day-main-empty > .day-choose:not(.day-add-more){ flex:1 1 11em; }
 html[data-style="modernist"] #view-planner .day-main.day-main-empty > .day-choose.day-add-more{ flex:none; margin:0 0 0 auto; }
+/* The heading's tools: all three fit here, and the buttons' tap areas reach outside the box, so the one-line clip the first look needs is undone. */
+html[data-style="modernist"] #view-planner .planner-tools{ flex:0 1 auto; max-height:none; overflow:visible; justify-content:flex-start; min-width:0; margin-left:0; }
+html[data-style="modernist"] #view-planner .planner-past:focus-visible{ outline-offset:2px; }
+/* On a phone the two buttons and the label do not fit one line here either, and a second line made the heading taller: the label gives way. */
+@media (max-width:480px){ html[data-style="modernist"] #view-planner .planner-rolls{ display:none; } }
+/* INSPIRE ME and + OTHER side by side (docs/PLAN-INSPIRE-ME.md): only the first is pushed right. */
+html[data-style="modernist"] #view-planner .day-main.day-main-empty > .day-choose.day-add-more + .day-choose.day-add-more{ margin-left:0; }
+/* The panel: flat and square like the rest of this look, its title in the heading's weight. Chips and buttons are the app's own. */
+html[data-style="modernist"] #view-planner .inspire-panel{ margin:0 0 14px; border:2px solid var(--color-text); border-radius:0; background:transparent; }
+html[data-style="modernist"] #view-planner .inspire-title, html[data-style="modernist"] #view-planner .inspire-label{ font-size:12px; font-weight:800; letter-spacing:.1em; color:var(--color-text); }
+html[data-style="modernist"] #view-planner .inspire-name{ font-weight:800; letter-spacing:-0.01em; }
+html[data-style="modernist"] #view-planner .inspire-card, html[data-style="modernist"] #view-planner .inspire-photo{ border-radius:0; }
 /* The ad-hoc entry's meal tag is a button (PR 2): the same small red capitals, with the accent on hover like the rest of the day's controls. */
 html[data-style="modernist"] #view-planner .day-adhoc-meal:hover{ color:var(--color-accent); }
 
