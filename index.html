@@ -949,8 +949,8 @@ function loadArchivoFont(){
   .day-adhoc-meal{ background:none; border:0; padding:0 4px; font-family:inherit; cursor:pointer; text-decoration:underline dotted; text-underline-offset:4px; }
   .day-adhoc-meal:hover{ color:var(--plum); }
   /* + OTHER shares an empty day's one line with CHOOSE A RECIPE, at the right; too narrow for both, it drops beneath. */
-  .day-main-empty{ flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px 16px; }
-  .day-main-empty > .day-choose:not(.day-add-more){ flex:1 1 auto; }
+  .day-main-empty{ flex-direction:row; flex-wrap:nowrap; align-items:center; gap:8px 16px; }
+  .day-main-empty > .day-choose:not(.day-add-more){ flex:1 1 auto; min-width:0; }
   .day-main-empty > .day-choose.day-add-more{ align-self:center; margin:0 0 0 auto; }
   /* INSPIRE ME and + OTHER are two small buttons side by side: only the first is pushed to the right, the second follows it. */
   .day-main-empty > .day-choose.day-add-more + .day-choose.day-add-more{ margin-left:0; }
