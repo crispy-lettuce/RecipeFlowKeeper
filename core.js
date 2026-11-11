@@ -2923,8 +2923,9 @@ function parseMinutes(t){
   return bare ? parseInt(bare[1], 10) : null;
 }
 
-/* The numbers the household has not yet confirmed (plan §6); slice 1's measurement is what settles them. */
-const SUGGEST_RULES = { recentDays: 14, notLatelyDays: 60, lowEffortMinutes: 20, popularShare: 0.2, popularMinCooked: 2, weekAttempts: 40 };
+/* lowEffortMinutes is the household's choice (11 Nov 2026: at 20, four Mains in five passed) and only the default: an ask may carry
+   its own, which is how a setting will reach it. 60 days and the top fifth are unjudged until there is more cooking history. */
+const SUGGEST_RULES = { recentDays: 14, notLatelyDays: 60, lowEffortMinutes: 10, popularShare: 0.2, popularMinCooked: 2, weekAttempts: 40 };
 
 /* A recipe's main protein. There is no protein field (it was removed, and Chicken, Fish and the rest became ordinary keywords), and
    keyword coverage differs a great deal between libraries, so the ingredients decide and a keyword only overrides (decided 11 Nov).
@@ -3050,7 +3051,7 @@ function popularThreshold(facts){
   return counts[Math.max(0, Math.ceil(counts.length * SUGGEST_RULES.popularShare) - 1)];
 }
 /* The recipes that fit an ask. ask: { proteins: [family…] (any of), which: 'any' | 'popular' | 'notLately' | 'never', maxMinutes,
-   lowEffort, freezes, keywords: [all of] }. ctx: { today: 'YYYY-MM-DD', planned: [ids on the Planner], rejected: [ids swapped away] }.
+   lowEffort (with lowEffortMinutes, else the default), freezes, keywords: [all of] }. ctx: { today: 'YYYY-MM-DD', planned: [ids on the Planner], rejected: [ids swapped away] }.
    Each comes back with `weight`, its share of the chance. */
 function suggestPool(facts, ask, ctx){
   ask = ask || {}; ctx = ctx || {};
@@ -3071,7 +3072,7 @@ function suggestPool(facts, ask, ctx){
     if(ask.maxMinutes && !(f.minutes !== null && f.minutes <= ask.maxMinutes)) return;
     if(ask.lowEffort){
       const busy = f.handsOn !== null ? f.handsOn : f.minutes;
-      if(!(busy !== null && busy <= SUGGEST_RULES.lowEffortMinutes)) return;
+      if(!(busy !== null && busy <= (ask.lowEffortMinutes || SUGGEST_RULES.lowEffortMinutes))) return;
     }
     if(ask.freezes && !f.freezes) return;
     if(keywords.some(k => !f.keywords.includes(k))) return;

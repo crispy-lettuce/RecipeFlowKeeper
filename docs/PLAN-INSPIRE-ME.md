@@ -75,7 +75,7 @@ Read on 11 Nov 2026 from `main` and, read-only and as counts, from the live data
 - **POPULAR:** a favourite, or in the top fifth by times cooked among recipes cooked at least twice.
   **NOT LATELY:** cooked at least once and not in the last 60 days. **NEVER TRIED:** no cooking logged. A PRE-MADE meal is not cooking (SPEC §6.12), so
   it counts for none of these; COOK AHEAD does.
-- **LOW EFFORT:** hands-on minutes of 20 or less, from the recipe's own timeline. A recipe with no hands-off mark is judged by its whole time.
+- **LOW EFFORT:** hands-on minutes of 10 or less (the household's number, 11 Nov 2026; a device can set its own, slice 2), from the recipe's own timeline. A recipe with no hands-off mark is judged by its whole time.
 - **FREEZES WELL:** the recipe has a `FREEZING:` section.
 - **Weighting** (a recipe's share of the chance): ANY is 1 plus the days since cooked over 365, up to 2, and 1.5 for never cooked (level with half a
   year); POPULAR is 1 plus times cooked, plus 1 for a favourite; NOT LATELY is days since cooked over 60; NEVER TRIED is equal. Not tuned against a
@@ -94,7 +94,8 @@ Each is its own PR, with `changelog.json`, `help.html` and SPEC from the first o
 1. **The engine, in `core.js`, with no screen. Built 11 Nov 2026.** `mainProtein`, `handsOnMinutes`, `dishStyles`, `suggestionFacts` (one recipe's
    facts, worked out once), `suggestPool` (what fits an ask), `suggestMeals` and `suggestWeek`, pure and tested in `core.test.js`; `parseMinutes` moved
    to `core.js` for it. `tools/measure-suggestions.js` measures a library from an export kept outside the repo. See §5.1.
-2. **ONE MEAL and 3 OPTIONS.** The panel, the two buttons, the cards, ADD, ANOTHER. Smoke tests; a household job on the tablet.
+2. **ONE MEAL and 3 OPTIONS.** The panel, the two buttons, the cards, ADD, ANOTHER. Settings → APP gains **LOW EFFORT MEANS** (5, 10, 15, 20 or 30 minutes
+   hands on), per device like OVENS, so it needs no schema change; the engine already takes the number in the ask. Smoke tests; a household job on the tablet.
 3. **A WEEK.** Proposals on the days, AT LEAST steppers, SWAP, ADD ALL with its UNDO, the "cannot be met" message, and the spread rules except shared
    ingredients.
 4. **Shared ingredients.** The lean in §4.3, last because it is the least certain to be worth its weight; if it is not, it becomes an issue and this
@@ -112,7 +113,7 @@ went to the household in chat, not here.
   burger buns read as beef; a tin of tuna "in olive oil" dropped as Pantry.
 - **POPULAR and NOT LATELY are empty or nearly so in the two large libraries** (no Main cooked twice; few or no favourites). NEVER TRIED is almost the
   whole library there. The small test library, which has history, fills all four.
-- **LOW EFFORT at 20 minutes filters little:** of the Mains whose hands-on time can be told, about four in five are at or under it, and the median is
+- **LOW EFFORT at 20 minutes filtered little, so it is 10:** of the Mains whose hands-on time can be told, about four in five are at or under it, and the median is
   10 to 12 minutes. Chopping is not a timed step, so hands-on minutes run low.
 - **FREEZES WELL** is one library's feature: another has a single Main with a `FREEZING:` section.
 - **Dish styles** come from keywords, and a quarter to a half of Mains carry none, so "one of each style" is a light rule.
@@ -121,7 +122,7 @@ went to the household in chat, not here.
 
 - The protein families as built: Chicken, Turkey, Duck, Beef, Lamb, Pork (sausages, bacon, ham, chorizo), Game, Fish (with prawns and all seafood, the
   household's decision on 11 Nov 2026), Veg; a chip is shown only for a family the library has.
-- LOW EFFORT's number: 20 minutes lets most recipes through (§5.1). 10 would halve it. The household's choice.
+- The nine Mains read as VEG for want of any keyword or meat line were shown to the household, which passed them (11 Nov 2026).
 - 60 days and "top fifth" could not be judged: there is not the history yet. The household accepts that POPULAR and NOT LATELY offer little until
   there is (11 Nov 2026); the panel's counts are what make that plain.
 - Hands-on minutes are known only for a recipe with a hands-off mark; one library has almost none marked, so LOW EFFORT there falls back to the whole time.

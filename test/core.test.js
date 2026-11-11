@@ -2316,7 +2316,8 @@ check('Frozen is the last aisle, and the last section of the shopping list',
   check('popularThreshold: nothing cooked twice means favourites alone',
         core.popularThreshold(facts.map(f => ({ ...f, timesCooked: Math.min(f.timesCooked, 1) }))) === Infinity);
   check('suggestPool: a time limit, LOW EFFORT (hands on, else the whole time), FREEZES WELL and keywords',
-        ids({ maxMinutes: 30 }) === 'cod-quick' && ids({ lowEffort: true }) === 'cod-quick,lamb-slow' && ids({ freezes: true }) === 'lamb-slow' &&
+        ids({ maxMinutes: 30 }) === 'cod-quick' && ids({ lowEffort: true }) === 'lamb-slow' && ids({ lowEffort: true, lowEffortMinutes: 20 }) === 'cod-quick,lamb-slow' &&
+        ids({ lowEffort: true, lowEffortMinutes: 5 }) === '' && ids({ freezes: true }) === 'lamb-slow' &&
         ids({ keywords: ['weeknight'] }) === 'cod-quick' && ids({ keywords: ['Weeknight', 'Curry'] }) === '');
   check('suggestPool: never what is on the Planner or was swapped away',
         ids({ proteins: ['chicken'] }, { planned: ['hen-new'], rejected: ['hen-star'] }) === 'hen-old');
