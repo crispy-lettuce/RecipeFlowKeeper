@@ -2938,10 +2938,11 @@ const PROTEIN_FAMILIES = [
   { id: 'pork',    label: 'Pork',    words: ['pork', 'bacon', 'sausage', 'ham', 'gammon', 'chorizo', 'pancetta', 'prosciutto', 'lardon', 'salami', 'nduja', 'chipolata', 'pepperoni'],
     keywords: ['pork', 'bacon', 'sausage', 'sausages', 'chorizo', 'ham', 'gammon'] },
   { id: 'game',    label: 'Game',    words: ['venison', 'rabbit', 'pheasant', 'partridge', 'pigeon'], keywords: ['game', 'venison'] },
+  /* Fish, prawns and other seafood are one family (decided 11 Nov 2026: a prawn dish tagged Fish is how the household thinks of it). */
   { id: 'fish',    label: 'Fish',    words: ['fish', 'salmon', 'cod', 'haddock', 'tuna', 'trout', 'mackerel', 'bass', 'bream', 'hake', 'pollock', 'sardine', 'anchovy', 'plaice',
-    'sole', 'monkfish', 'halibut', 'kipper', 'coley', 'basa', 'tilapia', 'swordfish', 'herring'], keywords: ['fish', 'salmon', 'tuna', 'cod'] },
-  { id: 'seafood', label: 'Seafood', words: ['prawn', 'shrimp', 'crab', 'mussel', 'squid', 'calamari', 'scallop', 'clam', 'lobster', 'langoustine', 'crayfish', 'octopus', 'seafood'],
-    keywords: ['seafood', 'prawn', 'prawns', 'shellfish'] },
+    'sole', 'monkfish', 'halibut', 'kipper', 'coley', 'basa', 'tilapia', 'swordfish', 'herring',
+    'prawn', 'shrimp', 'crab', 'mussel', 'squid', 'calamari', 'scallop', 'clam', 'lobster', 'langoustine', 'crayfish', 'octopus', 'seafood'],
+    keywords: ['fish', 'salmon', 'tuna', 'cod', 'seafood', 'prawn', 'prawns', 'shellfish'] },
   { id: 'veg',     label: 'Veg',     words: [], keywords: ['veg', 'vegetarian', 'vegan', 'veggie'] }
 ];
 /* A line that names an animal and is not the meat: "chicken stock", "fish sauce", "beef dripping", "vegetarian sausages". These words

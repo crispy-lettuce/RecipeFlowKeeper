@@ -48,7 +48,7 @@ Read on 11 Nov 2026 from `main` and, read-only and as counts, from the live data
 **INSPIRE ME** in the heading opens a panel above the days; the one on an empty day opens it set to ONE MEAL for that day.
 
 - **HOW MANY:** ONE MEAL · 3 OPTIONS · A WEEK (then THIS WEEK / NEXT WEEK).
-- **PROTEIN:** chips for the proteins this library has at least one Main of, in a fixed order (CHICKEN, BEEF, LAMB, PORK, FISH, SEAFOOD, VEG, then any other).
+- **PROTEIN:** chips for the proteins this library has at least one Main of, in a fixed order (CHICKEN, BEEF, LAMB, PORK, FISH, VEG, then any other; FISH is fish, prawns and all seafood).
   Several chips mean any of them. In A WEEK each chip becomes an **AT LEAST** stepper (0, 1, 2 …).
 - **WHICH:** ANY · POPULAR · NOT LATELY · NEVER TRIED.
 - **MORE:** a time limit (ANY, 30 MIN, 1 HOUR); LOW EFFORT; FREEZES WELL; the keyword chips, as on Recipes.
@@ -119,10 +119,11 @@ went to the household in chat, not here.
 
 ## 6. Open, to settle while building
 
-- The protein families as built: Chicken, Turkey, Duck, Beef, Lamb, Pork (sausages, bacon, ham, chorizo), Game, Fish, Seafood, Veg. The household has not
-  confirmed them; a chip is shown only for a family the library has.
+- The protein families as built: Chicken, Turkey, Duck, Beef, Lamb, Pork (sausages, bacon, ham, chorizo), Game, Fish (with prawns and all seafood, the
+  household's decision on 11 Nov 2026), Veg; a chip is shown only for a family the library has.
 - LOW EFFORT's number: 20 minutes lets most recipes through (§5.1). 10 would halve it. The household's choice.
-- 60 days and "top fifth" could not be judged: there is not the history yet.
+- 60 days and "top fifth" could not be judged: there is not the history yet. The household accepts that POPULAR and NOT LATELY offer little until
+  there is (11 Nov 2026); the panel's counts are what make that plain.
 - Hands-on minutes are known only for a recipe with a hands-off mark; one library has almost none marked, so LOW EFFORT there falls back to the whole time.
 - Whether a week should ever propose a Side. Today it does not: SERVE WITH offers one once the Main is on the day.
 - Whether the saved view "Not cooked in 3 months" (90 days) and NOT LATELY (60) should be one number.

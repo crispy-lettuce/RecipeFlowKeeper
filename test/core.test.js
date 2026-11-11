@@ -2255,7 +2255,7 @@ check('Frozen is the last aisle, and the last section of the shopping list',
   check('mainProtein: the heaviest meat or fish in the lines, counted pieces weighed roughly',
         fam(['3 chicken thighs, diced', '60 g chorizo, sliced', '250 g orzo']).family === 'chicken' &&
         fam(['300 g lamb neck, cubed', '2 carrots']).family === 'lamb' && fam(['4 haddock fillets', '150 g raw king prawns']).family === 'fish' &&
-        fam(['180 g raw king prawns', '2 limes']).family === 'seafood' && fam(['8 pork sausages']).family === 'pork', JSON.stringify(fam(['3 chicken thighs, diced', '60 g chorizo, sliced']).weights));
+        fam(['180 g raw king prawns', '2 limes']).family === 'fish' && fam(['300 g mussels'], []).family === 'fish' && fam(['200 g puy lentils'], ['Prawns']).family === 'fish' && fam(['8 pork sausages']).family === 'pork', JSON.stringify(fam(['3 chicken thighs, diced', '60 g chorizo, sliced']).weights));
   check('mainProtein: stock, sauce, fat and a vegetable named after an animal are not the meat',
         fam(['600 ml chicken stock', '2 tbsp fish sauce', '1 tbsp beef dripping', '3 beef tomatoes', '200 g puy lentils']).family === 'veg' &&
         fam(['600 ml chicken stock', '2 tbsp fish sauce', '200 g puy lentils']).by === 'none', JSON.stringify(fam(['600 ml chicken stock', '2 tbsp fish sauce', '1 tbsp beef dripping', '3 beef tomatoes']).weights));
