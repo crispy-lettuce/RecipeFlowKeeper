@@ -2736,7 +2736,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-11-01.2"></script>
+<script src="core.js?v=2026-11-11.1"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2744,7 +2744,7 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-11-01.2';
+const EXPECTED_CORE_VERSION = '2026-11-11.1';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
@@ -6047,25 +6047,7 @@ function daysSince(iso){
   return Math.floor((Date.now() - then) / 86400000);
 }
 
-/* "25 min" -> 25 · "1 hr 40" -> 100 · "3 hr" -> 180 · "1 day" -> 1440 */
-function parseMinutes(t){
-  if(!t) return null;
-  const s = String(t).toLowerCase();
-  const day = s.match(/(\d+(?:\.\d+)?)\s*day/);
-  if(day) return Math.round(parseFloat(day[1]) * 1440);
-  const hr = s.match(/(\d+(?:\.\d+)?)\s*(?:hrs?|hours?|h)\b/);
-  const mn = s.match(/(\d+)\s*(?:mins?|minutes?|m)\b/);
-  let total = 0, found = false;
-  if(hr){ total += parseFloat(hr[1]) * 60; found = true; }
-  if(mn){ total += parseInt(mn[1], 10); found = true; }
-  if(hr && !mn){
-    const tail = s.slice(s.indexOf(hr[0]) + hr[0].length).match(/(\d+)/);
-    if(tail) total += parseInt(tail[1], 10);
-  }
-  if(found) return Math.round(total);
-  const bare = s.match(/(\d+)/);
-  return bare ? parseInt(bare[1], 10) : null;
-}
+/* parseMinutes ("25 min" -> 25) is in core.js since 11 Nov 2026: the suggestions engine reads a recipe's time too. */
 
 /* A recipe's TIME for display: escaped and in capitals like the rest of the card, with an EST. tag in front of the
    figure when the converter marked it as worked out from the method (splitTimeText in core.js, 18 Oct 2026). The tag

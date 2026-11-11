@@ -1,7 +1,7 @@
 # Plan: INSPIRE ME, suggestions on the Planner
 
 A working file with an end (`CLAUDE.md`, "How the documents are kept"): the PR that closes it updates `docs/SPEC.md` §5.5 and deletes this file.
-Written 11 Nov 2026 from an interview with the household that day. **Nothing here is built.**
+Written 11 Nov 2026 from an interview with the household that day. **Slice 1 (the engine in `core.js`, and its measurement) is built; there is no screen yet.**
 
 ## 1. The ask
 
@@ -35,7 +35,7 @@ Read on 11 Nov 2026 from `main` and, read-only and as counts, from the live data
   are few, and one library has none. POPULAR will offer little until that changes; the panel says how many recipes fit each choice so an empty one is
   plain before it is tapped.
 - **Every Main but a handful has a `TIME:`**, most carry `, hands off` marks, and one library has a `FREEZING:` section on a good share of its Mains.
-- **Reused as it stands:** `filterRecipes` and the keyword chips; `lastUsed`, `useCount`, `daysSince`, `parseMinutes`; `parseRecipe` and
+- **Reused as it stands:** `filterRecipes` and the keyword chips; `lastUsed`, `useCount`, `daysSince`; `parseMinutes` (now in `core.js`); `parseRecipe` and
   `computeTimeline` with `needsHands` (hands-on minutes); `shoppingLine` and `aisleFor` (naming an ingredient and its aisle, read-only);
   `dayList`, `startOfWeek`, `groupDaysByWeek`; `addPlanRecipe` (the one-row write CHOOSE A RECIPE already makes); SERVE WITH and OFTEN WITH, which
   appear by themselves once a dish is on a day.
@@ -67,39 +67,63 @@ Read on 11 Nov 2026 from `main` and, read-only and as counts, from the live data
 
 ### 4.3 The rules, exactly
 - **The pool** is the household's own recipes with `course=Main` (never a shared library's).
-- **Main protein** (`mainProtein`, new, in `core.js`): a protein keyword on the recipe if it has one; otherwise each ingredient line is named by
-  `shoppingLine`, the lines whose aisle is Meat & Fish are mapped to a protein family by a small table of words, and the family with the most weight wins.
-  A recipe with none is VEG. Stock, fat and sauces must not count: the first slice measures this against the library before anything is shown.
+- **Main protein** (`mainProtein`, in `core.js`): a protein keyword on the recipe if it has one (`PROTEIN_FAMILIES` lists which keywords mean which
+  family; of several, the one heaviest in the lines). Otherwise each ingredient line is named by `shoppingLine`, a line whose name holds a family's word
+  is that family, counted pieces are weighed roughly ("3 chicken breasts"), and the family with the most weight wins. A recipe with none is VEG.
+  Not the meat: a name with a word such as stock, sauce, fat, tomato or vegetarian in it, or a dictionary row filed outside Meat & Fish. An aisle
+  reached by the keyword lists is not asked, because "tuna in olive oil" is Pantry by its oil. "Steak", "mince" and "meatballs" with no animal named are beef.
 - **POPULAR:** a favourite, or in the top fifth by times cooked among recipes cooked at least twice.
   **NOT LATELY:** cooked at least once and not in the last 60 days. **NEVER TRIED:** no cooking logged. A PRE-MADE meal is not cooking (SPEC §6.12), so
   it counts for none of these; COOK AHEAD does.
 - **LOW EFFORT:** hands-on minutes of 20 or less, from the recipe's own timeline. A recipe with no hands-off mark is judged by its whole time.
 - **FREEZES WELL:** the recipe has a `FREEZING:` section.
-- **Weighting:** ANY leans gently towards longest since cooked, with never-cooked in the middle; POPULAR towards times cooked; NOT LATELY towards longest
-  since. The numbers are tuned in slice 1 against the library and written down here.
-- **A week:** required proteins are placed first, then the rest; never the same protein on consecutive days (a planned neighbour counts); at most one of
-  each dish style (the meal-base keywords: Pasta, Rice, Curry, Traybake, Salad and so on, a list in `core.js`); and among candidates that fit, a lean
-  towards one that shares a Produce, Meat & Fish or Dairy & Eggs ingredient with the week so far. The lean is a tie-breaker, never a rule.
+- **Weighting** (a recipe's share of the chance): ANY is 1 plus the days since cooked over 365, up to 2, and 1.5 for never cooked (level with half a
+  year); POPULAR is 1 plus times cooked, plus 1 for a favourite; NOT LATELY is days since cooked over 60; NEVER TRIED is equal. Not tuned against a
+  library: there is too little history in the two large ones to tune with.
+- **A week** (`suggestWeek`): required proteins are placed first, then the rest; never the same protein on consecutive days (a planned neighbour counts); at
+  most one of each dish style (`DISH_STYLES`, the meal-base keywords: Pasta, Rice, Curry, Traybake, Salad and so on). The spread gives way before a day is
+  left empty: the style rule first, then the neighbour rule; a family that has run out is reported and its day given to anything that fits. Up to 40
+  shuffles are tried and the one that bent fewest rules is kept. Slice 4 adds, among candidates that fit, a lean towards one that shares a Produce, Meat &
+  Fish or Dairy & Eggs ingredient with the week so far: a tie-breaker, never a rule.
 - Chance comes from a seed passed in, so a test can fix it.
 
 ## 5. Slices
 
 Each is its own PR, with `changelog.json`, `help.html` and SPEC from the first one the household can see.
 
-1. **The engine, in `core.js`, with no screen.** `mainProtein`, `handsOnMinutes`, `suggestMeals(recipes, ask, seed)` and `suggestWeek(...)`, pure and
-   tested in `core.test.js`, each check seen to fail once. Then **measure**: run `mainProtein` over the live libraries (as "Re-measuring the live
-   library", `test/README.md`), and give the household the list of recipes whose worked-out protein differs from their keyword, and those it calls VEG.
-   The household looks at that list before slice 2. Core version bumped in its three places.
+1. **The engine, in `core.js`, with no screen. Built 11 Nov 2026.** `mainProtein`, `handsOnMinutes`, `dishStyles`, `suggestionFacts` (one recipe's
+   facts, worked out once), `suggestPool` (what fits an ask), `suggestMeals` and `suggestWeek`, pure and tested in `core.test.js`; `parseMinutes` moved
+   to `core.js` for it. `tools/measure-suggestions.js` measures a library from an export kept outside the repo. See §5.1.
 2. **ONE MEAL and 3 OPTIONS.** The panel, the two buttons, the cards, ADD, ANOTHER. Smoke tests; a household job on the tablet.
 3. **A WEEK.** Proposals on the days, AT LEAST steppers, SWAP, ADD ALL with its UNDO, the "cannot be met" message, and the spread rules except shared
    ingredients.
 4. **Shared ingredients.** The lean in §4.3, last because it is the least certain to be worth its weight; if it is not, it becomes an issue and this
    plan closes without it.
 
+### 5.1 What slice 1's measurement showed (11 Nov 2026)
+
+Three libraries, read once from the live database into a session's scratch directory and measured with `tools/measure-suggestions.js`. The lists by title
+went to the household in chat, not here.
+
+- **Protein keywords cover far more than was thought.** Once Vegetarian, Prawns, Salmon, Bacon and the like are read as families, about nine Mains in ten
+  are decided by a keyword. Where a recipe has one, the ingredient lines agree with it for all but a handful, which is the evidence that the lines can be
+  trusted for the recipes with none.
+- **Four misreadings were found and fixed before any check was written:** vegetarian sausages counted as pork; anchovy fillets weighed as fish fillets;
+  burger buns read as beef; a tin of tuna "in olive oil" dropped as Pantry.
+- **POPULAR and NOT LATELY are empty or nearly so in the two large libraries** (no Main cooked twice; few or no favourites). NEVER TRIED is almost the
+  whole library there. The small test library, which has history, fills all four.
+- **LOW EFFORT at 20 minutes filters little:** of the Mains whose hands-on time can be told, about four in five are at or under it, and the median is
+  10 to 12 minutes. Chopping is not a timed step, so hands-on minutes run low.
+- **FREEZES WELL** is one library's feature: another has a single Main with a `FREEZING:` section.
+- **Dish styles** come from keywords, and a quarter to a half of Mains carry none, so "one of each style" is a light rule.
+
 ## 6. Open, to settle while building
 
-- The word table for protein families, and where turkey, duck, sausages, bacon and chorizo sit (a family each, or PORK and POULTRY).
-- Whether 20 minutes hands-on, 60 days and "top fifth" are the right numbers; slice 1's measurement answers it.
+- The protein families as built: Chicken, Turkey, Duck, Beef, Lamb, Pork (sausages, bacon, ham, chorizo), Game, Fish, Seafood, Veg. The household has not
+  confirmed them; a chip is shown only for a family the library has.
+- LOW EFFORT's number: 20 minutes lets most recipes through (§5.1). 10 would halve it. The household's choice.
+- 60 days and "top fifth" could not be judged: there is not the history yet.
+- Hands-on minutes are known only for a recipe with a hands-off mark; one library has almost none marked, so LOW EFFORT there falls back to the whole time.
 - Whether a week should ever propose a Side. Today it does not: SERVE WITH offers one once the Main is on the day.
 - Whether the saved view "Not cooked in 3 months" (90 days) and NOT LATELY (60) should be one number.
 
