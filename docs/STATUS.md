@@ -68,6 +68,8 @@ READ BY CHAT.
    they are built or moved to issues: reading a page's servings for a recipe that has none (it needs an Edge Function change the household deploys, and a write to the recipe's
    `SERVINGS:` line, which follows `CLAUDE.md`'s recipe-text procedure; count the recipes without servings first) and a LIBRARY CHECK filter for recipes read by a chat. Not checked
    on a real list: whether a curly against a straight apostrophe shows as a difference.
+   **INSPIRE ME** (suggestions on the Planner by protein, how lately cooked and effort, for one meal or a week) is planned and not started:
+   `docs/PLAN-INSPIRE-ME.md`, written 11 Nov 2026 from the household's answers that day.
 5. **Optional, not planned:** a "download all source files" backup; drawing a PDF's pages inside the app;
    and four ideas parked from the run sheet's review, each wanting its own issue if picked up: **Trace** (hold a box to dim everything that does not feed it), folding away
    finished rows and columns in cooking mode, a step-through view (one "now" card at a time), and drawn connector lines between boxes.
