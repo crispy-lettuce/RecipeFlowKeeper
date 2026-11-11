@@ -131,6 +131,7 @@ went to the household in chat, not here.
   there is (11 Nov 2026); the panel's counts are what make that plain.
 - Hands-on minutes are known only for a recipe with a hands-off mark; one library has almost none marked, so LOW EFFORT there falls back to the whole time.
 - Whether a week should ever propose a Side. Today it does not: SERVE WITH offers one once the Main is on the day.
+- Whether the pair under CHOOSE A RECIPE on a phone is worth the height: an empty day there is now two lines, not one. If the household finds the Planner too long, INSPIRE ME could leave the days and live only in the heading.
 - Whether the saved view "Not cooked in 3 months" (90 days) and NOT LATELY (60) should be one number.
 
 ## 7. What it must not do
