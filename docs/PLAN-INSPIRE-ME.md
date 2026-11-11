@@ -97,7 +97,8 @@ Each is its own PR, with `changelog.json`, `help.html` and SPEC from the first o
 2. **ONE MEAL and 3 OPTIONS. Built 11 Nov 2026**, and described in `docs/SPEC.md` §5.5: the panel, INSPIRE ME in the heading and on each empty day, the cards
    with ADD, OPEN and + SHORTLIST, ANOTHER, and Settings → APP → LOW EFFORT MEANS (per device). Where it differs from §4 above: TIME, LOW EFFORT, FREEZES WELL and
    the keywords are folded behind MORE CHOICES, so the suggestions are not a screen below the chips; + SHORTLIST is on every card, not only in 3 OPTIONS; a
-   suggestion says when it was last cooked; and ROLLS FORWARD DAILY gives way in the heading where the two buttons leave it no room (measured at eight widths in both looks: the heading is no taller than before at any of them). Awaits the household's
+   suggestion says when it was last cooked; ROLLS FORWARD DAILY gives way in the heading where the two buttons leave it no room (measured at eight widths in both looks: the heading is no taller than before at any of them); and on a phone an empty day's
+   INSPIRE ME and + OTHER drop together beneath CHOOSE A RECIPE, which keeps room for its words (three buttons do not fit its line at 412px in either look). Awaits the household's
    tablet check, `docs/HOUSEHOLD-JOBS.md` Job 8.
 3. **A WEEK.** Proposals on the days, AT LEAST steppers, SWAP, ADD ALL with its UNDO, the "cannot be met" message, and the spread rules except shared
    ingredients.

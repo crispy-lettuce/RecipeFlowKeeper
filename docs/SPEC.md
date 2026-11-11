@@ -229,7 +229,8 @@ sidebar's counts read the 14 days from today (`dayList()`) and never the band. P
 - **Calendar buttons** (§6.6): IN CALENDAR, REMIND ME per meal, ADD THE WEEK.
 - The **shortlist** panel: tap a recipe or note, then tap a day. A note becomes an ad-hoc entry on that day.
 - **INSPIRE ME** (11 Nov 2026; `docs/PLAN-INSPIRE-ME.md` while the week is unbuilt): suggestions from the household's own Mains. In the heading it opens a panel
-  under it; on a day with nothing to cook it opens the same panel set to one meal for that day. Chips, each with the number of recipes that fit with the
+  under it; on a day with nothing to cook it opens the same panel set to one meal for that day (INSPIRE ME and + OTHER are one pair beside CHOOSE A RECIPE,
+  and on a phone the pair drops beneath it together). Chips, each with the number of recipes that fit with the
   others as they are (greyed at none): **ONE MEAL** or **3 OPTIONS**; **PROTEIN**, any of the families the library has (Chicken, Turkey, Duck, Beef, Lamb, Pork,
   Game, Fish, Veg; fish, prawns and seafood are one); **ANY**, **POPULAR** (a favourite, or the top fifth by times cooked of those cooked twice or more),
   **NOT LATELY** (cooked, and not in the last 60 days) or **NEVER TRIED**; and behind **MORE CHOICES** a time limit (30 MIN, 1 HOUR), **LOW EFFORT** (hands-on

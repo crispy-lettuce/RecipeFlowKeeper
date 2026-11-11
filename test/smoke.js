@@ -2989,7 +2989,8 @@ const check = (name, pass, detail) => {
         return [-21, 21].every(dy => { const el = document.elementFromPoint(cx, cy + dy); return el && el.closest('button') === b; }); };
       const day = document.querySelector(`.day-row[data-date="${iso(1)}"]`), far = document.querySelector(`.day-row[data-date="${iso(5)}"]`);
       const empty = document.querySelector(`.day-row[data-date="${iso(9)}"]`);
-      const ch = empty.querySelector('[data-action="choose"]').getBoundingClientRect(), ot = empty.querySelector('[data-action="addOther"]').getBoundingClientRect();
+      const chBtn = empty.querySelector('[data-action="choose"]');
+      const ch = chBtn.getBoundingClientRect(), ot = empty.querySelector('[data-action="addOther"]').getBoundingClientRect(), ins = empty.querySelector('[data-action="inspire"]').getBoundingClientRect();
       const mine = [day.querySelector('[data-action="addOther"]'), day.querySelector('[data-action="removeAdHoc"]'), day.querySelector('[data-action="adHocMeal"]'), far.querySelector('[data-action="removeAdHoc"]'), far.querySelector('[data-action="adHocMeal"]'), empty.querySelector('[data-action="addOther"]')];
       /* Where each sits across the screen is read before any scrolling: the page clips what is too wide rather than growing a scroll bar of its own
          (so the document's width cannot say), and scrolling a clipped button into view would slide the box and hide it. */
@@ -2997,7 +2998,9 @@ const check = (name, pass, detail) => {
       /* Each is brought to the middle of the screen just before it is tried: a point off the screen answers with nothing. */
       const tried = mine.map(b => { b.scrollIntoView({ block: 'center' }); return answers(b); });
       return { sideways: document.documentElement.scrollWidth - window.innerWidth, inside, answers: tried,
-        sameLine: Math.abs((ch.top + ch.height / 2) - (ot.top + ot.height / 2)) < 12, emptyH: Math.round(empty.getBoundingClientRect().height),
+        sameLine: Math.abs((ch.top + ch.height / 2) - (ot.top + ot.height / 2)) < 12,
+        pair: Math.abs((ins.top + ins.height / 2) - (ot.top + ot.height / 2)) < 12 && ins.right <= ot.left,
+        noClip: chBtn.scrollWidth <= chBtn.clientWidth + 1, emptyH: Math.round(empty.getBoundingClientRect().height),
         summary: [...document.querySelectorAll('.week-summary')].map(e => e.textContent.trim()).slice(0, 2) };
     });
     await p.close();
@@ -3005,8 +3008,11 @@ const check = (name, pass, detail) => {
   };
   for (const [look, w, h] of [['classic', 1280, 800], ['classic', 412, 915], ['modernist', 1280, 800], ['modernist', 412, 915]]) {
     const r = await ahLook(look, w, h);
-    check(`    ${look} at ${w}px: nothing runs off the side of the screen, the new buttons answer a tap 21px above and below their middle, and an empty day's two buttons share a line`,
-          r.sideways <= 1 && r.inside && r.answers.every(Boolean) && r.sameLine, JSON.stringify(r));
+    /* Since INSPIRE ME joined + OTHER (11 Nov 2026) an empty day has three buttons: on a tablet all on one line; on a phone INSPIRE ME and
+       + OTHER together beneath CHOOSE A RECIPE, which keeps room for its words. */
+    const line = w >= 1280 ? r.sameLine && r.pair : r.pair;
+    check(`    ${look} at ${w}px: nothing runs off the side of the screen, the new buttons answer a tap 21px above and below their middle, and an empty day's buttons ${w >= 1280 ? 'share a line' : 'keep INSPIRE ME and + OTHER together under an unclipped CHOOSE A RECIPE'}`,
+          r.sideways <= 1 && r.inside && r.answers.every(Boolean) && line && r.noClip, JSON.stringify(r));
     /* The fixture plans three dishes this week (Fri to Thu); one entry is on Wednesday of it and one on the Sunday after, so 3 + 1 and then 1. */
     if (look === 'modernist') check(`    modernist at ${w}px: each week's header counts the entries with its dishes (this week 3 dishes + 1 entry, the next week's 1 entry)`,
                                     JSON.stringify(r.summary) === JSON.stringify(['4 PLANNED', '1 PLANNED']), JSON.stringify(r.summary));
