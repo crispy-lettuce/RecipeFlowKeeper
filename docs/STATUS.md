@@ -69,8 +69,11 @@ READ BY CHAT.
    `SERVINGS:` line, which follows `CLAUDE.md`'s recipe-text procedure; count the recipes without servings first) and a LIBRARY CHECK filter for recipes read by a chat. Not checked
    on a real list: whether a curly against a straight apostrophe shows as a difference.
    **INSPIRE ME** (suggestions on the Planner by protein, how lately cooked and effort) is built and its plan closed (11 Nov 2026; `docs/SPEC.md` §5.5; the plan is at
-   `a9d94b7`, `git show a9d94b7:docs/PLAN-INSPIRE-ME.md`, which is what code comments citing it mean). The household reported ONE MEAL and 3 OPTIONS good in the app; A WEEK
-   (app version 2026-11-11.2) awaits the tablet check, Job 9. A lean towards dishes that share fresh ingredients was measured and left out: issue #234.
+   `a9d94b7`, `git show a9d94b7:docs/PLAN-INSPIRE-ME.md`, which is what code comments citing it mean). The household reported all of it, A WEEK included, good in the app
+   (11 and 12 Nov). From that use came one change, built 12 Nov (app version 2026-11-12.1): a suggestion goes onto the shortlist, not onto a day, and the one INSPIRE ME
+   button is in the shortlist's column. Its plan is at `c72d2cf` (`git show c72d2cf:docs/PLAN-INSPIRE-ME-SHORTLIST.md`); where the build differs from it, the household
+   chose so on seeing it: the panel opens above the days, not in the narrow column, so A WEEK's buttons stayed in the panel. Awaits the tablet check, Job 10. A lean
+   towards dishes that share fresh ingredients was measured and left out: issue #234.
 5. **Optional, not planned:** a "download all source files" backup; drawing a PDF's pages inside the app;
    and four ideas parked from the run sheet's review, each wanting its own issue if picked up: **Trace** (hold a box to dim everything that does not feed it), folding away
    finished rows and columns in cooking mode, a step-through view (one "now" card at a time), and drawn connector lines between boxes.

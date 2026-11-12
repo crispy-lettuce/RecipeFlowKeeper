@@ -1,7 +1,7 @@
 # Household job list
 
 The jobs only the household can do: a session can't tap the tablet, decide for you, or deploy for you. **Last brought up to date
-11 Nov 2026**: two jobs are waiting, Job 7 (the Planner's previous days) and Job 9 (INSPIRE ME's A WEEK).
+11 Nov 2026**: two jobs are waiting, Job 7 (the Planner's previous days) and Job 10 (INSPIRE ME and the shortlist).
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other households sort
 out their own converter and need no steps here.
@@ -13,7 +13,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-**Two jobs are waiting:** Job 7, the Planner's previous days (#223), and Job 9, INSPIRE ME's A WEEK; a few minutes each on the tablet. One loose end, which is not a job: issue #224, "Idea: Test", is the test report Job 2 asked you to close, and it is still open on GitHub.
+**Two jobs are waiting:** Job 7, the Planner's previous days (#223), and Job 10, INSPIRE ME and the shortlist; a few minutes each on the tablet. One loose end, which is not a job: issue #224, "Idea: Test", is the test report Job 2 asked you to close, and it is still open on GitHub.
 What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
@@ -36,22 +36,24 @@ If a step does not do what it says, note which one and what you saw.
 
 ---
 
-## Job 9: INSPIRE ME, A WEEK
+## Job 10: INSPIRE ME and the shortlist
 
-No database change and nothing to deploy. ADD ALL puts a dish on each empty day it proposed, and its UNDO takes them off again; or × each day afterwards.
+No database change and nothing to deploy. A suggestion you add goes on the shortlist; × it there afterwards if you were only trying it.
 
-1. **Reload the app** so it is on version 2026-11-11.2. **You should see:** Settings → HELP shows it, and What's new mentions A WEEK.
-2. Press **INSPIRE ME** in the Planner's heading, then **A WEEK**, then **NEXT WEEK**. **You should see:** a dashed **PROPOSED** dish on each empty day of next week, each with
-   **SWAP** and **×**; the PROTEIN chips become **AT LEAST** counters with − and +; and a line saying how many days are proposed and that nothing is planned until you add all.
-   Nothing is on the shopping list or the calendar yet.
-3. Press **+** on **FISH**, **LAMB** and **CHICKEN** (one, one, two). **You should see:** the proposals change, and the week has at least a fish, a lamb and two chicken dishes.
-   Press **+** on a protein more times than you have recipes for. **You should see:** a line saying how many of that you asked for were found; the week is still filled as far as it can be.
-4. Press **SWAP** on one day. **You should see:** only that day change. Press **×** on another. **You should see:** that day go back to its CHOOSE A RECIPE buttons.
-5. Press **ANOTHER WEEK**. **You should see:** a different set of dishes. Press **CANCEL**. **You should see:** every proposal gone and nothing planned.
-6. Choose **A WEEK** again and press **ADD ALL**. **You should see:** the dishes on those days, the panel gone, and a bar saying how many dishes were added, with **UNDO**.
-   Press **UNDO**. **You should see:** every one of them gone again.
-7. Do step 6 again, but before pressing UNDO add a dish of your own to one of those days. **You should see:** UNDO takes off the others and leaves the day you changed alone.
-8. Look at it on a phone and in the other look (Settings → APP → STYLE). **You should see:** nothing cut off or overlapping, and every button easy to tap.
+1. **Reload the app** so it is on version 2026-11-12.1. **You should see:** Settings → HELP shows it, and What's new says INSPIRE ME now feeds the shortlist.
+2. Look at the Planner. **You should see:** no INSPIRE ME in the heading or on the days (an empty day has CHOOSE A RECIPE and OTHER on one line), and one **INSPIRE ME**
+   button in the shortlist, under the idea box.
+3. Press it. **You should see:** the panel open above the days, as wide as they are, with one suggestion offering **ADD TO SHORTLIST** and **OPEN**.
+4. Press **ADD TO SHORTLIST**. **You should see:** the dish on the shortlist, a note saying so, nothing on any day, and the panel still open offering **ANOTHER**.
+5. Press **ANOTHER** several times. **You should see:** never the dish you just added, nor anything else that is on the shortlist.
+6. Tap the dish on the shortlist, then tap a day. **You should see:** it on that day and gone from the shortlist, as for anything on the shortlist.
+7. Choose **3 OPTIONS** and add one. **You should see:** it go to the shortlist and the other two stay.
+8. Choose **A WEEK**, then **ALL TO SHORTLIST**. **You should see:** every proposed dish on the shortlist, the days left empty, and **PROPOSE A WEEK** in the panel.
+   Then press **PROPOSE A WEEK** and **ADD ALL**, and **UNDO**. **You should see:** those work as before.
+9. In a proposed week with more empty days than proposals, press **SWAP** a few times. **You should see:** a different dish each time while there is one, never a
+   message that nothing fits when a dish is plainly spare.
+10. On a phone, press **INSPIRE ME** (the shortlist is below the days there). **You should see:** the screen move up to the panel. Look once in the other look
+    (Settings → APP → STYLE). **You should see:** nothing cut off or overlapping.
 
 If a step does not do what it says, note which one and what you saw.
 
@@ -65,6 +67,7 @@ None at the moment.
 
 ## Recently done
 
+- **12 Nov:** you reported A WEEK (Job 9) tested in the app and all looking good. That is a report; a session did not see it. What you noticed while using it is Job 10's change.
 - **11 Nov:** you reported INSPIRE ME (the panel, ONE MEAL and 3 OPTIONS, Job 8) looks good in the app. That is a report; a session did not see it. A WEEK is Job 9.
 - **1 Nov:** you reported every job on this page complete: Job 1 (signing in again on each device, #196), Job 2 (REPORT A BUG OR AN IDEA, #198), Job 3 (COOK AHEAD, #221)
   and Job 6 (READ BY CHAT: the remaining recipes worked through, and a re-check after the comparison fix, #229, with the false differences gone). Seen by a session, not only
