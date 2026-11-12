@@ -25,7 +25,7 @@
    hold a new index.html and an old core.js or the other way round. The page
    compares KITCHEN_CORE_VERSION with the version it was built for and asks
    for a reload rather than run on a mismatched pair. Bump both together. */
-const KITCHEN_CORE_VERSION = '2026-11-11.1';
+const KITCHEN_CORE_VERSION = '2026-11-12.1';
 
 
 /* ======================= quantity split ======================= */
@@ -3119,6 +3119,8 @@ function suggestMeals(facts, ask, ctx){
    for "not the same protein two days running", and as a style already had this week.
    The spread rules give way before a day is left empty: first the style rule, then the neighbour rule, and a family that has run out
    is reported in `short` and its day given to anything that fits. Several shuffles are tried and the one that bent fewest rules kept.
+   ask.anyOrder: the dishes will not be put on days in this order (INSPIRE ME's FUTURE WEEK, for the shortlist), so a protein beside itself is no fault and
+   the neighbour rule is not applied; the at-least counts and the style rule are.
    → { days: [{ date, pick | null }], short: [{ family, wanted, got }], bent: { style, neighbour } } */
 function suggestWeek(facts, ask, ctx){
   ask = ask || {}; ctx = ctx || {};
@@ -3149,7 +3151,7 @@ function suggestWeek(facts, ask, ctx){
     /* Required days first, so a scarce family is not spent on a free day. */
     const sequence = order.filter(i => demandOf[i]).concat(order.filter(i => !demandOf[i]));
     sequence.forEach(i => {
-      const near = new Set([...proteinsOn(i - 1), ...proteinsOn(i + 1)]);
+      const near = new Set(ask.anyOrder ? [] : [...proteinsOn(i - 1), ...proteinsOn(i + 1)]);
       const free = pool.filter(f => !used.has(f.id));
       const tiers = fam => {
         const base = fam ? free.filter(f => f.protein === fam) : free;
