@@ -9187,7 +9187,8 @@ function initPlannerListeners(){
       showView('recipes');
       renderHome();
     } else if(action === 'addOther'){
-      state.addOpenDate = null;
+      /* Drawn closed before the form opens over it: left open, the day would still show its two choices when the form went away. */
+      if(state.addOpenDate){ state.addOpenDate = null; renderPlanner(); }
       openAdHocEntry({ origin: 'planner', date });
     } else if(action === 'adHocMeal'){
       const entry = loadDiary().find(x=> x.id === actionEl.dataset.logId);

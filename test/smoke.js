@@ -3115,6 +3115,8 @@ const check = (name, pass, detail) => {
       addDiaryEntry({ title: 'Test Takeaway', cookedOn: iso(1), mealType: 'dinner' });
       addDiaryEntry({ title: 'Test Meal Out With A Rather Long Name To See How It Wraps On A Narrow Screen', cookedOn: iso(5), mealType: 'lunch' });
       showView('planner'); renderPlanner();
+      /* Modernist keeps a planned day's OTHER inside + ADD (12 Nov 2026): opened first, since opening redraws the days. */
+      const addBtn = document.querySelector(`.day-row[data-date="${iso(1)}"] [data-action="addOpen"]`); if (addBtn) addBtn.click();
       const answers = b => { const r = b.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
         return [-21, 21].every(dy => { const el = document.elementFromPoint(cx, cy + dy); return el && el.closest('button') === b; }); };
       const day = document.querySelector(`.day-row[data-date="${iso(1)}"]`), far = document.querySelector(`.day-row[data-date="${iso(5)}"]`);
@@ -9850,7 +9852,25 @@ const check = (name, pass, detail) => {
   const pd = await pdPage({ width: 1389, height: 868 }, 'modernist');
   const d1 = await dishLine(pd, 'Test Short Dish');
   check('Planner, denser: a dish is on one line (its name, then its course, time and pills, then the ×) on the tablet held sideways',
-        d1.n >= 2 && d1.metaDisplay === 'flex' && d1.pillMids.every(m => Math.abs(m - d1.titleMid) <= 3) && d1.xLeft >= d1.lastPillRight && Math.abs(d1.rowRight - d1.xRight) <= 12, JSON.stringify(d1));
+        d1.n >= 2 && d1.metaDisplay === 'grid' && d1.pillMids.every(m => Math.abs(m - d1.titleMid) <= 3) && d1.xLeft >= d1.lastPillRight && Math.abs(d1.rowRight - d1.xRight) <= 12, JSON.stringify(d1));
+  /* Tidier (12 Nov 2026): the course, time, SERVES and state stand in columns, the same on every dish however long its name; SERVES as written and
+     TO COOK are words with a dotted line and no box, and a change puts the box back. */
+  const cols = await pd.evaluate(() => { const L = el => el ? Math.round(el.getBoundingClientRect().left) : null;
+    /* One dish is a Side for this, a shorter word than Main: on a plain line of pills everything after it would start further left. */
+    cache.recipes.find(r => r.id === 'pd-b').tags.course = 'Side'; renderPlanner();
+    const rows = [...document.querySelectorAll('#view-planner .day-row:not(.today) .day-recipe-row')].filter(r => r.querySelector('.day-recipe-meta .day-recipe-serves'));
+    const at = rows.map(r => ['.day-recipe-course', '.day-recipe-time', '.day-recipe-serves', '.day-recipe-premade', '.day-recipe-remove'].map(q => L(r.querySelector(q))).join(','));
+    const look = el => { const c = getComputedStyle(el); return { box: c.borderTopColor !== 'rgba(0, 0, 0, 0)', line: c.textDecorationLine + ' ' + c.textDecorationStyle, button: el.tagName === 'BUTTON' }; };
+    const quiet = { serves: look(rows[0].querySelector('.day-recipe-serves')), state: look(rows[0].querySelector('.day-recipe-premade')) };
+    const d = rows[0].closest('.day-row').dataset.date; setPlanServingsAt(d, 0, 2); renderPlanner();
+    const changed = look(document.querySelector(`#view-planner .day-row[data-date="${d}"] .day-recipe-serves`));
+    setPlanServingsAt(d, 0, 4); cache.recipes.find(r => r.id === 'pd-b').tags.course = 'Main'; renderPlanner();
+    return { n: rows.length, distinct: [...new Set(at)], quiet, changed }; });
+  check('Planner, tidier: the course, time, SERVES, state and × start at the same place on every dish, a long name or a short one',
+        cols.n >= 5 && cols.distinct.length === 1 && !/null/.test(cols.distinct[0]), JSON.stringify(cols.distinct));
+  check('    SERVES as the recipe is written and TO COOK are underlined words with no box, still buttons; SERVES changed for the day has its box and no line',
+        !cols.quiet.serves.box && !cols.quiet.state.box && cols.quiet.serves.line === 'underline dotted' && cols.quiet.state.line === 'underline dotted' && cols.quiet.serves.button && cols.quiet.state.button
+        && cols.changed.box && !/underline/.test(cols.changed.line), JSON.stringify([cols.quiet, cols.changed]));
   const d2 = await dishLine(pd, pdLong);
   check('    a name too long for the room wraps onto more lines, whole, and is never cut with "…"; the pills stay level with it',
         d2.lines >= 2 && d2.clip <= 1 && d2.ellipsis !== 'ellipsis' && d2.text === pdLong && d2.pillMids.every(m => Math.abs(m - d2.titleMid) <= 3), JSON.stringify(d2));
@@ -9899,27 +9919,76 @@ const check = (name, pass, detail) => {
     const r = rows[which], main = r.querySelector('.day-main'), add = main.querySelector('.day-add-more'), cal = main.querySelector('.day-cal'), btns = [...cal.querySelectorAll('.day-cal-btn')];
     return { rows: rows.length, btns: btns.length, addMid: Math.round((R(add).top + R(add).bottom) / 2), calMid: Math.round((R(cal).top + R(cal).bottom) / 2), addBottom: Math.round(R(add).bottom), calTop: Math.round(R(cal).top),
       calRight: Math.round(R(cal).right), mainRight: Math.round(R(main).right), btnTops: btns.map(b => Math.round(R(b).top)), rowH: Math.round(R(r).height) }; }, which);
+  /* Modernist since 12 Nov 2026: the two are icons. The day's IN CALENDAR is under its date and the bell in front of the dish; the day's own box has
+     neither, and its one line under the dishes is + ADD. calLine above is Classic's, which keeps the strip. */
+  const calIcons = (pg, which) => pg.evaluate(which => { const R = el => el.getBoundingClientRect(), mid = el => Math.round((R(el).top + R(el).bottom) / 2);
+    const rows = [...document.querySelectorAll('#view-planner .day-row[data-date]')].filter(r => r.querySelector('.day-cal'));
+    const r = rows[which], cal = r.querySelector('[data-action="calToggle"]'), bell = r.querySelector('[data-action="calRemind"]'), dishes = [...r.querySelectorAll('.day-recipe-row')];
+    const shown = el => { const c = el.querySelector('.ico-words'), b = c.getBoundingClientRect(); return b.width <= 1 && b.height <= 1; };
+    return { rows: rows.length, calInNum: !!cal.closest('.day-num'), calWords: cal.textContent.trim(), calPressed: cal.getAttribute('aria-pressed'), calSvg: cal.querySelectorAll('svg path').length, calPath: cal.querySelector('path').getAttribute('d'),
+      calW: Math.round(R(cal).width), wordsUnseen: shown(cal), title: cal.title, strip: r.querySelectorAll('.day-main .day-cal').length,
+      bell: bell ? { words: bell.textContent.trim(), pressed: bell.getAttribute('aria-pressed'), first: bell.closest('.day-recipe-row') === dishes[0], left: R(bell).right <= R(dishes[0].querySelector('.day-recipe-title')).left,
+        level: Math.abs(mid(bell) - mid(dishes[0].querySelector('.day-recipe-title'))) <= 3, path: bell.querySelector('path').getAttribute('d'), title: bell.title } : null,
+      places: dishes.map(d => d.querySelectorAll(':scope > .day-bell').length).join(','), names: [...new Set(dishes.map(d => Math.round(R(d.querySelector('.day-recipe-title')).left)))].length,
+      add: (a => a ? { text: a.textContent.trim(), left: Math.round(R(a).left), nameLeft: Math.round(R(dishes[0].querySelector('.day-recipe-title')).left) } : null)(r.querySelector('[data-action="addOpen"]')),
+      old: r.querySelectorAll('[data-action="choose"], [data-action="addOther"]').length, rowH: Math.round(R(r).height) }; }, which);
   const cp = await calPage({ width: 1389, height: 868 }, 'modernist');
-  const c0 = await calLine(cp, 0), c2 = await calLine(cp, 2);
-  /* A day with ADD ANOTHER, GROUP SOME TOGETHER and both buttons is as wide as the line in some fonts and not in others (the browser here and CI's do not share one), so only the
-     one-dish day is asked to be level with ADD ANOTHER; the two-dish day's pair must be together and at the right, on the line or wrapped beneath it. */
-  check('Planner, calendar on: IN CALENDAR (and REMIND ME) sit on ADD ANOTHER\'s line at the right-hand end of the day, level with it, and a one-dish day is shorter for it',
-        c0.rows >= 4 && c0.btns === 1 && Math.abs(c0.calMid - c0.addMid) <= 3 && c0.mainRight - c0.calRight <= 4 && c2.btns === 2 && c2.btnTops[0] === c2.btnTops[1] && c2.mainRight - c2.calRight <= 4 && c0.rowH <= 105, JSON.stringify([c0, c2]));
+  const c0 = await calIcons(cp, 0), c2 = await calIcons(cp, 2);
+  check('Planner, calendar on, Modernist: IN CALENDAR is an icon under the day\'s date, its words kept unseen in the button; off it is a calendar with a plus and says how to put the day in',
+        c0.rows >= 4 && c0.calInNum && c0.strip === 0 && c0.calWords === 'IN CALENDAR' && c0.calPressed === 'false' && c0.calSvg === 1 && c0.calW <= 20 && c0.wordsUnseen && /Not in the calendar/.test(c0.title)
+        && c0.bell === null && c0.rowH <= 105, JSON.stringify(c0));
+  check('    on, it is a calendar with a tick (another drawing, not a paler one), and the day\'s REMIND ME is a bell in front of the first dish\'s name, level with it',
+        c2.calWords === '✓ IN CALENDAR' && c2.calPressed === 'true' && c2.calPath !== c0.calPath && c2.strip === 0 && c2.bell && c2.bell.words === '✓ REMIND ME 20:00 THE EVENING BEFORE' && c2.bell.pressed === 'true'
+        && c2.bell.first && c2.bell.left && c2.bell.level && /20:00 the evening before/.test(c2.bell.title), JSON.stringify(c2));
+  check('    every dish of a day has the bell\'s place, filled or empty, so the names start together; + ADD starts where they do and is the day\'s one adding button',
+        c0.places === '1' && c2.places === '1,1' && c2.names === 1 && c2.add && c2.add.text === '+ADD' && c2.add.left === c2.add.nameLeft && c2.old === 0, JSON.stringify([c0.places, c2.places, c2.names, c2.add, c2.old]));
+  await cp.locator('#view-planner .day-row:has(.day-cal) [data-action="calRemind"]').click(); await cp.waitForTimeout(200);
+  const c2off = await calIcons(cp, 2);
+  check('    a tap on the bell takes the reminder off: a bell with a stroke through it, not pressed, the day still in the calendar',
+        c2off.bell && c2off.bell.pressed === 'false' && c2off.bell.words === 'REMIND ME 20:00 THE EVENING BEFORE' && c2off.bell.path !== c2.bell.path && c2off.calPressed === 'true', JSON.stringify(c2off.bell));
   const cHits = await hitScan(cp, '#view-planner');
-  check('    and every button, IN CALENDAR and REMIND ME among them, still answers a tap 21px above and below its middle (44px): ADD ANOTHER no longer shares the edge of its tap area with the button beneath',
+  check('    and every button, the two icons among them, still answers a tap 21px above and below its middle (44px)',
         cHits.n >= 25 && cHits.miss.length === 0, `${cHits.n} buttons` + (cHits.miss.length ? '; missed: ' + cHits.miss.slice(0, 5).join(', ') : ''));
+  /* + ADD opens where it stands. */
+  const addDay = await cp.evaluate(() => [...document.querySelectorAll('#view-planner .day-row[data-date]')].filter(r => r.querySelector('.day-cal'))[2].dataset.date);
+  const addRow = `#view-planner .day-row[data-date="${addDay}"]`;
+  await cp.locator(`${addRow} [data-action="addOpen"]`).click(); await cp.waitForTimeout(200);
+  const pa1 = await cp.evaluate(sel => { const r = document.querySelector(sel), g = r.querySelector('.day-add-open');
+    return { open: !!g, role: g && g.getAttribute('role'), opts: [...r.querySelectorAll('.day-add-open button')].map(b => (b.getAttribute('aria-label') || b.textContent.trim()) + ':' + b.dataset.action).join('|'),
+      focus: document.activeElement && document.activeElement.dataset.action, others: document.querySelectorAll('#view-planner .day-add-open').length, addBtn: !!r.querySelector('[data-action="addOpen"]'), group: !!r.querySelector('[data-action="toggleGroupMode"]') }; }, addRow);
+  const pa1Hits = await hitScan(cp, '#view-planner');
+  check('+ ADD opens where it stands into A RECIPE and OTHER with a × to close, on that day only, the keyboard on the first; GROUP SOME TOGETHER stays; every tap still lands',
+        pa1.open && pa1.role === 'group' && pa1.opts === 'A RECIPE:choose|OTHER:addOther|Close without adding:addClose' && pa1.focus === 'choose' && pa1.others === 1 && !pa1.addBtn && pa1.group && pa1Hits.miss.length === 0,
+        JSON.stringify([pa1, pa1Hits.miss.slice(0, 4)]));
+  await cp.locator(`${addRow} [data-action="addClose"]`).click(); await cp.waitForTimeout(200);
+  const pa2 = await cp.evaluate(sel => { const r = document.querySelector(sel); return { open: !!r.querySelector('.day-add-open'), focus: document.activeElement && document.activeElement.dataset.action, plan: JSON.stringify(loadPlan()[r.dataset.date].recipeIds) }; }, addRow);
+  check('    × closes it with nothing added, the keyboard back on + ADD', !pa2.open && pa2.focus === 'addOpen' && pa2.plan === '["pd-a","pd-b"]', JSON.stringify(pa2));
+  await cp.locator(`${addRow} [data-action="addOpen"]`).click(); await cp.waitForTimeout(150);
+  await cp.locator(`${addRow} [data-action="addOther"]`).click(); await cp.waitForTimeout(300);
+  const pa3 = await cp.evaluate(() => ({ dialog: document.getElementById('adHocOverlay').getClientRects().length > 0 && document.getElementById('adHocTitle').getClientRects().length > 0, open: state.addOpenDate, drawn: document.querySelectorAll('#view-planner .day-add-open').length }));
+  check('    OTHER opens the same entry form + OTHER always did, and + ADD is closed behind it', pa3.dialog && pa3.open === null && pa3.drawn === 0, JSON.stringify(pa3));
+  await cp.locator('#adHocClose').click(); await cp.waitForTimeout(200);
+  await cp.locator(`${addRow} [data-action="addOpen"]`).click(); await cp.waitForTimeout(150);
+  await cp.locator(`${addRow} [data-action="choose"]`).click(); await cp.waitForTimeout(300);
+  const pa4 = await cp.evaluate(() => ({ picking: state.pickingForDate, view: document.querySelector('.app').dataset.view, open: state.addOpenDate }));
+  check('    A RECIPE goes to the library to choose a dish for that day, as ADD ANOTHER did', pa4.picking === addDay && pa4.view === 'recipes' && pa4.open === null, JSON.stringify(pa4));
+  await cp.evaluate(() => { state.pickingForDate = null; showView('planner'); renderPlanner(); }); await cp.waitForTimeout(200);
   await cp.setViewportSize({ width: 1100, height: 800 }); await cp.waitForTimeout(400);
-  const c3 = await calLine(cp, 2), c3w = await cp.evaluate(() => document.documentElement.scrollWidth - innerWidth), c3h = await hitScan(cp, '#view-planner');
-  check('    on a window too narrow for them beside ADD ANOTHER (1100px, the shortlist open) they wrap beneath it, still at the right, with nothing off the side and every tap landing',
-        c3.calTop >= c3.addBottom - 2 && c3.mainRight - c3.calRight <= 4 && c3w <= 0 && c3h.n >= 25 && c3h.miss.length === 0, JSON.stringify([c3, c3w, c3h.n, c3h.miss.slice(0, 4)]));
+  const c3 = await calIcons(cp, 2), c3w = await cp.evaluate(() => document.documentElement.scrollWidth - innerWidth), c3h = await hitScan(cp, '#view-planner');
+  check('    on a narrower window (1100px, the shortlist open) the icons are where they were, with nothing off the side and every tap landing',
+        c3.calInNum && c3.bell && c3.bell.left && c3w <= 0 && c3h.n >= 25 && c3h.miss.length === 0, JSON.stringify([c3.bell, c3w, c3h.n, c3h.miss.slice(0, 4)]));
   await cp.setViewportSize({ width: 412, height: 915 }); await cp.waitForTimeout(400);
-  const c4 = await calLine(cp, 0), c4h = await hitScan(cp, '#view-planner');
-  check('    a phone keeps them on a line of their own under ADD ANOTHER, and its buttons, ADD THE WEEK among them, answer a tap 44px tall',
-        c4.calTop >= c4.addBottom - 2 && c4h.n >= 10 && c4h.miss.length === 0, JSON.stringify([c4, c4h.n, c4h.miss.slice(0, 4)]));
+  const c4 = await calIcons(cp, 2), c4w = await cp.evaluate(() => document.documentElement.scrollWidth - innerWidth), c4h = await hitScan(cp, '#view-planner');
+  check('    a phone has them too, the bell on the name\'s line, and its buttons, ADD THE WEEK among them, answer a tap 44px tall',
+        c4.calInNum && c4.bell && c4.bell.left && c4.bell.level && c4w <= 0 && c4h.n >= 10 && c4h.miss.length === 0, JSON.stringify([c4.bell, c4w, c4h.n, c4h.miss.slice(0, 4)]));
   await cp.close();
   const cpc = await calPage({ width: 1389, height: 868 }, 'classic');
   const c5 = await calLine(cpc, 0);
-  check('    Classic is as it was: its own line under ADD ANOTHER', c5.calTop >= c5.addBottom - 2, JSON.stringify(c5));
+  const c5w = await cpc.evaluate(() => { const r = [...document.querySelectorAll('#view-planner .day-row[data-date]')].filter(r => r.querySelector('.day-cal'))[2];
+    return { strip: [...r.querySelectorAll('.day-main .day-cal .day-cal-btn')].map(b => b.textContent.trim()).join('|'), icons: r.querySelectorAll('.day-ico, .day-bell, svg').length,
+      adds: [...r.querySelectorAll('.day-main > .day-add-more')].map(b => b.dataset.action).join(','), addOpen: r.querySelectorAll('[data-action="addOpen"]').length }; });
+  check('    Classic is as it was: its own line under ADD ANOTHER, the two in words, no icons, and ADD ANOTHER and OTHER side by side',
+        c5.calTop >= c5.addBottom - 2 && c5w.strip === '✓ IN CALENDAR|✓ REMIND ME 20:00 THE EVENING BEFORE' && c5w.icons === 0 && /^choose,addOther/.test(c5w.adds) && c5w.addOpen === 0, JSON.stringify([c5, c5w]));
   await cpc.close();
 
   /* ---- A calendar reminder per meal (docs/PLAN-CALENDAR-PUSH.md §12, 20 Oct 2026) ----
@@ -9952,8 +10021,9 @@ const check = (name, pass, detail) => {
     return pg;
   };
   const mpDay = (pg, n) => pg.evaluate(n => { const date = window.__MP__[n], row = document.querySelector(`#view-planner .day-row[data-date="${date}"]`), e = cache.plan[date];
-    const strip = [...row.querySelectorAll('.day-cal .day-cal-btn')].map(b => b.textContent.trim());
-    return { strip, pills: [...row.querySelectorAll('.meal-remind')].map(b => ({ text: b.textContent.trim(), on: b.classList.contains('on'), pressed: b.getAttribute('aria-pressed'), inBar: !!b.closest('.group-badge'), inMeta: !!b.closest('.day-recipe-meta') })),
+    /* The day's own two, wherever the style draws them: Modernist has IN CALENDAR under the date and the day's bell on its first dish or that dish's group (12 Nov 2026). */
+    const strip = [...row.querySelectorAll('[data-action="calToggle"], [data-action="calRemind"]')].map(b => b.textContent.trim());
+    return { strip, pills: [...row.querySelectorAll('.meal-remind')].map(b => ({ text: b.textContent.trim(), on: b.classList.contains('on'), pressed: b.getAttribute('aria-pressed'), inBar: !!b.closest('.group-badge'), inMeta: !!b.closest('.day-recipe-row') && b.getBoundingClientRect().right <= b.closest('.day-recipe-row').querySelector('.day-recipe-title').getBoundingClientRect().left, icon: b.querySelectorAll('svg').length })),
       items: e && e.calendarItems ? e.calendarItems.join(',') : null, flags: e ? [!!e.calendar, !!e.remind].join(',') : null }; }, n);
   const mpRow = (pg, n) => pg.evaluate(n => { const date = window.__MP__[n]; const w = window.__WRITES__.filter(x => x.table === 'planner_days' && x.op === 'upsert' && x.rows[0].plan_date === date).pop();
     return w ? { calendar: w.rows[0].calendar, remind: w.rows[0].calendar_remind, items: 'calendar_items' in w.rows[0] ? w.rows[0].calendar_items.join(',') : 'not sent' } : null; }, n);
@@ -9962,8 +10032,8 @@ const check = (name, pass, detail) => {
   const m0 = await mpDay(mp, 0), m1 = await mpDay(mp, 1), m2 = await mpDay(mp, 2), m3 = await mpDay(mp, 3), m4 = await mpDay(mp, 4);
   check('Planner, a reminder per meal: a day with one meal (one dish, or a group alone) keeps the strip\'s IN CALENDAR and REMIND ME … THE EVENING BEFORE and has no REMIND ME on its meals',
         m0.strip.length === 2 && /THE EVENING BEFORE$/.test(m0.strip[1]) && m0.pills.length === 0 && m3.strip.length === 2 && /THE EVENING BEFORE$/.test(m3.strip[1]) && m3.pills.length === 0, JSON.stringify([m0, m3]));
-  check('    a day with two meals has REMIND ME 20:00 on each, the first lit with a ✓ and the second not, and the strip is IN CALENDAR alone',
-        m1.pills.length === 2 && m1.pills.every(p => p.inMeta && !p.inBar) && m1.pills[0].text === '✓ REMIND ME 20:00' && m1.pills[0].on && m1.pills[0].pressed === 'true'
+  check('    a day with two meals has REMIND ME 20:00 on each, a bell in front of the dish\'s name, the first on with a ✓ in its words and the second not, and the day\'s own is IN CALENDAR alone',
+        m1.pills.length === 2 && m1.pills.every(p => p.inMeta && !p.inBar && p.icon === 1) && m1.pills[0].text === '✓ REMIND ME 20:00' && m1.pills[0].on && m1.pills[0].pressed === 'true'
         && m1.pills[1].text === 'REMIND ME 20:00' && !m1.pills[1].on && m1.pills[1].pressed === 'false' && m1.strip.length === 1 && /IN CALENDAR$/.test(m1.strip[0]), JSON.stringify(m1));
   check('    a group is one meal with one reminder, on its GROUPED bar, and its dishes have none of their own; a loose dish beside it has its own',
         m2.pills.length === 2 && m2.pills.filter(p => p.inBar).length === 1 && m2.pills.filter(p => p.inMeta).length === 1 && (m2.pills.find(p => p.inBar) || {}).on && !(m2.pills.find(p => p.inMeta) || { on: true }).on, JSON.stringify(m2));
@@ -9973,8 +10043,8 @@ const check = (name, pass, detail) => {
     const R = el => el.getBoundingClientRect(), h = el => el ? Math.round(R(el).height) : 0;
     return { tag: b.tagName, view: v && v.tagName, ungroup: u && u.tagName, nested: document.querySelectorAll('#view-planner button button, #view-planner button [data-action]').length, vh: h(v), uh: h(u),
       order: [v, b.querySelector('.meal-remind'), u].filter(Boolean).map(x => Math.round(R(x).left)) }; });
-  check('    the GROUPED bar is three separate controls (view, REMIND ME, UNGROUP), left to right, none inside another, the first and last as tall as the bar (44px)',
-        bar.tag === 'DIV' && bar.view === 'BUTTON' && bar.ungroup === 'BUTTON' && bar.nested === 0 && bar.vh >= 44 && bar.uh >= 44 && bar.order.length === 3 && bar.order[0] < bar.order[1] && bar.order[1] < bar.order[2], JSON.stringify(bar));
+  check('    the GROUPED bar is three separate controls (the bell first, as it is in front of a dish, then view and UNGROUP), none inside another, view and UNGROUP as tall as the bar (44px)',
+        bar.tag === 'DIV' && bar.view === 'BUTTON' && bar.ungroup === 'BUTTON' && bar.nested === 0 && bar.vh >= 44 && bar.uh >= 44 && bar.order.length === 3 && bar.order[1] < bar.order[0] && bar.order[0] < bar.order[2], JSON.stringify(bar));
   const mpHits = await hitScan(mp, '#view-planner');
   check('    every button on those days, the new REMIND ME pills and the bar\'s two controls among them, answers a tap 21px above and below its middle (44px)',
         mpHits.n >= 25 && mpHits.miss.length === 0, `${mpHits.n} buttons` + (mpHits.miss.length ? '; missed: ' + mpHits.miss.slice(0, 6).join(', ') : ''));
