@@ -68,9 +68,9 @@ READ BY CHAT.
    they are built or moved to issues: reading a page's servings for a recipe that has none (it needs an Edge Function change the household deploys, and a write to the recipe's
    `SERVINGS:` line, which follows `CLAUDE.md`'s recipe-text procedure; count the recipes without servings first) and a LIBRARY CHECK filter for recipes read by a chat. Not checked
    on a real list: whether a curly against a straight apostrophe shows as a difference.
-   **INSPIRE ME** (suggestions on the Planner by protein, how lately cooked and effort) is planned in `docs/PLAN-INSPIRE-ME.md` (11 Nov 2026). Built: the engine in
-   `core.js` and `tools/measure-suggestions.js`, then ONE MEAL and 3 OPTIONS on the Planner (app version 2026-11-11.1, `docs/SPEC.md` §5.5), which awaits the
-   household's tablet check, Job 8. Not built: a whole week at once, and the lean towards shared ingredients.
+   **INSPIRE ME** (suggestions on the Planner by protein, how lately cooked and effort) is built and its plan closed (11 Nov 2026; `docs/SPEC.md` §5.5; the plan is at
+   `a9d94b7`, `git show a9d94b7:docs/PLAN-INSPIRE-ME.md`, which is what code comments citing it mean). The household reported ONE MEAL and 3 OPTIONS good in the app; A WEEK
+   (app version 2026-11-11.2) awaits the tablet check, Job 9. A lean towards dishes that share fresh ingredients was measured and left out: issue #234.
 5. **Optional, not planned:** a "download all source files" backup; drawing a PDF's pages inside the app;
    and four ideas parked from the run sheet's review, each wanting its own issue if picked up: **Trace** (hold a box to dim everything that does not feed it), folding away
    finished rows and columns in cooking mode, a step-through view (one "now" card at a time), and drawn connector lines between boxes.

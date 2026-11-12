@@ -1,7 +1,7 @@
 # Household job list
 
 The jobs only the household can do: a session can't tap the tablet, decide for you, or deploy for you. **Last brought up to date
-11 Nov 2026**: two jobs are waiting, Job 7 (the Planner's previous days) and Job 8 (INSPIRE ME).
+11 Nov 2026**: two jobs are waiting, Job 7 (the Planner's previous days) and Job 9 (INSPIRE ME's A WEEK).
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other households sort
 out their own converter and need no steps here.
@@ -13,7 +13,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-**Two jobs are waiting:** Job 7, the Planner's previous days (#223), and Job 8, INSPIRE ME; a few minutes each on the tablet. One loose end, which is not a job: issue #224, "Idea: Test", is the test report Job 2 asked you to close, and it is still open on GitHub.
+**Two jobs are waiting:** Job 7, the Planner's previous days (#223), and Job 9, INSPIRE ME's A WEEK; a few minutes each on the tablet. One loose end, which is not a job: issue #224, "Idea: Test", is the test report Job 2 asked you to close, and it is still open on GitHub.
 What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
@@ -36,25 +36,22 @@ If a step does not do what it says, note which one and what you saw.
 
 ---
 
-## Job 8: INSPIRE ME on the Planner
+## Job 9: INSPIRE ME, A WEEK
 
-No database change and nothing to deploy. ADD puts a dish on a day, so × it afterwards if you were only trying it.
+No database change and nothing to deploy. ADD ALL puts a dish on each empty day it proposed, and its UNDO takes them off again; or × each day afterwards.
 
-1. **Reload the app** so it is on version 2026-11-11.1. **You should see:** Settings → HELP shows it, and What's new mentions INSPIRE ME.
-2. On the Planner, look at the heading and at a day with nothing planned. **You should see:** **INSPIRE ME** in the heading beside PREVIOUS 3 DAYS, and a smaller
-   **INSPIRE ME** on each empty day between CHOOSE A RECIPE and OTHER. The heading is no taller than it was.
-3. Press **INSPIRE ME** on an empty day. **You should see:** a panel under the heading that says which day it is for, with ONE MEAL chosen and one suggestion: a main
-   course, with its protein, time and when it was last cooked.
-4. Tap a protein, for example **CHICKEN**. **You should see:** the suggestion change to a chicken dish, and each chip's number say how many recipes fit. Check the
-   protein shown on a few suggestions is what you would call that dish; if one is wrong, note which recipe.
-5. Press **ANOTHER** a few times. **You should see:** a different dish each time, never one already on the Planner.
-6. Press **ADD TO** (the day). **You should see:** the dish on that day, a note saying so, and the panel gone.
-7. Press **INSPIRE ME** in the heading, then **3 OPTIONS**. **You should see:** three suggestions. Press **ADD** on one. **You should see:** a bar saying to tap a day;
-   tap one, and the dish is on it while the other two suggestions stay.
-8. Press **MORE CHOICES**, then **LOW EFFORT**. **You should see:** only dishes that ask little of your own time. In Settings → APP, **LOW EFFORT MEANS** changes how little
-   (on this device); set it to 20 and the LOW EFFORT number on the Planner goes up.
-9. Try **POPULAR** and **NOT LATELY**. **You should see:** few or none for now (they go by what has been logged as cooked), and a chip with nothing to offer is greyed.
-10. Look at it once in the other look (Settings → APP → STYLE) and on a phone. **You should see:** nothing cut off or overlapping.
+1. **Reload the app** so it is on version 2026-11-11.2. **You should see:** Settings → HELP shows it, and What's new mentions A WEEK.
+2. Press **INSPIRE ME** in the Planner's heading, then **A WEEK**, then **NEXT WEEK**. **You should see:** a dashed **PROPOSED** dish on each empty day of next week, each with
+   **SWAP** and **×**; the PROTEIN chips become **AT LEAST** counters with − and +; and a line saying how many days are proposed and that nothing is planned until you add all.
+   Nothing is on the shopping list or the calendar yet.
+3. Press **+** on **FISH**, **LAMB** and **CHICKEN** (one, one, two). **You should see:** the proposals change, and the week has at least a fish, a lamb and two chicken dishes.
+   Press **+** on a protein more times than you have recipes for. **You should see:** a line saying how many of that you asked for were found; the week is still filled as far as it can be.
+4. Press **SWAP** on one day. **You should see:** only that day change. Press **×** on another. **You should see:** that day go back to its CHOOSE A RECIPE buttons.
+5. Press **ANOTHER WEEK**. **You should see:** a different set of dishes. Press **CANCEL**. **You should see:** every proposal gone and nothing planned.
+6. Choose **A WEEK** again and press **ADD ALL**. **You should see:** the dishes on those days, the panel gone, and a bar saying how many dishes were added, with **UNDO**.
+   Press **UNDO**. **You should see:** every one of them gone again.
+7. Do step 6 again, but before pressing UNDO add a dish of your own to one of those days. **You should see:** UNDO takes off the others and leaves the day you changed alone.
+8. Look at it on a phone and in the other look (Settings → APP → STYLE). **You should see:** nothing cut off or overlapping, and every button easy to tap.
 
 If a step does not do what it says, note which one and what you saw.
 
@@ -68,6 +65,7 @@ None at the moment.
 
 ## Recently done
 
+- **11 Nov:** you reported INSPIRE ME (the panel, ONE MEAL and 3 OPTIONS, Job 8) looks good in the app. That is a report; a session did not see it. A WEEK is Job 9.
 - **1 Nov:** you reported every job on this page complete: Job 1 (signing in again on each device, #196), Job 2 (REPORT A BUG OR AN IDEA, #198), Job 3 (COOK AHEAD, #221)
   and Job 6 (READ BY CHAT: the remaining recipes worked through, and a re-check after the comparison fix, #229, with the false differences gone). Seen by a session, not only
   reported: #196 was closed on 25 Oct and #198 and #221 on 31 Oct at 09:11 UTC; on 1 Nov the live database held COOK AHEAD's two columns and its constraint (read-only, and 0 of 158
