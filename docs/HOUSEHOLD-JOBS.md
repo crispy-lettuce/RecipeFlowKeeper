@@ -1,7 +1,7 @@
 # Household job list
 
 The jobs only the household can do: a session can't tap the tablet, decide for you, or deploy for you. **Last brought up to date
-11 Nov 2026**: two jobs are waiting, Job 7 (the Planner's previous days) and Job 10 (INSPIRE ME and the shortlist).
+12 Nov 2026**: three jobs are waiting, Job 7 (the Planner's previous days), Job 10 (INSPIRE ME and the shortlist) and Job 11 (the tidier Planner in Modernist).
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other households sort
 out their own converter and need no steps here.
@@ -13,7 +13,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-**Two jobs are waiting:** Job 7, the Planner's previous days (#223), and Job 10, INSPIRE ME and the shortlist; a few minutes each on the tablet. One loose end, which is not a job: issue #224, "Idea: Test", is the test report Job 2 asked you to close, and it is still open on GitHub.
+**Three jobs are waiting:** Job 7, the Planner's previous days (#223), Job 10, INSPIRE ME and the shortlist, and Job 11, the tidier Planner in Modernist; a few minutes each on the tablet. One loose end, which is not a job: issue #224, "Idea: Test", is the test report Job 2 asked you to close, and it is still open on GitHub.
 What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
@@ -54,6 +54,29 @@ No database change and nothing to deploy. A suggestion you add goes on the short
    message that nothing fits when a dish is plainly spare.
 10. On a phone, press **INSPIRE ME** (the shortlist is below the days there). **You should see:** the screen move up to the panel. Look once in the other look
     (Settings → APP → STYLE). **You should see:** nothing cut off or overlapping.
+
+If a step does not do what it says, note which one and what you saw.
+
+---
+
+## Job 11: the tidier Planner (Modernist)
+
+No database change and nothing to deploy. It changes how the Planner is drawn in the Modernist style only; nothing you have planned is touched.
+
+1. **Reload the app** so it is on version 2026-11-12.2, in the Modernist style (Settings → APP → STYLE). **You should see:** Settings → HELP shows the version, and
+   What's new describes the tidier Planner.
+2. Look at a planned day that is in the calendar. **You should see:** a small calendar with a tick under the date, a bell in front of the dish, and no **IN CALENDAR**
+   or **REMIND ME** buttons under the dishes.
+3. Tap the bell. **You should see:** a line through it, and the reminder gone from that day's event in Google Calendar. Tap it again to put it back.
+4. Tap the small calendar. **You should see:** it change to a calendar with a plus, the bell go, and the day leave Google Calendar. Tap it again to put the day back.
+5. Look at a day with two meals that is in the calendar. **You should see:** a bell in front of each dish, each switching by itself. On a day with dishes grouped
+   together, the bell is at the left of the **GROUPED** bar.
+6. Look down the page. **You should see:** **SERVES** and **TO COOK** as underlined words, in a box only where you changed one (another number of people,
+   **COOK AHEAD**, **PRE-MADE**), and the course, time, SERVES and TO COOK lined up in columns from dish to dish. Tap **SERVES** and **TO COOK**: they still open as before.
+7. On a planned day press **ADD**. **You should see:** it open into **A RECIPE** and **OTHER** with a ×. Try each: A RECIPE goes to the library for that day, OTHER
+   opens the form for something that isn't a recipe, × closes it. An empty day still has **CHOOSE A RECIPE** and **OTHER**.
+8. Turn the tablet upright, and look once on a phone. **You should see:** nothing cut off or overlapping, and every icon easy to tap.
+9. Switch to Classic (Settings → APP → STYLE). **You should see:** the Planner as it always was there, with its buttons in words. Switch back.
 
 If a step does not do what it says, note which one and what you saw.
 

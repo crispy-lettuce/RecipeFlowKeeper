@@ -957,6 +957,65 @@ html[data-style="modernist"] #view-planner .day-main > .day-choose:not(.day-add-
 html[data-style="modernist"] #view-planner .day-main.day-main-empty{ gap:8px 14px; }
 html[data-style="modernist"] #view-planner .day-main.day-main-empty > .day-choose:not(.day-add-more){ flex:1 1 11em; }
 html[data-style="modernist"] #view-planner .day-main.day-main-empty > .day-choose.day-add-more{ flex:none; margin:0 0 0 auto; }
+/* The Planner, tidier (12 Nov 2026). Every planned day carried the same second line, most of it two long pills that said the usual thing
+   (IN CALENDAR, REMIND ME … THE EVENING BEFORE), and every dish two boxes that said the usual thing (SERVES as written, TO COOK). So:
+   - the calendar's switches are icons (index.html draws them in this style only): the day's under its date, a bell in front of the dish it
+     reminds for. Off is a different drawing (a plus, a stroke through the bell), not only a paler one. Their words stay in the button, unseen;
+   - SERVES as the recipe is written and TO COOK are words with a dotted line under them, as an entry's meal tag is; a box now means a change;
+   - from 861px the course, time, SERVES and the dish's state stand in columns, so they read down the page as well as along the dish;
+   - a planned day has one + ADD, which opens where it stands into A RECIPE and OTHER.
+   Every one still answers a tap 44px tall. */
+html[data-style="modernist"] #view-planner .ico-words{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+html[data-style="modernist"] #view-planner .day-cal-btn.day-ico{ display:flex; flex:none; width:18px; height:18px; padding:0; border:0; color:var(--km-ink-72); }
+html[data-style="modernist"] #view-planner .day-cal-btn.day-ico.on{ color:var(--color-text); }
+html[data-style="modernist"] #view-planner .day-cal-btn.day-ico:hover{ color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .day-cal-btn.day-ico::before{ left:-13px; right:-13px; top:-13px; bottom:-13px; }
+html[data-style="modernist"] #view-planner .day-ico svg{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:square; stroke-linejoin:miter; pointer-events:none; }
+html[data-style="modernist"] #view-planner .day-num > .day-cal{ margin-top:6px; }
+/* The bell's place in front of a dish's name, filled or empty: with the name, ahead of the pills, on a phone too. */
+html[data-style="modernist"] #view-planner .day-bell{ flex:none; width:18px; height:18px; order:-2; }
+@media (max-width: 860px){
+  html[data-style="modernist"] #view-planner .day-bell + .day-recipe-title{ flex-basis:calc(100% - 86px); }
+}
+
+html[data-style="modernist"] #view-planner :is(.day-recipe-serves, .day-recipe-premade):not(.on){ padding-left:0; padding-right:0; border-color:transparent; color:var(--km-ink-72); text-decoration:underline dotted; text-underline-offset:4px; }
+html[data-style="modernist"] #view-planner :is(.day-recipe-serves, .day-recipe-premade):not(.on):hover{ border-color:transparent; color:var(--color-accent-700); }
+
+/* The columns, where the day is wide enough for a name and all four beside it (the day is the container: the shortlist open or folded changes
+   its width, and the window's does not say which). Each column is as wide as its usual contents and grows for an unusual one (a long time, a
+   meal's name after PRE-MADE), which moves that one dish's columns and no other's. A narrower day keeps the line it had. A past day and an
+   entry that is not a recipe have other contents, and keep their own. COOKED ✓, on today only, takes a fifth column and moves the × along. */
+html[data-style="modernist"] #view-planner .day-main{ container-type:inline-size; }
+@container (min-width: 460px){
+  html[data-style="modernist"] #view-planner .day-row:not(.past) .day-recipe-row:not(.day-adhoc-row) > .day-recipe-meta{
+    display:grid; grid-template-columns:minmax(60px, max-content) minmax(58px, max-content) minmax(84px, max-content) minmax(156px, max-content); grid-auto-columns:max-content; column-gap:12px;
+  }
+  /* The name gives up 60px of the room it asks for before the columns drop beneath it: they are wider than the line of pills they replace. */
+  html[data-style="modernist"] #view-planner .day-row:not(.past) .day-recipe-row:not(.day-adhoc-row) > .day-recipe-title{ flex-basis:220px; }
+  html[data-style="modernist"] #view-planner .day-row:not(.past) .day-recipe-meta > .day-recipe-course{ grid-area:1 / 1; }
+  html[data-style="modernist"] #view-planner .day-row:not(.past) .day-recipe-meta > .day-recipe-time{ grid-area:1 / 2; }
+  html[data-style="modernist"] #view-planner .day-row:not(.past) .day-recipe-meta > .day-recipe-serves{ grid-area:1 / 3; justify-self:start; }
+  html[data-style="modernist"] #view-planner .day-row:not(.past) .day-recipe-meta > .day-recipe-premade{ grid-area:1 / 4; justify-self:start; }
+  html[data-style="modernist"] #view-planner .day-row:not(.past) .day-recipe-row:not(.day-adhoc-row) > .day-recipe-meta > .day-recipe-remove{ grid-area:1 / 5; }
+  html[data-style="modernist"] #view-planner .day-row:not(.past) .day-recipe-meta > .day-recipe-cooked{ grid-area:1 / 5; }
+  html[data-style="modernist"] #view-planner .day-row:not(.past) .day-recipe-row:not(.day-adhoc-row) > .day-recipe-meta:has(> .day-recipe-cooked) > .day-recipe-remove{ grid-area:1 / 6; }
+}
+
+/* + ADD, and what it opens into. Under a day whose dishes have the bell's place, both start where the names do. */
+html[data-style="modernist"] #view-planner .day-choose.day-add-more.after-bell{ margin-left:30px; }
+html[data-style="modernist"] #view-planner .day-main > .day-add-open:not(.day-choose):not(.day-away){ display:flex; flex:0 1 auto; align-items:center; gap:8px; margin:10px 0 0; }
+html[data-style="modernist"] #view-planner .day-main > .day-add-open.after-bell:not(.day-choose):not(.day-away){ margin-left:30px; }
+html[data-style="modernist"] #view-planner .day-add-label{ margin-right:2px; font-size:12px; font-weight:800; letter-spacing:.06em; color:var(--color-text); }
+html[data-style="modernist"] #view-planner .day-add-opt{
+  position:relative; min-height:0; padding:4px 8px; border:2px solid var(--color-text); background:transparent; cursor:pointer;
+  font-family:var(--font-body); font-size:12px; font-weight:800; letter-spacing:.04em; line-height:16px; color:var(--color-text);
+}
+html[data-style="modernist"] #view-planner .day-add-opt::before{ content:''; position:absolute; left:-2px; right:-2px; top:-10px; bottom:-10px; }
+html[data-style="modernist"] #view-planner .day-add-opt:hover{ border-color:var(--color-accent); color:var(--color-accent-700); }
+html[data-style="modernist"] #view-planner .day-add-close{ position:relative; width:28px; height:28px; min-height:0; padding:0; border:0; background:transparent; cursor:pointer; font-family:var(--font-body); font-size:18px; line-height:1; color:var(--color-text); opacity:.6; }
+html[data-style="modernist"] #view-planner .day-add-close::before{ content:''; position:absolute; left:-8px; right:-8px; top:-8px; bottom:-8px; }
+html[data-style="modernist"] #view-planner .day-add-close:hover{ opacity:1; color:var(--color-accent); }
+
 /* INSPIRE ME's button, in the shortlist's column (the column has no padding of its own here, so it takes the 22px its other parts do).
    The panel, above the days: flat and square like the rest of this look, its title in the heading's weight. Chips and buttons are the app's own. */
 html[data-style="modernist"] #view-planner .inspire-open{ width:auto; margin:0 22px 16px; justify-content:center; }

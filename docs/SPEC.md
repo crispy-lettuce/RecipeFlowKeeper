@@ -214,7 +214,8 @@ three more each time (up to 15) and **HIDE**; closed each time the Planner is le
 recipe, **COOKED ✓** (the same log as today's, for that day), and **ADD TO TODAY**, which puts the dish on today at that day's headcount (as to cook, whatever it was) and leaves
 the past day as it was. No ×, CHOOSE A RECIPE, + OTHER, SERVES, calendar or grouping controls, and a selected shortlist item cannot be put on it. The shopping list, the calendar and the
 sidebar's counts read the 14 days from today (`dayList()`) and never the band. Past days' plans are kept in the database (`planner_days` is never pruned). Per day:
-- **CHOOSE A RECIPE** / **ADD ANOTHER**; **MARK DAY AWAY**; **SERVES** (people for that dish on that day: the shopping list and the
+- **CHOOSE A RECIPE** on an empty day. On a planned day Modernist has one **+ ADD**, which opens where it stands into **A RECIPE** and **OTHER**
+  with a × to close it (`state.addOpenDate`, one day at a time, this tab only); Classic shows **ADD ANOTHER** and **+ OTHER** side by side. **MARK DAY AWAY**; **SERVES** (people for that dish on that day: the shopping list and the
   recipe opened from the Planner follow it); **×** takes a dish off, with a 10-second **UNDO**.
 - **TO COOK / COOK AHEAD / PRE-MADE** (issue #221): a dish defaults to TO COOK. Tapping its pill opens a chooser of the three.
   PRE-MADE (with a meal) means "already cooked, from the freezer": it leaves the shopping list and goes into the diary by itself on
@@ -226,7 +227,13 @@ sidebar's counts read the 14 days from today (`dayList()`) and never the band. P
   after a question, deletes that log row and takes the date out of the recipe's history.
 - **+ OTHER:** an entry that is not a recipe (takeaway, meal out, leftovers) with an optional meal, tagged AD HOC. It is the same
   diary entry History's + ENTRY makes. Not on the shopping list or the calendar.
-- **Calendar buttons** (§6.6): IN CALENDAR, REMIND ME per meal, ADD THE WEEK.
+- **Calendar buttons** (§6.6): IN CALENDAR, REMIND ME per meal, ADD THE WEEK. In Modernist (12 Nov 2026) the first two are icons: the day's IN CALENDAR
+  under its date (a calendar with a tick, or with a plus when off) and a bell in front of the dish it reminds for (a stroke through it when off). A day
+  with one meal has its bell on the first dish; a group's bell, whether it is the day's one meal or one of several, is on its GROUPED bar. Every loose
+  dish of a day keeps the bell's place, empty or not, so the names line up. The buttons carry their Classic words, unseen, and the same `data-action`s.
+- **How a dish's line is drawn in Modernist** (12 Nov 2026): SERVES as the recipe is written and TO COOK are underlined words, and a box means a change
+  (another number of people, COOK AHEAD, PRE-MADE). Where the day is at least 460px wide (a container query on the day, since the shortlist open or folded
+  changes it) the course, time, SERVES and state stand in columns that line up from dish to dish; a narrower day and a phone keep one wrapping line.
 - The **shortlist** panel: tap a recipe or note, then tap a day. A note becomes an ad-hoc entry on that day.
 - **INSPIRE ME** (11 Nov 2026; feeding the shortlist since 12 Nov): suggestions from the household's own Mains. One button, in the shortlist's column under the idea
   box (not in the heading, not on the days); its panel opens above the days, at their full width, and on a phone, where the shortlist is below the days, pressing the
