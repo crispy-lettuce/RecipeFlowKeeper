@@ -209,7 +209,7 @@ buttons), and not again above its diagram (issue #192, 25 Oct 2026); in Modernis
 - UNGROUP separates a group; the dishes stay on the day.
 
 ### 5.5 Planner
-The next 14 days, rolling, in weeks. **PREVIOUS 3 DAYS**, in the Planner's heading row (so the Planner is no taller; ROLLS FORWARD DAILY gives way where INSPIRE ME and it leave no room: in Classic the tools are one line, clipped, the two buttons one unbreakable piece, and in Modernist the label is hidden at phone width), opens an **EARLIER** band above today (issue #223, 1 Nov 2026): the last three days, **3 MORE** for
+The next 14 days, rolling, in weeks. **PREVIOUS 3 DAYS**, in the Planner's heading row beside ROLLS FORWARD DAILY (so the Planner is no taller), opens an **EARLIER** band above today (issue #223, 1 Nov 2026): the last three days, **3 MORE** for
 three more each time (up to 15) and **HIDE**; closed each time the Planner is left, never stored. A past day is read-only: its dishes with their headcount, tap a title to open the
 recipe, **COOKED ✓** (the same log as today's, for that day), and **ADD TO TODAY**, which puts the dish on today at that day's headcount (as to cook, whatever it was) and leaves
 the past day as it was. No ×, CHOOSE A RECIPE, + OTHER, SERVES, calendar or grouping controls, and a selected shortlist item cannot be put on it. The shopping list, the calendar and the
@@ -228,19 +228,18 @@ sidebar's counts read the 14 days from today (`dayList()`) and never the band. P
   diary entry History's + ENTRY makes. Not on the shopping list or the calendar.
 - **Calendar buttons** (§6.6): IN CALENDAR, REMIND ME per meal, ADD THE WEEK.
 - The **shortlist** panel: tap a recipe or note, then tap a day. A note becomes an ad-hoc entry on that day.
-- **INSPIRE ME** (11 Nov 2026): suggestions from the household's own Mains. In the heading it opens a panel
-  under it; on a day with nothing to cook it opens the same panel set to one meal for that day (INSPIRE ME and + OTHER are one pair beside CHOOSE A RECIPE,
-  and on a phone the pair drops beneath it together). Chips, each with the number of recipes that fit with the
+- **INSPIRE ME** (11 Nov 2026; feeding the shortlist since 12 Nov): suggestions from the household's own Mains. One button, in the shortlist's column under the idea
+  box (not in the heading, not on the days); its panel opens above the days, at their full width, and on a phone, where the shortlist is below the days, pressing the
+  button brings the panel into view. Chips, each with the number of recipes that fit with the
   others as they are (greyed at none): **ONE MEAL** or **3 OPTIONS**; **PROTEIN**, any of the families the library has (Chicken, Turkey, Duck, Beef, Lamb, Pork,
   Game, Fish, Veg; fish, prawns and seafood are one); **ANY**, **POPULAR** (a favourite, or the top fifth by times cooked of those cooked twice or more),
   **NOT LATELY** (cooked, and not in the last 60 days) or **NEVER TRIED**; and behind **MORE CHOICES** a time limit (30 MIN, 1 HOUR), **LOW EFFORT** (hands-on
   minutes at or under Settings → APP → LOW EFFORT MEANS, 10 unless set; a recipe with no hands-off mark is judged by its whole time), **FREEZES WELL** (it has a
   `FREEZING:` section) and the library's keywords. A recipe's main protein is a protein keyword if it has one, else the heaviest meat or fish in its ingredient
-  lines, else Veg (`mainProtein`, `core.js`). Never suggested: a recipe on the 14 days, one cooked in the last 14 days (unless POPULAR), one passed over with
-  **ANOTHER** / **ANOTHER 3** (until a choice changes or **START AGAIN**). The choice among what fits is weighted chance. A card has **ADD** (from a day's button:
-  onto that day, and the panel closes; from the heading: the suggestion waits and the next day tapped takes it, as a shortlist item does), **OPEN** and
-  **+ SHORTLIST**. ADD is the only write, the one-row plan save, at the recipe's own servings; until then the plan, the shopping list and the calendar are
-  untouched. The choices last while the tab is open and are not stored.
+  lines, else Veg (`mainProtein`, `core.js`). Never suggested: a recipe on the 14 days, one on the shortlist, one cooked in the last 14 days (unless POPULAR), one passed over with
+  **ANOTHER** / **ANOTHER 3** (until a choice changes or **START AGAIN**). The choice among what fits is weighted chance. A card has **ADD TO SHORTLIST** and **OPEN**.
+  ADD TO SHORTLIST is the only write, the one-row shortlist save **+** makes anywhere else: the dish leaves the panel and waits on the shortlist, and is planned from
+  there as anything on it is (tap it, tap a day). The plan, the shopping list and the calendar are untouched by INSPIRE ME's suggestions. The choices last while the tab is open and are not stored.
   **A WEEK** (the same day) plans a whole week: **THIS WEEK** or **NEXT WEEK**, the Planner's two weeks from today on (the number on each is its empty days), and a Main is
   proposed on every empty day (`suggestWeek`, `core.js`). A day with a dish, or marked away, is left alone, and what is planned counts. PROTEIN becomes **AT LEAST**: a
   counter for each family, 0 to 7, and a week meets every one it can; where the library has too few (or there are fewer empty days than the counts add up to) it fills the
@@ -248,13 +247,14 @@ sidebar's counts read the 14 days from today (`dayList()`) and never the band. P
   two dishes of one style (`DISH_STYLES`, the meal-base keywords) while there is a way to avoid it; the style rule gives way first, then the neighbour rule, and the panel says
   when one did. ANY, POPULAR, NOT LATELY, NEVER TRIED and MORE CHOICES apply as for one meal. The proposals are drawn on the days, dashed and marked PROPOSED, and are not in the
   plan: each has **SWAP** (a different dish for that day only, with the others standing as planned) and **×** (leave that day empty), and the panel has **ADD ALL**,
-  **ANOTHER WEEK** (a fresh draw, never repeating the last unless it has run out) and **CANCEL** (writes nothing). ADD ALL is one plan-row save for each day, as adding that
-  dish by hand is, and offers one **UNDO** (about thirty seconds) that takes them all off again, leaving any day changed since as it is. A proposal for a day that has since been
+  **ALL TO SHORTLIST**, **ANOTHER WEEK** (a fresh draw, never repeating the last unless it has run out) and **CANCEL** (writes nothing; **PROPOSE A WEEK** then draws again).
+  ADD ALL is one plan-row save for each day, as adding that dish by hand is, and offers one **UNDO** (about thirty seconds) that takes them all off again, leaving any day
+  changed since as it is. ALL TO SHORTLIST is one shortlist-row save for each dish and nothing on the days: the dishes without the order. A proposal for a day that has since been
   planned by hand or marked away is dropped. Whether dishes that share a fresh ingredient should be preferred was built and measured (it saved about one fresh ingredient in
   28) and left out: issue #234.
 
 ### 5.6 Shortlist
-Ideas waiting for a day: recipes added with **+**, and free-text notes for things with no recipe yet.
+Ideas waiting for a day: recipes added with **+** or accepted from **INSPIRE ME** (§5.5), whose button is here, and free-text notes for things with no recipe yet.
 
 ### 5.7 Shopping
 Adds up every ingredient the week's planned dishes need, scaled to each day's SERVES, sorted into aisles

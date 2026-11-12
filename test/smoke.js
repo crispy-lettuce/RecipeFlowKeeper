@@ -2743,8 +2743,9 @@ const check = (name, pass, detail) => {
   await page.evaluate(([y, y2, t, a]) => { loadDiary().filter(e => e.recipeId === a && e.cookedOn === y).forEach(e => deleteDiaryEntry(e.id));
     const idx = planRecipeIds(loadPlan()[t]).lastIndexOf(a); if(idx > -1) removePlanRecipeAt(t, idx); clearPlanDay(y); clearPlanDay(y2); state.plannerPast = 0; showView('planner'); renderPlanner(); }, [pdY, pdY2, pdToday, pdIds[0].id]);
 
-  /* ---- INSPIRE ME on the Planner (docs/PLAN-INSPIRE-ME.md, slice 2, 11 Nov 2026) ----
-     The choosing is checked in Node (test/core.test.js). Here: the panel, what it offers, and that ADD is the only thing that writes.
+  /* ---- INSPIRE ME on the Planner (11 Nov 2026; feeding the shortlist since 12 Nov, docs/PLAN-INSPIRE-ME-SHORTLIST.md) ----
+     The choosing is checked in Node (test/core.test.js). Here: the one button in the shortlist's column, the panel above the days, what it offers, and
+     that ADD TO SHORTLIST is the only thing that writes, to the shortlist and never to the plan.
      Six made-up Mains are put in the library for it and taken out again; the fixture's own recipes are still there, so every check
      that names a recipe narrows to these with the INSPIRETEST keyword. */
   const imIso = k => page.evaluate(n => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + n); return isoLocal(d); }, k);
@@ -2758,51 +2759,43 @@ const check = (name, pass, detail) => {
       mk('im-lamb', ['600 g lamb neck'], ['Tagine'], { time: '2 hr', syntax: ['TITLE: im-lamb', 'SERVINGS: 4', 'GROUP a:', '600 g lamb neck', 'STAGE:', 'MERGE a -> b: brown [15 min]', 'STAGE:', 'MERGE b -> c: braise [2 hr, hands off]'].join('\n') }),
       mk('im-chickpea', ['400 g tinned chickpeas'], ['Curry'], { favourite: true }));
     try { localStorage.removeItem('kitchen.lowEffort'); } catch (e) {}
-    state.inspire = null; state.inspirePlacing = null; state.plannerPast = 3; showView('planner'); renderPlanner();
+    state.inspire = null; state.plannerPast = 3; showView('planner'); renderPlanner();
   }, [imAgo]);
   const imShot = () => page.evaluate(() => { const panel = document.getElementById('inspirePanel'); const chips = {};
     panel.querySelectorAll('.chip[data-inspire]').forEach(c => { chips[c.dataset.k] = { on: c.classList.contains('on'), n: (c.querySelector('.inspire-n') || {}).textContent || null, disabled: c.disabled, text: c.childNodes[0].textContent.trim() }; });
     return { open: !panel.hidden, expanded: document.getElementById('inspireBtn').getAttribute('aria-expanded'), for: (panel.querySelector('.inspire-for') || {}).textContent || '',
-      chips, cards: [...panel.querySelectorAll('.inspire-card')].map(c => ({ id: c.dataset.id, meta: c.querySelector('.inspire-meta').textContent.replace(/\s+/g, ' ').trim(), add: c.querySelector('[data-inspire="add"]').textContent.trim() })),
+      chips, cards: [...panel.querySelectorAll('.inspire-card')].map(c => ({ id: c.dataset.id, meta: c.querySelector('.inspire-meta').textContent.replace(/\s+/g, ' ').trim(), add: c.querySelector('[data-inspire="add"]').textContent.trim(), btns: [...c.querySelectorAll('button')].map(b => b.textContent.trim()).join('|') })),
       none: (panel.querySelector('.inspire-none') || {}).textContent || '', foot: [...panel.querySelectorAll('.inspire-foot button')].map(b => b.textContent.trim()).join('|') }; });
   const imTap = sel => page.evaluate(q => document.querySelector('#inspirePanel ' + q).click(), sel);
   const imPlanWrites = m => page.evaluate(k => window.__WRITES__.slice(k).filter(w => w.table === 'planner_days').map(w => (w.rows || []).map(r => r.plan_date).join()), m);
-  const im0 = await page.evaluate(() => ({ head: document.getElementById('inspireBtn').textContent.trim(), inRow: !!document.querySelector('#view-planner .planner-head #inspireBtn'),
-    hidden: document.getElementById('inspirePanel').hidden, toolsH: Math.round(document.querySelector('#view-planner .planner-tools').getBoundingClientRect().height),
-    btnH: Math.round(document.getElementById('inspireBtn').getBoundingClientRect().height),
-    empties: document.querySelectorAll('#dayList .day-row:not(.past) .day-main-empty').length, onEmpty: document.querySelectorAll('#dayList .day-row:not(.past) .day-main-empty [data-action="inspire"]').length,
-    onPast: document.querySelectorAll('#dayList .day-row.past [data-action="inspire"]').length,
-    order: [...document.querySelector('#dayList .day-row:not(.past) .day-main-empty').querySelectorAll('button')].map(b => b.dataset.action).join() }));
-  check('INSPIRE ME is in the Planner\'s heading row, which stays one line tall, and on every empty day between CHOOSE A RECIPE and OTHER; never on a past day; the panel is closed',
-        im0.head === 'INSPIRE ME' && im0.inRow && im0.hidden && im0.toolsH <= 44 && im0.btnH >= 44 && im0.empties > 0 && im0.onEmpty === im0.empties && im0.onPast === 0 && im0.order === 'choose,inspire,addOther', JSON.stringify(im0));
-  /* Where the three do not fit one line (this look, a narrower screen or a phone), the two buttons keep the line and the label gives way:
-     the tools must not grow, and neither button may be the thing that is lost. The band is closed first, so PREVIOUS 3 DAYS is showing. */
+  const imSlWrites = m => page.evaluate(k => window.__WRITES__.slice(k).filter(w => w.table === 'shortlist_items').map(w => w.op + ':' + (w.rows || []).map(r => r.recipe_id).join()), m);
+  const imOnList = () => page.evaluate(() => ({ ids: loadShortlist().map(i => i.recipeId).filter(id => window.__IM_IDS__.includes(id)),
+    drawn: [...document.querySelectorAll('#shortlistList .sl-item .sl-title')].map(e => e.textContent.trim()).filter(t => /^im-/.test(t)) }));
+  const im0 = await page.evaluate(() => { const btn = document.getElementById('inspireBtn'), panel = document.getElementById('inspirePanel');
+    return { text: btn.textContent.trim(), inShortlist: !!btn.closest('#view-planner .shortlist-panel'), inHead: !!document.querySelector('#view-planner .planner-head #inspireBtn'),
+      hidden: panel.hidden, aboveDays: !!panel.closest('.planner-days') && !!(panel.compareDocumentPosition(document.getElementById('dayList')) & Node.DOCUMENT_POSITION_FOLLOWING),
+      btnH: Math.round(btn.getBoundingClientRect().height), onDays: document.querySelectorAll('#dayList [data-action="inspire"]').length,
+      head: [...document.querySelectorAll('#view-planner .planner-tools button')].map(b => b.id).join(),
+      order: [...document.querySelector('#dayList .day-row:not(.past) .day-main-empty').querySelectorAll('button')].map(b => b.dataset.action).join() }; });
+  check('INSPIRE ME is one button, in the shortlist\'s column: not in the Planner\'s heading and not on any day (an empty day has CHOOSE A RECIPE and OTHER); its panel is above the days, closed',
+        im0.text === 'INSPIRE ME' && im0.inShortlist && !im0.inHead && im0.hidden && im0.aboveDays && im0.btnH >= 44 && im0.onDays === 0 && im0.head === 'plannerPastBtn' && im0.order === 'choose,addOther', JSON.stringify(im0));
   await page.evaluate(() => { state.plannerPast = 0; renderPlanner(); });
-  const imHeadAt = async w => { await page.setViewportSize({ width: w, height: 800 }); await page.waitForTimeout(150); return page.evaluate(() => {
-    const box = document.querySelector('#view-planner .planner-tools').getBoundingClientRect(); const r = id => document.getElementById(id).getBoundingClientRect();
-    const a = r('inspireBtn'), b = r('plannerPastBtn'), rolls = document.querySelector('#view-planner .planner-rolls').getBoundingClientRect();
-    return { toolsH: Math.round(box.height), sameLine: a.width > 0 && b.width > 0 && Math.round(a.top) === Math.round(b.top),
-      inside: a.bottom <= box.bottom + 1 && b.bottom <= box.bottom + 1 && a.left >= box.left - 1 && b.right <= box.right + 1, rollsGone: rolls.top >= box.bottom - 1 }; }); };
-  const imHead900 = await imHeadAt(900), imHead412 = await imHeadAt(412);
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await page.waitForTimeout(150);
-  check('    at 900px and at 412px the heading\'s tools are still one line: INSPIRE ME and PREVIOUS 3 DAYS side by side and whole, ROLLS FORWARD DAILY given way',
-        [imHead900, imHead412].every(h => h.toolsH <= 44 && h.sameLine && h.inside && h.rollsGone), JSON.stringify([imHead900, imHead412]));
 
   const imM0 = await anMark();
-  await page.evaluate(d => document.querySelector(`#dayList .day-row[data-date="${d}"] [data-action="inspire"]`).click(), imD3);
+  await page.click('#inspireBtn');
   const im1 = await imShot();
   const imIsMain = await page.evaluate(id => { const r = loadRecipes().find(x => x.id === id); return !!r && r.tags.course === 'Main'; }, (im1.cards[0] || {}).id);
-  check('    a day\'s INSPIRE ME opens the panel for that day with ONE MEAL chosen and one suggestion, a Main, offered as ADD TO that day',
-        im1.open && im1.expanded === 'true' && /^FOR /.test(im1.for) && im1.chips['c-1'].on && !im1.chips['c-3'].on && im1.cards.length === 1 && imIsMain && /^ADD TO /.test(im1.cards[0].add) && im1.foot === 'ANOTHER', JSON.stringify(im1));
+  check('    INSPIRE ME opens the panel with ONE MEAL chosen and one suggestion, a Main, offered as ADD TO SHORTLIST with OPEN and ANOTHER',
+        im1.open && im1.expanded === 'true' && /SHORTLIST/.test(im1.for) && im1.chips['c-1'].on && !im1.chips['c-3'].on && im1.cards.length === 1 && imIsMain && im1.cards[0].add === 'ADD TO SHORTLIST'
+        && im1.cards[0].btns === 'ADD TO SHORTLIST|OPEN' && im1.foot === 'ANOTHER', JSON.stringify(im1));
   await imTap('[data-inspire="more"]');
   await imTap('[data-k="k-INSPIRETEST"]');
   const im2 = await imShot();
   const imCounts = await page.evaluate(() => { const f = inspireFacts(), c = inspireCtx(); const n = over => suggestPool(f, inspireAsk(over), c).length;
-    return { chicken: n({ proteins: ['chicken'] }), fish: n({ proteins: ['fish'] }), veg: n({ proteins: ['veg'] }), never: n({ which: 'never' }), lately: n({ which: 'notLately' }), popular: n({ which: 'popular' }), low: n({ lowEffort: true }), freezes: n({ freezes: true }), m30: n({ maxMinutes: 30 }) }; });
+    return { chicken: n({ proteins: ['chicken'] }) }; });
   check('    MORE CHOICES shows the time limits, LOW EFFORT, FREEZES WELL and the keywords; each chip carries how many recipes fit, and one with none is greyed',
         im2.chips['k-INSPIRETEST'].on && im2.chips['p-chicken'].n === '3' && imCounts.chicken === 3 && im2.chips['p-fish'].n === '1' && im2.chips['p-lamb'].n === '1' && im2.chips['p-veg'].n === '1'
-        && im2.chips['w-never'].n === '5' && im2.chips['w-notLately'].n === '1' && im2.chips['w-popular'].n === '1' && im2.chips['t-30'].n === '1' && im2.chips['low'].n === '5'
+        && im2.chips['w-any'].n === '6' && im2.chips['w-never'].n === '5' && im2.chips['w-notLately'].n === '1' && im2.chips['w-popular'].n === '1' && im2.chips['t-30'].n === '1' && im2.chips['low'].n === '5'
         && im2.chips['frz'].n === '0' && im2.chips['frz'].disabled && !im2.chips['low'].disabled && im2.chips['more'].text === 'FEWER CHOICES', JSON.stringify([im2.chips, imCounts]));
   await imTap('[data-k="p-chicken"]');
   const imFocus = await page.evaluate(() => { const b = document.querySelector('#inspirePanel [data-k="w-never"]'); b.focus(); b.click(); return [document.activeElement.dataset.k, document.activeElement === document.querySelector('#inspirePanel [data-k="w-never"]'), b.isConnected].join(); });
@@ -2816,44 +2809,55 @@ const check = (name, pass, detail) => {
   check('    the panel is redrawn at every press, and the chip that was pressed keeps the keyboard focus', imFocus === 'w-never,true,false', imFocus);
   await imTap('[data-inspire="again"]');
   const im4 = await imShot();
-  check('    all of that wrote nothing to the plan: nothing is planned until ADD', im4.cards.length === 1 && (await imPlanWrites(imM0)).length === 0, JSON.stringify(await imPlanWrites(imM0)));
+  check('    all of that wrote nothing, to the plan or to the shortlist: nothing happens until a suggestion is added', im4.cards.length === 1 && (await imPlanWrites(imM0)).length === 0 && (await imSlWrites(imM0)).length === 0,
+        JSON.stringify([await imPlanWrites(imM0), await imSlWrites(imM0)]));
+
+  /* ADD TO SHORTLIST: the one write. The dish goes on the shortlist, not on a day. */
   const imPick = im4.cards[0].id;
   const imM1 = await anMark();
+  const imPlan1 = await page.evaluate(() => JSON.stringify(loadPlan()));
   await imTap('[data-inspire="add"]');
   await page.waitForTimeout(250);
-  const im5 = await page.evaluate(([d]) => ({ ids: planRecipeIds(loadPlan()[d]), servings: planServings(loadPlan()[d]), hidden: document.getElementById('inspirePanel').hidden, toast: document.querySelector('.toast').textContent }), [imD3]);
-  check('    ADD TO the day puts that dish on it at the recipe\'s own servings with one write to that day\'s row, says so, and closes the panel',
-        im5.ids.join() === imPick && im5.servings.join() === '0' && im5.hidden && /is on /.test(im5.toast) && (await imPlanWrites(imM1)).join('|') === imD3, JSON.stringify([im5, await imPlanWrites(imM1)]));
+  const im5 = await imShot(), im5list = await imOnList();
+  const im5more = await page.evaluate(([plan]) => ({ planSame: JSON.stringify(loadPlan()) === plan, toast: document.querySelector('.toast').textContent, count: document.getElementById('shortlistCount').textContent.trim() }), [imPlan1]);
+  check('    ADD TO SHORTLIST puts that dish on the shortlist with one write to the shortlist and none to the plan, says so, shows it in the list, and leaves the panel open with ANOTHER',
+        im5list.ids.join() === imPick && im5list.drawn.join() === imPick && (await imSlWrites(imM1)).join('|') === 'upsert:' + imPick && (await imPlanWrites(imM1)).length === 0 && im5more.planSame
+        && /is on the shortlist/.test(im5more.toast) && im5.open && im5.cards.length === 0 && /On the shortlist/.test(im5.none) && im5.foot === 'ANOTHER', JSON.stringify([im5list, await imSlWrites(imM1), await imPlanWrites(imM1), im5more, im5.none, im5.foot]));
+  /* What is on the shortlist is not suggested again: the counts drop by it, and every suggestion left is another dish. */
+  const imRest = [];
+  for (let i = 0; i < 3; i++) { await imTap('[data-inspire="another"]'); const sh = await imShot(); if (sh.cards[0]) imRest.push(sh.cards[0].id); }
+  const im6c = im5;   /* the counts as they stood when it was added, before ANOTHER passed over the rest */
+  check('    a recipe on the shortlist is not suggested again: two chickens are left to offer, neither of them the one added, and the chips count one fewer',
+        imRest.length === 2 && new Set(imRest).size === 2 && !imRest.includes(imPick) && imRest.every(id => /^im-hen/.test(id)) && im6c.chips['p-chicken'].n === '2' && im6c.chips['w-any'].n === '2', JSON.stringify([imPick, imRest, im6c.chips['p-chicken'], im6c.chips['w-any']]));
 
-  /* From the heading: three options, and ADD asks for a day. */
-  await page.evaluate(() => document.getElementById('inspireBtn').click());
-  await imTap('[data-k="c-3"]');
-  const im6 = await imShot();
-  check('    INSPIRE ME in the heading, then 3 OPTIONS: three different suggestions, none of them the dish just planned, each offered as ADD, with ANOTHER 3',
-        im6.open && !/^FOR /.test(im6.for) && im6.cards.length === 2 && new Set(im6.cards.map(c => c.id)).size === 2 && !im6.cards.some(c => c.id === imPick) && im6.cards.every(c => c.add === 'ADD') && im6.foot === 'ANOTHER 3',
-        JSON.stringify(im6));
+  /* 3 OPTIONS: three cards; adding one leaves the other two. */
   await imTap('[data-k="p-chicken"]');
+  await imTap('[data-k="c-3"]');
   const im7 = await imShot();
-  check('    with the protein chip off, three of the five still unplanned are offered', im7.cards.length === 3 && new Set(im7.cards.map(c => c.id)).size === 3 && im7.cards.every(c => /^im-/.test(c.id) && c.id !== imPick), JSON.stringify(im7.cards));
+  check('    3 OPTIONS: three different suggestions, none of them the dish on the shortlist, each with ADD TO SHORTLIST, and ANOTHER 3',
+        im7.cards.length === 3 && new Set(im7.cards.map(c => c.id)).size === 3 && im7.cards.every(c => /^im-/.test(c.id) && c.id !== imPick && c.add === 'ADD TO SHORTLIST') && im7.foot === 'ANOTHER 3', JSON.stringify(im7.cards));
   const imM2 = await anMark();
+  const imSecond = im7.cards[0].id;
   await imTap('[data-inspire="add"]');
-  const im8 = await page.evaluate(() => ({ banner: document.getElementById('assignBanner').textContent.replace(/\s+/g, ' ').trim(), assignable: document.querySelectorAll('#dayList .day-row.assignable').length,
-    add: document.querySelector('#inspirePanel [data-inspire="add"]').textContent.trim(), placing: state.inspirePlacing }));
-  const imPlaced = im7.cards[0].id;
+  const im8 = await imShot(), im8list = await imOnList();
+  check('    adding one of the three puts it on the shortlist with one write; the other two stay, and the same recipe cannot be put on the shortlist twice',
+        im8.cards.length === 2 && !im8.cards.some(c => c.id === imSecond) && im8list.ids.slice().sort().join() === [imPick, imSecond].sort().join() && (await imSlWrites(imM2)).join('|') === 'upsert:' + imSecond
+        && await page.evaluate(id => addShortlistRecipe(id) === false, imSecond), JSON.stringify([im8.cards, im8list, await imSlWrites(imM2)]));
+  /* From the shortlist to a day, as any shortlist item goes: tap it, tap a day. It leaves the shortlist, and being planned is still not suggested. */
+  const imM3 = await anMark();
+  await page.evaluate(id => document.querySelector(`#shortlistList .sl-item[data-id="${loadShortlist().find(i => i.recipeId === id).id}"]`).click(), imSecond);
+  const im9a = await page.evaluate(() => ({ banner: document.getElementById('assignBanner').textContent.replace(/\s+/g, ' ').trim(), assignable: document.querySelectorAll('#dayList .day-row.assignable').length }));
   await page.evaluate(d => document.querySelector(`#dayList .day-row[data-date="${d}"]`).click(), imD5);
   await page.waitForTimeout(250);
-  const im9 = await imShot();
+  const im9 = await imShot(), im9list = await imOnList();
   const im9plan = await page.evaluate(d => planRecipeIds(loadPlan()[d]), imD5);
-  check('    ADD from the heading asks for a day (the bar says so and the button reads TAP A DAY); the day tapped takes it with one write, and the other two suggestions stay',
-        /^Putting "im-/.test(im8.banner) && /tap a day below/.test(im8.banner) && im8.assignable === 14 && im8.add === 'TAP A DAY' && im8.placing === imPlaced
-        && im9plan.join() === imPlaced && (await imPlanWrites(imM2)).join('|') === imD5 && im9.open && im9.cards.length === 2 && !im9.cards.some(c => c.id === imPlaced), JSON.stringify([im8, im9plan, im9.cards]));
-  await imTap('[data-inspire="shortlist"]');
-  const im10 = await page.evaluate(() => { const b = document.querySelector('#inspirePanel [data-inspire="shortlist"]'); return { text: b.textContent.trim(), disabled: b.disabled, onList: loadShortlist().some(i => i.recipeId === b.closest('.inspire-card').dataset.id) }; });
-  check('    + SHORTLIST puts the suggestion on the shortlist and then reads ✓ SHORTLIST', im10.text === '✓ SHORTLIST' && im10.disabled && im10.onList, JSON.stringify(im10));
+  check('    the dish is planned from the shortlist, as anything there is: tapped, then a day tapped, it is on that day with one plan write, off the shortlist, and still not suggested',
+        /^Assigning "im-/.test(im9a.banner) && im9a.assignable === 14 && im9plan.join() === imSecond && (await imPlanWrites(imM3)).join('|') === imD5 && im9list.ids.join() === imPick
+        && !im9.cards.some(c => c.id === imSecond) && im9.chips['w-any'].n === '4', JSON.stringify([im9a, im9plan, await imPlanWrites(imM3), im9list, im9.chips['w-any']]));
 
-  /* LOW EFFORT follows Settings → APP → LOW EFFORT MEANS, on this device. The lamb is 15 minutes hands on, the rest 8. Both days are
-     cleared first, so all six are on offer again. */
-  await page.evaluate(([x, y]) => { clearPlanDay(x); clearPlanDay(y); renderPlanner(); }, [imD3, imD5]);
+  /* LOW EFFORT follows Settings → APP → LOW EFFORT MEANS, on this device. The lamb is 15 minutes hands on, the rest 8. The day and the
+     shortlist are cleared first, so all six are on offer again. */
+  await page.evaluate(([y]) => { clearPlanDay(y); loadShortlist().filter(i => window.__IM_IDS__.includes(i.recipeId)).forEach(i => removeShortlistItem(i.id)); renderPlanner(); }, [imD5]);
   await imTap('[data-k="c-1"]');
   const imLow10 = (await imShot()).chips['low'].n;
   await page.evaluate(() => { const sel = document.getElementById('setLowEffort'); sel.value = '5'; sel.dispatchEvent(new Event('change', { bubbles: true })); renderPlanner(); });
@@ -2865,22 +2869,31 @@ const check = (name, pass, detail) => {
   check('    LOW EFFORT counts hands-on minutes against Settings → APP → LOW EFFORT MEANS: 10 by default, and 5 or 20 change how many fit; the default is stored as nothing',
         imLow10 === '5' && imLow5.n === '0' && imLow5.disabled && imLow20 === '6' && JSON.stringify(imStored) === JSON.stringify(['20', null, 10, '5,10,15,20,30']), JSON.stringify([imLow10, imLow5, imLow20, imStored]));
 
-  /* Every button in the panel is a full thumb's height, here and at phone width, where nothing may run off the side. */
-  const imSizes = () => page.evaluate(() => { const panel = document.getElementById('inspirePanel'); const short = [...panel.querySelectorAll('button')].filter(b => Math.round(b.getBoundingClientRect().height) < 44).map(b => b.textContent.trim());
+  /* Every button is a full thumb's height, here and at phone width, where nothing may run off the side; and on a phone, where the shortlist is below
+     the days, pressing INSPIRE ME brings the panel above them into view. */
+  const imSizes = () => page.evaluate(() => { const panel = document.getElementById('inspirePanel'); const btns = [...panel.querySelectorAll('button'), document.getElementById('inspireBtn')];
+    const short = btns.filter(b => Math.round(b.getBoundingClientRect().height) < 44).map(b => b.textContent.trim());
     const pr = panel.getBoundingClientRect(); const wide = [...panel.querySelectorAll('*')].filter(e => e.getBoundingClientRect().right > pr.right + 1).length;
-    return { buttons: panel.querySelectorAll('button').length, short, wide, overflow: document.documentElement.scrollWidth > window.innerWidth }; });
+    return { buttons: btns.length, short, wide, overflow: document.documentElement.scrollWidth > window.innerWidth }; });
   const imWide = await imSizes();
-  await page.setViewportSize({ width: 412, height: 915 });
-  await page.waitForTimeout(150);
-  const imNarrow = await imSizes();
-  await page.setViewportSize({ width: 1280, height: 800 });
-  check('    every button in the panel is at least 44px tall at 1280px and at 412px, and at 412px nothing runs past the panel\'s edge',
-        imWide.buttons > 10 && imWide.short.length === 0 && imNarrow.short.length === 0 && imNarrow.wide === 0 && !imNarrow.overflow, JSON.stringify([imWide, imNarrow]));
   await imTap('[data-inspire="close"]');
   const im11 = await page.evaluate(() => ({ hidden: document.getElementById('inspirePanel').hidden, expanded: document.getElementById('inspireBtn').getAttribute('aria-expanded'), kept: state.inspire.keywords.join() }));
   check('    CLOSE puts the panel away and keeps the choices for next time', im11.hidden && im11.expanded === 'false' && im11.kept === 'INSPIRETEST', JSON.stringify(im11));
-  /* ---- A WEEK (docs/PLAN-INSPIRE-ME.md, slice 3): proposals on NEXT WEEK's empty days. Same six made-up Mains; nothing is planned until ADD ALL. ---- */
-  await page.evaluate(() => { state.inspire = null; state.inspirePlacing = null; state.plannerPast = 0; showView('planner'); renderPlanner(); });
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.waitForTimeout(150);
+  const imBelow = await page.evaluate(() => { const b = document.getElementById('inspireBtn'); b.scrollIntoView({ block: 'center' }); const top = document.getElementById('dayList').getBoundingClientRect().top; b.click(); return top; });
+  await page.waitForTimeout(250);
+  const imPhone = await page.evaluate(() => { const r = document.getElementById('inspirePanel').getBoundingClientRect(); return { top: Math.round(r.top), open: !document.getElementById('inspirePanel').hidden, vh: window.innerHeight }; });
+  const imNarrow = await imSizes();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  check('    every button is at least 44px tall at 1280px and at 412px, and at 412px nothing runs past the panel\'s edge',
+        imWide.buttons > 10 && imWide.short.length === 0 && imNarrow.short.length === 0 && imNarrow.wide === 0 && !imNarrow.overflow, JSON.stringify([imWide, imNarrow]));
+  check('    on a phone the button is below the days, and pressing it brings the panel, above them, to the top of the screen',
+        imBelow < 0 && imPhone.open && imPhone.top >= 0 && imPhone.top < imPhone.vh / 3, JSON.stringify([imBelow, imPhone]));
+  await imTap('[data-inspire="close"]');
+
+  /* ---- A WEEK (slice 3): proposals on NEXT WEEK's empty days. Same six made-up Mains; nothing is planned until ADD ALL, or shortlisted until ALL TO SHORTLIST. ---- */
+  await page.evaluate(() => { state.inspire = null; state.plannerPast = 0; showView('planner'); renderPlanner(); });
   await page.click('#inspireBtn');
   await imTap('[data-inspire="more"]');
   await imTap('[data-k="k-INSPIRETEST"]');
@@ -2894,13 +2907,13 @@ const check = (name, pass, detail) => {
       rowBtns: [...document.querySelectorAll('#dayList .proposal')].map(r => [...r.querySelectorAll('button')].map(b => b.textContent.trim()).join('|')).filter((v, i, a) => a.indexOf(v) === i).join(),
       labels: [...panel.querySelectorAll('.inspire-label')].map(l => l.textContent.trim()).join(','), steppers: panel.querySelectorAll('.inspire-step').length,
       chips: ['c-1', 'c-3', 'c-w', 'wk-0', 'wk-1'].map(k => { const c = panel.querySelector('[data-k="' + k + '"]'); return c ? k + (c.classList.contains('on') ? '+' : '-') : k + '?'; }).join(),
-      foot: [...panel.querySelectorAll('.inspire-foot button')].map(b => b.textContent.trim()).join('|'), shorts: [...panel.querySelectorAll('.inspire-short')].map(e => e.textContent.trim()),
+      foot: [...panel.querySelectorAll('.inspire-foot button')].map(b => b.textContent.trim()).join('|'), none: (panel.querySelector('.inspire-none') || {}).textContent || '', shorts: [...panel.querySelectorAll('.inspire-short')].map(e => e.textContent.trim()),
       sum: (panel.querySelector('.inspire-results .inspire-fits') || {}).textContent || '', conflicts: document.querySelectorAll('#dayList .proposal').length - new Set(s.proposals.map(p => p.date)).size }; });
   const imW1 = await imWk();
   const imWPlan = await page.evaluate(() => JSON.stringify(loadPlan()));
   check('    A WEEK, NEXT WEEK: a proposal on each empty day (as many as there are recipes that fit), each with SWAP and ×; the AT LEAST steppers replace PROTEIN; and nothing is planned or written',
         imW1.chips === 'c-1-,c-3-,c-w+,wk-0-,wk-1+' && imW1.labels.includes('AT LEAST') && imW1.steppers >= 3 && imW1.props.length === Math.min(imW1.empty, 6) && imW1.props.length >= 5
-        && imW1.rows === imW1.props.length && imW1.rowBtns === 'SWAP|×' && imW1.foot === 'ADD ALL|ANOTHER WEEK|CANCEL' && imWPlan === imPlanBefore && await anMark() === imWkMark && /NOTHING IS PLANNED UNTIL YOU ADD ALL/.test(imW1.sum),
+        && imW1.rows === imW1.props.length && imW1.rowBtns === 'SWAP|×' && imW1.foot === 'ADD ALL|ALL TO SHORTLIST|ANOTHER WEEK|CANCEL' && imWPlan === imPlanBefore && await anMark() === imWkMark && /NOTHING IS PLANNED UNTIL YOU ADD ALL/.test(imW1.sum),
         JSON.stringify([imW1, imWPlan === imPlanBefore, await anMark() - imWkMark]));
   /* AT LEAST one fish, one lamb and two chicken: all met, nothing short. */
   for (const k of ['more-fish', 'more-lamb', 'more-chicken', 'more-chicken']) await imTap(`[data-k="${k}"]`);
@@ -2941,6 +2954,20 @@ const check = (name, pass, detail) => {
   await imTap('[data-inspire="cancelweek"]');
   const imC = await page.evaluate(() => ({ rows: document.querySelectorAll('#dayList .proposal').length, plan: JSON.stringify(loadPlan()), n: state.inspire.proposals.length }));
   check('    CANCEL takes every proposal off the days and writes nothing', imC.rows === 0 && imC.n === 0 && imC.plan === imPlanBefore && await anMark() === imWkMark, JSON.stringify([imC.rows, imC.n, await anMark() - imWkMark]));
+  const imIdle = await imWk();
+  check('    and after CANCEL the panel offers PROPOSE A WEEK, not a complaint that nothing fits', imIdle.foot === 'PROPOSE A WEEK' && imIdle.none === '', JSON.stringify([imIdle.foot, imIdle.none]));
+  /* ALL TO SHORTLIST: the dishes without the days. */
+  await imTap('[data-inspire="anotherweek"]');
+  const imS1 = await imWk();
+  const imMarkSl = await anMark();
+  await imTap('[data-inspire="allshort"]');
+  const imS2 = await imWk(), imS2list = await imOnList();
+  const imS2w = await imSlWrites(imMarkSl);
+  check('    ALL TO SHORTLIST puts every proposed dish on the shortlist, one write each, and nothing on the days: no plan write, no proposals left, and the panel offers PROPOSE A WEEK',
+        imS1.props.length >= 5 && imS2list.ids.slice().sort().join() === imS1.props.map(p => p.split(':')[1]).sort().join() && imS2list.drawn.length === imS1.props.length
+        && imS2w.length === imS1.props.length && imS2w.every(w => /^upsert:im-/.test(w)) && (await imPlanWrites(imMarkSl)).length === 0 && imS2.props.length === 0 && imS2.rows === 0
+        && imS2.foot === 'PROPOSE A WEEK' && await page.evaluate(([plan]) => JSON.stringify(loadPlan()) === plan, [imPlanBefore]), JSON.stringify([imS1.props, imS2list, imS2w, imS2.foot]));
+  await page.evaluate(() => { loadShortlist().filter(i => window.__IM_IDS__.includes(i.recipeId)).forEach(i => removeShortlistItem(i.id)); renderPlanner(); });
   /* ADD ALL: one write per day, then one UNDO. */
   await imTap('[data-k="wk-0"]'); await imTap('[data-k="wk-1"]');
   const imW7 = await imWk();
@@ -2983,7 +3010,7 @@ const check = (name, pass, detail) => {
   check('    at 412px every A WEEK button (steppers, ADD ALL, SWAP, ×) is at least 44px tall and nothing runs off the side', imWPhone.n > 20 && imWPhone.short.length === 0 && imWPhone.wide === 0 && !imWPhone.overflow && !imWPhone.panelWide, JSON.stringify(imWPhone));
   await imTap('[data-inspire="close"]');
   await page.evaluate(([a, b]) => { Object.keys(loadPlan()).forEach(d => { if (planRecipeIds(loadPlan()[d]).some(id => window.__IM_IDS__.includes(id))) clearPlanDay(d); }); clearPlanDay(a); clearPlanDay(b); loadShortlist().filter(i => window.__IM_IDS__.includes(i.recipeId)).forEach(i => removeShortlistItem(i.id));
-    cache.recipes = cache.recipes.filter(r => !window.__IM_IDS__.includes(r.id)); state.inspire = null; state.inspirePlacing = null; updateSidebarCounts(); showView('planner'); renderPlanner(); }, [imD3, imD5]);
+    cache.recipes = cache.recipes.filter(r => !window.__IM_IDS__.includes(r.id)); state.inspire = null; updateSidebarCounts(); showView('planner'); renderPlanner(); }, [imD3, imD5]);
 
   /* An entry's meal, changed from the Planner (PR 2 of docs/PLAN-ADHOC-PLANNER.md): the tag is a button that opens the meal prompt, worded for a planned entry, with the entry's meal shown
      as chosen; tapping another sets it, tapping the chosen one takes it off, closing changes nothing, and the prompt keeps its ordinary words for a dish just cooked. */
@@ -3092,8 +3119,7 @@ const check = (name, pass, detail) => {
         return [-21, 21].every(dy => { const el = document.elementFromPoint(cx, cy + dy); return el && el.closest('button') === b; }); };
       const day = document.querySelector(`.day-row[data-date="${iso(1)}"]`), far = document.querySelector(`.day-row[data-date="${iso(5)}"]`);
       const empty = document.querySelector(`.day-row[data-date="${iso(9)}"]`);
-      const chBtn = empty.querySelector('[data-action="choose"]');
-      const ch = chBtn.getBoundingClientRect(), ot = empty.querySelector('[data-action="addOther"]').getBoundingClientRect(), ins = empty.querySelector('[data-action="inspire"]').getBoundingClientRect();
+      const ch = empty.querySelector('[data-action="choose"]').getBoundingClientRect(), ot = empty.querySelector('[data-action="addOther"]').getBoundingClientRect();
       const mine = [day.querySelector('[data-action="addOther"]'), day.querySelector('[data-action="removeAdHoc"]'), day.querySelector('[data-action="adHocMeal"]'), far.querySelector('[data-action="removeAdHoc"]'), far.querySelector('[data-action="adHocMeal"]'), empty.querySelector('[data-action="addOther"]')];
       /* Where each sits across the screen is read before any scrolling: the page clips what is too wide rather than growing a scroll bar of its own
          (so the document's width cannot say), and scrolling a clipped button into view would slide the box and hide it. */
@@ -3101,9 +3127,7 @@ const check = (name, pass, detail) => {
       /* Each is brought to the middle of the screen just before it is tried: a point off the screen answers with nothing. */
       const tried = mine.map(b => { b.scrollIntoView({ block: 'center' }); return answers(b); });
       return { sideways: document.documentElement.scrollWidth - window.innerWidth, inside, answers: tried,
-        sameLine: Math.abs((ch.top + ch.height / 2) - (ot.top + ot.height / 2)) < 12,
-        pair: Math.abs((ins.top + ins.height / 2) - (ot.top + ot.height / 2)) < 12 && ins.right <= ot.left,
-        noClip: chBtn.scrollWidth <= chBtn.clientWidth + 1, emptyH: Math.round(empty.getBoundingClientRect().height),
+        sameLine: Math.abs((ch.top + ch.height / 2) - (ot.top + ot.height / 2)) < 12, emptyH: Math.round(empty.getBoundingClientRect().height),
         summary: [...document.querySelectorAll('.week-summary')].map(e => e.textContent.trim()).slice(0, 2) };
     });
     await p.close();
@@ -3111,11 +3135,8 @@ const check = (name, pass, detail) => {
   };
   for (const [look, w, h] of [['classic', 1280, 800], ['classic', 412, 915], ['modernist', 1280, 800], ['modernist', 412, 915]]) {
     const r = await ahLook(look, w, h);
-    /* Since INSPIRE ME joined + OTHER (11 Nov 2026) an empty day has three buttons: on a tablet all on one line; on a phone INSPIRE ME and
-       + OTHER together beneath CHOOSE A RECIPE, which keeps room for its words. */
-    const line = w >= 1280 ? r.sameLine && r.pair : r.pair;
-    check(`    ${look} at ${w}px: nothing runs off the side of the screen, the new buttons answer a tap 21px above and below their middle, and an empty day's buttons ${w >= 1280 ? 'share a line' : 'keep INSPIRE ME and + OTHER together under an unclipped CHOOSE A RECIPE'}`,
-          r.sideways <= 1 && r.inside && r.answers.every(Boolean) && line && r.noClip, JSON.stringify(r));
+    check(`    ${look} at ${w}px: nothing runs off the side of the screen, the new buttons answer a tap 21px above and below their middle, and an empty day's two buttons share a line`,
+          r.sideways <= 1 && r.inside && r.answers.every(Boolean) && r.sameLine, JSON.stringify(r));
     /* The fixture plans three dishes this week (Fri to Thu); one entry is on Wednesday of it and one on the Sunday after, so 3 + 1 and then 1. */
     if (look === 'modernist') check(`    modernist at ${w}px: each week's header counts the entries with its dishes (this week 3 dishes + 1 entry, the next week's 1 entry)`,
                                     JSON.stringify(r.summary) === JSON.stringify(['4 PLANNED', '1 PLANNED']), JSON.stringify(r.summary));
