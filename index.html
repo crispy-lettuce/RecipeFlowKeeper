@@ -1970,7 +1970,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-11-12.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-11-12.2">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2820,7 +2820,7 @@ const EXPECTED_CORE_VERSION = '2026-11-11.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-11-12.1';
+const APP_VERSION = '2026-11-12.2';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -6269,6 +6269,7 @@ function findSimilarTerm(newTerm, countsByTerm){
    ===================================================================== */
 const state = {
   view: 'recipes',
+  addOpenDate: null,           // Modernist only: the planned day whose + ADD is open as A RECIPE / OTHER. This tab only, never stored.
   plannerPast: 0,              // days of the Planner's EARLIER band shown (#223); 0 is closed. This tab only, never stored.
   inspire: null,               // INSPIRE ME's choices and what it is showing (inspireState()). This tab only, never stored.
   text: '',
@@ -8588,10 +8589,10 @@ function plannerAdHocByDay(){
 }
 /* One such row on a day: its name as text (there is no card to open), the meal and what kind it is, and a ×. None of SERVES,
    PRE-MADE, COOKED ✓ or the calendar's buttons: it is already in the diary, and has nothing to cook or remind. */
-function adHocRowHtml(e){
+function adHocRowHtml(e, slot){
   const tag = (e.mealType ? MEAL_TYPE_LABELS[e.mealType].toUpperCase() + ' · ' : '') + 'AD HOC';
   return `<div class="day-recipe-row day-adhoc-row">
-    <span class="day-recipe-title day-adhoc-title">${escapeHtml(e.title || 'Untitled')}</span>
+    ${slot === true ? '<span class="day-bell"></span>' : ''}<span class="day-recipe-title day-adhoc-title">${escapeHtml(e.title || 'Untitled')}</span>
     <span class="day-recipe-meta">
       <button class="day-recipe-course adhoc day-adhoc-meal" data-action="adHocMeal" data-log-id="${escapeHtml(e.id)}" title="Tap to set or change the meal">${escapeHtml(tag)}</button>
       <button class="day-recipe-remove" data-action="removeAdHoc" data-log-id="${escapeHtml(e.id)}" aria-label="Remove ${escapeHtml(e.title || 'this entry')} from this day">×</button>
@@ -8700,6 +8701,7 @@ function renderPlannerDays(){
       let inner;
 
       const adHocHere = adHocByDay.get(iso) || [];
+      let dayCal = '';   // Modernist: the day's IN CALENDAR, drawn under its date
       /* + OTHER sits beside the day's other small buttons; a day marked away has none (UNDO that first), but keeps any rows it has. */
       const otherBtn = `<button class="day-choose day-add-more" data-action="addOther"><span class="circle">+</span>OTHER</button>`;
       const weekProp = (inspireState().open && inspireState().weekOn) ? inspireState().proposals.find(x=> x.date === iso) : null;
@@ -8730,8 +8732,19 @@ function renderPlannerDays(){
         const dayItems = planCalendarItems(entry);
         const dayMeals = (calOn && calendarItemsAvailable && entry.calendar && !isGroupingThisDay) ? planMeals(iso, entry) : [];
         const perMeal = dayMeals.length >= 2;
+        /* Modernist (12 Nov 2026) draws the calendar's switches as icons: the day's IN CALENDAR under the date, and a bell in front of the
+           dish it reminds for. Every dish of a day gets the bell's place, filled or not, so the names stay in line. The words are still in
+           each button, hidden, for a screen reader and for the title a mouse shows. Classic keeps its words and its strip. */
+        const bells = mod && calOn && !isGroupingThisDay;
+        const bellSlot = '<span class="day-bell"></span>';
+        /* A grouped dish has no place for a bell: its group's bar holds the group's, as it holds REMIND ME in Classic. So the day's one
+           reminder is on the first dish, or on that dish's group. */
+        const firstDish = (items.find(it=> it.recipe) || {}).idx;
+        const firstGroupId = firstDish === undefined ? null : (groupContaining(iso, ids[firstDish]) || {}).id || null;
+        const dayBell = `<button class="day-cal-btn day-ico day-bell${entry.remind ? ' on' : ''}" data-action="calRemind" aria-pressed="${entry.remind ? 'true' : 'false'}" title="${entry.remind ? `Reminds you at ${formatRemindAt(remindAtNow())} the evening before. Tap to stop` : `No reminder. Tap to be reminded at ${formatRemindAt(remindAtNow())} the evening before`}">${entry.remind ? ICON_BELL : ICON_BELL_OFF}<span class="ico-words">${entry.remind ? '✓ ' : ''}REMIND ME ${formatRemindAt(remindAtNow())} THE EVENING BEFORE</span></button>`;
         const mealPill = (meal, attrs)=>{
           const on = mealHasReminder(dayItems, meal);
+          if(mod) return `<button class="day-cal-btn day-ico day-bell meal-remind${on ? ' on' : ''}" data-action="calMealRemind" ${attrs} aria-pressed="${on ? 'true' : 'false'}" title="${on ? `Reminds you about this meal at ${formatRemindAt(remindAtNow())} the evening before. Tap to stop` : `No reminder for this meal. Tap to be reminded at ${formatRemindAt(remindAtNow())} the evening before`}">${on ? ICON_BELL : ICON_BELL_OFF}<span class="ico-words">${on ? '✓ ' : ''}REMIND ME ${formatRemindAt(remindAtNow())}</span></button>`;
           return `<button class="day-cal-btn meal-remind${on ? ' on' : ''}" data-action="calMealRemind" ${attrs} aria-pressed="${on ? 'true' : 'false'}">${on ? '✓ ' : ''}REMIND ME ${formatRemindAt(remindAtNow())}</button>`;
         };
 
@@ -8757,6 +8770,7 @@ function renderPlannerDays(){
 
           return `<div class="day-recipe-row">
             ${group ? `<span class="group-tie" title="Cooking together as a group"></span>` : ''}
+            ${!bells || group ? '' : perMeal ? mealPill({ indexes: [idx] }, `data-idx="${idx}"`) : (entry.calendar && idx === firstDish ? dayBell : bellSlot)}
             <button class="day-recipe-title" data-action="view" data-idx="${idx}">${escapeHtml(recipe.title||'Untitled')}</button>
             <span class="day-recipe-meta">
               ${course ? `<span class="day-recipe-course${tone}">${escapeHtml(course.toUpperCase())}</span>` : ''}
@@ -8764,7 +8778,7 @@ function renderPlannerDays(){
               ${servesPill(recipe, serves, idx)}
               ${dishStatePill(premade, cookAhead, idx)}
               ${cookedPill(recipe, iso, todayIso, premade, idx)}
-              ${perMeal && !group ? mealPill({ indexes: [idx] }, `data-idx="${idx}"`) : ''}
+              ${perMeal && !group && !mod ? mealPill({ indexes: [idx] }, `data-idx="${idx}"`) : ''}
               <button class="day-recipe-remove" data-action="removeOne" data-idx="${idx}" aria-label="Remove from this day">×</button>
             </span>
           </div>${sideOfferHtml(iso, recipe, ids, idx)}${oftenOfferHtml(iso, recipe, ids, idx)}`;
@@ -8777,7 +8791,7 @@ function renderPlannerDays(){
               const meal = perMeal ? dayMeals.find(m=> m.groupId === g.id) : null;
               return `<div class="group-badge">
                 <button class="group-badge-view" data-action="viewGroup" data-group-id="${escapeHtml(g.id)}" title="View these recipes together"><span class="group-tie"></span>GROUPED: ${escapeHtml(names.join(' + '))}</button>
-                ${meal ? mealPill(meal, `data-group-id="${escapeHtml(g.id)}"`) : ''}
+                ${meal ? mealPill(meal, `data-group-id="${escapeHtml(g.id)}"`) : (bells && entry.calendar && g.id === firstGroupId ? dayBell : '')}
                 <button class="group-ungroup" data-action="ungroup" data-group-id="${escapeHtml(g.id)}">UNGROUP</button>
               </div>`;
             }).join('')
@@ -8795,14 +8809,24 @@ function renderPlannerDays(){
         /* The day's two calendar switches, once the household has connected. REMIND ME only once the day is
            in the calendar: a reminder needs an event to hang from. With two or more meals the reminders are on the
            meals and the strip keeps IN CALENDAR. */
-        const calStrip = (calOn && !isGroupingThisDay)
+        const calStrip = mod ? '' : (calOn && !isGroupingThisDay)
           ? `<div class="day-cal">
               <button class="day-cal-btn${entry.calendar ? ' on' : ''}" data-action="calToggle" aria-pressed="${entry.calendar ? 'true' : 'false'}">${entry.calendar ? '✓ ' : ''}IN CALENDAR</button>
               ${entry.calendar && !perMeal ? `<button class="day-cal-btn${entry.remind ? ' on' : ''}" data-action="calRemind" aria-pressed="${entry.remind ? 'true' : 'false'}">${entry.remind ? '✓ ' : ''}REMIND ME ${formatRemindAt(remindAtNow())} THE EVENING BEFORE</button>` : ''}
             </div>`
           : '';
-        inner = `<div class="day-main">${groupBadges}${rows}${isGroupingThisDay ? '' : adHocHere.map(adHocRowHtml).join('')}
-          ${isGroupingThisDay ? groupControls : `<button class="day-choose day-add-more" data-action="choose"><span class="circle">+</span>ADD ANOTHER</button>${otherBtn}${groupControls}`}
+        if(mod && calOn && !isGroupingThisDay){
+          dayCal = `<div class="day-cal"><button class="day-cal-btn day-ico${entry.calendar ? ' on' : ''}" data-action="calToggle" aria-pressed="${entry.calendar ? 'true' : 'false'}" title="${entry.calendar ? 'In the calendar. Tap to take this day out' : 'Not in the calendar. Tap to put this day in'}">${entry.calendar ? ICON_CAL : ICON_CAL_ADD}<span class="ico-words">${entry.calendar ? '✓ ' : ''}IN CALENDAR</span></button></div>`;
+        }
+        /* Modernist has one + ADD on a planned day, which opens where it stands into A RECIPE and OTHER (12 Nov 2026): two buttons under every
+           dish were most of the day's second line. An empty day keeps CHOOSE A RECIPE and OTHER, which are the whole of its row. */
+        const addCtl = !mod
+          ? `<button class="day-choose day-add-more" data-action="choose"><span class="circle">+</span>ADD ANOTHER</button>${otherBtn}`
+          : state.addOpenDate === iso
+            ? `<div class="day-add-open${bells ? ' after-bell' : ''}" role="group" aria-label="Add to this day"><span class="day-add-label">ADD</span><button class="day-add-opt" data-action="choose">A RECIPE</button><button class="day-add-opt" data-action="addOther">OTHER</button><button class="day-add-close" data-action="addClose" aria-label="Close without adding">×</button></div>`
+            : `<button class="day-choose day-add-more day-add${bells ? ' after-bell' : ''}" data-action="addOpen" aria-expanded="false"><span class="circle">+</span>ADD</button>`;
+        inner = `<div class="day-main">${groupBadges}${rows}${isGroupingThisDay ? '' : adHocHere.map(e=> adHocRowHtml(e, bells)).join('')}
+          ${isGroupingThisDay ? groupControls : `${addCtl}${groupControls}`}
           ${calStrip}
         </div>`;
       } else if(adHocHere.length){
@@ -8823,7 +8847,7 @@ function renderPlannerDays(){
       }
 
       html += `<div class="day-row${isToday?' today':''}${(state.selectedShortlistId && state.groupingDate!==iso)?' assignable':''}" data-date="${iso}">
-        <div class="day-num">${mod ? `<span class="day-dow">${d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase()}</span><span class="day-date">${d.getDate()}</span>` : formatDayLabel(d)}${isToday?'<span class="today-tag">TODAY</span>':''}</div>
+        <div class="day-num">${mod ? `<span class="day-dow">${d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase()}</span><span class="day-date">${d.getDate()}</span>` : formatDayLabel(d)}${isToday?'<span class="today-tag">TODAY</span>':''}${dayCal}</div>
         ${inner}
       </div>`;
     });
@@ -8901,6 +8925,12 @@ function renderShortlistPanel(){
 /* ------------------------------- One-time listeners ------------------------------- */
 /* The per-day headcount. A recipe with no servings of its own has nothing
    to scale from, so it gets no control rather than a broken one. */
+/* The Planner's calendar and reminder icons (Modernist): 24 units square, drawn in the button's colour by styles/modernist.css. */
+const planIcon = d => `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${d}"/></svg>`;
+const ICON_CAL = planIcon('M3 5h18v16H3zM3 10h18M8 2v5M16 2v5M8.5 15.5l2.5 2.5 4.5-5');
+const ICON_CAL_ADD = planIcon('M3 5h18v16H3zM3 10h18M8 2v5M16 2v5M12 13v5M9.5 15.5h5');
+const ICON_BELL = planIcon('M6 17v-6a6 6 0 0 1 12 0v6l2 2H4zM10 22h4');
+const ICON_BELL_OFF = planIcon('M6 17v-6a6 6 0 0 1 12 0v6l2 2H4zM10 22h4M4 3l17 18');
 function servesPill(recipe, serves, idx){
   const base = parseInt(recipe.servings, 10) || 0;
   if(!base) return '';
@@ -9145,11 +9175,19 @@ function initPlannerListeners(){
       swapProposal(date);
     } else if(action === 'proposalSkip'){
       skipProposal(date);
+    } else if(action === 'addOpen' || action === 'addClose'){
+      /* + ADD opens into its two choices where it stands, one day at a time; the keyboard's place goes with it. */
+      state.addOpenDate = action === 'addOpen' ? date : null;
+      renderPlanner();
+      const next = document.querySelector(`#dayList .day-row[data-date="${date}"] [data-action="${action === 'addOpen' ? 'choose' : 'addOpen'}"]`);
+      if(next) next.focus();
     } else if(action === 'choose'){
+      state.addOpenDate = null;
       state.pickingForDate = date;
       showView('recipes');
       renderHome();
     } else if(action === 'addOther'){
+      state.addOpenDate = null;
       openAdHocEntry({ origin: 'planner', date });
     } else if(action === 'adHocMeal'){
       const entry = loadDiary().find(x=> x.id === actionEl.dataset.logId);
