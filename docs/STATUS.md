@@ -72,7 +72,8 @@ READ BY CHAT.
    `a9d94b7`, `git show a9d94b7:docs/PLAN-INSPIRE-ME.md`, which is what code comments citing it mean). The household reported all of it, A WEEK included, good in the app
    (11 and 12 Nov). From that use came one change, built 12 Nov (app version 2026-11-12.1): a suggestion goes onto the shortlist, not onto a day, and the one INSPIRE ME
    button is in the shortlist's column. Its plan is at `c72d2cf` (`git show c72d2cf:docs/PLAN-INSPIRE-ME-SHORTLIST.md`); where the build differs from it, the household
-   chose so on seeing it: the panel opens above the days, not in the narrow column, so A WEEK's buttons stayed in the panel. Awaits the tablet check, Job 10. A lean
+   chose so on seeing it: the panel opens above the days, not in the narrow column, so A WEEK's buttons stayed in the panel. The household reported it good (12 Nov). A third week
+   choice, FUTURE WEEK (a fresh week for the shortlist that does not look at the Planner; app version 2026-11-12.3, `docs/SPEC.md` §5.5), awaits the tablet check, Job 12. A lean
    towards dishes that share fresh ingredients was measured and left out: issue #234.
 5. **Optional, not planned:** a "download all source files" backup; drawing a PDF's pages inside the app;
    and four ideas parked from the run sheet's review, each wanting its own issue if picked up: **Trace** (hold a box to dim everything that does not feed it), folding away

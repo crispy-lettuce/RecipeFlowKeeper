@@ -851,6 +851,7 @@ function loadArchivoFont(){
   .proposal-name{ flex:1 1 12em; min-width:0; font-size:16px; line-height:1.25; color:var(--ink); overflow-wrap:anywhere; }
   .proposal-meta{ flex:none; font-size:13px; letter-spacing:.04em; color:var(--ink-soft); }
   .proposal-btns{ flex:none; display:flex; gap:8px; margin-left:auto; }
+  .inspire-future{ display:flex; flex-direction:column; gap:8px; margin:10px 0 4px; }
   .proposal-btn{ min-height:44px; min-width:44px; padding:0 12px; background:none; border:1px solid var(--line-faint); border-radius:var(--r); cursor:pointer; font-size:14px; letter-spacing:.04em; font-weight:500; color:var(--plum); }
   .proposal-btn:hover{ border-color:var(--plum); }
   .inspire-undo{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 8px; padding:6px 10px; border:1px solid var(--line); border-radius:var(--r); background:var(--card); font-size:14px; color:var(--ink); }
@@ -1970,7 +1971,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-11-12.2">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-11-12.3">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2807,7 +2808,7 @@ function loadArchivoFont(){
   <div id="sourcePhotoBody"></div>
 </div>
 
-<script src="core.js?v=2026-11-11.1"></script>
+<script src="core.js?v=2026-11-12.1"></script>
 <script>
 /* The core this page was built for (see the header of core.js). A device
    can briefly hold one file new and the other old after a deploy, because
@@ -2815,12 +2816,12 @@ function loadArchivoFont(){
    have loaded at all on a flaky connection. Either way the page says so and
    offers a reload, rather than run on a mismatched pair. Bump this and
    KITCHEN_CORE_VERSION together; test/core.test.js fails if they differ. */
-const EXPECTED_CORE_VERSION = '2026-11-11.1';
+const EXPECTED_CORE_VERSION = '2026-11-12.1';
 /* The app's own version (issue #91, 11 Oct 2026): the first entry of changelog.json, which says in plain words what
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-11-12.2';
+const APP_VERSION = '2026-11-12.3';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -8208,7 +8209,8 @@ function inspireAsk(over){
    waiting there for another reason), nor what was passed over. */
 function inspireCtx(withRejected){
   const plan = loadPlan();
-  const planned = dayList().flatMap(d=> planRecipeIds(plan[isoLocal(d)])).concat(loadShortlist().map(i=> i.recipeId).filter(Boolean));
+  /* FUTURE WEEK (below) is a fresh week for the shortlist and does not look at the Planner: what is planned is no reason to leave a dish out. */
+  const planned = (inspireFuture() ? [] : dayList().flatMap(d=> planRecipeIds(plan[isoLocal(d)]))).concat(loadShortlist().map(i=> i.recipeId).filter(Boolean));
   return { today: todayStr(), planned, rejected: withRejected === false ? [] : inspireState().rejected };
 }
 /* New suggestions. `another` passes over what is showing first. */
@@ -8257,6 +8259,14 @@ function inspireShortlist(recipeId){
    The proposals are drawn on the days as proposals (dashed, PROPOSED) and are not in the plan. Two ways to keep them: ADD ALL, one plan row per day
    through addPlanRecipe, with one UNDO that takes them all off; or ALL TO SHORTLIST, for the dishes without the order. The choosing is suggestWeek in core.js. ---- */
 let inspireUndo = null;
+/* FUTURE WEEK: the third choice beside THIS WEEK and NEXT WEEK (bucket 2). A fresh week, for the shortlist: it looks at nothing on the Planner, draws
+   no days, and keeps no order, so its dishes are named f1 to f7 where the others have dates, and the neighbour rule is not applied (ask.anyOrder). */
+const INSPIRE_FUTURE_BUCKET = 2;
+const INSPIRE_FUTURE_KEYS = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7'];
+function inspireFuture(){
+  const s = inspireState();
+  return s.weekOn && s.bucket === INSPIRE_FUTURE_BUCKET;
+}
 function inspireWeekDays(){
   const b = groupDaysByWeek(dayList());
   return b[Math.min(inspireState().bucket, b.length - 1)] || [];
@@ -8264,9 +8274,9 @@ function inspireWeekDays(){
 /* The week as the engine reads it. With `onlyDate` (SWAP) every other proposal stands as if planned, so what replaces this one keeps
    the spread and the AT LEAST counts with them. A day left empty with × is read as away: nothing is put there. */
 function inspireWeekCtxDays(onlyDate){
-  const s = inspireState(), plan = loadPlan();
-  return inspireWeekDays().map(d=>{
-    const iso = isoLocal(d), e = plan[iso];
+  const s = inspireState(), plan = loadPlan(), future = inspireFuture();
+  return (future ? INSPIRE_FUTURE_KEYS : inspireWeekDays().map(isoLocal)).map(iso=>{
+    const e = future ? null : plan[iso];
     if(onlyDate){
       if(iso === onlyDate) return { date: iso, recipeIds: [], away: false };
       const prop = s.proposals.find(x=> x.date === iso);
@@ -8281,7 +8291,7 @@ function inspireWeekCtxDays(onlyDate){
 function inspireWeekAsk(){
   const s = inspireState(), atLeast = {};
   Object.keys(s.atLeast).forEach(f=>{ if(s.atLeast[f] > 0) atLeast[f] = s.atLeast[f]; });
-  return inspireAsk({ count: 1, proteins: [], atLeast });
+  return inspireAsk({ count: 1, proteins: [], atLeast, anyOrder: inspireFuture() });
 }
 function inspireEmptyDays(bucket){
   const keep = inspireState().bucket;
@@ -8292,10 +8302,12 @@ function inspireEmptyDays(bucket){
 }
 function rollWeek(another){
   const s = inspireState();
-  const days = inspireWeekCtxDays();
   const before = s.proposals.map(x=> x.id);
   if(another) s.weekRejected = s.weekRejected.concat(before);
   s.swapped = []; s.weekIdle = false;
+  /* A × on a fresh week's dish drops that dish; a new draw is a whole week again. (On a real week a × is a day left empty, and stays so.) */
+  if(inspireFuture()) s.skip = [];
+  const days = inspireWeekCtxDays();
   const run = rejected=> suggestWeek(inspireFacts(), inspireWeekAsk(), { ...inspireCtx(false), rejected, seed: Math.floor(Math.random() * 4294967296), days });
   let r = run(s.weekRejected);
   /* Everything that fits has been shown: start over rather than leave days bare. */
@@ -8391,6 +8403,17 @@ function renderInspireUndo(){
   bar.hidden = false;
   bar.innerHTML = `<span>${n} ${n === 1 ? 'dish' : 'dishes'} added from INSPIRE ME</span><button type="button" class="btn" data-inspire-undo="1">UNDO</button>`;
 }
+/* A FUTURE WEEK dish: a row of the panel's own, since it has no day to be drawn on. SWAP and × work as on a day, by the dish's key. */
+function futureRowHtml(prop){
+  const r = loadRecipes().find(x=> x.id === prop.id);
+  if(!r) return '';
+  const f = inspireFacts().find(x=> x.id === prop.id);
+  const fam = f && PROTEIN_FAMILIES.find(x=> x.id === f.protein);
+  const meta = [fam ? fam.label.toUpperCase() : '', r.time ? timeHtml(r.time) : ''].filter(Boolean).join(' · ');
+  return `<div class="proposal" data-key="${prop.date}">
+    <span class="proposal-name">${escapeHtml(r.title || 'Untitled')}</span><span class="proposal-meta">${meta}</span>
+    <span class="proposal-btns"><button type="button" class="proposal-btn" data-k="fswap-${prop.date}" data-inspire="fswap" data-val="${prop.date}" aria-label="Swap ${escapeHtml(r.title || 'Untitled')} for another">SWAP</button><button type="button" class="proposal-btn" data-k="fskip-${prop.date}" data-inspire="fskip" data-val="${prop.date}" aria-label="Drop ${escapeHtml(r.title || 'Untitled')}">×</button></span></div>`;
+}
 /* A day's proposal, in the place of its CHOOSE A RECIPE row. */
 function proposalHtml(prop){
   const r = loadRecipes().find(x=> x.id === prop.id);
@@ -8434,7 +8457,7 @@ function renderInspirePanel(){
   const weekChips = [0, 1].map(b=>{
     const days = groupDaysByWeek(dayList())[b];
     return days ? inspireChip('wk-' + b, b ? 'NEXT WEEK' : 'THIS WEEK', s.bucket === b, inspireEmptyDays(b), `data-inspire="bucket" data-val="${b}" title="${escapeHtml(weekDatesLabel(days))}; the number is its empty days"`) : '';
-  }).join('');
+  }).join('') + inspireChip('wk-' + INSPIRE_FUTURE_BUCKET, 'FUTURE WEEK', s.bucket === INSPIRE_FUTURE_BUCKET, null, `data-inspire="bucket" data-val="${INSPIRE_FUTURE_BUCKET}" title="A fresh week for the shortlist: it does not look at the Planner"`);
   const whichChips = WHICH.map(([val, label])=> inspireChip('w-' + val, label, s.which === val, fits({ which: val }), `data-inspire="which" data-val="${val}"`)).join('');
   const TIMES = [[0, 'ANY TIME'], [30, '30 MIN'], [60, '1 HOUR']];
   const timeChips = TIMES.map(([val, label])=> inspireChip('t-' + val, label, s.maxMinutes === val, fits({ maxMinutes: val }), `data-inspire="time" data-val="${val}"`)).join('');
@@ -8479,6 +8502,7 @@ function renderInspirePanel(){
   }).join('');
   let results;
   if(s.weekOn){
+    const future = inspireFuture();
     const emptyN = inspireWeekCtxDays().filter(d=> !d.away && !d.recipeIds.length).length;
     const n = s.proposals.length;
     const short = inspireWeekShort();
@@ -8486,9 +8510,12 @@ function renderInspirePanel(){
     const shortHtml = short.map(x=> `<div class="inspire-short" role="status">${x.got ? `Only ${x.got} of the ${x.wanted}` : `None of the ${x.wanted}`} ${escapeHtml(label(x.family))} you asked for ${x.got === 1 ? 'was' : 'were'} found.</div>`).join('')
       + (s.bent && s.bent.neighbour ? `<div class="inspire-short" role="status">Not enough variety to avoid the same protein two days running.</div>` : '')
       + (s.bent && s.bent.style ? `<div class="inspire-short" role="status">Not enough variety to avoid two dishes of one style.</div>` : '');
-    if(!emptyN) results = `<div class="inspire-none" role="status">No empty days left in this week.</div>`;
+    if(!emptyN && !future) results = `<div class="inspire-none" role="status">No empty days left in this week.</div>`;
     else if(s.weekIdle) results = `<div class="inspire-foot"><button type="button" class="btn" data-k="anotherweek" data-inspire="anotherweek">PROPOSE A WEEK</button></div>`;
     else if(!n) results = `<div class="inspire-none" role="status">Nothing fits those choices. Take one off.</div>`;
+    else if(future) results = `<div class="inspire-fits" role="status">${n} ${n === 1 ? 'DISH' : 'DISHES'} FOR A FRESH WEEK, NOT LOOKING AT THE PLANNER. NOTHING IS ON THE SHORTLIST UNTIL YOU PRESS ALL TO SHORTLIST.</div>
+      <div class="inspire-future">${s.proposals.map(futureRowHtml).join('')}</div>${shortHtml}
+      <div class="inspire-foot"><button type="button" class="btn primary" data-k="allshort" data-inspire="allshort">ALL TO SHORTLIST</button><button type="button" class="btn" data-k="anotherweek" data-inspire="anotherweek">ANOTHER WEEK</button><button type="button" class="btn" data-k="cancelweek" data-inspire="cancelweek">CANCEL</button></div>`;
     else results = `<div class="inspire-fits" role="status">${n} OF ${emptyN} EMPTY ${emptyN === 1 ? 'DAY' : 'DAYS'} PROPOSED. NOTHING IS PLANNED UNTIL YOU ADD ALL.</div>${shortHtml}
       <div class="inspire-foot"><button type="button" class="btn primary" data-k="addall" data-inspire="addall">ADD ALL</button><button type="button" class="btn" data-k="allshort" data-inspire="allshort">ALL TO SHORTLIST</button><button type="button" class="btn" data-k="anotherweek" data-inspire="anotherweek">ANOTHER WEEK</button><button type="button" class="btn" data-k="cancelweek" data-inspire="cancelweek">CANCEL</button></div>`;
   }
@@ -8503,7 +8530,7 @@ function renderInspirePanel(){
   panel.hidden = false;
   panel.innerHTML = `<div class="inspire-head">
       <span class="inspire-title">INSPIRE ME</span>
-      <span class="inspire-for">${s.weekOn ? 'PROPOSALS APPEAR ON THE EMPTY DAYS BELOW' : 'WHAT YOU ADD GOES ON THE SHORTLIST; FROM THERE, TAP IT AND THEN A DAY'}</span>
+      <span class="inspire-for">${s.weekOn ? (inspireFuture() ? 'A FRESH WEEK FOR THE SHORTLIST, NOT LOOKING AT THE PLANNER' : 'PROPOSALS APPEAR ON THE EMPTY DAYS BELOW') : 'WHAT YOU ADD GOES ON THE SHORTLIST; FROM THERE, TAP IT AND THEN A DAY'}</span>
       <button type="button" class="btn" data-k="close" data-inspire="close">CLOSE</button>
     </div>
     <div class="inspire-row"><div class="inspire-label">HOW MANY</div><div class="inspire-chips">${
@@ -8543,6 +8570,8 @@ function inspireAction(el){
   }
   else if(what === 'addall') inspireAddAll();
   else if(what === 'allshort') inspireAllToShortlist();
+  else if(what === 'fswap') swapProposal(val);
+  else if(what === 'fskip') skipProposal(val);
   else if(what === 'anotherweek'){ rollWeek(true); renderPlanner(); }
   else if(what === 'cancelweek'){ s.proposals = []; s.skip = []; s.bent = null; s.weekIdle = true; renderPlanner(); }
   else if(what === 'protein'){ s.proteins = toggle(s.proteins, val); inspireChanged(); }

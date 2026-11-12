@@ -2379,6 +2379,9 @@ check('Frozen is the last aisle, and the last section of the shopping list',
   const few = core.suggestWeek(bigFacts.filter(f => f.protein === 'chicken'), {}, { today, seed: 2, days: week(seven.slice(0, 4)) });
   check('suggestWeek: the spread gives way before a day is left empty, and a day with nothing left is null',
         few.days.filter(d => d.pick).length === 3 && few.days.filter(d => !d.pick).length === 1 && few.bent.neighbour >= 1, JSON.stringify(few.bent));
+  const fewAny = core.suggestWeek(bigFacts.filter(f => f.protein === 'chicken'), { anyOrder: true }, { today, seed: 2, days: week(seven.slice(0, 4)) });
+  check('suggestWeek: with anyOrder (the shortlist keeps no order) the same protein beside itself is no fault, and the days are filled as before',
+        fewAny.bent.neighbour === 0 && fewAny.days.filter(d => d.pick).length === 3 && few.bent.neighbour >= 1, JSON.stringify([fewAny.bent, few.bent]));
   check('suggestWeek: the filters apply to a week too',
         core.suggestWeek(bigFacts, { keywords: ['Pasta'] }, { today, seed: 1, days: week(seven) }).days.filter(d => d.pick).every(d => d.pick.keywords.includes('pasta')));
 

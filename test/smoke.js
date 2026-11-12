@@ -3009,6 +3009,55 @@ const check = (name, pass, detail) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   check('    at 412px every A WEEK button (steppers, ADD ALL, SWAP, ×) is at least 44px tall and nothing runs off the side', imWPhone.n > 20 && imWPhone.short.length === 0 && imWPhone.wide === 0 && !imWPhone.overflow && !imWPhone.panelWide, JSON.stringify(imWPhone));
   await imTap('[data-inspire="close"]');
+  /* ---- FUTURE WEEK: the third choice beside THIS WEEK and NEXT WEEK. A fresh week for the shortlist: it does not look at the Planner, draws nothing on the
+     days, and is kept only by ALL TO SHORTLIST. A planned dish and a shortlisted one are set up first, to tell it from the others. ---- */
+  await page.evaluate(([d]) => { addPlanRecipe(d, 'im-hen-orzo'); addShortlistRecipe('im-lamb'); state.inspire = null; showView('planner'); renderPlanner(); }, [imD3]);
+  await page.click('#inspireBtn');
+  await imTap('[data-inspire="more"]');
+  await imTap('[data-k="k-INSPIRETEST"]');
+  await imTap('[data-k="c-w"]');
+  await imTap('[data-k="wk-1"]');
+  const imFwNext = await page.evaluate(() => ({ ids: state.inspire.proposals.map(p => p.id), anyOrder: inspireWeekAsk().anyOrder }));
+  const imFwPlan = await page.evaluate(() => JSON.stringify(loadPlan()));
+  const imFwMark = await anMark();
+  await imTap('[data-k="wk-2"]');
+  const imFw1 = await imWk();
+  const imFwKinds = await page.evaluate(() => ({ ids: state.inspire.proposals.map(p => p.id), anyOrder: inspireWeekAsk().anyOrder, keys: state.inspire.proposals.map(p => p.date).join(),
+    rowKeys: [...document.querySelectorAll('#inspirePanel .proposal')].map(r => r.dataset.key).join() }));
+  check('    FUTURE WEEK is the third week chip; it fills a fresh week in the panel, not on the days, from what the Planner does not hold in mind: the dish planned on a day can come up (NEXT WEEK leaves it out), the shortlisted one cannot',
+        imFw1.chips === 'c-1-,c-3-,c-w+,wk-0-,wk-1-' && !imFwNext.ids.includes('im-hen-orzo') && imFwKinds.ids.includes('im-hen-orzo') && !imFwKinds.ids.includes('im-lamb') && imFwKinds.ids.length === 5
+        && /^f[1-7](,f[1-7]){4}$/.test(imFwKinds.keys) && new Set(imFwKinds.keys.split(',')).size === 5 && imFwKinds.rowKeys === imFwKinds.keys && imFw1.rows === 0 && imFw1.rowBtns === '' && imFw1.foot === 'ALL TO SHORTLIST|ANOTHER WEEK|CANCEL',
+        JSON.stringify([imFw1, imFwKinds, imFwNext.ids]));
+  check('    and it writes nothing and plans nothing, shows one SWAP and × for each dish, asks the engine for no day order, where a real week does', await anMark() === imFwMark
+        && await page.evaluate(() => JSON.stringify(loadPlan())) === imFwPlan && imFwKinds.anyOrder === true && imFwNext.anyOrder === false
+        && await page.evaluate(() => [...document.querySelectorAll('#inspirePanel .proposal')].map(r => [...r.querySelectorAll('button')].map(b => b.textContent.trim()).join('|')).every(t => t === 'SWAP|×')
+          && document.querySelectorAll('#inspirePanel .proposal').length === 5 && /NOT LOOKING AT THE PLANNER/.test(document.querySelector('#inspirePanel .inspire-fits').textContent)), JSON.stringify([imFwKinds.anyOrder, imFwNext.anyOrder]));
+  /* × drops that dish and frees its recipe for SWAP on another. A new draw is a whole week again: with four of the five dropped, a draw that kept their slots
+     closed would have three of seven to fill; one that opens them has the four recipes that were not just shown (ANOTHER never repeats what it passed over). */
+  const fwIds = imFwKinds.ids, fwKeys = imFwKinds.keys.split(',');
+  await imTap(`[data-inspire="fskip"][data-val="${fwKeys[0]}"]`);
+  await imTap(`[data-inspire="fskip"][data-val="${fwKeys[1]}"]`);
+  const imFw2 = await page.evaluate(() => state.inspire.proposals.map(p => p.date + ':' + p.id));
+  await imTap(`[data-inspire="fswap"][data-val="${fwKeys[2]}"]`);
+  const imFw3 = await page.evaluate(() => state.inspire.proposals.map(p => p.date + ':' + p.id));
+  await imTap(`[data-inspire="fskip"][data-val="${fwKeys[3]}"]`);
+  await imTap(`[data-inspire="fskip"][data-val="${fwKeys[4]}"]`);
+  const imFw3b = await page.evaluate(() => state.inspire.proposals.length);
+  await imTap('[data-inspire="anotherweek"]');
+  const imFw4 = await page.evaluate(() => state.inspire.proposals.length);
+  const imSwapped = (imFw3.find(x => x.startsWith(fwKeys[2] + ':')) || '').split(':')[1];
+  check('    × drops that dish and nothing else; SWAP on another dish changes only that one, to one of the two that were dropped (the only spares); and ANOTHER WEEK, after four of the five were dropped, draws the four it has not just shown',
+        imFw2.length === 3 && !imFw2.some(x => x.startsWith(fwKeys[0] + ':') || x.startsWith(fwKeys[1] + ':')) && imFw3.length === 3 && [fwIds[0], fwIds[1]].includes(imSwapped)
+        && imFw3.filter(x => !x.startsWith(fwKeys[2] + ':')).join() === imFw2.filter(x => !x.startsWith(fwKeys[2] + ':')).join() && imFw3b === 1 && imFw4 === 4, JSON.stringify([fwKeys, fwIds, imFw2, imFw3, imFw3b, imFw4]));
+  /* ALL TO SHORTLIST: one shortlist row each, none on the plan. */
+  const imFwProps = await page.evaluate(() => state.inspire.proposals.map(p => p.id));
+  const imFwM2 = await anMark();
+  await imTap('[data-inspire="allshort"]');
+  const imFw5 = await imWk(), imFw5list = await imOnList(), imFw5w = await imSlWrites(imFwM2);
+  check('    ALL TO SHORTLIST puts every proposed dish on the shortlist (one write each, beside the one already there), writes nothing to the plan, and the panel offers PROPOSE A WEEK',
+        imFwProps.length === 4 && imFw5list.ids.slice().sort().join() === imFwProps.concat('im-lamb').sort().join() && imFw5w.length === imFwProps.length && imFw5w.every(w => /^upsert:im-/.test(w)) && (await imPlanWrites(imFwM2)).length === 0
+        && imFw5.foot === 'PROPOSE A WEEK' && await page.evaluate(() => state.inspire.proposals.length === 0 && document.querySelectorAll('#inspirePanel .proposal').length === 0), JSON.stringify([imFw5list, imFw5w, imFw5.foot]));
+  await imTap('[data-inspire="close"]');
   await page.evaluate(([a, b]) => { Object.keys(loadPlan()).forEach(d => { if (planRecipeIds(loadPlan()[d]).some(id => window.__IM_IDS__.includes(id))) clearPlanDay(d); }); clearPlanDay(a); clearPlanDay(b); loadShortlist().filter(i => window.__IM_IDS__.includes(i.recipeId)).forEach(i => removeShortlistItem(i.id));
     cache.recipes = cache.recipes.filter(r => !window.__IM_IDS__.includes(r.id)); state.inspire = null; updateSidebarCounts(); showView('planner'); renderPlanner(); }, [imD3, imD5]);
 

@@ -256,7 +256,12 @@ sidebar's counts read the 14 days from today (`dayList()`) and never the band. P
   plan: each has **SWAP** (a different dish for that day only, with the others standing as planned) and **×** (leave that day empty), and the panel has **ADD ALL**,
   **ALL TO SHORTLIST**, **ANOTHER WEEK** (a fresh draw, never repeating the last unless it has run out) and **CANCEL** (writes nothing; **PROPOSE A WEEK** then draws again).
   ADD ALL is one plan-row save for each day, as adding that dish by hand is, and offers one **UNDO** (about thirty seconds) that takes them all off again, leaving any day
-  changed since as it is. ALL TO SHORTLIST is one shortlist-row save for each dish and nothing on the days: the dishes without the order. A proposal for a day that has since been
+  changed since as it is. ALL TO SHORTLIST is one shortlist-row save for each dish and nothing on the days: the dishes without the order.
+  **FUTURE WEEK** (12 Nov 2026) is the third week choice, beside THIS WEEK and NEXT WEEK: a fresh week for the shortlist. It does not look at the Planner (what is
+  planned does not exclude a dish, and nothing is drawn on the days); it still leaves out a recipe on the shortlist and one cooked in the last 14 days (unless POPULAR), and
+  keeps the AT LEAST counts, the filters and one dish of each style. Seven dishes are listed in the panel, each with **SWAP** and **×**; with no day order the neighbour rule is
+  not applied (`suggestWeek`'s `anyOrder`, `core.js`), so a protein may be beside itself. Its only way out is **ALL TO SHORTLIST** (no ADD ALL, there being no days); × drops that
+  dish, and ANOTHER WEEK draws a whole week again, never repeating what it has just shown unless it has run out. Nothing is written until ALL TO SHORTLIST. A proposal for a day that has since been
   planned by hand or marked away is dropped. Whether dishes that share a fresh ingredient should be preferred was built and measured (it saved about one fresh ingredient in
   28) and left out: issue #234.
 
