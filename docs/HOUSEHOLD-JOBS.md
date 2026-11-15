@@ -1,7 +1,7 @@
 # Household job list
 
 The jobs only the household can do: a session can't tap the tablet, decide for you, or deploy for you. **Last brought up to date
-12 Nov 2026**: three jobs are waiting, Job 7 (the Planner's previous days), Job 11 (the tidier Planner in Modernist) and Job 12 (INSPIRE ME's FUTURE WEEK).
+15 Nov 2026**: four jobs are waiting, Job 7 (the Planner's previous days), Job 11 (the tidier Planner in Modernist), Job 12 (INSPIRE ME's FUTURE WEEK) and Job 13 (the Planner on a slow start), and the questions in `docs/PLAN-SHOPPING-EXTRAS.md` §6 want your answers.
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other households sort
 out their own converter and need no steps here.
@@ -13,7 +13,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-**Three jobs are waiting:** Job 7, the Planner's previous days (#223), Job 11, the tidier Planner in Modernist, and Job 12, INSPIRE ME's FUTURE WEEK; a few minutes each on the tablet. One loose end, which is not a job: issue #224, "Idea: Test", is the test report Job 2 asked you to close, and it is still open on GitHub.
+**Four jobs are waiting:** Job 7, the Planner's previous days (#223), Job 11, the tidier Planner in Modernist, Job 12, INSPIRE ME's FUTURE WEEK, and Job 13, the Planner on a slow start (#240); a few minutes each on the tablet. One thing to decide, which is not a tablet job: the six questions in `docs/PLAN-SHOPPING-EXTRAS.md` §6 (things to buy that no recipe asks for, #241). Nothing of it is built until they are answered.
 What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
@@ -76,6 +76,18 @@ If a step does not do what it says, note which one and what you saw.
 
 ---
 
+## Job 13: the Planner on a slow start (issue #240)
+
+No database change and nothing to deploy. Nothing is written.
+
+1. **Reload the app** so it is on version 2026-11-15.1. **You should see:** Settings → HELP shows it, and What's new mentions the Planner opening empty.
+2. Close the app, open it again, and tap **PLANNER** as soon as the menu appears, before the recipes have drawn. Somewhere with a weak signal makes this easier.
+   **You should see:** the days fill in with what is planned within a moment, without leaving the Planner or reloading. If the app has already loaded by the time you tap,
+   the Planner is simply full, which is also right.
+3. If you ever see the Planner (or the shopping list, or History) empty again when it should not be, note what you did just before and send it from REPORT A BUG OR AN IDEA.
+
+---
+
 ## Nothing to do: a session checks these
 
 None at the moment.
@@ -84,6 +96,8 @@ None at the moment.
 
 ## Recently done
 
+- **15 Nov:** issues #224 (the test report from Job 2), #237 (a question about adding a step to a recipe, answered on the issue) and #216 (the converter and old BBC Good Food
+  recipes, closed as not planned) were closed at your request. Seen by a session: all three read closed on GitHub that day.
 - **12 Nov:** you reported the INSPIRE ME and shortlist changes (Job 10: one button in the shortlist, ADD TO SHORTLIST, ALL TO SHORTLIST) good in the app. That is a report; a session did not see it.
 - **12 Nov:** you reported A WEEK (Job 9) tested in the app and all looking good. That is a report; a session did not see it. What you noticed while using it is Job 10's change.
 - **11 Nov:** you reported INSPIRE ME (the panel, ONE MEAL and 3 OPTIONS, Job 8) looks good in the app. That is a report; a session did not see it. A WEEK is Job 9.

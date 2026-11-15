@@ -4412,6 +4412,20 @@ const check = (name, pass, detail) => {
   check('the offline start raised no page errors', coldErrors.length === 0, coldErrors.join('; '));
   await cold.close();
 
+  /* A slow start (#240, 15 Nov 2026). The menu works while the library is still coming down, so the Planner can be opened
+     on an empty cache; when the library lands, the screen being looked at has to be drawn again, not only Recipes. */
+  const slow = await browser.newPage();
+  slow.__label = 'slow start';
+  await slow.addInitScript(() => { window.__READ_DELAY__ = 800; });
+  await slow.clock.setFixedTime(FIXTURE_NOW);
+  await slow.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await slow.click('.navlink[data-view="planner"]');
+  const slowDishes = () => slow.locator('#view-planner .day-recipe-title').count();
+  check('the Planner opened while the library is still loading has no dishes yet', (await slowDishes()) === 0);
+  await slow.waitForTimeout(3000);
+  check('and is filled in when the library arrives, without leaving the screen (#240)', (await slowDishes()) > 0);
+  await slow.close();
+
   /* ---- Shopping aisles (PR 6 of the add-recipe plan, 29 Sep 2026) ----
      The household's aisle for a name, set in Settings or from the review, one row per write, and
      applied after the key is final: a row moves aisle and keeps its key and its tick. And the app must

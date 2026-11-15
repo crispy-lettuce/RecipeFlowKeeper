@@ -13,9 +13,10 @@ metadata, counts and the Edge Function versions; no household rows). It carries 
 
 - **The app is live and in daily use.** `main` is production: GitHub Pages serves it and every merge deploys. App version
   `2026-11-01.2` (`APP_VERSION`, `index.html`), core `2026-11-01.2` (`KITCHEN_CORE_VERSION`, `core.js`): read from `main`, not from the running app.
-- **Open work on GitHub:** no open pull requests; five open issues: #224 (the test report Job 2 asked the household to close), #223 (an idea sent from the app: a way to see
-  the Planner's previous days), #216 (the converter and old BBC Good Food recipes), #200 (view styles: its three asks are built, see §3) and #199 (names: the on-screen name is
-  done, the repository rename is not). #198 and #221 were closed on 31 Oct, #196 on 25 Oct and #197 on 26 Oct. #100 (a preview site) was closed.
+- **Open work on GitHub** (read 15 Nov 2026): six open issues. #240 (the Planner empty when opened while the library is still loading: fixed in app version 2026-11-15.1,
+  awaiting Job 13), #241 (things to buy that no recipe asks for: planned, `docs/PLAN-SHOPPING-EXTRAS.md`, not built), #234 (parked on purpose), #223 (the Planner's previous
+  days: built, awaiting Job 7), #200 (view styles: its three asks are built, see §3) and #199 (names: the on-screen name is done, the repository rename is not). #224, #237 and
+  #216 were closed on 15 Nov (#216 as not planned), #198 and #221 on 31 Oct, #196 on 25 Oct and #197 on 26 Oct. #100 (a preview site) was closed.
 - **Tablet checks:** the household reported every job on `docs/HOUSEHOLD-JOBS.md` complete on 1 Nov (sign-in, REPORT A BUG OR AN IDEA, COOK AHEAD, READ BY CHAT); that is a report,
   and what a session saw is recorded under "Recently done" there. Not yet reported on a device: the Modernist default, the Recipes grid and hiding the menu on every screen
   (#199, #200, both still open).
@@ -55,14 +56,16 @@ READ BY CHAT.
    that is a report, not something a session saw, except that the family household's confirmed converter version read `2026-10-25.1` in the database that day. The plan
    was closed and deleted on 25 Oct: it is at commit `9851f20` (`git show 9851f20:docs/PLAN-RUN-SHEET.md`), which is what the code comments citing its sections mean.
    The timers rehearsal lives on as a standing check, `docs/TEST-PLAN.md` section H.
-2. **Open issues** (1 Nov 2026). **#223** was sent from the app's own form: a way to reach the Planner's previous days, since the Planner shows 14 days from today. It is built (1 Nov 2026: PREVIOUS 3 DAYS,
-   `docs/SPEC.md` §5.5) and awaits the household's tablet check, Job 7; the household closes the issue once seen. **#224** is the test report from Job 2; the household closes it. **#216**, the converter and old BBC Good Food recipes, has no work on it in the
-   repository. **#200** is built in #218 and #219 (Modernist the default, the grid fitting its width, the menu hideable on every screen) and the issue is left open for the household
+2. **Open issues** (#223, #200 and #199 as read on 1 Nov 2026; the rest on 15 Nov). **#240**, sent from the app on 15 Nov: the Planner showed fourteen empty days when it was
+   opened while the library was still loading, and stayed so until left and come back to. The first load now redraws the screen being looked at (app version 2026-11-15.1); it awaits
+   Job 13. A refresh on coming back to the tab still redraws only Recipes, as before. **#241**, also 15 Nov: things to buy that no recipe asks for, on the shopping list. It has a plan,
+   `docs/PLAN-SHOPPING-EXTRAS.md`, and six questions for the household in its §6; nothing is built. **#223** was sent from the app's own form: a way to reach the Planner's previous days, since the Planner shows 14 days from today. It is built (1 Nov 2026: PREVIOUS 3 DAYS,
+   `docs/SPEC.md` §5.5) and awaits the household's tablet check, Job 7; the household closes the issue once seen. **#224** (the test report from Job 2), **#237** (a question, answered on the issue) and **#216** (the converter and old BBC Good Food recipes, as not planned) were closed on 15 Nov at the household's request. **#200** is built in #218 and #219 (Modernist the default, the grid fitting its width, the menu hideable on every screen) and the issue is left open for the household
    to close once it is seen on the tablet. **#199**: the app is called "Recipe Wrangler" on screen; renaming the repository is not started and waits on the household's answers.
    **#198** (reporting a bug or idea, Settings → HELP → REPORT A BUG OR AN IDEA, `docs/SPEC.md` §5.9) and **#221** (COOK AHEAD on the Planner, §5.5) are built and were closed on
    31 Oct; the plan that covered both was deleted with the build: `git show 40e461d:docs/PLAN-COOK-AHEAD-AND-REPORTS.md`. #100, a preview site, was closed; its reasoning is at
    `git show 67b552e:docs/PLAN-PREVIEW-SITE.md`.
-3. **Household jobs** are in `docs/HOUSEHOLD-JOBS.md`: one waiting (1 Nov 2026), Job 7, the Planner's previous days (#223).
+3. **Household jobs** are in `docs/HOUSEHOLD-JOBS.md`: four waiting (15 Nov 2026): Jobs 7, 11, 12 and 13.
 4. **Checking many recipes against their sources at once** (`docs/PLAN-BULK-VALIDATE.md`) is built: IN OTHER NOW (#225), CHECK ALL (#227), READ BY CHAT (#228) and the comparison fix with
    OPEN carrying the list (#229). The household worked the library through it and reported it complete on 1 Nov. Two things in the plan are not built, and the plan stays until
    they are built or moved to issues: reading a page's servings for a recipe that has none (it needs an Edge Function change the household deploys, and a write to the recipe's
