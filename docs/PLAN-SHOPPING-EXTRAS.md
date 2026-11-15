@@ -1,7 +1,7 @@
 # Plan: things to buy that no recipe asks for (issue #241)
 
 A working file with an end (`CLAUDE.md`, "How the documents are kept"). Written 15 Nov 2026 from issue #241, sent from the app
-that day. The household answered its questions the same day (§6). **Slice 1 is built** (app version 2026-11-15.2) and waits on the household: the table (`docs/migrations/add-shopping-extras.md`) and Job 14. Slices 2 and 3 are not built.
+that day. The household answered its questions the same day (§6). **Slice 1 is built** (app version 2026-11-15.2) and its table is applied (15 Nov 2026, `docs/migrations/add-shopping-extras.md`); it waits on Job 14. Slices 2 and 3 are not built.
 
 ## 1. What is asked
 

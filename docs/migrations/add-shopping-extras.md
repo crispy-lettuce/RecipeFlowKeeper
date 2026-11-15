@@ -6,7 +6,9 @@ Shopping screen with **ADD AN ITEM**.
 *(A markdown page rather than a `.sql` file because `.gitignore` excludes `*.sql`, on purpose: nothing that
 looks like a data dump may be committed to this public repo. It carries DDL only and no data.)*
 
-**Not applied yet.** Read-only on 15 Nov 2026: `to_regclass('public.shopping_extras')` was null on the live database.
+**Applied, 15 Nov 2026,** by the household from the SQL editor. Checked read-only at 20:14 UTC: the eight columns with their defaults, RLS on, the four `TO authenticated`
+policies on `private.household_ids_for_user()`, the primary key, the foreign key to `households` with `ON DELETE CASCADE`, the index on `household_id`, no `anon` grant, and
+no rows. Earlier the same day `to_regclass('public.shopping_extras')` was null.
 
 ## Who and when
 
