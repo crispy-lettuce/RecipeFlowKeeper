@@ -47,7 +47,7 @@ nothing about how recipe ingredients are named, keyed or ticked changes.
 ## 4. The table
 
 One new table, `shopping_extras`, modelled on `aisle_overrides` (same foreign key, same four `TO authenticated` policies, the
-`anon` revoke). The SQL goes in `docs/migrations/add-shopping-extras.md` with slice 1, **for the household to apply before the
+`anon` revoke). The SQL goes in a new page under `docs/migrations/` with slice 1, **for the household to apply before the
 PR is merged**. A session never runs it.
 
 | Column | What it holds |
