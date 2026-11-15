@@ -1,4 +1,6 @@
 [
+  { "version": "2026-11-15.1", "date": "2026-11-15", "issues": [240],
+    "changes": ["Fixed: opening the Planner, the shopping list or History while the app was still loading your library (a slow connection, just after opening the app) showed it empty, and it stayed empty until you left the screen and came back or reloaded. The screen you are on is now filled in as soon as the library arrives."] },
   { "version": "2026-11-12.3", "date": "2026-11-12", "issues": [],
     "changes": ["New: INSPIRE ME's A WEEK has a third choice, FUTURE WEEK, beside THIS WEEK and NEXT WEEK. It plans a fresh week for the shortlist and does not look at the Planner: a dish already planned can come up, and nothing is drawn on the days. The dishes are listed in the panel, each with SWAP and \u00d7, and ALL TO SHORTLIST puts them on the shortlist, where you plan them as usual. It still leaves out anything already on the shortlist or cooked in the last two weeks, and keeps your AT LEAST counts and one dish of each style, but does not mind the same protein twice in a row, since the shortlist has no order. On a fresh week, \u00d7 drops that dish and ANOTHER WEEK draws a whole week again."] },
   { "version": "2026-11-12.2", "date": "2026-11-12", "issues": [],

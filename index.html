@@ -1971,7 +1971,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-11-12.3">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-11-15.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2821,7 +2821,7 @@ const EXPECTED_CORE_VERSION = '2026-11-12.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-11-12.3';
+const APP_VERSION = '2026-11-15.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -14708,6 +14708,14 @@ async function startApp(){
   purgeOldFormatTicks();
   updateSidebarCounts();
   renderHome();
+  /* The menu works while the library is still coming down, so on a slow start someone is already on another screen, drawn
+     from an empty cache: the Planner showed fourteen empty days and stayed that way until it was left and come back to
+     (#240, 15 Nov 2026). Whichever screen is showing is drawn again from what arrived. Only here, at the first load: a
+     refresh on coming back to the tab still leaves the screen alone, as it may have something half typed. */
+  if(state.view === 'planner') renderPlanner();
+  else if(state.view === 'shopping') renderShopping();
+  else if(state.view === 'history') renderHistory();
+  else if(state.view === 'settings') renderSettings();
   renderConverterReminder();
   /* Apart from hydrate, so nothing about sharing can sign anyone out; it redraws what it changes when it lands. */
   loadSharing();
