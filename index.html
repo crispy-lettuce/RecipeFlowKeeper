@@ -1186,6 +1186,19 @@ function loadArchivoFont(){
   .shop-extra-remove{ flex:none; background:none; border:none; cursor:pointer; color:var(--ink-faint); font-size:22px; line-height:1;
     min-width:44px; min-height:44px; }
   .shop-extra-remove:hover{ color:var(--ink); }
+  /* Slice 2: REGULAR on an extra's row keeps it under REGULARS, to be tapped back onto the list another week; the names offered
+     under the name box as you type are the dictionary's and the regulars'. */
+  .shop-extra-regular{ flex:none; align-self:center; background:none; border:1px solid var(--line); cursor:pointer; color:var(--ink-faint);
+    font:inherit; font-size:12px; letter-spacing:.04em; font-weight:500; padding:4px 8px; min-height:32px; }
+  .shop-extra-regular.on{ color:var(--plum); border-color:var(--plum); }
+  .shop-add-suggest{ flex:1 1 100%; display:flex; flex-wrap:wrap; gap:6px 10px; }
+  .shop-add-suggest:empty{ display:none; }
+  .shop-add-suggest button, .shop-regulars button{ background:none; border:1px solid var(--line); cursor:pointer; color:var(--ink); font:inherit; font-size:14px; padding:6px 10px; min-height:36px; }
+  .shop-regulars{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; margin-bottom:20px; font-size:14px; color:var(--ink-soft); }
+  .shop-regulars[hidden]{ display:none; }
+  .shop-regular{ display:inline-flex; align-items:stretch; }
+  .shop-regular .shop-regular-on{ border:1px solid var(--line); padding:6px 10px; min-height:36px; display:inline-flex; align-items:center; color:var(--ink-faint); }
+  .shop-regular .shop-regular-remove{ border-left:none; color:var(--ink-faint); min-width:36px; }
   .shop-tools{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:0 4px 8px 34px;
     font-size:14px; color:var(--ink-soft); }
   .shop-tools button{ background:none; border:none; cursor:pointer; padding:0; color:var(--plum);
@@ -1925,7 +1938,7 @@ function loadArchivoFont(){
     }
     .tablewrap table{ page-break-inside:auto; }
     .tablewrap tr, .shop-item, .shop-category{ page-break-inside:avoid; }
-    .shop-tools, .shop-add, .shop-extra-remove{ display:none !important; }
+    .shop-tools, .shop-add, .shop-regulars, .shop-extra-remove, .shop-extra-regular{ display:none !important; }
     /* Ticked means "already have it": the list taken to the shops leaves it off (#94, 13 Oct), as the PNG does. */
     .shop-row.checked, .shop-category.all-checked{ display:none !important; }
     @page{ size:A4; margin:14mm; }
@@ -1984,7 +1997,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-11-15.2">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-11-15.3">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2228,7 +2241,10 @@ function loadArchivoFont(){
           <input type="text" id="shopAddAmount" maxlength="40" placeholder="How much (optional)" aria-label="How much, optional">
           <select class="sort" id="shopAddAisle" aria-label="Aisle for what you are adding"></select>
           <button class="btn" type="submit" id="shopAddBtn">ADD AN ITEM</button>
+          <button class="btn" type="button" id="shopRegularsBtn" aria-expanded="false" aria-controls="shopRegulars">REGULARS</button>
+          <div class="shop-add-suggest" id="shopAddSuggest" aria-label="Names that match what you are typing"></div>
         </form>
+        <div class="shop-regulars" id="shopRegulars" hidden></div>
         <div id="shopBody" class="shop-body"></div>
       </div>
     </section>
@@ -2840,7 +2856,7 @@ const EXPECTED_CORE_VERSION = '2026-11-12.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-11-15.2';
+const APP_VERSION = '2026-11-15.3';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -5033,18 +5049,54 @@ function extraFromRow(row){
   const name = String((row && row.name) || '').trim();
   if(!row || !row.id || !name) return null;
   return { id: row.id, name, aisle: EXTRA_AISLE_CHOICES.includes(row.aisle) ? row.aisle : 'Other',
-    amount: String(row.amount || '').trim(), tickedAt: row.ticked_at || row.tickedAt || null };
+    amount: String(row.amount || '').trim(), tickedAt: row.ticked_at || row.tickedAt || null, regular: !!row.regular };
 }
-function extraToRow(x){ return { id: x.id, household_id: HOUSEHOLD_ID, name: x.name, aisle: x.aisle, amount: x.amount || null, ticked_at: x.tickedAt || null }; }
-function addShoppingExtra(name, aisle, amount){
-  const entry = extraFromRow({ id: uid(), name, aisle, amount });
-  if(!entry || !shoppingExtrasAvailable) return false;
-  cache.shoppingExtras = loadShoppingExtras().concat([entry]);
-  const row = extraToRow(entry);
+function extraToRow(x){ return { id: x.id, household_id: HOUSEHOLD_ID, name: x.name, aisle: x.aisle, amount: x.amount || null, ticked_at: x.tickedAt || null, regular: !!x.regular }; }
+/* REGULARS (slice 2, 15 Nov 2026). A regular is a row of its own with `regular` true: a note of something bought most weeks,
+   never drawn on the list and never ticked. Tapping it under REGULARS adds an ordinary extra with its name, aisle and amount,
+   which is ticked and cleared like any other while the regular stays where it is. Two rows, not one row with a state, because
+   the table has no column for "off the list for now", and so that every write is still one row. An extra and a regular are
+   the same thing when their names match, whatever the capitals. */
+function listExtras(){ return loadShoppingExtras().filter(x=> !x.regular); }
+function loadRegulars(){ return loadShoppingExtras().filter(x=> x.regular).sort((a, b)=> a.name.localeCompare(b.name)); }
+function extraNameKey(name){ return String(name || '').trim().toLowerCase(); }
+function regularFor(name){ const k = extraNameKey(name); return loadShoppingExtras().find(x=> x.regular && extraNameKey(x.name) === k) || null; }
+/* One write for one or several: ADD ALL under REGULARS sends its rows together. */
+function addShoppingExtras(list){
+  if(!shoppingExtrasAvailable) return false;
+  const entries = list.map(x=> extraFromRow({ id: uid(), name: x.name, aisle: x.aisle, amount: x.amount, regular: !!x.regular })).filter(Boolean);
+  if(!entries.length) return false;
+  cache.shoppingExtras = loadShoppingExtras().concat(entries);
+  const rows = entries.map(extraToRow);
   return queueWrite('shopping list', async ()=>{
-    const { error } = await sb.from('shopping_extras').upsert([row], { onConflict: 'id' });
+    const { error } = await sb.from('shopping_extras').upsert(rows, { onConflict: 'id' });
     if(error) throw error;
-  }, { key: 'shopping_extras:' + entry.id });
+  }, entries.length === 1 ? { key: 'shopping_extras:' + entries[0].id } : undefined);
+}
+function addShoppingExtra(name, aisle, amount){ return addShoppingExtras([{ name, aisle, amount }]); }
+/* REGULAR on a row: on keeps a regular of that name (once), off removes it. The row on the list is not touched either way. */
+function toggleRegularFor(id){
+  const x = loadShoppingExtras().find(e=> e.id === id);
+  if(!x) return false;
+  const kept = regularFor(x.name);
+  return kept ? removeShoppingExtras([kept.id]) : addShoppingExtras([{ name: x.name, aisle: x.aisle, amount: x.amount, regular: true }]);
+}
+/* What the name box offers as you type: the regulars first (theirs is the household's own aisle and amount), then the
+   dictionary's names with the aisle the list would give them, the household's own aisle for a name winning as it does on
+   the list. Read only: nothing here names or keys a recipe's ingredient. */
+function extraSuggestions(typed){
+  const q = extraNameKey(typed);
+  if(q.length < 2) return [];
+  const seen = new Set(), out = [];
+  const offer = (name, aisle, amount, regular)=>{
+    const k = extraNameKey(name);
+    if(!k.includes(q) || seen.has(k)) return;
+    seen.add(k);
+    out.push({ name, aisle, amount: amount || '', regular: !!regular, starts: k.startsWith(q) });
+  };
+  loadRegulars().forEach(x=> offer(x.name, x.aisle, x.amount, true));
+  INGREDIENT_DICTIONARY.forEach(row=> offer(row.name.charAt(0).toUpperCase() + row.name.slice(1), applyAisleOverride(shoppingKeyForName(row.name)) || row.aisle));
+  return out.sort((a, b)=> (b.regular - a.regular) || (b.starts - a.starts) || a.name.localeCompare(b.name)).slice(0, 8);
 }
 /* The tick is this one column of this one row, so a tick made here cannot undo a name or an aisle set on another device. */
 function toggleShoppingExtraTick(id){
@@ -5075,7 +5127,7 @@ function replaceShoppingExtras(list){
 }
 /* The extras as rows for the Shopping screen, by aisle. Read only, like everything the list is drawn from. */
 function shoppingExtraRows(){
-  return loadShoppingExtras().map(x=> ({ extra: true, id: x.id, key: 'extra:' + x.id, name: x.name, amount: x.amount, category: x.aisle, tickedAt: x.tickedAt }));
+  return listExtras().map(x=> ({ extra: true, id: x.id, key: 'extra:' + x.id, name: x.name, amount: x.amount, category: x.aisle, tickedAt: x.tickedAt }));
 }
 /* ---- Cooking notes (R4, docs/PLAN-COOKING-NOTES.md, agreed "as suggested" 30 Sep 2026) ----
    A running log per recipe of how it went: "needed 10 min longer in our oven". One row per note in
@@ -6561,7 +6613,7 @@ function updateSidebarCounts(){
 
   const thisWeek = groupDaysByWeek(dayList())[0] || [];
   /* With the extras (#241), which are on every week's list. Counted here, not in buildShoppingList, which is the recipes' list. */
-  setNavCount('navShopping', 'SHOPPING', buildShoppingList(thisWeek).totalItems + loadShoppingExtras().length);
+  setNavCount('navShopping', 'SHOPPING', buildShoppingList(thisWeek).totalItems + listExtras().length);
 }
 
 /* =====================================================================
@@ -9748,6 +9800,26 @@ function renderShopping(){
   const totalItems = built.totalItems + extras.length;
   const addForm = document.getElementById('shopAddForm');
   addForm.hidden = !shoppingExtrasAvailable || !!one;
+  /* REGULARS: each regular is a button that puts it on the list, or says it is on already (an extra of that name still to
+     buy), with a × that forgets it. ADD ALL when two or more are off the list. */
+  const regulars = one ? [] : loadRegulars();
+  const onList = new Set(extras.filter(x=> !x.tickedAt).map(x=> extraNameKey(x.name)));
+  const regBtn = document.getElementById('shopRegularsBtn'), regBox = document.getElementById('shopRegulars');
+  regBtn.textContent = regulars.length ? `REGULARS · ${regulars.length}` : 'REGULARS';
+  regBtn.setAttribute('aria-expanded', String(!!state.shoppingRegularsOpen));
+  regBox.hidden = addForm.hidden || !state.shoppingRegularsOpen;
+  if(!regBox.hidden){
+    const off = regulars.filter(x=> !onList.has(extraNameKey(x.name)));
+    regBox.innerHTML = !regulars.length
+      ? `<span>Nothing here yet. Press REGULAR on something you have added and it is kept here, to put back on the list with one tap.</span>`
+      : regulars.map(x=>{
+          const label = (x.amount ? x.amount + ' ' : '') + x.name;
+          return `<span class="shop-regular">${onList.has(extraNameKey(x.name))
+            ? `<span class="shop-regular-on">✓ ${escapeHtml(label)} · ON THE LIST</span>`
+            : `<button type="button" data-regular-add="${escapeHtml(x.id)}" title="Put this on the list, in ${escapeHtml(x.aisle)}">+ ${escapeHtml(label)}</button>`
+          }<button type="button" class="shop-regular-remove" data-regular-remove="${escapeHtml(x.id)}" aria-label="Forget ${escapeHtml(x.name)} as a regular">×</button></span>`;
+        }).join('') + (off.length >= 2 ? `<button type="button" class="btn" data-regular-all>ADD ALL</button>` : '');
+  }
 
   /* Hiding ticked items can empty a category out; drop the heading too
      rather than leaving a title with nothing under it. */
@@ -9834,6 +9906,7 @@ function renderShopping(){
           <span class="shop-item-recipes shop-added" title="You added this: no recipe asked for it">ADDED</span>
         </span>
       </label>
+      <button type="button" class="shop-extra-regular${regularFor(it.name) ? ' on' : ''}" data-extra-regular="${escapeHtml(it.id)}" aria-pressed="${regularFor(it.name) ? 'true' : 'false'}" title="${regularFor(it.name) ? 'Kept under REGULARS. Tap to stop keeping it' : 'Keep this under REGULARS, to add again another week with one tap'}">${regularFor(it.name) ? '✓ ' : ''}REGULAR</button>
       <button type="button" class="shop-extra-remove" data-extra-remove="${escapeHtml(it.id)}" aria-label="Take ${escapeHtml(it.name)} off the list">×</button>
     </div>`;
       }
@@ -9997,7 +10070,7 @@ function initShoppingListeners(){
     const keys = ticksInMode(all[weekStart], body.dataset.keyPrefix);
     /* A ticked extra is bought and done with, so CLEAR TICKS takes it off the list rather than unticking it (#241, decided
        15 Nov 2026), and says so before it does. */
-    const done = loadShoppingExtras().filter(x=> x.tickedAt).map(x=> x.id);
+    const done = listExtras().filter(x=> x.tickedAt).map(x=> x.id);
     if(!keys.length && !done.length) return;
     const ask = (keys.length ? `Untick all ${keys.length} item${keys.length===1?'':'s'} on this list?` : '')
       + (done.length ? `${keys.length ? ' ' : ''}The ${done.length} ticked item${done.length===1?'':'s'} you added will be taken off the list.` : '');
@@ -10029,6 +10102,12 @@ function initShoppingListeners(){
     const cancelBtn = e.target.closest('.shop-merge-cancel');
     const aisleUndoBtn = e.target.closest('[data-shop-aisle-undo]');
     const extraRemove = e.target.closest('[data-extra-remove]');
+    const extraRegular = e.target.closest('[data-extra-regular]');
+    if(extraRegular){
+      toggleRegularFor(extraRegular.dataset.extraRegular);
+      renderShopping();
+      return;
+    }
     if(extraRemove){
       removeShoppingExtras([extraRemove.dataset.extraRemove]);
       updateSidebarCounts();
@@ -10146,11 +10225,48 @@ function initShoppingListeners(){
     e.preventDefault();
     const nameEl = document.getElementById('shopAddName'), amountEl = document.getElementById('shopAddAmount'), aisleEl = document.getElementById('shopAddAisle');
     if(!nameEl.value.trim()){ nameEl.focus(); return; }
-    if(addShoppingExtra(nameEl.value, aisleEl.value || 'Other', amountEl.value) === false) return;
-    nameEl.value = ''; amountEl.value = '';
+    /* No aisle chosen: a name the app knows exactly (a regular, or the dictionary's own) goes where that says; anything else, Other. */
+    const known = extraSuggestions(nameEl.value).find(x=> extraNameKey(x.name) === extraNameKey(nameEl.value));
+    if(addShoppingExtra(nameEl.value, aisleEl.value || (known ? known.aisle : 'Other'), amountEl.value) === false) return;
+    nameEl.value = ''; amountEl.value = ''; aisleEl.value = '';
+    document.getElementById('shopAddSuggest').innerHTML = '';
     updateSidebarCounts();
     renderShopping();
     nameEl.focus();
+  });
+
+  /* The names offered as you type. Picking one fills the name and its aisle (and a regular's amount); nothing is added until
+     ADD AN ITEM, so a slip of the finger costs nothing. */
+  document.getElementById('shopAddName').addEventListener('input', e=>{
+    document.getElementById('shopAddSuggest').innerHTML = extraSuggestions(e.target.value).map(x=>
+      `<button type="button" data-suggest-name="${escapeHtml(x.name)}" data-suggest-aisle="${escapeHtml(x.aisle)}" data-suggest-amount="${escapeHtml(x.amount)}">${escapeHtml(x.name)}${x.regular ? ' · REGULAR' : ''}</button>`).join('');
+  });
+  document.getElementById('shopAddSuggest').addEventListener('click', e=>{
+    const pick = e.target.closest('[data-suggest-name]');
+    if(!pick) return;
+    document.getElementById('shopAddName').value = pick.dataset.suggestName;
+    document.getElementById('shopAddAisle').value = EXTRA_AISLE_CHOICES.includes(pick.dataset.suggestAisle) ? pick.dataset.suggestAisle : '';
+    if(pick.dataset.suggestAmount) document.getElementById('shopAddAmount').value = pick.dataset.suggestAmount;
+    document.getElementById('shopAddSuggest').innerHTML = '';
+    document.getElementById('shopAddAmount').focus();
+  });
+  document.getElementById('shopRegularsBtn').addEventListener('click', ()=>{
+    state.shoppingRegularsOpen = !state.shoppingRegularsOpen;
+    renderShopping();
+  });
+  document.getElementById('shopRegulars').addEventListener('click', e=>{
+    const add = e.target.closest('[data-regular-add]'), forget = e.target.closest('[data-regular-remove]'), all = e.target.closest('[data-regular-all]');
+    const onList = new Set(listExtras().filter(x=> !x.tickedAt).map(x=> extraNameKey(x.name)));
+    if(add){
+      const x = loadRegulars().find(r=> r.id === add.dataset.regularAdd);
+      if(x && !onList.has(extraNameKey(x.name))) addShoppingExtras([{ name: x.name, aisle: x.aisle, amount: x.amount }]);
+    } else if(forget){
+      removeShoppingExtras([forget.dataset.regularRemove]);
+    } else if(all){
+      addShoppingExtras(loadRegulars().filter(x=> !onList.has(extraNameKey(x.name))).map(x=> ({ name: x.name, aisle: x.aisle, amount: x.amount })));
+    } else return;
+    updateSidebarCounts();
+    renderShopping();
   });
 
   document.getElementById('shopExportBtn').addEventListener('click', ()=>{
@@ -10162,7 +10278,7 @@ function initShoppingListeners(){
     exportNodeAsPng(
       document.querySelector('.shop-wrap'),
       `shopping-list-${labelBit}`,
-      { scrollFixSelectors: ['.shop-wrap'], hideSelectors: ['.shop-head-right', '.shop-tools', '.shop-add', '.shop-extra-remove'], excludeChecked: true }
+      { scrollFixSelectors: ['.shop-wrap'], hideSelectors: ['.shop-head-right', '.shop-tools', '.shop-add', '.shop-regulars', '.shop-extra-remove', '.shop-extra-regular'], excludeChecked: true }
     );
   });
 }

@@ -53,8 +53,8 @@ revoke all on table public.shopping_extras from anon;
   decided they sit side by side (15 Nov 2026).
 - **No CHECK on `aisle`.** The app offers the six food aisles, Household, Health & Toiletries, Pets and Other, and reads any
   other value as Other; a CHECK would need a migration whenever an aisle is added.
-- **`regular` is for slice 2** (things bought most weeks, tapped back onto the list). Nothing reads or writes it yet: the app
-  never names it, so every row is `false`. It is here so slice 2 needs no second migration.
+- **`regular` is for slice 2** (things bought most weeks, tapped back onto the list), built on 15 Nov 2026 after this was applied:
+  a row with it set is a regular, kept under REGULARS and never drawn on the list. Slice 1 never named the column.
 - **`revoke all … from anon`** costs nothing and keeps this table like the others: on 15 Nov the default privileges of
   `postgres` in `public` gave `anon` nothing, and those of `supabase_admin` still did.
 

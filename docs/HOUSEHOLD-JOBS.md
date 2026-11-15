@@ -1,7 +1,7 @@
 # Household job list
 
 The jobs only the household can do: a session can't tap the tablet, decide for you, or deploy for you. **Last brought up to date
-15 Nov 2026**: five jobs are waiting, Job 7 (the Planner's previous days), Job 11 (the tidier Planner in Modernist), Job 12 (INSPIRE ME's FUTURE WEEK), Job 13 (the Planner on a slow start) and Job 14 (adding your own items to the shopping list).
+15 Nov 2026**: six jobs are waiting, Job 7 (the Planner's previous days), Job 11 (the tidier Planner in Modernist), Job 12 (INSPIRE ME's FUTURE WEEK), Job 13 (the Planner on a slow start) Job 14 (adding your own items to the shopping list) and Job 15 (REGULARS and the names offered as you type).
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other households sort
 out their own converter and need no steps here.
@@ -13,7 +13,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-**Five jobs are waiting:** Job 7, the Planner's previous days (#223), Job 11, the tidier Planner in Modernist, Job 12, INSPIRE ME's FUTURE WEEK, Job 13, the Planner on a slow start (#240), and Job 14, adding your own items to the shopping list (#241); a few minutes each on the tablet. Job 14's database step is done; merge its pull request and try it.
+**Six jobs are waiting:** Job 7, the Planner's previous days (#223), Job 11, the tidier Planner in Modernist, Job 12, INSPIRE ME's FUTURE WEEK, Job 13, the Planner on a slow start (#240), Job 14, adding your own items to the shopping list, and Job 15, REGULARS (both #241); a few minutes each on the tablet. Job 14's database step is done; merge its pull request and try it.
 What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
@@ -106,6 +106,25 @@ The database change is done (15 Nov). Do the tablet steps in your own household;
    need to print): the ticked one is left off, the others are there with ADDED, and the adding row and the × are not on the paper.
 9. Press **CLEAR TICKS**. **You should see:** a question that says the ticked item you added will be taken off the list. Say yes: it is gone, not unticked.
 10. Press **×** on the other two. **You should see:** each go at once, and the menu's count back where it started.
+
+If a step does not do what it says, note which one and what you saw.
+
+---
+
+## Job 15: REGULARS, and names offered as you type (issue #241)
+
+No database change and nothing to deploy. Do it after Job 14, in your own household; the last step takes off what it added.
+
+1. **Reload the app** so it is on version 2026-11-15.3. **You should see:** Settings → HELP shows it, and What's new describes REGULARS.
+2. On **SHOPPING**, start typing the name of an ingredient the app knows (two letters are enough). **You should see:** up to eight matching names under the box. Tap one.
+   **You should see:** the name and its aisle filled in, and nothing added yet. Press **ADD AN ITEM**.
+3. Add something for the house with an amount, in HOUSEHOLD. On its row press **REGULAR**. **You should see:** the button read ✓ REGULAR, **REGULARS · 1** beside ADD AN ITEM,
+   and the list and the menu's count unchanged.
+4. Tick that item and press **CLEAR TICKS**. **You should see:** it leave the list. Press **REGULARS**. **You should see:** it there with a + in front, amount and all.
+5. Tap it. **You should see:** it back on the list in HOUSEHOLD with its amount, unticked and marked ADDED, and under REGULARS it now reads ON THE LIST.
+6. Make a second item a regular, clear both off the list as in step 4, and open REGULARS. **You should see:** **ADD ALL**. Press it: both are back on the list.
+7. Start typing the name of one of your regulars in the name box. **You should see:** it offered first, marked REGULAR.
+8. Press **REGULAR** on a row again, and the **×** beside the other under REGULARS. **You should see:** both gone from REGULARS, and the items still on the list. Take them off with ×.
 
 If a step does not do what it says, note which one and what you saw.
 
