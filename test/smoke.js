@@ -12118,6 +12118,102 @@ const check = (name, pass, detail) => {
         && JSON.stringify(xrPrint) === '[false,false,false]', JSON.stringify([xrFile, xrPrint]));
   await xr.close();
 
+  /* ---- Shopping extras, slice 3 (15 Nov 2026): the aisle an added item was given, remembered ----
+     One row per name in shopping_extra_aisles. This page has both tables; the two pages above have only shopping_extras, so
+     every check in them also ran with nothing remembered and nothing written to this table. */
+  const xa = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  xa.__label = 'shopping extra aisles';
+  await xa.addInitScript(() => { window.__STUB_EXTRA__ = { shopping_extras: [], shopping_extra_aisles: [] }; });
+  await xa.clock.setFixedTime(FIXTURE_NOW);
+  await xa.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await xa.waitForTimeout(1200);
+  await xa.click('.navlink[data-view="shopping"]');
+  await xa.waitForTimeout(300);
+  const xaDrain = () => xa.evaluate(async () => { let t; do { t = writeQueue; await t; } while(t !== writeQueue); });
+  const xaMark = () => xa.evaluate(() => window.__WRITES__.length);
+  const xaWrites = mark => xa.evaluate(m => window.__WRITES__.slice(m).filter(w => /^shopping_extra|^aisle_overrides$/.test(w.table))
+    .map(w => w.table + ':' + w.op + ':' + (w.rows || []).map(r => [r.name, r.label || '', r.aisle, !!r.household_id].join('|')).join(';') + ':' + ((w.opts || {}).onConflict || '')), mark);
+  const xaAdd = async (name, aisle) => {
+    await xa.fill('#shopAddName', name); await xa.fill('#shopAddAmount', ''); await xa.selectOption('#shopAddAisle', aisle);
+    await xa.click('#shopAddBtn'); await xa.waitForTimeout(150); await xaDrain();
+  };
+  const xaClear = async name => { await xa.click(`.shop-extra-row:has(.shop-extra[data-name="${name}"]) .shop-extra-remove`); await xa.waitForTimeout(150); await xaDrain(); };
+  const xaAisleOf = name => xa.evaluate(n => { const el = document.querySelector(`.shop-extra[data-name="${n}"]`);
+    return el ? el.closest('.shop-category').querySelector('.shop-category-title').textContent.trim() : null; }, name);
+  const xaNone = await xa.evaluate(() => ({ on: extraAislesAvailable, held: loadExtraAisles().length }));
+  let xaM = await xaMark();
+  await xaAdd('Zq Cat Litter', 'Pets');
+  const xaW1 = await xaWrites(xaM);
+  check('adding an item with an aisle chosen writes the item, and one row remembering that aisle for its name: the key in small letters, the name as typed (#241)',
+        xaNone.on && xaNone.held === 0 && JSON.stringify(xaW1) === JSON.stringify(['shopping_extras:upsert:Zq Cat Litter||Pets|true:id',
+          'shopping_extra_aisles:upsert:zq cat litter|Zq Cat Litter|Pets|true:household_id,name']), JSON.stringify(xaW1));
+  await xaClear('Zq Cat Litter');
+  await xa.fill('#shopAddName', 'zq cat'); await xa.waitForTimeout(100);
+  const xaSug = await xa.evaluate(() => [...document.querySelectorAll('#shopAddSuggest button')].map(b => b.textContent + '>' + b.dataset.suggestAisle));
+  xaM = await xaMark();
+  await xaAdd('zq cat litter', '');
+  const xaW2 = await xaWrites(xaM);
+  check('    with the item gone from the list, its name is offered as it was typed, with its aisle; added again with no aisle chosen it goes there, and nothing more is remembered',
+        JSON.stringify(xaSug) === JSON.stringify(['Zq Cat Litter>Pets']) && (await xaAisleOf('zq cat litter')) === 'PETS'
+        && JSON.stringify(xaW2) === JSON.stringify(['shopping_extras:upsert:zq cat litter||Pets|true:id']), JSON.stringify([xaSug, xaW2]));
+  await xaClear('zq cat litter');
+  xaM = await xaMark();
+  await xaAdd('Zq cat litter', 'Household');
+  const xaW3 = await xaWrites(xaM), xaHeld = await xa.evaluate(() => loadExtraAisles().map(m => [m.name, m.label, m.aisle].join('|')));
+  check('    choosing another aisle for the name replaces what was remembered: still one row for it, upserted on the household and the name',
+        xaW3[1] === 'shopping_extra_aisles:upsert:zq cat litter|Zq cat litter|Household|true:household_id,name' && JSON.stringify(xaHeld) === JSON.stringify(['zq cat litter|Zq cat litter|Household']),
+        JSON.stringify([xaW3, xaHeld]));
+
+  xaM = await xaMark();
+  await xaAdd('Onion', 'Produce');
+  await xaAdd('Zq no aisle', '');
+  await xa.evaluate(() => { toggleRegularFor(listExtras().find(x => x.name === 'Zq no aisle').id); });
+  await xaDrain(); await xaClear('Zq no aisle');
+  await xa.click('#shopRegularsBtn'); await xa.waitForTimeout(100);
+  await xa.click('#shopRegulars [data-regular-add]'); await xa.waitForTimeout(150); await xaDrain();
+  const xaW4 = (await xaWrites(xaM)).filter(w => !/^shopping_extras:/.test(w));
+  check('    nothing is remembered for a name the dictionary already puts in that aisle, for an item added with no aisle chosen, or for a tap under REGULARS; and no aisle override is ever written',
+        xaW4.length === 0, JSON.stringify(xaW4));
+  xaM = await xaMark();
+  await xaAdd('onion', 'Frozen');
+  const xaW5 = (await xaWrites(xaM)).filter(w => !/^shopping_extras:/.test(w));
+  const xaOnion = await xa.evaluate(() => ({ sug: extraSuggestions('onion').map(x => x.name + '>' + x.aisle)[0], recipeRow: (() => { const el = [...document.querySelectorAll('.shop-item:not(.shop-extra)')].find(e => e.dataset.name === 'Onion');
+    return el.closest('.shop-category').querySelector('.shop-category-title').textContent.trim(); })() }));
+  check('    a dictionary name given another aisle is remembered there and offered there, and the recipe\'s row of that name stays in its own aisle',
+        JSON.stringify(xaW5) === JSON.stringify(['shopping_extra_aisles:upsert:onion|onion|Frozen|true:household_id,name']) && xaOnion.sug === 'onion>Frozen' && xaOnion.recipeRow === 'PRODUCE',
+        JSON.stringify([xaW5, xaOnion]));
+
+  const xaFile = await xa.evaluate(() => JSON.stringify(exportPayload()));
+  const xaOut = (JSON.parse(xaFile).shoppingExtraAisles || []).map(m => [m.name, m.label, m.aisle].join('|')).sort();
+  xaM = await xaMark();
+  xa.once('dialog', d => d.accept());
+  await xa.setInputFiles('#importFileInput', { name: 'kitchen-backup-xa.json', mimeType: 'application/json', buffer: Buffer.from(xaFile) });
+  await xa.waitForTimeout(1200); await xaDrain();
+  const xaIn = (await xaWrites(xaM)).filter(w => /^shopping_extra_aisles:upsert/.test(w));
+  check('    EXPORT DATA carries the remembered aisles and IMPORT DATA puts them back, upserted on the household and the name',
+        JSON.stringify(xaOut) === JSON.stringify(['onion|onion|Frozen', 'zq cat litter|Zq cat litter|Household']) && xaIn.length === 1 && /:household_id,name$/.test(xaIn[0])
+        && xaIn[0].includes('onion|onion|Frozen|true') && xaIn[0].includes('zq cat litter|Zq cat litter|Household|true'), JSON.stringify([xaOut, xaIn]));
+  const xaOdd = await xa.evaluate(() => [extraAisleFromRow({ id: 'a', name: ' Zq Odd ', label: '', aisle: 'Pets' }), extraAisleFromRow({ id: 'b', name: 'zq x', aisle: 'Garden' }), extraAisleFromRow({ id: 'c', name: ' ', aisle: 'Pets' })]);
+  check('    a remembered row with an aisle the app does not have, or no name, is left out; one with no label shows its key',
+        xaOdd[0].name === 'zq odd' && xaOdd[0].label === 'zq odd' && xaOdd[1] === null && xaOdd[2] === null, JSON.stringify(xaOdd));
+  await xa.close();
+
+  /* With the extras table there and this one not (slice 2 as it shipped), an add remembers nothing and writes nothing here. */
+  const xaOld = await (async () => {
+    const p = await browser.newPage(); p.__label = 'extras without the aisles table';
+    await p.addInitScript(() => { window.__STUB_EXTRA__ = { shopping_extras: [] }; });
+    await p.clock.setFixedTime(FIXTURE_NOW);
+    await p.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+    await p.waitForTimeout(1200);
+    await p.click('.navlink[data-view="shopping"]');
+    await p.fill('#shopAddName', 'Zq Cat Litter'); await p.selectOption('#shopAddAisle', 'Pets'); await p.click('#shopAddBtn'); await p.waitForTimeout(200);
+    const out = await p.evaluate(() => ({ on: extraAislesAvailable, tables: window.__WRITES__.filter(w => /^shopping_extra/.test(w.table)).map(w => w.table),
+      exported: 'shoppingExtraAisles' in exportPayload(), row: !!document.querySelector('.shop-extra[data-name="Zq Cat Litter"]') }));
+    await p.close(); return out;
+  })();
+  check('    without the shopping_extra_aisles table an item is still added, and nothing is remembered, written there or exported',
+        !xaOld.on && JSON.stringify(xaOld.tables) === JSON.stringify(['shopping_extras']) && !xaOld.exported && xaOld.row, JSON.stringify(xaOld));
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:

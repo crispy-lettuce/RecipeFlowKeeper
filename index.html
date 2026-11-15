@@ -1997,7 +1997,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-11-15.3">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-11-15.4">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2856,7 +2856,7 @@ const EXPECTED_CORE_VERSION = '2026-11-12.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-11-15.3';
+const APP_VERSION = '2026-11-15.4';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -4162,6 +4162,7 @@ const cache = {
   aliases: [],
   aisleOverrides: [],
   shoppingExtras: [],
+  extraAisles: [],
   recipeNotes: [],
   diary: []
 };
@@ -4546,7 +4547,7 @@ async function hydrate(opts){
     throw new Error('This account belongs to more than one household. Ask whoever set it up to take it out of one.');
   const household = memberships[0].household_id;
 
-  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides, recipeNotes, calendarRow, autoColumns, premadeColumn, itemsColumn, cookAheadColumn, extras] = await Promise.all([
+  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides, recipeNotes, calendarRow, autoColumns, premadeColumn, itemsColumn, cookAheadColumn, extras, extraAisles] = await Promise.all([
     sb.from('recipes').select('*'),
     /* Every column, and no recipe_id filter. The filter was here because a
        log could only ever be a cooked recipe; an ad-hoc diary entry (H2) is
@@ -4586,7 +4587,9 @@ async function hydrate(opts){
     sb.from('planner_days').select('cook_ahead').limit(1),
     /* Shopping extras (#241): read apart like aisle_overrides. Until the household applies add-shopping-extras.md the table
        does not exist, which reads as "not yet": the Shopping screen is then as it was, with no form to add to. */
-    sb.from('shopping_extras').select('*')
+    sb.from('shopping_extras').select('*'),
+    /* The aisles remembered for added items (slice 3): read apart for the same reason. Missing, nothing is remembered. */
+    sb.from('shopping_extra_aisles').select('*')
   ]);
   for(const res of [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases]){
     if(res.error) throw res.error;
@@ -4693,6 +4696,9 @@ async function hydrate(opts){
   shoppingExtrasAvailable = !extras.error;
   if(extras.error) console.warn('Shopping extras are unavailable (has add-shopping-extras been applied?)', extras.error);
   cache.shoppingExtras = shoppingExtrasAvailable ? (extras.data || []).map(extraFromRow).filter(Boolean) : [];
+  extraAislesAvailable = shoppingExtrasAvailable && !extraAisles.error;
+  if(extraAisles.error) console.warn('Remembered aisles for added items are unavailable (has add-shopping-extra-aisles been applied?)', extraAisles.error);
+  cache.extraAisles = extraAislesAvailable ? (extraAisles.data || []).map(extraAisleFromRow).filter(Boolean) : [];
   recipeNotesAvailable = !recipeNotes.error;
   if(recipeNotes.error) console.warn('Cooking notes are unavailable', recipeNotes.error);
   cache.recipeNotes = recipeNotesAvailable
@@ -5081,22 +5087,62 @@ function toggleRegularFor(id){
   const kept = regularFor(x.name);
   return kept ? removeShoppingExtras([kept.id]) : addShoppingExtras([{ name: x.name, aisle: x.aisle, amount: x.amount, regular: true }]);
 }
-/* What the name box offers as you type: the regulars first (theirs is the household's own aisle and amount), then the
-   dictionary's names with the aisle the list would give them, the household's own aisle for a name winning as it does on
-   the list. Read only: nothing here names or keys a recipe's ingredient. */
+/* ---- The aisle an added item was given, remembered (slice 3, 15 Nov 2026) ----
+   An item that is not a regular is deleted when it is cleared off the list, and its aisle went with it: the cat litter put
+   under Pets had to be put there again the next time. So the aisle chosen for a name is kept, one row per name in
+   `shopping_extra_aisles`, for every device of the household. `name` is the name's key (extraNameKey), `label` the name as last
+   typed, which is what the name box offers. Written only when someone chose an aisle and added the item, never from a tap
+   under REGULARS, and not when the dictionary already puts that exact name in that aisle. Nothing here touches
+   aisle_overrides: that table moves a recipe's row, and adding tea to the list must not do that by itself. */
+let extraAislesAvailable = false;
+function loadExtraAisles(){ return cache.extraAisles; }
+function extraAisleFromRow(row){
+  const name = extraNameKey(row && row.name), label = String((row && row.label) || '').trim();
+  if(!name || !EXTRA_AISLE_CHOICES.includes(row.aisle)) return null;
+  return { id: row.id || uid(), name, label: label || name, aisle: row.aisle };
+}
+function extraAisleToRow(m){ return { id: m.id, household_id: HOUSEHOLD_ID, name: m.name, label: m.label, aisle: m.aisle }; }
+function rememberedAisle(name){ const k = extraNameKey(name); return loadExtraAisles().find(m=> m.name === k) || null; }
+/* The aisle the dictionary gives this exact name, the household's own aisle for it winning; null for a name it does not have. */
+function dictionaryAisleFor(name){
+  const k = extraNameKey(name), row = INGREDIENT_DICTIONARY.find(r=> r.name === k);
+  return row ? (applyAisleOverride(shoppingKeyForName(row.name)) || row.aisle) : null;
+}
+function rememberExtraAisle(name, aisle){
+  const key = extraNameKey(name), label = String(name || '').trim();
+  if(!extraAislesAvailable || !key || !EXTRA_AISLE_CHOICES.includes(aisle)) return false;
+  const prior = rememberedAisle(key);
+  if(prior ? (prior.aisle === aisle && prior.label === label) : dictionaryAisleFor(key) === aisle) return false;
+  const entry = { id: prior ? prior.id : uid(), name: key, label, aisle };
+  cache.extraAisles = loadExtraAisles().filter(m=> m.name !== key).concat([entry]);
+  const row = extraAisleToRow(entry);
+  return queueWrite('shopping list', async ()=>{
+    const { error } = await sb.from('shopping_extra_aisles').upsert([row], { onConflict: 'household_id,name' });
+    if(error) throw error;
+  }, { key: 'shopping_extra_aisles:' + key });
+}
+/* Whole-table replace. Import only — see pushList. */
+function replaceExtraAisles(list){
+  cache.extraAisles = list;
+  return queueWrite('shopping list', ()=> pushList('shopping_extra_aisles', list.map(extraAisleToRow), 'household_id,name'), { whole: true });
+}
+/* What the name box offers as you type: the regulars first (theirs is the household's own aisle and amount), then the names
+   given an aisle before, then the dictionary's names with the aisle the list would give them, the household's own aisle for a
+   name winning as it does on the list. Read only: nothing here names or keys a recipe's ingredient. */
 function extraSuggestions(typed){
   const q = extraNameKey(typed);
   if(q.length < 2) return [];
   const seen = new Set(), out = [];
-  const offer = (name, aisle, amount, regular)=>{
+  const offer = (name, aisle, amount, regular, own)=>{
     const k = extraNameKey(name);
     if(!k.includes(q) || seen.has(k)) return;
     seen.add(k);
-    out.push({ name, aisle, amount: amount || '', regular: !!regular, starts: k.startsWith(q) });
+    out.push({ name, aisle, amount: amount || '', regular: !!regular, own: !!own, starts: k.startsWith(q) });
   };
   loadRegulars().forEach(x=> offer(x.name, x.aisle, x.amount, true));
+  loadExtraAisles().forEach(m=> offer(m.label, m.aisle, '', false, true));
   INGREDIENT_DICTIONARY.forEach(row=> offer(row.name.charAt(0).toUpperCase() + row.name.slice(1), applyAisleOverride(shoppingKeyForName(row.name)) || row.aisle));
-  return out.sort((a, b)=> (b.regular - a.regular) || (b.starts - a.starts) || a.name.localeCompare(b.name)).slice(0, 8);
+  return out.sort((a, b)=> (b.regular - a.regular) || (b.own - a.own) || (b.starts - a.starts) || a.name.localeCompare(b.name)).slice(0, 8);
 }
 /* The tick is this one column of this one row, so a tick made here cannot undo a name or an aisle set on another device. */
 function toggleShoppingExtraTick(id){
@@ -10225,9 +10271,11 @@ function initShoppingListeners(){
     e.preventDefault();
     const nameEl = document.getElementById('shopAddName'), amountEl = document.getElementById('shopAddAmount'), aisleEl = document.getElementById('shopAddAisle');
     if(!nameEl.value.trim()){ nameEl.focus(); return; }
-    /* No aisle chosen: a name the app knows exactly (a regular, or the dictionary's own) goes where that says; anything else, Other. */
+    /* No aisle chosen: a name the app knows exactly (a regular, one given an aisle before, or the dictionary's own) goes where
+       that says; anything else, Other. An aisle that was chosen is remembered for the name. */
     const known = extraSuggestions(nameEl.value).find(x=> extraNameKey(x.name) === extraNameKey(nameEl.value));
     if(addShoppingExtra(nameEl.value, aisleEl.value || (known ? known.aisle : 'Other'), amountEl.value) === false) return;
+    if(aisleEl.value) rememberExtraAisle(nameEl.value, aisleEl.value);
     nameEl.value = ''; amountEl.value = ''; aisleEl.value = '';
     document.getElementById('shopAddSuggest').innerHTML = '';
     updateSidebarCounts();
@@ -14612,6 +14660,7 @@ function exportPayload(){
     ...(aisleOverridesAvailable ? { aisleOverrides: loadAisleOverrides() } : {}),
     /* Shopping extras (#241), left out while the table is missing for the same reason. */
     ...(shoppingExtrasAvailable ? { shoppingExtras: loadShoppingExtras() } : {}),
+    ...(extraAislesAvailable ? { shoppingExtraAisles: loadExtraAisles() } : {}),
     /* Left out while the notes could not be loaded, for the same reason. */
     ...(recipeNotesAvailable ? { recipeNotes: loadRecipeNotes() } : {}),
     diary: loadDiary()
@@ -14846,6 +14895,11 @@ function importAllData(file){
       const seen = new Set();
       replaceShoppingExtras(data.shoppingExtras.map(x=> extraFromRow({ ...x, id: (x && x.id) || uid() }))
         .filter(x=> x && !seen.has(x.id) && seen.add(x.id)));
+    }
+    if(Array.isArray(data.shoppingExtraAisles) && extraAislesAvailable){
+      const seen = new Set();
+      replaceExtraAisles(data.shoppingExtraAisles.map(m=> extraAisleFromRow({ ...m, id: (m && m.id) || uid() }))
+        .filter(m=> m && !seen.has(m.name) && seen.add(m.name)));
     }
     /* Cooking notes (R4): a backup without them keeps what is here. Only notes on a recipe the file restores
        are kept, since the database refuses a note on a recipe it does not have. Queued after the recipes. */

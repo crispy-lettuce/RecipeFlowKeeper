@@ -153,7 +153,7 @@ editor is **not** recorded there, so the later changes are listed here instead. 
 | `add_cook_ahead` | `add-cook-ahead.md` | by the household; date not recorded (after 30 Oct, when the page was written). Read back on 1 Nov |
 | `add_shopping_extras` | `add-shopping-extras.md` | 15 Nov, by the household. Read back at 20:14 UTC: columns, RLS, four policies, keys, index, no `anon` grant |
 
-(The 13 Sep temporary import function and staging table were created and dropped the same day.) **Waiting to be applied: nothing** (15 Nov 2026). A PR that adds a page lists it here as waiting; whoever applies it moves it into the table.
+(The 13 Sep temporary import function and staging table were created and dropped the same day.) **Waiting to be applied: `add-shopping-extra-aisles.md`** (written 15 Nov 2026 for issue #241, slice 3; `public.shopping_extra_aisles` did not exist on the live database at 21:58 UTC that day, read-only). A PR that adds a page lists it here as waiting; whoever applies it moves it into the table.
 
 ---
 

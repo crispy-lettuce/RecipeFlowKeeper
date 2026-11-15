@@ -1,7 +1,7 @@
 # Household job list
 
 The jobs only the household can do: a session can't tap the tablet, decide for you, or deploy for you. **Last brought up to date
-15 Nov 2026**: six jobs are waiting, Job 7 (the Planner's previous days), Job 11 (the tidier Planner in Modernist), Job 12 (INSPIRE ME's FUTURE WEEK), Job 13 (the Planner on a slow start) Job 14 (adding your own items to the shopping list) and Job 15 (REGULARS and the names offered as you type).
+15 Nov 2026**: seven jobs are waiting, Job 7 (the Planner's previous days), Job 11 (the tidier Planner in Modernist), Job 12 (INSPIRE ME's FUTURE WEEK), Job 13 (the Planner on a slow start) Job 14 (adding your own items to the shopping list) Job 15 (REGULARS and the names offered as you type) and Job 16 (the remembered aisle, which starts with a database step).
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other households sort
 out their own converter and need no steps here.
@@ -13,7 +13,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-**Six jobs are waiting:** Job 7, the Planner's previous days (#223), Job 11, the tidier Planner in Modernist, Job 12, INSPIRE ME's FUTURE WEEK, Job 13, the Planner on a slow start (#240), Job 14, adding your own items to the shopping list, and Job 15, REGULARS (both #241); a few minutes each on the tablet. Job 14's database step is done; merge its pull request and try it.
+**Seven jobs are waiting:** Job 7, the Planner's previous days (#223), Job 11, the tidier Planner in Modernist, Job 12, INSPIRE ME's FUTURE WEEK, Job 13, the Planner on a slow start (#240), Job 14, adding your own items to the shopping list, Job 15, REGULARS, and Job 16, the remembered aisle (all #241); a few minutes each on the tablet. **Job 16 starts at the Supabase dashboard, before its pull request is merged.** Job 14's database step is done; merge its pull request and try it.
 What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
@@ -125,6 +125,26 @@ No database change and nothing to deploy. Do it after Job 14, in your own househ
 6. Make a second item a regular, clear both off the list as in step 4, and open REGULARS. **You should see:** **ADD ALL**. Press it: both are back on the list.
 7. Start typing the name of one of your regulars in the name box. **You should see:** it offered first, marked REGULAR.
 8. Press **REGULAR** on a row again, and the **×** beside the other under REGULARS. **You should see:** both gone from REGULARS, and the items still on the list. Take them off with ×.
+
+If a step does not do what it says, note which one and what you saw.
+
+---
+
+## Job 16: the remembered aisle (issue #241)
+
+**A database change comes first, and before the pull request is merged.** Do the tablet steps after Jobs 14 and 15, in your own household.
+
+1. **Apply the SQL.** In the Supabase dashboard's SQL editor, paste the statement from `docs/migrations/add-shopping-extra-aisles.md` ("The statement") and run it.
+   **You should see:** "Success. No rows returned". Then run the three queries under "After it is applied". **You should see:** the six columns listed there, four policies each
+   for `{authenticated}`, and no row for `anon`. Tell the next session, so `docs/INFRASTRUCTURE.md` can record it.
+2. **Merge the pull request, then reload the app** so it is on version 2026-11-15.4. **You should see:** Settings → HELP shows it, and What's new describes the remembered aisle.
+3. On **SHOPPING**, add something the app would not know, choosing **PETS**. Then take it off with ×.
+4. Start typing its name again. **You should see:** it offered under the box. Do not tap it: finish the name, leave the aisle at **AISLE…** and press **ADD AN ITEM**.
+   **You should see:** it under PETS.
+5. On a second device (a phone), reload and start typing the same name. **You should see:** it offered there too, and tapping it sets the aisle to PETS.
+6. Take it off, add it again choosing **HOUSEHOLD**, take it off, and add it once more with no aisle. **You should see:** it under HOUSEHOLD.
+7. Add an ingredient that is on the list from a recipe, choosing a different aisle from the recipe's row. **You should see:** your item in the aisle you chose, and the recipe's
+   row where it was. Take your items off with ×.
 
 If a step does not do what it says, note which one and what you saw.
 

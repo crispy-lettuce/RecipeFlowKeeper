@@ -286,7 +286,11 @@ Adds up every ingredient the week's planned dishes need, scaled to each day's SE
   when two or more are off the list and **×** to forget one. Nothing joins the list by itself. Names match whatever the capitals. **As you type**, the name box
   offers up to eight matches from two letters on: regulars first, then the dictionary's names with the aisle the list would give them (the household's own aisle
   winning); picking one fills the name, the aisle and a regular's amount and adds nothing. A name the app knows exactly, added with no aisle chosen, takes that
-  aisle. EXPORT DATA and IMPORT DATA carry them. Absent, with the screen as it
+  aisle. **The remembered aisle** (15 Nov 2026): adding an extra with an aisle chosen keeps that aisle for the name in `shopping_extra_aisles`, one row per name
+  for the household (the key in small letters, the name as last typed), unless the dictionary already puts that exact name there; a later choice replaces it. A
+  remembered name is offered as you type, after the regulars and before the dictionary's, and is where the item goes when no aisle is chosen. A tap under
+  REGULARS and an add with no aisle chosen remember nothing. It is never written to `aisle_overrides`, so a recipe's row is not moved. Absent, with extras
+  as before, where that table has not been created. In EXPORT DATA and IMPORT DATA. EXPORT DATA and IMPORT DATA carry them. Absent, with the screen as it
   was, where the `shopping_extras` table has not been created.
 - **POSSIBLE SWAPS** lists the household's saved substitutions.
 - Per-recipe list from the viewer is separate and its ticks stay on the device.
@@ -374,6 +378,7 @@ Each row of a household's data carries `household_id`; row-level security restri
 | `aliases` | Word matches (and "keep apart" decisions) |
 | `aisle_overrides` | The household's aisle for an ingredient |
 | `shopping_extras` | Things to buy that no recipe asks for, each with its aisle, optional amount and own tick |
+| `shopping_extra_aisles` | The aisle last chosen for an added item's name |
 | `ingredient_swaps` | Substitutions with a scaling ratio |
 | `keywords` | The tag vocabulary |
 | `household_settings` | Week start, appearance, calendar toggles and reminder time, converter version confirmed |
