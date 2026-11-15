@@ -1,7 +1,7 @@
 # Plan: things to buy that no recipe asks for (issue #241)
 
 A working file with an end (`CLAUDE.md`, "How the documents are kept"). Written 15 Nov 2026 from issue #241, sent from the app
-that day. **Nothing here is built.** The questions in §6 are the household's to answer before slice 1 starts.
+that day. **Nothing here is built.** The household answered its questions the same day (§6), so slice 1 can start.
 
 ## 1. What is asked
 
@@ -68,33 +68,27 @@ Each is a PR of its own, with its tests, a changelog entry, `help.html`, `docs/S
 `docs/HOUSEHOLD-JOBS.md`.
 
 1. **Add, tick, remove.** The migration page. An ADD AN ITEM row at the top of the Shopping screen: name, aisle, optional
-   amount. The extra appears in its aisle, marked, with its tick and ×. An extra shows on this week, next week and both weeks
+   amount. The extra appears in its aisle with an ADDED mark where a recipe row names its recipes, its tick and ×. The aisles offered are the food
+   aisles, Household, Health & Toiletries, Pets and Other. An extra shows on this week, next week and both weeks
    alike until it is ticked. The sidebar's count includes extras still to buy. Print, PNG, HIDE TICKED, export and import.
 2. **Suggestions and regulars.** The name box offers dictionary names and earlier extras as you type, filling in the aisle. A
    **REGULARS** list: mark an extra as a regular, and it can be put back on the list with one tap (or all of them at once) after
    it has been ticked and cleared.
-3. **Non-food aisles.** The extras' own aisles, in the order the household chooses, and where a name was given an aisle before,
-   the same aisle next time.
+3. **The remembered aisle.** Where a name was given an aisle before, the same aisle next time.
 
-Slice 1 can ship with only the food aisles and Other if the answer to question 2 is not ready; slice 3 then adds the rest.
+The three non-food aisles are decided (§6), so slice 1 offers them from the start; slice 3 is then only the remembered aisle.
 
-## 6. Questions for the household
+## 6. What the household decided (15 Nov 2026)
 
-Each has a recommendation. Nothing is built until these are answered.
-
-1. **How long does an extra stay?** *Recommended:* until it is ticked, on every week's list. Ticked, it stays visible and struck
-   through like any ticked row, and CLEAR TICKS removes it (a regular goes back to the REGULARS list). The alternative is an
-   extra belonging to one week, like the recipe rows; that fits "running low" badly, since the shop may be next week's.
-2. **Which non-food aisles, and in what order?** *Suggested:* Household, Toiletries, Pets, after Frozen and before Other.
-   Should drinks (tea, coffee) simply be Pantry?
-3. **Does an extra with the same name as a recipe row join that row?** *Recommended:* no. It sits beside it in the same aisle as
-   its own line. Joining would mean adding typed words to a measured total, and ticking one would tick the other. A later slice
-   could show them next to each other.
-4. **Is the amount needed at all?** *Recommended:* optional free words, shown before the name, never added up.
-5. **Where is it added from?** *Recommended:* the Shopping screen only, in slice 1. The issue's first case (noticing while
-   cooking) could later have an "add to shopping" on the recipe's ingredient, which is a separate, larger piece.
-6. **Regulars: remembered and tapped back on, or put on every week by themselves?** *Recommended:* tapped back on. A list that
-   fills itself with things already in the cupboard gets ignored.
+1. **An extra stays until it is ticked**, on every week's list. Ticked, it stays visible and struck through like any ticked row,
+   and CLEAR TICKS removes it (a regular goes back to the REGULARS list).
+2. **The non-food aisles are Household, Health & Toiletries, and Pets**, in that order, after Frozen and before Other.
+3. **An extra never joins a recipe row of the same name.** It sits beside it in the same aisle as its own line. **It must be
+   clear at a glance which rows come from recipes and which were added by hand:** a recipe row names its recipes under it, as
+   now; an extra carries an ADDED mark in that place, in both styles, on screen, in print and in the PNG.
+4. **The amount is optional free words**, shown before the name, never added up.
+5. **Extras are added from the Shopping screen only**, to start.
+6. **Regulars are remembered and tapped back on**, never put on the list by themselves.
 
 ## 7. What it must not do
 

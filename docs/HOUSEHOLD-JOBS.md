@@ -1,7 +1,7 @@
 # Household job list
 
 The jobs only the household can do: a session can't tap the tablet, decide for you, or deploy for you. **Last brought up to date
-15 Nov 2026**: four jobs are waiting, Job 7 (the Planner's previous days), Job 11 (the tidier Planner in Modernist), Job 12 (INSPIRE ME's FUTURE WEEK) and Job 13 (the Planner on a slow start), and the questions in `docs/PLAN-SHOPPING-EXTRAS.md` §6 want your answers.
+15 Nov 2026**: four jobs are waiting, Job 7 (the Planner's previous days), Job 11 (the tidier Planner in Modernist), Job 12 (INSPIRE ME's FUTURE WEEK) and Job 13 (the Planner on a slow start).
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other households sort
 out their own converter and need no steps here.
@@ -13,7 +13,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-**Four jobs are waiting:** Job 7, the Planner's previous days (#223), Job 11, the tidier Planner in Modernist, Job 12, INSPIRE ME's FUTURE WEEK, and Job 13, the Planner on a slow start (#240); a few minutes each on the tablet. One thing to decide, which is not a tablet job: the six questions in `docs/PLAN-SHOPPING-EXTRAS.md` §6 (things to buy that no recipe asks for, #241). Nothing of it is built until they are answered.
+**Four jobs are waiting:** Job 7, the Planner's previous days (#223), Job 11, the tidier Planner in Modernist, Job 12, INSPIRE ME's FUTURE WEEK, and Job 13, the Planner on a slow start (#240); a few minutes each on the tablet.
 What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
