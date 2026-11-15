@@ -6,7 +6,9 @@ name on every device of the household, so it is filled in the next time that nam
 *(A markdown page rather than a `.sql` file because `.gitignore` excludes `*.sql`, on purpose: nothing that
 looks like a data dump may be committed to this public repo. It carries DDL only and no data.)*
 
-**Not applied yet.** Read-only on 15 Nov 2026 at 21:58 UTC: `to_regclass('public.shopping_extra_aisles')` was null on the live database.
+**Applied, 15 Nov 2026,** by the household from the SQL editor. Checked read-only at 22:05 UTC: the six columns, RLS on, the four `TO authenticated` policies on
+`private.household_ids_for_user()`, the primary key, the foreign key to `households` with `ON DELETE CASCADE`, unique `(household_id, name)`, no `anon` grant, and no rows.
+At 21:58 UTC the same day `to_regclass('public.shopping_extra_aisles')` was null.
 
 ## Who and when
 

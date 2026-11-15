@@ -1,7 +1,7 @@
 # Household job list
 
 The jobs only the household can do: a session can't tap the tablet, decide for you, or deploy for you. **Last brought up to date
-15 Nov 2026**: seven jobs are waiting, Job 7 (the Planner's previous days), Job 11 (the tidier Planner in Modernist), Job 12 (INSPIRE ME's FUTURE WEEK), Job 13 (the Planner on a slow start) Job 14 (adding your own items to the shopping list) Job 15 (REGULARS and the names offered as you type) and Job 16 (the remembered aisle, which starts with a database step).
+15 Nov 2026**: seven jobs are waiting, Job 7 (the Planner's previous days), Job 11 (the tidier Planner in Modernist), Job 12 (INSPIRE ME's FUTURE WEEK), Job 13 (the Planner on a slow start) Job 14 (adding your own items to the shopping list) Job 15 (REGULARS and the names offered as you type) and Job 16 (the remembered aisle).
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other households sort
 out their own converter and need no steps here.
@@ -13,7 +13,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-**Seven jobs are waiting:** Job 7, the Planner's previous days (#223), Job 11, the tidier Planner in Modernist, Job 12, INSPIRE ME's FUTURE WEEK, Job 13, the Planner on a slow start (#240), Job 14, adding your own items to the shopping list, Job 15, REGULARS, and Job 16, the remembered aisle (all #241); a few minutes each on the tablet. **Job 16 starts at the Supabase dashboard, before its pull request is merged.** Job 14's database step is done; merge its pull request and try it.
+**Seven jobs are waiting:** Job 7, the Planner's previous days (#223), Job 11, the tidier Planner in Modernist, Job 12, INSPIRE ME's FUTURE WEEK, Job 13, the Planner on a slow start (#240), Job 14, adding your own items to the shopping list, Job 15, REGULARS, and Job 16, the remembered aisle (all #241); a few minutes each on the tablet. Job 16's database step is done; merge its pull request and try it. Job 14's database step is done; merge its pull request and try it.
 What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
@@ -132,11 +132,9 @@ If a step does not do what it says, note which one and what you saw.
 
 ## Job 16: the remembered aisle (issue #241)
 
-**A database change comes first, and before the pull request is merged.** Do the tablet steps after Jobs 14 and 15, in your own household.
+The database change is done (15 Nov). Do the tablet steps after Jobs 14 and 15, in your own household.
 
-1. **Apply the SQL.** In the Supabase dashboard's SQL editor, paste the statement from `docs/migrations/add-shopping-extra-aisles.md` ("The statement") and run it.
-   **You should see:** "Success. No rows returned". Then run the three queries under "After it is applied". **You should see:** the six columns listed there, four policies each
-   for `{authenticated}`, and no row for `anon`. Tell the next session, so `docs/INFRASTRUCTURE.md` can record it.
+1. **Done, 15 Nov:** you applied the SQL, and a session read the table back the same day (`docs/INFRASTRUCTURE.md`).
 2. **Merge the pull request, then reload the app** so it is on version 2026-11-15.4. **You should see:** Settings → HELP shows it, and What's new describes the remembered aisle.
 3. On **SHOPPING**, add something the app would not know, choosing **PETS**. Then take it off with ×.
 4. Start typing its name again. **You should see:** it offered under the box. Do not tap it: finish the name, leave the aisle at **AISLE…** and press **ADD AN ITEM**.

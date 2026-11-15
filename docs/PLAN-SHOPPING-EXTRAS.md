@@ -1,7 +1,7 @@
 # Plan: things to buy that no recipe asks for (issue #241)
 
 A working file with an end (`CLAUDE.md`, "How the documents are kept"). Written 15 Nov 2026 from issue #241, sent from the app
-that day. The household answered its questions the same day (§6). **Slice 1 is built** (app version 2026-11-15.2) and its table is applied (15 Nov 2026, `docs/migrations/add-shopping-extras.md`); it waits on Job 14. **Slice 2 is built** too (app version 2026-11-15.3, Job 15), and **slice 3** (app version 2026-11-15.4), which waits on its table (`docs/migrations/add-shopping-extra-aisles.md`) and Job 16. All three are built; this plan stays until the household reports Jobs 14, 15 and 16, and the PR that records that deletes it.
+that day. The household answered its questions the same day (§6). **Slice 1 is built** (app version 2026-11-15.2) and its table is applied (15 Nov 2026, `docs/migrations/add-shopping-extras.md`); it waits on Job 14. **Slice 2 is built** too (app version 2026-11-15.3, Job 15), and **slice 3** (app version 2026-11-15.4), whose table is applied (`docs/migrations/add-shopping-extra-aisles.md`, 15 Nov) and which waits on Job 16. All three are built; this plan stays until the household reports Jobs 14, 15 and 16, and the PR that records that deletes it.
 
 ## 1. What is asked
 
