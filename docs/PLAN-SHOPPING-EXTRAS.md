@@ -1,7 +1,7 @@
 # Plan: things to buy that no recipe asks for (issue #241)
 
 A working file with an end (`CLAUDE.md`, "How the documents are kept"). Written 15 Nov 2026 from issue #241, sent from the app
-that day. The household answered its questions the same day (§6). **Slice 1 is built** (app version 2026-11-15.2) and its table is applied (15 Nov 2026, `docs/migrations/add-shopping-extras.md`); it waits on Job 14. Slices 2 and 3 are not built.
+that day. The household answered its questions the same day (§6). **Slice 1 is built** (app version 2026-11-15.2) and its table is applied (15 Nov 2026, `docs/migrations/add-shopping-extras.md`); it waits on Job 14. **Slice 2 is built** too (app version 2026-11-15.3, Job 15). Slice 3 is not built.
 
 ## 1. What is asked
 
@@ -71,9 +71,12 @@ Each is a PR of its own, with its tests, a changelog entry, `help.html`, `docs/S
    amount. The extra appears in its aisle with an ADDED mark where a recipe row names its recipes, its tick and ×. The aisles offered are the food
    aisles, Household, Health & Toiletries, Pets and Other. An extra shows on this week, next week and both weeks
    alike until it is ticked. The sidebar's count includes the extras (ticked ones too, as it counts ticked recipe rows). Print, PNG, HIDE TICKED, export and import.
-2. **Suggestions and regulars.** The name box offers dictionary names and earlier extras as you type, filling in the aisle. A
-   **REGULARS** list: mark an extra as a regular, and it can be put back on the list with one tap (or all of them at once) after
-   it has been ticked and cleared.
+2. **Suggestions and regulars.** *Built 15 Nov 2026.* The name box offers the regulars and the dictionary's names as you type, filling in
+   the aisle. A **REGULARS** list: **REGULAR** on an extra's row keeps it, and it can be put back on the list with one tap (or all of
+   them with ADD ALL) after it has been ticked and cleared. As built, a regular is a second row with `regular` set, not a state of the
+   extra's own row: the table has no column for "off the list for now", and this way it needs none. An extra that was only ever
+   added and cleared is not remembered; only regulars are. A tab still on version 2026-11-15.2 draws a regular as an ordinary item
+   until it is reloaded, which the version bar asks for.
 3. **The remembered aisle.** Where a name was given an aisle before, the same aisle next time.
 
 The three non-food aisles are decided (§6), so slice 1 offers them from the start; slice 3 is then only the remembered aisle.

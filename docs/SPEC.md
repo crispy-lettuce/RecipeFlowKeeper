@@ -280,7 +280,13 @@ Adds up every ingredient the week's planned dishes need, scaled to each day's SE
   is chosen. An extra is its own row, marked **ADDED** where a recipe row names its recipes, beside any recipe row of the same name and never joined to it. It
   is on every week's list and on BOTH WEEKS until ticked; its tick is its own (`shopping_extras.ticked_at`), shown on every device, and never a row in
   `shopping_checked`. **CLEAR TICKS** removes ticked extras, saying so first; **×** removes one. HIDE TICKED, print and the PNG treat it as any row; AUDIT
-  offers it no tools; a one-recipe list has none. The sidebar's count includes them. EXPORT DATA and IMPORT DATA carry them. Absent, with the screen as it
+  offers it no tools; a one-recipe list has none. The sidebar's count includes them. **REGULARS** (15 Nov 2026): **REGULAR** on an extra's row keeps a
+  regular of that name, a row of its own with `regular` set that is never drawn on the list or ticked; the **REGULARS** button beside ADD AN ITEM lists them, each
+  a button that adds an ordinary extra with the regular's aisle and amount (or reads ON THE LIST while an unticked extra of that name is there), with **ADD ALL**
+  when two or more are off the list and **×** to forget one. Nothing joins the list by itself. Names match whatever the capitals. **As you type**, the name box
+  offers up to eight matches from two letters on: regulars first, then the dictionary's names with the aisle the list would give them (the household's own aisle
+  winning); picking one fills the name, the aisle and a regular's amount and adds nothing. A name the app knows exactly, added with no aisle chosen, takes that
+  aisle. EXPORT DATA and IMPORT DATA carry them. Absent, with the screen as it
   was, where the `shopping_extras` table has not been created.
 - **POSSIBLE SWAPS** lists the household's saved substitutions.
 - Per-recipe list from the viewer is separate and its ticks stay on the device.

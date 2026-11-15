@@ -11913,7 +11913,7 @@ const check = (name, pass, detail) => {
   check('    ADD AN ITEM writes one shopping_extras row: the name, aisle and amount as typed, unticked, for this household, and nothing to shopping_checked',
         xtAdd1.length === 1 && xtAdd1[0].table === 'shopping_extras' && xtAdd1[0].op === 'upsert' && xtAdd1[0].onConflict === 'id' && xtAdd1[0].rows.length === 1
         && xtAdd1[0].rows[0].name === 'Zq washing powder' && xtAdd1[0].rows[0].aisle === 'Household' && xtAdd1[0].rows[0].amount === '1 box'
-        && xtAdd1[0].rows[0].ticked === null && xtAdd1[0].rows[0].household && xtAdd1[0].rows[0].cols === 'aisle,amount,household_id,id,name,ticked_at', JSON.stringify(xtAdd1));
+        && xtAdd1[0].rows[0].ticked === null && xtAdd1[0].rows[0].household && xtAdd1[0].rows[0].cols === 'aisle,amount,household_id,id,name,regular,ticked_at', JSON.stringify(xtAdd1));
   check('    and it is drawn in its aisle, marked ADDED where a recipe row names its recipes, with its amount and a ×',
         !!xtRow1 && xtRow1.extra && xtRow1.aisle === 'HOUSEHOLD' && xtRow1.under === 'ADDED' && xtRow1.qty === '1 box' && xtRow1.remove && !xtRow1.ticked, JSON.stringify(xtRow1));
   check('    the form is emptied for the next one, and the sidebar counts it',
@@ -12002,6 +12002,121 @@ const check = (name, pass, detail) => {
     state.shoppingRecipe = null; renderShopping(); return out; });
   check('    a one-recipe shopping list has no extras and no ADD AN ITEM', !xtOne.form && xtOne.extras === 0 && xtOne.rows > 0, JSON.stringify(xtOne));
   await xt.close();
+
+  /* ---- Shopping extras, slice 2 (15 Nov 2026): REGULARS, and names offered as you type ----
+     A regular is a row of its own (`regular` true), never drawn on the list; tapping it under REGULARS adds an ordinary extra. */
+  const xr = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  xr.__label = 'shopping regulars';
+  await xr.addInitScript(() => { window.__STUB_EXTRA__ = { shopping_extras: [] }; });
+  await xr.clock.setFixedTime(FIXTURE_NOW);
+  await xr.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await xr.waitForTimeout(1200);
+  await xr.click('.navlink[data-view="shopping"]');
+  await xr.waitForTimeout(300);
+  const xrDrain = () => xr.evaluate(async () => { let t; do { t = writeQueue; await t; } while(t !== writeQueue); });
+  const xrMark = () => xr.evaluate(() => window.__WRITES__.length);
+  const xrWrites = mark => xr.evaluate(m => window.__WRITES__.slice(m).filter(w => w.table === 'shopping_extras')
+    .map(w => ({ op: w.op, rows: (w.rows || []).map(r => [r.name, r.aisle, r.amount || '', r.regular, r.ticked_at === null].join('|')), ins: w.in ? w.in.values.length : 0 })), mark);
+  const xrAdd = async (name, amount, aisle) => {
+    await xr.fill('#shopAddName', name); await xr.fill('#shopAddAmount', amount); await xr.selectOption('#shopAddAisle', aisle);
+    await xr.click('#shopAddBtn'); await xr.waitForTimeout(150); await xrDrain();
+  };
+  const xrState = () => xr.evaluate(() => ({
+    list: [...document.querySelectorAll('#shopBody .shop-extra')].map(el => el.dataset.name + (el.classList.contains('checked') ? ' ✓' : '')),
+    pressed: [...document.querySelectorAll('#shopBody [data-extra-regular]')].filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.closest('.shop-row').querySelector('.shop-item').dataset.name),
+    btn: document.getElementById('shopRegularsBtn').textContent, nav: document.getElementById('navShopping').textContent.replace(/\D+/g, ''),
+    panel: document.getElementById('shopRegulars').hidden ? null : [...document.querySelectorAll('#shopRegulars .shop-regular')].map(el => el.firstElementChild.textContent),
+    all: !!document.querySelector('#shopRegulars [data-regular-all]'), regulars: loadRegulars().map(x => x.name), cache: loadShoppingExtras().length }));
+  const xrRowBtn = (name, cls) => xr.click(`.shop-extra-row:has(.shop-extra[data-name="${name}"]) ${cls}`);
+  await xrAdd('Zq washing powder', '1 box', 'Household');
+  await xrAdd('Zq tea', '', 'Pantry');
+  const xr0 = await xrState();
+  let xrM = await xrMark();
+  await xrRowBtn('Zq washing powder', '[data-extra-regular]'); await xr.waitForTimeout(150); await xrDrain();
+  const xr1 = await xrState(), xrW1 = await xrWrites(xrM);
+  check('REGULAR on an added item writes one more row, the same name, aisle and amount with regular set, and leaves the list and the sidebar\'s count as they were (#241)',
+        xrW1.length === 1 && xrW1[0].op === 'upsert' && JSON.stringify(xrW1[0].rows) === JSON.stringify(['Zq washing powder|Household|1 box|true|true'])
+        && JSON.stringify(xr1.list) === JSON.stringify(xr0.list) && xr1.nav === xr0.nav && JSON.stringify(xr1.pressed) === JSON.stringify(['Zq washing powder'])
+        && xr1.btn === 'REGULARS · 1' && xr0.btn === 'REGULARS', JSON.stringify([xrW1, xr1]));
+  xrM = await xrMark();
+  await xrRowBtn('Zq washing powder', '[data-extra-regular]'); await xr.waitForTimeout(150); await xrDrain();
+  const xr2 = await xrState(), xrW2 = await xrWrites(xrM);
+  check('    pressed again it deletes that one regular, and the item stays on the list',
+        xrW2.length === 1 && xrW2[0].op === 'delete' && xrW2[0].ins === 1 && xr2.regulars.length === 0 && xr2.pressed.length === 0 && JSON.stringify(xr2.list) === JSON.stringify(xr0.list), JSON.stringify([xrW2, xr2]));
+
+  await xrRowBtn('Zq washing powder', '[data-extra-regular]'); await xrRowBtn('Zq tea', '[data-extra-regular]'); await xr.waitForTimeout(150);
+  await xr.click('.shop-extra[data-name="Zq washing powder"] input', { force: true }); await xr.click('.shop-extra[data-name="Zq tea"] input', { force: true });
+  await xr.waitForTimeout(150); await xrDrain();
+  xrM = await xrMark();
+  xr.once('dialog', d => d.accept());
+  await xr.click('#shopClearBtn'); await xr.waitForTimeout(200); await xrDrain();
+  const xrW3 = await xrWrites(xrM);
+  await xr.click('#shopRegularsBtn'); await xr.waitForTimeout(150);
+  const xr3 = await xrState();
+  check('    ticked and cleared, the items leave the list and their regulars stay: REGULARS lists both to put back, with ADD ALL',
+        xrW3.length === 1 && xrW3[0].op === 'delete' && xrW3[0].ins === 2 && xr3.list.length === 0 && JSON.stringify(xr3.regulars) === JSON.stringify(['Zq tea', 'Zq washing powder'])
+        && JSON.stringify(xr3.panel) === JSON.stringify(['+ Zq tea', '+ 1 box Zq washing powder']) && xr3.all && xr3.btn === 'REGULARS · 2', JSON.stringify([xrW3, xr3]));
+  xrM = await xrMark();
+  await xr.click('#shopRegulars [data-regular-add] >> nth=1'); await xr.waitForTimeout(150); await xrDrain();
+  const xr4 = await xrState(), xrW4 = await xrWrites(xrM);
+  check('    tapping a regular puts an ordinary item on the list with its aisle and amount, unticked; the regular then reads ON THE LIST and ADD ALL goes',
+        xrW4.length === 1 && JSON.stringify(xrW4[0].rows) === JSON.stringify(['Zq washing powder|Household|1 box|false|true']) && JSON.stringify(xr4.list) === JSON.stringify(['Zq washing powder'])
+        && xr4.panel[1] === '✓ 1 box Zq washing powder · ON THE LIST' && !xr4.all && JSON.stringify(xr4.pressed) === JSON.stringify(['Zq washing powder'])
+        && +xr4.nav === +xr3.nav + 1, JSON.stringify([xrW4, xr4]));
+  await xrRowBtn('Zq washing powder', '.shop-extra-remove'); await xr.waitForTimeout(150); await xrDrain();
+  xrM = await xrMark();
+  await xr.click('#shopRegulars [data-regular-all]'); await xr.waitForTimeout(150); await xrDrain();
+  const xr5 = await xrState(), xrW5 = await xrWrites(xrM);
+  check('    ADD ALL puts every regular not on the list onto it in one write',
+        xrW5.length === 1 && xrW5[0].op === 'upsert' && JSON.stringify(xrW5[0].rows.slice().sort()) === JSON.stringify(['Zq tea|Pantry||false|true', 'Zq washing powder|Household|1 box|false|true'])
+        && xr5.list.length === 2 && xr5.panel.every(t => / · ON THE LIST$/.test(t)), JSON.stringify([xrW5, xr5]));
+
+  /* The names offered as you type. */
+  const xrType = async text => { await xr.fill('#shopAddName', text); await xr.waitForTimeout(100);
+    return xr.evaluate(() => [...document.querySelectorAll('#shopAddSuggest button')].map(b => b.textContent + '>' + b.dataset.suggestAisle)); };
+  const xrOne = await xrType('o'), xrOni = await xrType('oni'), xrZq = await xrType('zq wash');
+  check('    typing two or more letters offers matching names: a regular first, marked, with its own aisle, then the dictionary\'s with theirs',
+        xrOne.length === 0 && xrOni[0] === 'Onion>Produce' && xrOni.length <= 8 && xrOni.includes('Red onion>Produce')
+        && JSON.stringify(xrZq) === JSON.stringify(['Zq washing powder · REGULAR>Household']), JSON.stringify([xrOne, xrOni, xrZq]));
+  /* A regular whose name matches comes before the dictionary's names, even one that starts with what was typed. Held in the cache only, for this one question. */
+  const xrFirst = await xr.evaluate(() => { cache.shoppingExtras.push({ id: 'xr-first', name: 'Zq macaroni', aisle: 'Pets', amount: '', tickedAt: null, regular: true });
+    const out = extraSuggestions('oni').map(x => x.name + (x.regular ? ' · REGULAR' : '') + '>' + x.aisle);
+    cache.shoppingExtras = cache.shoppingExtras.filter(x => x.id !== 'xr-first'); return out; });
+  check('    a regular that matches is offered before the dictionary\'s names', xrFirst[0] === 'Zq macaroni · REGULAR>Pets' && xrFirst[1] === 'Onion>Produce', JSON.stringify(xrFirst));
+  await xr.evaluate(() => { addAisleOverride('onion', 'Frozen'); });
+  const xrMoved = await xrType('oni');
+  await xr.evaluate(() => { const o = loadAisleOverrides().find(x => x.name === shoppingKeyForName('onion')); if(o) removeAisleOverride(o.id); });
+  check('    and the household\'s own aisle for a name wins, as it does on the list', xrMoved[0] === 'Onion>Frozen', JSON.stringify(xrMoved));
+  await xrRowBtn('Zq washing powder', '.shop-extra-remove'); await xr.waitForTimeout(150); await xrDrain();
+  xrM = await xrMark();
+  await xrType('zq wash');
+  await xr.click('#shopAddSuggest button'); await xr.waitForTimeout(100);
+  const xrPicked = await xr.evaluate(() => ({ name: document.getElementById('shopAddName').value, aisle: document.getElementById('shopAddAisle').value,
+    amount: document.getElementById('shopAddAmount').value, left: document.querySelectorAll('#shopAddSuggest button').length }));
+  const xrW6 = await xrWrites(xrM);
+  check('    picking one fills the name, its aisle and a regular\'s amount, and adds nothing until ADD AN ITEM',
+        xrPicked.name === 'Zq washing powder' && xrPicked.aisle === 'Household' && xrPicked.amount === '1 box' && xrPicked.left === 0 && xrW6.length === 0, JSON.stringify([xrPicked, xrW6]));
+  await xr.click('#shopAddBtn'); await xr.waitForTimeout(150); await xrDrain();
+  xrM = await xrMark();
+  await xrAdd('onion', '', '');
+  await xrAdd('Zq nowhere', '', '');
+  const xrW7 = await xrWrites(xrM);
+  check('    a name the app knows, added with no aisle chosen, goes to its own aisle; one it does not know still goes to Other',
+        JSON.stringify(xrW7.flatMap(w => w.rows)) === JSON.stringify(['onion|Produce||false|true', 'Zq nowhere|Other||false|true']), JSON.stringify(xrW7));
+
+  xrM = await xrMark();
+  await xr.click('#shopRegulars [data-regular-remove] >> nth=0'); await xr.waitForTimeout(150); await xrDrain();
+  const xr8 = await xrState(), xrW8 = await xrWrites(xrM);
+  check('    × beside a regular forgets it with one delete, and leaves the item of that name on the list',
+        xrW8.length === 1 && xrW8[0].op === 'delete' && xrW8[0].ins === 1 && JSON.stringify(xr8.regulars) === JSON.stringify(['Zq washing powder']) && xr8.list.includes('Zq tea'), JSON.stringify([xrW8, xr8]));
+  const xrFile = await xr.evaluate(() => exportPayload().shoppingExtras.map(x => x.name + '|' + x.regular).sort());
+  await xr.emulateMedia({ media: 'print' });
+  const xrPrint = await xr.evaluate(() => ['#shopRegulars', '#shopRegularsBtn', '.shop-extra-regular'].map(sel => { const el = document.querySelector(sel); return !!el && el.offsetParent !== null; }));
+  await xr.emulateMedia({ media: null });
+  check('    EXPORT DATA says which rows are regulars, and PRINT has neither REGULARS nor a REGULAR button',
+        xrFile.includes('Zq washing powder|true') && xrFile.includes('Zq washing powder|false') && xrFile.includes('Zq tea|false') && !xrFile.includes('Zq tea|true')
+        && JSON.stringify(xrPrint) === '[false,false,false]', JSON.stringify([xrFile, xrPrint]));
+  await xr.close();
 
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
