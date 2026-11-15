@@ -1,7 +1,7 @@
 # Plan: things to buy that no recipe asks for (issue #241)
 
 A working file with an end (`CLAUDE.md`, "How the documents are kept"). Written 15 Nov 2026 from issue #241, sent from the app
-that day. The household answered its questions the same day (§6). **Slice 1 is built** (app version 2026-11-15.2) and its table is applied (15 Nov 2026, `docs/migrations/add-shopping-extras.md`); it waits on Job 14. **Slice 2 is built** too (app version 2026-11-15.3, Job 15). Slice 3 is not built.
+that day. The household answered its questions the same day (§6). **Slice 1 is built** (app version 2026-11-15.2) and its table is applied (15 Nov 2026, `docs/migrations/add-shopping-extras.md`); it waits on Job 14. **Slice 2 is built** too (app version 2026-11-15.3, Job 15), and **slice 3** (app version 2026-11-15.4), whose table is applied (`docs/migrations/add-shopping-extra-aisles.md`, 15 Nov) and which waits on Job 16. All three are built; this plan stays until the household reports Jobs 14, 15 and 16, and the PR that records that deletes it.
 
 ## 1. What is asked
 
@@ -77,7 +77,10 @@ Each is a PR of its own, with its tests, a changelog entry, `help.html`, `docs/S
    extra's own row: the table has no column for "off the list for now", and this way it needs none. An extra that was only ever
    added and cleared is not remembered; only regulars are. A tab still on version 2026-11-15.2 draws a regular as an ordinary item
    until it is reloaded, which the version bar asks for.
-3. **The remembered aisle.** Where a name was given an aisle before, the same aisle next time.
+3. **The remembered aisle.** *Built 15 Nov 2026.* Where a name was given an aisle before, the same aisle next time, on every device: the
+   household chose a shared table over a memory kept on each device (15 Nov). It is `shopping_extra_aisles`, not `aisle_overrides`,
+   so remembering where an added item went never moves a recipe's row. There is no screen that lists what is remembered: a name's
+   aisle is changed by adding it again with another aisle.
 
 The three non-food aisles are decided (§6), so slice 1 offers them from the start; slice 3 is then only the remembered aisle.
 
