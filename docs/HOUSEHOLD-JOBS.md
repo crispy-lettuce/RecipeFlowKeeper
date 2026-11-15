@@ -1,7 +1,7 @@
 # Household job list
 
 The jobs only the household can do: a session can't tap the tablet, decide for you, or deploy for you. **Last brought up to date
-15 Nov 2026**: four jobs are waiting, Job 7 (the Planner's previous days), Job 11 (the tidier Planner in Modernist), Job 12 (INSPIRE ME's FUTURE WEEK) and Job 13 (the Planner on a slow start).
+15 Nov 2026**: five jobs are waiting, Job 7 (the Planner's previous days), Job 11 (the tidier Planner in Modernist), Job 12 (INSPIRE ME's FUTURE WEEK), Job 13 (the Planner on a slow start) and Job 14 (adding your own items to the shopping list).
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other households sort
 out their own converter and need no steps here.
@@ -13,7 +13,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-**Four jobs are waiting:** Job 7, the Planner's previous days (#223), Job 11, the tidier Planner in Modernist, Job 12, INSPIRE ME's FUTURE WEEK, and Job 13, the Planner on a slow start (#240); a few minutes each on the tablet.
+**Five jobs are waiting:** Job 7, the Planner's previous days (#223), Job 11, the tidier Planner in Modernist, Job 12, INSPIRE ME's FUTURE WEEK, Job 13, the Planner on a slow start (#240), and Job 14, adding your own items to the shopping list (#241); a few minutes each on the tablet. Job 14's database step is done; merge its pull request and try it.
 What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
@@ -85,6 +85,29 @@ No database change and nothing to deploy. Nothing is written.
    **You should see:** the days fill in with what is planned within a moment, without leaving the Planner or reloading. If the app has already loaded by the time you tap,
    the Planner is simply full, which is also right.
 3. If you ever see the Planner (or the shopping list, or History) empty again when it should not be, note what you did just before and send it from REPORT A BUG OR AN IDEA.
+
+---
+
+## Job 14: adding your own items to the shopping list (issue #241)
+
+The database change is done (15 Nov). Do the tablet steps in your own household; they add three made-up items, which the last steps take off again.
+
+1. **Done, 15 Nov:** you applied the SQL, and a session read the table back the same day (`docs/INFRASTRUCTURE.md`).
+2. **Merge the pull request, then reload the app** so it is on version 2026-11-15.2. **You should see:** Settings → HELP shows it, and What's new describes adding items.
+3. Open **SHOPPING**. **You should see:** a new row under the buttons: a box for the name, a box for how much, an aisle list and **ADD AN ITEM**. The aisle list has the six food
+   aisles, then HOUSEHOLD, HEALTH & TOILETRIES and PETS, then OTHER.
+4. Add something for the house, with an amount, in HOUSEHOLD. **You should see:** a HOUSEHOLD aisle after the food aisles with your item in it, its amount in front of the name, the
+   word **ADDED** under it where the other rows name their recipes, and a **×** at the end of the row. The count beside SHOPPING in the menu goes up by one.
+5. Add something with the same name as a row already on the list, in that row's aisle. **You should see:** two rows, side by side in the aisle: the recipe's, unchanged, with its
+   amount and its recipes, and yours, marked ADDED. Ticking one does not tick the other.
+6. Add a third and leave the aisle at **AISLE…**. **You should see:** it under OTHER.
+7. Choose next week, then BOTH WEEKS, from the list at the top. **You should see:** your three items on each, the same as on this week.
+8. Tick one of yours, then look on a second device (a phone). **You should see:** it struck through on both. **HIDE TICKED** hides it. **PRINT / A4 PDF** (look at the preview, no
+   need to print): the ticked one is left off, the others are there with ADDED, and the adding row and the × are not on the paper.
+9. Press **CLEAR TICKS**. **You should see:** a question that says the ticked item you added will be taken off the list. Say yes: it is gone, not unticked.
+10. Press **×** on the other two. **You should see:** each go at once, and the menu's count back where it started.
+
+If a step does not do what it says, note which one and what you saw.
 
 ---
 

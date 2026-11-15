@@ -11862,6 +11862,147 @@ const check = (name, pass, detail) => {
   await oaPage.close();
   /* OA-END */
 
+  /* ---- Shopping extras (#241, docs/PLAN-SHOPPING-EXTRAS.md, slice 1, 15 Nov 2026) ----
+     Things to buy that no recipe asks for. The default fixture has no shopping_extras table, as the live database has none
+     until the household applies add-shopping-extras.md, so the main page is the list as it was; a page of its own boots with
+     the table there and empty. Every name is made up. */
+  await page.click('.navlink[data-view="shopping"]');
+  await page.waitForTimeout(300);
+  const xtNone = await page.evaluate(() => ({ form: !document.getElementById('shopAddForm').hidden, rows: document.querySelectorAll('.shop-extra').length,
+    rowsDrawn: document.querySelectorAll('.shop-row').length, exported: 'shoppingExtras' in exportPayload(), added: addShoppingExtra('Zq nothing', 'Pantry', ''),
+    writes: window.__WRITES__.filter(w => w.table === 'shopping_extras').length }));
+  check('with no shopping_extras table the Shopping screen has no ADD AN ITEM, draws its rows as before, and neither exports nor writes an extra (#241)',
+        !xtNone.form && xtNone.rows === 0 && xtNone.rowsDrawn > 0 && !xtNone.exported && xtNone.added === false && xtNone.writes === 0, JSON.stringify(xtNone));
+
+  const xt = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  xt.__label = 'shopping extras';
+  await xt.addInitScript(() => { window.__STUB_EXTRA__ = { shopping_extras: [] }; });
+  await xt.clock.setFixedTime(FIXTURE_NOW);
+  await xt.goto('file://' + path.join(__dirname, 'app-under-test.html'));
+  await xt.waitForTimeout(1200);
+  await xt.click('.navlink[data-view="shopping"]');
+  await xt.waitForTimeout(300);
+  const xtDrain = () => xt.evaluate(async () => { let t; do { t = writeQueue; await t; } while(t !== writeQueue); });
+  const xtWrites = mark => xt.evaluate(m => window.__WRITES__.slice(m).filter(w => w.table === 'shopping_extras' || w.table === 'shopping_checked')
+    .map(w => ({ table: w.table, op: w.op, rows: (w.rows || []).map(r => ({ name: r.name, aisle: r.aisle, amount: r.amount, ticked: r.ticked_at, household: !!r.household_id, id: !!r.id, cols: Object.keys(r).sort().join(',') })),
+      patch: w.patch ? Object.keys(w.patch).join(',') + '=' + (w.patch.ticked_at ? 'set' : 'null') : '', onConflict: (w.opts || {}).onConflict || '',
+      eqs: (w.eqs || []).map(e => e.column).join('&'), ins: w.in ? w.in.column + ':' + w.in.values.length : '' })), mark);
+  const xtMark = () => xt.evaluate(() => window.__WRITES__.length);
+  const xtList = () => xt.evaluate(() => [...document.querySelectorAll('#shopBody .shop-row')].map(row => {
+    const el = row.querySelector('.shop-item'), cat = row.closest('.shop-category');
+    return { name: el.dataset.name, key: el.dataset.key || '', extra: el.classList.contains('shop-extra'), ticked: el.classList.contains('checked'),
+      aisle: cat.querySelector('.shop-category-title').textContent.trim(), under: (el.querySelector('.shop-item-recipes') || {}).textContent || '',
+      qty: (el.querySelector('.qty') || {}).textContent || '', shown: row.offsetParent !== null, remove: !!row.querySelector('.shop-extra-remove') }; }));
+  const xtAdd = async (name, amount, aisle) => {
+    await xt.fill('#shopAddName', name); await xt.fill('#shopAddAmount', amount); await xt.selectOption('#shopAddAisle', aisle);
+    await xt.click('#shopAddBtn'); await xt.waitForTimeout(150); await xtDrain();
+  };
+  const xtAisles = await xt.evaluate(() => [...document.querySelectorAll('#shopAddAisle option')].map(o => o.value));
+  check('    with the table there, ADD AN ITEM offers the food aisles, then Household, Health & Toiletries and Pets, then Other',
+        (await xt.isVisible('#shopAddForm')) && JSON.stringify(xtAisles) === JSON.stringify(['', 'Produce', 'Meat & Fish', 'Dairy & Eggs', 'Pantry', 'Spices & Seasoning', 'Frozen', 'Household', 'Health & Toiletries', 'Pets', 'Other']),
+        JSON.stringify(xtAisles));
+
+  /* A recipe row is ticked first, so the checks below can see that an extra of the same name leaves its key and its tick alone. */
+  const xtBefore = (await xtList()).find(r => /chopped tomatoes/i.test(r.name));
+  await xt.evaluate(k => document.querySelector(`.shop-item[data-key="${k}"] input`).click(), xtBefore.key);
+  await xt.waitForTimeout(150); await xtDrain();
+  const xtNav0 = await xt.textContent('#navShopping');
+  let xtM = await xtMark();
+  await xtAdd('Zq washing powder', '1 box', 'Household');
+  const xtAdd1 = await xtWrites(xtM), xtRow1 = (await xtList()).find(r => r.name === 'Zq washing powder');
+  check('    ADD AN ITEM writes one shopping_extras row: the name, aisle and amount as typed, unticked, for this household, and nothing to shopping_checked',
+        xtAdd1.length === 1 && xtAdd1[0].table === 'shopping_extras' && xtAdd1[0].op === 'upsert' && xtAdd1[0].onConflict === 'id' && xtAdd1[0].rows.length === 1
+        && xtAdd1[0].rows[0].name === 'Zq washing powder' && xtAdd1[0].rows[0].aisle === 'Household' && xtAdd1[0].rows[0].amount === '1 box'
+        && xtAdd1[0].rows[0].ticked === null && xtAdd1[0].rows[0].household && xtAdd1[0].rows[0].cols === 'aisle,amount,household_id,id,name,ticked_at', JSON.stringify(xtAdd1));
+  check('    and it is drawn in its aisle, marked ADDED where a recipe row names its recipes, with its amount and a ×',
+        !!xtRow1 && xtRow1.extra && xtRow1.aisle === 'HOUSEHOLD' && xtRow1.under === 'ADDED' && xtRow1.qty === '1 box' && xtRow1.remove && !xtRow1.ticked, JSON.stringify(xtRow1));
+  check('    the form is emptied for the next one, and the sidebar counts it',
+        (await xt.inputValue('#shopAddName')) === '' && (await xt.inputValue('#shopAddAmount')) === ''
+        && parseInt((await xt.textContent('#navShopping')).replace(/\D+/g, ''), 10) === parseInt(xtNav0.replace(/\D+/g, ''), 10) + 1, xtNav0 + ' -> ' + await xt.textContent('#navShopping'));
+
+  xtM = await xtMark();
+  await xtAdd(xtBefore.name, '', 'Pantry');
+  await xtAdd('Zq mystery thing', '', '');
+  const xtSame = (await xtList()).filter(r => r.name === xtBefore.name), xtAdd2 = await xtWrites(xtM);
+  check('    an extra with a recipe row\'s name sits beside it as its own row: the recipe row keeps its key, its tick, its amount and its recipes',
+        xtSame.length === 2 && xtSame.filter(r => r.extra).length === 1 && JSON.stringify(xtSame.find(r => !r.extra)) === JSON.stringify({ ...xtBefore, ticked: true })
+        && xtSame.every(r => r.aisle === xtBefore.aisle) && !xtSame.find(r => r.extra).ticked && xtAdd2.every(w => w.table === 'shopping_extras'), JSON.stringify(xtSame));
+  check('    an extra added with the aisle left at AISLE… is in Other',
+        ((await xtList()).find(r => r.name === 'Zq mystery thing') || {}).aisle === 'OTHER' && xtAdd2[1].rows[0].aisle === 'Other', JSON.stringify(xtAdd2[1]));
+  xtM = await xtMark();
+  await xt.fill('#shopAddName', '   '); await xt.click('#shopAddBtn'); await xt.waitForTimeout(150);
+  check('    a name of only spaces adds nothing', (await xtWrites(xtM)).length === 0);
+
+  xtM = await xtMark();
+  await xt.click('.shop-extra[data-name="Zq mystery thing"] input', { force: true });
+  await xt.waitForTimeout(150); await xtDrain();
+  const xtTick = await xtWrites(xtM), xtTicked = (await xtList()).find(r => r.name === 'Zq mystery thing');
+  check('    ticking an extra updates ticked_at on that one row, and writes nothing to shopping_checked',
+        xtTick.length === 1 && xtTick[0].table === 'shopping_extras' && xtTick[0].op === 'update' && xtTick[0].patch === 'ticked_at=set' && xtTick[0].eqs === 'household_id&id'
+        && xtTicked.ticked, JSON.stringify(xtTick));
+  await xt.emulateMedia({ media: 'print' });
+  const xtPrint = await xtList(), xtPrintForm = await xt.isVisible('#shopAddForm'), xtPrintX = await xt.isVisible('.shop-extra-remove');
+  await xt.emulateMedia({ media: null });
+  check('    PRINT leaves out the ticked extra, keeps the one still to buy with its ADDED mark, and has neither the form nor a ×',
+        xtPrint.find(r => r.name === 'Zq mystery thing').shown === false && xtPrint.find(r => r.name === 'Zq washing powder').shown === true && !xtPrintForm && !xtPrintX,
+        JSON.stringify(xtPrint.filter(r => r.extra)));
+  await xt.click('#shopHideCheckedBtn'); await xt.waitForTimeout(150);
+  const xtHidden = (await xtList()).map(r => r.name);
+  await xt.click('#shopHideCheckedBtn'); await xt.waitForTimeout(150);
+  check('    HIDE TICKED hides the ticked extra too', !xtHidden.includes('Zq mystery thing') && xtHidden.includes('Zq washing powder'), JSON.stringify(xtHidden));
+
+  await xt.selectOption('#shopWeekSelect', '1'); await xt.waitForTimeout(200);
+  const xtNext = (await xtList()).filter(r => r.extra).map(r => r.name + (r.ticked ? ' ✓' : '')).sort();
+  await xt.selectOption('#shopWeekSelect', 'both'); await xt.waitForTimeout(200);
+  const xtBoth = (await xtList()).filter(r => r.extra).map(r => r.name + (r.ticked ? ' ✓' : '')).sort();
+  await xt.selectOption('#shopWeekSelect', '0'); await xt.waitForTimeout(200);
+  check('    an extra is on next week\'s list and on BOTH WEEKS as it is on this week\'s, tick and all',
+        xtNext.length === 3 && JSON.stringify(xtNext) === JSON.stringify(xtBoth) && xtNext.includes('Zq mystery thing ✓'), JSON.stringify([xtNext, xtBoth]));
+
+  const xtFile = await xt.evaluate(() => JSON.stringify(exportPayload()));
+  const xtOut = (JSON.parse(xtFile).shoppingExtras || []).map(x => [x.name, x.aisle, x.amount, !!x.tickedAt].join('|')).sort();
+  check('    EXPORT DATA carries the extras: name, aisle, amount and whether ticked',
+        JSON.stringify(xtOut) === JSON.stringify([xtBefore.name + '|Pantry||false', 'Zq mystery thing|Other||true', 'Zq washing powder|Household|1 box|false'].sort()), JSON.stringify(xtOut));
+
+  xtM = await xtMark();
+  /* The fixture's own tick for this week (it names nothing on the list) is counted in the question with the one made above. */
+  let xtAsked = '';
+  xt.once('dialog', d => { xtAsked = d.message(); d.accept(); });
+  await xt.click('#shopClearBtn'); await xt.waitForTimeout(200); await xtDrain();
+  const xtClear = await xtWrites(xtM), xtAfterClear = await xtList();
+  check('    CLEAR TICKS says the ticked extra will be taken off, deletes that one row by its id, and unticks the recipe row',
+        /Untick all \d+ items? on this list\?/.test(xtAsked) && /1 ticked item you added will be taken off/.test(xtAsked)
+        && xtClear.filter(w => w.table === 'shopping_extras').length === 1 && xtClear.find(w => w.table === 'shopping_extras').op === 'delete'
+        && xtClear.find(w => w.table === 'shopping_extras').ins === 'id:1' && !xtAfterClear.some(r => r.name === 'Zq mystery thing')
+        && xtAfterClear.filter(r => r.extra).length === 2 && !xtAfterClear.some(r => r.ticked), xtAsked + ' ' + JSON.stringify(xtClear));
+
+  xtM = await xtMark();
+  await xt.click('.shop-extra-row:has(.shop-extra[data-name="Zq washing powder"]) .shop-extra-remove'); await xt.waitForTimeout(150); await xtDrain();
+  const xtGone = await xtWrites(xtM);
+  check('    × takes an extra off the list with one delete of its row',
+        xtGone.length === 1 && xtGone[0].op === 'delete' && xtGone[0].ins === 'id:1' && !(await xtList()).some(r => r.name === 'Zq washing powder'), JSON.stringify(xtGone));
+
+  xtM = await xtMark();
+  xt.once('dialog', d => d.accept());
+  await xt.setInputFiles('#importFileInput', { name: 'kitchen-backup-xt.json', mimeType: 'application/json', buffer: Buffer.from(xtFile) });
+  await xt.waitForTimeout(1200); await xtDrain();
+  const xtIn = (await xtWrites(xtM)).filter(w => w.table === 'shopping_extras' && w.op === 'upsert').flatMap(w => w.rows).map(r => [r.name, r.aisle, r.amount || '', !!r.ticked].join('|')).sort();
+  const xtBack = (await xt.evaluate(() => loadShoppingExtras().map(x => x.name))).sort();
+  check('    IMPORT DATA puts the file\'s extras back, each row with its aisle, amount and tick',
+        JSON.stringify(xtIn) === JSON.stringify(xtOut) && xtBack.length === 3, JSON.stringify([xtIn, xtBack]));
+
+  /* A row from a later version, or a slip in a backup: an aisle this app does not have reads as Other, and a row with no name is left out. */
+  const xtOdd = await xt.evaluate(() => [extraFromRow({ id: 'a', name: ' Zq odd ', aisle: 'Garden', amount: null, ticked_at: null }), extraFromRow({ id: 'b', name: '  ', aisle: 'Pets' })]);
+  check('    an extra read with an aisle the app does not have is in Other, and one with no name is left out',
+        xtOdd[0].aisle === 'Other' && xtOdd[0].name === 'Zq odd' && xtOdd[1] === null, JSON.stringify(xtOdd));
+
+  /* One recipe's list is that recipe's: no extras and no form. */
+  const xtOne = await xt.evaluate(() => { state.shoppingRecipe = { recipeId: loadRecipes()[0].id, servings: 0 }; renderShopping();
+    const out = { form: !document.getElementById('shopAddForm').hidden, extras: document.querySelectorAll('.shop-extra').length, rows: document.querySelectorAll('.shop-row').length };
+    state.shoppingRecipe = null; renderShopping(); return out; });
+  check('    a one-recipe shopping list has no extras and no ADD AN ITEM', !xtOne.form && xtOne.extras === 0 && xtOne.rows > 0, JSON.stringify(xtOne));
+  await xt.close();
+
   /* Nothing reached the network (F30): every http(s) request any page made was refused by the catch-all above or
      answered by the test's own route. A request is intercepted before it is sent, so one the catch-all had not got to
      yet (a late image on a page still open when this runs, or one dropped when its page closed) was held, not sent:

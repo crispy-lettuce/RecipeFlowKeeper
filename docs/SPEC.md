@@ -275,6 +275,13 @@ Adds up every ingredient the week's planned dishes need, scaled to each day's SE
   one liquid add (`145 ml (100 ml + 3 tbsp)`); PRE-MADE dishes contribute nothing.
 - **Ticks** show on every device; HIDE TICKED, CLEAR TICKS. **PRINT / A4 PDF** and **EXPORT PNG** leave out ticked items.
 - **AUDIT** (a mode): per row, **MERGE WITH…** and an aisle picker with UNDO, and "Same as …?" questions (MERGE / KEEP APART).
+- **Extras** (issue #241, 15 Nov 2026): things to buy that no recipe asks for. **ADD AN ITEM** on the Shopping screen takes a name, an optional amount in
+  free words (never added up) and an aisle: the food aisles, then Household, Health & Toiletries and Pets (extras only, drawn after Frozen), or Other when none
+  is chosen. An extra is its own row, marked **ADDED** where a recipe row names its recipes, beside any recipe row of the same name and never joined to it. It
+  is on every week's list and on BOTH WEEKS until ticked; its tick is its own (`shopping_extras.ticked_at`), shown on every device, and never a row in
+  `shopping_checked`. **CLEAR TICKS** removes ticked extras, saying so first; **×** removes one. HIDE TICKED, print and the PNG treat it as any row; AUDIT
+  offers it no tools; a one-recipe list has none. The sidebar's count includes them. EXPORT DATA and IMPORT DATA carry them. Absent, with the screen as it
+  was, where the `shopping_extras` table has not been created.
 - **POSSIBLE SWAPS** lists the household's saved substitutions.
 - Per-recipe list from the viewer is separate and its ticks stay on the device.
 
@@ -360,6 +367,7 @@ Each row of a household's data carries `household_id`; row-level security restri
 | `shopping_checked` | Ticked items by week and key |
 | `aliases` | Word matches (and "keep apart" decisions) |
 | `aisle_overrides` | The household's aisle for an ingredient |
+| `shopping_extras` | Things to buy that no recipe asks for, each with its aisle, optional amount and own tick |
 | `ingredient_swaps` | Substitutions with a scaling ratio |
 | `keywords` | The tag vocabulary |
 | `household_settings` | Week start, appearance, calendar toggles and reminder time, converter version confirmed |

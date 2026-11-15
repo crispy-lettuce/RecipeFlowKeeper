@@ -1173,6 +1173,19 @@ function loadArchivoFont(){
      them never ticks the item. */
   .shop-row{ border-bottom:1px solid var(--line-soft); }
   .shop-row .shop-item{ border-bottom:none; }
+  /* An extra (#241, 15 Nov 2026): something the household typed, not a recipe's ingredient. It says ADDED where a recipe's row
+     names its recipes, so the two are told apart at a glance, on screen and on paper; the × beside it takes it off the list. */
+  .shop-add{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:20px; }
+  .shop-add[hidden]{ display:none; }
+  .shop-add input[type="text"]{ font:inherit; font-size:16px; padding:8px 10px; border:1px solid var(--line); background:none; color:var(--ink); min-width:0; }
+  .shop-add #shopAddName{ flex:2 1 220px; }
+  .shop-add #shopAddAmount{ flex:1 1 140px; }
+  .shop-extra-row{ display:flex; align-items:flex-start; }
+  .shop-extra-row .shop-item{ flex:1; min-width:0; }
+  .shop-added{ align-self:flex-start; border:1px solid currentColor; padding:0 6px; }
+  .shop-extra-remove{ flex:none; background:none; border:none; cursor:pointer; color:var(--ink-faint); font-size:22px; line-height:1;
+    min-width:44px; min-height:44px; }
+  .shop-extra-remove:hover{ color:var(--ink); }
   .shop-tools{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:0 4px 8px 34px;
     font-size:14px; color:var(--ink-soft); }
   .shop-tools button{ background:none; border:none; cursor:pointer; padding:0; color:var(--plum);
@@ -1912,7 +1925,7 @@ function loadArchivoFont(){
     }
     .tablewrap table{ page-break-inside:auto; }
     .tablewrap tr, .shop-item, .shop-category{ page-break-inside:avoid; }
-    .shop-tools{ display:none !important; }
+    .shop-tools, .shop-add, .shop-extra-remove{ display:none !important; }
     /* Ticked means "already have it": the list taken to the shops leaves it off (#94, 13 Oct), as the PNG does. */
     .shop-row.checked, .shop-category.all-checked{ display:none !important; }
     @page{ size:A4; margin:14mm; }
@@ -1971,7 +1984,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-11-15.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-11-15.2">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2210,6 +2223,12 @@ function loadArchivoFont(){
             <button class="btn" id="shopPrintBtn">PRINT / A4 PDF</button>
           </div>
         </div>
+        <form class="shop-add" id="shopAddForm" autocomplete="off" hidden>
+          <input type="text" id="shopAddName" maxlength="80" placeholder="Something no recipe asks for" aria-label="What to add to the list">
+          <input type="text" id="shopAddAmount" maxlength="40" placeholder="How much (optional)" aria-label="How much, optional">
+          <select class="sort" id="shopAddAisle" aria-label="Aisle for what you are adding"></select>
+          <button class="btn" type="submit" id="shopAddBtn">ADD AN ITEM</button>
+        </form>
         <div id="shopBody" class="shop-body"></div>
       </div>
     </section>
@@ -2821,7 +2840,7 @@ const EXPECTED_CORE_VERSION = '2026-11-12.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-11-15.1';
+const APP_VERSION = '2026-11-15.2';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -4126,6 +4145,7 @@ const cache = {
   settings: { weekStartDay: DEFAULT_WEEK_START_DAY, darkMode: 'system', remindAt: 1200, calendarAuto: false, calendarAutoRemind: false },
   aliases: [],
   aisleOverrides: [],
+  shoppingExtras: [],
   recipeNotes: [],
   diary: []
 };
@@ -4510,7 +4530,7 @@ async function hydrate(opts){
     throw new Error('This account belongs to more than one household. Ask whoever set it up to take it out of one.');
   const household = memberships[0].household_id;
 
-  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides, recipeNotes, calendarRow, autoColumns, premadeColumn, itemsColumn, cookAheadColumn] = await Promise.all([
+  const [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases, aisleOverrides, recipeNotes, calendarRow, autoColumns, premadeColumn, itemsColumn, cookAheadColumn, extras] = await Promise.all([
     sb.from('recipes').select('*'),
     /* Every column, and no recipe_id filter. The filter was here because a
        log could only ever be a cooked recipe; an ad-hoc diary entry (H2) is
@@ -4547,7 +4567,10 @@ async function hydrate(opts){
     sb.from('planner_days').select('calendar_items').limit(1),
     /* Whether add-cook-ahead.md is in (issue #221), asked the same way and read apart for the same reason: a failure means
        "not yet", and until then the Planner keeps its TO COOK / PRE-MADE switch and no save names either new column. */
-    sb.from('planner_days').select('cook_ahead').limit(1)
+    sb.from('planner_days').select('cook_ahead').limit(1),
+    /* Shopping extras (#241): read apart like aisle_overrides. Until the household applies add-shopping-extras.md the table
+       does not exist, which reads as "not yet": the Shopping screen is then as it was, with no form to add to. */
+    sb.from('shopping_extras').select('*')
   ]);
   for(const res of [recipes, logs, keywords, planner, shortlist, groups, swaps, checked, settings, aliases]){
     if(res.error) throw res.error;
@@ -4651,6 +4674,9 @@ async function hydrate(opts){
   cache.aisleOverrides = aisleOverridesAvailable
     ? (aisleOverrides.data || []).map(row=>({ id: row.id, name: row.name, aisle: row.aisle })) : [];
   rebuildAisleOverrideMap();
+  shoppingExtrasAvailable = !extras.error;
+  if(extras.error) console.warn('Shopping extras are unavailable (has add-shopping-extras been applied?)', extras.error);
+  cache.shoppingExtras = shoppingExtrasAvailable ? (extras.data || []).map(extraFromRow).filter(Boolean) : [];
   recipeNotesAvailable = !recipeNotes.error;
   if(recipeNotes.error) console.warn('Cooking notes are unavailable', recipeNotes.error);
   cache.recipeNotes = recipeNotesAvailable
@@ -4989,6 +5015,67 @@ function removeAisleOverride(id){
     const { error } = await sb.from('aisle_overrides').delete().eq('household_id', HOUSEHOLD_ID).eq('name', entry.name);
     if(error) throw error;
   }, { key: 'aisle_overrides:' + entry.name });
+}
+/* ---- Shopping extras (#241, docs/PLAN-SHOPPING-EXTRAS.md, slice 1, 15 Nov 2026) ----
+   Things to buy that no recipe asks for: a name, an aisle and, if wanted, a few words of how much, typed on the Shopping
+   screen. Decided by the household on 15 Nov: an extra stays on every week's list until it is ticked; it never joins a recipe's
+   row of the same name, and never adds to its amount; and it must be plain which rows were added by hand.
+
+   A table of its own with its own tick (`ticked_at`), and NOT a row in shopping_checked: nothing here goes through
+   shoppingLine or the dictionary, so no recipe row's key, and so no tick, can be changed by an extra. One row per write.
+   `shoppingExtrasAvailable` is false until a load has found the table; until then nothing is drawn and nothing is sent. */
+const EXTRA_AISLES = ['Household', 'Health & Toiletries', 'Pets'];   // after the food aisles, before Other
+const EXTRA_AISLE_CHOICES = [...INGREDIENT_AISLES, ...EXTRA_AISLES, 'Other'];
+let shoppingExtrasAvailable = false;
+function loadShoppingExtras(){ return cache.shoppingExtras; }
+/* An aisle this app does not have (a later version's, or a slip in a backup) reads as Other rather than losing the row. */
+function extraFromRow(row){
+  const name = String((row && row.name) || '').trim();
+  if(!row || !row.id || !name) return null;
+  return { id: row.id, name, aisle: EXTRA_AISLE_CHOICES.includes(row.aisle) ? row.aisle : 'Other',
+    amount: String(row.amount || '').trim(), tickedAt: row.ticked_at || row.tickedAt || null };
+}
+function extraToRow(x){ return { id: x.id, household_id: HOUSEHOLD_ID, name: x.name, aisle: x.aisle, amount: x.amount || null, ticked_at: x.tickedAt || null }; }
+function addShoppingExtra(name, aisle, amount){
+  const entry = extraFromRow({ id: uid(), name, aisle, amount });
+  if(!entry || !shoppingExtrasAvailable) return false;
+  cache.shoppingExtras = loadShoppingExtras().concat([entry]);
+  const row = extraToRow(entry);
+  return queueWrite('shopping list', async ()=>{
+    const { error } = await sb.from('shopping_extras').upsert([row], { onConflict: 'id' });
+    if(error) throw error;
+  }, { key: 'shopping_extras:' + entry.id });
+}
+/* The tick is this one column of this one row, so a tick made here cannot undo a name or an aisle set on another device. */
+function toggleShoppingExtraTick(id){
+  const entry = loadShoppingExtras().find(x=> x.id === id);
+  if(!entry) return false;
+  entry.tickedAt = entry.tickedAt ? null : new Date().toISOString();
+  const tickedAt = entry.tickedAt;
+  return queueWrite('shopping list', async ()=>{
+    const { error } = await sb.from('shopping_extras').update({ ticked_at: tickedAt }).eq('household_id', HOUSEHOLD_ID).eq('id', id);
+    if(error) throw error;
+  }, { key: 'shopping_extras:' + id + '#ticked_at' });
+}
+/* × on a row, and CLEAR TICKS for the ticked ones: one delete naming exactly those rows, as clearTicks does, so an extra
+   added on another device in the meantime is not swept away with them. */
+function removeShoppingExtras(ids){
+  ids = ids.filter(id=> loadShoppingExtras().some(x=> x.id === id));
+  if(!ids.length) return true;
+  cache.shoppingExtras = loadShoppingExtras().filter(x=> !ids.includes(x.id));
+  return queueWrite('shopping list', async ()=>{
+    const { error } = await sb.from('shopping_extras').delete().eq('household_id', HOUSEHOLD_ID).in('id', ids);
+    if(error) throw error;
+  }, ids.length === 1 ? { key: 'shopping_extras:' + ids[0] } : undefined);
+}
+/* Whole-table replace. Import only — see pushList. */
+function replaceShoppingExtras(list){
+  cache.shoppingExtras = list;
+  return queueWrite('shopping list', ()=> pushList('shopping_extras', list.map(extraToRow)), { whole: true });
+}
+/* The extras as rows for the Shopping screen, by aisle. Read only, like everything the list is drawn from. */
+function shoppingExtraRows(){
+  return loadShoppingExtras().map(x=> ({ extra: true, id: x.id, key: 'extra:' + x.id, name: x.name, amount: x.amount, category: x.aisle, tickedAt: x.tickedAt }));
 }
 /* ---- Cooking notes (R4, docs/PLAN-COOKING-NOTES.md, agreed "as suggested" 30 Sep 2026) ----
    A running log per recipe of how it went: "needed 10 min longer in our oven". One row per note in
@@ -6473,7 +6560,8 @@ function updateSidebarCounts(){
   setNavCount('navShortlist', 'SHORTLIST', loadShortlist().length);
 
   const thisWeek = groupDaysByWeek(dayList())[0] || [];
-  setNavCount('navShopping', 'SHOPPING', buildShoppingList(thisWeek).totalItems);
+  /* With the extras (#241), which are on every week's list. Counted here, not in buildShoppingList, which is the recipes' list. */
+  setNavCount('navShopping', 'SHOPPING', buildShoppingList(thisWeek).totalItems + loadShoppingExtras().length);
 }
 
 /* =====================================================================
@@ -9639,18 +9727,33 @@ function renderShopping(){
     : (buckets[state.shoppingWeekIndex] || []);
   const weekStartIso = weekStartIsoOf(weekDays);
   const keyPrefix = both ? 'both|' : '';
-  const { categories: allCategories, totalItems, recipeCount, suggestions } = one
+  const built = one
     ? buildRecipeShoppingList(one, state.shoppingRecipe.servings)
     : buildShoppingList(weekDays);
+  const { recipeCount, suggestions } = built;
   const checkedForWeek = one
     ? (state.shoppingRecipeTicks[one.id] = state.shoppingRecipeTicks[one.id] || {})
     : (loadShoppingChecked()[weekStartIso] || {});
+
+  /* The extras (#241) join the week's list here, for drawing only: each in its aisle after that aisle's recipe rows, never
+     joined to one of the same name, and on every week alike. A one-recipe list is that recipe's and has none. An extra's
+     tick is its own (ticked), a recipe row's is the week's, and everything below asks ticked() rather than either. */
+  const extras = one ? [] : shoppingExtraRows();
+  const ticked = it=> it.extra ? !!it.tickedAt : !!checkedForWeek[keyPrefix + it.key];
+  const aisleOrder = [...SHOPPING_CATEGORIES.map(c=> c.name), ...EXTRA_AISLES, 'Other'];
+  const allCategories = !extras.length ? built.categories : aisleOrder
+    .map(name=> ({ name, items: ((built.categories.find(c=> c.name === name) || {}).items || [])
+      .concat(extras.filter(x=> x.category === name).sort((a, b)=> a.name.localeCompare(b.name))) }))
+    .filter(cat=> cat.items.length);
+  const totalItems = built.totalItems + extras.length;
+  const addForm = document.getElementById('shopAddForm');
+  addForm.hidden = !shoppingExtrasAvailable || !!one;
 
   /* Hiding ticked items can empty a category out; drop the heading too
      rather than leaving a title with nothing under it. */
   const categories = state.shoppingHideChecked
     ? allCategories
-        .map(cat=>({ name: cat.name, items: cat.items.filter(it=> !checkedForWeek[keyPrefix + it.key]) }))
+        .map(cat=>({ name: cat.name, items: cat.items.filter(it=> !ticked(it)) }))
         .filter(cat=> cat.items.length)
     : allCategories;
 
@@ -9674,7 +9777,7 @@ function renderShopping(){
   hideBtn.setAttribute('aria-pressed', String(state.shoppingHideChecked));
   /* Combined and single-week ticks live in the same week bucket, separated
      only by the key prefix — so count (and later clear) just this mode's. */
-  document.getElementById('shopClearBtn').disabled = !ticksInMode(checkedForWeek, keyPrefix).length;
+  document.getElementById('shopClearBtn').disabled = !ticksInMode(checkedForWeek, keyPrefix).length && !extras.some(ticked);
 
   /* The week label goes in here too (not just the dropdown) so the
      exported PNG — which hides the interactive dropdown — still states
@@ -9682,7 +9785,7 @@ function renderShopping(){
   const people = one && state.shoppingRecipe.servings;
   const weekLabel = one ? `${mod ? 'ONE RECIPE' : 'One recipe'}: ${one.title}${people ? ` · for ${people}` : ''}`
     : both ? 'THIS WEEK + NEXT WEEK' + (mod ? ' · ' + weekDatesLabel(weekDays) : '') : (weekLabels[state.shoppingWeekIndex] || '');
-  const tickedCount = allCategories.reduce((n, cat)=> n + cat.items.filter(it=> checkedForWeek[keyPrefix + it.key]).length, 0);
+  const tickedCount = allCategories.reduce((n, cat)=> n + cat.items.filter(ticked).length, 0);
   document.getElementById('shopMeta').textContent = !totalItems ? weekLabel
     : one ? (mod ? `${weekLabel} · ${totalItems} ITEM${totalItems===1?'':'S'} · ${tickedCount} TICKED` : `${weekLabel} · ${totalItems} item${totalItems===1?'':'s'}`)
     : mod ? `${weekLabel} · ${totalItems} ITEM${totalItems===1?'':'S'} · ${recipeCount} RECIPE${recipeCount===1?'':'S'} · ${tickedCount} TICKED`
@@ -9720,6 +9823,20 @@ function renderShopping(){
 
   body.innerHTML = categories.map(cat=>{
     const rows = cat.items.map(it=>{
+      if(it.extra){
+        /* No data-key: an extra has no key in shopping_checked. ADDED sits where a recipe's row names its recipes. */
+        const on = ticked(it);
+        return `<div class="shop-row shop-extra-row${on?' checked':''}">
+      <label class="shop-item shop-extra${on?' checked':''}" data-extra-id="${escapeHtml(it.id)}" data-name="${escapeHtml(it.name)}">
+        <input type="checkbox" ${on?'checked':''}>${mod ? '<span class="shop-box" aria-hidden="true"></span>' : ''}
+        <span class="shop-item-main">
+          <span class="shop-item-name">${it.amount?`<span class="qty">${escapeHtml(it.amount)}</span>`:''}${escapeHtml(it.name)}</span>
+          <span class="shop-item-recipes shop-added" title="You added this: no recipe asked for it">ADDED</span>
+        </span>
+      </label>
+      <button type="button" class="shop-extra-remove" data-extra-remove="${escapeHtml(it.id)}" aria-label="Take ${escapeHtml(it.name)} off the list">×</button>
+    </div>`;
+      }
       const storedKey = keyPrefix + it.key;
       const isChecked = !!checkedForWeek[storedKey];
       /* Every part the recipes asked for, in one place: "2 + 400 g". */
@@ -9751,11 +9868,11 @@ function renderShopping(){
     </div>`;
     }).join('');
     /* Marked here, while the ticks are to hand, so print and the PNG can leave out an aisle with nothing left to buy (#94). */
-    const allTicked = cat.items.length && cat.items.every(it=> checkedForWeek[keyPrefix + it.key]);
+    const allTicked = cat.items.length && cat.items.every(ticked);
     /* Modernist draws "ticked / total" beside the aisle from the attribute, so the title's own text stays the aisle's name.
        Counted from the whole list, as HIDE TICKED leaves only the rows still to buy in cat. */
     const whole = mod && (allCategories.find(c=> c.name === cat.name) || cat);
-    const aisleCount = mod ? ` data-count="${whole.items.filter(it=> checkedForWeek[keyPrefix + it.key]).length} / ${whole.items.length}"` : '';
+    const aisleCount = mod ? ` data-count="${whole.items.filter(ticked).length} / ${whole.items.length}"` : '';
     return `<div class="shop-category${allTicked ? ' all-checked' : ''}">
       <div class="shop-category-title"${aisleCount}>${escapeHtml(cat.name.toUpperCase())}</div>
       ${rows}
@@ -9780,6 +9897,7 @@ function renderShopping(){
      already returned. */
   const swapRows = [];
   allCategories.forEach(cat=> cat.items.forEach(it=>{
+    if(it.extra) return;   // a swap is for a recipe's ingredient
     findSwapMatchesForKey(it.key, loadSwaps()).forEach(swap=> swapRows.push({ name: it.name, swap }));
   }));
   if(swapRows.length){
@@ -9877,11 +9995,20 @@ function initShoppingListeners(){
     }
     const all = loadShoppingChecked();
     const keys = ticksInMode(all[weekStart], body.dataset.keyPrefix);
-    if(!keys.length) return;
-    if(!confirm(`Untick all ${keys.length} item${keys.length===1?'':'s'} on this list?`)) return;
-    keys.forEach(k=> delete all[weekStart][k]);
-    if(!Object.keys(all[weekStart]).length) delete all[weekStart];
-    clearTicks(weekStart, keys);
+    /* A ticked extra is bought and done with, so CLEAR TICKS takes it off the list rather than unticking it (#241, decided
+       15 Nov 2026), and says so before it does. */
+    const done = loadShoppingExtras().filter(x=> x.tickedAt).map(x=> x.id);
+    if(!keys.length && !done.length) return;
+    const ask = (keys.length ? `Untick all ${keys.length} item${keys.length===1?'':'s'} on this list?` : '')
+      + (done.length ? `${keys.length ? ' ' : ''}The ${done.length} ticked item${done.length===1?'':'s'} you added will be taken off the list.` : '');
+    if(!confirm(ask)) return;
+    if(keys.length){
+      keys.forEach(k=> delete all[weekStart][k]);
+      if(!Object.keys(all[weekStart]).length) delete all[weekStart];
+      clearTicks(weekStart, keys);
+    }
+    removeShoppingExtras(done);
+    updateSidebarCounts();
     renderShopping();
   });
 
@@ -9901,6 +10028,13 @@ function initShoppingListeners(){
     const option = e.target.closest('.shop-merge-option');
     const cancelBtn = e.target.closest('.shop-merge-cancel');
     const aisleUndoBtn = e.target.closest('[data-shop-aisle-undo]');
+    const extraRemove = e.target.closest('[data-extra-remove]');
+    if(extraRemove){
+      removeShoppingExtras([extraRemove.dataset.extraRemove]);
+      updateSidebarCounts();
+      renderShopping();
+      return;
+    }
     if(aisleUndoBtn){
       const u = shopAisleUndo;
       shopAisleUndo = null;
@@ -9993,7 +10127,9 @@ function initShoppingListeners(){
     const label = e.target.closest('.shop-item');
     if(!label) return;
     const shopBody = document.getElementById('shopBody');
-    if(shopBody.dataset.recipeId){
+    if(label.dataset.extraId){
+      toggleShoppingExtraTick(label.dataset.extraId);
+    } else if(shopBody.dataset.recipeId){
       /* Held in this tab only: nothing is written for a one-recipe list. */
       const held = state.shoppingRecipeTicks[shopBody.dataset.recipeId] = state.shoppingRecipeTicks[shopBody.dataset.recipeId] || {};
       if(held[label.dataset.key]) delete held[label.dataset.key]; else held[label.dataset.key] = true;
@@ -10001,6 +10137,20 @@ function initShoppingListeners(){
       toggleShoppingChecked(shopBody.dataset.weekStart, label.dataset.key);
     }
     renderShopping();
+  });
+
+  /* ADD AN ITEM (#241). The aisle left at AISLE… is Other. The name is kept as typed; nothing looks it up or renames it. */
+  document.getElementById('shopAddAisle').innerHTML = `<option value="">AISLE…</option>` +
+    EXTRA_AISLE_CHOICES.map(a=> `<option value="${escapeHtml(a)}">${escapeHtml(a.toUpperCase())}</option>`).join('');
+  document.getElementById('shopAddForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const nameEl = document.getElementById('shopAddName'), amountEl = document.getElementById('shopAddAmount'), aisleEl = document.getElementById('shopAddAisle');
+    if(!nameEl.value.trim()){ nameEl.focus(); return; }
+    if(addShoppingExtra(nameEl.value, aisleEl.value || 'Other', amountEl.value) === false) return;
+    nameEl.value = ''; amountEl.value = '';
+    updateSidebarCounts();
+    renderShopping();
+    nameEl.focus();
   });
 
   document.getElementById('shopExportBtn').addEventListener('click', ()=>{
@@ -10012,7 +10162,7 @@ function initShoppingListeners(){
     exportNodeAsPng(
       document.querySelector('.shop-wrap'),
       `shopping-list-${labelBit}`,
-      { scrollFixSelectors: ['.shop-wrap'], hideSelectors: ['.shop-head-right', '.shop-tools'], excludeChecked: true }
+      { scrollFixSelectors: ['.shop-wrap'], hideSelectors: ['.shop-head-right', '.shop-tools', '.shop-add', '.shop-extra-remove'], excludeChecked: true }
     );
   });
 }
@@ -14344,6 +14494,8 @@ function exportPayload(){
     /* Left out, not written as [], while the table is missing: restoring such a
        backup later must not read "no aisles" and clear the ones set since. */
     ...(aisleOverridesAvailable ? { aisleOverrides: loadAisleOverrides() } : {}),
+    /* Shopping extras (#241), left out while the table is missing for the same reason. */
+    ...(shoppingExtrasAvailable ? { shoppingExtras: loadShoppingExtras() } : {}),
     /* Left out while the notes could not be loaded, for the same reason. */
     ...(recipeNotesAvailable ? { recipeNotes: loadRecipeNotes() } : {}),
     diary: loadDiary()
@@ -14572,6 +14724,12 @@ function importAllData(file){
       replaceAisleOverrides(data.aisleOverrides
         .map(o=> ({ id: (o && o.id) || uid(), name: shoppingKeyForName((o && o.name) || ''), aisle: o && o.aisle }))
         .filter(o=> o.name && INGREDIENT_AISLES.includes(o.aisle) && !seen.has(o.name) && seen.add(o.name)));
+    }
+    /* Shopping extras (#241): a backup without them, or a household without the table yet, keeps what is here. */
+    if(Array.isArray(data.shoppingExtras) && shoppingExtrasAvailable){
+      const seen = new Set();
+      replaceShoppingExtras(data.shoppingExtras.map(x=> extraFromRow({ ...x, id: (x && x.id) || uid() }))
+        .filter(x=> x && !seen.has(x.id) && seen.add(x.id)));
     }
     /* Cooking notes (R4): a backup without them keeps what is here. Only notes on a recipe the file restores
        are kept, since the database refuses a note on a recipe it does not have. Queued after the recipes. */

@@ -1,7 +1,7 @@
 # Plan: things to buy that no recipe asks for (issue #241)
 
 A working file with an end (`CLAUDE.md`, "How the documents are kept"). Written 15 Nov 2026 from issue #241, sent from the app
-that day. **Nothing here is built.** The household answered its questions the same day (§6), so slice 1 can start.
+that day. The household answered its questions the same day (§6). **Slice 1 is built** (app version 2026-11-15.2) and its table is applied (15 Nov 2026, `docs/migrations/add-shopping-extras.md`); it waits on Job 14. Slices 2 and 3 are not built.
 
 ## 1. What is asked
 
@@ -40,14 +40,14 @@ nothing about how recipe ingredients are named, keyed or ticked changes.
   household's earlier extras. Choosing a dictionary name fills in its aisle (`aisleFor`, read only).
 - The one-recipe list (SHOPPING LIST on a recipe) shows no extras: it is that recipe's list.
 - PRINT / A4 PDF and EXPORT PNG include extras, and leave out ticked ones as they do for recipe rows. HIDE TICKED applies.
-  AUDIT's tools (MERGE WITH…, the aisle pick, "Same as …?") are not offered on an extra: its name and aisle are what was typed,
-  and are changed by tapping the row.
+  AUDIT's tools (MERGE WITH…, the aisle pick, "Same as …?") are not offered on an extra: its name and aisle are what was typed.
+  Slice 1 has no editing: an extra is changed by taking it off (×) and adding it again.
 - EXPORT DATA and IMPORT DATA carry extras, as they carry aisle overrides. The nightly dump covers a new table by itself.
 
 ## 4. The table
 
 One new table, `shopping_extras`, modelled on `aisle_overrides` (same foreign key, same four `TO authenticated` policies, the
-`anon` revoke). The SQL goes in a new page under `docs/migrations/` with slice 1, **for the household to apply before the
+`anon` revoke). The SQL is in `docs/migrations/add-shopping-extras.md`, **for the household to apply before the
 PR is merged**. A session never runs it.
 
 | Column | What it holds |
@@ -70,7 +70,7 @@ Each is a PR of its own, with its tests, a changelog entry, `help.html`, `docs/S
 1. **Add, tick, remove.** The migration page. An ADD AN ITEM row at the top of the Shopping screen: name, aisle, optional
    amount. The extra appears in its aisle with an ADDED mark where a recipe row names its recipes, its tick and ×. The aisles offered are the food
    aisles, Household, Health & Toiletries, Pets and Other. An extra shows on this week, next week and both weeks
-   alike until it is ticked. The sidebar's count includes extras still to buy. Print, PNG, HIDE TICKED, export and import.
+   alike until it is ticked. The sidebar's count includes the extras (ticked ones too, as it counts ticked recipe rows). Print, PNG, HIDE TICKED, export and import.
 2. **Suggestions and regulars.** The name box offers dictionary names and earlier extras as you type, filling in the aisle. A
    **REGULARS** list: mark an extra as a regular, and it can be put back on the list with one tap (or all of them at once) after
    it has been ticked and cleared.
