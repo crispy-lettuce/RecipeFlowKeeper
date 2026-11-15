@@ -1131,6 +1131,10 @@ html[data-style="modernist"] #shopWeekSelect{
 }
 
 html[data-style="modernist"] .shop-body{ display:block; columns:2; column-gap:36px; padding:24px 28px 40px; }
+/* ADD AN ITEM (#241): a band of its own under the heading, on the heading's margins. A ticked extra greys with its ×. */
+html[data-style="modernist"] .shop-add{ margin:0; padding:14px 28px; border-bottom:1px solid var(--color-divider); }
+html[data-style="modernist"] .shop-add input[type="text"]{ border:1px solid var(--color-divider); color:var(--color-text); }
+html[data-style="modernist"] .shop-extra-remove{ color:var(--km-ink-72); }
 html[data-style="modernist"] .shop-body > .grid-empty, html[data-style="modernist"] .shop-body > .shop-swap-panel{ column-span:all; }
 html[data-style="modernist"] .shop-category{ break-inside:avoid; margin-bottom:28px; }
 html[data-style="modernist"] .shop-category-title{
@@ -1182,6 +1186,7 @@ html[data-style="modernist"] .shop-swap-panel{ max-width:none; margin:0; }
 @media (max-width: 860px){
   html[data-style="modernist"] .shop-head{ align-items:flex-start; padding:16px; }
   html[data-style="modernist"] .shop-body{ padding:16px 16px 32px; }
+  html[data-style="modernist"] .shop-add{ padding:12px 16px; }
 }
 @media (max-width: 560px){
   html[data-style="modernist"] .shop-head h1{ font-size:44px; }
