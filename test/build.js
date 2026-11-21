@@ -137,5 +137,13 @@ const modernist = fs.readFileSync(path.join(__dirname, '..', 'styles', 'modernis
 if(/<\/style/i.test(modernist)) throw new Error('modernist.css contains "</style", which would end the inlined tag early');
 html = html.replace(STYLE_TAG, () => '<style id="modernist-css">\n' + modernist + '\n</style>');
 
+/* The manifest and the icons are linked by a relative address that exists beside index.html and not beside this copy in test/,
+   so each page would log a failed load and smoke.js fails the run on any console error. A browser tab does nothing with them
+   and the harness proves nothing about installing, so they are taken out of the copy; test/core.test.js checks the real files.
+   The link must exist in index.html, or this would quietly stop meaning anything. */
+const INSTALL_LINKS = /<link rel="(?:manifest|icon|apple-touch-icon)"[^>]*>\s*/g;
+if((html.match(INSTALL_LINKS) || []).length !== 3) throw new Error('index.html no longer has exactly the manifest, icon and apple-touch-icon links');
+html = html.replace(INSTALL_LINKS, '');
+
 fs.writeFileSync(OUT, html);
 console.log('built', OUT, html.length, 'bytes');
