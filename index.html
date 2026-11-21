@@ -6,6 +6,14 @@
 <!-- Kept in step with the theme by applyTheme, so the browser chrome on a
      tablet does not sit as a light bar above a dark app. -->
 <meta name="theme-color" content="#EAE4D5">
+<!-- INSTALLABLE (asked for 21 Nov 2026: use it on the tablet as an app, not in a browser tab). The manifest is what lets Chrome on Android offer "Install app", so the tablet opens it full-screen
+     with its own icon instead of as a browser tab. The address is relative on purpose: Pages serves this app under /RecipeFlowKeeper/, and the
+     manifest's start_url and scope are relative to the manifest, so they follow it wherever it is served. There is no service worker: Chrome has not
+     required one to install since version 108, and offline use is not a goal (docs/SPEC.md §2), so a cache that could fight the version checks
+     below is not worth having. In a browser tab none of this does anything. test/core.test.js checks the manifest and its icons. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Recipe Wrangler</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -1997,7 +2005,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-11-15.4">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-11-21.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2591,6 +2599,7 @@ function loadArchivoFont(){
             <li><a href="help.html#drive-backup" target="_blank" rel="noopener">How do I keep a backup in my Google Drive?</a></li>
             <li><a href="help.html#offline" target="_blank" rel="noopener">What does the OFFLINE bar mean?</a></li>
             <li><a href="help.html#report" target="_blank" rel="noopener">How do I report a bug or suggest an idea?</a></li>
+            <li><a href="help.html#install" target="_blank" rel="noopener">How do I put the app on the tablet's home screen?</a></li>
           </ul>
         </div>
 
@@ -2856,7 +2865,7 @@ const EXPECTED_CORE_VERSION = '2026-11-12.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-11-15.4';
+const APP_VERSION = '2026-11-21.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings

@@ -1,4 +1,7 @@
 [
+  { "version": "2026-11-21.1", "date": "2026-11-21", "issues": [],
+    "changes": ["New: the app can be installed on an Android tablet or phone, so it opens full-screen from its own icon on the home screen, with no browser bar. In Chrome, open the app's address, open the three-dot menu and choose Install app (or Add to Home screen). It is still the same app and the same account: the web address in a browser works exactly as before, and you do not have to install it on every device.", "On an iPad or iPhone, use Safari's Share button and choose Add to Home Screen. Installing does not make the app work offline: it still needs a connection to load."]
+  },
   { "version": "2026-11-15.4", "date": "2026-11-15", "issues": [241],
     "changes": ["New: the shopping list remembers the aisle you give something you add. Choose an aisle when you add an item and, the next time you type that name, it is offered under the box with its aisle, on every device; add it without choosing an aisle and it goes there by itself. Choose a different aisle and that is remembered instead. This is only for the things you add yourself: it never moves a recipe's ingredient, which is still done in AUDIT or Settings.", "This appears once your household's database has been updated for it; until then items are added as before and nothing is remembered."] },
   { "version": "2026-11-15.3", "date": "2026-11-15", "issues": [241],
