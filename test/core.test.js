@@ -72,6 +72,31 @@ check('the versions are all different, newest first',
 const appVersion = (pageSrc.match(/const APP_VERSION = '([^']+)'/) || [])[1];
 check('index.html is the version at the top of changelog.json', !!appVersion && appVersion === clVersions[0], `page ${appVersion}, log ${clVersions[0]}`);
 
+/* ---- Installing the app (21 Nov 2026) ----
+   Chrome on Android offers "Install app" only if the page links a manifest that has a name, a start address, a standalone
+   display and a 192 and a 512 pixel icon that exist and really are those sizes. A manifest that quietly fell short (a renamed
+   icon, a start_url that began with a slash and so pointed outside the Pages sub-path) would leave the tablet with a browser
+   shortcut and nothing to say why. Nothing here needs a browser: it reads the files. */
+{
+  let manifest = null, manifestError = '';
+  try { manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.webmanifest'), 'utf8')); } catch(e){ manifestError = e.message; }
+  const m = manifest || {};
+  check('the page links manifest.webmanifest, and it reads as JSON', /<link rel="manifest" href="manifest\.webmanifest">/.test(pageSrc) && !!manifest, manifestError);
+  check('the manifest names the app, opens standalone, and starts at a relative address inside its own folder (Pages serves under a sub-path)',
+        m.name === 'Recipe Wrangler' && !!m.short_name && m.display === 'standalone'
+        && ['start_url', 'scope', 'id'].every(k => typeof m[k] === 'string' && !/^(\/|[a-z]+:)/i.test(m[k])), JSON.stringify([m.name, m.display, m.start_url, m.scope, m.id]));
+  const pngSize = f => { const b = fs.readFileSync(path.join(ROOT, f)); return b.slice(1, 4).toString() === 'PNG' ? b.readUInt32BE(16) + 'x' + b.readUInt32BE(20) : 'not a PNG'; };
+  const icons = Array.isArray(m.icons) ? m.icons : [];
+  const iconProblems = icons.map(i => { try { return pngSize(i.src) === i.sizes && /^image\/png$/.test(i.type || '') ? '' : `${i.src}: is ${pngSize(i.src)}, says ${i.sizes}`; } catch(e){ return `${i.src}: missing`; } }).filter(Boolean);
+  check('the manifest has a 192 and a 512 pixel icon, and a maskable one, each a real PNG of the size it says',
+        icons.some(i => i.sizes === '192x192' && i.purpose === 'any') && icons.some(i => i.sizes === '512x512' && i.purpose === 'any')
+        && icons.some(i => i.purpose === 'maskable') && iconProblems.length === 0, iconProblems.join('; ') || icons.length);
+  const touch = (pageSrc.match(/<link rel="apple-touch-icon" href="([^"]+)">/) || [])[1];
+  check('the page names an icon for the tab and an Apple touch icon that is a 180 pixel PNG', /<link rel="icon" [^>]*href="icons\/icon-192\.png">/.test(pageSrc) && !!touch && pngSize(touch) === '180x180', touch);
+  check('the app has no service worker: it was left out on purpose, so adding one needs a decision (docs/SPEC.md §2)',
+        !/navigator\.serviceWorker/.test(pageSrc) && !fs.existsSync(path.join(ROOT, 'sw.js')) && !fs.existsSync(path.join(ROOT, 'service-worker.js')));
+}
+
 /* ---- The page's colours (READABILITY T, 14 Oct 2026, docs/PLAN-READABILITY.md) ----
    Read from the stylesheet's source, in Node: the pure-arithmetic half of T. The browser half (what actually lands on
    screen, against the real backgrounds) is in smoke.js. Comments are stripped first because the :root block's own comments

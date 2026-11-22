@@ -47,6 +47,13 @@ carries `name` and `autocomplete` on each field and is hidden on success, which 
 offered to it with `navigator.credentials.store`. The password field is emptied two seconds after the form is hidden, not before. Blocked storage means no
 memory, never an error.
 
+**Installing** (21 Nov 2026). The app is an installable web app: `manifest.webmanifest` (name Recipe Wrangler, `display: standalone`, `start_url` and `scope` relative so
+they follow the Pages sub-path) and three icons in `icons/` (192 and 512 pixels, and a maskable 512; `icon.svg` is the source). Chrome on Android then offers **Install app**, and the
+tablet opens the app full-screen from its own icon; Safari's Add to Home Screen uses `apple-touch-icon.png`. A browser tab is unchanged: same address, same account, same data, and
+installing is a choice per device. There is **no service worker** on purpose: Chrome has not required one to install since version 108, offline use is not a goal, and a cache would
+fight the version checks that reload a stale page. Installed, the app still needs a connection to open. Not known until seen on a tablet: whether the Google consent (§6.6) returns
+to the installed app or to the browser (the household's Job 17 checks it).
+
 **How data moves.** On sign-in the whole library loads into memory; everything afterwards is instant. A change is queued and
 written to Supabase in the background, one row at a time. Coming back to a tab re-reads the library, so devices pick up each other's
 changes without a reload. Offline use is not a goal, but a short loss of connection loses nothing: the app says it is OFFLINE
