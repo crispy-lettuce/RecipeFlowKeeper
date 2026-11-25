@@ -2006,7 +2006,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-11-25.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-11-25.2">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2709,8 +2709,7 @@ function loadArchivoFont(){
     <p class="subtle" id="adHocSub">For something you ate that has no recipe card.</p>
     <label class="mini-field">
       <span>WHAT WAS IT</span>
-      <input type="text" id="adHocTitle" list="adHocVocab" autocomplete="off" placeholder="e.g. Fish and chips">
-      <datalist id="adHocVocab"></datalist>
+      <input type="text" id="adHocTitle" autocomplete="off" placeholder="e.g. Fish and chips">
     </label>
     <!-- #249: shown only when WHAT WAS IT names one of the household's recipes (from History, not the Planner's + OTHER). -->
     <div class="meal-type-row" id="adHocKind" role="group" aria-label="How it was made" hidden></div>
@@ -2868,7 +2867,7 @@ const EXPECTED_CORE_VERSION = '2026-11-12.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-11-25.1';
+const APP_VERSION = '2026-11-25.2';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -10797,6 +10796,10 @@ const AD_HOC_KINDS = [
 /* Which screen opened the dialog, so saving ends on that screen: 'history' (+ ENTRY) or 'planner' (+ OTHER on a day,
    docs/PLAN-ADHOC-PLANNER.md). It is the same dialog and the same row either way; only the words and the ending differ. */
 let adHocOrigin = 'history';
+/* What WHAT WAS IT offers, set each time the dialog opens: the names already used, then (from History) the recipes. Drawn by
+   the app's own list (renderIngredientSuggest), not a <datalist>: the tablet's Chrome drew a datalist's filtered list with
+   no background, so the dialog showed through it (#249, 25 Nov 2026). */
+let adHocNames = [];
 
 /* The recipe WHAT WAS IT names, by its whole title in any case, or null. Only from History: the Planner's + OTHER is for
    a day's entry that is not a recipe, and a recipe goes on a day through CHOOSE A RECIPE. */
@@ -10851,8 +10854,8 @@ function openAdHocEntry(opts){
       .sort((a,b)=> a.localeCompare(b))
       .forEach(t=>{ if(!seen.has(t.toLowerCase())){ seen.add(t.toLowerCase()); names.push(t); } });
   }
-  document.getElementById('adHocVocab').innerHTML =
-    names.map(t=>`<option value="${escapeHtml(t)}"></option>`).join('');
+  adHocNames = names;
+  hideIngredientSuggest(document.getElementById('adHocTitle-suggest'));
   renderMealTypeButtons(document.getElementById('adHocMealChoices'), null);
   refreshAdHocKind();
   overlay.classList.add('open');
@@ -10860,6 +10863,7 @@ function openAdHocEntry(opts){
 }
 
 function closeAdHocEntry(){
+  hideIngredientSuggest(document.getElementById('adHocTitle-suggest'));
   document.getElementById('adHocOverlay').classList.remove('open');
 }
 
@@ -10888,6 +10892,9 @@ document.getElementById('adHocKind').addEventListener('click', e=>{
   refreshAdHocKind();
 });
 document.getElementById('adHocTitle').addEventListener('keydown', e=>{
+  /* Enter on a highlighted suggestion picks it (the list's own handler, which runs after this one), not ADD. */
+  const list = document.getElementById('adHocTitle-suggest');
+  if(e.key === 'Enter' && list.style.display !== 'none' && parseInt(list.dataset.active, 10) >= 0) return;
   if(e.key === 'Enter'){ e.preventDefault(); saveAdHocEntry(); }
 });
 document.getElementById('adHocSave').addEventListener('click', saveAdHocEntry);
@@ -13056,7 +13063,9 @@ document.querySelectorAll('.ingr-head').forEach(head=> head.addEventListener('cl
    costs nothing. A suggestion only fills the box and tells it so, as typing would; every box keys what it is
    given with shoppingKeyForName, so a picked name and the same name typed land on the same row. */
 const INGREDIENT_SUGGEST_BOXES = { 'ingredientLookup': 'all', 'alias-from': 'alias', 'alias-to': 'alias',
-  'aisleOverride-name': 'library', 'swap-original': 'all', 'swap-replacement': 'all' };
+  'aisleOverride-name': 'library', 'swap-original': 'all', 'swap-replacement': 'all',
+  /* Not an ingredient box: the diary's WHAT WAS IT, offering adHocNames (#249). The same list, for the same reason. */
+  'adHocTitle': 'adhoc' };
 let ingredientVocab = { all: [], library: [] };
 function fillIngredientVocab(){
   const library = allLibraryIngredientNames().map(it=> it.name);
@@ -13073,6 +13082,7 @@ function ingredientSuggestions(input){
   if(kind === 'alias') kind = document.getElementById('alias-kind').value === 'source' ? 'source' : 'all';
   const names = kind === 'source'
     ? Array.from(sourceCounts(loadRecipes()).keys()).sort((a, b)=> a.localeCompare(b))
+    : kind === 'adhoc' ? adHocNames
     : ingredientVocab[kind];
   const q = input.value.trim().toLowerCase();
   if(!q) return [];
@@ -13122,7 +13132,7 @@ Object.keys(INGREDIENT_SUGGEST_BOXES).forEach(id=>{
   input.insertAdjacentElement('afterend', list);
   input.parentElement.classList.add('suggest-host');
   hideIngredientSuggest(list);
-  input.addEventListener('focus', ()=>{ fillIngredientVocab(); renderIngredientSuggest(input); });
+  input.addEventListener('focus', ()=>{ if(INGREDIENT_SUGGEST_BOXES[id] !== 'adhoc') fillIngredientVocab(); renderIngredientSuggest(input); });
   input.addEventListener('input', ()=>{ if(!input.dataset.suggestPicking) renderIngredientSuggest(input); });
   input.addEventListener('blur', ()=>{
     setTimeout(()=>{ if(document.activeElement !== input) hideIngredientSuggest(list); }, 150);

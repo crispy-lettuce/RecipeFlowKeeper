@@ -168,8 +168,8 @@ If a step does not do what it says, note which one and what you saw.
 
 No database change and nothing to deploy. It writes to your diary and your stats, so REMOVE what you add (step 6) if you were only trying it.
 
-1. **Merge the pull request, then reload the app** so it is on version 2026-11-25.1. **You should see:** Settings → HELP shows it, and What's new mentions logging a recipe you forgot to plan.
-2. In History, press **+ ENTRY** and type the first few letters of one of your recipes. **You should see:** the recipe offered among the names. Pick it. **You should see:** three buttons, **COOKED** (already chosen), **FROM THE FREEZER** and **COOKED AHEAD**, above the meals.
+1. **Merge the pull request, then reload the app** so it is on version 2026-11-25.2. **You should see:** Settings → HELP shows it, and What's new mentions logging a recipe you forgot to plan and the list of names fixed.
+2. In History, press **+ ENTRY** and type the first few letters of one of your recipes. **You should see:** a short list under the box, on a solid background (nothing showing through it), with the recipe among the names. Tap it. **You should see:** three buttons, **COOKED** (already chosen), **FROM THE FREEZER** and **COOKED AHEAD**, above the meals.
 3. Set the date to yesterday (or a day you cooked something you never planned), choose a meal and press **ADD**. **You should see:** "Logged … as cooked on …", that day selected in History with the dish on it, and the recipe's "last cooked" (on its card or in the viewer) showing that day if it is the latest.
 4. Press **+ ENTRY** again, pick the same recipe and the same day, and press **ADD**. **You should see:** "It is already logged as cooked on that day." and nothing added.
 5. Pick a recipe, choose **COOKED AHEAD**. **You should see:** the meal buttons disappear. Choose **COOKED** again and they come back. Try a date after today. **You should see:** it refused, saying the day has not come yet.
