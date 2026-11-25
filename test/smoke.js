@@ -551,8 +551,20 @@ const check = (name, pass, detail) => {
   await page.click('#historyAddEntryBtn');
   await page.waitForTimeout(300);
   check('ad-hoc dialog opens', await page.isVisible('#adHocOverlay .mini-panel'));
-  check('autocomplete offers names already used',
-        (await page.locator('#adHocVocab option').count()) >= 1);
+  /* The names are the app's own list (renderIngredientSuggest), not a <datalist>: the tablet's Chrome drew a datalist's
+     filtered list with no background (#249, 25 Nov). So none is attached, and the list is opaque. */
+  check('WHAT WAS IT has no <datalist>', await page.evaluate(() =>
+    !document.getElementById('adHocTitle').hasAttribute('list') && !document.querySelector('#adHocOverlay datalist')));
+  await page.fill('#adHocTitle', 'onfocus');
+  await page.waitForTimeout(150);
+  const adHocList = await page.evaluate(() => {
+    const l = document.getElementById('adHocTitle-suggest');
+    const bg = getComputedStyle(l).backgroundColor;
+    const alpha = /rgba\(/.test(bg) ? parseFloat(bg.split(',')[3]) : 1;
+    return { shown: l.style.display !== 'none', items: l.querySelectorAll('[data-suggest-value]').length, bg, alpha };
+  });
+  check('autocomplete offers names already used, in the app\'s own list', adHocList.shown && adHocList.items >= 1, JSON.stringify(adHocList));
+  check('and the list has a solid background, so the dialog does not show through it', adHocList.alpha === 1, adHocList.bg);
   /* The autocomplete puts a user-typed title into an HTML attribute. The
      fixture includes a title containing a double quote, which before
      escapeHtml handled quotes would break out of value="..." and inject an
@@ -560,18 +572,24 @@ const check = (name, pass, detail) => {
      escape fails the browser sees an extra attribute, and the option's
      value is truncated at the quote. */
   const attrSafety = await page.evaluate(() => {
-    const opts = [...document.querySelectorAll('#adHocVocab option')];
-    const hit = opts.find(o => o.value.includes('onfocus'));
+    const opts = [...document.querySelectorAll('#adHocTitle-suggest [data-suggest-value]')];
+    const hit = opts.find(o => o.dataset.suggestValue.includes('onfocus'));
     return {
       found: !!hit,
-      value: hit ? hit.value : null,
-      strayAttrs: hit ? [...hit.attributes].map(a => a.name).filter(n => n !== 'value') : []
+      value: hit ? hit.dataset.suggestValue : null,
+      strayAttrs: hit ? [...hit.attributes].map(a => a.name).filter(n => n !== 'class' && n !== 'data-suggest-value') : []
     };
   });
   check('a quote in an entry name does not break out of the attribute',
         attrSafety.found && attrSafety.value === 'x" onfocus="alert(1)'
           && attrSafety.strayAttrs.length === 0,
         JSON.stringify(attrSafety));
+  /* A tap on a name fills the box and closes the list. */
+  await page.locator('#adHocTitle-suggest [data-suggest-value]').first().dispatchEvent('mousedown');
+  const adHocPicked = await page.evaluate(() => ({ value: document.getElementById('adHocTitle').value,
+    open: document.getElementById('adHocTitle-suggest').style.display !== 'none' }));
+  check('tapping a name fills the box and closes the list', adHocPicked.value === 'x" onfocus="alert(1)' && !adHocPicked.open, JSON.stringify(adHocPicked));
+  await page.fill('#adHocTitle', '');
   await page.click('#adHocSave');
   await page.waitForTimeout(250);
   check('a nameless entry is refused', await page.isVisible('#adHocError'));
@@ -655,8 +673,10 @@ const check = (name, pass, detail) => {
   }));
   await page.click('#historyAddEntryBtn');
   await page.waitForTimeout(250);
+  await page.fill('#adHocTitle', mm.title.slice(0, 4));
+  await page.waitForTimeout(150);
   check('missed meal: + ENTRY offers the household\'s recipes', await page.evaluate(t =>
-    [...document.querySelectorAll('#adHocVocab option')].some(o => o.value === t), mm.title));
+    [...document.querySelectorAll('#adHocTitle-suggest [data-suggest-value]')].some(o => o.dataset.suggestValue === t), mm.title));
   await page.click('#adHocCancel');
 
   await mmOpen(mm.title.toUpperCase(), mm.free[0]);
