@@ -15,7 +15,8 @@ metadata, counts and the Edge Function versions; no household rows). It carries 
   `2026-11-01.2` (`APP_VERSION`, `index.html`), core `2026-11-01.2` (`KITCHEN_CORE_VERSION`, `core.js`): read from `main`, not from the running app.
 - **Open work on GitHub** (read 15 Nov 2026): six open issues. #240 (the Planner empty when opened while the library is still loading: fixed in app version 2026-11-15.1,
   awaiting Job 13), #241 (things to buy that no recipe asks for: all three slices of `docs/PLAN-SHOPPING-EXTRAS.md` are built, app version 2026-11-15.4; both tables are applied, and all three wait on Jobs 14, 15 and 16), #234 (parked on purpose), #223 (the Planner's previous
-  days: built, awaiting Job 7), #200 (view styles: its three asks are built, see §3) and #199 (names: the on-screen name is done, the repository rename is not). #224, #237 and
+  days: built, awaiting Job 7), #200 (view styles: its three asks are built, see §3) and #199 (names: the on-screen name is done, the repository rename is not). **#249** (25 Nov, a missed meal logged
+  from History's + ENTRY, `docs/SPEC.md` §5.8) is built in app version 2026-11-25.1 and awaits Job 18. #224, #237 and
   #216 were closed on 15 Nov (#216 as not planned), #198 and #221 on 31 Oct, #196 on 25 Oct and #197 on 26 Oct. #100 (a preview site) was closed.
 - **Tablet checks:** the household reported every job on `docs/HOUSEHOLD-JOBS.md` complete on 1 Nov (sign-in, REPORT A BUG OR AN IDEA, COOK AHEAD, READ BY CHAT); that is a report,
   and what a session saw is recorded under "Recently done" there. Not yet reported on a device: the Modernist default, the Recipes grid and hiding the menu on every screen
@@ -67,7 +68,7 @@ READ BY CHAT.
    **#198** (reporting a bug or idea, Settings → HELP → REPORT A BUG OR AN IDEA, `docs/SPEC.md` §5.9) and **#221** (COOK AHEAD on the Planner, §5.5) are built and were closed on
    31 Oct; the plan that covered both was deleted with the build: `git show 40e461d:docs/PLAN-COOK-AHEAD-AND-REPORTS.md`. #100, a preview site, was closed; its reasoning is at
    `git show 67b552e:docs/PLAN-PREVIEW-SITE.md`.
-3. **Household jobs** are in `docs/HOUSEHOLD-JOBS.md`: seven waiting (15 Nov 2026): Jobs 7, 11, 12, 13, 14, 15 and 16.
+3. **Household jobs** are in `docs/HOUSEHOLD-JOBS.md`: nine waiting (25 Nov 2026): Jobs 7 and 11 to 18.
 4. **Checking many recipes against their sources at once** (`docs/PLAN-BULK-VALIDATE.md`) is built: IN OTHER NOW (#225), CHECK ALL (#227), READ BY CHAT (#228) and the comparison fix with
    OPEN carrying the list (#229). The household worked the library through it and reported it complete on 1 Nov. Two things in the plan are not built, and the plan stays until
    they are built or moved to issues: reading a page's servings for a recipe that has none (it needs an Edge Function change the household deploys, and a write to the recipe's

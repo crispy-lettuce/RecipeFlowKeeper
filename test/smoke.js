@@ -625,6 +625,126 @@ const check = (name, pass, detail) => {
         mealWrite && mealWrite.match && mealWrite.match.column === 'id',
         mealWrite ? JSON.stringify(mealWrite.match) : '-');
 
+  /* #249: a missed meal, logged from History's + ENTRY by picking a recipe. Through the real dialog. The freezer and
+     cooked-ahead columns are switched on for this block only (the main page has neither), and every entry it adds is
+     removed again at the end so the checks after it see the diary as it was. */
+  await page.click('.navlink[data-view="history"]');
+  await page.waitForTimeout(400);
+  const mm = await page.evaluate(() => {
+    const was = { premade: premadeAvailable, cookAhead: cookAheadAvailable };
+    premadeAvailable = true; cookAheadAvailable = true;
+    const r = loadRecipes()[0];
+    const iso = n => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
+    const free = [];
+    for(let n = 2; free.length < 3; n++){ const d = iso(n); if(!(r.history || []).includes(d)) free.push(d); }
+    window.__MM__ = { was, id: r.id, before: loadDiary().length };
+    return { id: r.id, title: r.title, free, tomorrow: iso(-1), history: (r.history || []).length };
+  });
+  const mmOpen = async (title, date) => {
+    await page.click('#historyAddEntryBtn');
+    await page.waitForTimeout(250);
+    await page.fill('#adHocTitle', title);
+    await page.fill('#adHocDate', date);
+  };
+  const mmState = () => page.evaluate(() => ({
+    kindShown: !document.getElementById('adHocKind').hidden,
+    kinds: [...document.querySelectorAll('#adHocKind [data-kind]')].map(b => b.dataset.kind + (b.classList.contains('on') ? '*' : '')),
+    mealsShown: !document.getElementById('adHocMealChoices').hidden,
+    open: document.getElementById('adHocOverlay').classList.contains('open'),
+    error: document.getElementById('adHocError').style.display !== 'none' ? document.getElementById('adHocError').textContent : ''
+  }));
+  await page.click('#historyAddEntryBtn');
+  await page.waitForTimeout(250);
+  check('missed meal: + ENTRY offers the household\'s recipes', await page.evaluate(t =>
+    [...document.querySelectorAll('#adHocVocab option')].some(o => o.value === t), mm.title));
+  await page.click('#adHocCancel');
+
+  await mmOpen(mm.title.toUpperCase(), mm.free[0]);
+  let st = await mmState();
+  check('missed meal: naming a recipe shows COOKED, FROM THE FREEZER and COOKED AHEAD, COOKED chosen',
+        st.kindShown && st.kinds.join() === 'cooked*,premade,cookAhead' && st.mealsShown, JSON.stringify(st));
+  await page.click('#adHocMealChoices .meal-type-btn[data-meal="dinner"]');
+  await page.click('#adHocSave');
+  await page.waitForTimeout(400);
+  const mmCooked = await page.evaluate(({ id, d }) => {
+    const e = loadDiary().find(x => x.recipeId === id && x.cookedOn === d);
+    const w = window.__WRITES__.filter(x => x.table === 'recipe_logs' && x.op === 'insert').pop();
+    const row = w && (Array.isArray(w.rows) ? w.rows[0] : w.rows);
+    return { entry: e || null, inHistory: loadRecipes().find(r => r.id === id).history.includes(d), row,
+      shown: document.getElementById('historyDayDetail').innerText.includes(loadRecipes().find(r => r.id === id).title) };
+  }, { id: mm.id, d: mm.free[0] });
+  check('missed meal: COOKED logs it against the recipe on that day, with its meal',
+        mmCooked.entry && mmCooked.entry.mealType === 'dinner' && !mmCooked.entry.premade && !mmCooked.entry.cookAhead
+          && mmCooked.inHistory && mmCooked.shown, JSON.stringify(mmCooked));
+  check('missed meal: and writes a recipe_logs row naming the recipe and the day',
+        mmCooked.row && mmCooked.row.recipe_id === mm.id && mmCooked.row.cooked_on === mm.free[0]
+          && !('premade' in mmCooked.row) && !('cook_ahead' in mmCooked.row), JSON.stringify(mmCooked.row));
+
+  await mmOpen(mm.title, mm.free[0]);
+  await page.click('#adHocSave');
+  await page.waitForTimeout(250);
+  st = await mmState();
+  const mmCount = await page.evaluate(() => loadDiary().length);
+  check('missed meal: a second COOKED on the same day is refused',
+        st.open && /already logged/.test(st.error) && mmCount === (await page.evaluate(() => window.__MM__.before)) + 1, JSON.stringify(st));
+  await page.fill('#adHocDate', mm.tomorrow);
+  await page.click('#adHocSave');
+  await page.waitForTimeout(250);
+  st = await mmState();
+  check('missed meal: a day still to come is refused', st.open && /not come yet/.test(st.error), JSON.stringify(st));
+  await page.click('#adHocCancel');
+
+  await mmOpen(mm.title, mm.free[1]);
+  await page.click('#adHocKind [data-kind="cookAhead"]');
+  st = await mmState();
+  check('missed meal: COOKED AHEAD hides the meals', st.kinds.includes('cookAhead*') && !st.mealsShown, JSON.stringify(st));
+  await page.click('#adHocSave');
+  await page.waitForTimeout(400);
+  await mmOpen(mm.title, mm.free[2]);
+  await page.click('#adHocKind [data-kind="premade"]');
+  await page.click('#adHocSave');
+  await page.waitForTimeout(400);
+  const mmKinds = await page.evaluate(({ id, d1, d2 }) => {
+    const r = loadRecipes().find(x => x.id === id);
+    const ahead = loadDiary().find(x => x.recipeId === id && x.cookedOn === d1);
+    const frozen = loadDiary().find(x => x.recipeId === id && x.cookedOn === d2);
+    const ups = window.__WRITES__.filter(x => x.table === 'recipe_logs' && x.op === 'upsert').pop();
+    const ins = window.__WRITES__.filter(x => x.table === 'recipe_logs' && x.op === 'insert')
+      .map(w => Array.isArray(w.rows) ? w.rows[0] : w.rows).find(row => row.cooked_on === d1);
+    return { ahead: ahead ? { cookAhead: !!ahead.cookAhead, meal: ahead.mealType } : null, aheadInHistory: r.history.includes(d1),
+      aheadRow: ins ? !!ins.cook_ahead : null,
+      frozen: frozen ? { premade: !!frozen.premade } : null, frozenInHistory: r.history.includes(d2),
+      frozenRow: ups ? (Array.isArray(ups.rows) ? ups.rows[0] : ups.rows) : null };
+  }, { id: mm.id, d1: mm.free[1], d2: mm.free[2] });
+  check('missed meal: COOKED AHEAD counts in the history, no meal, written as cooked ahead',
+        mmKinds.ahead && mmKinds.ahead.cookAhead && mmKinds.ahead.meal === null && mmKinds.aheadInHistory && mmKinds.aheadRow === true,
+        JSON.stringify(mmKinds));
+  check('missed meal: FROM THE FREEZER is in the diary as pre-made and not in the history',
+        mmKinds.frozen && mmKinds.frozen.premade && !mmKinds.frozenInHistory
+          && mmKinds.frozenRow && mmKinds.frozenRow.premade === true && mmKinds.frozenRow.cooked_on === mm.free[2],
+        JSON.stringify(mmKinds));
+
+  await mmOpen('Takeaway pizza', mm.free[0]);
+  st = await mmState();
+  check('missed meal: a name that is not a recipe shows no COOKED buttons', !st.kindShown && st.mealsShown, JSON.stringify(st));
+  await page.click('#adHocCancel');
+  const mmPlanner = await page.evaluate(t => {
+    openAdHocEntry({ origin: 'planner', date: todayStr() });
+    const el = document.getElementById('adHocTitle'); el.value = t; el.dispatchEvent(new Event('input'));
+    const shown = !document.getElementById('adHocKind').hidden;
+    closeAdHocEntry();
+    return shown;
+  }, mm.title);
+  check('missed meal: the Planner\'s OTHER never offers them', mmPlanner === false);
+
+  const mmClean = await page.evaluate(({ id, days }) => {
+    loadDiary().filter(e => e.recipeId === id && days.includes(e.cookedOn)).forEach(e => deleteDiaryEntry(e.id));
+    premadeAvailable = window.__MM__.was.premade; cookAheadAvailable = window.__MM__.was.cookAhead;
+    return { diary: loadDiary().length === window.__MM__.before,
+      history: !loadRecipes().find(r => r.id === id).history.some(d => days.includes(d)) };
+  }, { id: mm.id, days: mm.free });
+  check('missed meal: REMOVE takes them out of the diary and the history again', mmClean.diary && mmClean.history, JSON.stringify(mmClean));
+
   /* A meal type tapped before its own insert has round-tripped must still
      land — the exact race a live run against the real backend found on
      28 Sep (F13): updateDiaryEntry checked unsavedDiaryIds before it ever

@@ -1,7 +1,7 @@
 # Household job list
 
 The jobs only the household can do: a session can't tap the tablet, decide for you, or deploy for you. **Last brought up to date
-21 Nov 2026**: eight jobs are waiting, Job 7 (the Planner's previous days), Job 11 (the tidier Planner in Modernist), Job 12 (INSPIRE ME's FUTURE WEEK), Job 13 (the Planner on a slow start) Job 14 (adding your own items to the shopping list) Job 15 (REGULARS and the names offered as you type) Job 16 (the remembered aisle) and Job 17 (installing the app on the tablet).
+25 Nov 2026**: nine jobs are waiting, Job 7 (the Planner's previous days), Job 11 (the tidier Planner in Modernist), Job 12 (INSPIRE ME's FUTURE WEEK), Job 13 (the Planner on a slow start) Job 14 (adding your own items to the shopping list) Job 15 (REGULARS and the names offered as you type) Job 16 (the remembered aisle), Job 17 (installing the app on the tablet) and Job 18 (logging a missed meal).
 
 **Testing is done in your household only** (decided 14 Oct): the one that has confirmed the converter. The other households sort
 out their own converter and need no steps here.
@@ -13,7 +13,7 @@ they're reported passed.** The standing regression pass for a session is `docs/T
 
 ## At a glance
 
-**Eight jobs are waiting:** Job 7, the Planner's previous days (#223), Job 11, the tidier Planner in Modernist, Job 12, INSPIRE ME's FUTURE WEEK, Job 13, the Planner on a slow start (#240), Job 14, adding your own items to the shopping list, Job 15, REGULARS, Job 16, the remembered aisle (all #241), and Job 17, installing the app on the tablet; a few minutes each on the tablet. Job 16's database step is done; merge its pull request and try it. Job 14's database step is done; merge its pull request and try it.
+**Nine jobs are waiting:** Job 7, the Planner's previous days (#223), Job 11, the tidier Planner in Modernist, Job 12, INSPIRE ME's FUTURE WEEK, Job 13, the Planner on a slow start (#240), Job 14, adding your own items to the shopping list, Job 15, REGULARS, Job 16, the remembered aisle (all #241),, Job 17, installing the app on the tablet, and Job 18, logging a missed meal (#249); a few minutes each on the tablet. Job 16's database step is done; merge its pull request and try it. Job 14's database step is done; merge its pull request and try it.
 What to build next is your choice; `docs/STATUS.md` §3 lists what is open.
 
 ---
@@ -159,6 +159,22 @@ No database change and nothing to deploy. It changes nothing in your data; insta
 5. In Settings → HELP, tap **OPEN THE GUIDE**. **You should see:** the guide opens and you can get back to the app. Say how it opened (inside the app, or in Chrome).
 6. If Google Calendar is not connected yet, try **CONNECT GOOGLE CALENDAR** from the installed app, or skip this step. **You should see:** Google's consent screen, and then the app again. Say whether you came back to the installed app or to a Chrome tab. If it does not come back, connect it from the browser instead and tell the next session.
 7. Open the app in the browser too. **You should see:** it works exactly as before.
+
+If a step does not do what it says, note which one and what you saw.
+
+---
+
+## Job 18: logging a missed meal (issue #249)
+
+No database change and nothing to deploy. It writes to your diary and your stats, so REMOVE what you add (step 6) if you were only trying it.
+
+1. **Merge the pull request, then reload the app** so it is on version 2026-11-25.1. **You should see:** Settings → HELP shows it, and What's new mentions logging a recipe you forgot to plan.
+2. In History, press **+ ENTRY** and type the first few letters of one of your recipes. **You should see:** the recipe offered among the names. Pick it. **You should see:** three buttons, **COOKED** (already chosen), **FROM THE FREEZER** and **COOKED AHEAD**, above the meals.
+3. Set the date to yesterday (or a day you cooked something you never planned), choose a meal and press **ADD**. **You should see:** "Logged … as cooked on …", that day selected in History with the dish on it, and the recipe's "last cooked" (on its card or in the viewer) showing that day if it is the latest.
+4. Press **+ ENTRY** again, pick the same recipe and the same day, and press **ADD**. **You should see:** "It is already logged as cooked on that day." and nothing added.
+5. Pick a recipe, choose **COOKED AHEAD**. **You should see:** the meal buttons disappear. Choose **COOKED** again and they come back. Try a date after today. **You should see:** it refused, saying the day has not come yet.
+6. Press **REMOVE** on the entry from step 3. **You should see:** it gone from the day, and the recipe's last cooked back to what it was.
+7. Type something that is not a recipe (a takeaway). **You should see:** no COOKED buttons, and it is added as AD HOC as before. The Planner's **OTHER** button never shows the three buttons.
 
 If a step does not do what it says, note which one and what you saw.
 
