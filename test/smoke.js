@@ -586,9 +586,9 @@ const check = (name, pass, detail) => {
         JSON.stringify(attrSafety));
   /* A tap on a name fills the box and closes the list. */
   await page.locator('#adHocTitle-suggest [data-suggest-value]').first().dispatchEvent('mousedown');
-  const picked = await page.evaluate(() => ({ value: document.getElementById('adHocTitle').value,
+  const adHocPicked = await page.evaluate(() => ({ value: document.getElementById('adHocTitle').value,
     open: document.getElementById('adHocTitle-suggest').style.display !== 'none' }));
-  check('tapping a name fills the box and closes the list', picked.value === 'x" onfocus="alert(1)' && !picked.open, JSON.stringify(picked));
+  check('tapping a name fills the box and closes the list', adHocPicked.value === 'x" onfocus="alert(1)' && !adHocPicked.open, JSON.stringify(adHocPicked));
   await page.fill('#adHocTitle', '');
   await page.click('#adHocSave');
   await page.waitForTimeout(250);
