@@ -710,7 +710,7 @@ const check = (name, pass, detail) => {
     const frozen = loadDiary().find(x => x.recipeId === id && x.cookedOn === d2);
     const ups = window.__WRITES__.filter(x => x.table === 'recipe_logs' && x.op === 'upsert').pop();
     const ins = window.__WRITES__.filter(x => x.table === 'recipe_logs' && x.op === 'insert')
-      .map(w => Array.isArray(w.rows) ? w.rows[0] : w.rows).find(row => row.cooked_on === d1);
+      .map(w => Array.isArray(w.rows) ? w.rows[0] : w.rows).find(row => row.recipe_id === id && row.cooked_on === d1);
     return { ahead: ahead ? { cookAhead: !!ahead.cookAhead, meal: ahead.mealType } : null, aheadInHistory: r.history.includes(d1),
       aheadRow: ins ? !!ins.cook_ahead : null,
       frozen: frozen ? { premade: !!frozen.premade } : null, frozenInHistory: r.history.includes(d2),
