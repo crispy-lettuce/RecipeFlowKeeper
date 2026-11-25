@@ -1416,6 +1416,7 @@ function loadArchivoFont(){
   .mini-panel h2{ font-size:19px; font-weight:300; margin-bottom:4px; }
   .mini-panel .subtle{ margin-bottom:18px; }
   .meal-type-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .meal-type-row[hidden]{ display:none; }
   .meal-type-btn{
     flex:1 1 calc(50% - 4px); padding:14px 10px; cursor:pointer;
     border:1px solid var(--line); border-radius:var(--r); background:var(--paper);
@@ -2005,7 +2006,7 @@ function loadArchivoFont(){
 <style id="style-base">
   .mod-only{ display:none; }
 </style>
-<link rel="stylesheet" href="styles/modernist.css?v=2026-11-21.1">
+<link rel="stylesheet" href="styles/modernist.css?v=2026-11-25.1">
 </head>
 <body>
 <div id="loginGate" hidden>
@@ -2711,6 +2712,8 @@ function loadArchivoFont(){
       <input type="text" id="adHocTitle" list="adHocVocab" autocomplete="off" placeholder="e.g. Fish and chips">
       <datalist id="adHocVocab"></datalist>
     </label>
+    <!-- #249: shown only when WHAT WAS IT names one of the household's recipes (from History, not the Planner's + OTHER). -->
+    <div class="meal-type-row" id="adHocKind" role="group" aria-label="How it was made" hidden></div>
     <label class="mini-field">
       <span>DATE</span>
       <input type="date" id="adHocDate">
@@ -2865,7 +2868,7 @@ const EXPECTED_CORE_VERSION = '2026-11-12.1';
    each one changed. Every PR the household would notice adds an entry there and sets this to it; core.test.js fails if
    the two differ. KITCHEN_CORE_VERSION above is a different thing, still bumped only when core.js changes: it guards
    the two files arriving from Pages' cache out of step. */
-const APP_VERSION = '2026-11-21.1';
+const APP_VERSION = '2026-11-25.1';
 /* The version of converter/conversion-instructions.md, the file each household loads into its own conversion project in
    the Claude app (issue #127, 12 Oct 2026). A coded change to that file moves its "Version" line and this together, and
    each household is then asked once, until someone in it taps DONE, to reload the file (household_settings
@@ -10780,27 +10783,78 @@ document.getElementById('mealTypeOverlay').addEventListener('click', e=>{
 
 /* ---- H2: ad-hoc entries ---- */
 let adHocMeal = null;
+/* #249, a missed meal: when + ENTRY names one of the household's recipes it is logged against that recipe, as COOKED ✓ would
+   have logged it on that day, so last cooked, times cooked, the streak and STATS count it. COOKED is the default (the
+   household's choice, 25 Nov 2026); FROM THE FREEZER and COOKED AHEAD keep the rules they have on the Planner (§5.5): a freezer
+   meal is in the diary and not in the stats, a dish cooked ahead is in the stats and not in the diary. Nothing is put on
+   the Planner: the household saw no use in it. */
+let adHocKind = 'cooked';
+const AD_HOC_KINDS = [
+  { kind: 'cooked', label: 'COOKED' },
+  { kind: 'premade', label: 'FROM THE FREEZER' },
+  { kind: 'cookAhead', label: 'COOKED AHEAD' }
+];
 /* Which screen opened the dialog, so saving ends on that screen: 'history' (+ ENTRY) or 'planner' (+ OTHER on a day,
    docs/PLAN-ADHOC-PLANNER.md). It is the same dialog and the same row either way; only the words and the ending differ. */
 let adHocOrigin = 'history';
 
+/* The recipe WHAT WAS IT names, by its whole title in any case, or null. Only from History: the Planner's + OTHER is for
+   a day's entry that is not a recipe, and a recipe goes on a day through CHOOSE A RECIPE. */
+function adHocRecipeMatch(){
+  if(adHocOrigin !== 'history') return null;
+  const typed = document.getElementById('adHocTitle').value.trim().toLowerCase();
+  if(!typed) return null;
+  return loadRecipes().find(r=> (r.title || '').trim().toLowerCase() === typed) || null;
+}
+
+/* The kinds this database can hold: the freezer and cooked-ahead columns may not exist yet (the same gates as the Planner's). */
+function adHocKindsAvailable(){
+  return AD_HOC_KINDS.filter(k=> k.kind === 'cooked'
+    || (k.kind === 'premade' && premadeAvailable) || (k.kind === 'cookAhead' && cookAheadAvailable));
+}
+
+function refreshAdHocKind(){
+  const row = document.getElementById('adHocKind');
+  const match = adHocRecipeMatch();
+  const kinds = adHocKindsAvailable();
+  if(!kinds.some(k=> k.kind === adHocKind)) adHocKind = 'cooked';
+  row.hidden = !match;
+  row.innerHTML = match ? kinds.map(k=>
+    `<button type="button" class="meal-type-btn${k.kind === adHocKind ? ' on' : ''}" data-kind="${k.kind}" aria-pressed="${k.kind === adHocKind}">${k.label}</button>`
+  ).join('') : '';
+  /* Nobody ate a dish cooked ahead on its day, so there is no meal to give it (as on the Planner). */
+  document.getElementById('adHocMealChoices').hidden = !!match && adHocKind === 'cookAhead';
+  document.getElementById('adHocSub').textContent = adHocOrigin === 'planner'
+    ? 'For something on this day that has no recipe card.'
+    : match ? 'One of your recipes: logged on the date below.'
+    : 'For something you ate: one of your recipes, or anything with no recipe card.';
+}
+
 function openAdHocEntry(opts){
   adHocMeal = null;
+  adHocKind = 'cooked';
   adHocOrigin = opts && opts.origin === 'planner' ? 'planner' : 'history';
   const overlay = document.getElementById('adHocOverlay');
   document.getElementById('adHocTitle').value = '';
   document.getElementById('adHocHeading').textContent = adHocOrigin === 'planner' ? 'Add to the Planner' : 'Add a diary entry';
-  document.getElementById('adHocSub').textContent = adHocOrigin === 'planner'
-    ? 'For something on this day that has no recipe card.' : 'For something you ate that has no recipe card.';
   /* Defaults to the day you have selected in the calendar, falling back to
      today. Logging yesterday's takeaway is the normal case for this
      feature, so defaulting to today alone would mean always retyping. From the Planner it is the day whose
      button was tapped. */
   document.getElementById('adHocDate').value = (adHocOrigin === 'planner' && opts.date) || state.historySelectedDate || todayStr();
   document.getElementById('adHocError').style.display = 'none';
+  /* From History the household's recipe titles are offered after the names already used, so a missed meal can be picked. */
+  const names = adHocTitleSuggestions();
+  if(adHocOrigin === 'history'){
+    const seen = new Set(names.map(t=> t.toLowerCase()));
+    loadRecipes().map(r=> (r.title || '').trim()).filter(Boolean)
+      .sort((a,b)=> a.localeCompare(b))
+      .forEach(t=>{ if(!seen.has(t.toLowerCase())){ seen.add(t.toLowerCase()); names.push(t); } });
+  }
   document.getElementById('adHocVocab').innerHTML =
-    adHocTitleSuggestions().map(t=>`<option value="${escapeHtml(t)}"></option>`).join('');
+    names.map(t=>`<option value="${escapeHtml(t)}"></option>`).join('');
   renderMealTypeButtons(document.getElementById('adHocMealChoices'), null);
+  refreshAdHocKind();
   overlay.classList.add('open');
   document.getElementById('adHocTitle').focus();
 }
@@ -10823,10 +10877,44 @@ document.getElementById('adHocClose').addEventListener('click', closeAdHocEntry)
 document.getElementById('adHocOverlay').addEventListener('click', e=>{
   if(e.target.id === 'adHocOverlay') closeAdHocEntry();
 });
+document.getElementById('adHocTitle').addEventListener('input', ()=>{
+  document.getElementById('adHocError').style.display = 'none';
+  refreshAdHocKind();
+});
+document.getElementById('adHocKind').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-kind]');
+  if(!btn) return;
+  adHocKind = btn.dataset.kind;
+  refreshAdHocKind();
+});
 document.getElementById('adHocTitle').addEventListener('keydown', e=>{
   if(e.key === 'Enter'){ e.preventDefault(); saveAdHocEntry(); }
 });
 document.getElementById('adHocSave').addEventListener('click', saveAdHocEntry);
+
+/* #249: a recipe logged for a day already gone. The same writes as COOKED ✓ (logRecipeUsed) and a PRE-MADE day's freezer
+   row, but the meal comes from the dialog rather than a prompt afterwards. Refuses, with the reason in `err`, a day not yet
+   come and a second log of the same kind on one day: the recipe's history holds a date once (logRecipeUsed's rule), and a
+   freezer meal planned as PRE-MADE is already in the diary by itself (logDuePremade). Returns whether it logged. */
+function logMissedMeal(recipe, date, kind, mealType, err){
+  const refuse = text=>{ err.textContent = text; err.style.display = ''; return false; };
+  if(date > todayStr()) return refuse('That day has not come yet. Log a recipe once you have eaten it.');
+  if(kind === 'premade' && premadeAvailable){
+    if(loadDiary().some(e=> e.recipeId === recipe.id && e.cookedOn === date && e.premade))
+      return refuse('It is already in the diary from the freezer on that day.');
+    addDiaryEntry({ recipeId: recipe.id, cookedOn: date, mealType, premade: true });
+    showToast(`Logged "${recipe.title}" from the freezer on ${formatDate(date)}: in the food diary, not in your cooking stats`);
+    return true;
+  }
+  const cookAhead = kind === 'cookAhead' && cookAheadAvailable;
+  if((recipe.history || []).includes(date)) return refuse('It is already logged as cooked on that day.');
+  recipe.history = (recipe.history || []).concat([date]).sort();
+  addDiaryEntry({ recipeId: recipe.id, cookedOn: date, mealType: cookAhead ? null : mealType, cookAhead });
+  showToast(cookAhead
+    ? `Logged "${recipe.title}" as cooked ahead on ${formatDate(date)}: in your cooking stats, not in the food diary`
+    : `Logged "${recipe.title}" as cooked on ${formatDate(date)}`);
+  return true;
+}
 
 function saveAdHocEntry(){
   const title = document.getElementById('adHocTitle').value.trim();
@@ -10843,6 +10931,16 @@ function saveAdHocEntry(){
   if(!date){
     err.textContent = 'Pick a date.';
     err.style.display = '';
+    return;
+  }
+  const recipe = adHocRecipeMatch();
+  if(recipe){
+    if(!logMissedMeal(recipe, date, adHocKind, adHocMeal, err)) return;
+    closeAdHocEntry();
+    state.historySelectedDate = date;
+    const d = new Date(date + 'T00:00:00');
+    state.historyMonth = { year: d.getFullYear(), month: d.getMonth() };
+    renderHistory();
     return;
   }
   addDiaryEntry({ title, cookedOn: date, mealType: adHocMeal });

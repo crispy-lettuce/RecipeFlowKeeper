@@ -305,7 +305,11 @@ Adds up every ingredient the week's planned dishes need, scaled to each day's SE
 ### 5.8 History and the food diary
 A month calendar of what was eaten, Monday to Sunday whatever WEEK STARTS ON says, with Saturday and Sunday lightly shaded in both
 styles (issue #212, 25 Oct 2026); MOST COOKED BY DAY OF WEEK runs in the same order. Cooked recipes arrive by ticking the last column or COOKED ✓; PRE-MADE meals arrive by
-themselves, marked FROM THE FREEZER; a dish cooked ahead is not here (it counts in STATS, not in the diary); **+ ENTRY** adds anything with no recipe. REMOVE deletes an entry (for a freezer meal it also
+themselves, marked FROM THE FREEZER; a dish cooked ahead is not here (it counts in STATS, not in the diary); **+ ENTRY** adds anything with no recipe, and logs a missed meal (issue #249, 25 Nov 2026): from History (not the Planner's + OTHER) WHAT WAS IT
+also offers the household's recipe titles, and a name matching one whole, in any case, is logged against that recipe on the chosen date with a choice of **COOKED**
+(the default; as COOKED ✓: in the diary and the recipe's history, so last cooked, times cooked, the streak and STATS), **FROM THE FREEZER** (a pre-made row: in the diary,
+not the history) or **COOKED AHEAD** (a cooked-ahead row: in the history, not the diary, and no meal); the last two only where their columns exist. A day after today is
+refused, as is a second COOKED or COOKED AHEAD where the history already holds that day, or a second freezer row for that recipe and day. Nothing is written to the Planner. REMOVE deletes an entry (for a freezer meal it also
 turns PRE-MADE off on the Planner). **CSV** exports the diary; **STATS** gives totals, the streak and most-cooked.
 
 ### 5.9 Settings (four tabs)
